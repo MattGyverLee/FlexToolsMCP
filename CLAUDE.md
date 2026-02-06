@@ -8,8 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the FlexLibs 2.0 analyzer (if updating extractions)
+# Configure paths (copy and edit .env)
+cp .env.example .env
+
+# Refresh all API indexes from source
+python src/refresh.py
+
+# Or refresh individually:
+python src/flexlibs2_analyzer.py --flexlibs-path D:/Github/flexlibs --output index/flexlibs/flexlibs_api.json
 python src/flexlibs2_analyzer.py --flexlibs2-path D:/Github/flexlibs2 --output index/flexlibs/flexlibs2_api.json
+python src/liblcm_extractor.py --output index/liblcm/liblcm_api.json
 
 # Test the MCP server loads correctly
 python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
@@ -39,10 +47,10 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
 
 ## Related Repositories
 
-These external repositories are dependencies and documentation sources (located in D:\Github\):
+Configure paths in `.env` file. These external repositories are dependencies:
 
-| Repository | Purpose | Local Path |
-|------------|---------|------------|
+| Repository | Purpose | Default Path |
+|------------|---------|--------------|
 | **FieldWorks** | User-facing GUI for managing lexicons | D:\Github\Fieldworks |
 | **LibLCM** | C# data model and API for FieldWorks databases | D:\Github\liblcm |
 | **FlexLibs** (stable) | Shallow IronPython wrapper (~40 functions) | D:\Github\flexlibs |
@@ -50,54 +58,62 @@ These external repositories are dependencies and documentation sources (located 
 | **FlexTools** | GUI app for running Python macros | D:\Github\FlexTools |
 | **FLExTools-Generator** | Existing work extracting LibLCM/FlexLibs info (reference) | D:\Github\FLExTools-Generator |
 
-## Technology Stack
-
-- **Python 3.10+** for MCP server and agents
-- **ast module** for Python parsing
-- **Roslyn or C# reflection** for C# parsing
-- **sentence-transformers** for semantic search
-- **FAISS or Chroma** for vector storage
-- **pytest** for test suite
-
-## Expected Project Structure
+## Project Structure
 
 ```
-/index
-  /liblcm           # Parsed C# API documentation
-  /flexlibs         # Python wrapper mappings
-  /examples         # Usage patterns from FieldWorks
-  /tests            # Test suite and coverage reports
-  metadata.json
-  version.json
+/src
+  server.py              # MCP server with 6 tools
+  flexlibs2_analyzer.py  # FlexLibs stable + 2.0 Python AST extraction
+  liblcm_extractor.py    # LibLCM .NET reflection extraction
+  refresh.py             # Unified refresh script
 
-/mcp_server
-  server.py         # Main MCP server
-  search.py         # Semantic search implementation
-  validation.py     # Script validation
-  requirements.txt
+/index
+  /liblcm                # LibLCM API documentation (JSON)
+  /flexlibs              # FlexLibs stable + 2.0 API documentation (JSON)
+    flexlibs_api.json    # FlexLibs stable (~71 methods)
+    flexlibs2_api.json   # FlexLibs 2.0 (~1400 methods)
+
+/docs
+  PROGRESS.md            # Project progress log
+  TASKS.md               # Task tracking
+  DECISIONS.md           # Architecture decisions
+
+.env                     # Configuration (paths to repositories)
+.env.example             # Template for .env
 ```
 
 ## MCP Server Tools
 
-The server will expose these tools:
-- `get_object_api(object_type, include_flexlibs, abstraction_level)` - Get methods/properties for objects like ILexSense
-- `search_by_capability(query, max_results)` - Semantic search for methods
-- `get_navigation_path(from_object, to_object)` - Find navigation paths between objects
-- `find_examples(method_name, operation_type)` - Get real usage examples
-- `validate_script(script_text)` - Check if script uses valid API calls
+The server exposes 6 tools:
+- `get_object_api` - Get methods/properties for objects like ILexEntry, LexSenseOperations
+- `search_by_capability` - Natural language search with synonym expansion
+- `get_navigation_path` - Find paths between object types (ILexEntry -> ILexSense)
+- `find_examples` - Get code examples by operation type (create, read, update, delete)
+- `list_categories` - List API categories (lexicon, grammar, texts, etc.)
+- `list_entities_in_category` - List entities in a category
 
-## API Abstraction Levels
+## Refreshing Indexes
 
-Scripts can target three API levels:
-1. **LibLCM (C#)**: Direct calls, most powerful, most verbose
-2. **FlexLibs Light**: Limited (~40 functions), stable
-3. **FlexLibs 2.0**: Comprehensive (~90% coverage), Pythonic, beta
+When LibLCM, FlexLibs stable, or FlexLibs 2.0 changes, refresh the indexes:
 
-Default behavior is "auto" - use FlexLibs 2.0 when available, fall back to LibLCM.
+```bash
+# Refresh all
+python src/refresh.py
+
+# Refresh only FlexLibs stable
+python src/refresh.py --flexlibs-only
+
+# Refresh only FlexLibs 2.0
+python src/refresh.py --flexlibs2-only
+
+# Refresh only LibLCM (requires pythonnet and FieldWorks DLLs)
+python src/refresh.py --liblcm-only
+```
 
 ## Key Technical Decisions
 
-- **Static analysis primary**: Parse C#/Python source with AST tools, not heavy AI
-- **AI for enrichment only**: Use AI for missing descriptions, semantic categorization, C# to IronPython conversion
-- **Object-centric organization**: Index is organized around objects (ILexEntry, ILexSense, etc.) with their methods, properties, and relationships
-- **Validation-first**: Multiple validation layers between phases, test against real FieldWorks database
+- **Self-contained extraction**: Can regenerate indexes from source (no external dependencies)
+- **FlexLibs 2.0 preferred**: Better documented (99% descriptions, 82% examples)
+- **Static analysis primary**: AST parsing for Python, .NET reflection for C#
+- **Semantic categorization**: Entities categorized by namespace and naming patterns
+- **Object-centric organization**: Index organized around objects (ILexEntry, ILexSense, etc.)

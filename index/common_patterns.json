@@ -1,0 +1,2867 @@
+{
+  "_schema": "common-patterns/1.0",
+  "_generated_at": "2026-02-06T05:21:54.745713+00:00",
+  "by_object": {
+    "general": [
+      {
+        "description": "Move an item to position immediately after another item.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move primary sense to second position\nprimary = entry.SensesOS[0]\nsecondary = entry.SensesOS[1]\nproject.Senses.MoveAfter(primary, secondary)\n            True\n\n# Move variant allomorph after default\ndefault = entry.AlternateFormsOS[0]\nvariant = entry.AlternateFormsOS[3]\nproject.Allomorphs.MoveAfter(variant, default)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveAfter"
+      },
+      {
+        "description": "Move an item to position immediately before another item.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move secondary sense to become primary\nprimary = entry.SensesOS[0]\nsecondary = entry.SensesOS[2]\nproject.Senses.MoveBefore(secondary, primary)\n            True\n\n# Move variant allomorph before default\ndefault = entry.AlternateFormsOS[0]\nvariant = entry.AlternateFormsOS[3]\nproject.Allomorphs.MoveBefore(variant, default)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveBefore"
+      },
+      {
+        "description": "Move an item down (toward end) by specified number of positions.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move sense down one position (e.g., from index 1 to 2)\nsense = entry.SensesOS[1]\nmoved = project.Senses.MoveDown(entry, sense)\nprint(f\"Moved {moved} positions\")\n            Moved 1 positions\n\n# Demote primary sense significantly\nprimary = entry.SensesOS[0]\nmoved = project.Senses.MoveDown(entry, primary, positions=3)\nprint(f\"Now at index {list(entry.SensesOS).index(primary)}\")\n            Now at index 3\n\n# Try to move past end (clamped)\nallo = entry.AlternateFormsOS[8]  # Count = 10\nmoved = project.Allomorphs.MoveDown(entry, allo, positions=5)\nprint(f\"Actually moved {moved} positions\")\n            Actually moved 1 positions\n\n# Already at end - no movement\nlast = entry.SensesOS[entry.SensesOS.Count - 1]\nmoved = project.Senses.MoveDown(entry, last)\nprint(f\"Moved {moved} positions\")\n            Moved 0 positions",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveDown"
+      },
+      {
+        "description": "Move an item to a specific index position.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Make third sense the primary sense\nthird_sense = entry.SensesOS[2]\nproject.Senses.MoveToIndex(entry, third_sense, 0)\n            True\n\n# Move allomorph to end\nallo = entry.AlternateFormsOS[1]\nlast_index = entry.AlternateFormsOS.Count - 1\nproject.Allomorphs.MoveToIndex(entry, allo, last_index)\n            True\n\n# Move example to middle position\nex = sense.ExamplesOS[0]\nproject.Examples.MoveToIndex(sense, ex, 2)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveToIndex"
+      },
+      {
+        "description": "Move an item up (toward index 0) by specified number of positions.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move sense up one position (e.g., from index 3 to 2)\nsense = entry.SensesOS[3]\nmoved = project.Senses.MoveUp(entry, sense)\nprint(f\"Moved {moved} positions\")\n            Moved 1 positions\n\n# Move allomorph to top (up 5 positions)\nallo = entry.AlternateFormsOS[5]\nmoved = project.Allomorphs.MoveUp(entry, allo, positions=5)\nprint(f\"Now at index {list(entry.AlternateFormsOS).index(allo)}\")\n            Now at index 0\n\n# Try to move past start (clamped at 0)\nexample = sense.ExamplesOS[1]\nmoved = project.Examples.MoveUp(sense, example, positions=10)\nprint(f\"Actually moved {moved} positions\")\n            Actually moved 1 positions\n\n# Already at start - no movement\nfirst = entry.SensesOS[0]\nmoved = project.Senses.MoveUp(entry, first)\nprint(f\"Moved {moved} positions\")\n            Moved 0 positions",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveUp"
+      },
+      {
+        "description": "Sort items in an owning sequence using a custom key function.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Sort allomorphs by form length\nproject.Allomorphs.Sort(entry,\n    key_func=lambda a: len(project.Allomorphs.GetForm(a)))\n            3\n\n# Sort senses alphabetically by gloss\nproject.Senses.Sort(entry,\n    key_func=lambda s: project.Senses.GetGloss(s))\n            5\n\n# Sort in reverse order (most complex first)\ndef complexity(allo):\n    env = project.Allomorphs.GetEnvironment(allo)\n    return len(str(env)) if env else 0\nproject.Allomorphs.Sort(entry,\n    key_func=complexity,\n    reverse=True)\n            3\n\n# Sort examples by length (shortest first)\nproject.Examples.Sort(sense,\n    key_func=lambda ex: len(project.Examples.GetText(ex)))\n            4",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "Sort"
+      },
+      {
+        "description": "Swap the positions of two items in a sequence.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Swap first and second senses\nsense1 = entry.SensesOS[0]\nsense2 = entry.SensesOS[1]\nproject.Senses.Swap(sense1, sense2)\n            True\n\n# Swap allomorphs\nallo1 = entry.AlternateFormsOS[0]\nallo2 = entry.AlternateFormsOS[3]\nproject.Allomorphs.Swap(allo1, allo2)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "Swap"
+      },
+      {
+        "description": "Extract the audio file path from an audio writing system field.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "# Get audio path from allomorph form\nform = proj.Allomorph.GetForm(allomorph)\naudio_ws = proj.WSHandle(\"en-Zxxx-x-audio\")\naudio_path = proj.GetAudioPath(form, audio_ws)\nif audio_path:\n    print(f\"Audio file: {audio_path}\")\n\n        See also:\n            :meth:`IsAudioWritingSystem` - Check if WS is audio type\n            :meth:`SetAudioPath` - Set audio file path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetAudioPath"
+      },
+      {
+        "description": "Get the full path to the project's LinkedFiles directory.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "proj = FLExProject()\nlinked_files = proj.GetLinkedFilesDir()\nprint(linked_files)\n            C:\\FLExData\\MyProject\\LinkedFiles\n\n        See also:\n            :meth:`MediaOperations.GetInternalPath` - Get relative path within LinkedFiles\n            :meth:`MediaOperations.GetExternalPath` - Get full filesystem path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetLinkedFilesDir"
+      },
+      {
+        "description": "Check if a writing system is an audio writing system.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "ws_handle = proj.WSHandle(\"en-Zxxx-x-audio\")\nif proj.IsAudioWritingSystem(ws_handle):\n    print(\"This is an audio writing system\")\n\n        See also:\n            :meth:`GetAudioPath` - Extract audio file path from audio WS field\n            :meth:`SetAudioPath` - Set audio file path in audio WS field",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "IsAudioWritingSystem"
+      },
+      {
+        "description": "Add an allomorph to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nmorph_type = project.LexEntry.GetMorphType(entry)\nallomorph = project.LexiconAddAllomorph(entry, \"runn-\", morph_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddAllomorph"
+      },
+      {
+        "description": "Add a complex form entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create a compound \"blackboard\" from \"black\" + \"board\"\nblackboard = project.LexEntry.Create(\"blackboard\", \"stem\")\nblack = project.LexEntry.Find(\"black\")\nboard = project.LexEntry.Find(\"board\")\n# Would need complex_form_type from project\n# ref = project.LexiconAddComplexForm(blackboard, [black, board], cf_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddComplexForm"
+      },
+      {
+        "description": "Create a new lexical entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexiconAddEntry(\"walk\", \"stem\")\nprint(project.LexEntry.GetHeadword(entry))\n            walk",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddEntry"
+      },
+      {
+        "description": "Add a pronunciation to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\npron = project.LexiconAddPronunciation(entry, \"rʌn\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddPronunciation"
+      },
+      {
+        "description": "Add a sense to a lexical entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexiconAddSense(entry, \"to move rapidly\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddSense"
+      },
+      {
+        "description": "Add a variant form to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"color\")\n# This would typically need a variant type from the project\n# variant = project.LexiconAddVariantForm(entry, \"colour\", variant_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddVariantForm"
+      },
+      {
+        "description": "Get all allomorphs in the entire project.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAllAllomorphs"
+      },
+      {
+        "description": "Delete an object from the database.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "sense = entry.SensesOS[0]\nproject.LexiconDeleteObject(sense)\n# Or delete entire entry:\nproject.LexiconDeleteObject(entry)\n\n        Warning:\n            This is a destructive operation and cannot be undone.",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconDeleteObject"
+      },
+      {
+        "description": "Get all allomorph forms for an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nforms = project.LexiconGetAllomorphForms(entry)\nprint(forms)\n            ['run', 'ran', 'runn-']",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetAllomorphForms"
+      },
+      {
+        "description": "Get the complex form type of an entry reference.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for ref in entry.EntryRefsOS:\n    cf_type = project.LexiconGetComplexFormType(ref)\n    if cf_type:\n        print(cf_type.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetComplexFormType"
+      }
+    ],
+    "IText": [
+      {
+        "description": "Create a moved text marker for a word group.",
+        "operation": "create",
+        "object_type": "IText",
+        "code": "# Mark word group as preposed\nwg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Create(wg, preposed=True)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            True\n\n# Mark as postposed\nmarker = project.ConstChartMovedText.Create(wg, preposed=False)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            False",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Delete a moved text marker.",
+        "operation": "delete",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    project.ConstChartMovedText.Delete(marker)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Word group will no longer be marked as moved\n\n        See Also:\n            Create, Find",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Find the moved text marker for a word group.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Find(wg)\nif marker:\n    print(\"Word group has moved text marker\")\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text is preposed\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all moved text markers in a constituent chart.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nmarkers = project.ConstChartMovedText.GetAll(chart)\npreposed_count = sum(1 for m in markers\n    if project.ConstChartMovedText.IsPreposed(m))\nprint(f\"Found {preposed_count} preposed markers\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Add a media file to a text.",
+        "operation": "create",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\nmedia = project.Texts.AddMediaFile(\n    text,\n    \"/home/user/audio/genesis.mp3\",\n    label=\"Genesis Recording\"\n)\nprint(f\"Media added: {media.Hvo}\")",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "AddMediaFile"
+      },
+      {
+        "description": "Compare two texts for differences.",
+        "operation": "iterate",
+        "object_type": "IText",
+        "code": "is_diff, diffs = ops1.CompareTo(text1, text2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Create a new text in the project.",
+        "operation": "create",
+        "object_type": "IText",
+        "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\nnarrative_genre = project.lp.GenreListOA.PossibilitiesOS[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Delete a text from the project.",
+        "operation": "delete",
+        "object_type": "IText",
+        "code": "# Delete by object\ntext = project.Texts.GetAll()[0]\nproject.Texts.Delete(text)\n\n# Delete by HVO\nproject.Texts.Delete(text_hvo)\n\n        See Also:\n            Create, Exists, GetAll",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Duplicate a text, creating a new text with the same properties.",
+        "operation": "general",
+        "object_type": "IText",
+        "code": "# Shallow duplicate (text shell only, no paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=False)\nprint(project.Texts.GetName(duplicate))\n            Genesis (copy)\nprint(project.Texts.GetParagraphCount(duplicate))\n            0\n\n# Deep duplicate (with all paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=True)\nprint(project.Texts.GetParagraphCount(duplicate))\n            10\n\n        Warning:\n            - deep=True for Text can be slow for long texts with many paragraphs\n            - The duplicate will have a \" (copy)\" suffix added to the name\n            - The duplicate will have identical content but a new GUID\n            - Media files are NOT duplicated (to avoid file duplication)\n            - Segments will need re-parsing if you want analyses",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a text with the given name exists in the project.",
+        "operation": "general",
+        "object_type": "IText",
+        "code": "if project.Texts.Exists(\"Genesis\"):\n    print(\"Text already exists\")\nelse:\n    text = project.Texts.Create(\"Genesis\")\n\n        See Also:\n            Create, GetAll, GetName",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Get the abbreviation for a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\n\n# Get abbreviation in default analysis WS\nabbr = project.Texts.GetAbbreviation(text)\nprint(f\"Abbreviation: {abbr}\")\n\n# Get abbreviation in specific WS\nws_handle = project.WSHandle('en')\nabbr_en = project.Texts.GetAbbreviation(text, ws_handle)\n\n        See Also:\n            GetName, SetName",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetAbbreviation"
+      },
+      {
+        "description": "Get all texts in the project.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "# Iterate over all texts\nfor text in project.Texts.GetAll():\n    name = text.Name.BestAnalysisAlternative.Text\n    print(f\"Text: {name}\")\n\n# Get as list\nall_texts = list(project.Texts.GetAll())\nprint(f\"Total texts: {len(all_texts)}\")\n\n        See Also:\n            Create, Delete, Exists, project.TextsGetAll()",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the StText contents object for a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = project.Texts.Find(\"Genesis\")\ncontents = project.Texts.GetContents(text)\nif contents:\n    print(f\"Paragraphs: {contents.ParagraphsOS.Count}\")\nelse:\n    print(\"Text has no contents\")\n\n        See Also:\n            GetParagraphs, GetParagraphCount, Create",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetContents"
+      },
+      {
+        "description": "Get the genre of a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\ngenre = project.Texts.GetGenre(text)\nif genre:\n    genre_name = genre.Name.BestAnalysisAlternative.Text\n    print(f\"Genre: {genre_name}\")\nelse:\n    print(\"No genre assigned\")\n\n        See Also:\n            SetGenre, Create",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetGenre"
+      },
+      {
+        "description": "Check if a text's translation is marked as complete.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\nis_translated = project.Texts.GetIsTranslated(text)\nif is_translated:\n    print(\"Text translation is complete\")\nelse:\n    print(\"Text translation is incomplete\")",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetIsTranslated"
+      },
+      {
+        "description": "Get the name of a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\n\n# Get name in default analysis WS\nname = project.Texts.GetName(text)\n\n# Get name in specific WS\nws_handle = project.WSHandle('en')\nname_en = project.Texts.GetName(text, ws_handle)\n\n        See Also:\n            SetName, Exists",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetName"
+      },
+      {
+        "description": "Get the number of paragraphs in a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\ncount = project.Texts.GetParagraphCount(text)\nprint(f\"Text has {count} paragraphs\")\n\n        See Also:\n            GetParagraphs, GetContents",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetParagraphCount"
+      },
+      {
+        "description": "Get all paragraphs in a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\nparas = project.Texts.GetParagraphs(text)\nfor i, para in enumerate(paras, 1):\n    content = para.Contents.Text\n    print(f\"Paragraph {i}: {content}\")\n\n        See Also:\n            GetContents, GetParagraphCount",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetParagraphs"
+      },
+      {
+        "description": "Get all syncable properties of a text.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "props = project.Texts.GetSyncableProperties(text)\nprint(props['Title'])\n            {'en': 'Genesis'}\nprint(props['Description'])\n            {'en': 'First book of the Bible'}",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "GetSyncableProperties"
+      },
+      {
+        "description": "Set the genre of a text.",
+        "operation": "update",
+        "object_type": "IText",
+        "code": "text = list(project.Texts.GetAll())[0]\n\n# Set genre to first available genre\nif project.lp.GenreListOA.PossibilitiesOS.Count > 0:\n    narrative = project.lp.GenreListOA.PossibilitiesOS[0]\n    project.Texts.SetGenre(text, narrative)\n\n# Clear genre\nproject.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
+        "source": "docstring",
+        "class": "TextOperations",
+        "method": "SetGenre"
+      }
+    ],
+    "IMoForm": [
+      {
+        "description": "Add a phonological environment to an allomorph.",
+        "operation": "create",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "AddPhoneEnv"
+      },
+      {
+        "description": "Compare two allomorphs and return their differences.",
+        "operation": "iterate",
+        "object_type": "IMoForm",
+        "code": "allo1 = list(project1.Allomorphs.GetAll(entry1))[0]\nallo2 = list(project2.Allomorphs.GetAll(entry2))[0]\nis_diff, diffs = project1.Allomorphs.CompareTo(allo1, allo2,\n                                                 project1.Allomorphs,\n                                                 project2.Allomorphs)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Create a new allomorph for a lexical entry.",
+        "operation": "create",
+        "object_type": "IMoForm",
+        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nmorphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Get all allomorphs for a lexical entry, or all allomorphs in the entire project.",
+        "operation": "read",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\n# Get allomorphs for specific entry\nentry = project.LexiconAllEntries()[0]\nfor allomorph in allomorphOps.GetAll(entry):\n    form = allomorphOps.GetForm(allomorph)\n    print(f\"Allomorph: {form}\")\n            Allomorph: run\n            Allomorph: ran\n            Allomorph: runn-\n\n# Get ALL allomorphs in entire project\nfor allomorph in allomorphOps.GetAll():\n    form = allomorphOps.GetForm(allomorph)\n    print(f\"Allomorph: {form}\")",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get all syncable properties of an allomorph for comparison.",
+        "operation": "read",
+        "object_type": "IMoForm",
+        "code": "allo = list(project.Allomorphs.GetAll(entry))[0]\nprops = project.Allomorphs.GetSyncableProperties(allo)\nprint(props['Form'])  # MultiString\n            {'en': 'run', 'fr': 'courir'}\nprint(props['IsAbstract'])  # Boolean\n            True",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "GetSyncableProperties"
+      }
+    ],
+    "ILexEtymology": [
+      {
+        "description": "Create a new etymology for a lexical entry.",
+        "operation": "create",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netym = etymOps.Create(\n    entry,\n    source=\"Greek\",\n    form=\"tele\",\n    gloss=\"far\"\n)\nprint(etymOps.GetForm(etym))\n            tele\n\n# Create minimal etymology (add details later)\netym2 = etymOps.Create(entry)\netymOps.SetSource(etym2, \"Greek\")\netymOps.SetForm(etym2, \"phone\")",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Get all etymologies for a lexical entry, or all etymologies in the entire project.",
+        "operation": "read",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\n# Get etymologies for specific entry\nentry = project.LexEntry.Find(\"telephone\")\nfor etym in etymOps.GetAll(entry):\n    source = etymOps.GetSource(etym)\n    form = etymOps.GetForm(etym)\n    gloss = etymOps.GetGloss(etym)\n    print(f\"Etymology: {source} '{form}' ({gloss})\")\n            Etymology: Greek 'tele' (far)\n            Etymology: Greek 'phone' (sound)\n\n# Get ALL etymologies in entire project\nfor etym in etymOps.GetAll():\n    source = etymOps.GetSource(etym)\n    print(f\"Etymology source: {source}\")",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the source language of an etymology.",
+        "operation": "read",
+        "object_type": "ILexEtymology",
+        "code": "entry = project.LexEntry.Find(\"loanword\")\netymologies = project.Etymology.GetAll(entry)\nif etymologies:\n    lang = project.Etymology.GetLanguage(etymologies[0])\n    if lang:\n        print(lang.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "GetLanguage"
+      }
+    ],
+    "ILexExampleSentence": [
+      {
+        "description": "Add a media file (typically audio) to an example sentence.",
+        "operation": "create",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexample = exampleOps.Create(sense, \"The dog barked loudly.\")\n# Add audio recording\nmedia = exampleOps.AddMediaFile(\n    example,\n    \"/path/to/audio.wav\",\n    label=\"Native speaker pronunciation\"\n)\nprint(f\"Added media file\")\n            Added media file\n\n# Verify the media was added\ncount = exampleOps.GetMediaCount(example)\nprint(f\"Example now has {count} media file(s)\")\n            Example now has 1 media file(s)",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "AddMediaFile"
+      },
+      {
+        "description": "Get example sentences for a sense or all examples in the project.",
+        "operation": "read",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\n\n# Get examples for a specific sense\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nfor example in exampleOps.GetAll(sense):\n    text = exampleOps.GetExample(example)\n    print(f\"Example: {text}\")\n\n# Get ALL examples in entire project\nfor example in exampleOps.GetAll():\n    text = exampleOps.GetExample(example)\n    print(f\"Example: {text}\")",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the publications this example should not be published in.",
+        "operation": "read",
+        "object_type": "ILexExampleSentence",
+        "code": "sense = list(project.Senses.GetAll())[0]\nexamples = project.Examples.GetAll(sense)\nif examples:\n    pubs = project.Examples.GetDoNotPublishIn(examples[0])\n    print(pubs)",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "GetDoNotPublishIn"
+      }
+    ],
+    "ILexEntry": [
+      {
+        "description": "Add a component to a complex form (compound, idiom, phrasal verb).",
+        "operation": "create",
+        "object_type": "ILexEntry",
+        "code": "# Create \"kick the bucket\" idiom\nkick = project.LexEntry.Find(\"kick\")\nbucket = project.LexEntry.Find(\"bucket\")\nidiom = project.LexEntry.Create(\"kick the bucket\")\nproject.LexEntry.AddComplexFormComponent(idiom, kick)\nproject.LexEntry.AddComplexFormComponent(idiom, bucket)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "AddComplexFormComponent"
+      },
+      {
+        "description": "Add a new sense to a lexical entry.",
+        "operation": "create",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexEntry.AddSense(entry, \"to move rapidly on foot\")\ngloss = project.LexiconGetSenseGloss(sense)\nprint(gloss)\n            to move rapidly on foot\n\n# Add sense in specific writing system\nsense_fr = project.LexEntry.AddSense(entry, \"courir\",\n                                      project.WSHandle('fr'))",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "AddSense"
+      },
+      {
+        "description": "Create a new lexical entry in the FLEx project.",
+        "operation": "create",
+        "object_type": "ILexEntry",
+        "code": "# Create a basic stem entry with blank sense (default - no type needed!)\nentry = project.LexEntry.Create(\"run\")\nprint(project.LexEntry.GetHeadword(entry))\n            run\nprint(project.LexEntry.GetSenseCount(entry))\n            1\n\n# Create entry without sense\nentry = project.LexEntry.Create(\"run\", create_blank_sense=False)\nprint(project.LexEntry.GetSenseCount(entry))\n            0\n\n# Create an affix entry (auto-creates MoAffixAllomorph)\nsuffix = project.LexEntry.Create(\"-ing\", \"suffix\")\nprint(suffix.LexemeFormOA.ClassName)\n            MoAffixAllomorph\n\n# Create with specific writing system\nentry = project.LexEntry.Create(\"maison\", \"stem\",\n                                 project.WSHandle('fr'))",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Delete a lexical entry from the FLEx project.",
+        "operation": "delete",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"obsolete\")\nif entry:\n    project.LexEntry.Delete(entry)\n\n# Delete by HVO\nproject.LexEntry.Delete(12345)\n\n        Warning:\n            - This is a destructive operation\n            - All senses, forms, and relations will be deleted\n            - References from other entries may become invalid\n            - Cannot be undone\n            - Entry will be removed from all texts and analyses",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Duplicate a lexical entry, creating a new entry with the same properties.",
+        "operation": "general",
+        "object_type": "ILexEntry",
+        "code": "# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n# Deep duplicate (with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry, deep=True)\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a lexical entry with the given lexeme form exists.",
+        "operation": "general",
+        "object_type": "ILexEntry",
+        "code": "if not project.LexEntry.Exists(\"run\"):\n    entry = project.LexEntry.Create(\"run\")\n\n# Check in specific writing system\nif project.LexEntry.Exists(\"maison\", project.WSHandle('fr')):\n    print(\"French entry exists\")",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Find a lexical entry by its lexeme form.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nif entry:\n    headword = project.LexEntry.GetHeadword(entry)\n    print(f\"Found: {headword}\")\n            Found: run\n\n# Search in specific writing system\nentry = project.LexEntry.Find(\"maison\", project.WSHandle('fr'))",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all lexical entries in the project.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    senses = project.LexEntry.GetSenseCount(entry)\n    print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get all senses owned by this entry, including subsenses recursively.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nall_senses = project.LexEntry.GetAllSenses(entry)\nprint(f\"Total senses (including subsenses): {len(all_senses)}\")\nfor sense in all_senses:\n    gloss = project.Senses.GetGloss(sense)\n    depth = len(list(sense.PathToRoot)) - 2  # Approximate depth\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetAllSenses"
+      },
+      {
+        "description": "Get a list of all available morph types in the project.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n            suffix: affix\n            infix: affix\n\n# Get only top-level types\ntop_level = project.LexEntry.GetAvailableMorphTypes(include_subcategories=False)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetAvailableMorphTypes"
+      },
+      {
+        "description": "Get best available vernacular form (Pattern 5 - fallback logic).",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nbest_form = project.LexEntry.GetBestVernacularAlternative(entry)\nprint(best_form)\n            run\n\n# Useful for display when you want the \"best\" form\nfor entry in project.LexiconAllEntries():\n    form = project.LexEntry.GetBestVernacularAlternative(entry)\n    print(form)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetBestVernacularAlternative"
+      },
+      {
+        "description": "Get the bibliography of a lexical entry.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"anthropology\")\nbib = project.LexEntry.GetBibliography(entry)\nprint(bib)\n            Smith 2015: 42-43",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetBibliography"
+      },
+      {
+        "description": "Get the citation form of a lexical entry.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\ncitation = project.LexEntry.GetCitationForm(entry)\nprint(citation)\n            run\n\n# For verbs, citation might be infinitive\nverb = project.LexEntry.Find(\"am\")\nprint(project.LexEntry.GetCitationForm(verb))\n            be",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetCitationForm"
+      },
+      {
+        "description": "Get all components of a complex form.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "idiom = project.LexEntry.Find(\"kick the bucket\")\ncomponents = project.LexEntry.GetComplexFormComponents(idiom)\nfor comp in components:\n    if isinstance(comp, ILexEntry):\n        print(project.LexEntry.GetHeadword(comp))",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetComplexFormComponents"
+      },
+      {
+        "description": "Get complex forms that reference this entry, excluding subentries.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\ncomplex_forms = project.LexEntry.GetComplexFormsNotSubentries(entry)\nfor lex_ref in complex_forms:\n    cf_entry = lex_ref.OwningEntry\n    print(f\"Complex form: {project.LexEntry.GetHeadword(cf_entry)}\")",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetComplexFormsNotSubentries"
+      },
+      {
+        "description": "Get the creation date of a lexical entry.",
+        "operation": "create",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\ncreated = project.LexEntry.GetDateCreated(entry)\nprint(f\"Created: {created}\")\n            Created: 2025-01-15 14:30:22\n\n# Format the date\nfrom datetime import datetime\ndt = datetime(created.Year, created.Month, created.Day)\nprint(dt.strftime(\"%Y-%m-%d\"))\n            2025-01-15",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetDateCreated"
+      },
+      {
+        "description": "Get the last modification date of a lexical entry.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nmodified = project.LexEntry.GetDateModified(entry)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Check if recently modified\nfrom datetime import datetime, timedelta\nmod_dt = datetime(modified.Year, modified.Month, modified.Day)\nif datetime.now() - mod_dt < timedelta(days=7):\n    print(\"Modified in the last week\")",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetDateModified"
+      },
+      {
+        "description": "Get the publications this entry should not be published in.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"obscure\")\npubs = project.LexEntry.GetDoNotPublishIn(entry)\nprint(pubs)\n            ['Main Dictionary', 'Student Edition']",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetDoNotPublishIn"
+      },
+      {
+        "description": "Get the GUID (Globally Unique Identifier) of a lexical entry.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nguid = project.LexEntry.GetGuid(entry)\nprint(guid)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Get as string\nguid_str = str(guid)\nprint(guid_str)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Use GUID to retrieve entry later\nentry2 = project.Object(guid)\nprint(project.LexEntry.GetHeadword(entry2))\n            run",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetGuid"
+      },
+      {
+        "description": "Get the headword (display form) of a lexical entry.",
+        "operation": "read",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexEntry.GetHeadword(entry)\nprint(headword)\n            run\n\n# Entry with homograph number\nbank1 = project.LexEntry.Find(\"bank\")  # financial institution\nprint(project.LexEntry.GetHeadword(bank1))\n            bank₁",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "GetHeadword"
+      }
+    ],
+    "ILexReference": [
+      {
+        "description": "Add a target sense or entry to an existing lexical reference.",
+        "operation": "create",
+        "object_type": "ILexReference",
+        "code": "# Find synonym reference\nentry1 = project.LexEntry.Find(\"run\")\nsense1 = list(project.Senses.GetAll(entry1))[0]\nrefs = list(project.LexReferences.GetAll(sense1))\n\n# Find synonym type reference\nsyn_ref = None\nfor ref in refs:\n    ref_type = project.LexReferences.GetType(ref)\n    if project.LexReferences.GetTypeName(ref_type) == \"Synonym\":\n        syn_ref = ref\n        break\n\nif syn_ref:\n    # Add another synonym\n    entry2 = project.LexEntry.Find(\"sprint\")\n    sense2 = list(project.Senses.GetAll(entry2))[0]\n    project.LexReferences.AddTarget(syn_ref, sense2)",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "AddTarget"
+      },
+      {
+        "description": "Create a new lexical reference linking senses or entries.",
+        "operation": "create",
+        "object_type": "ILexReference",
+        "code": "# Create synonym relation between two senses\nentry1 = project.LexEntry.Find(\"run\")\nentry2 = project.LexEntry.Find(\"jog\")\nif entry1 and entry2:\n    sense1 = list(project.Senses.GetAll(entry1))[0]\n    sense2 = list(project.Senses.GetAll(entry2))[0]\n\n    # Find or create synonym type\n    syn_type = project.LexReferences.FindType(\"Synonym\")\n    if not syn_type:\n        syn_type = project.LexReferences.CreateType(\"Synonym\", \"Symmetric\")\n\n    # Create the reference\n    ref = project.LexReferences.Create(syn_type, [sense1, sense2])\n\n# Create using type name\nref2 = project.LexReferences.Create(\"Antonym\", [sense1, sense3])",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new lexical relation type.",
+        "operation": "create",
+        "object_type": "ILexReference",
+        "code": "# Create symmetric relation (synonym)\nsyn_type = project.LexReferences.CreateType(\"Synonym\", \"Symmetric\")\nprint(project.LexReferences.GetTypeName(syn_type))\n            Synonym\n\n# Create asymmetric relation (hypernym/hyponym)\nhyper_type = project.LexReferences.CreateType(\n    \"Hypernym\",\n    \"Asymmetric\",\n    reverse_name=\"Hyponym\"\n)\n\n# Create tree relation (part-whole)\npart_type = project.LexReferences.CreateType(\n    \"Part-Whole\",\n    \"Tree\"\n)",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "CreateType"
+      },
+      {
+        "description": "Delete a lexical reference.",
+        "operation": "delete",
+        "object_type": "ILexReference",
+        "code": "entry = project.LexEntry.Find(\"run\")\nif entry:\n    sense = list(project.Senses.GetAll(entry))[0]\n    refs = list(project.LexReferences.GetAll(sense))\n    if refs:\n        # Delete first reference\n        project.LexReferences.Delete(refs[0])\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - The related entries/senses are not affected",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a lexical relation type.",
+        "operation": "delete",
+        "object_type": "ILexReference",
+        "code": "ref_type = project.LexReferences.FindType(\"Obsolete Relation\")\nif ref_type:\n    project.LexReferences.DeleteType(ref_type)\n\n        Warning:\n            - This is a destructive operation\n            - All references of this type will be deleted\n            - Cannot be undone\n            - Use with caution",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "DeleteType"
+      },
+      {
+        "description": "Find a lexical relation type by name.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "syn_type = project.LexReferences.FindType(\"Synonym\")\nif syn_type:\n    mapping = project.LexReferences.GetMappingType(syn_type)\n    print(f\"Found: {mapping}\")\n            Found: Symmetric\n\n# Search with specific writing system\ntype_fr = project.LexReferences.FindType(\n    \"Synonyme\",\n    project.WSHandle('fr')\n)",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "FindType"
+      },
+      {
+        "description": "Get all lexical references for a sense or entry, or all references in the entire project.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "# Get references for specific sense\nentry = project.LexEntry.Find(\"run\")\nif entry:\n    senses = list(project.Senses.GetAll(entry))\n    if senses:\n        for ref in project.LexReferences.GetAll(senses[0]):\n            ref_type = project.LexReferences.GetType(ref)\n            type_name = project.LexReferences.GetTypeName(ref_type)\n            targets = project.LexReferences.GetTargets(ref)\n            print(f\"{type_name}: {len(targets)} targets\")\n            Synonym: 3 targets\n            Hypernym: 2 targets\n\n# Get ALL lexical references in entire project\nfor ref in project.LexReferences.GetAll():\n    ref_type = project.LexReferences.GetType(ref)\n    type_name = project.LexReferences.GetTypeName(ref_type)\n    print(f\"Reference type: {type_name}\")",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get all lexical relation types in the project.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "for ref_type in project.LexReferences.GetAllTypes():\n    name = project.LexReferences.GetTypeName(ref_type)\n    mapping = project.LexReferences.GetMappingType(ref_type)\n    count = len(list(ref_type.MembersOC))\n    print(f\"{name} ({mapping}): {count} references\")\n            Synonym (Symmetric): 15 references\n            Antonym (Symmetric): 8 references\n            Part-Whole (Tree): 22 references",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetAllTypes"
+      },
+      {
+        "description": "Get all complex form entries that show this entry as a component.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "# Find all complex forms containing \"run\"\nrun_entry = project.LexEntry.Find(\"run\")\nif run_entry:\n    complex_forms = project.LexReferences.GetComplexFormEntries(run_entry)\n    for cf in complex_forms:\n        headword = project.LexEntry.GetHeadword(cf)\n        print(f\"Complex form: {headword}\")\n            Complex form: running shoe\n            Complex form: run away\n            Complex form: run-up",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetComplexFormEntries"
+      },
+      {
+        "description": "Get all component entries that make up a complex form entry.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "# Find components of \"running shoe\"\nshoe_entry = project.LexEntry.Find(\"running shoe\")\nif shoe_entry:\n    components = project.LexReferences.GetComponentEntries(shoe_entry)\n    for comp in components:\n        headword = project.LexEntry.GetHeadword(comp)\n        print(f\"Component: {headword}\")\n            Component: run\n            Component: shoe",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetComponentEntries"
+      },
+      {
+        "description": "Get all lexical references of a specific type.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "# Get all synonym references\nfor ref in project.LexReferences.GetReferencesOfType(\"Synonym\"):\n    targets = project.LexReferences.GetTargets(ref)\n    glosses = []\n    for target in targets:\n        if target.ClassName == \"LexSense\":\n            glosses.append(project.Senses.GetGloss(target))\n    print(f\"Synonyms: {', '.join(glosses)}\")\n            Synonyms: run, jog, sprint\n            Synonyms: walk, stroll, amble",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetReferencesOfType"
+      },
+      {
+        "description": "Get the reverse name for an asymmetric relation type.",
+        "operation": "read",
+        "object_type": "ILexReference",
+        "code": "hyper_type = project.LexReferences.FindType(\"Hypernym\")\nif hyper_type:\n    name = project.LexReferences.GetTypeName(hyper_type)\n    reverse = project.LexReferences.GetTypeReverseName(hyper_type)\n    print(f\"{name} <-> {reverse}\")\n            Hypernym <-> Hyponym",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "GetTypeReverseName"
+      },
+      {
+        "description": "Remove a target sense or entry from a lexical reference.",
+        "operation": "delete",
+        "object_type": "ILexReference",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = list(project.Senses.GetAll(entry))[0]\nrefs = list(project.LexReferences.GetAll(sense))\nif refs:\n    targets = project.LexReferences.GetTargets(refs[0])\n    if len(targets) > 2:\n        # Safe to remove one\n        project.LexReferences.RemoveTarget(refs[0], targets[-1])\n\n        Warning:\n            - Will raise error if removal would leave < 2 targets\n            - Consider using Delete() instead if removing all but one target",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "RemoveTarget"
+      },
+      {
+        "description": "Set the name of a lexical relation type.",
+        "operation": "update",
+        "object_type": "ILexReference",
+        "code": "ref_type = project.LexReferences.FindType(\"Synonm\")  # typo\nif ref_type:\n    project.LexReferences.SetTypeName(ref_type, \"Synonym\")\n    print(project.LexReferences.GetTypeName(ref_type))\n            Synonym",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "SetTypeName"
+      },
+      {
+        "description": "Show a component entry as a subentry under a complex form entry.",
+        "operation": "general",
+        "object_type": "ILexReference",
+        "code": "# Show \"run\" as a component under \"running shoe\"\nrun_entry = project.LexEntry.Find(\"run\")\nshoe_entry = project.LexEntry.Find(\"running shoe\")\nif run_entry and shoe_entry:\n    ref = project.LexReferences.ShowComplexFormsIn(\n        run_entry,\n        shoe_entry\n    )\n\n# Show multiple components under one complex form\nrun_entry = project.LexEntry.Find(\"run\")\naway_entry = project.LexEntry.Find(\"away\")\nrunaway_entry = project.LexEntry.Find(\"runaway\")\nif run_entry and away_entry and runaway_entry:\n    # This would typically be done differently, creating one\n    # reference with multiple targets\n    pass",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "ShowComplexFormsIn"
+      }
+    ],
+    "ILexSense": [
+      {
+        "description": "Add a new example sentence to a sense.",
+        "operation": "create",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    ex = project.Senses.AddExample(senses[0], \"She runs every morning.\")\n    # Add translation (would need additional code)\n    print(f\"Added example: {ex.Hvo}\")",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "AddExample"
+      },
+      {
+        "description": "Get senses for an entry or all senses in the project.",
+        "operation": "read",
+        "object_type": "ILexSense",
+        "code": "# Get senses for a specific entry\nentry = list(project.LexiconAllEntries())[0]\nfor sense in project.Senses.GetAll(entry):\n    gloss = project.Senses.GetGloss(sense)\n    defn = project.Senses.GetDefinition(sense)\n    print(f\"{gloss}: {defn}\")\n            run: to move swiftly on foot\n            run: to flow or extend\n\n# Get ALL senses in entire project\nfor sense in project.Senses.GetAll():\n    gloss = project.Senses.GetGloss(sense)\n    print(f\"Sense: {gloss}\")",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get this sense and all its subsenses recursively.",
+        "operation": "read",
+        "object_type": "ILexSense",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = entry.SensesOS[0]\nall_senses = project.Senses.GetAllSenses(sense)\nprint(f\"Total (including subsenses): {len(all_senses)}\")\nfor s in all_senses:\n    gloss = project.Senses.GetGloss(s)\n    depth = len(list(s.PathToRoot)) - 2\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "GetAllSenses"
+      },
+      {
+        "description": "Get essential lexical references for this sense.",
+        "operation": "read",
+        "object_type": "ILexSense",
+        "code": "entry = project.LexEntry.Find(\"big\")\nsense = entry.SensesOS[0]\nlex_refs = project.Senses.GetMinimalLexReferences(sense)\nfor lex_ref in lex_refs:\n    ref_type = lex_ref.Owner  # ILexRefType\n    print(f\"Reference type: {ref_type.Name.BestAnalysisAlternative.Text}\")\n    for target in lex_ref.TargetsRS:\n        if target.Hvo != sense.Hvo:\n            gloss = project.Senses.GetGloss(target)\n            print(f\"  -> {gloss}\")",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "GetMinimalLexReferences"
+      },
+      {
+        "description": "Merge one sense into another (IRREVERSIBLE operation).",
+        "operation": "merge",
+        "object_type": "ILexSense",
+        "code": "# Merge duplicate sense into main sense\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is now deleted, data merged into 'keep'\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (SEMICOLON separator!)\n# Gloss: \"gloss 1; gloss 2\" (SEMICOLON separator!)",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "MergeObject"
+      }
+    ],
+    "ILexPronunciation": [
+      {
+        "description": "Add a media file (typically audio) to a pronunciation.",
+        "operation": "create",
+        "object_type": "ILexPronunciation",
+        "code": "pron = list(project.Pronunciations.GetAll(entry))[0]\n# Add audio recording\nmedia = project.Pronunciations.AddMediaFile(\n    pron,\n    \"/path/to/audio.wav\",\n    label=\"Speaker pronunciation\"\n)\nprint(f\"Added media file\")\n            Added media file",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "AddMediaFile"
+      },
+      {
+        "description": "Create a new pronunciation for a lexical entry.",
+        "operation": "create",
+        "object_type": "ILexPronunciation",
+        "code": "entry = list(project.LexiconAllEntries())[0]\n# Create IPA pronunciation\npron = project.Pronunciations.Create(entry, \"rʌn\", \"en-fonipa\")\nprint(project.Pronunciations.GetForm(pron, \"en-fonipa\"))\n            rʌn\n\n# Create with default WS\npron = project.Pronunciations.Create(entry, \"run\")",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Delete a pronunciation.",
+        "operation": "delete",
+        "object_type": "ILexPronunciation",
+        "code": "entry = list(project.LexiconAllEntries())[0]\npronunciations = list(project.Pronunciations.GetAll(entry))\nif pronunciations:\n    project.Pronunciations.Delete(pronunciations[0])",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Get all pronunciations for a lexical entry, or all pronunciations in the entire project.",
+        "operation": "read",
+        "object_type": "ILexPronunciation",
+        "code": "# Get pronunciations for specific entry\nentry = list(project.LexiconAllEntries())[0]\nfor pron in project.Pronunciations.GetAll(entry):\n    ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")\n            IPA: rʌn\n            IPA: ɹʌn\n\n# Get ALL pronunciations in entire project\nfor pron in project.Pronunciations.GetAll():\n    ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Move a media file from one pronunciation to another pronunciation.",
+        "operation": "reorder",
+        "object_type": "ILexPronunciation",
+        "code": "# Move audio from one pronunciation to another\nentry = list(project.LexiconAllEntries())[0]\npron1 = entry.PronunciationsOS[0]  # IPA: [rʌn]\npron2 = entry.PronunciationsOS[1]  # IPA: [ɹʌn]\n\nmedia_files = project.Pronunciations.GetMediaFiles(pron1)\n# Move the audio to the correct pronunciation variant\nproject.Pronunciations.MoveMediaFile(media_files[0], pron1, pron2)\n\n# Verify the move\nprint(f\"Pron 1 media: {project.Pronunciations.GetMediaCount(pron1)}\")\nprint(f\"Pron 2 media: {project.Pronunciations.GetMediaCount(pron2)}\")\n\n# Can also move between different entries\nentry2 = list(project.LexiconAllEntries())[1]\nother_pron = entry2.PronunciationsOS[0]\nproject.Pronunciations.MoveMediaFile(media_files[1], pron1, other_pron)",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "MoveMediaFile"
+      },
+      {
+        "description": "Reorder pronunciations for a lexical entry.",
+        "operation": "reorder",
+        "object_type": "ILexPronunciation",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nprons = list(project.Pronunciations.GetAll(entry))\nif len(prons) > 1:\n    # Reverse the order\n    project.Pronunciations.Reorder(entry, list(reversed(prons)))",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "Reorder"
+      }
+    ],
+    "IReversalIndexEntry": [
+      {
+        "description": "Link a lexical sense to a reversal entry.",
+        "operation": "create",
+        "object_type": "IReversalIndexEntry",
+        "code": "# Create reversal entry and link to sense\nen_index = project.Reversal.GetIndex(\"en\")\nentry = project.Reversal.Create(en_index, \"run\")\n\n# Find lexical entry and get its sense\nlexentry = project.LexEntry.Find(\"run\")\nif lexentry:\n    senses = project.LexEntry.GetSenses(lexentry)\n    if senses:\n        project.Reversal.AddSense(entry, senses[0])\n        print(f\"Linked {len(project.Reversal.GetSenses(entry))} senses\")\n            Linked 1 senses",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "AddSense"
+      },
+      {
+        "description": "Create a new reversal entry in a reversal index.",
+        "operation": "create",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nif en_index:\n    # Create a reversal entry\n    entry = project.Reversal.Create(en_index, \"run\")\n    print(f\"Created: {project.Reversal.GetForm(entry)}\")\n            Created: run\n\n# Create with explicit writing system\nentry2 = project.Reversal.Create(en_index, \"walk\", \"en\")",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new subentry under a parent reversal entry.",
+        "operation": "create",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nparent = project.Reversal.Find(en_index, \"run\")\nif parent:\n    # Create subentry for \"run away\"\n    subentry = project.Reversal.CreateSubentry(parent, \"run away\")\n    print(f\"Created subentry: {project.Reversal.GetForm(subentry)}\")\n            Created subentry: run away\n\n# Subentries can have their own senses\nlexentry = project.LexEntry.Find(\"run away\")\nif lexentry:\n    senses = project.LexEntry.GetSenses(lexentry)\n    if senses:\n        project.Reversal.AddSense(subentry, senses[0])",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "CreateSubentry"
+      },
+      {
+        "description": "Delete a reversal entry from its reversal index.",
+        "operation": "delete",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nentry = project.Reversal.Find(en_index, \"obsolete\")\nif entry:\n    project.Reversal.Delete(entry)\n\n        Warning:\n            - This is a destructive operation\n            - All subentries will also be deleted\n            - Links to senses will be removed\n            - Cannot be undone",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Check if a reversal entry with the given form exists.",
+        "operation": "general",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nif not project.Reversal.Exists(en_index, \"run\"):\n    entry = project.Reversal.Create(en_index, \"run\")\nelse:\n    print(\"Entry already exists\")",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Find a reversal index by writing system (alias for GetIndex).",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "index = project.Reversal.FindIndex(\"en\")\nif index:\n    print(f\"Found index for {index.WritingSystem}\")",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "FindIndex"
+      },
+      {
+        "description": "Get all reversal indexes in the project.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "for index in project.Reversal.GetAllIndexes():\n    ws = index.WritingSystem\n    count = index.EntriesOC.Count\n    print(f\"{ws}: {count} entries\")\n            en: 245 entries\n            fr: 132 entries",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "GetAllIndexes"
+      },
+      {
+        "description": "Get the reversal form text of a reversal entry.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nfor entry in project.Reversal.GetAll(en_index):\n    form = project.Reversal.GetForm(entry)\n    print(f\"Reversal: {form}\")\n            Reversal: run\n            Reversal: walk\n            Reversal: house\n\n# Get in specific writing system\nform_en = project.Reversal.GetForm(entry, \"en\")",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "GetForm"
+      },
+      {
+        "description": "Get the parent reversal entry of a subentry.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nsubentry = project.Reversal.Find(en_index, \"run away\")\nif subentry:\n    parent = project.Reversal.GetParentEntry(subentry)\n    if parent:\n        form = project.Reversal.GetForm(parent)\n        print(f\"Parent: {form}\")\n    else:\n        print(\"This is a top-level entry\")\n            Parent: run",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "GetParentEntry"
+      },
+      {
+        "description": "Create a new reversal index for an analysis writing system.",
+        "operation": "create",
+        "object_type": "IReversalIndexEntry",
+        "code": "# Create English reversal index\nen_ws = project.WSHandle('en')\nrev_index = project.ReversalIndexes.Create(\"English\", en_ws)\nprint(project.ReversalIndexes.GetName(rev_index))\n            English\n\n# Create French reversal index\nfr_ws = project.WSHandle('fr')\nrev_index = project.ReversalIndexes.Create(\"French\", fr_ws)",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Delete a reversal index from the project.",
+        "operation": "delete",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.Find(\"French\")\nif idx:\n    project.ReversalIndexes.Delete(idx)\n\n        Warning:\n            - This is a destructive operation\n            - All reversal entries in the index will be deleted\n            - Links to lexical senses will be removed\n            - Cannot be undone",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Export a reversal index to LIFT format.",
+        "operation": "general",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.Find(\"English\")\nproject.ReversalIndexes.ExportToLIFT(idx, \"english_reversal.lift\")",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "ExportToLIFT"
+      },
+      {
+        "description": "Find a reversal index by its name.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.Find(\"English\")\nif idx:\n    entries = list(project.ReversalIndexes.GetEntries(idx))\n    print(f\"English index has {len(entries)} entries\")\n            English index has 250 entries",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Find a reversal index by its writing system.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_ws = project.WSHandle('en')\nidx = project.ReversalIndexes.FindByWritingSystem(en_ws)\nif idx:\n    name = project.ReversalIndexes.GetName(idx)\n    print(f\"Found reversal index: {name}\")\n            Found reversal index: English\n\n# Can also use string identifier\nidx = project.ReversalIndexes.FindByWritingSystem('en')",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "FindByWritingSystem"
+      },
+      {
+        "description": "Get all reversal indexes in the project.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "for idx in project.ReversalIndexes.GetAll():\n    name = project.ReversalIndexes.GetName(idx)\n    ws = project.ReversalIndexes.GetWritingSystem(idx)\n    entry_count = len(list(project.ReversalIndexes.GetEntries(idx)))\n    print(f\"{name} ({ws}): {entry_count} entries\")\n            English (en): 250 entries\n            French (fr): 120 entries",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get all reversal entries in a reversal index.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.Find(\"English\")\nfor entry in project.ReversalIndexes.GetEntries(idx):\n    form = project.ReversalEntries.GetForm(entry)\n    senses = project.ReversalEntries.GetSenses(entry)\n    print(f\"{form}: {len(list(senses))} senses\")\n            run: 3 senses\n            walk: 2 senses",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "GetEntries"
+      },
+      {
+        "description": "Get the name of a reversal index.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.FindByWritingSystem('en')\nname = project.ReversalIndexes.GetName(idx)\nprint(name)\n            English\n\n        See Also:\n            SetName, Find",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "GetName"
+      },
+      {
+        "description": "Get the writing system of a reversal index.",
+        "operation": "read",
+        "object_type": "IReversalIndexEntry",
+        "code": "idx = project.ReversalIndexes.Find(\"English\")\nws = project.ReversalIndexes.GetWritingSystem(idx)\nprint(ws)\n            en\n\n        See Also:\n            FindByWritingSystem",
+        "source": "docstring",
+        "class": "ReversalIndexOperations",
+        "method": "GetWritingSystem"
+      }
+    ]
+  },
+  "by_operation": {
+    "reorder": [
+      {
+        "description": "Move an item to position immediately after another item.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move primary sense to second position\nprimary = entry.SensesOS[0]\nsecondary = entry.SensesOS[1]\nproject.Senses.MoveAfter(primary, secondary)\n            True\n\n# Move variant allomorph after default\ndefault = entry.AlternateFormsOS[0]\nvariant = entry.AlternateFormsOS[3]\nproject.Allomorphs.MoveAfter(variant, default)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveAfter"
+      },
+      {
+        "description": "Move an item to position immediately before another item.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move secondary sense to become primary\nprimary = entry.SensesOS[0]\nsecondary = entry.SensesOS[2]\nproject.Senses.MoveBefore(secondary, primary)\n            True\n\n# Move variant allomorph before default\ndefault = entry.AlternateFormsOS[0]\nvariant = entry.AlternateFormsOS[3]\nproject.Allomorphs.MoveBefore(variant, default)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveBefore"
+      },
+      {
+        "description": "Move an item down (toward end) by specified number of positions.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move sense down one position (e.g., from index 1 to 2)\nsense = entry.SensesOS[1]\nmoved = project.Senses.MoveDown(entry, sense)\nprint(f\"Moved {moved} positions\")\n            Moved 1 positions\n\n# Demote primary sense significantly\nprimary = entry.SensesOS[0]\nmoved = project.Senses.MoveDown(entry, primary, positions=3)\nprint(f\"Now at index {list(entry.SensesOS).index(primary)}\")\n            Now at index 3\n\n# Try to move past end (clamped)\nallo = entry.AlternateFormsOS[8]  # Count = 10\nmoved = project.Allomorphs.MoveDown(entry, allo, positions=5)\nprint(f\"Actually moved {moved} positions\")\n            Actually moved 1 positions\n\n# Already at end - no movement\nlast = entry.SensesOS[entry.SensesOS.Count - 1]\nmoved = project.Senses.MoveDown(entry, last)\nprint(f\"Moved {moved} positions\")\n            Moved 0 positions",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveDown"
+      },
+      {
+        "description": "Move an item to a specific index position.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Make third sense the primary sense\nthird_sense = entry.SensesOS[2]\nproject.Senses.MoveToIndex(entry, third_sense, 0)\n            True\n\n# Move allomorph to end\nallo = entry.AlternateFormsOS[1]\nlast_index = entry.AlternateFormsOS.Count - 1\nproject.Allomorphs.MoveToIndex(entry, allo, last_index)\n            True\n\n# Move example to middle position\nex = sense.ExamplesOS[0]\nproject.Examples.MoveToIndex(sense, ex, 2)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveToIndex"
+      },
+      {
+        "description": "Move an item up (toward index 0) by specified number of positions.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move sense up one position (e.g., from index 3 to 2)\nsense = entry.SensesOS[3]\nmoved = project.Senses.MoveUp(entry, sense)\nprint(f\"Moved {moved} positions\")\n            Moved 1 positions\n\n# Move allomorph to top (up 5 positions)\nallo = entry.AlternateFormsOS[5]\nmoved = project.Allomorphs.MoveUp(entry, allo, positions=5)\nprint(f\"Now at index {list(entry.AlternateFormsOS).index(allo)}\")\n            Now at index 0\n\n# Try to move past start (clamped at 0)\nexample = sense.ExamplesOS[1]\nmoved = project.Examples.MoveUp(sense, example, positions=10)\nprint(f\"Actually moved {moved} positions\")\n            Actually moved 1 positions\n\n# Already at start - no movement\nfirst = entry.SensesOS[0]\nmoved = project.Senses.MoveUp(entry, first)\nprint(f\"Moved {moved} positions\")\n            Moved 0 positions",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "MoveUp"
+      },
+      {
+        "description": "Move a row to a specific position in a chart.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move row to beginning of same chart\nrow = project.ConstChartRows.Find(chart, 5)\nproject.ConstChartRows.MoveTo(row, chart, 0)\n\n# Move row to different chart\nother_chart = project.ConstCharts.Find(\"Other Analysis\")\nproject.ConstChartRows.MoveTo(row, other_chart, 0)",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "MoveTo"
+      },
+      {
+        "description": "Move a media file from one example sentence to another example sentence.",
+        "operation": "reorder",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\n# Get two examples from the sense\nexamples = list(exampleOps.GetAll(sense))\nif len(examples) >= 2:\n    example1 = examples[0]\n    example2 = examples[1]\n\n    # Get media from first example\n    media_files = exampleOps.GetMediaFiles(example1)\n    if media_files:\n        # Move the first audio file\n        moved = exampleOps.MoveMediaFile(media_files[0], example1, example2)\n        if moved:\n            print(\"Media file moved successfully\")\n\n        # Verify the move\n        count1 = exampleOps.GetMediaCount(example1)\n        count2 = exampleOps.GetMediaCount(example2)\n        print(f\"Example 1 media: {count1}\")\n        print(f\"Example 2 media: {count2}\")\n            Media file moved successfully\n            Example 1 media: 0\n            Example 2 media: 1\n\n# Can also move between different senses\nother_sense = entry.SensesOS[1] if entry.SensesOS.Count > 1 else None\nif other_sense:\n    other_examples = list(exampleOps.GetAll(other_sense))\n    if other_examples:\n        other_example = other_examples[0]\n        media_files = exampleOps.GetMediaFiles(example2)\n        if media_files:\n            exampleOps.MoveMediaFile(media_files[0], example2, other_example)",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "MoveMediaFile"
+      },
+      {
+        "description": "Reorder the examples for a sense.",
+        "operation": "reorder",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\n# Reverse the order\nexampleOps.Reorder(sense, reversed(examples))",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Move a picture from one sense to another sense.",
+        "operation": "reorder",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif len(senses) >= 2:\n    # Move picture from one sense to another\n    sense1 = senses[0]  # \"to run (move fast)\"\n    sense2 = senses[1]  # \"to run (operate a machine)\"\n    pictures = project.Senses.GetPictures(sense1)\n\n    if pictures:\n        # Move the picture of a person running to the correct sense\n        success = project.Senses.MovePicture(pictures[0], sense1, sense2)\n\n        # Verify the move\n        print(f\"Move successful: {success}\")\n        print(f\"Sense 1 pictures: {project.Senses.GetPictureCount(sense1)}\")\n        print(f\"Sense 2 pictures: {project.Senses.GetPictureCount(sense2)}\")\n            Move successful: True\n            Sense 1 pictures: 0\n            Sense 2 pictures: 1\n\n# Can also move between entries\nentry2 = list(project.LexiconAllEntries())[1]\nother_sense = entry2.SensesOS[0]\nproject.Senses.MovePicture(pictures[1], sense1, other_sense)",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "MovePicture"
+      },
+      {
+        "description": "Move a media file from one pronunciation to another pronunciation.",
+        "operation": "reorder",
+        "object_type": "ILexPronunciation",
+        "code": "# Move audio from one pronunciation to another\nentry = list(project.LexiconAllEntries())[0]\npron1 = entry.PronunciationsOS[0]  # IPA: [rʌn]\npron2 = entry.PronunciationsOS[1]  # IPA: [ɹʌn]\n\nmedia_files = project.Pronunciations.GetMediaFiles(pron1)\n# Move the audio to the correct pronunciation variant\nproject.Pronunciations.MoveMediaFile(media_files[0], pron1, pron2)\n\n# Verify the move\nprint(f\"Pron 1 media: {project.Pronunciations.GetMediaCount(pron1)}\")\nprint(f\"Pron 2 media: {project.Pronunciations.GetMediaCount(pron2)}\")\n\n# Can also move between different entries\nentry2 = list(project.LexiconAllEntries())[1]\nother_pron = entry2.PronunciationsOS[0]\nproject.Pronunciations.MoveMediaFile(media_files[1], pron1, other_pron)",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "MoveMediaFile"
+      },
+      {
+        "description": "Reorder pronunciations for a lexical entry.",
+        "operation": "reorder",
+        "object_type": "ILexPronunciation",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nprons = list(project.Pronunciations.GetAll(entry))\nif len(prons) > 1:\n    # Reverse the order\n    project.Pronunciations.Reorder(entry, list(reversed(prons)))",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Move an item to a different parent or to top level.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "# Move item to a different parent\npos_list = project.PossibilityLists.FindList(\"Parts of Speech\")\ncommon_noun = project.PossibilityLists.FindItem(\n    pos_list, \"Common Noun\")\nnoun = project.PossibilityLists.FindItem(pos_list, \"Noun\")\nproject.PossibilityLists.MoveItem(common_noun, noun)\n\n# Move item to top level\nproject.PossibilityLists.MoveItem(common_noun, None)\n\n        Warning:\n            - Cannot move item to its own descendant (would create cycle)\n            - Cannot move item between different lists\n            - Moving changes the item's hierarchical position",
+        "source": "docstring",
+        "class": "PossibilityListOperations",
+        "method": "MoveItem"
+      },
+      {
+        "description": "Reorder notes for an object.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nnotes = list(project.Note.GetAll(entry))\n# Reverse the order\nnotes.reverse()\nproject.Note.Reorder(entry, notes)\n\n# Sort by date created\nnotes.sort(key=lambda n: project.Note.GetDateCreated(n))\nproject.Note.Reorder(entry, notes)",
+        "source": "docstring",
+        "class": "NoteOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Move a section to a different position or book.",
+        "operation": "reorder",
+        "object_type": "general",
+        "code": "section = project.ScrSections.Find(genesis, 2)\n# Move to first position in same book\nproject.ScrSections.MoveTo(section, genesis, 0)\n\n# Move to different book\nexodus = project.ScrBooks.Find(2)\nproject.ScrSections.MoveTo(section, exodus, 0)",
+        "source": "docstring",
+        "class": "ScrSectionOperations",
+        "method": "MoveTo"
+      }
+    ],
+    "general": [
+      {
+        "description": "Sort items in an owning sequence using a custom key function.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Sort allomorphs by form length\nproject.Allomorphs.Sort(entry,\n    key_func=lambda a: len(project.Allomorphs.GetForm(a)))\n            3\n\n# Sort senses alphabetically by gloss\nproject.Senses.Sort(entry,\n    key_func=lambda s: project.Senses.GetGloss(s))\n            5\n\n# Sort in reverse order (most complex first)\ndef complexity(allo):\n    env = project.Allomorphs.GetEnvironment(allo)\n    return len(str(env)) if env else 0\nproject.Allomorphs.Sort(entry,\n    key_func=complexity,\n    reverse=True)\n            3\n\n# Sort examples by length (shortest first)\nproject.Examples.Sort(sense,\n    key_func=lambda ex: len(project.Examples.GetText(ex)))\n            4",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "Sort"
+      },
+      {
+        "description": "Swap the positions of two items in a sequence.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Swap first and second senses\nsense1 = entry.SensesOS[0]\nsense2 = entry.SensesOS[1]\nproject.Senses.Swap(sense1, sense2)\n            True\n\n# Swap allomorphs\nallo1 = entry.AlternateFormsOS[0]\nallo2 = entry.AlternateFormsOS[3]\nproject.Allomorphs.Swap(allo1, allo2)\n            True",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "Swap"
+      },
+      {
+        "description": "Check if a writing system is an audio writing system.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "ws_handle = proj.WSHandle(\"en-Zxxx-x-audio\")\nif proj.IsAudioWritingSystem(ws_handle):\n    print(\"This is an audio writing system\")\n\n        See also:\n            :meth:`GetAudioPath` - Extract audio file path from audio WS field\n            :meth:`SetAudioPath` - Set audio file path in audio WS field",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "IsAudioWritingSystem"
+      },
+      {
+        "description": "Get the number of senses in a lexical entry.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\ncount = project.LexiconNumberOfSenses(entry)\nprint(f\"Entry has {count} senses\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconNumberOfSenses"
+      },
+      {
+        "description": "Check if a moved text marker indicates preposed text.",
+        "operation": "general",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text moved earlier\")\n    else:\n        print(\"Text moved later\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "IsPreposed"
+      },
+      {
+        "description": "Duplicate a phonological environment, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "envOps = EnvironmentOperations(project)\nword_initial = envOps.Create(\"Word Initial\")\nenvOps.SetStringRepresentation(word_initial, \"#_\")\n# Shallow copy (no context objects)\ncopy = envOps.Duplicate(word_initial)\nprint(envOps.GetName(copy))\n            Word Initial\n\n# Deep copy (includes owned context objects)\nbetween_vowels = envOps.Create(\"Between Vowels\")\ncopy = envOps.Duplicate(between_vowels, deep=True)",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a grammatical category, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "gramCatOps = GramCatOperations(project)\nperson = gramCatOps.Create(\"person\")\n# Shallow copy (no subcategories)\nperson_copy = gramCatOps.Duplicate(person)\nprint(gramCatOps.GetName(person_copy))\n            person\n\n# Deep copy (includes all subcategories)\nnumber = gramCatOps.Create(\"number\")\nsingular = gramCatOps.Create(\"singular\", parent=number)\nplural = gramCatOps.Create(\"plural\", parent=number)\nnumber_copy = gramCatOps.Duplicate(number, deep=True)\norig_subs = gramCatOps.GetSubcategories(number)\ncopy_subs = gramCatOps.GetSubcategories(number_copy)\nprint(f\"Original has {len(orig_subs)} subcategories\")\nprint(f\"Copy has {len(copy_subs)} subcategories\")",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a morphological rule, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nplural = ruleOps.Create(\"Plural Formation\", \"Adds -s suffix\")\n# Duplicate the rule\ncopy = ruleOps.Duplicate(plural)\nprint(ruleOps.GetName(copy))\n            Plural Formation\n\n# Modify the duplicate\nruleOps.SetName(copy, \"Plural Formation (Variant)\")\nruleOps.SetActive(copy, True)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a natural class, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "ncOps = NaturalClassOperations(project)\nstops = ncOps.Create(\"Voiceless Stops\", \"VLS\")\n# Add some phonemes...\n# Now duplicate it to create \"Voiced Stops\"\nvoiced = ncOps.Duplicate(stops)\nncOps.SetName(voiced, \"Voiced Stops\")\nncOps.SetAbbreviation(voiced, \"VCD\")\nprint(f\"Original: {ncOps.GetGuid(stops)}\")\nprint(f\"Duplicate: {ncOps.GetGuid(voiced)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a phoneme, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\np_phoneme = phonemeOps.Find(\"/p/\")\nif p_phoneme:\n    # Duplicate phoneme (shallow - no codes)\n    dup = phonemeOps.Duplicate(p_phoneme)\n    print(f\"Original: {phonemeOps.GetGuid(dup)}\")\n    print(f\"Representation: {phonemeOps.GetRepresentation(dup)}\")\n\n    # Deep duplicate (includes allophonic codes)\n    deep_dup = phonemeOps.Duplicate(p_phoneme, deep=True)\n    codes = phonemeOps.GetCodes(deep_dup)\n    print(f\"Codes: {len(codes)}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a phoneme with the given representation exists.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\nif not phonemeOps.Exists(\"/ŋ/\"):\n    phonemeOps.Create(\"/ŋ/\")\n    phonemeOps.SetDescription(phonemeOps.Find(\"/ŋ/\"), \"velar nasal\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Duplicate a phonological rule, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nvoicing = phonRuleOps.Create(\"Voicing Assimilation\")\n# Shallow copy (no owned objects)\ncopy = phonRuleOps.Duplicate(voicing)\nprint(phonRuleOps.GetName(copy))\n            Voicing Assimilation\n\n# Deep copy (includes StrucDescOS and RightHandSidesOS)\nrule = phonRuleOps.Create(\"Complex Rule\")\ncopy = phonRuleOps.Duplicate(rule, deep=True)",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a phonological rule with the given name exists.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nif phonRuleOps.Exists(\"Voicing Assimilation\"):\n    print(\"Rule already exists\")\nelse:\n    rule = phonRuleOps.Create(\"Voicing Assimilation\")\n\n        See Also:\n            Find, GetAll, Create",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Duplicate a part of speech, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nnoun = posOps.Find(\"Noun\")\n# Shallow copy (no subcategories)\nnoun_copy = posOps.Duplicate(noun)\nprint(posOps.GetName(noun_copy))\n            Noun\n\n# Deep copy (includes all subcategories)\nverb = posOps.Find(\"Verb\")\nverb_copy = posOps.Duplicate(verb, deep=True)\norig_subs = posOps.GetSubcategories(verb)\ncopy_subs = posOps.GetSubcategories(verb_copy)\nprint(f\"Original has {len(orig_subs)} subcategories\")\nprint(f\"Copy has {len(copy_subs)} subcategories\")",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a part of speech with the given name exists.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nif not posOps.Exists(\"Noun\"):\n    posOps.Create(\"Noun\", \"N\")",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Duplicate an allomorph, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif len(allomorphs) > 1:  # Don't duplicate lexeme form\n    # Duplicate an alternate form\n    dup = allomorphOps.Duplicate(allomorphs[1])\n    print(f\"Original: {allomorphOps.GetGuid(allomorphs[1])}\")\n    print(f\"Duplicate: {allomorphOps.GetGuid(dup)}\")\n    print(f\"Form: {allomorphOps.GetForm(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            Form: walk",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate an etymology, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif etymologies:\n    # Duplicate etymology\n    dup = etymOps.Duplicate(etymologies[0])\n    print(f\"Original: {etymOps.GetGuid(etymologies[0])}\")\n    print(f\"Duplicate: {etymOps.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Verify content was copied\n    print(f\"Source: {etymOps.GetSource(dup)}\")\n    print(f\"Form: {etymOps.GetForm(dup)}\")",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate an example sentence, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\nif examples:\n    # Shallow duplicate (no translations)\n    dup = exampleOps.Duplicate(examples[0])\n    print(f\"Original: {exampleOps.GetGuid(examples[0])}\")\n    print(f\"Duplicate: {exampleOps.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Deep duplicate (includes translations)\n    deep_dup = exampleOps.Duplicate(examples[0], deep=True)\n    trans = exampleOps.GetTranslation(deep_dup)\n    print(f\"Translation: {trans}\")",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a lexical entry, creating a new entry with the same properties.",
+        "operation": "general",
+        "object_type": "ILexEntry",
+        "code": "# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n# Deep duplicate (with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry, deep=True)\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a lexical entry with the given lexeme form exists.",
+        "operation": "general",
+        "object_type": "ILexEntry",
+        "code": "if not project.LexEntry.Exists(\"run\"):\n    entry = project.LexEntry.Create(\"run\")\n\n# Check in specific writing system\nif project.LexEntry.Exists(\"maison\", project.WSHandle('fr')):\n    print(\"French entry exists\")",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Check if a morph type name exists in the project.",
+        "operation": "general",
+        "object_type": "ILexEntry",
+        "code": "is_valid, mt, is_stem = project.LexEntry.ValidateMorphType(\"suffix\")\nif is_valid:\n    print(f\"Valid morph type: {mt.Name.BestAnalysisAlternative.Text}\")\n    print(f\"Is stem type: {is_stem}\")\n            Valid morph type: suffix\n            Is stem type: False\n\nis_valid, mt, is_stem = project.LexEntry.ValidateMorphType(\"invalid\")\nprint(f\"Valid: {is_valid}\")\n            Valid: False",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "ValidateMorphType"
+      },
+      {
+        "description": "Show a component entry as a subentry under a complex form entry.",
+        "operation": "general",
+        "object_type": "ILexReference",
+        "code": "# Show \"run\" as a component under \"running shoe\"\nrun_entry = project.LexEntry.Find(\"run\")\nshoe_entry = project.LexEntry.Find(\"running shoe\")\nif run_entry and shoe_entry:\n    ref = project.LexReferences.ShowComplexFormsIn(\n        run_entry,\n        shoe_entry\n    )\n\n# Show multiple components under one complex form\nrun_entry = project.LexEntry.Find(\"run\")\naway_entry = project.LexEntry.Find(\"away\")\nrunaway_entry = project.LexEntry.Find(\"runaway\")\nif run_entry and away_entry and runaway_entry:\n    # This would typically be done differently, creating one\n    # reference with multiple targets\n    pass",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "ShowComplexFormsIn"
+      },
+      {
+        "description": "Duplicate a sense, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    # Shallow duplicate (no examples/subsenses)\n    dup = project.Senses.Duplicate(senses[0])\n    print(f\"Original: {project.Senses.GetGuid(senses[0])}\")\n    print(f\"Duplicate: {project.Senses.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Deep duplicate (includes all owned objects)\n    deep_dup = project.Senses.Duplicate(senses[0], deep=True)\n    print(f\"Examples: {project.Senses.GetExampleCount(deep_dup)}\")",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Rename the image file for a picture and update the reference.",
+        "operation": "general",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    pictures = project.Senses.GetPictures(senses[0])\n    if pictures:\n        # Rename the picture file\n        new_path = project.Senses.RenamePicture(pictures[0], \"dog_brown.jpg\")\n        print(f\"Renamed to: {new_path}\")\n            Renamed to: Pictures/dog_brown.jpg",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "RenamePicture"
+      },
+      {
+        "description": "Duplicate a pronunciation, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "ILexPronunciation",
+        "code": "entry = list(project.LexiconAllEntries())[0]\npronunciations = list(project.Pronunciations.GetAll(entry))\nif pronunciations:\n    # Shallow duplicate (no media files)\n    dup = project.Pronunciations.Duplicate(pronunciations[0])\n    print(f\"Original: {project.Pronunciations.GetGuid(pronunciations[0])}\")\n    print(f\"Duplicate: {project.Pronunciations.GetGuid(dup)}\")\n    ipa = project.Pronunciations.GetForm(dup, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            IPA: rʌn\n\n    # Deep duplicate (includes media files)\n    deep_dup = project.Pronunciations.Duplicate(pronunciations[0], deep=True)\n    count = project.Pronunciations.GetMediaCount(deep_dup)\n    print(f\"Media files: {count}\")",
+        "source": "docstring",
+        "class": "PronunciationOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Duplicate a reversal entry, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nentry = project.Reversal.Find(en_index, \"run\")\nif entry:\n    # Shallow duplicate (no subentries)\n    dup = project.Reversal.Duplicate(entry)\n    form = project.Reversal.GetForm(dup)\n    print(f\"Duplicate form: {form}\")\n            Duplicate form: run\n\n    # Deep duplicate (includes all subentries)\n    deep_dup = project.Reversal.Duplicate(entry, deep=True)\n    subentries = project.Reversal.GetSubentries(deep_dup)\n    print(f\"Subentries: {len(subentries)}\")\n            Subentries: 3",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a reversal entry with the given form exists.",
+        "operation": "general",
+        "object_type": "IReversalIndexEntry",
+        "code": "en_index = project.Reversal.GetIndex(\"en\")\nif not project.Reversal.Exists(en_index, \"run\"):\n    entry = project.Reversal.Create(en_index, \"run\")\nelse:\n    print(\"Entry already exists\")",
+        "source": "docstring",
+        "class": "ReversalOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Duplicate a semantic domain, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Shallow duplicate (no subdomains)\ndomain = project.SemanticDomains.Find(\"900.1\")\nif domain:\n    dup = project.SemanticDomains.Duplicate(domain)\n    print(f\"Original: {project.SemanticDomains.GetNumber(domain)}\")\n    print(f\"Duplicate: {project.SemanticDomains.GetNumber(dup)}\")\n    # Note: Duplicate will have empty number - must be set manually\n\n    # Deep duplicate (includes all subdomains)\n    deep_dup = project.SemanticDomains.Duplicate(domain, deep=True)\n    subdomains = project.SemanticDomains.GetSubdomains(deep_dup)\n    print(f\"Subdomains: {len(subdomains)}\")",
+        "source": "docstring",
+        "class": "SemanticDomainOperations",
+        "method": "Duplicate"
+      },
+      {
+        "description": "Check if a semantic domain with the given number exists.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "if project.SemanticDomains.Exists(\"7.2.1\"):\n    print(\"Walk domain exists\")\n            Walk domain exists\n\nif not project.SemanticDomains.Exists(\"999.999\"):\n    print(\"Custom domain 999.999 does not exist\")\n            Custom domain 999.999 does not exist",
+        "source": "docstring",
+        "class": "SemanticDomainOperations",
+        "method": "Exists"
+      },
+      {
+        "description": "Duplicate a variant reference, creating a new copy with a new GUID.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"colour\")\nvariants = list(project.Variants.GetAll(entry))\nif variants:\n    # Duplicate the variant reference\n    dup = project.Variants.Duplicate(variants[0])\n    print(f\"Original: {variants[0].Guid}\")\n    print(f\"Duplicate: {dup.Guid}\")\n    vtype = project.Variants.GetType(dup)\n    print(f\"Type: {project.Variants.GetTypeName(vtype)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            Type: Spelling Variant",
+        "source": "docstring",
+        "class": "VariantOperations",
+        "method": "Duplicate"
+      }
+    ],
+    "read": [
+      {
+        "description": "Extract the audio file path from an audio writing system field.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "# Get audio path from allomorph form\nform = proj.Allomorph.GetForm(allomorph)\naudio_ws = proj.WSHandle(\"en-Zxxx-x-audio\")\naudio_path = proj.GetAudioPath(form, audio_ws)\nif audio_path:\n    print(f\"Audio file: {audio_path}\")\n\n        See also:\n            :meth:`IsAudioWritingSystem` - Check if WS is audio type\n            :meth:`SetAudioPath` - Set audio file path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetAudioPath"
+      },
+      {
+        "description": "Get the full path to the project's LinkedFiles directory.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "proj = FLExProject()\nlinked_files = proj.GetLinkedFilesDir()\nprint(linked_files)\n            C:\\FLExData\\MyProject\\LinkedFiles\n\n        See also:\n            :meth:`MediaOperations.GetInternalPath` - Get relative path within LinkedFiles\n            :meth:`MediaOperations.GetExternalPath` - Get full filesystem path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetLinkedFilesDir"
+      },
+      {
+        "description": "Get all allomorph forms for an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nforms = project.LexiconGetAllomorphForms(entry)\nprint(forms)\n            ['run', 'ran', 'runn-']",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetAllomorphForms"
+      },
+      {
+        "description": "Get the complex form type of an entry reference.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for ref in entry.EntryRefsOS:\n    cf_type = project.LexiconGetComplexFormType(ref)\n    if cf_type:\n        print(cf_type.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetComplexFormType"
+      },
+      {
+        "description": "Get a lexical entry by index.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "first_entry = project.LexiconGetEntry(0)\ntenth_entry = project.LexiconGetEntry(9)\n\n        Warning:\n            Inefficient for large lexicons - iterates through all entries.\n            Consider using LexEntry.Find() or LexEntry.GetAll() instead.",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetEntry"
+      },
+      {
+        "description": "Get the headword of an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexiconGetHeadWord(entry)\nprint(headword)\n            run",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetHeadWord"
+      },
+      {
+        "description": "Get the morph type of a lexical entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nmorph_type = project.LexiconGetMorphType(entry)\nprint(morph_type.Name.BestAnalysisAlternative.Text)\n            stem",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetMorphType"
+      },
+      {
+        "description": "Get all pronunciations for an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nfor pron in project.LexiconGetPronunciations(entry):\n    form = project.Pronunciations.GetForm(pron)\n    print(form)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetPronunciations"
+      },
+      {
+        "description": "Get a sense by index from an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nfirst_sense = project.LexiconGetSense(entry, 0)\nsecond_sense = project.LexiconGetSense(entry, 1)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetSense"
+      },
+      {
+        "description": "Find a sense by its gloss text.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexiconGetSenseByName(entry, \"to move rapidly\")\nif sense:\n    print(f\"Found sense: {sense.Guid}\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetSenseByName"
+      },
+      {
+        "description": "Get the variant type of a variant entry reference.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for variant_ref in entry.EntryRefsOS:\n    var_type = project.LexiconGetVariantType(variant_ref)\n    if var_type:\n        print(var_type.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetVariantType"
+      },
+      {
+        "description": "Find a clause marker in a row by its index position.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarker = project.ConstChartClauseMarkers.Find(row, 0)\nif marker:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker references word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all clause markers in a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarkers = project.ConstChartClauseMarkers.GetAll(row)\nfor marker in markers:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker for word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the dependent clauses associated with a clause marker.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\ndependents = project.ConstChartClauseMarkers.GetDependentClauses(marker)\nprint(f\"Marker has {len(dependents)} dependent clauses\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetDependentClauses"
+      },
+      {
+        "description": "Get the word group associated with a clause marker.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\nwg = project.ConstChartClauseMarkers.GetWordGroup(marker)\nif wg:\n    print(f\"Marker references word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetWordGroup"
+      },
+      {
+        "description": "Find the moved text marker for a word group.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Find(wg)\nif marker:\n    print(\"Word group has moved text marker\")\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text is preposed\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all moved text markers in a constituent chart.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nmarkers = project.ConstChartMovedText.GetAll(chart)\npreposed_count = sum(1 for m in markers\n    if project.ConstChartMovedText.IsPreposed(m))\nprint(f\"Found {preposed_count} preposed markers\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the word group associated with a moved text marker.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    word_group = project.ConstChartMovedText.GetWordGroup(marker)\n    if word_group:\n        print(f\"Marker belongs to word group {word_group.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "GetWordGroup"
+      },
+      {
+        "description": "Find a constituent chart by its name.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nif chart:\n    name = project.ConstCharts.GetName(chart)\n    print(f\"Found: {name}\")\n            Found: Genesis 1 Analysis",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Find a constituent chart by its HVO (database ID).",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.FindByHvo(12345)\nif chart:\n    print(\"Chart found\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "FindByHvo"
+      },
+      {
+        "description": "Get all constituent charts in the project.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for chart in project.ConstCharts.GetAll():\n    name = project.ConstCharts.GetName(chart)\n    row_count = chart.RowsOS.Count\n    print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the name of a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nname = project.ConstCharts.GetName(chart)\nprint(name)\n            Genesis 1 Analysis",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetName"
+      },
+      {
+        "description": "Get all rows in a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstCharts.GetRows(chart)\nfor row in rows:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row: {label}\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetRows"
+      },
+      {
+        "description": "Get the template associated with a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntemplate = project.ConstCharts.GetTemplate(chart)\nif template:\n    print(\"Chart has template\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetTemplate"
+      },
+      {
+        "description": "Find a row in a chart by its index position.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrow = project.ConstChartRows.Find(chart, 0)  # First row\nif row:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"First row: {label}\")",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all rows in a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstChartRows.GetAll(chart)\nfor i, row in enumerate(rows):\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row {i}: {label}\")\n            Row 0: Verse 1\n            Row 1: Verse 2\n            Row 2: Verse 3",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the label of a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nlabel = project.ConstChartRows.GetLabel(row)\nprint(label)\n            Verse 1",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetLabel"
+      },
+      {
+        "description": "Get the notes of a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nnotes = project.ConstChartRows.GetNotes(row)\nprint(notes)\n            Complex sentence with embedded clause",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetNotes"
+      },
+      {
+        "description": "Get all word groups in a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nword_groups = project.ConstChartRows.GetWordGroups(row)\nfor wg in word_groups:\n    # Process word group\n    pass",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetWordGroups"
+      },
+      {
+        "description": "Find a chart tag by its name.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntag = project.ConstChartTags.Find(chart, \"Topic\")\nif tag:\n    desc = project.ConstChartTags.GetDescription(tag)\n    print(f\"Tag: {desc}\")",
+        "source": "docstring",
+        "class": "ConstChartTagOperations",
+        "method": "Find"
+      }
+    ],
+    "create": [
+      {
+        "description": "Add an allomorph to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nmorph_type = project.LexEntry.GetMorphType(entry)\nallomorph = project.LexiconAddAllomorph(entry, \"runn-\", morph_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddAllomorph"
+      },
+      {
+        "description": "Add a complex form entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create a compound \"blackboard\" from \"black\" + \"board\"\nblackboard = project.LexEntry.Create(\"blackboard\", \"stem\")\nblack = project.LexEntry.Find(\"black\")\nboard = project.LexEntry.Find(\"board\")\n# Would need complex_form_type from project\n# ref = project.LexiconAddComplexForm(blackboard, [black, board], cf_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddComplexForm"
+      },
+      {
+        "description": "Create a new lexical entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexiconAddEntry(\"walk\", \"stem\")\nprint(project.LexEntry.GetHeadword(entry))\n            walk",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddEntry"
+      },
+      {
+        "description": "Add a pronunciation to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\npron = project.LexiconAddPronunciation(entry, \"rʌn\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddPronunciation"
+      },
+      {
+        "description": "Add a sense to a lexical entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexiconAddSense(entry, \"to move rapidly\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddSense"
+      },
+      {
+        "description": "Add a variant form to an entry.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"color\")\n# This would typically need a variant type from the project\n# variant = project.LexiconAddVariantForm(entry, \"colour\", variant_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAddVariantForm"
+      },
+      {
+        "description": "Add a dependent clause to a clause marker.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create main clause marker\nmain_marker = project.ConstChartClauseMarkers.Create(row, main_wg)\n\n# Create dependent clause marker\ndep_marker = project.ConstChartClauseMarkers.Create(row, dep_wg)\n\n# Add as dependent\nproject.ConstChartClauseMarkers.AddDependentClause(\n    main_marker, dep_marker)",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "AddDependentClause"
+      },
+      {
+        "description": "Create a new clause marker in a chart row.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nwg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartClauseMarkers.Create(row, wg)",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a moved text marker for a word group.",
+        "operation": "create",
+        "object_type": "IText",
+        "code": "# Mark word group as preposed\nwg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Create(wg, preposed=True)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            True\n\n# Mark as postposed\nmarker = project.ConstChartMovedText.Create(wg, preposed=False)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            False",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new constituent chart for discourse analysis.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create a simple chart\nchart = project.ConstCharts.Create(\"Matthew 5 Analysis\")\nprint(project.ConstCharts.GetName(chart))\n            Matthew 5 Analysis\n\n# Create chart with template\ntemplate = project.ConstCharts.GetTemplate(existing_chart)\nchart = project.ConstCharts.Create(\"New Analysis\", template)",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new row in a constituent chart.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrow = project.ConstChartRows.Create(chart, label=\"Verse 1\")\nprint(project.ConstChartRows.GetLabel(row))\n            Verse 1\n\n# Create with label and notes\nrow = project.ConstChartRows.Create(chart,\n    label=\"Verse 2\",\n    notes=\"Complex sentence structure\")",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new chart tag possibility.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntag = project.ConstChartTags.Create(chart, \"Topic\")\nprint(project.ConstChartTags.GetName(tag))\n            Topic",
+        "source": "docstring",
+        "class": "ConstChartTagOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new word group in a chart row.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Get segments from a text\ntext = project.Texts.Find(\"Genesis 1\")\npara = text.ContentsOA.ParagraphsOS[0]\nsegments = list(para.SegmentsOS)\n\n# Create word group spanning first 3 words\nwg = project.ConstChartWordGroups.Create(\n    row,\n    segments[0],  # Begin\n    segments[2]   # End\n)",
+        "source": "docstring",
+        "class": "ConstChartWordGroupOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new phonological environment.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "envOps = EnvironmentOperations(project)\nword_initial = envOps.Create(\"Word Initial\", \"At word start\")\nenvOps.SetStringRepresentation(word_initial, \"#_\")\nprint(envOps.GetName(word_initial))\n            Word Initial\n\nbetween_vowels = envOps.Create(\"Between Vowels\")\nenvOps.SetStringRepresentation(between_vowels, \"V_V\")",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new grammatical category.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "gramCatOps = GramCatOperations(project)\n# Create top-level category\nperson = gramCatOps.Create(\"person\")\nprint(gramCatOps.GetName(person))\n            person\n\n# Create subcategories\nfirst = gramCatOps.Create(\"1st person\", parent=person)\nsecond = gramCatOps.Create(\"2nd person\", parent=person)\nthird = gramCatOps.Create(\"3rd person\", parent=person)\n\n# Create nested hierarchy\nnumber = gramCatOps.Create(\"number\")\nsingular = gramCatOps.Create(\"singular\", parent=number)\nplural = gramCatOps.Create(\"plural\", parent=number)",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Create a new feature definition.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\nperson = inflOps.FeatureCreate(\"person\", \"complex\")\nnumber = inflOps.FeatureCreate(\"number\", \"complex\")\ntense = inflOps.FeatureCreate(\"tense\", \"complex\")",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "FeatureCreate"
+      },
+      {
+        "description": "Create a new feature structure.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\nfs = inflOps.FeatureStructureCreate()\nprint(f\"Created feature structure: {fs.Hvo}\")",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "FeatureStructureCreate"
+      },
+      {
+        "description": "Create a new inflection class.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\nfirst_decl = inflOps.InflectionClassCreate(\"First Declension\")\nprint(inflOps.InflectionClassGetName(first_decl))\n            First Declension\n\n# Create Spanish verb conjugation classes\nar_verbs = inflOps.InflectionClassCreate(\"AR Verbs\")\ner_verbs = inflOps.InflectionClassCreate(\"ER Verbs\")\nir_verbs = inflOps.InflectionClassCreate(\"IR Verbs\")",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "InflectionClassCreate"
+      },
+      {
+        "description": "Create a new morphological rule.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nplural = ruleOps.Create(\"Plural Formation\", \"Adds -s suffix\")\nprint(ruleOps.GetName(plural))\n            Plural Formation\n\npast = ruleOps.Create(\"Past Tense\")\nruleOps.SetDescription(past, \"Forms past tense verbs\")\nruleOps.SetActive(past, True)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Add a phoneme to a natural class.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create voiceless stops class\nnc = project.NaturalClasses.Create(\"Voiceless Stops\", \"VLS\")\np = project.Phonemes.Find(\"/p/\")\nt = project.Phonemes.Find(\"/t/\")\nk = project.Phonemes.Find(\"/k/\")\nif p:\n    project.NaturalClasses.AddPhoneme(nc, p)\nif t:\n    project.NaturalClasses.AddPhoneme(nc, t)\nif k:\n    project.NaturalClasses.AddPhoneme(nc, k)\n\n# Create vowel class\nvowels = project.NaturalClasses.Create(\"Vowels\", \"V\")\nfor repr in [\"/a/\", \"/e/\", \"/i/\", \"/o/\", \"/u/\"]:\n    phoneme = project.Phonemes.Find(repr)\n    if phoneme:\n        project.NaturalClasses.AddPhoneme(vowels, phoneme)",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "AddPhoneme"
+      },
+      {
+        "description": "Create a new natural class.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Create basic consonant classes\nstops = project.NaturalClasses.Create(\"Stops\", \"P\")\nfricatives = project.NaturalClasses.Create(\"Fricatives\", \"F\")\nnasals = project.NaturalClasses.Create(\"Nasals\", \"N\")\n\n# Create vowel classes\nvowels = project.NaturalClasses.Create(\"Vowels\", \"V\")\nhigh_vowels = project.NaturalClasses.Create(\"High Vowels\", \"HV\")\n\n# Create without abbreviation\ncustom_class = project.NaturalClasses.Create(\"Custom Class\")",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Add a code (allophonic representation) to a phoneme.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "# Add aspiration allophone\nphoneme = project.Phonemes.Find(\"/p/\")\nif phoneme:\n    code = project.Phonemes.AddCode(phoneme, \"[pʰ]\")\n\n# Add multiple allophones for /t/\nphoneme = project.Phonemes.Find(\"/t/\")\nif phoneme:\n    project.Phonemes.AddCode(phoneme, \"[t]\")   # plain\n    project.Phonemes.AddCode(phoneme, \"[tʰ]\")  # aspirated\n    project.Phonemes.AddCode(phoneme, \"[ɾ]\")   # flap\n\n# Add vowel allophones\nphoneme = project.Phonemes.Find(\"/a/\")\nif phoneme:\n    project.Phonemes.AddCode(phoneme, \"[a]\")   # open front\n    project.Phonemes.AddCode(phoneme, \"[ɑ]\")   # open back",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "AddCode"
+      },
+      {
+        "description": "Create a new phoneme.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\np_phoneme = phonemeOps.Create(\"/p/\")\nprint(phonemeOps.GetRepresentation(p_phoneme))\n            /p/\n\n# Create with description\nch_phoneme = phonemeOps.Create(\"/tʃ/\")\nphonemeOps.SetDescription(ch_phoneme, \"voiceless postalveolar affricate\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Add an input segment or natural class to the rule.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = phonRuleOps.Create(\"Voicing Rule\")\n# Add voiceless stop as input\nphoneme_t = project.Phonemes.Find(\"/t/\")\nphonRuleOps.AddInputSegment(rule, phoneme_t)",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "AddInputSegment"
+      },
+      {
+        "description": "Add an output segment or natural class to the rule.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = phonRuleOps.Create(\"Voicing Rule\")\n# Add voiced stop as output\nphoneme_d = project.Phonemes.Find(\"/d/\")\nphonRuleOps.AddOutputSegment(rule, phoneme_d)",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "AddOutputSegment"
+      },
+      {
+        "description": "Create a new phonological rule.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = phonRuleOps.Create(\"Voicing Assimilation\",\n    \"Voiceless stops become voiced between vowels\")\nprint(phonRuleOps.GetName(rule))\n            Voicing Assimilation\n\n# Create and configure\nrule = phonRuleOps.Create(\"Final Devoicing\")\nphonRuleOps.SetDescription(rule, \"Obstruents devoice word-finally\")",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Add a subcategory to a part of speech.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nnoun = posOps.Find(\"Noun\")\nproper_noun = posOps.AddSubcategory(noun, \"Proper Noun\", \"PN\")\nprint(posOps.GetName(proper_noun))\n            Proper Noun",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "AddSubcategory"
+      },
+      {
+        "description": "Create a new part of speech.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nnoun = posOps.Create(\"Noun\", \"N\")\nprint(posOps.GetName(noun))\n            Noun\n\nproper_noun = posOps.Create(\"Proper Noun\", \"PN\", \"GOLD:Noun\")\nprint(posOps.GetAbbreviation(proper_noun))\n            PN",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "Create"
+      },
+      {
+        "description": "Add a phonological environment to an allomorph.",
+        "operation": "create",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "AddPhoneEnv"
+      },
+      {
+        "description": "Create a new allomorph for a lexical entry.",
+        "operation": "create",
+        "object_type": "IMoForm",
+        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nmorphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "Create"
+      }
+    ],
+    "iterate": [
+      {
+        "description": "Get all allomorphs in the entire project.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAllAllomorphs"
+      },
+      {
+        "description": "Compare two environments and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "env1 = project1_envOps.Find(\"Word Initial\")\nenv2 = project2_envOps.Find(\"Word Initial\")\nis_diff, diffs = project1_envOps.CompareTo(\n    env1, env2,\n    ops1=project1_envOps,\n    ops2=project2_envOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two grammatical categories and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "cat1 = project1_gramCatOps.Find(\"person\")\ncat2 = project2_gramCatOps.Find(\"person\")\nis_diff, diffs = project1_gramCatOps.CompareTo(\n    cat1, cat2,\n    ops1=project1_gramCatOps,\n    ops2=project2_gramCatOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two inflection classes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "ic1 = project1_inflOps.InflectionClassFind(\"First Declension\")\nic2 = project2_inflOps.InflectionClassFind(\"First Declension\")\nis_diff, diffs = project1_inflOps.CompareTo(\n    ic1, ic2,\n    ops1=project1_inflOps,\n    ops2=project2_inflOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two morphological rules and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "rule1 = project1_ruleOps.Find(\"Plural Formation\")\nrule2 = project2_ruleOps.Find(\"Plural Formation\")\nis_diff, diffs = project1_ruleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_ruleOps,\n    ops2=project2_ruleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if a morphological rule is active.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    active = ruleOps.IsActive(rule)\n    status = \"active\" if active else \"inactive\"\n    print(f\"{name}: {status}\")\n            Plural Formation: active\n            Obsolete Rule: inactive\n\n# Check before applying rule\nrule = list(ruleOps.GetAll())[0]\nif ruleOps.IsActive(rule):\n    print(f\"{ruleOps.GetName(rule)} will be applied\")",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "IsActive"
+      },
+      {
+        "description": "Compare two natural classes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "nc1 = project1_ncOps.Find(\"Voiceless Stops\")\nnc2 = project2_ncOps.Find(\"Voiceless Stops\")\nis_diff, diffs = project1_ncOps.CompareTo(\n    nc1, nc2,\n    ops1=project1_ncOps,\n    ops2=project2_ncOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two phonemes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "phoneme1 = project1_phonemeOps.Find(\"/p/\")\nphoneme2 = project2_phonemeOps.Find(\"/p/\")\nis_diff, diffs = project1_phonemeOps.CompareTo(\n    phoneme1, phoneme2,\n    ops1=project1_phonemeOps,\n    ops2=project2_phonemeOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if a phoneme is classified as a consonant.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Filter consonants from phoneme inventory\nconsonants = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        consonants.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Consonants:\", \", \".join(consonants))\n            Consonants: /p/, /t/, /k/, /b/, /d/, /g/, /m/, /n/\n\n# Create consonant natural classes\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        desc = project.Phonemes.GetDescription(phoneme)\n        repr = project.Phonemes.GetRepresentation(phoneme)\n        print(f\"{repr}: {desc}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "IsConsonant"
+      },
+      {
+        "description": "Check if a phoneme is classified as a vowel.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Filter vowels from phoneme inventory\nvowels = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowels.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Vowels:\", \", \".join(vowels))\n            Vowels: /a/, /e/, /i/, /o/, /u/\n\n# Count vowels vs consonants\nvowel_count = 0\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowel_count += 1\nprint(f\"Total vowels: {vowel_count}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "IsVowel"
+      },
+      {
+        "description": "Compare two phonological rules and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "rule1 = project1_phonRuleOps.Find(\"Voicing Assimilation\")\nrule2 = project2_phonRuleOps.Find(\"Voicing Assimilation\")\nis_diff, diffs = project1_phonRuleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_phonRuleOps,\n    ops2=project2_phonRuleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two parts of speech and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two allomorphs and return their differences.",
+        "operation": "iterate",
+        "object_type": "IMoForm",
+        "code": "allo1 = list(project1.Allomorphs.GetAll(entry1))[0]\nallo2 = list(project2.Allomorphs.GetAll(entry2))[0]\nis_diff, diffs = project1.Allomorphs.CompareTo(allo1, allo2,\n                                                 project1.Allomorphs,\n                                                 project2.Allomorphs)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Reorder etymologies for a lexical entry.",
+        "operation": "iterate",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif len(etymologies) > 1:\n    # Reverse the order\n    etymOps.Reorder(entry, reversed(etymologies))\n    # Verify new order\n    for etym in etymOps.GetAll(entry):\n        print(etymOps.GetSource(etym))",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Reorder senses for a lexical entry.",
+        "operation": "iterate",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif len(senses) > 1:\n    # Reverse the order\n    project.Senses.Reorder(entry, reversed(senses))\n    # Verify new order\n    for sense in project.Senses.GetAll(entry):\n        print(project.Senses.GetGloss(sense))",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Compare two agents and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(agent1, agent2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if an agent is a human analyst.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "for agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    if project.Agent.IsHuman(agent):\n        person = project.Agent.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agent.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "IsHuman"
+      },
+      {
+        "description": "Check if an agent is a parser (automated analyzer).",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "parser = project.Agent.Find(\"MyParser\")\nif project.Agent.IsParser(parser):\n    version = project.Agent.GetVersion(parser)\n    print(f\"Parser version: {version}\")\n            Parser version: 1.0.0\n\n# Filter only parsers\nparsers = [a for a in project.Agent.GetAll()\n           if project.Agent.IsParser(a)]\nprint(f\"Found {len(parsers)} parsers\")",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "IsParser"
+      },
+      {
+        "description": "Compare two confidence levels and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(level1, level2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "ConfidenceOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two overlays and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(overlay1, overlay2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "OverlayOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if an overlay is currently visible.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "overlay_ops = OverlayOperations(project)\nchart = discourse_ops.GetAllCharts(text)[0]\noverlays = list(overlay_ops.GetAll(chart))\nfor overlay in overlays:\n    name = overlay_ops.GetName(overlay)\n    visible = overlay_ops.IsVisible(overlay)\n    status = \"visible\" if visible else \"hidden\"\n    print(f\"{name}: {status}\")\n            Participants: visible\n            Discourse Features: hidden\n            Theme: visible",
+        "source": "docstring",
+        "class": "OverlayOperations",
+        "method": "IsVisible"
+      },
+      {
+        "description": "Compare two possibility items and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(item1, item2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PossibilityListOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two publications and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(pub1, pub2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PublicationOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two translation types and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(type1, type2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "TranslationTypeOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Link a notebook record to a text.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Link record to text\nrecord = project.DataNotebook.Find(\"Interview Notes\")\ntext = project.Texts.Find(\"Interview Recording 1\")\nif text:\n    project.DataNotebook.LinkToText(record, text)\n\n# Link to multiple texts\ntext_titles = [\"Recording 1\", \"Recording 2\", \"Transcription 1\"]\nfor title in text_titles:\n    text = project.Texts.Find(title)\n    if text:\n        project.DataNotebook.LinkToText(record, text)",
+        "source": "docstring",
+        "class": "DataNotebookOperations",
+        "method": "LinkToText"
+      },
+      {
+        "description": "Compare two notes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(note1, note2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "NoteOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two persons and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(person1, person2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PersonOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two filters for differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(filter1, filter2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
+        "source": "docstring",
+        "class": "FilterOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Export a filter definition to a JSON file.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "filter_obj = project.Filter.Find(\"Verbs\")\nproject.Filter.ExportFilter(filter_obj, \"/path/to/verbs.json\")\n\n# Export all filters\nfor f in project.Filter.GetAll():\n    name = project.Filter.GetName(f)\n    file_name = f\"{name.replace(' ', '_')}.json\"\n    project.Filter.ExportFilter(f, file_name)",
+        "source": "docstring",
+        "class": "FilterOperations",
+        "method": "ExportFilter"
+      },
+      {
+        "description": "Compare two media files for differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(media1, media2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
+        "source": "docstring",
+        "class": "MediaOperations",
+        "method": "CompareTo"
+      }
+    ],
+    "delete": [
+      {
+        "description": "Delete an object from the database.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "sense = entry.SensesOS[0]\nproject.LexiconDeleteObject(sense)\n# Or delete entire entry:\nproject.LexiconDeleteObject(entry)\n\n        Warning:\n            This is a destructive operation and cannot be undone.",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconDeleteObject"
+      },
+      {
+        "description": "Delete a clause marker from its row.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\nif marker:\n    project.ConstChartClauseMarkers.Delete(marker)\n\n        Warning:\n            - This is a destructive operation\n            - Dependent clause references will be lost\n            - Cannot be undone",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a moved text marker.",
+        "operation": "delete",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    project.ConstChartMovedText.Delete(marker)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Word group will no longer be marked as moved\n\n        See Also:\n            Create, Find",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a constituent chart from the project.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Old Analysis\")\nif chart:\n    project.ConstCharts.Delete(chart)\n\n# Delete by HVO\nproject.ConstCharts.Delete(12345)\n\n        Warning:\n            - This is a destructive operation\n            - All rows, word groups, and markers will be deleted\n            - Cannot be undone\n            - Chart will be removed from discourse data",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a row from its constituent chart.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nif row:\n    project.ConstChartRows.Delete(row)\n\n# Delete by HVO\nproject.ConstChartRows.Delete(12345)\n\n        Warning:\n            - This is a destructive operation\n            - All word groups and markers in the row will be deleted\n            - Cannot be undone\n            - Row will be removed from the chart",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a chart tag.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "tag = project.ConstChartTags.Find(chart, \"Old Tag\")\nif tag:\n    project.ConstChartTags.Delete(tag)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - References to this tag from word groups may become invalid\n\n        See Also:\n            Create, Find",
+        "source": "docstring",
+        "class": "ConstChartTagOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a word group from its chart row.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nif wg:\n    project.ConstChartWordGroups.Delete(wg)\n\n        Warning:\n            - This is a destructive operation\n            - All moved text markers and clause markers will be deleted\n            - Cannot be undone",
+        "source": "docstring",
+        "class": "ConstChartWordGroupOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a phonological environment.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "envOps = EnvironmentOperations(project)\nobsolete = envOps.Create(\"Obsolete Environment\")\n# ... realize it's not needed\nenvOps.Delete(obsolete)\n\n        Warning:\n            - Deleting an environment that is in use may raise an error from FLEx\n            - This includes environments used in phonological rules and allomorph\n              conditions\n            - Deletion is permanent and cannot be undone\n            - Consider checking usage before deletion\n\n        See Also:\n            Create, GetAll",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a grammatical category.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "gramCatOps = GramCatOperations(project)\nobsolete = gramCatOps.Create(\"obsolete_feature\")\n# Later, if not needed...\ngramCatOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a category that is in use may raise an error from FLEx\n            - Will also delete all subcategories recursively\n            - Deletion is permanent and cannot be undone\n            - Morphological rules or entries using this may be affected\n\n        See Also:\n            Create",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a feature definition.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete a test feature\nfor feature in inflOps.FeatureGetAll():\n    ws = project.project.DefaultAnalWs\n    name = ITsString(feature.Name.get_String(ws)).Text\n    if name == \"test_feature\":\n        inflOps.FeatureDelete(feature)\n        break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "FeatureDelete"
+      },
+      {
+        "description": "Delete a feature structure.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\nfs = inflOps.FeatureStructureCreate()\ninflOps.FeatureStructureDelete(fs)\n\n        Warning:\n            - Cannot delete if referenced by entries, morphemes, or rules\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureStructureCreate, FeatureStructureGetAll",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "FeatureStructureDelete"
+      },
+      {
+        "description": "Delete an inflection class.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete an obsolete class\nfor ic in inflOps.InflectionClassGetAll():\n    if inflOps.InflectionClassGetName(ic) == \"Obsolete\":\n        inflOps.InflectionClassDelete(ic)\n        break\n\n        Warning:\n            - Deleting a class that is in use may raise an error from FLEx\n            - Entries using this class should be updated first\n            - Deletion is permanent and cannot be undone\n            - Check for references before deletion\n\n        See Also:\n            InflectionClassCreate, InflectionClassGetAll",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "InflectionClassDelete"
+      },
+      {
+        "description": "Delete a morphological rule.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nobsolete = ruleOps.Create(\"Obsolete Rule\")\n# ... realize it's not needed\nruleOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a rule that is in use may cause errors\n            - This includes rules referenced by:\n              - Morphological processes\n              - Allomorph conditions\n              - Other rule definitions\n            - Deletion is permanent and cannot be undone\n            - Consider deactivating instead of deleting\n\n        See Also:\n            Create, SetActive, GetAll",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a natural class.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "obsolete = project.NaturalClasses.Create(\"Obsolete\", \"OBS\")\n# ... realize it's not needed\nproject.NaturalClasses.Delete(obsolete)\n\n        Warning:\n            - Deleting a natural class that is in use may cause errors\n            - This includes natural classes used in:\n              - Phonological rules\n              - Phonological environments\n              - Other natural class definitions\n            - Deletion is permanent and cannot be undone\n            - Does not delete the phonemes in the class, only the class itself\n\n        See Also:\n            Create, GetAll",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a phoneme from a natural class.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "# Remove /q/ from uvular stops if reclassified\nfor nc in project.NaturalClasses.GetAll():\n    if project.NaturalClasses.GetName(nc) == \"Uvular Stops\":\n        q_phoneme = project.Phonemes.Find(\"/q/\")\n        if q_phoneme and q_phoneme in project.NaturalClasses.GetPhonemes(nc):\n            project.NaturalClasses.RemovePhoneme(nc, q_phoneme)\n\n# Clean up natural class\nfor nc in project.NaturalClasses.GetAll():\n    if project.NaturalClasses.GetName(nc) == \"Obsolete Phonemes\":\n        phonemes = project.NaturalClasses.GetPhonemes(nc)\n        for phoneme in phonemes:\n            project.NaturalClasses.RemovePhoneme(nc, phoneme)",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "RemovePhoneme"
+      },
+      {
+        "description": "Delete a phoneme.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\nobsolete = phonemeOps.Find(\"/x/\")\nif obsolete:\n    phonemeOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a phoneme that is in use may raise an error from FLEx\n            - This includes phonemes used in:\n              - Natural classes\n              - Phonological rules\n              - Allomorph environments\n            - Deletion is permanent and cannot be undone\n            - Consider updating references before deletion\n\n        See Also:\n            Create, Exists, Find",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a code from a phoneme.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "phoneme = project.Phonemes.Find(\"/t/\")\nif phoneme:\n    codes = project.Phonemes.GetCodes(phoneme)\n    # Remove the flap allophone\n    for code in codes:\n        ws = project.project.DefaultVernWs\n        repr = ITsString(code.Representation.get_String(ws)).Text\n        if repr == \"[ɾ]\":\n            project.Phonemes.RemoveCode(phoneme, code)\n            break\n\n# Remove by HVO\nphoneme = project.Phonemes.Find(\"/p/\")\nif phoneme:\n    codes = project.Phonemes.GetCodes(phoneme)\n    if codes:\n        project.Phonemes.RemoveCode(phoneme, codes[0].Hvo)",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "RemoveCode"
+      },
+      {
+        "description": "Delete a phonological rule.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nobsolete = phonRuleOps.Create(\"Obsolete Rule\")\n# ... realize it's not needed\nphonRuleOps.Delete(obsolete)\n\n        Warning:\n            - Deletion is permanent and cannot be undone\n            - Any references to this rule will be broken\n            - Consider deactivating instead of deleting\n\n        See Also:\n            Create, GetAll",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a part of speech.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nobsolete = posOps.Find(\"Obsolete\")\nif obsolete:\n    posOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a POS that is in use may raise an error from FLEx\n            - Will also delete all subcategories recursively\n            - Deletion is permanent and cannot be undone\n            - Lexical entries using this POS should be updated first\n\n        See Also:\n            Create, Exists, Find",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a subcategory from a part of speech.",
+        "operation": "delete",
+        "object_type": "general",
+        "code": "posOps = POSOperations(project)\nnoun = posOps.Find(\"Noun\")\nsubcats = posOps.GetSubcategories(noun)\nfor subcat in subcats:\n    if posOps.GetName(subcat) == \"Obsolete Subcategory\":\n        posOps.RemoveSubcategory(noun, subcat)\n\n        Warning:\n            - Removing a subcategory that is in use may raise an error from FLEx\n            - Will also delete all nested subcategories recursively\n            - Removal is permanent and cannot be undone\n            - Lexical entries using this subcategory should be updated first\n\n        See Also:\n            AddSubcategory, GetSubcategories, Delete",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "RemoveSubcategory"
+      },
+      {
+        "description": "Delete an allomorph.",
+        "operation": "delete",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif len(allomorphs) > 1:\n    allomorphOps.Delete(allomorphs[-1])\n\n        Warning:\n            - Deleting an allomorph that is in use in analyses may cause issues\n            - If deleting the lexeme form and alternates exist, the first\n              alternate becomes the new lexeme form\n            - Deletion is permanent and cannot be undone\n            - Consider checking usage in texts before deletion",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a phonological environment from an allomorph.",
+        "operation": "delete",
+        "object_type": "IMoForm",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n    if envs:\n        # Remove the first environment\n        allomorphOps.RemovePhoneEnv(allomorphs[0], envs[0])",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "RemovePhoneEnv"
+      },
+      {
+        "description": "Delete an etymology from its owning entry.",
+        "operation": "delete",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif len(etymologies) > 0:\n    # Delete the last etymology\n    etymOps.Delete(etymologies[-1])\n\n        Warning:\n            - Deletion is permanent and cannot be undone\n            - All etymology data (source, form, gloss, etc.) is lost\n            - Consider archiving data before deletion",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete an example sentence.",
+        "operation": "delete",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\nif len(examples) > 0:\n    exampleOps.Delete(examples[-1])\n\n        Warning:\n            - Deletion is permanent and cannot be undone\n            - All translations and associated data are also deleted\n            - Media file links are removed (but files themselves remain)",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a media file from an example sentence.",
+        "operation": "delete",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\nif examples:\n    media_files = exampleOps.GetMediaFiles(examples[0])\n    if media_files:\n        exampleOps.RemoveMediaFile(examples[0], media_files[0])\n        print(\"Media file removed\")\n            Media file removed",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "RemoveMediaFile"
+      },
+      {
+        "description": "Remove the translation for a specific writing system.",
+        "operation": "delete",
+        "object_type": "ILexExampleSentence",
+        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\nif examples:\n    # Remove English translation\n    exampleOps.RemoveTranslation(examples[0])\n    # Remove Spanish translation\n    exampleOps.RemoveTranslation(examples[0],\n                                  project.WSHandle('es'))",
+        "source": "docstring",
+        "class": "ExampleOperations",
+        "method": "RemoveTranslation"
+      },
+      {
+        "description": "Delete a lexical entry from the FLEx project.",
+        "operation": "delete",
+        "object_type": "ILexEntry",
+        "code": "entry = project.LexEntry.Find(\"obsolete\")\nif entry:\n    project.LexEntry.Delete(entry)\n\n# Delete by HVO\nproject.LexEntry.Delete(12345)\n\n        Warning:\n            - This is a destructive operation\n            - All senses, forms, and relations will be deleted\n            - References from other entries may become invalid\n            - Cannot be undone\n            - Entry will be removed from all texts and analyses",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Remove a component from a complex form.",
+        "operation": "delete",
+        "object_type": "ILexEntry",
+        "code": "idiom = project.LexEntry.Find(\"kick the bucket\")\nbucket = project.LexEntry.Find(\"bucket\")\nproject.LexEntry.RemoveComplexFormComponent(idiom, bucket)",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "RemoveComplexFormComponent"
+      },
+      {
+        "description": "Delete a lexical reference.",
+        "operation": "delete",
+        "object_type": "ILexReference",
+        "code": "entry = project.LexEntry.Find(\"run\")\nif entry:\n    sense = list(project.Senses.GetAll(entry))[0]\n    refs = list(project.LexReferences.GetAll(sense))\n    if refs:\n        # Delete first reference\n        project.LexReferences.Delete(refs[0])\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - The related entries/senses are not affected",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "Delete"
+      },
+      {
+        "description": "Delete a lexical relation type.",
+        "operation": "delete",
+        "object_type": "ILexReference",
+        "code": "ref_type = project.LexReferences.FindType(\"Obsolete Relation\")\nif ref_type:\n    project.LexReferences.DeleteType(ref_type)\n\n        Warning:\n            - This is a destructive operation\n            - All references of this type will be deleted\n            - Cannot be undone\n            - Use with caution",
+        "source": "docstring",
+        "class": "LexReferenceOperations",
+        "method": "DeleteType"
+      }
+    ],
+    "update": [
+      {
+        "description": "Set the complex form type of an entry reference.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "# Get or create complex form type\n# cf_type = ... (from project)\n# entry_ref = entry.EntryRefsOS[0]\n# project.LexiconSetComplexFormType(entry_ref, cf_type)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconSetComplexFormType"
+      },
+      {
+        "description": "Set the morph type of a lexical entry.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"-ing\")\nproject.LexiconSetMorphType(entry, \"suffix\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconSetMorphType"
+      },
+      {
+        "description": "Set the audio file path in an audio writing system field.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "# Set audio for allomorph form\nallomorph = proj.Allomorph.GetAll()[0]\naudio_ws = proj.WSHandle(\"en-Zxxx-x-audio\")\naudio_path = \"LinkedFiles/AudioVisual/hello.wav\"\nproj.Allomorph.SetFormAudio(allomorph, audio_path, audio_ws)\n\n        See also:\n            :meth:`IsAudioWritingSystem` - Check if WS is audio type\n            :meth:`GetAudioPath` - Get audio file path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "SetAudioPath"
+      },
+      {
+        "description": "Set whether moved text is preposed or postposed.",
+        "operation": "update",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    # Change from preposed to postposed\n    project.ConstChartMovedText.SetPreposed(marker, False)",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "SetPreposed"
+      },
+      {
+        "description": "Set the name of a constituent chart.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Old Name\")\nproject.ConstCharts.SetName(chart, \"New Name\")\nprint(project.ConstCharts.GetName(chart))\n            New Name",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the template for a constituent chart.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntemplate = project.ConstCharts.GetTemplate(other_chart)\nproject.ConstCharts.SetTemplate(chart, template)\n\n# Clear template\nproject.ConstCharts.SetTemplate(chart, None)",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "SetTemplate"
+      },
+      {
+        "description": "Set the label of a chart row.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nproject.ConstChartRows.SetLabel(row, \"Verse 1a\")\nprint(project.ConstChartRows.GetLabel(row))\n            Verse 1a",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "SetLabel"
+      },
+      {
+        "description": "Set the notes of a chart row.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nproject.ConstChartRows.SetNotes(row,\n    \"Subject-predicate structure with modifier\")",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "SetNotes"
+      },
+      {
+        "description": "Set the description of a chart tag.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "tag = project.ConstChartTags.Find(chart, \"Topic\")\nproject.ConstChartTags.SetDescription(tag,\n    \"Marks the topic of the sentence\")",
+        "source": "docstring",
+        "class": "ConstChartTagOperations",
+        "method": "SetDescription"
+      },
+      {
+        "description": "Set the name of a chart tag.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "tag = project.ConstChartTags.Find(chart, \"Old Name\")\nproject.ConstChartTags.SetName(tag, \"New Name\")\nprint(project.ConstChartTags.GetName(tag))\n            New Name",
+        "source": "docstring",
+        "class": "ConstChartTagOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the beginning segment of a word group.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nnew_segment = segments[5]\nproject.ConstChartWordGroups.SetBeginSegment(wg, new_segment)",
+        "source": "docstring",
+        "class": "ConstChartWordGroupOperations",
+        "method": "SetBeginSegment"
+      },
+      {
+        "description": "Set the column position of a word group in the chart.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\n# Get column from template\ntemplate = project.ConstCharts.GetTemplate(chart)\ncolumn = template.SubPossibilitiesOS[0]  # First column\nproject.ConstChartWordGroups.SetColumn(wg, column)",
+        "source": "docstring",
+        "class": "ConstChartWordGroupOperations",
+        "method": "SetColumn"
+      },
+      {
+        "description": "Set the ending segment of a word group.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nnew_segment = segments[10]\nproject.ConstChartWordGroups.SetEndSegment(wg, new_segment)",
+        "source": "docstring",
+        "class": "ConstChartWordGroupOperations",
+        "method": "SetEndSegment"
+      },
+      {
+        "description": "Set the name of a phonological environment.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "envOps = EnvironmentOperations(project)\nenv = list(envOps.GetAll())[0]\nenvOps.SetName(env, \"Word Initial Position\")\n\n# Use standard terminology\nenvOps.SetName(env, \"Intervocalic\")  # Better than custom names",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the string representation (notation) of a phonological environment.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "envOps = EnvironmentOperations(project)\n# Create and define common environments\nword_initial = envOps.Create(\"Word Initial\")\nenvOps.SetStringRepresentation(word_initial, \"#_\")\n\nword_final = envOps.Create(\"Word Final\")\nenvOps.SetStringRepresentation(word_final, \"_#\")\n\nbetween_vowels = envOps.Create(\"Between Vowels\")\nenvOps.SetStringRepresentation(between_vowels, \"V_V\")\n\n# Complex environment: after nasal, before stop\nenv = envOps.Create(\"Nasal-Stop Cluster\")\nenvOps.SetStringRepresentation(env, \"N_P\")",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "SetStringRepresentation"
+      },
+      {
+        "description": "Set the name of a grammatical category.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "gramCatOps = GramCatOperations(project)\ncat = gramCatOps.Create(\"prson\")  # typo\ngramCatOps.SetName(cat, \"person\")  # fix it\n\n# Set name in vernacular WS\ngramCatOps.SetName(cat, \"persona\", project.WSHandle('es'))\n\n        See Also:\n            GetName",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the name of an inflection class.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "inflOps = InflectionFeatureOperations(project)\nic = inflOps.InflectionClassCreate(\"1st Decl\")\ninflOps.InflectionClassSetName(ic, \"First Declension\")\nprint(inflOps.InflectionClassGetName(ic))\n            First Declension\n\n        See Also:\n            InflectionClassGetName, InflectionClassCreate",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "InflectionClassSetName"
+      },
+      {
+        "description": "Set the active state of a morphological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\n\n# Activate a rule\nruleOps.SetActive(rule, True)\nprint(f\"Active: {ruleOps.IsActive(rule)}\")\n            Active: True\n\n# Deactivate obsolete rules\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    if \"obsolete\" in name.lower():\n        ruleOps.SetActive(rule, False)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "SetActive"
+      },
+      {
+        "description": "Set the description of a morphological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\nruleOps.SetDescription(rule, \"Adds -s suffix to form plural nouns\")\n\n# Provide detailed descriptions\ndesc = \"Forms past tense by adding -ed to regular verb stems\"\nruleOps.SetDescription(rule, desc)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "SetDescription"
+      },
+      {
+        "description": "Set the name of a morphological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\nruleOps.SetName(rule, \"Noun Pluralization\")\n\n# Use descriptive names\nruleOps.SetName(rule, \"Plural Formation (Regular Nouns)\")",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the stratum of a morphological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\n\n# Create or get a stratum\nmorph_data = project.lp.MorphologicalDataOA\nif morph_data.StrataOS.Count > 0:\n    stratum = morph_data.StrataOS[0]\n    ruleOps.SetStratum(rule, stratum)\n\n# Clear stratum assignment\nruleOps.SetStratum(rule, None)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "SetStratum"
+      },
+      {
+        "description": "Set the name of a natural class.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "nc = project.NaturalClasses.Create(\"Plosives\", \"P\")\n# Prefer linguistic standard terminology\nproject.NaturalClasses.SetName(nc, \"Stops\")",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the description of a phoneme.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\np_phoneme = phonemeOps.Create(\"/p/\")\nphonemeOps.SetDescription(p_phoneme, \"voiceless bilabial stop\")\n\n# Add detailed articulatory description\ntap = phonemeOps.Find(\"/ɾ/\")\nphonemeOps.SetDescription(\n    tap,\n    \"voiced alveolar tap/flap - allophone of /r/ in intervocalic position\"\n)",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "SetDescription"
+      },
+      {
+        "description": "Set the representation of a phoneme.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonemeOps = PhonemeOperations(project)\nphoneme = phonemeOps.Find(\"/ph/\")  # non-standard notation\nif phoneme:\n    phonemeOps.SetRepresentation(phoneme, \"/pʰ/\")  # fix to proper IPA",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "SetRepresentation"
+      },
+      {
+        "description": "Set the description of a phonological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = list(phonRuleOps.GetAll())[0]\nphonRuleOps.SetDescription(rule,\n    \"Voiceless stops become voiced between vowels\")\n\n        See Also:\n            GetDescription, SetName",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetDescription"
+      },
+      {
+        "description": "Set the direction of rule application.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = list(phonRuleOps.GetAll())[0]\n# Set to right-to-left\nphonRuleOps.SetDirection(rule, 1)\n\n        See Also:\n            GetDirection",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetDirection"
+      },
+      {
+        "description": "Set the left context (environment before the target) for the rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = phonRuleOps.Create(\"Final Devoicing\")\n# Set word boundary as left context\nphonRuleOps.SetLeftContext(rule, None)  # No left constraint",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetLeftContext"
+      },
+      {
+        "description": "Set the name of a phonological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = list(phonRuleOps.GetAll())[0]\nphonRuleOps.SetName(rule, \"Intervocalic Voicing\")\n\n        See Also:\n            GetName, SetDescription",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetName"
+      },
+      {
+        "description": "Set the right context (environment after the target) for the rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = phonRuleOps.Create(\"Intervocalic Voicing\")\n# Get vowel natural class\nvowels = project.NaturalClasses.Find(\"Vowels\")\n# Set vowel as right context\nphonRuleOps.SetRightContext(rule, vowels)",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetRightContext"
+      },
+      {
+        "description": "Set the stratum of a phonological rule.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nrule = list(phonRuleOps.GetAll())[0]\n# Get first stratum\nmorph_data = project.lp.MorphologicalDataOA\nif morph_data and morph_data.StrataOS.Count > 0:\n    stratum = morph_data.StrataOS[0]\n    phonRuleOps.SetStratum(rule, stratum)\n\n        See Also:\n            GetStratum",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "SetStratum"
+      }
+    ],
+    "merge": [
+      {
+        "description": "Merge one entry into another (IRREVERSIBLE operation).",
+        "operation": "merge",
+        "object_type": "ILexEntry",
+        "code": "# Merge duplicate entry into main entry\nmain = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Find(\"run\")  # Duplicate with same form\nproject.LexEntry.MergeObject(main, duplicate)\n# 'duplicate' is now deleted, all data merged into 'main'\n\n# Merge with different lexeme forms (creates alternate)\nentry1 = project.LexEntry.Find(\"color\")\nentry2 = project.LexEntry.Find(\"colour\")\nproject.LexEntry.MergeObject(entry1, entry2)\n# 'colour' becomes alternate form of 'color'",
+        "source": "docstring",
+        "class": "LexEntryOperations",
+        "method": "MergeObject"
+      },
+      {
+        "description": "Merge one sense into another (IRREVERSIBLE operation).",
+        "operation": "merge",
+        "object_type": "ILexSense",
+        "code": "# Merge duplicate sense into main sense\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is now deleted, data merged into 'keep'\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (SEMICOLON separator!)\n# Gloss: \"gloss 1; gloss 2\" (SEMICOLON separator!)",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "MergeObject"
+      },
+      {
+        "description": "Merge two adjacent segments into one.",
+        "operation": "merge",
+        "object_type": "general",
+        "code": "seg1 = segments[0]\nseg2 = segments[1]\nmerged = project.Segments.MergeSegments(seg1, seg2)\nprint(project.Segments.GetBaselineText(merged))\n            In the beginning God created the heavens and the earth.\n\n        See Also:\n            SplitSegment, Create, Delete",
+        "source": "docstring",
+        "class": "SegmentOperations",
+        "method": "MergeSegments"
+      }
+    ]
+  },
+  "statistics": {
+    "total_patterns": 1094,
+    "unique_patterns": 115,
+    "objects_covered": 10,
+    "operations": [
+      "reorder",
+      "general",
+      "read",
+      "create",
+      "iterate",
+      "delete",
+      "update",
+      "merge"
+    ]
+  }
+}

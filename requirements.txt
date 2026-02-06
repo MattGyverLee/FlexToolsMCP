@@ -6,6 +6,9 @@ sentence-transformers>=2.2.0
 faiss-cpu>=1.7.4
 # Or use chromadb>=0.4.0 as alternative
 
+# .NET Interop (for LibLCM extraction)
+pythonnet>=3.0.0
+
 # Utilities
 pydantic>=2.0.0
 python-dotenv>=1.0.0

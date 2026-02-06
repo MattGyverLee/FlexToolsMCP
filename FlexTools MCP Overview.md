@@ -21,9 +21,9 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 ```
 
 ### Key Components
-1. **LibLCM**: C# library - the ground truth API
-2. **FlexLibs Light**: Current Python wrapper (~10% coverage, 40 functions)
-3. **FlexLibs 2.0**: Your beta Python wrapper (~90% coverage, thin wrappers around C#)
+1. **LibLCM**: C# library - the ground truth API (2,295 entities extracted)
+2. **FlexLibs stable**: Current Python wrapper (~71 methods in FLExProject class)
+3. **FlexLibs 2.0**: Comprehensive Python wrapper (~90% coverage, 1,398 methods, 78 classes)
 4. **FieldWorks**: Main application source - contains real usage examples
 5. **FLExTools**: Existing script library - shallow but shows patterns
 
@@ -92,6 +92,66 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 - Python ast parser
 - Pattern matching scripts
 - Agent for finding inconsistencies
+
+---
+
+### Phase 2b: Method-Level LibLCM Mapping (Week 2)
+**Method**: AST body parsing + pattern matching
+
+**Context**:
+Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the actual LibLCM calls inside each method. This phase extracts method-to-method mappings to enable bidirectional code conversion between LibLCM C# and FlexLibs 2.0 Python.
+
+**Tasks**:
+- Enhance `flexlibs2_analyzer.py` to parse method bodies (not just signatures)
+- Extract LibLCM method calls by pattern-matching against known interfaces
+- Classify each FlexLibs 2.0 method by mapping type:
+  - **1:1 direct**: Single LibLCM call (e.g., `GetGloss` → `sense.Gloss.get_String(ws)`)
+  - **Convenience wrapper**: Adds defaults, null handling, HVO resolution
+  - **Composite**: Combines multiple LibLCM calls (e.g., `Create` calls factory + sets properties)
+  - **Pure Python**: No LibLCM calls, utility operations (e.g., `Sort`, `MoveUp`)
+- Map FlexLibs 2.0 parameters to LibLCM parameters
+- Document transformations (type conversions, default values)
+
+**Output**: Enhanced `flexlibs2_api.json` with `lcm_mapping` field per method:
+```json
+{
+  "name": "GetGloss",
+  "signature": "GetGloss(sense_or_hvo, wsHandle=None)",
+  "lcm_mapping": {
+    "type": "convenience_wrapper",
+    "primary_call": "ILexSense.Gloss.get_String(int ws)",
+    "all_calls": [
+      "ILexSense.Gloss.get_String(int ws)",
+      "ITsString.Text"
+    ],
+    "param_mapping": {
+      "sense_or_hvo": "ILexSense (resolved from HVO if needed)",
+      "wsHandle": "ws (defaults to analysis WS)"
+    },
+    "transformations": [
+      "HVO resolution via __GetSenseObject()",
+      "Default WS via __WSHandleAnalysis()",
+      "Null coalescing to empty string"
+    ]
+  }
+}
+```
+
+**Use Cases**:
+1. **C# to Python conversion**: Given `sense.Gloss.get_String(ws)`, suggest `project.Senses.GetGloss(sense, ws)`
+2. **LibLCM fallback**: When FlexLibs 2.0 lacks coverage, show raw LibLCM equivalent
+3. **Documentation enrichment**: Show "under the hood" LibLCM calls in docs
+4. **Coverage analysis**: Identify which LibLCM methods have FlexLibs 2.0 wrappers
+
+**Verification**:
+- Sample 20 methods manually, verify extracted mappings match source
+- Confirm all `lcm_interfaces_used` are covered in mappings
+- Cross-reference with Phase 1 LibLCM extraction
+
+**Tools**:
+- Python `ast` module for body parsing
+- Regex patterns for LibLCM interface detection
+- Known interface list from Phase 1
 
 ---
 
@@ -187,8 +247,9 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 
 ---
 
-### Phase 6: Index Construction (Week 3)
+### Phase 6: Index Construction (Week 3) - COMPLETE
 **Method**: Combine all previous phases
+**Status**: Complete - all index fields populated
 
 **Structure** (object-centric organization):
 ```json
@@ -258,56 +319,48 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 
 ---
 
-### Phase 7: MCP Server (Week 3-4)
+### Phase 7: MCP Server (Week 3-4) - COMPLETE
 **Method**: Standard MCP implementation
+**Status**: Complete - 6 tools implemented and working
 
-**Core Tools**:
+**Implemented Tools**:
 ```python
 @mcp.tool()
-def get_object_api(
-    object_type: str,
-    include_flexlibs: bool = True,
-    abstraction_level: str = "auto"  # "auto", "liblcm", "flexlibs_2"
-) -> dict:
+def get_object_api(object_type: str, include_flexlibs2: bool = True, include_liblcm: bool = True) -> dict:
     """Get all methods/properties for an object like ILexSense.
-    Returns object-centric documentation."""
-    
-@mcp.tool()
-def search_by_capability(
-    query: str,
-    max_results: int = 5
-) -> list:
-    """Semantic search: 'add gloss' -> relevant methods.
-    Uses embeddings for natural language queries."""
+    Returns object-centric documentation including python_wrappers and relationships."""
 
 @mcp.tool()
-def get_navigation_path(
-    from_object: str,
-    to_object: str
-) -> dict:
-    """Find path from Entry to ExampleSentence.
-    Returns navigation pattern with code example."""
+def search_by_capability(query: str, max_results: int = 10) -> list:
+    """Keyword search with synonym expansion: 'add gloss' -> relevant methods."""
 
 @mcp.tool()
-def find_examples(
-    method_name: str = None,
-    operation_type: str = None,
-    max_results: int = 3
-) -> list:
-    """Get real usage examples from FieldWorks."""
+def get_navigation_path(from_object: str, to_object: str) -> dict:
+    """Find path from Entry to ExampleSentence using navigation graph.
+    Uses precomputed paths + BFS fallback. Auto-generates code patterns."""
 
 @mcp.tool()
-def validate_script(script_text: str) -> dict:
-    """Check if script uses valid API calls.
-    Returns errors/warnings/suggestions."""
+def find_examples(method_name: str = None, operation_type: str = None, object_type: str = None, max_results: int = 5) -> list:
+    """Get code examples from FlexLibs2 docstrings."""
+
+@mcp.tool()
+def list_categories() -> list:
+    """List all API categories (lexicon, grammar, texts, etc.)."""
+
+@mcp.tool()
+def list_entities_in_category(category: str, source: str = "all") -> list:
+    """List entities in a category."""
+
+# FUTURE:
+# def validate_script(script_text: str) -> dict:
+#     """Check if script uses valid API calls. Returns errors/warnings/suggestions."""
 ```
 
-**Search Implementation**:
-- Semantic search via sentence-transformers + FAISS/Chroma
-- Or simpler: keyword search + ranking
-- Start simple, add sophistication if needed
+**Search Implementation** (Current):
+- Keyword search with synonym expansion
+- Future: sentence-transformers + FAISS/Chroma for semantic search
 
-**Output**: Working MCP server, deployable locally
+**Output**: Working MCP server, deployed locally via `claude mcp add`
 
 ---
 
@@ -521,18 +574,26 @@ search_fieldworks_api(
 
 ## Timeline
 
-### Realistic Schedule
+### Actual Progress (as of 2026-02-05)
+
+| Phase | Status | Key Outputs |
+|-------|--------|-------------|
+| Phase 1: LibLCM Ground Truth | COMPLETE | 2,295 entities in flex-api-enhanced.json |
+| Phase 2: FlexLibs 2.0 Mapping | COMPLETE | 1,398 methods with lcm_mapping |
+| Phase 2b: Method-Level Mapping | COMPLETE | 68% LibLCM coverage, mapping types classified |
+| Phase 3: Test Generation | PARTIAL | Test infrastructure pending |
+| Phase 4: Example Mining | PARTIAL | 82% docstring examples extracted |
+| Phase 5: Documentation Enrichment | COMPLETE | 100% description coverage, semantic categorization |
+| Phase 6: Index Construction | COMPLETE | relationships, python_wrappers, common_patterns |
+| Phase 7: MCP Server | COMPLETE | 6 tools working, BFS pathfinding |
+
+### Original Schedule (for reference)
 - **Week 1**: Phase 1 (LibLCM extraction + validation)
 - **Week 2**: Phase 2 (FlexLibs 2.0 mapping) + Phase 3 (test generation starts)
 - **Week 3**: Phase 4 (examples) + Phase 5 (enrichment) + Phase 6 (index construction)
 - **Week 4**: Phase 7 (MCP server) + testing
 - **Week 5**: Beta user testing + iteration
 - **Week 6**: Production deployment
-
-### Accelerated Path (if validation shows simplicity works)
-- **Week 1**: Phases 1-2
-- **Week 2**: Phases 3-6
-- **Week 3**: Phase 7 + deployment
 
 ---
 

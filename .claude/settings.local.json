@@ -8,7 +8,14 @@
       "Bash(python src/flexlibs2_analyzer.py:*)",
       "Bash(python:*)",
       "mcp__flextoolsmcp__find_examples",
-      "mcp__flextoolsmcp__get_navigation_path"
+      "mcp__flextoolsmcp__get_navigation_path",
+      "Bash(git checkout:*)",
+      "mcp__flextoolsmcp__list_categories",
+      "Bash(ls:*)",
+      "Bash(claude mcp add-json:*)",
+      "Bash(pip install:*)",
+      "mcp__flextoolsmcp__get_object_api",
+      "mcp__context7__resolve-library-id"
     ]
   }
 }

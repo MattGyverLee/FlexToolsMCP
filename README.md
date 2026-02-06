@@ -1,6 +1,7 @@
 # FlexTools MCP
 
 An MCP server that enables AI assistants to write FlexTools scripts and directly manipulate FieldWorks lexicon data using natural language.
+Developed for SIL Global by Matthew Lee with in connection with the SIL's AI Integration Advisory Board and the FLExTrans team.
 
 **TL;DR:** FlexTools MCP gives AI assistants (Claude, Copilot, Gemini) the knowledge to write FLExTools modules by providing indexed, searchable documentation of LibLCM and FlexLibs APIs. It can be used to generate legacy modules (FlexLibs stable), modern modules (FlexLibs 2.0 with ~1,400 functions), or pure LibLCM modules. Beyond code generation, it can execute operations directly on FieldWorks databases using natural language queries like "delete any sense with 'q' in the gloss." Back up your project first - there are no guard-rails.
 
@@ -8,39 +9,12 @@ An MCP server that enables AI assistants to write FlexTools scripts and directly
 
 An MCP (Model Context Protocol) server is an "external brain" and toolset that allows AI tools (Claude, GPT, Gemini, etc.) to complete tasks they wouldn't normally have the context or reach to do. Instead of humans calling endpoints, an AI model discovers available tools, understands their schemas, and calls them automatically during conversations to take actions or retrieve information.
 
-## Background
-
-Since I started working with AI, I dreamed of having an AI tool that could assist with or write "proper" FLExTools modules. The challenge was that the "agent" neeeded to deeply understand the FLEx Model, FLExTools preferences, which Flextools functions existed, and when to fall back to the Fieldworks API (flexlibs). This was too much data to be held in memory for AI work, or for most humans.
-
-Since summer of 2025, I've tried to build a Chipp AI agent for this task by giving it existing documentation and some code, and the results were dismal. It would call functions that didn't exist and required significant handholding to massage the drafts into something workable.
-
-I realized that one barrier to progress was enabling FLExTools (flexlibs) to be access and edit the WHOLE FLEx database (not having to learn and switch between the FLextools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0. Instead of the ~70 functions currently supported in FlexLibs stable, FlexLibs 2.0 provides nearly 1,400 functions covering full CRUD operations for the Lexicon, Grammar, Texts, Words, Lists, Scripture, and Notebook domains. A byproduct of the process was an early abstracted annotated json representation of LibLCM ([flex-api-enhanced.json](index/liblcm/flex-api-enhanced.json)).
-
-In Feb 4th conversations with Larry Hayashi and Jason Naylor, I realized that instead of building an AI Agent with all of the skills (running and looping in-memory, which is vey expensive and ineffeicent), What was needed was an MCP server (an external brain) that could quickly and efficiently look up the needed functions and structure that the AI could piece together. 
-
-The evening of Feb 5th, I started by enriching the shallow annotated code indexes of FlexLib and LibLCM that I had, and then built a new index of FlexLibs 2.0 (which already links the Python and C# functions explicitly). The results are:
-
-- [flexlibs_api.json](index/flexlibs/flexlibs_api.json) - FlexLibs stable (~71 methods)
-- [flexlibs2_api.json](index/flexlibs/flexlibs2_api.json) - FlexLibs 2.0 (~1,400 methods)
-- [liblcm_api.json](index/liblcm/liblcm_api.json) - LibLCM C# API
-
-The MCP server was built with a host of tools to enable AI assistants to query those abstractions based on natural language input. 
-
-The breakthrough came when Claude Code (using the MCP) could generate at will:
-- **Legacy FlexTool Modules** that prefer FlexLibs stable calls with LibLCM fallback
-- **Modern FlexTool Modules** that use entirely FlexLibs 2.0 calls
-- **Pure LibLCM Modules** that skip FlexLibs entirely and make direct LibLCM calls
-
-Beyond FlexTools module generation, the MCP can alternately run code directly on the database, enabling natural language editing of ANY FLEx data without writing a full module.
-
-My goal was to succesfully write FLExTools, but I accidentally created what Doug hoped to see, a scary-powerful natural-language interface to interact with Fieldworks Data.  
-
 ## What Does FlexTools MCP Do?
 
 FlexTools MCP provides AI assistants with:
 
 1. **Indexed API Documentation** - Searchable documentation of LibLCM (C# API), FlexLibs stable (~71 methods), and FlexLibs 2.0 (~1,400 methods)
-2. **Code Generation** - Generate FlexTools modules in three modes:
+2. **Code Generation** - use the MCP to generate FlexTools modules in three modes:
    - Legacy modules using FlexLibs stable (falling back to liblcm)
    - Modern modules using FlexLibs 2.0
    - Pure LibLCM modules bypassing FlexLibs entirely
@@ -99,6 +73,33 @@ These queries have been successfully tested:
 "Add an environment named 'pre-y' with the context '/_y'."
 "List all texts that contain the word 'win' in the baseline."
 ```
+
+## Background
+
+Since I started working with AI, I dreamed of having an AI tool that could assist with or write "proper" FLExTools modules. The challenge was that the "agent" neeeded to deeply understand the FLEx Model, FLExTools preferences, which Flextools functions existed, and when to fall back to the Fieldworks API (flexlibs). This was too much data to be held in memory for AI work, or for most humans.
+
+Since summer of 2025, I've tried to build a Chipp AI agent for this task by giving it existing documentation and some code, and the results were dismal. It would call functions that didn't exist and required significant handholding to massage the drafts into something workable.
+
+I realized that one barrier to progress was enabling FLExTools (flexlibs) to be access and edit the WHOLE FLEx database (not having to learn and switch between the FLextools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0. Instead of the ~70 functions currently supported in FlexLibs stable, FlexLibs 2.0 provides nearly 1,400 functions covering full CRUD operations for the Lexicon, Grammar, Texts, Words, Lists, Scripture, and Notebook domains. A byproduct of the process was an early abstracted annotated json representation of LibLCM ([flex-api-enhanced.json](index/liblcm/flex-api-enhanced.json)).
+
+In Feb 4th conversations with Larry Hayashi and Jason Naylor, I realized that instead of building an AI Agent with all of the skills (running and looping in-memory, which is vey expensive and ineffeicent), What was needed was an MCP server (an external brain) that could quickly and efficiently look up the needed functions and structure that the AI could piece together. 
+
+The evening of Feb 5th, I started by enriching the shallow annotated code indexes of FlexLib and LibLCM that I had, and then built a new index of FlexLibs 2.0 (which already links the Python and C# functions explicitly). The results are:
+
+- [flexlibs_api.json](index/flexlibs/flexlibs_api.json) - FlexLibs stable (~71 methods)
+- [flexlibs2_api.json](index/flexlibs/flexlibs2_api.json) - FlexLibs 2.0 (~1,400 methods)
+- [liblcm_api.json](index/liblcm/liblcm_api.json) - LibLCM C# API
+
+The MCP server was built with a host of tools to enable AI assistants to query those abstractions based on natural language input. 
+
+The breakthrough came when Claude Code (using the MCP) could generate at will:
+- **Legacy FlexTool Modules** that prefer FlexLibs stable calls with LibLCM fallback
+- **Modern FlexTool Modules** that use entirely FlexLibs 2.0 calls
+- **Pure LibLCM Modules** that skip FlexLibs entirely and make direct LibLCM calls
+
+Beyond FlexTools module generation, the MCP can alternately run code directly on the database, enabling natural language editing of ANY FLEx data without writing a full module.
+
+My goal was to succesfully write FLExTools, but I accidentally created what Doug hoped to see, a scary-powerful natural-language interface to interact with Fieldworks Data.  
 
 ## Installation
 

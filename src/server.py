@@ -409,6 +409,7 @@ Available variables in your code:
 - project: The FLExProject instance
 - report: Reporter with .Info(), .Warning(), .Error() methods
 - write_enabled: Boolean indicating if writes are allowed
+- safe_str(obj): Helper to safely convert .NET strings to UTF-8 (handles special characters)
 
 Available imports (auto-imported):
 - All flexlibs2 Operations classes (LexEntryOperations, EnvironmentOperations, etc.)
@@ -416,7 +417,7 @@ Available imports (auto-imported):
 
 Example operations:
 - "envOps = EnvironmentOperations(project); envOps.Delete(envOps.GetAll()[0])"
-- "for entry in LexEntryOperations(project).GetAll(): report.Info(LexEntryOperations(project).GetHeadword(entry))"
+- "for entry in LexEntryOperations(project).GetAll(): report.Info(safe_str(project.LexiconGetHeadword(entry)))"
 
 Defaults to DRY_RUN mode. Always backup before write_enabled=True.""",
             inputSchema={
@@ -1698,6 +1699,30 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
 import sys
 import json
 import traceback
+import io
+
+# Force UTF-8 stdout on Windows to handle Unicode characters properly
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+
+def safe_str(obj):
+    """Safely convert .NET or Python object to UTF-8 string.
+
+    Use this when converting .NET strings that may contain special characters.
+    """
+    if obj is None:
+        return ""
+    try:
+        s = str(obj)
+        # Ensure it's valid UTF-8
+        return s.encode('utf-8', errors='replace').decode('utf-8')
+    except Exception:
+        try:
+            return repr(obj)
+        except Exception:
+            return "(encoding error)"
 
 # Configuration
 PROJECT_NAME = {project_name}
@@ -1810,6 +1835,7 @@ def run_operation():
             "project": project,
             "report": report,
             "write_enabled": write_enabled,
+            "safe_str": safe_str,
             # All Operations classes
             "FP_FileLockedError": FP_FileLockedError,
             "FP_FileNotFoundError": FP_FileNotFoundError,
@@ -1918,6 +1944,11 @@ if __name__ == "__main__":
         }, indent=2))]
 
     try:
+        # Create environment with UTF-8 encoding for Windows compatibility
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONUTF8'] = '1'
+
         # Run the script in a subprocess
         result = subprocess.run(
             [sys.executable, temp_script_path],
@@ -1925,7 +1956,9 @@ if __name__ == "__main__":
             text=True,
             timeout=timeout_seconds,
             encoding='utf-8',
-            stdin=subprocess.DEVNULL
+            errors='replace',
+            stdin=subprocess.DEVNULL,
+            env=env
         )
 
         stdout = result.stdout

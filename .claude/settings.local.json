@@ -15,7 +15,8 @@
       "Bash(claude mcp add-json:*)",
       "Bash(pip install:*)",
       "mcp__flextoolsmcp__get_object_api",
-      "mcp__context7__resolve-library-id"
+      "mcp__context7__resolve-library-id",
+      "mcp__flextoolsmcp__run_operation"
     ]
   }
 }

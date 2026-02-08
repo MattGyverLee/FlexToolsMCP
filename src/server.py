@@ -312,6 +312,93 @@ class SessionState:
 session_state = SessionState()
 
 
+def detect_cud_operations(code: str) -> dict:
+    """Detect Create, Update, Delete operations in code and assess risk.
+
+    Returns dict with:
+      - is_cud: bool - whether CUD operations detected
+      - operations: list - detected operation types
+      - risks: list - specific risks identified
+      - affected_types: list - data types that may be affected
+    """
+    code_lower = code.lower()
+
+    # Operation patterns
+    create_patterns = ['create', 'add', 'new', 'insert', 'append']
+    update_patterns = ['set', 'update', 'modify', 'change', 'edit', 'replace']
+    delete_patterns = ['delete', 'remove', 'destroy', 'clear', 'purge']
+
+    operations = []
+    risks = []
+    affected = set()
+
+    # Check for create operations
+    for p in create_patterns:
+        if p in code_lower:
+            operations.append(f"CREATE ({p})")
+            risks.append(f"New data will be added to the database")
+            break
+
+    # Check for update operations
+    for p in update_patterns:
+        if p in code_lower:
+            operations.append(f"UPDATE ({p})")
+            risks.append(f"Existing data will be modified")
+            break
+
+    # Check for delete operations
+    for p in delete_patterns:
+        if p in code_lower:
+            operations.append(f"DELETE ({p})")
+            risks.append(f"Data will be permanently removed")
+            break
+
+    # Identify affected data types
+    type_patterns = {
+        'entry': 'Lexicon entries',
+        'sense': 'Senses',
+        'example': 'Example sentences',
+        'gloss': 'Glosses',
+        'definition': 'Definitions',
+        'pos': 'Parts of speech',
+        'allomorph': 'Allomorphs',
+        'reversal': 'Reversal entries',
+        'text': 'Texts',
+        'wordform': 'Wordforms',
+        'analysis': 'Analyses'
+    }
+
+    for pattern, label in type_patterns.items():
+        if pattern in code_lower:
+            affected.add(label)
+
+    return {
+        "is_cud": len(operations) > 0,
+        "operations": operations,
+        "risks": risks,
+        "affected_types": list(affected) if affected else ["Unknown - review code carefully"]
+    }
+
+
+def format_cud_warning(cud_info: dict, write_enabled: bool) -> dict:
+    """Format a warning message for CUD operations requiring confirmation."""
+    return {
+        "confirmation_required": True,
+        "reason": "This operation involves Create/Update/Delete actions",
+        "detected_operations": cud_info["operations"],
+        "potential_risks": cud_info["risks"],
+        "affected_data": cud_info["affected_types"],
+        "write_mode": "ENABLED - changes WILL be made" if write_enabled else "DISABLED (dry-run)",
+        "action_required": "Set confirmed=True to proceed. Make sure you have a backup!",
+        "recommendation": [
+            "1. Review the code carefully",
+            "2. Run with write_enabled=False first (dry-run)",
+            "3. Backup your project",
+            "4. Then run with confirmed=True and write_enabled=True"
+        ]
+    }
+
+
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool,
@@ -744,6 +831,11 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                         "type": "boolean",
                         "description": "Include full module code in response for learning (default: true)",
                         "default": True
+                    },
+                    "confirmed": {
+                        "type": "boolean",
+                        "description": "Required for CUD operations. Set True to confirm you understand the risks of Create/Update/Delete.",
+                        "default": False
                     }
                 },
                 "required": ["module_code"]
@@ -814,6 +906,11 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
                         "type": "boolean",
                         "description": "Include executed code in response for learning (default: true)",
                         "default": True
+                    },
+                    "confirmed": {
+                        "type": "boolean",
+                        "description": "Required for CUD operations. Set True to confirm you understand the risks of Create/Update/Delete.",
+                        "default": False
                     }
                 },
                 "required": ["operations"]
@@ -2329,6 +2426,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "message": "No project specified. Either set project_name in start() or provide it directly.",
             "session": session_state.summary()
         }, indent=2))]
+
+    # Check for CUD operations requiring confirmation
+    confirmed = args.get("confirmed", False)
+    cud_info = detect_cud_operations(module_code)
+
+    if cud_info["is_cud"] and not confirmed:
+        return [TextContent(type="text", text=json.dumps(
+            format_cud_warning(cud_info, write_enabled), indent=2
+        ))]
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Build warnings
@@ -2659,6 +2766,16 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "message": "No project specified. Either set project_name in start() or provide it directly.",
             "session": session_state.summary()
         }, indent=2))]
+
+    # Check for CUD operations requiring confirmation
+    confirmed = args.get("confirmed", False)
+    cud_info = detect_cud_operations(operations)
+
+    if cud_info["is_cud"] and not confirmed:
+        return [TextContent(type="text", text=json.dumps(
+            format_cud_warning(cud_info, write_enabled), indent=2
+        ))]
+
     timeout_seconds = args.get("timeout_seconds", 120)
 
     # Log operation start

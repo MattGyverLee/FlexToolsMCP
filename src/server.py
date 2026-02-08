@@ -234,6 +234,70 @@ class PatternTracker:
 
 # Global pattern tracker
 pattern_tracker = PatternTracker()
+
+
+# ============================================================
+# Session State Management
+# ============================================================
+
+@dataclass
+class SessionState:
+    """Tracks session-wide settings to ensure consistency across tool calls.
+
+    Set by the 'start' tool and respected by all other tools unless overridden.
+    """
+    api_mode: str = "flexlibs2"       # API mode: flexlibs2, flexlibs_stable, liblcm
+    output_type: str = "auto"         # Output type: auto, operation, module
+    project_name: str = ""            # FLEx project name (empty = prompt user)
+    write_enabled: bool = False       # Write access: False = read-only/dry-run
+    initialized: bool = False
+
+    def configure(self, **kwargs) -> None:
+        """Configure session settings (called by start tool)."""
+        if "api_mode" in kwargs:
+            self.api_mode = kwargs["api_mode"]
+        if "output_type" in kwargs:
+            self.output_type = kwargs["output_type"]
+        if "project_name" in kwargs:
+            self.project_name = kwargs["project_name"]
+        if "write_enabled" in kwargs:
+            self.write_enabled = kwargs["write_enabled"]
+        self.initialized = True
+        operations_logger.info(f"Session configured: mode={self.api_mode}, "
+                               f"output={self.output_type}, project={self.project_name or '(prompt)'}, "
+                               f"write={self.write_enabled}")
+
+    def get_mode(self) -> str:
+        """Get the current session API mode."""
+        return self.api_mode
+
+    def get_output_type(self) -> str:
+        """Get the current session output type."""
+        return self.output_type
+
+    def get_project(self) -> str:
+        """Get the current session project name (empty if not set)."""
+        return self.project_name
+
+    def is_write_enabled(self) -> bool:
+        """Get whether write access is enabled for the session."""
+        return self.write_enabled
+
+    def summary(self) -> dict:
+        """Return session state summary for tool responses."""
+        return {
+            "api_mode": self.api_mode,
+            "output_type": self.output_type,
+            "project_name": self.project_name or "(not set)",
+            "write_enabled": self.write_enabled,
+            "initialized": self.initialized
+        }
+
+
+# Global session state
+session_state = SessionState()
+
+
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool,
@@ -433,6 +497,15 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                         "enum": ["flexlibs2", "flexlibs_stable", "liblcm"],
                         "description": "API mode: 'flexlibs2' (recommended, ~1400 methods), 'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)",
                         "default": "flexlibs2"
+                    },
+                    "project_name": {
+                        "type": "string",
+                        "description": "FLEx project name to use for this session. If not specified, will prompt when running operations."
+                    },
+                    "write_enabled": {
+                        "type": "boolean",
+                        "description": "Enable write access for the session. Default is False (read-only/dry-run mode). Set True only after testing!",
+                        "default": False
                     }
                 },
                 "required": ["task"]
@@ -499,8 +572,8 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                     "api_mode": {
                         "type": "string",
                         "enum": ["flexlibs2", "flexlibs_stable", "liblcm", "all"],
-                        "description": "API mode: 'flexlibs2' (recommended, searches FlexLibs 2.0 primarily), 'flexlibs_stable' (searches stable API with LibLCM fallback), 'liblcm' (raw C# API only), 'all' (search everything). Default: 'all'",
-                        "default": "all"
+                        "description": "API mode: 'flexlibs2' (default, recommended), 'flexlibs_stable' (legacy + LibLCM fallback), 'liblcm' (raw C# only), 'all' (search everything)",
+                        "default": "flexlibs2"
                     }
                 },
                 "required": ["query"]
@@ -642,12 +715,11 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                     },
                     "project_name": {
                         "type": "string",
-                        "description": "Name of the FieldWorks project to open (e.g., 'Sena 3')"
+                        "description": "Name of the FieldWorks project. Uses session value if set by start(), otherwise required."
                     },
                     "write_enabled": {
                         "type": "boolean",
-                        "description": "Enable write access to the database. Default is False (read-only/dry-run mode). WARNING: Set to True only after testing!",
-                        "default": False
+                        "description": "Enable write access. Uses session value if set by start(). Default: False (dry-run)."
                     },
                     "timeout_seconds": {
                         "type": "integer",
@@ -660,7 +732,7 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                         "default": True
                     }
                 },
-                "required": ["module_code", "project_name"]
+                "required": ["module_code"]
             }
         ),
         Tool(
@@ -713,12 +785,11 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
                     },
                     "project_name": {
                         "type": "string",
-                        "description": "Name of the FieldWorks project to open (e.g., 'Sena 3')"
+                        "description": "Name of the FieldWorks project. Uses session value if set by start(), otherwise required."
                     },
                     "write_enabled": {
                         "type": "boolean",
-                        "description": "Enable write access. Default is False (dry-run mode).",
-                        "default": False
+                        "description": "Enable write access. Uses session value if set by start(). Default: False (dry-run)."
                     },
                     "timeout_seconds": {
                         "type": "integer",
@@ -731,7 +802,7 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
                         "default": True
                     }
                 },
-                "required": ["operations", "project_name"]
+                "required": ["operations"]
             }
         ),
         Tool(
@@ -841,11 +912,20 @@ async def handle_start(args: dict) -> list[TextContent]:
     task = args["task"]
     output_type = args.get("output_type", "auto")
     api_mode = args.get("api_mode", "flexlibs2")
+    project_name = args.get("project_name", "")
+    write_enabled = args.get("write_enabled", False)
+
+    # Set session-wide settings
+    session_state.configure(
+        api_mode=api_mode,
+        output_type=output_type,
+        project_name=project_name,
+        write_enabled=write_enabled
+    )
 
     result = {
         "task": task,
-        "output_type": output_type,
-        "api_mode": api_mode,
+        "session": session_state.summary(),
         "workflow_completed": True,
         "steps": {}
     }
@@ -1192,8 +1272,12 @@ def Main(project, report, modifyAllowed):
 async def handle_get_object_api(args: dict) -> list[TextContent]:
     """Get API documentation for a specific object type."""
     object_type = args["object_type"]
-    include_flexlibs2 = args.get("include_flexlibs2", True)
-    include_liblcm = args.get("include_liblcm", True)
+    # Default include flags based on session mode (user can override)
+    mode = session_state.get_mode()
+    default_flexlibs2 = mode in ("flexlibs2", "all")
+    default_liblcm = mode in ("liblcm", "flexlibs_stable", "all")
+    include_flexlibs2 = args.get("include_flexlibs2", default_flexlibs2)
+    include_liblcm = args.get("include_liblcm", default_liblcm)
     summary_only = args.get("summary_only", False)
     method_filter = args.get("method_filter", "")
     limit = args.get("limit", 50)
@@ -1256,7 +1340,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     """Search for methods by capability description with API mode support."""
     query = args["query"]
     max_results = args.get("max_results", 10)
-    api_mode = args.get("api_mode", "all")
+    # Use session mode if not explicitly specified
+    api_mode = args.get("api_mode", session_state.get_mode())
     use_semantic = args.get("semantic", True)
 
     # Domain-specific synonyms: map linguistics terms to API terms
@@ -2209,8 +2294,17 @@ if __name__ == '__main__':
 async def handle_run_module(args: dict) -> list[TextContent]:
     """Execute a FlexTools module against a FieldWorks project using FlexLibs directly."""
     module_code = args["module_code"]
-    project_name = args["project_name"]
-    write_enabled = args.get("write_enabled", False)
+    # Use session state as fallback for project and write settings
+    project_name = args.get("project_name", session_state.get_project())
+    write_enabled = args.get("write_enabled", session_state.is_write_enabled())
+
+    # Validate project_name is available
+    if not project_name:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "project_name required",
+            "message": "No project specified. Either set project_name in start() or provide it directly.",
+            "session": session_state.summary()
+        }, indent=2))]
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Build warnings
@@ -2526,8 +2620,17 @@ MODULE_CODE = {module_code}
 async def handle_run_operation(args: dict) -> list[TextContent]:
     """Execute FlexLibs2 operations directly without module boilerplate."""
     operations = args["operations"]
-    project_name = args["project_name"]
-    write_enabled = args.get("write_enabled", False)
+    # Use session state as fallback for project and write settings
+    project_name = args.get("project_name", session_state.get_project())
+    write_enabled = args.get("write_enabled", session_state.is_write_enabled())
+
+    # Validate project_name is available
+    if not project_name:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "project_name required",
+            "message": "No project specified. Either set project_name in start() or provide it directly.",
+            "session": session_state.summary()
+        }, indent=2))]
     timeout_seconds = args.get("timeout_seconds", 120)
 
     # Log operation start

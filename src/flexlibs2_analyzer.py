@@ -102,12 +102,16 @@ def parse_docstring(docstring: str) -> Dict[str, Any]:
         elif stripped.startswith("Raises:"):
             current_section = "raises"
             continue
-        elif stripped.startswith("Example:"):
+        elif stripped.startswith("Example:") or stripped.startswith("Examples:"):
             current_section = "example"
             continue
         elif stripped.startswith("Note:") or stripped.startswith("Notes:"):
             current_section = "notes"
             continue
+        elif stripped.startswith(">>>"):
+            # Doctest example - switch to example section
+            current_section = "example"
+            # Fall through to process this line as example
 
         # Process content based on section
         if current_section == "description":
@@ -272,10 +276,29 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
     elif method_name.startswith("Set") or method_name.startswith("Update"):
         output["notes"].append("Modifies existing data - requires write access")
 
-    # Add failure information from raises
+    # Add failure information from raises (filter invalid entries)
     if raises:
         for exc in raises:
-            output["failure"].append({"exception": exc})
+            # Skip lines that are clearly not exception names
+            # (example code, doctest lines, explanatory text, etc.)
+            exc_stripped = exc.strip()
+            if not exc_stripped:
+                continue
+            if exc_stripped.startswith(">>>") or exc_stripped.startswith("..."):
+                continue
+            if exc_stripped.startswith("Example") or exc_stripped.startswith("#"):
+                continue
+            # Valid exception entries typically start with an exception class name
+            # Pattern: "ExceptionName" or "ExceptionName: description"
+            exc_match = re.match(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$', exc_stripped)
+            if exc_match:
+                exc_name = exc_match.group(1)
+                exc_desc = exc_match.group(2)
+                if exc_desc:
+                    output["failure"].append({"exception": exc_name, "when": exc_desc})
+                else:
+                    output["failure"].append({"exception": exc_name})
+            # Skip anything that doesn't look like an exception
     else:
         # Infer common failure modes
         if method_name.startswith("Get") or method_name.startswith("Find"):
@@ -285,8 +308,6 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
             })
 
     return output
-
-    return "general"
 
 
 def generate_entity_usage_hint(name: str, category: str, entity_type: str = "class") -> str:

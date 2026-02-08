@@ -1,6 +1,6 @@
 {
   "_schema": "unified-api-doc/2.0",
-  "_generated_at": "2026-02-08T05:43:18.920164+00:00",
+  "_generated_at": "2026-02-08T21:25:10.117105+00:00",
   "_source": {
     "type": "flexlibs",
     "path": "D:/Github/flexlibs",
@@ -89,7 +89,7 @@
           "signature": "BestStr(stringObj)",
           "summary": "Generic string function for `MultiUnicode` and `MultiString`\nobjects, returning the best analysis or vernacular string.",
           "description": "Generic string function for `MultiUnicode` and `MultiString`\nobjects, returning the best analysis or vernacular string.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "stringObj",
@@ -99,6 +99,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -130,7 +136,7 @@
           "signature": "BuildGotoURL(objectOrGuid)",
           "summary": "Builds a URL that can be used with `os.",
           "description": "Builds a URL that can be used with `os.startfile()` to jump to the\nobject in Fieldworks. This method currently supports:\n\n- Lexical Entries, Senses and any object within the lexicon\n- Wordforms, Analyses and Wordform Glosses\n- Reversal Entries\n- Texts",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "objectOrGuid",
@@ -140,6 +146,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -176,10 +188,16 @@
           "signature": "CloseProject()",
           "summary": "Save any pending changes and dispose of the LCM object.",
           "description": "Save any pending changes and dispose of the LCM object.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -206,6 +224,20 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": {
+              "value": "[]",
+              "description": "Empty list when no items"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -238,6 +270,20 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": {
+              "value": "[]",
+              "description": "Empty list when no items"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -282,6 +328,20 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": {
+              "value": "[]",
+              "description": "Empty list when no items"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -324,6 +384,17 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -390,6 +461,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -416,6 +498,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -442,6 +535,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -479,6 +583,17 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -512,6 +627,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -540,6 +666,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -566,6 +703,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -595,6 +743,17 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -617,7 +776,7 @@
           "signature": "LexiconAddTagToField(senseOrEntryOrHvo, fieldID, tag)",
           "summary": "Appends the tag string to the end of the given field in the\nsense or entry inserting a semicolon between tags.",
           "description": "Appends the tag string to the end of the given field in the\nsense or entry inserting a semicolon between tags.\nIf the tag is already in the field then it isn't added.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "senseOrEntryOrHvo",
@@ -637,6 +796,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -672,6 +837,12 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -700,6 +871,12 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -728,7 +905,7 @@
           "signature": "LexiconClearField(senseOrEntryOrHvo, fieldID)",
           "summary": "Clears the string field or all of the strings (writing systems)\nin a multi-string field.",
           "description": "Clears the string field or all of the strings (writing systems)\nin a multi-string field.\nCan be used to clear out a custom field.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "senseOrEntryOrHvo",
@@ -743,6 +920,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -798,6 +981,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -828,7 +1017,7 @@
           "signature": "LexiconEntryAnalysesCount(entry)",
           "summary": "Returns a count of the occurrences of the entry in the text corpus.",
           "description": "Returns a count of the occurrences of the entry in the text corpus.\n\nNOTE: This calculation can produce slightly different results to\nthat shown in FieldWorks (where the same analysis in the same text\nsegment is only counted once in some displays). See LT-13997 for\nmore details.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -838,6 +1027,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -864,7 +1059,7 @@
           "signature": "LexiconFieldIsAnyStringType(fieldID)",
           "summary": "Returns `True` if the given field is any of the string types.",
           "description": "Returns `True` if the given field is any of the string types.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "fieldID",
@@ -874,6 +1069,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -900,7 +1101,7 @@
           "signature": "LexiconFieldIsMultiType(fieldID)",
           "summary": "Returns `True` if the given field is a multi string type\n(MultiUnicode or MultiString)",
           "description": "Returns `True` if the given field is a multi string type\n(MultiUnicode or MultiString)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "fieldID",
@@ -910,6 +1111,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -936,7 +1143,7 @@
           "signature": "LexiconFieldIsStringType(fieldID)",
           "summary": "Returns `True` if the given field is a simple string type suitable\nfor use with `LexiconAddTagToField()`, otherwise returns `False`.",
           "description": "Returns `True` if the given field is a simple string type suitable\nfor use with `LexiconAddTagToField()`, otherwise returns `False`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "fieldID",
@@ -946,6 +1153,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -976,6 +1189,12 @@
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1004,7 +1223,7 @@
           "signature": "LexiconGetCitationForm(entry, languageTagOrHandle=None)",
           "summary": "Returns the citation form for `entry` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
           "description": "Returns the citation form for `entry` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -1019,6 +1238,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1070,7 +1295,7 @@
           "signature": "LexiconGetEntryCustomFieldNamed(fieldName)",
           "summary": "Return the entry-level field ID given its name.",
           "description": "Return the entry-level field ID given its name.\n\nNOTE: `fieldName` is case-sensitive.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "fieldName",
@@ -1080,6 +1305,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1106,10 +1337,16 @@
           "signature": "LexiconGetEntryCustomFields()",
           "summary": "Returns a list of the custom fields defined at entry level.",
           "description": "Returns a list of the custom fields defined at entry level.\nEach item in the list is a tuple of (flid, label)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1138,7 +1375,7 @@
           "signature": "LexiconGetExample(example, languageTagOrHandle=None)",
           "summary": "Returns the example text in the default vernacular WS or\nother WS as specified by `languageTagOrHandle`.",
           "description": "Returns the example text in the default vernacular WS or\nother WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "example",
@@ -1153,6 +1390,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1202,10 +1445,16 @@
           "signature": "LexiconGetExampleCustomFields()",
           "summary": "Returns a list of the custom fields defined at example level.",
           "description": "Returns a list of the custom fields defined at example level.\nEach item in the list is a tuple of (flid, label)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1234,7 +1483,7 @@
           "signature": "LexiconGetExampleTranslation(translation, languageTagOrHandle=None)",
           "summary": "Returns the translation of an example in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.",
           "description": "Returns the translation of an example in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.\n\nNOTE: Analysis language translations of example sentences are\nstored as a collection (list). E.g.::\n\nfor translation in example.TranslationsOC:\nprint (project.LexiconGetExampleTranslation(translation))",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "translation",
@@ -1249,6 +1498,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1298,7 +1553,7 @@
           "signature": "LexiconGetFieldText(senseOrEntryOrHvo, fieldID, languageTagOrHandle=None)",
           "summary": "Return the text value for the given entry/sense and field ID.",
           "description": "Return the text value for the given entry/sense and field ID.\nProvided for use with custom fields.\nReturns the empty string if the value is null.\n`languageTagOrHandle` only applies to MultiStrings; if `None` the\ndefault analysis writing system is returned.\n",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "senseOrEntryOrHvo",
@@ -1318,6 +1573,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1366,7 +1627,7 @@
           "signature": "LexiconGetHeadword(entry)",
           "summary": "Returns the headword (lemma, citation form, lexeme) for an entry.",
           "description": "Returns the headword (lemma, citation form, lexeme) for an entry.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -1376,6 +1637,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1398,7 +1665,7 @@
           "signature": "LexiconGetLexemeForm(entry, languageTagOrHandle=None)",
           "summary": "Returns the lexeme form for `entry` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
           "description": "Returns the lexeme form for `entry` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -1413,6 +1680,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1466,7 +1739,7 @@
           "signature": "LexiconGetPronunciation(pronunciation, languageTagOrHandle=None)",
           "summary": "Returns the form for `pronunciation` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
           "description": "Returns the form for `pronunciation` in the default vernacular WS\nor other WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "pronunciation",
@@ -1481,6 +1754,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1532,7 +1811,7 @@
           "signature": "LexiconGetPublishInCount(entry)",
           "summary": "Returns the number of dictionaries that `entry` is configured\nto be published in.",
           "description": "Returns the number of dictionaries that `entry` is configured\nto be published in.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -1542,6 +1821,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1564,7 +1849,7 @@
           "signature": "LexiconGetSenseCustomFieldNamed(fieldName)",
           "summary": "Return the sense-level field ID given its name.",
           "description": "Return the sense-level field ID given its name.\n\nNOTE: `fieldName` is case-sensitive.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "fieldName",
@@ -1574,6 +1859,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1606,10 +1897,16 @@
           "signature": "LexiconGetSenseCustomFields()",
           "summary": "Returns a list of the custom fields defined at sense level.",
           "description": "Returns a list of the custom fields defined at sense level.\nEach item in the list is a tuple of (flid, label)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1643,7 +1940,7 @@
           "signature": "LexiconGetSenseDefinition(sense, languageTagOrHandle=None)",
           "summary": "Returns the definition for the sense in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.",
           "description": "Returns the definition for the sense in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1658,6 +1955,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1714,7 +2017,7 @@
           "signature": "LexiconGetSenseGloss(sense, languageTagOrHandle=None)",
           "summary": "Returns the gloss for the sense in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.",
           "description": "Returns the gloss for the sense in the default analysis WS or\nother WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1729,6 +2032,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1785,7 +2094,7 @@
           "signature": "LexiconGetSenseNumber(sense)",
           "summary": "Returns the sense number for the sense.",
           "description": "Returns the sense number for the sense. (This is not available\ndirectly from `ILexSense`.)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1795,6 +2104,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1827,7 +2142,7 @@
           "signature": "LexiconGetSensePOS(sense)",
           "summary": "Returns the part of speech abbreviation for the sense.",
           "description": "Returns the part of speech abbreviation for the sense.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1837,6 +2152,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1867,7 +2188,7 @@
           "signature": "LexiconGetSenseSemanticDomains(sense)",
           "summary": "Returns a list of semantic omain objects belonging to the sense.",
           "description": "Returns a list of semantic omain objects belonging to the sense.\n`ToString()` and `Hvo` are available.\n\nMethods available for SemanticDomainsRC::\n\nCount\nAdd(Hvo)\nContains(Hvo)\nRemove(Hvo)\nRemoveAll()",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1877,6 +2198,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1912,10 +2239,16 @@
           "signature": "LexiconNumberOfEntries()",
           "summary": "Returns the count of lexicon entries",
           "description": "Returns the count of lexicon entries",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1938,7 +2271,7 @@
           "signature": "LexiconSenseAnalysesCount(sense)",
           "summary": "Returns a count of the occurrences of the sense in the text corpus.",
           "description": "Returns a count of the occurrences of the sense in the text corpus.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -1948,6 +2281,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -1974,7 +2313,7 @@
           "signature": "LexiconSetExample(example, newString, languageTagOrHandle=None)",
           "summary": "Set the default vernacular string for `example`:\n- `newString` is the new string value.",
           "description": "Set the default vernacular string for `example`:\n- `newString` is the new string value.\n- `languageTagOrHandle` specifies a non-default writing system.\n\nNOTE: using this function will lose any formatting that might\nhave been present in the example string.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "example",
@@ -1994,6 +2333,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2036,7 +2381,7 @@
           "signature": "LexiconSetFieldInteger(senseOrEntryOrHvo, fieldID, integer)",
           "summary": "Sets the integer value for the given entry/sense and field ID.",
           "description": "Sets the integer value for the given entry/sense and field ID.\nProvided for use with custom fields.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "senseOrEntryOrHvo",
@@ -2056,6 +2401,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2091,7 +2442,7 @@
           "signature": "LexiconSetFieldText(senseOrEntryOrHvo, fieldID, text, languageTagOrHandle=None)",
           "summary": "Set the text value for the given entry/sense and field ID.",
           "description": "Set the text value for the given entry/sense and field ID.\nProvided for use with custom fields.\n\nNOTE: writes the string in one writing system only (defaults\nto the default analysis WS).\n\nFor normal fields the object can be used directly with\n`set_String()`. E.g.::\n\nlexForm = lexEntry.LexemeFormOA\nmkstr = TsStringUtils.MakeString(\"text to write\", WSHandle)\nlexForm.Form.set_String(WSHandle, mkstr)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "senseOrEntryOrHvo",
@@ -2116,6 +2467,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2169,7 +2526,7 @@
           "signature": "LexiconSetLexemeForm(entry, form, languageTagOrHandle=None)",
           "summary": "Set the lexeme form for `entry`:\n- `form` is the new lexeme form string.",
           "description": "Set the lexeme form for `entry`:\n- `form` is the new lexeme form string.\n- `languageTagOrHandle` specifies a non-default writing system.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -2189,6 +2546,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2257,6 +2620,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2317,6 +2686,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2356,7 +2731,7 @@
           "signature": "LexiconSetSenseGloss(sense, gloss, languageTagOrHandle=None)",
           "summary": "Set the default analysis gloss for `sense`:\n- `gloss` is the new gloss string.",
           "description": "Set the default analysis gloss for `sense`:\n- `gloss` is the new gloss string.\n- `languageTagOrHandle` specifies a non-default writing system.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "sense",
@@ -2376,6 +2751,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2440,6 +2821,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2489,6 +2876,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2535,6 +2928,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2562,7 +2961,7 @@
           "signature": "Object(hvoOrGuid)",
           "summary": "Returns the `CmObject` for the given Hvo or guid (`str` or `System.",
           "description": "Returns the `CmObject` for the given Hvo or guid (`str` or `System.Guid`).\nRefer to `.ClassName` to determine the LCM class.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "hvoOrGuid",
@@ -2572,6 +2971,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2608,7 +3013,7 @@
           "signature": "ObjectCountFor(repository)",
           "summary": "Returns the number of objects in `repository`.",
           "description": "Returns the number of objects in `repository`.\n`repository` is specified by the interface class, such as:\n\n- `ITextRepository`\n- `ILexEntryRepository`\n\nAll repository names can be viewed by opening a project in\nLCMBrowser, which can be launched via the Help menu. Add \"I\"\nto the front and import from `SIL.LCModel`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "repository",
@@ -2618,6 +3023,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2644,7 +3055,7 @@
           "signature": "ObjectRepository(repository)",
           "summary": "Returns an object repository.",
           "description": "Returns an object repository.\n`repository` is specified by the interface class, such as:\n\n- `ITextRepository`\n- `ILexEntryRepository`",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "repository",
@@ -2654,6 +3065,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2680,7 +3097,7 @@
           "signature": "ObjectsIn(repository)",
           "summary": "Returns an iterator over all the objects in `repository`.",
           "description": "Returns an iterator over all the objects in `repository`.\n`repository` is specified by the interface class, such as:\n\n- `ITextRepository`\n- `ILexEntryRepository`\n\nAll repository names can be viewed by opening a project in\nLCMBrowser, which can be launched via the Help menu. Add \"I\"\nto the front and import from `SIL.LCModel`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "repository",
@@ -2690,6 +3107,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2716,7 +3139,7 @@
           "signature": "OpenProject(projectName, writeEnabled=False)",
           "summary": "Open a project.",
           "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "projectName",
@@ -2731,6 +3154,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2766,10 +3195,16 @@
           "signature": "ProjectName()",
           "summary": "Returns the display name of the current project.",
           "description": "Returns the display name of the current project.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2792,7 +3227,7 @@
           "signature": "PublicationType(publicationName)",
           "summary": "Returns the `PublicationType` object (a `CmPossibility`) for the\ngiven publication name.",
           "description": "Returns the `PublicationType` object (a `CmPossibility`) for the\ngiven publication name. (A list of publication names can be\nfound using `GetPublications()`.)",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "publicationName",
@@ -2802,6 +3237,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2827,7 +3268,7 @@
           "signature": "ReversalEntries(languageTag)",
           "summary": "Returns an iterator for the reversal entries for `languageTag` (eg 'en').",
           "description": "Returns an iterator for the reversal entries for `languageTag` (eg 'en'). Returns `None` if there is no reversal index for\nthat writing system.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "languageTag",
@@ -2837,6 +3278,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2865,7 +3312,7 @@
           "signature": "ReversalGetForm(entry, languageTagOrHandle=None)",
           "summary": "Returns the citation form for the reversal entry in the default\nvernacular WS or other WS as specified by `languageTagOrHandle`.",
           "description": "Returns the citation form for the reversal entry in the default\nvernacular WS or other WS as specified by `languageTagOrHandle`.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -2880,6 +3327,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2929,7 +3382,7 @@
           "signature": "ReversalIndex(languageTag)",
           "summary": "Returns the reversal index for `languageTag` (eg 'en').",
           "description": "Returns the reversal index for `languageTag` (eg 'en').\nReturns `None` if there is no reversal index for\nthat writing system.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "languageTag",
@@ -2939,6 +3392,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -2967,7 +3426,7 @@
           "signature": "ReversalSetForm(entry, form, languageTagOrHandle=None)",
           "summary": "Sets the default analysis reversal form for the given reversal entry:\n- `form` is the new reversal form string.",
           "description": "Sets the default analysis reversal form for the given reversal entry:\n- `form` is the new reversal form string.\n- `languageTagOrHandle` specifies a non-default writing system.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "entry",
@@ -2987,6 +3446,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -3044,6 +3509,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -3087,10 +3558,16 @@
           "signature": "TextsNumberOfTexts()",
           "summary": "Returns the total number of texts in the project.",
           "description": "Returns the total number of texts in the project.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -3133,6 +3610,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -3175,7 +3658,7 @@
           "signature": "WSHandle(languageTag)",
           "summary": "Returns the handle of the writing system for `languageTag`.",
           "description": "Returns the handle of the writing system for `languageTag`.\nIgnores case and '-'/'_' differences.\nReturns `None` if the language tag is not found.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "languageTag",
@@ -3185,6 +3668,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -3218,7 +3707,7 @@
           "signature": "WSUIName(languageTagOrHandle)",
           "summary": "Returns the UI name of the writing system for the given language tag\nor handle.",
           "description": "Returns the UI name of the writing system for the given language tag\nor handle.\nIgnores case and '-'/'_' differences.\nReturns `None` if the language tag is not found.",
-          "usage_hint": "general",
+          "usage_hint": null,
           "parameters": [
             {
               "name": "languageTagOrHandle",
@@ -3228,6 +3717,12 @@
           ],
           "returns": "",
           "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
           "raises": [],
           "example": "",
           "is_property": false,
@@ -7324,6 +7819,17 @@
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [
+          {
+            "exception": "FP_ParameterError",
+            "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+          }
+        ],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7347,10 +7853,16 @@
       "signature": "InitialiseFWGlobals()",
       "summary": "Initialise F W Globals operation",
       "description": "Initialise F W Globals operation",
-      "usage_hint": "general",
+      "usage_hint": null,
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7374,10 +7886,16 @@
       "signature": "FLExInitialize()",
       "summary": "Initialize the Fieldworks libraries.",
       "description": "Initialize the Fieldworks libraries. An application should call\nthis as the first thing it does.",
-      "usage_hint": "general",
+      "usage_hint": null,
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7401,10 +7919,16 @@
       "signature": "FLExCleanup()",
       "summary": "Close up the Fieldworks libraries.",
       "description": "Close up the Fieldworks libraries. An application should call this\nbefore exiting.",
-      "usage_hint": "general",
+      "usage_hint": null,
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7432,6 +7956,20 @@
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": {
+          "value": "[]",
+          "description": "Empty list when no items"
+        },
+        "failure": [
+          {
+            "exception": "FP_ParameterError",
+            "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+          }
+        ],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7461,7 +7999,7 @@
       "signature": "OpenProject(projectName)",
       "summary": "Open a FieldWorks project.",
       "description": "Open a FieldWorks project.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, opened from the default project location.",
-      "usage_hint": "general",
+      "usage_hint": null,
       "parameters": [
         {
           "name": "projectName",
@@ -7471,6 +8009,12 @@
       ],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7502,6 +8046,12 @@
       "parameters": [],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,
@@ -7525,7 +8075,7 @@
       "signature": "OpenProjectInFW(projectName)",
       "summary": "Performs OpenProjectInFW operation with projectName",
       "description": "Performs OpenProjectInFW operation with projectName",
-      "usage_hint": "general",
+      "usage_hint": null,
       "parameters": [
         {
           "name": "projectName",
@@ -7535,6 +8085,12 @@
       ],
       "returns": "",
       "return_type": "",
+      "output_behavior": {
+        "success": {},
+        "empty": null,
+        "failure": [],
+        "notes": []
+      },
       "raises": [],
       "example": "",
       "is_property": false,

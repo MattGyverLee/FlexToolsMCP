@@ -1,8 +1,26 @@
 {
   "_schema": "common-patterns/1.0",
-  "_generated_at": "2026-02-08T05:43:23.965850+00:00",
+  "_generated_at": "2026-02-08T21:25:16.691064+00:00",
   "by_object": {
     "general": [
+      {
+        "description": "Compare two items and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "def CompareTo(self, sense1, sense2, ops1=None, ops2=None):\n    '''Compare two senses for differences.'''\n    if ops1 is None:\n        ops1 = self\n    if ops2 is None:\n        ops2 = self\n\n    is_different = False\n    differences = {'properties': {}, 'children': {}}\n\n    # Compare properties\n    props1 = ops1.GetSyncableProperties(sense1)\n    props2 = ops2.GetSyncableProperties(sense2)\n\n    for key in set(props1.keys()) | set(props2.keys()):\n        val1 = props1.get(key)\n        val2 = props2.get(key)\n        if val1 != val2:\n            is_different = True\n            differences['properties'][key] = {\n                'source': val1,\n                'target': val2,\n                'type': 'modified'\n            }\n\n    # Compare child sequences (examples)\n    guids1 = {ex.Guid for ex in sense1.ExamplesOS}\n    guids2 = {ex.Guid for ex in sense2.ExamplesOS}\n\n    added = guids2 - guids1\n    removed = guids1 - guids2\n\n    if added or removed:\n        is_different = True\n        differences['children']['Examples'] = {\n            'added': list(added),\n            'removed': list(removed),\n            'modified': []\n        }\n\n    return is_different, differences\n\n        Example Usage (by sync framework):\nfrom flexlibs2.sync import DiffEngine\n\n# Find matching senses by GUID in two projects\nsense1 = project1.Senses.FindByGuid(guid)\nsense2 = project2.Senses.FindByGuid(guid)\n\n# Compare them\nis_diff, diffs = project1.Senses.CompareTo(\n    sense1, sense2,\n    ops1=project1.Senses,\n    ops2=project2.Senses\n)\n\nif is_diff:\n    print(\"Sense has diverged between projects:\")\n    for prop, details in diffs['properties'].items():\n        print(f\"  {prop}: {details['source']} -> {details['target']}\")\n\n    for child_name, child_diffs in diffs['children'].items():\n        if child_diffs['added']:\n            print(f\"  {child_name} added: {len(child_diffs['added'])}\")\n        if child_diffs['removed']:\n            print(f\"  {child_name} removed: {len(child_diffs['removed'])}\")",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Get dictionary of syncable properties for cross-project synchronization.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "def GetSyncableProperties(self, sense):\n    '''Get syncable properties from a sense.'''\n    return {\n        'Gloss': self.GetGloss(sense),\n        'Definition': self.GetDefinition(sense),\n        'PartOfSpeech': self.GetPartOfSpeech(sense),\n        'SemanticDomains': self.GetSemanticDomains(sense),\n        'ExampleCount': sense.ExamplesOS.Count,\n        # Note: Don't include order-dependent items in properties\n        # The sync framework handles OS sequences separately\n    }\n\n        Example Usage (by sync framework):\nfrom flexlibs2.sync import DiffEngine\n\n# Compare senses between two projects\nprops1 = project1.Senses.GetSyncableProperties(sense1)\nprops2 = project2.Senses.GetSyncableProperties(sense2)\n\ndiff_engine = DiffEngine()\nis_different, differences = diff_engine.CompareProperties(\n    props1, props2\n)\n\nif is_different:\n    print(f\"Properties changed: {list(differences.keys())}\")\n    for prop, (old_val, new_val) in differences.items():\n        print(f\"  {prop}: {old_val} -> {new_val}\")",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "GetSyncableProperties"
+      },
       {
         "description": "Move an item to position immediately after another item.",
         "operation": "reorder",
@@ -164,24 +182,6 @@
         "source": "docstring",
         "class": "FLExProject",
         "method": "LexiconDeleteObject"
-      },
-      {
-        "description": "Get all allomorph forms for an entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nforms = project.LexiconGetAllomorphForms(entry)\nprint(forms)\n            ['run', 'ran', 'runn-']",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetAllomorphForms"
-      },
-      {
-        "description": "Get the complex form type of an entry reference.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "for ref in entry.EntryRefsOS:\n    cf_type = project.LexiconGetComplexFormType(ref)\n    if cf_type:\n        print(cf_type.Name.BestAnalysisAlternative.Text)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetComplexFormType"
       }
     ],
     "IText": [
@@ -1059,6 +1059,550 @@
     ]
   },
   "by_operation": {
+    "iterate": [
+      {
+        "description": "Compare two items and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "def CompareTo(self, sense1, sense2, ops1=None, ops2=None):\n    '''Compare two senses for differences.'''\n    if ops1 is None:\n        ops1 = self\n    if ops2 is None:\n        ops2 = self\n\n    is_different = False\n    differences = {'properties': {}, 'children': {}}\n\n    # Compare properties\n    props1 = ops1.GetSyncableProperties(sense1)\n    props2 = ops2.GetSyncableProperties(sense2)\n\n    for key in set(props1.keys()) | set(props2.keys()):\n        val1 = props1.get(key)\n        val2 = props2.get(key)\n        if val1 != val2:\n            is_different = True\n            differences['properties'][key] = {\n                'source': val1,\n                'target': val2,\n                'type': 'modified'\n            }\n\n    # Compare child sequences (examples)\n    guids1 = {ex.Guid for ex in sense1.ExamplesOS}\n    guids2 = {ex.Guid for ex in sense2.ExamplesOS}\n\n    added = guids2 - guids1\n    removed = guids1 - guids2\n\n    if added or removed:\n        is_different = True\n        differences['children']['Examples'] = {\n            'added': list(added),\n            'removed': list(removed),\n            'modified': []\n        }\n\n    return is_different, differences\n\n        Example Usage (by sync framework):\nfrom flexlibs2.sync import DiffEngine\n\n# Find matching senses by GUID in two projects\nsense1 = project1.Senses.FindByGuid(guid)\nsense2 = project2.Senses.FindByGuid(guid)\n\n# Compare them\nis_diff, diffs = project1.Senses.CompareTo(\n    sense1, sense2,\n    ops1=project1.Senses,\n    ops2=project2.Senses\n)\n\nif is_diff:\n    print(\"Sense has diverged between projects:\")\n    for prop, details in diffs['properties'].items():\n        print(f\"  {prop}: {details['source']} -> {details['target']}\")\n\n    for child_name, child_diffs in diffs['children'].items():\n        if child_diffs['added']:\n            print(f\"  {child_name} added: {len(child_diffs['added'])}\")\n        if child_diffs['removed']:\n            print(f\"  {child_name} removed: {len(child_diffs['removed'])}\")",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Get all allomorphs in the entire project.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconAllAllomorphs"
+      },
+      {
+        "description": "Compare two environments and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "env1 = project1_envOps.Find(\"Word Initial\")\nenv2 = project2_envOps.Find(\"Word Initial\")\nis_diff, diffs = project1_envOps.CompareTo(\n    env1, env2,\n    ops1=project1_envOps,\n    ops2=project2_envOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "EnvironmentOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two grammatical categories and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "cat1 = project1_gramCatOps.Find(\"person\")\ncat2 = project2_gramCatOps.Find(\"person\")\nis_diff, diffs = project1_gramCatOps.CompareTo(\n    cat1, cat2,\n    ops1=project1_gramCatOps,\n    ops2=project2_gramCatOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "GramCatOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two inflection classes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "ic1 = project1_inflOps.InflectionClassFind(\"First Declension\")\nic2 = project2_inflOps.InflectionClassFind(\"First Declension\")\nis_diff, diffs = project1_inflOps.CompareTo(\n    ic1, ic2,\n    ops1=project1_inflOps,\n    ops2=project2_inflOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "InflectionFeatureOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two morphological rules and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "rule1 = project1_ruleOps.Find(\"Plural Formation\")\nrule2 = project2_ruleOps.Find(\"Plural Formation\")\nis_diff, diffs = project1_ruleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_ruleOps,\n    ops2=project2_ruleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if a morphological rule is active.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "ruleOps = MorphRuleOperations(project)\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    active = ruleOps.IsActive(rule)\n    status = \"active\" if active else \"inactive\"\n    print(f\"{name}: {status}\")\n            Plural Formation: active\n            Obsolete Rule: inactive\n\n# Check before applying rule\nrule = list(ruleOps.GetAll())[0]\nif ruleOps.IsActive(rule):\n    print(f\"{ruleOps.GetName(rule)} will be applied\")",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "IsActive"
+      },
+      {
+        "description": "Compare two natural classes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "nc1 = project1_ncOps.Find(\"Voiceless Stops\")\nnc2 = project2_ncOps.Find(\"Voiceless Stops\")\nis_diff, diffs = project1_ncOps.CompareTo(\n    nc1, nc2,\n    ops1=project1_ncOps,\n    ops2=project2_ncOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "NaturalClassOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two phonemes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "phoneme1 = project1_phonemeOps.Find(\"/p/\")\nphoneme2 = project2_phonemeOps.Find(\"/p/\")\nis_diff, diffs = project1_phonemeOps.CompareTo(\n    phoneme1, phoneme2,\n    ops1=project1_phonemeOps,\n    ops2=project2_phonemeOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if a phoneme is classified as a consonant.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Filter consonants from phoneme inventory\nconsonants = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        consonants.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Consonants:\", \", \".join(consonants))\n            Consonants: /p/, /t/, /k/, /b/, /d/, /g/, /m/, /n/\n\n# Create consonant natural classes\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        desc = project.Phonemes.GetDescription(phoneme)\n        repr = project.Phonemes.GetRepresentation(phoneme)\n        print(f\"{repr}: {desc}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "IsConsonant"
+      },
+      {
+        "description": "Check if a phoneme is classified as a vowel.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Filter vowels from phoneme inventory\nvowels = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowels.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Vowels:\", \", \".join(vowels))\n            Vowels: /a/, /e/, /i/, /o/, /u/\n\n# Count vowels vs consonants\nvowel_count = 0\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowel_count += 1\nprint(f\"Total vowels: {vowel_count}\")",
+        "source": "docstring",
+        "class": "PhonemeOperations",
+        "method": "IsVowel"
+      },
+      {
+        "description": "Compare two phonological rules and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "rule1 = project1_phonRuleOps.Find(\"Voicing Assimilation\")\nrule2 = project2_phonRuleOps.Find(\"Voicing Assimilation\")\nis_diff, diffs = project1_phonRuleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_phonRuleOps,\n    ops2=project2_phonRuleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "PhonologicalRuleOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two parts of speech and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "POSOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two allomorphs and return their differences.",
+        "operation": "iterate",
+        "object_type": "IMoForm",
+        "code": "allo1 = list(project1.Allomorphs.GetAll(entry1))[0]\nallo2 = list(project2.Allomorphs.GetAll(entry2))[0]\nis_diff, diffs = project1.Allomorphs.CompareTo(allo1, allo2,\n                                                 project1.Allomorphs,\n                                                 project2.Allomorphs)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "source": "docstring",
+        "class": "AllomorphOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Reorder etymologies for a lexical entry.",
+        "operation": "iterate",
+        "object_type": "ILexEtymology",
+        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif len(etymologies) > 1:\n    # Reverse the order\n    etymOps.Reorder(entry, reversed(etymologies))\n    # Verify new order\n    for etym in etymOps.GetAll(entry):\n        print(etymOps.GetSource(etym))",
+        "source": "docstring",
+        "class": "EtymologyOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Reorder senses for a lexical entry.",
+        "operation": "iterate",
+        "object_type": "ILexSense",
+        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif len(senses) > 1:\n    # Reverse the order\n    project.Senses.Reorder(entry, reversed(senses))\n    # Verify new order\n    for sense in project.Senses.GetAll(entry):\n        print(project.Senses.GetGloss(sense))",
+        "source": "docstring",
+        "class": "LexSenseOperations",
+        "method": "Reorder"
+      },
+      {
+        "description": "Compare two agents and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(agent1, agent2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if an agent is a human analyst.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "for agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    if project.Agent.IsHuman(agent):\n        person = project.Agent.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agent.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "IsHuman"
+      },
+      {
+        "description": "Check if an agent is a parser (automated analyzer).",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "parser = project.Agent.Find(\"MyParser\")\nif project.Agent.IsParser(parser):\n    version = project.Agent.GetVersion(parser)\n    print(f\"Parser version: {version}\")\n            Parser version: 1.0.0\n\n# Filter only parsers\nparsers = [a for a in project.Agent.GetAll()\n           if project.Agent.IsParser(a)]\nprint(f\"Found {len(parsers)} parsers\")",
+        "source": "docstring",
+        "class": "AgentOperations",
+        "method": "IsParser"
+      },
+      {
+        "description": "Compare two confidence levels and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(level1, level2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "ConfidenceOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two overlays and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(overlay1, overlay2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "OverlayOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Check if an overlay is currently visible.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "overlay_ops = OverlayOperations(project)\nchart = discourse_ops.GetAllCharts(text)[0]\noverlays = list(overlay_ops.GetAll(chart))\nfor overlay in overlays:\n    name = overlay_ops.GetName(overlay)\n    visible = overlay_ops.IsVisible(overlay)\n    status = \"visible\" if visible else \"hidden\"\n    print(f\"{name}: {status}\")\n            Participants: visible\n            Discourse Features: hidden\n            Theme: visible",
+        "source": "docstring",
+        "class": "OverlayOperations",
+        "method": "IsVisible"
+      },
+      {
+        "description": "Compare two possibility items and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(item1, item2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PossibilityListOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two publications and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(pub1, pub2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PublicationOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two translation types and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(type1, type2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "TranslationTypeOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Link a notebook record to a text.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "# Link record to text\nrecord = project.DataNotebook.Find(\"Interview Notes\")\ntext = project.Texts.Find(\"Interview Recording 1\")\nif text:\n    project.DataNotebook.LinkToText(record, text)\n\n# Link to multiple texts\ntext_titles = [\"Recording 1\", \"Recording 2\", \"Transcription 1\"]\nfor title in text_titles:\n    text = project.Texts.Find(title)\n    if text:\n        project.DataNotebook.LinkToText(record, text)",
+        "source": "docstring",
+        "class": "DataNotebookOperations",
+        "method": "LinkToText"
+      },
+      {
+        "description": "Compare two notes and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(note1, note2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "NoteOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two persons and return detailed differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(person1, person2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
+        "source": "docstring",
+        "class": "PersonOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Compare two filters for differences.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "is_diff, diffs = ops1.CompareTo(filter1, filter2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
+        "source": "docstring",
+        "class": "FilterOperations",
+        "method": "CompareTo"
+      },
+      {
+        "description": "Export a filter definition to a JSON file.",
+        "operation": "iterate",
+        "object_type": "general",
+        "code": "filter_obj = project.Filter.Find(\"Verbs\")\nproject.Filter.ExportFilter(filter_obj, \"/path/to/verbs.json\")\n\n# Export all filters\nfor f in project.Filter.GetAll():\n    name = project.Filter.GetName(f)\n    file_name = f\"{name.replace(' ', '_')}.json\"\n    project.Filter.ExportFilter(f, file_name)",
+        "source": "docstring",
+        "class": "FilterOperations",
+        "method": "ExportFilter"
+      }
+    ],
+    "read": [
+      {
+        "description": "Get dictionary of syncable properties for cross-project synchronization.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "def GetSyncableProperties(self, sense):\n    '''Get syncable properties from a sense.'''\n    return {\n        'Gloss': self.GetGloss(sense),\n        'Definition': self.GetDefinition(sense),\n        'PartOfSpeech': self.GetPartOfSpeech(sense),\n        'SemanticDomains': self.GetSemanticDomains(sense),\n        'ExampleCount': sense.ExamplesOS.Count,\n        # Note: Don't include order-dependent items in properties\n        # The sync framework handles OS sequences separately\n    }\n\n        Example Usage (by sync framework):\nfrom flexlibs2.sync import DiffEngine\n\n# Compare senses between two projects\nprops1 = project1.Senses.GetSyncableProperties(sense1)\nprops2 = project2.Senses.GetSyncableProperties(sense2)\n\ndiff_engine = DiffEngine()\nis_different, differences = diff_engine.CompareProperties(\n    props1, props2\n)\n\nif is_different:\n    print(f\"Properties changed: {list(differences.keys())}\")\n    for prop, (old_val, new_val) in differences.items():\n        print(f\"  {prop}: {old_val} -> {new_val}\")",
+        "source": "docstring",
+        "class": "BaseOperations",
+        "method": "GetSyncableProperties"
+      },
+      {
+        "description": "Extract the audio file path from an audio writing system field.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "# Get audio path from allomorph form\nform = proj.Allomorph.GetForm(allomorph)\naudio_ws = proj.WSHandle(\"en-Zxxx-x-audio\")\naudio_path = proj.GetAudioPath(form, audio_ws)\nif audio_path:\n    print(f\"Audio file: {audio_path}\")\n\n        See also:\n            :meth:`IsAudioWritingSystem` - Check if WS is audio type\n            :meth:`SetAudioPath` - Set audio file path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetAudioPath"
+      },
+      {
+        "description": "Get the full path to the project's LinkedFiles directory.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "proj = FLExProject()\nlinked_files = proj.GetLinkedFilesDir()\nprint(linked_files)\n            C:\\FLExData\\MyProject\\LinkedFiles\n\n        See also:\n            :meth:`MediaOperations.GetInternalPath` - Get relative path within LinkedFiles\n            :meth:`MediaOperations.GetExternalPath` - Get full filesystem path",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "GetLinkedFilesDir"
+      },
+      {
+        "description": "Get all allomorph forms for an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nforms = project.LexiconGetAllomorphForms(entry)\nprint(forms)\n            ['run', 'ran', 'runn-']",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetAllomorphForms"
+      },
+      {
+        "description": "Get the complex form type of an entry reference.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for ref in entry.EntryRefsOS:\n    cf_type = project.LexiconGetComplexFormType(ref)\n    if cf_type:\n        print(cf_type.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetComplexFormType"
+      },
+      {
+        "description": "Get a lexical entry by index.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "first_entry = project.LexiconGetEntry(0)\ntenth_entry = project.LexiconGetEntry(9)\n\n        Warning:\n            Inefficient for large lexicons - iterates through all entries.\n            Consider using LexEntry.Find() or LexEntry.GetAll() instead.",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetEntry"
+      },
+      {
+        "description": "Get the headword of an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexiconGetHeadWord(entry)\nprint(headword)\n            run",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetHeadWord"
+      },
+      {
+        "description": "Get the morph type of a lexical entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nmorph_type = project.LexiconGetMorphType(entry)\nprint(morph_type.Name.BestAnalysisAlternative.Text)\n            stem",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetMorphType"
+      },
+      {
+        "description": "Get all pronunciations for an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nfor pron in project.LexiconGetPronunciations(entry):\n    form = project.Pronunciations.GetForm(pron)\n    print(form)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetPronunciations"
+      },
+      {
+        "description": "Get a sense by index from an entry.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nfirst_sense = project.LexiconGetSense(entry, 0)\nsecond_sense = project.LexiconGetSense(entry, 1)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetSense"
+      },
+      {
+        "description": "Find a sense by its gloss text.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexiconGetSenseByName(entry, \"to move rapidly\")\nif sense:\n    print(f\"Found sense: {sense.Guid}\")",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetSenseByName"
+      },
+      {
+        "description": "Get the variant type of a variant entry reference.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for variant_ref in entry.EntryRefsOS:\n    var_type = project.LexiconGetVariantType(variant_ref)\n    if var_type:\n        print(var_type.Name.BestAnalysisAlternative.Text)",
+        "source": "docstring",
+        "class": "FLExProject",
+        "method": "LexiconGetVariantType"
+      },
+      {
+        "description": "Find a clause marker in a row by its index position.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarker = project.ConstChartClauseMarkers.Find(row, 0)\nif marker:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker references word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all clause markers in a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarkers = project.ConstChartClauseMarkers.GetAll(row)\nfor marker in markers:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker for word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the dependent clauses associated with a clause marker.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\ndependents = project.ConstChartClauseMarkers.GetDependentClauses(marker)\nprint(f\"Marker has {len(dependents)} dependent clauses\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetDependentClauses"
+      },
+      {
+        "description": "Get the word group associated with a clause marker.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\nwg = project.ConstChartClauseMarkers.GetWordGroup(marker)\nif wg:\n    print(f\"Marker references word group {wg.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartClauseMarkerOperations",
+        "method": "GetWordGroup"
+      },
+      {
+        "description": "Find the moved text marker for a word group.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Find(wg)\nif marker:\n    print(\"Word group has moved text marker\")\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text is preposed\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all moved text markers in a constituent chart.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nmarkers = project.ConstChartMovedText.GetAll(chart)\npreposed_count = sum(1 for m in markers\n    if project.ConstChartMovedText.IsPreposed(m))\nprint(f\"Found {preposed_count} preposed markers\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the word group associated with a moved text marker.",
+        "operation": "read",
+        "object_type": "IText",
+        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    word_group = project.ConstChartMovedText.GetWordGroup(marker)\n    if word_group:\n        print(f\"Marker belongs to word group {word_group.Hvo}\")",
+        "source": "docstring",
+        "class": "ConstChartMovedTextOperations",
+        "method": "GetWordGroup"
+      },
+      {
+        "description": "Find a constituent chart by its name.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nif chart:\n    name = project.ConstCharts.GetName(chart)\n    print(f\"Found: {name}\")\n            Found: Genesis 1 Analysis",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Find a constituent chart by its HVO (database ID).",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.FindByHvo(12345)\nif chart:\n    print(\"Chart found\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "FindByHvo"
+      },
+      {
+        "description": "Get all constituent charts in the project.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "for chart in project.ConstCharts.GetAll():\n    name = project.ConstCharts.GetName(chart)\n    row_count = chart.RowsOS.Count\n    print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the name of a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nname = project.ConstCharts.GetName(chart)\nprint(name)\n            Genesis 1 Analysis",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetName"
+      },
+      {
+        "description": "Get all rows in a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstCharts.GetRows(chart)\nfor row in rows:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row: {label}\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetRows"
+      },
+      {
+        "description": "Get the template associated with a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntemplate = project.ConstCharts.GetTemplate(chart)\nif template:\n    print(\"Chart has template\")",
+        "source": "docstring",
+        "class": "ConstChartOperations",
+        "method": "GetTemplate"
+      },
+      {
+        "description": "Find a row in a chart by its index position.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrow = project.ConstChartRows.Find(chart, 0)  # First row\nif row:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"First row: {label}\")",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "Find"
+      },
+      {
+        "description": "Get all rows in a constituent chart.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstChartRows.GetAll(chart)\nfor i, row in enumerate(rows):\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row {i}: {label}\")\n            Row 0: Verse 1\n            Row 1: Verse 2\n            Row 2: Verse 3",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetAll"
+      },
+      {
+        "description": "Get the label of a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nlabel = project.ConstChartRows.GetLabel(row)\nprint(label)\n            Verse 1",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetLabel"
+      },
+      {
+        "description": "Get the notes of a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nnotes = project.ConstChartRows.GetNotes(row)\nprint(notes)\n            Complex sentence with embedded clause",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetNotes"
+      },
+      {
+        "description": "Get all word groups in a chart row.",
+        "operation": "read",
+        "object_type": "general",
+        "code": "row = project.ConstChartRows.Find(chart, 0)\nword_groups = project.ConstChartRows.GetWordGroups(row)\nfor wg in word_groups:\n    # Process word group\n    pass",
+        "source": "docstring",
+        "class": "ConstChartRowOperations",
+        "method": "GetWordGroups"
+      }
+    ],
     "reorder": [
       {
         "description": "Move an item to position immediately after another item.",
@@ -1459,278 +2003,6 @@
         "method": "Duplicate"
       }
     ],
-    "read": [
-      {
-        "description": "Extract the audio file path from an audio writing system field.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "# Get audio path from allomorph form\nform = proj.Allomorph.GetForm(allomorph)\naudio_ws = proj.WSHandle(\"en-Zxxx-x-audio\")\naudio_path = proj.GetAudioPath(form, audio_ws)\nif audio_path:\n    print(f\"Audio file: {audio_path}\")\n\n        See also:\n            :meth:`IsAudioWritingSystem` - Check if WS is audio type\n            :meth:`SetAudioPath` - Set audio file path",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "GetAudioPath"
-      },
-      {
-        "description": "Get the full path to the project's LinkedFiles directory.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "proj = FLExProject()\nlinked_files = proj.GetLinkedFilesDir()\nprint(linked_files)\n            C:\\FLExData\\MyProject\\LinkedFiles\n\n        See also:\n            :meth:`MediaOperations.GetInternalPath` - Get relative path within LinkedFiles\n            :meth:`MediaOperations.GetExternalPath` - Get full filesystem path",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "GetLinkedFilesDir"
-      },
-      {
-        "description": "Get all allomorph forms for an entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nforms = project.LexiconGetAllomorphForms(entry)\nprint(forms)\n            ['run', 'ran', 'runn-']",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetAllomorphForms"
-      },
-      {
-        "description": "Get the complex form type of an entry reference.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "for ref in entry.EntryRefsOS:\n    cf_type = project.LexiconGetComplexFormType(ref)\n    if cf_type:\n        print(cf_type.Name.BestAnalysisAlternative.Text)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetComplexFormType"
-      },
-      {
-        "description": "Get a lexical entry by index.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "first_entry = project.LexiconGetEntry(0)\ntenth_entry = project.LexiconGetEntry(9)\n\n        Warning:\n            Inefficient for large lexicons - iterates through all entries.\n            Consider using LexEntry.Find() or LexEntry.GetAll() instead.",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetEntry"
-      },
-      {
-        "description": "Get the headword of an entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexiconGetHeadWord(entry)\nprint(headword)\n            run",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetHeadWord"
-      },
-      {
-        "description": "Get the morph type of a lexical entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nmorph_type = project.LexiconGetMorphType(entry)\nprint(morph_type.Name.BestAnalysisAlternative.Text)\n            stem",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetMorphType"
-      },
-      {
-        "description": "Get all pronunciations for an entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nfor pron in project.LexiconGetPronunciations(entry):\n    form = project.Pronunciations.GetForm(pron)\n    print(form)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetPronunciations"
-      },
-      {
-        "description": "Get a sense by index from an entry.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nfirst_sense = project.LexiconGetSense(entry, 0)\nsecond_sense = project.LexiconGetSense(entry, 1)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetSense"
-      },
-      {
-        "description": "Find a sense by its gloss text.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexiconGetSenseByName(entry, \"to move rapidly\")\nif sense:\n    print(f\"Found sense: {sense.Guid}\")",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetSenseByName"
-      },
-      {
-        "description": "Get the variant type of a variant entry reference.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "for variant_ref in entry.EntryRefsOS:\n    var_type = project.LexiconGetVariantType(variant_ref)\n    if var_type:\n        print(var_type.Name.BestAnalysisAlternative.Text)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconGetVariantType"
-      },
-      {
-        "description": "Find a clause marker in a row by its index position.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarker = project.ConstChartClauseMarkers.Find(row, 0)\nif marker:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker references word group {wg.Hvo}\")",
-        "source": "docstring",
-        "class": "ConstChartClauseMarkerOperations",
-        "method": "Find"
-      },
-      {
-        "description": "Get all clause markers in a chart row.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "row = project.ConstChartRows.Find(chart, 0)\nmarkers = project.ConstChartClauseMarkers.GetAll(row)\nfor marker in markers:\n    wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n    print(f\"Marker for word group {wg.Hvo}\")",
-        "source": "docstring",
-        "class": "ConstChartClauseMarkerOperations",
-        "method": "GetAll"
-      },
-      {
-        "description": "Get the dependent clauses associated with a clause marker.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\ndependents = project.ConstChartClauseMarkers.GetDependentClauses(marker)\nprint(f\"Marker has {len(dependents)} dependent clauses\")",
-        "source": "docstring",
-        "class": "ConstChartClauseMarkerOperations",
-        "method": "GetDependentClauses"
-      },
-      {
-        "description": "Get the word group associated with a clause marker.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "marker = project.ConstChartClauseMarkers.Find(row, 0)\nwg = project.ConstChartClauseMarkers.GetWordGroup(marker)\nif wg:\n    print(f\"Marker references word group {wg.Hvo}\")",
-        "source": "docstring",
-        "class": "ConstChartClauseMarkerOperations",
-        "method": "GetWordGroup"
-      },
-      {
-        "description": "Find the moved text marker for a word group.",
-        "operation": "read",
-        "object_type": "IText",
-        "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Find(wg)\nif marker:\n    print(\"Word group has moved text marker\")\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text is preposed\")",
-        "source": "docstring",
-        "class": "ConstChartMovedTextOperations",
-        "method": "Find"
-      },
-      {
-        "description": "Get all moved text markers in a constituent chart.",
-        "operation": "read",
-        "object_type": "IText",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nmarkers = project.ConstChartMovedText.GetAll(chart)\npreposed_count = sum(1 for m in markers\n    if project.ConstChartMovedText.IsPreposed(m))\nprint(f\"Found {preposed_count} preposed markers\")",
-        "source": "docstring",
-        "class": "ConstChartMovedTextOperations",
-        "method": "GetAll"
-      },
-      {
-        "description": "Get the word group associated with a moved text marker.",
-        "operation": "read",
-        "object_type": "IText",
-        "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    word_group = project.ConstChartMovedText.GetWordGroup(marker)\n    if word_group:\n        print(f\"Marker belongs to word group {word_group.Hvo}\")",
-        "source": "docstring",
-        "class": "ConstChartMovedTextOperations",
-        "method": "GetWordGroup"
-      },
-      {
-        "description": "Find a constituent chart by its name.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nif chart:\n    name = project.ConstCharts.GetName(chart)\n    print(f\"Found: {name}\")\n            Found: Genesis 1 Analysis",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "Find"
-      },
-      {
-        "description": "Find a constituent chart by its HVO (database ID).",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.FindByHvo(12345)\nif chart:\n    print(\"Chart found\")",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "FindByHvo"
-      },
-      {
-        "description": "Get all constituent charts in the project.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "for chart in project.ConstCharts.GetAll():\n    name = project.ConstCharts.GetName(chart)\n    row_count = chart.RowsOS.Count\n    print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "GetAll"
-      },
-      {
-        "description": "Get the name of a constituent chart.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nname = project.ConstCharts.GetName(chart)\nprint(name)\n            Genesis 1 Analysis",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "GetName"
-      },
-      {
-        "description": "Get all rows in a constituent chart.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstCharts.GetRows(chart)\nfor row in rows:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row: {label}\")",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "GetRows"
-      },
-      {
-        "description": "Get the template associated with a constituent chart.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntemplate = project.ConstCharts.GetTemplate(chart)\nif template:\n    print(\"Chart has template\")",
-        "source": "docstring",
-        "class": "ConstChartOperations",
-        "method": "GetTemplate"
-      },
-      {
-        "description": "Find a row in a chart by its index position.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrow = project.ConstChartRows.Find(chart, 0)  # First row\nif row:\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"First row: {label}\")",
-        "source": "docstring",
-        "class": "ConstChartRowOperations",
-        "method": "Find"
-      },
-      {
-        "description": "Get all rows in a constituent chart.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nrows = project.ConstChartRows.GetAll(chart)\nfor i, row in enumerate(rows):\n    label = project.ConstChartRows.GetLabel(row)\n    print(f\"Row {i}: {label}\")\n            Row 0: Verse 1\n            Row 1: Verse 2\n            Row 2: Verse 3",
-        "source": "docstring",
-        "class": "ConstChartRowOperations",
-        "method": "GetAll"
-      },
-      {
-        "description": "Get the label of a chart row.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "row = project.ConstChartRows.Find(chart, 0)\nlabel = project.ConstChartRows.GetLabel(row)\nprint(label)\n            Verse 1",
-        "source": "docstring",
-        "class": "ConstChartRowOperations",
-        "method": "GetLabel"
-      },
-      {
-        "description": "Get the notes of a chart row.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "row = project.ConstChartRows.Find(chart, 0)\nnotes = project.ConstChartRows.GetNotes(row)\nprint(notes)\n            Complex sentence with embedded clause",
-        "source": "docstring",
-        "class": "ConstChartRowOperations",
-        "method": "GetNotes"
-      },
-      {
-        "description": "Get all word groups in a chart row.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "row = project.ConstChartRows.Find(chart, 0)\nword_groups = project.ConstChartRows.GetWordGroups(row)\nfor wg in word_groups:\n    # Process word group\n    pass",
-        "source": "docstring",
-        "class": "ConstChartRowOperations",
-        "method": "GetWordGroups"
-      },
-      {
-        "description": "Find a chart tag by its name.",
-        "operation": "read",
-        "object_type": "general",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntag = project.ConstChartTags.Find(chart, \"Topic\")\nif tag:\n    desc = project.ConstChartTags.GetDescription(tag)\n    print(f\"Tag: {desc}\")",
-        "source": "docstring",
-        "class": "ConstChartTagOperations",
-        "method": "Find"
-      }
-    ],
     "create": [
       {
         "description": "Add an allomorph to an entry.",
@@ -2001,278 +2273,6 @@
         "source": "docstring",
         "class": "AllomorphOperations",
         "method": "Create"
-      }
-    ],
-    "iterate": [
-      {
-        "description": "Get all allomorphs in the entire project.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
-        "source": "docstring",
-        "class": "FLExProject",
-        "method": "LexiconAllAllomorphs"
-      },
-      {
-        "description": "Compare two environments and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "env1 = project1_envOps.Find(\"Word Initial\")\nenv2 = project2_envOps.Find(\"Word Initial\")\nis_diff, diffs = project1_envOps.CompareTo(\n    env1, env2,\n    ops1=project1_envOps,\n    ops2=project2_envOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "EnvironmentOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two grammatical categories and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "cat1 = project1_gramCatOps.Find(\"person\")\ncat2 = project2_gramCatOps.Find(\"person\")\nis_diff, diffs = project1_gramCatOps.CompareTo(\n    cat1, cat2,\n    ops1=project1_gramCatOps,\n    ops2=project2_gramCatOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "GramCatOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two inflection classes and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "ic1 = project1_inflOps.InflectionClassFind(\"First Declension\")\nic2 = project2_inflOps.InflectionClassFind(\"First Declension\")\nis_diff, diffs = project1_inflOps.CompareTo(\n    ic1, ic2,\n    ops1=project1_inflOps,\n    ops2=project2_inflOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "InflectionFeatureOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two morphological rules and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "rule1 = project1_ruleOps.Find(\"Plural Formation\")\nrule2 = project2_ruleOps.Find(\"Plural Formation\")\nis_diff, diffs = project1_ruleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_ruleOps,\n    ops2=project2_ruleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "MorphRuleOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Check if a morphological rule is active.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    active = ruleOps.IsActive(rule)\n    status = \"active\" if active else \"inactive\"\n    print(f\"{name}: {status}\")\n            Plural Formation: active\n            Obsolete Rule: inactive\n\n# Check before applying rule\nrule = list(ruleOps.GetAll())[0]\nif ruleOps.IsActive(rule):\n    print(f\"{ruleOps.GetName(rule)} will be applied\")",
-        "source": "docstring",
-        "class": "MorphRuleOperations",
-        "method": "IsActive"
-      },
-      {
-        "description": "Compare two natural classes and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "nc1 = project1_ncOps.Find(\"Voiceless Stops\")\nnc2 = project2_ncOps.Find(\"Voiceless Stops\")\nis_diff, diffs = project1_ncOps.CompareTo(\n    nc1, nc2,\n    ops1=project1_ncOps,\n    ops2=project2_ncOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "NaturalClassOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two phonemes and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "phoneme1 = project1_phonemeOps.Find(\"/p/\")\nphoneme2 = project2_phonemeOps.Find(\"/p/\")\nis_diff, diffs = project1_phonemeOps.CompareTo(\n    phoneme1, phoneme2,\n    ops1=project1_phonemeOps,\n    ops2=project2_phonemeOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "PhonemeOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Check if a phoneme is classified as a consonant.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "# Filter consonants from phoneme inventory\nconsonants = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        consonants.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Consonants:\", \", \".join(consonants))\n            Consonants: /p/, /t/, /k/, /b/, /d/, /g/, /m/, /n/\n\n# Create consonant natural classes\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsConsonant(phoneme):\n        desc = project.Phonemes.GetDescription(phoneme)\n        repr = project.Phonemes.GetRepresentation(phoneme)\n        print(f\"{repr}: {desc}\")",
-        "source": "docstring",
-        "class": "PhonemeOperations",
-        "method": "IsConsonant"
-      },
-      {
-        "description": "Check if a phoneme is classified as a vowel.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "# Filter vowels from phoneme inventory\nvowels = []\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowels.append(project.Phonemes.GetRepresentation(phoneme))\nprint(\"Vowels:\", \", \".join(vowels))\n            Vowels: /a/, /e/, /i/, /o/, /u/\n\n# Count vowels vs consonants\nvowel_count = 0\nfor phoneme in project.Phonemes.GetAll():\n    if project.Phonemes.IsVowel(phoneme):\n        vowel_count += 1\nprint(f\"Total vowels: {vowel_count}\")",
-        "source": "docstring",
-        "class": "PhonemeOperations",
-        "method": "IsVowel"
-      },
-      {
-        "description": "Compare two phonological rules and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "rule1 = project1_phonRuleOps.Find(\"Voicing Assimilation\")\nrule2 = project2_phonRuleOps.Find(\"Voicing Assimilation\")\nis_diff, diffs = project1_phonRuleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_phonRuleOps,\n    ops2=project2_phonRuleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "PhonologicalRuleOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two parts of speech and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "POSOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two allomorphs and return their differences.",
-        "operation": "iterate",
-        "object_type": "IMoForm",
-        "code": "allo1 = list(project1.Allomorphs.GetAll(entry1))[0]\nallo2 = list(project2.Allomorphs.GetAll(entry2))[0]\nis_diff, diffs = project1.Allomorphs.CompareTo(allo1, allo2,\n                                                 project1.Allomorphs,\n                                                 project2.Allomorphs)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "source": "docstring",
-        "class": "AllomorphOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Reorder etymologies for a lexical entry.",
-        "operation": "iterate",
-        "object_type": "ILexEtymology",
-        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif len(etymologies) > 1:\n    # Reverse the order\n    etymOps.Reorder(entry, reversed(etymologies))\n    # Verify new order\n    for etym in etymOps.GetAll(entry):\n        print(etymOps.GetSource(etym))",
-        "source": "docstring",
-        "class": "EtymologyOperations",
-        "method": "Reorder"
-      },
-      {
-        "description": "Reorder senses for a lexical entry.",
-        "operation": "iterate",
-        "object_type": "ILexSense",
-        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif len(senses) > 1:\n    # Reverse the order\n    project.Senses.Reorder(entry, reversed(senses))\n    # Verify new order\n    for sense in project.Senses.GetAll(entry):\n        print(project.Senses.GetGloss(sense))",
-        "source": "docstring",
-        "class": "LexSenseOperations",
-        "method": "Reorder"
-      },
-      {
-        "description": "Compare two agents and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(agent1, agent2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "AgentOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Check if an agent is a human analyst.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "for agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    if project.Agent.IsHuman(agent):\n        person = project.Agent.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agent.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
-        "source": "docstring",
-        "class": "AgentOperations",
-        "method": "IsHuman"
-      },
-      {
-        "description": "Check if an agent is a parser (automated analyzer).",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "parser = project.Agent.Find(\"MyParser\")\nif project.Agent.IsParser(parser):\n    version = project.Agent.GetVersion(parser)\n    print(f\"Parser version: {version}\")\n            Parser version: 1.0.0\n\n# Filter only parsers\nparsers = [a for a in project.Agent.GetAll()\n           if project.Agent.IsParser(a)]\nprint(f\"Found {len(parsers)} parsers\")",
-        "source": "docstring",
-        "class": "AgentOperations",
-        "method": "IsParser"
-      },
-      {
-        "description": "Compare two confidence levels and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(level1, level2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "ConfidenceOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two overlays and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(overlay1, overlay2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "OverlayOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Check if an overlay is currently visible.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "overlay_ops = OverlayOperations(project)\nchart = discourse_ops.GetAllCharts(text)[0]\noverlays = list(overlay_ops.GetAll(chart))\nfor overlay in overlays:\n    name = overlay_ops.GetName(overlay)\n    visible = overlay_ops.IsVisible(overlay)\n    status = \"visible\" if visible else \"hidden\"\n    print(f\"{name}: {status}\")\n            Participants: visible\n            Discourse Features: hidden\n            Theme: visible",
-        "source": "docstring",
-        "class": "OverlayOperations",
-        "method": "IsVisible"
-      },
-      {
-        "description": "Compare two possibility items and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(item1, item2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "PossibilityListOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two publications and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(pub1, pub2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "PublicationOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two translation types and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(type1, type2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "TranslationTypeOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Link a notebook record to a text.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "# Link record to text\nrecord = project.DataNotebook.Find(\"Interview Notes\")\ntext = project.Texts.Find(\"Interview Recording 1\")\nif text:\n    project.DataNotebook.LinkToText(record, text)\n\n# Link to multiple texts\ntext_titles = [\"Recording 1\", \"Recording 2\", \"Transcription 1\"]\nfor title in text_titles:\n    text = project.Texts.Find(title)\n    if text:\n        project.DataNotebook.LinkToText(record, text)",
-        "source": "docstring",
-        "class": "DataNotebookOperations",
-        "method": "LinkToText"
-      },
-      {
-        "description": "Compare two notes and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(note1, note2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "NoteOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two persons and return detailed differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(person1, person2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
-        "source": "docstring",
-        "class": "PersonOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Compare two filters for differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(filter1, filter2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
-        "source": "docstring",
-        "class": "FilterOperations",
-        "method": "CompareTo"
-      },
-      {
-        "description": "Export a filter definition to a JSON file.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "filter_obj = project.Filter.Find(\"Verbs\")\nproject.Filter.ExportFilter(filter_obj, \"/path/to/verbs.json\")\n\n# Export all filters\nfor f in project.Filter.GetAll():\n    name = project.Filter.GetName(f)\n    file_name = f\"{name.replace(' ', '_')}.json\"\n    project.Filter.ExportFilter(f, file_name)",
-        "source": "docstring",
-        "class": "FilterOperations",
-        "method": "ExportFilter"
-      },
-      {
-        "description": "Compare two media files for differences.",
-        "operation": "iterate",
-        "object_type": "general",
-        "code": "is_diff, diffs = ops1.CompareTo(media1, media2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
-        "source": "docstring",
-        "class": "MediaOperations",
-        "method": "CompareTo"
       }
     ],
     "delete": [
@@ -2850,15 +2850,15 @@
     ]
   },
   "statistics": {
-    "total_patterns": 1094,
+    "total_patterns": 1096,
     "unique_patterns": 115,
     "objects_covered": 10,
     "operations": [
+      "iterate",
+      "read",
       "reorder",
       "general",
-      "read",
       "create",
-      "iterate",
       "delete",
       "update",
       "merge"

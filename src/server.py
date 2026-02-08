@@ -428,10 +428,10 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
                         "description": "Output type: 'auto' (recommended - picks based on complexity), 'operation' (quick one-off task), 'module' (reusable FlexTools script)",
                         "default": "auto"
                     },
-                    "api_flavor": {
+                    "api_mode": {
                         "type": "string",
                         "enum": ["flexlibs2", "flexlibs_stable", "liblcm"],
-                        "description": "API flavor: 'flexlibs2' (recommended, ~1400 methods), 'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)",
+                        "description": "API mode: 'flexlibs2' (recommended, ~1400 methods), 'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)",
                         "default": "flexlibs2"
                     }
                 },
@@ -632,7 +632,7 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
         ),
         Tool(
             name="run_module",
-            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Complete discovery workflow first (search_by_capability -> get_navigation_path -> get_object_api -> resolve_property -> find_examples). Use get_module_template for boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True. Helpers available: is_empty_multistring(text) for checking empty multistring fields (handles FLEx '***' placeholder).",
+            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Complete discovery workflow first. Use get_module_template for boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -700,18 +700,7 @@ PREREQUISITE WORKFLOW - Do these steps FIRST:
 
 Skipping these steps often leads to: wrong functions, runtime errors, data corruption.
 
-IMPORTANT - Empty Value Handling:
-- Raw LCM properties (e.g., sense.Definition.BestAnalysisAlternative.Text) return '***' for empty values
-- flexlibs2 Operations methods (e.g., sense_ops.GetDefinition(sense)) return '' (empty string)
-
-Prefer flexlibs2 wrapper methods - they handle the '***' conversion automatically:
-  RECOMMENDED: definition = sense_ops.GetDefinition(sense)
-  AVOID:       definition = sense.Definition.BestAnalysisAlternative.Text
-
-If you must use raw LCM access, use the is_empty_multistring() helper.
-
-Available variables: project, report (.Info/.Warning/.Error), write_enabled, safe_str()
-Helpers: is_empty_multistring(text) - checks for empty multistring (handles FLEx '***' placeholder)
+Available: project, report, write_enabled, safe_str(), is_empty_multistring()
 Auto-imported: All flexlibs2 Operations classes, FLExProject, FP_* exceptions
 
 ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled=True.""",
@@ -851,18 +840,18 @@ async def handle_start(args: dict) -> list[TextContent]:
     """Unified entry point that orchestrates the discovery workflow."""
     task = args["task"]
     output_type = args.get("output_type", "auto")
-    api_flavor = args.get("api_flavor", "flexlibs2")
+    api_mode = args.get("api_mode", "flexlibs2")
 
     result = {
         "task": task,
         "output_type": output_type,
-        "api_flavor": api_flavor,
+        "api_mode": api_mode,
         "workflow_completed": True,
         "steps": {}
     }
 
     # Step 1: Search for relevant capabilities
-    search_args = {"query": task, "max_results": 10, "api_mode": api_flavor}
+    search_args = {"query": task, "max_results": 10, "api_mode": api_mode}
     search_result = await handle_search_by_capability(search_args)
     search_data = json.loads(search_result[0].text)
 
@@ -1032,14 +1021,14 @@ async def handle_start(args: dict) -> list[TextContent]:
     result["recommendation"] = {
         "output_type": recommended_output,
         "reason": reason,
-        "api_flavor": api_flavor
+        "api_mode": api_mode
     }
 
     # Step 6: Generate code skeleton
     if recommended_output == "operation":
-        skeleton = generate_operation_skeleton(task, discovered_apis, api_flavor)
+        skeleton = generate_operation_skeleton(task, discovered_apis, api_mode)
     else:
-        skeleton = generate_module_skeleton(task, discovered_apis, api_flavor)
+        skeleton = generate_module_skeleton(task, discovered_apis, api_mode)
 
     result["code_skeleton"] = skeleton
 
@@ -1059,227 +1048,143 @@ async def handle_start(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
 
-def generate_operation_skeleton(task: str, apis: list, flavor: str) -> str:
-    """Generate a code skeleton for run_operation based on API flavor."""
-    # Get the primary API
+def generate_operation_skeleton(task: str, apis: list, mode: str) -> str:
+    """Generate a code skeleton for run_operation based on API mode.
+
+    Modes represent different API strategies:
+    - flexlibs2: Operations classes from flexlibs2_api.json
+    - flexlibs_stable: FLExProject methods + LibLCM fallback
+    - liblcm: Raw .NET interfaces from liblcm_api.json
+    """
     primary_api = apis[0] if apis else {"entity": "LexEntryOperations", "method": "GetAll"}
     entity = primary_api.get("entity", "LexEntryOperations")
 
-    if flavor == "flexlibs2":
-        # FlexLibs2 mode: Use wrapper methods that handle '***' automatically
+    if mode == "flexlibs2":
+        # FlexLibs2: Operations classes (flexlibs2_api.json)
         skeleton = f'''# Task: {task}
-# Mode: FlexLibs2 (safest - handles empty values automatically)
-#
-# FlexLibs2 Operations methods return '' for empty values (not '***')
-# This is the recommended approach - no special handling needed.
-
+# API: FlexLibs2 Operations classes
 ops = {entity}(project)
-sense_ops = LexSenseOperations(project)
 
-for entry in ops.GetAll():
-    for sense in entry.SensesOS:
-        # FlexLibs2 methods handle '***' automatically
-        definition = sense_ops.GetDefinition(sense)
-        if not definition:  # Simple empty check works
-            report.Info("Missing definition")
+for item in ops.GetAll():
+    report.Info(f"Processing: {{item}}")
 
-# If modifying data, check write_enabled first:
 # if write_enabled:
-#     ops.SomeModifyingMethod(item, ...)
-# else:
-#     report.Info(f"[DRY RUN] Would modify: {{item}}")
+#     ops.SetXxx(), ops.Create(), ops.Delete()
 '''
-    elif flavor == "flexlibs_stable":
-        # FlexLibs stable mode: Use flexlibs with LCM fallback
+    elif mode == "flexlibs_stable":
+        # FlexLibs stable: FLExProject + LCM fallback
         skeleton = f'''# Task: {task}
-# Mode: FlexLibs Stable with LibLCM fallback
-#
-# FlexLibs stable methods (BestStr, LexiconGetFieldText, etc.) handle '***' automatically.
-# For direct LCM access, use is_empty_multistring() to check for empty values.
-
-from flexlibs import FLExProject
-
-# FlexLibs stable helper functions handle '***' automatically
-entry_ops = {entity}(project)
-
-for entry in entry_ops.GetAll():
-    # When using raw LCM properties, always check for '***'
+# API: FLExProject methods + LibLCM fallback
+for entry in project.LexiconAllEntries():
+    headword = project.LexiconGetHeadword(entry)
+    # Fallback to LibLCM for properties not in FLExProject
     for sense in entry.SensesOS:
-        raw_text = sense.Definition.BestAnalysisAlternative.Text
-        if is_empty_multistring(raw_text):
-            report.Info("Definition is empty")
-        else:
-            report.Info(f"Definition: {{raw_text}}")
-
-# If modifying data, check write_enabled first:
-# if write_enabled:
-#     ...
+        report.Info(f"{{headword}}: sense")
 '''
     else:
-        # LibLCM mode: Must always handle '***' placeholder
+        # LibLCM: Raw .NET interfaces (liblcm_api.json)
         skeleton = f'''# Task: {task}
-# Mode: Pure LibLCM
-#
-# CRITICAL: Raw LCM returns '***' for empty multilingual fields!
-# Always use is_empty_multistring() or normalize_text() when reading text.
-#
-# Available helpers:
-#   is_empty_multistring(text) - Returns True if text is empty or '***'
-#   normalize_text(text) - Converts '***' to '' (from flexlibs2.code.Shared.string_utils)
-
-for entry in project.LexiconAllEntries():
+# API: Raw LibLCM interfaces
+lexDb = project.lp.LexDbOA
+for entry in lexDb.Entries:
+    headword = entry.HeadWord.Text if entry.HeadWord else ""
     for sense in entry.SensesOS:
-        # ALWAYS check for '***' when using raw LCM access
-        raw_text = sense.Definition.BestAnalysisAlternative.Text
-        if is_empty_multistring(raw_text):
-            report.Info("Definition is empty")
-        else:
-            # Safe to use the text
-            report.Info(f"Definition: {{raw_text}}")
-
-# For setting values, raw LCM access is fine - no '***' handling needed
-# if write_enabled:
-#     sense.Definition.set_String(ws_handle, tss_builder.GetString())
+        report.Info(f"{{headword}}: sense")
 '''
     return skeleton
 
 
-def generate_module_skeleton(task: str, apis: list, flavor: str) -> str:
-    """Generate a code skeleton for a FlexTools module based on API flavor."""
+def generate_module_skeleton(task: str, apis: list, mode: str) -> str:
+    """Generate a code skeleton for a FlexTools module based on API mode.
+
+    Modes represent different API strategies:
+    - flexlibs2: Operations classes from flexlibs2_api.json
+    - flexlibs_stable: FLExProject methods from flexlibs_api.json
+    - liblcm: Raw .NET interfaces from liblcm_api.json
+    """
     primary_api = apis[0] if apis else {"entity": "LexEntryOperations", "method": "GetAll"}
     entity = primary_api.get("entity", "LexEntryOperations")
 
-    # Common module header
-    header = f'''# -*- coding: utf-8 -*-
-#
-#   Task: {task}
-#   Generated skeleton - Mode: {flavor}
-#
-'''
-
-    # Common docs block
-    docs_block = f'''
-#----------------------------------------------------------------
-# Documentation
-#----------------------------------------------------------------
-
-docs = {{
+    docs_block = f'''docs = {{
     'moduleName': "CustomModule",
     'moduleVersion': 1,
-    'moduleModifiesDB': True,  # Set to False for read-only
+    'moduleModifiesDB': True,
     'moduleSynopsis': "{task}",
-    'moduleDescription': "Generated module skeleton",
 }}
 '''
 
-    # Footer
     footer = '''
-#----------------------------------------------------------------
-# Entry point (required by FlexTools)
-#----------------------------------------------------------------
-
 FlexToolsModule = FlexToolsModuleClass(runFunction=Main, docs=docs)
 '''
 
-    if flavor == "flexlibs2":
-        # FlexLibs2 mode: safest approach
-        skeleton = header + '''# FlexLibs2 Operations handle empty values automatically (no '***' issues)
-
+    if mode == "flexlibs2":
+        # FlexLibs2: Operations classes with clean Python APIs
+        # See flexlibs2_api.json for available classes and methods
+        skeleton = f'''# Task: {task}
+# API: FlexLibs2 Operations classes (flexlibs2_api.json)
 from flextoolslib import *
-from flexlibs2 import LexEntryOperations, LexSenseOperations
-''' + docs_block + f'''
-#----------------------------------------------------------------
-# Main Processing
-#----------------------------------------------------------------
+from flexlibs2 import {entity}
+# Available: LexEntryOperations, LexSenseOperations, POSOperations,
+#            TextOperations, WordformOperations, SemanticDomainOperations, etc.
 
+{docs_block}
 def Main(project, report, modifyAllowed):
-    entry_ops = LexEntryOperations(project)
-    sense_ops = LexSenseOperations(project)
+    ops = {entity}(project)
 
-    for entry in entry_ops.GetAll():
-        for sense in entry.SensesOS:
-            # FlexLibs2 methods return '' for empty (not '***')
-            definition = sense_ops.GetDefinition(sense)
-            if not definition:  # Simple empty check works
-                report.Info("Missing definition")
+    # Operations class methods: GetAll(), Find(), Create(), Get*(), Set*()
+    for item in ops.GetAll():
+        report.Info(f"Processing: {{item}}")
 
         if modifyAllowed:
-            pass  # Modify data here
-        else:
-            report.Info(f"[DRY RUN] Would process: {{entry}}")
-''' + footer
+            pass  # ops.SetXxx(), ops.Create(), ops.Delete()
+{footer}'''
 
-    elif flavor == "flexlibs_stable":
-        # FlexLibs stable mode
-        skeleton = header + '''# FlexLibs stable with LCM fallback
-# FlexLibs methods like BestStr() handle '***' automatically
-# For raw LCM access, always check for '***'
-
+    elif mode == "flexlibs_stable":
+        # FlexLibs stable: FLExProject methods + LibLCM fallback
+        # Primary: flexlibs_api.json, Fallback: liblcm_api.json
+        skeleton = f'''# Task: {task}
+# API: FlexLibs stable (FLExProject methods + LibLCM fallback)
 from flextoolslib import *
-from flexlibs import FLExProject
 
-# Helper for raw LCM access
-def is_empty_multistring(text):
-    return text is None or text == "" or text == "***"
-''' + docs_block + '''
-#----------------------------------------------------------------
-# Main Processing
-#----------------------------------------------------------------
-
+{docs_block}
 def Main(project, report, modifyAllowed):
+    # Primary: FLExProject methods (flexlibs_api.json)
+    # Lexicon: LexiconAllEntries(), LexiconGetFieldText(), LexiconGetHeadword()
+    # Grammar: GrammarGetPartsOfSpeech(), GrammarGetPos()
+
     for entry in project.LexiconAllEntries():
-        for sense in entry.SensesOS:
-            # Raw LCM access - must check for '***'
-            raw_text = sense.Definition.BestAnalysisAlternative.Text
-            if is_empty_multistring(raw_text):
-                report.Info("Definition is empty")
-            else:
-                report.Info(f"Definition: {raw_text}")
+        headword = project.LexiconGetHeadword(entry)
+
+        # Fallback to LibLCM when FLExProject doesn't have a method
+        for sense in entry.SensesOS:  # LibLCM property access
+            pos = sense.MorphoSyntaxAnalysisRA  # LibLCM navigation
 
         if modifyAllowed:
-            pass  # Modify data here
-        else:
-            report.Info(f"[DRY RUN] Would process: {entry}")
-''' + footer
+            pass  # project.LexiconSetFieldText() or direct LCM
+{footer}'''
 
     else:
-        # LibLCM mode: must always handle '***'
-        skeleton = header + '''# Pure LibLCM mode
-# CRITICAL: Raw LCM returns '***' for empty multilingual fields!
-# Always use is_empty_multistring() when reading text.
-
+        # LibLCM: Raw .NET interfaces
+        # See liblcm_api.json for interface definitions
+        skeleton = f'''# Task: {task}
+# API: Raw LibLCM .NET interfaces (liblcm_api.json)
 from flextoolslib import *
 
-# REQUIRED helper for LibLCM mode
-def is_empty_multistring(text):
-    """Check if multistring value is empty (handles '***' placeholder)."""
-    return text is None or text == "" or text == "***"
-
-def normalize_text(text):
-    """Convert '***' placeholder to empty string."""
-    if text is None or text == "***":
-        return ""
-    return text
-''' + docs_block + '''
-#----------------------------------------------------------------
-# Main Processing
-#----------------------------------------------------------------
-
+{docs_block}
 def Main(project, report, modifyAllowed):
-    for entry in project.LexiconAllEntries():
-        for sense in entry.SensesOS:
-            # ALWAYS check for '***' when using raw LCM
-            raw_text = sense.Definition.BestAnalysisAlternative.Text
-            if is_empty_multistring(raw_text):
-                report.Info("Definition is empty")
-            else:
-                report.Info(f"Definition: {raw_text}")
+    # Direct LCM access via project.lp (ILangProject)
+    # Interfaces: ILexEntry, ILexSense, IWfiWordform, IText, etc.
+    # Note: Multistring fields return '***' when empty
+
+    lexDb = project.lp.LexDbOA
+    for entry in lexDb.Entries:
+        # Properties: entry.SensesOS, entry.LexemeFormOA, entry.MorphoSyntaxAnalysesOC
+        headword = entry.HeadWord.Text if entry.HeadWord else ""
+        report.Info(f"Entry: {{headword}}")
 
         if modifyAllowed:
-            pass  # Modify data here
-        else:
-            report.Info(f"[DRY RUN] Would process: {entry}")
-''' + footer
+            pass  # Factory methods or direct property assignment
+{footer}'''
 
     return skeleton
 

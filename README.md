@@ -11,6 +11,8 @@ An MCP (Model Context Protocol) server is an "external brain" and toolset that a
 
 **Why do FieldWorks and FlexTools need one?** See [WHY-MCP.md](docs/WHY-MCP.md) for details on the LibLCM complexity problem, pythonnet casting issues, and why generic AI assistants fail without specialized tooling.
 
+**Why use AI at all when the tools exist?** See [WHY-AI.md](docs/WHY-AI.md) for the learning curve problem, use cases where AI excels, and when manual approaches are still better.
+
 ## What Does FlexTools MCP Do?
 
 FlexTools MCP provides AI assistants with:
@@ -338,6 +340,7 @@ The server supports three API modes for different use cases:
   casting_index.json     # Pythonnet interface casting requirements
 
 /docs
+  WHY-AI.md              # Why use AI for FieldWorks tasks
   WHY-MCP.md             # Why FieldWorks needs an MCP
   BACKGROUND.md          # Project history and motivation
   INNOVATIONS.md         # What makes this MCP unique

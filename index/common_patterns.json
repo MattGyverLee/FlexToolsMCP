@@ -1,6 +1,6 @@
 {
   "_schema": "common-patterns/1.0",
-  "_generated_at": "2026-02-06T05:21:54.745713+00:00",
+  "_generated_at": "2026-02-08T05:43:23.965850+00:00",
   "by_object": {
     "general": [
       {
@@ -644,7 +644,7 @@
         "method": "GetGuid"
       },
       {
-        "description": "Get the headword (display form) of a lexical entry.",
+        "description": "Returns the headword (lemma, citation form, lexeme) for an entry.",
         "operation": "read",
         "object_type": "ILexEntry",
         "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexEntry.GetHeadword(entry)\nprint(headword)\n            run\n\n# Entry with homograph number\nbank1 = project.LexEntry.Find(\"bank\")  # financial institution\nprint(project.LexEntry.GetHeadword(bank1))\n            bank₁",

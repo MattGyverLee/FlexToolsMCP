@@ -20,6 +20,42 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
 
+# Description enrichment: adds common search terms to method descriptions
+# This helps users find methods when searching with linguistics terminology
+DESCRIPTION_ENRICHMENTS = {
+    # Part of speech methods - add common POS names
+    "GetPartOfSpeech": "Returns the grammatical category (noun, verb, adjective, adverb, pronoun, etc.) for a sense.",
+    "SetPartOfSpeech": "Sets the grammatical category (noun, verb, adjective, adverb, pronoun, etc.) for a sense.",
+    "GetGrammaticalInfo": "Returns grammatical information including part of speech (noun, verb, adjective, etc.).",
+    # Gloss/definition - add translation terms
+    "GetGloss": "Returns the gloss (translation, meaning) for a sense in a specific writing system.",
+    "SetGloss": "Sets the gloss (translation, meaning) for a sense in a specific writing system.",
+    "GetDefinition": "Returns the definition (meaning, explanation) for a sense.",
+    "SetDefinition": "Sets the definition (meaning, explanation) for a sense.",
+    # Entry/headword - add lemma terms
+    "GetHeadword": "Returns the headword (lemma, citation form, lexeme) for an entry.",
+    "LexiconGetHeadword": "Returns the headword (lemma, citation form, lexeme) for an entry.",
+    # Morphology terms
+    "GetMorphType": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
+    "SetMorphType": "Sets the morpheme type (stem, root, prefix, suffix, infix, affix).",
+    # Semantic domain
+    "GetSemanticDomains": "Returns semantic domains (categories, topics, subject fields) for a sense.",
+    "AddSemanticDomain": "Adds a semantic domain (category, topic, subject field) to a sense.",
+}
+
+
+def enrich_description(method_name: str, original_description: str) -> str:
+    """Enrich a method description with common search terms if available."""
+    if method_name in DESCRIPTION_ENRICHMENTS:
+        enriched = DESCRIPTION_ENRICHMENTS[method_name]
+        # Append original description details if they add value
+        if original_description and len(original_description) > len(enriched):
+            # Keep original but prepend the enriched summary
+            return f"{enriched}\n\n{original_description}"
+        return enriched
+    return original_description
+
+
 def extract_docstring(node) -> str:
     """Extract docstring from a node if it exists."""
     if (hasattr(node, 'body') and node.body and
@@ -747,6 +783,12 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] = None) -> Opt
         if not summary:
             summary = generated_desc
 
+    # Enrich description with common search terms for better discoverability
+    description = enrich_description(node.name, description)
+    # Update summary if enriched description provides a better one
+    if node.name in DESCRIPTION_ENRICHMENTS:
+        summary = DESCRIPTION_ENRICHMENTS[node.name].split('\n')[0]
+
     method_info = {
         "name": node.name,
         "signature": f"{node.name}({', '.join(params)})",
@@ -815,8 +857,8 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, 
     elif "Wordform" in module_path:
         category = "wordform"
 
-    # Build real Python namespace (flexlibs.code.Lexicon.LexEntryOperations)
-    namespace = f"flexlibs.code.{module_path.replace('/', '.')}"
+    # Build real Python namespace (flexlibs2.code.Lexicon.LexEntryOperations)
+    namespace = f"flexlibs2.code.{module_path.replace('/', '.')}"
 
     return {
         "id": node.name,  # Alias for compatibility with LibLCM schema
@@ -874,7 +916,7 @@ def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, 
 
 def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
     """Analyze the entire FlexLibs 2.0 codebase."""
-    base_path = Path(flexlibs2_path) / "flexlibs" / "code"
+    base_path = Path(flexlibs2_path) / "flexlibs2" / "code"
 
     if not base_path.exists():
         raise FileNotFoundError(f"FlexLibs 2.0 code directory not found: {base_path}")

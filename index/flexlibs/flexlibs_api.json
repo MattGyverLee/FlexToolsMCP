@@ -1,6 +1,6 @@
 {
   "_schema": "unified-api-doc/2.0",
-  "_generated_at": "2026-02-06T05:21:49.551477+00:00",
+  "_generated_at": "2026-02-08T05:43:18.920164+00:00",
   "_source": {
     "type": "flexlibs",
     "path": "D:/Github/flexlibs",
@@ -73,7 +73,7 @@
       "id": "FLExProject",
       "name": "FLExProject",
       "type": "class",
-      "namespace": "flexlibs.code.FLExProject",
+      "namespace": "flexlibs2.code.FLExProject",
       "source_file": "FLExProject",
       "category": "lexicon",
       "summary": "This class provides convenience methods for accessing a FieldWorks\nproject by hiding some of the complexity of LCM.",
@@ -1364,8 +1364,8 @@
         {
           "name": "LexiconGetHeadword",
           "signature": "LexiconGetHeadword(entry)",
-          "summary": "Returns the headword for `entry`.",
-          "description": "Returns the headword for `entry`.",
+          "summary": "Returns the headword (lemma, citation form, lexeme) for an entry.",
+          "description": "Returns the headword (lemma, citation form, lexeme) for an entry.",
           "usage_hint": "general",
           "parameters": [
             {

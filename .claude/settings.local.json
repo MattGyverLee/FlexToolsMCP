@@ -17,7 +17,9 @@
       "mcp__flextoolsmcp__get_object_api",
       "mcp__context7__resolve-library-id",
       "mcp__flextoolsmcp__run_operation",
-      "mcp__flextoolsmcp__start_module"
+      "mcp__flextoolsmcp__start_module",
+      "mcp__flextoolsmcp__get_operation_logs",
+      "Bash(find:*)"
     ]
   }
 }

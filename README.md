@@ -76,6 +76,9 @@ These queries have been successfully tested:
 "List entries with "ː" in the headword."
 "List the first two texts with the word "not" in the baseline and show the context."
 "Show me the full morpheme analysis of the first word in the the first text."
+"Regarding both glosses (fuzzy match) and part of speech, are there any likely synonyms in this database?"
+"Propose glosses in French for 3 senses with examples sentence translations that confirm the context." 
+"Are there any User Approved wordforms with stars (***) in one or more morphemes?"
 ```
 
 ## Background
@@ -86,7 +89,7 @@ Since summer of 2025, I've tried to build a Chipp AI agent for this task by givi
 
 I realized that one barrier to progress was enabling FLExTools (flexlibs) to be access and edit the WHOLE FLEx database (not having to learn and switch between the FLextools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0. Instead of the ~70 functions currently supported in FlexLibs stable, FlexLibs 2.0 provides nearly 1,400 functions covering full CRUD operations for the Lexicon, Grammar, Texts, Words, Lists, Scripture, and Notebook domains. A byproduct of the process was an early abstracted annotated json representation of LibLCM ([flex-api-enhanced.json](index/liblcm/flex-api-enhanced.json)).
 
-In Feb 4th conversations with Larry Hayashi and Jason Naylor, I realized that instead of building an AI Agent with all of the skills (running and looping in-memory, which is vey expensive and ineffeicent), What was needed was an MCP server (an external brain) that could quickly and efficiently look up the needed functions and structure that the AI could piece together. 
+In Feb 4th conversations with Larry Hayashi and Jason Naylor, I realized that instead of building an AI Agent with all of the skills (running and looping in-memory, which is very expensive and inefficient), What was needed was an MCP server (an external brain) that could quickly and efficiently look up the needed functions and structure that the AI could piece together. 
 
 The evening of Feb 5th, I started by enriching the shallow annotated code indexes of FlexLib and LibLCM that I had, and then built a new index of FlexLibs 2.0 (which already links the Python and C# functions explicitly). The results are:
 
@@ -152,6 +155,10 @@ My goal was to succesfully write FLExTools, but I accidentally created what Doug
 
 #### Claude Code
 ```bash
+# User-wide installation (available in all projects)
+claude mcp add flextools-mcp -s user python D:/Github/FlexToolsMCP/src/server.py
+
+# Or project-specific (from the FlexToolsMCP directory)
 claude mcp add flextools-mcp python src/server.py
 ```
 

@@ -13,11 +13,227 @@ import sys
 import subprocess
 import tempfile
 import os
+import logging
+import re
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Optional, List, Dict
 from dataclasses import dataclass, field
 
 from mcp.server import Server
+
+
+# ============================================================
+# Operation Logging System
+# ============================================================
+
+def get_log_dir() -> Path:
+    """Get the log directory path (~/.flextoolsmcp/logs/)."""
+    log_dir = Path.home() / ".flextoolsmcp" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir
+
+
+def setup_logging():
+    """Configure file logging for operations."""
+    log_dir = get_log_dir()
+    log_file = log_dir / "operations.log"
+
+    # Create a logger for operations
+    logger = logging.getLogger("flextoolsmcp.operations")
+    logger.setLevel(logging.DEBUG)
+
+    # Avoid adding duplicate handlers
+    if not logger.handlers:
+        # File handler with rotation (max 5MB, keep 3 backups)
+        from logging.handlers import RotatingFileHandler
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=5*1024*1024,  # 5MB
+            backupCount=3,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(logging.DEBUG)
+
+        # Format: timestamp | level | message
+        formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)-7s | %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    return logger
+
+
+# Initialize the operations logger
+operations_logger = setup_logging()
+
+
+@dataclass
+class PatternTracker:
+    """Tracks API patterns with success/failure counts for learning."""
+    patterns_file: Path = None
+    patterns: Dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.patterns_file is None:
+            self.patterns_file = get_log_dir() / "patterns.json"
+        self.load()
+
+    def load(self):
+        """Load patterns from disk."""
+        if self.patterns_file.exists():
+            try:
+                with open(self.patterns_file, 'r', encoding='utf-8') as f:
+                    self.patterns = json.load(f)
+            except Exception as e:
+                operations_logger.warning(f"Failed to load patterns: {e}")
+                self.patterns = {"api_patterns": {}, "error_patterns": {}}
+        else:
+            self.patterns = {"api_patterns": {}, "error_patterns": {}}
+
+    def save(self):
+        """Save patterns to disk."""
+        try:
+            with open(self.patterns_file, 'w', encoding='utf-8') as f:
+                json.dump(self.patterns, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            operations_logger.warning(f"Failed to save patterns: {e}")
+
+    def extract_api_calls(self, code: str) -> List[str]:
+        """Extract API method calls from code."""
+        patterns = []
+        # Match patterns like: ClassName(project).Method() or ops.Method()
+        method_pattern = r'(\w+Operations)\s*\(\s*\w+\s*\)\s*\.\s*(\w+)'
+        for match in re.finditer(method_pattern, code):
+            patterns.append(f"{match.group(1)}.{match.group(2)}")
+
+        # Match patterns like: project.MethodName()
+        project_pattern = r'project\s*\.\s*(\w+)\s*\('
+        for match in re.finditer(project_pattern, code):
+            patterns.append(f"project.{match.group(1)}")
+
+        # Match attribute access like: entry.SensesOS, sense.Gloss
+        attr_pattern = r'(\w+)\s*\.\s*((?:[A-Z]\w*OS|[A-Z]\w*OC|[A-Z]\w*RS|[A-Z]\w*RC|Gloss\w*|Definition\w*|Headword|Form\w*))'
+        for match in re.finditer(attr_pattern, code):
+            patterns.append(f"*.{match.group(2)}")
+
+        return list(set(patterns))  # Deduplicate
+
+    def record_operation(self, code: str, success: bool, error_msg: str = None, error_type: str = None):
+        """Record an operation's success or failure for pattern learning."""
+        api_calls = self.extract_api_calls(code)
+
+        for api_call in api_calls:
+            if api_call not in self.patterns["api_patterns"]:
+                self.patterns["api_patterns"][api_call] = {
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "last_used": None,
+                    "common_errors": {}
+                }
+
+            pattern_data = self.patterns["api_patterns"][api_call]
+            pattern_data["last_used"] = datetime.now().isoformat()
+
+            if success:
+                pattern_data["success_count"] += 1
+            else:
+                pattern_data["failure_count"] += 1
+                if error_type:
+                    if error_type not in pattern_data["common_errors"]:
+                        pattern_data["common_errors"][error_type] = {"count": 0, "example": ""}
+                    pattern_data["common_errors"][error_type]["count"] += 1
+                    if error_msg:
+                        pattern_data["common_errors"][error_type]["example"] = error_msg[:200]
+
+        # Track error patterns for FlexLibs bug identification
+        if not success and error_msg:
+            error_key = self._normalize_error(error_msg)
+            if error_key not in self.patterns["error_patterns"]:
+                self.patterns["error_patterns"][error_key] = {
+                    "count": 0,
+                    "examples": [],
+                    "api_calls": [],
+                    "first_seen": datetime.now().isoformat(),
+                    "potential_fix": None
+                }
+
+            err_pattern = self.patterns["error_patterns"][error_key]
+            err_pattern["count"] += 1
+            if len(err_pattern["examples"]) < 3:
+                err_pattern["examples"].append({
+                    "code": code[:500],
+                    "error": error_msg[:500],
+                    "timestamp": datetime.now().isoformat()
+                })
+            for api_call in api_calls:
+                if api_call not in err_pattern["api_calls"]:
+                    err_pattern["api_calls"].append(api_call)
+
+        self.save()
+
+    def _normalize_error(self, error_msg: str) -> str:
+        """Normalize error message to group similar errors."""
+        # Remove specific values, keep the pattern
+        normalized = error_msg
+        # Remove hex addresses
+        normalized = re.sub(r'0x[0-9a-fA-F]+', '0x...', normalized)
+        # Remove line numbers
+        normalized = re.sub(r'line \d+', 'line N', normalized)
+        # Remove specific object names in quotes
+        normalized = re.sub(r"'[^']{20,}'", "'...'", normalized)
+        # Take first 100 chars as key
+        return normalized[:100]
+
+    def get_recommendations(self) -> Dict:
+        """Get pattern-based recommendations for API usage."""
+        recommendations = {
+            "preferred_patterns": [],
+            "patterns_to_avoid": [],
+            "common_errors_needing_fix": []
+        }
+
+        # Find high-success patterns
+        for api_call, data in self.patterns.get("api_patterns", {}).items():
+            total = data["success_count"] + data["failure_count"]
+            if total >= 3:  # Need at least 3 uses to make a recommendation
+                success_rate = data["success_count"] / total
+                if success_rate >= 0.8:
+                    recommendations["preferred_patterns"].append({
+                        "pattern": api_call,
+                        "success_rate": round(success_rate * 100, 1),
+                        "uses": total
+                    })
+                elif success_rate <= 0.3:
+                    recommendations["patterns_to_avoid"].append({
+                        "pattern": api_call,
+                        "success_rate": round(success_rate * 100, 1),
+                        "uses": total,
+                        "common_errors": list(data.get("common_errors", {}).keys())[:3]
+                    })
+
+        # Find recurring errors that need FlexLibs fixes
+        for error_key, data in self.patterns.get("error_patterns", {}).items():
+            if data["count"] >= 2:  # Recurring error
+                recommendations["common_errors_needing_fix"].append({
+                    "error_pattern": error_key,
+                    "count": data["count"],
+                    "affected_apis": data["api_calls"][:5],
+                    "potential_fix": data.get("potential_fix")
+                })
+
+        # Sort by relevance
+        recommendations["preferred_patterns"].sort(key=lambda x: -x["uses"])
+        recommendations["patterns_to_avoid"].sort(key=lambda x: x["success_rate"])
+        recommendations["common_errors_needing_fix"].sort(key=lambda x: -x["count"])
+
+        return recommendations
+
+
+# Global pattern tracker
+pattern_tracker = PatternTracker()
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool,
@@ -394,9 +610,38 @@ async def list_tools() -> list[Tool]:
                         "type": "integer",
                         "description": "Maximum execution time in seconds (default: 300)",
                         "default": 300
+                    },
+                    "show_code": {
+                        "type": "boolean",
+                        "description": "Include full module code in response for learning (default: true)",
+                        "default": True
                     }
                 },
                 "required": ["module_code", "project_name"]
+            }
+        ),
+        Tool(
+            name="get_operation_logs",
+            description="View operation logs and pattern recommendations. Shows recent failures, common error patterns, and API usage recommendations based on success/failure tracking.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "log_lines": {
+                        "type": "integer",
+                        "description": "Number of recent log lines to return (default: 50)",
+                        "default": 50
+                    },
+                    "include_patterns": {
+                        "type": "boolean",
+                        "description": "Include pattern analysis and recommendations (default: true)",
+                        "default": True
+                    },
+                    "errors_only": {
+                        "type": "boolean",
+                        "description": "Only show error entries in logs (default: false)",
+                        "default": False
+                    }
+                }
             }
         ),
         Tool(
@@ -440,6 +685,11 @@ Defaults to DRY_RUN mode. Always backup before write_enabled=True.""",
                         "type": "integer",
                         "description": "Maximum execution time in seconds (default: 120)",
                         "default": 120
+                    },
+                    "show_code": {
+                        "type": "boolean",
+                        "description": "Include executed code in response for learning (default: true)",
+                        "default": True
                     }
                 },
                 "required": ["operations", "project_name"]
@@ -476,6 +726,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_run_module(arguments)
     elif name == "run_operation":
         return await handle_run_operation(arguments)
+    elif name == "get_operation_logs":
+        return await handle_get_operation_logs(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -588,6 +840,43 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     api_mode = args.get("api_mode", "all")
     use_semantic = args.get("semantic", True)
 
+    # Domain-specific synonyms: map linguistics terms to API terms
+    # Applied BEFORE search to expand the query
+    domain_synonyms = {
+        # Parts of speech -> API terms
+        "noun": "part of speech POS grammatical category",
+        "verb": "part of speech POS grammatical category",
+        "adjective": "part of speech POS grammatical category",
+        "adverb": "part of speech POS grammatical category",
+        "pronoun": "part of speech POS grammatical category",
+        "preposition": "part of speech POS grammatical category",
+        # Common linguistics terms
+        "pos": "part of speech grammatical category",
+        "category": "grammatical category part of speech",
+        "lemma": "headword citation form lexeme entry",
+        "morpheme": "morph allomorph form",
+        "affix": "prefix suffix infix circumfix",
+        "stem": "root base form",
+        "inflection": "inflectional paradigm conjugation declension",
+        "derivation": "derivational affix",
+        # Data terms
+        "translation": "gloss definition meaning",
+        "meaning": "gloss definition sense",
+        "example": "sentence illustration",
+        "pronunciation": "phonetic phonology",
+        "etymology": "origin history borrowed",
+        "domain": "semantic domain category field",
+        "usage": "register style sociolinguistic",
+    }
+
+    # Expand query with domain synonyms
+    query_lower = query.lower()
+    expanded_query = query
+    for term, expansion in domain_synonyms.items():
+        if term in query_lower:
+            expanded_query = f"{query} {expansion}"
+            break  # Apply first match only to avoid over-expansion
+
     results = []
     search_method = "keyword"
     sources_searched = []
@@ -624,7 +913,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     if use_semantic and api_index.semantic_search and api_index.semantic_search.enabled:
         # For semantic search, map api_mode to source filter
         semantic_source = api_mode if api_mode in ["flexlibs2", "liblcm"] else "all"
-        semantic_results = api_index.semantic_search.search(query, max_results, semantic_source)
+        # Use expanded query to include domain synonyms
+        semantic_results = api_index.semantic_search.search(expanded_query, max_results, semantic_source)
         if semantic_results:
             results = semantic_results
             search_method = "semantic"
@@ -636,6 +926,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
         # Synonym expansion for common operations
         synonyms = {
+            # Operations
             "add": ["add", "set", "create", "insert", "append"],
             "set": ["set", "add", "update", "modify", "assign"],
             "get": ["get", "fetch", "retrieve", "find", "read"],
@@ -645,10 +936,22 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
             "update": ["update", "set", "modify", "change"],
             "find": ["find", "search", "get", "lookup", "query"],
             "list": ["list", "getall", "all", "iterate", "enumerate"],
+            # Lexicon terms
             "gloss": ["gloss", "translation", "meaning"],
             "definition": ["definition", "meaning", "description"],
             "sense": ["sense", "meaning", "definition"],
             "entry": ["entry", "headword", "lexeme", "word"],
+            # Parts of speech - map to API terms
+            "noun": ["noun", "pos", "partofspeech", "grammatical", "category"],
+            "verb": ["verb", "pos", "partofspeech", "grammatical", "category"],
+            "adjective": ["adjective", "pos", "partofspeech", "grammatical", "category"],
+            "adverb": ["adverb", "pos", "partofspeech", "grammatical", "category"],
+            "pos": ["pos", "partofspeech", "grammatical", "category", "speech"],
+            # Other linguistics terms
+            "lemma": ["lemma", "headword", "citation", "lexeme"],
+            "morpheme": ["morpheme", "morph", "allomorph", "form"],
+            "stem": ["stem", "root", "base"],
+            "affix": ["affix", "prefix", "suffix", "infix"],
         }
 
         # Expand query terms with synonyms
@@ -1641,11 +1944,13 @@ MODULE_CODE = {module_code}
                 "stderr": stderr
             }
 
-        # Add warnings and metadata
+        # Add warnings, metadata, and optionally the full module code for learning
         execution_result["warnings"] = warnings
         execution_result["exit_code"] = result.returncode
         if stderr and not execution_result.get("error"):
             execution_result["stderr"] = stderr
+        if args.get("show_code", True):
+            execution_result["module_code"] = module_code
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
 
@@ -1677,6 +1982,12 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
     project_name = args["project_name"]
     write_enabled = args.get("write_enabled", False)
     timeout_seconds = args.get("timeout_seconds", 120)
+
+    # Log operation start
+    operations_logger.info(f"=== Operation Start ===")
+    operations_logger.info(f"Project: {project_name}")
+    operations_logger.info(f"Write enabled: {write_enabled}")
+    operations_logger.debug(f"Code:\n{operations}")
 
     # Build warnings
     warnings = []
@@ -1984,13 +2295,51 @@ if __name__ == "__main__":
                 "stderr": stderr
             }
 
-        # Add warnings and return code
+        # Add warnings, return code, and optionally the executed code for learning
         execution_result["warnings"] = warnings
         execution_result["exit_code"] = result.returncode
+        if args.get("show_code", True):
+            execution_result["code_executed"] = operations
+
+        # Log operation result
+        if execution_result.get("success"):
+            operations_logger.info(f"[OK] Operation completed successfully")
+            summary = execution_result.get("summary", {})
+            operations_logger.info(f"Messages: {summary.get('info_count', 0)} info, {summary.get('warning_count', 0)} warnings, {summary.get('error_count', 0)} errors")
+            pattern_tracker.record_operation(operations, success=True)
+        else:
+            error_msg = execution_result.get("error", "Unknown error")
+            operations_logger.error(f"[FAIL] Operation failed: {error_msg}")
+            # Extract error type from traceback if present
+            error_type = None
+            if "AttributeError" in error_msg:
+                error_type = "AttributeError"
+            elif "TypeError" in error_msg:
+                error_type = "TypeError"
+            elif "KeyError" in error_msg:
+                error_type = "KeyError"
+            elif "has no attribute" in error_msg:
+                error_type = "MissingAttribute"
+            elif "not found" in error_msg.lower():
+                error_type = "NotFound"
+            pattern_tracker.record_operation(operations, success=False, error_msg=error_msg, error_type=error_type)
+
+        operations_logger.info(f"=== Operation End ===\n")
+
+        # Include pattern recommendations if there are patterns to avoid in this operation
+        recommendations = pattern_tracker.get_recommendations()
+        if recommendations.get("patterns_to_avoid"):
+            execution_result["pattern_warnings"] = [
+                p for p in recommendations["patterns_to_avoid"]
+                if any(api in operations for api in [p["pattern"].split(".")[-1]])
+            ][:2]  # Limit to 2 warnings
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, default=str))]
 
     except subprocess.TimeoutExpired:
+        operations_logger.error(f"[FAIL] Operation timed out after {timeout_seconds} seconds")
+        pattern_tracker.record_operation(operations, success=False, error_msg="Timeout", error_type="Timeout")
+        operations_logger.info(f"=== Operation End ===\n")
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": "Execution timed out after {} seconds".format(timeout_seconds),
@@ -1998,9 +2347,13 @@ if __name__ == "__main__":
         }, indent=2))]
 
     except Exception as e:
+        error_msg = str(e)
+        operations_logger.error(f"[FAIL] Subprocess error: {error_msg}")
+        pattern_tracker.record_operation(operations, success=False, error_msg=error_msg, error_type="SubprocessError")
+        operations_logger.info(f"=== Operation End ===\n")
         return [TextContent(type="text", text=json.dumps({
             "success": False,
-            "error": "Subprocess execution error: {}".format(str(e)),
+            "error": "Subprocess execution error: {}".format(error_msg),
             "warnings": warnings
         }, indent=2))]
 
@@ -2010,6 +2363,71 @@ if __name__ == "__main__":
             os.unlink(temp_script_path)
         except:
             pass
+
+
+async def handle_get_operation_logs(args: dict) -> list[TextContent]:
+    """View operation logs and pattern recommendations."""
+    log_lines = args.get("log_lines", 50)
+    include_patterns = args.get("include_patterns", True)
+    errors_only = args.get("errors_only", False)
+
+    result = {
+        "log_file": str(get_log_dir() / "operations.log"),
+        "patterns_file": str(get_log_dir() / "patterns.json"),
+        "recent_logs": [],
+        "recommendations": None
+    }
+
+    # Read recent log entries
+    log_file = get_log_dir() / "operations.log"
+    if log_file.exists():
+        try:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+
+            # Filter to errors only if requested
+            if errors_only:
+                lines = [l for l in lines if '| ERROR' in l or '| FAIL' in l or '[FAIL]' in l]
+
+            # Get last N lines
+            recent = lines[-log_lines:] if len(lines) > log_lines else lines
+            result["recent_logs"] = [line.rstrip() for line in recent]
+            result["total_log_lines"] = len(lines)
+        except Exception as e:
+            result["log_error"] = str(e)
+    else:
+        result["recent_logs"] = ["(No logs yet - run some operations first)"]
+
+    # Include pattern analysis
+    if include_patterns:
+        pattern_tracker.load()  # Reload to get latest
+        recommendations = pattern_tracker.get_recommendations()
+
+        result["recommendations"] = {
+            "preferred_patterns": recommendations.get("preferred_patterns", [])[:10],
+            "patterns_to_avoid": recommendations.get("patterns_to_avoid", [])[:10],
+            "common_errors_needing_fix": recommendations.get("common_errors_needing_fix", [])[:10]
+        }
+
+        # Add summary statistics
+        api_patterns = pattern_tracker.patterns.get("api_patterns", {})
+        total_operations = sum(
+            p["success_count"] + p["failure_count"]
+            for p in api_patterns.values()
+        )
+        total_successes = sum(p["success_count"] for p in api_patterns.values())
+        total_failures = sum(p["failure_count"] for p in api_patterns.values())
+
+        result["statistics"] = {
+            "total_operations": total_operations,
+            "total_successes": total_successes,
+            "total_failures": total_failures,
+            "success_rate": round(total_successes / total_operations * 100, 1) if total_operations > 0 else 0,
+            "unique_api_patterns": len(api_patterns),
+            "unique_error_patterns": len(pattern_tracker.patterns.get("error_patterns", {}))
+        }
+
+    return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
 
 async def main():

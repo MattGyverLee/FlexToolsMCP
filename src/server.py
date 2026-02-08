@@ -632,7 +632,7 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
         ),
         Tool(
             name="run_module",
-            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Complete discovery workflow first (search_by_capability -> get_navigation_path -> get_object_api -> resolve_property -> find_examples). Use get_module_template for boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
+            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Complete discovery workflow first (search_by_capability -> get_navigation_path -> get_object_api -> resolve_property -> find_examples). Use get_module_template for boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True. Helpers available: is_empty_multistring(text) for checking empty multistring fields (handles FLEx '***' placeholder).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -700,7 +700,18 @@ PREREQUISITE WORKFLOW - Do these steps FIRST:
 
 Skipping these steps often leads to: wrong functions, runtime errors, data corruption.
 
+IMPORTANT - Empty Value Handling:
+- Raw LCM properties (e.g., sense.Definition.BestAnalysisAlternative.Text) return '***' for empty values
+- flexlibs2 Operations methods (e.g., sense_ops.GetDefinition(sense)) return '' (empty string)
+
+Prefer flexlibs2 wrapper methods - they handle the '***' conversion automatically:
+  RECOMMENDED: definition = sense_ops.GetDefinition(sense)
+  AVOID:       definition = sense.Definition.BestAnalysisAlternative.Text
+
+If you must use raw LCM access, use the is_empty_multistring() helper.
+
 Available variables: project, report (.Info/.Warning/.Error), write_enabled, safe_str()
+Helpers: is_empty_multistring(text) - checks for empty multistring (handles FLEx '***' placeholder)
 Auto-imported: All flexlibs2 Operations classes, FLExProject, FP_* exceptions
 
 ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled=True.""",
@@ -1049,23 +1060,28 @@ async def handle_start(args: dict) -> list[TextContent]:
 
 
 def generate_operation_skeleton(task: str, apis: list, flavor: str) -> str:
-    """Generate a code skeleton for run_operation."""
+    """Generate a code skeleton for run_operation based on API flavor."""
     # Get the primary API
     primary_api = apis[0] if apis else {"entity": "LexEntryOperations", "method": "GetAll"}
-
     entity = primary_api.get("entity", "LexEntryOperations")
 
-    skeleton = f'''# Task: {task}
-# Generated skeleton - customize as needed
+    if flavor == "flexlibs2":
+        # FlexLibs2 mode: Use wrapper methods that handle '***' automatically
+        skeleton = f'''# Task: {task}
+# Mode: FlexLibs2 (safest - handles empty values automatically)
+#
+# FlexLibs2 Operations methods return '' for empty values (not '***')
+# This is the recommended approach - no special handling needed.
 
-# Initialize operations class
 ops = {entity}(project)
+sense_ops = LexSenseOperations(project)
 
-# Example: iterate and filter
-for item in ops.GetAll():
-    # Add your logic here
-    # Example: report.Info(f"Found: {{item}}")
-    pass
+for entry in ops.GetAll():
+    for sense in entry.SensesOS:
+        # FlexLibs2 methods handle '***' automatically
+        definition = sense_ops.GetDefinition(sense)
+        if not definition:  # Simple empty check works
+            report.Info("Missing definition")
 
 # If modifying data, check write_enabled first:
 # if write_enabled:
@@ -1073,24 +1089,76 @@ for item in ops.GetAll():
 # else:
 #     report.Info(f"[DRY RUN] Would modify: {{item}}")
 '''
+    elif flavor == "flexlibs_stable":
+        # FlexLibs stable mode: Use flexlibs with LCM fallback
+        skeleton = f'''# Task: {task}
+# Mode: FlexLibs Stable with LibLCM fallback
+#
+# FlexLibs stable methods (BestStr, LexiconGetFieldText, etc.) handle '***' automatically.
+# For direct LCM access, use is_empty_multistring() to check for empty values.
+
+from flexlibs import FLExProject
+
+# FlexLibs stable helper functions handle '***' automatically
+entry_ops = {entity}(project)
+
+for entry in entry_ops.GetAll():
+    # When using raw LCM properties, always check for '***'
+    for sense in entry.SensesOS:
+        raw_text = sense.Definition.BestAnalysisAlternative.Text
+        if is_empty_multistring(raw_text):
+            report.Info("Definition is empty")
+        else:
+            report.Info(f"Definition: {{raw_text}}")
+
+# If modifying data, check write_enabled first:
+# if write_enabled:
+#     ...
+'''
+    else:
+        # LibLCM mode: Must always handle '***' placeholder
+        skeleton = f'''# Task: {task}
+# Mode: Pure LibLCM
+#
+# CRITICAL: Raw LCM returns '***' for empty multilingual fields!
+# Always use is_empty_multistring() or normalize_text() when reading text.
+#
+# Available helpers:
+#   is_empty_multistring(text) - Returns True if text is empty or '***'
+#   normalize_text(text) - Converts '***' to '' (from flexlibs2.code.Shared.string_utils)
+
+for entry in project.LexiconAllEntries():
+    for sense in entry.SensesOS:
+        # ALWAYS check for '***' when using raw LCM access
+        raw_text = sense.Definition.BestAnalysisAlternative.Text
+        if is_empty_multistring(raw_text):
+            report.Info("Definition is empty")
+        else:
+            # Safe to use the text
+            report.Info(f"Definition: {{raw_text}}")
+
+# For setting values, raw LCM access is fine - no '***' handling needed
+# if write_enabled:
+#     sense.Definition.set_String(ws_handle, tss_builder.GetString())
+'''
     return skeleton
 
 
 def generate_module_skeleton(task: str, apis: list, flavor: str) -> str:
-    """Generate a code skeleton for a FlexTools module."""
+    """Generate a code skeleton for a FlexTools module based on API flavor."""
     primary_api = apis[0] if apis else {"entity": "LexEntryOperations", "method": "GetAll"}
     entity = primary_api.get("entity", "LexEntryOperations")
 
-    skeleton = f'''# -*- coding: utf-8 -*-
+    # Common module header
+    header = f'''# -*- coding: utf-8 -*-
 #
 #   Task: {task}
-#   Generated skeleton - customize as needed
+#   Generated skeleton - Mode: {flavor}
 #
+'''
 
-from flextoolslib import *
-from flexlibs2.code.Lexicon.{entity} import {entity}
-# Add other imports as needed
-
+    # Common docs block
+    docs_block = f'''
 #----------------------------------------------------------------
 # Documentation
 #----------------------------------------------------------------
@@ -1102,30 +1170,117 @@ docs = {{
     'moduleSynopsis': "{task}",
     'moduleDescription': "Generated module skeleton",
 }}
+'''
 
-#----------------------------------------------------------------
-# Main Processing
-#----------------------------------------------------------------
-
-def Main(project, report, modifyAllowed):
-    ops = {entity}(project)
-
-    for item in ops.GetAll():
-        # Add your logic here
-        # report.Info(f"Processing: {{item}}")
-
-        if modifyAllowed:
-            # Modify data here
-            pass
-        else:
-            report.Info(f"[DRY RUN] Would process: {{item}}")
-
+    # Footer
+    footer = '''
 #----------------------------------------------------------------
 # Entry point (required by FlexTools)
 #----------------------------------------------------------------
 
 FlexToolsModule = FlexToolsModuleClass(runFunction=Main, docs=docs)
 '''
+
+    if flavor == "flexlibs2":
+        # FlexLibs2 mode: safest approach
+        skeleton = header + '''# FlexLibs2 Operations handle empty values automatically (no '***' issues)
+
+from flextoolslib import *
+from flexlibs2 import LexEntryOperations, LexSenseOperations
+''' + docs_block + f'''
+#----------------------------------------------------------------
+# Main Processing
+#----------------------------------------------------------------
+
+def Main(project, report, modifyAllowed):
+    entry_ops = LexEntryOperations(project)
+    sense_ops = LexSenseOperations(project)
+
+    for entry in entry_ops.GetAll():
+        for sense in entry.SensesOS:
+            # FlexLibs2 methods return '' for empty (not '***')
+            definition = sense_ops.GetDefinition(sense)
+            if not definition:  # Simple empty check works
+                report.Info("Missing definition")
+
+        if modifyAllowed:
+            pass  # Modify data here
+        else:
+            report.Info(f"[DRY RUN] Would process: {{entry}}")
+''' + footer
+
+    elif flavor == "flexlibs_stable":
+        # FlexLibs stable mode
+        skeleton = header + '''# FlexLibs stable with LCM fallback
+# FlexLibs methods like BestStr() handle '***' automatically
+# For raw LCM access, always check for '***'
+
+from flextoolslib import *
+from flexlibs import FLExProject
+
+# Helper for raw LCM access
+def is_empty_multistring(text):
+    return text is None or text == "" or text == "***"
+''' + docs_block + '''
+#----------------------------------------------------------------
+# Main Processing
+#----------------------------------------------------------------
+
+def Main(project, report, modifyAllowed):
+    for entry in project.LexiconAllEntries():
+        for sense in entry.SensesOS:
+            # Raw LCM access - must check for '***'
+            raw_text = sense.Definition.BestAnalysisAlternative.Text
+            if is_empty_multistring(raw_text):
+                report.Info("Definition is empty")
+            else:
+                report.Info(f"Definition: {raw_text}")
+
+        if modifyAllowed:
+            pass  # Modify data here
+        else:
+            report.Info(f"[DRY RUN] Would process: {entry}")
+''' + footer
+
+    else:
+        # LibLCM mode: must always handle '***'
+        skeleton = header + '''# Pure LibLCM mode
+# CRITICAL: Raw LCM returns '***' for empty multilingual fields!
+# Always use is_empty_multistring() when reading text.
+
+from flextoolslib import *
+
+# REQUIRED helper for LibLCM mode
+def is_empty_multistring(text):
+    """Check if multistring value is empty (handles '***' placeholder)."""
+    return text is None or text == "" or text == "***"
+
+def normalize_text(text):
+    """Convert '***' placeholder to empty string."""
+    if text is None or text == "***":
+        return ""
+    return text
+''' + docs_block + '''
+#----------------------------------------------------------------
+# Main Processing
+#----------------------------------------------------------------
+
+def Main(project, report, modifyAllowed):
+    for entry in project.LexiconAllEntries():
+        for sense in entry.SensesOS:
+            # ALWAYS check for '***' when using raw LCM
+            raw_text = sense.Definition.BestAnalysisAlternative.Text
+            if is_empty_multistring(raw_text):
+                report.Info("Definition is empty")
+            else:
+                report.Info(f"Definition: {raw_text}")
+
+        if modifyAllowed:
+            pass  # Modify data here
+        else:
+            report.Info(f"[DRY RUN] Would process: {entry}")
+''' + footer
+
     return skeleton
 
 
@@ -1388,7 +1543,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 score += 3  # Exact property name match gets higher boost
 
                         if score > boost:
-                            source_results.append({
+                            result_item = {
                                 "score": score,
                                 "source": source_name,
                                 "entity": entity_name,
@@ -1399,7 +1554,12 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 "target_type": prop.get("target_type"),
                                 "description": prop.get("description", "")[:150],
                                 "category": entity.get("category", "general"),
-                            })
+                            }
+                            # Add multistring warning if applicable
+                            if prop.get("is_multistring"):
+                                result_item["is_multistring"] = True
+                                result_item["empty_value_warning"] = "Returns '***' when empty - use flexlibs2 wrapper or normalize_text()"
+                            source_results.append(result_item)
             return source_results
 
         # Search primary sources with boost
@@ -2290,10 +2450,28 @@ def run_module():
         # Create reporter
         report = SimpleReporter()
 
+        # FLEx uses '***' as placeholder for empty/unset multilingual string values
+        FLEX_EMPTY_PLACEHOLDER = "***"
+
+        def is_empty_multistring(text):
+            """Check if a FLEx multilingual string value is empty.
+
+            FLEx/LCM returns '***' from BestAnalysisAlternative.Text when a
+            multilingual field has no value set, rather than None or empty string.
+            """
+            if text is None:
+                return True
+            if not isinstance(text, str):
+                text = str(text)
+            text = text.strip()
+            return text == "" or text == FLEX_EMPTY_PLACEHOLDER
+
         # Execute the module code in a namespace
         module_namespace = {
             "__name__": "__flextools_module__",
             "__file__": "module.py",
+            "is_empty_multistring": is_empty_multistring,
+            "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
         }
 
         # Execute the module code to define Main and FlexToolsModule
@@ -2499,6 +2677,36 @@ def safe_str(obj):
         except Exception:
             return "(encoding error)"
 
+
+# FLEx uses '***' as placeholder for empty/unset multilingual string values
+FLEX_EMPTY_PLACEHOLDER = "***"
+
+
+def is_empty_multistring(text):
+    """Check if a FLEx multilingual string value is empty.
+
+    FLEx/LCM returns '***' from BestAnalysisAlternative.Text when a
+    multilingual field has no value set, rather than None or empty string.
+    Use this helper when checking if Definition, Gloss, or similar fields are empty.
+
+    Args:
+        text: The text value from a multilingual string field
+
+    Returns:
+        True if the value is empty (None, whitespace-only, or '***')
+
+    Example:
+        def_text = sense.Definition.BestAnalysisAlternative.Text
+        if is_empty_multistring(def_text):
+            report.Info("No definition set")
+    """
+    if text is None:
+        return True
+    if not isinstance(text, str):
+        text = str(text)
+    text = text.strip()
+    return text == "" or text == FLEX_EMPTY_PLACEHOLDER
+
 # Configuration
 PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
@@ -2611,6 +2819,8 @@ def run_operation():
             "report": report,
             "write_enabled": write_enabled,
             "safe_str": safe_str,
+            "is_empty_multistring": is_empty_multistring,
+            "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
             # All Operations classes
             "FP_FileLockedError": FP_FileLockedError,
             "FP_FileNotFoundError": FP_FileNotFoundError,

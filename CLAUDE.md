@@ -110,6 +110,28 @@ python src/refresh.py --flexlibs2-only
 python src/refresh.py --liblcm-only
 ```
 
+## FLEx Data Conventions
+
+### Empty Multistring Fields ('***' Placeholder)
+
+FLEx/LCM uses `'***'` as a placeholder when multilingual string fields (Definition, Gloss, etc.) have no value set. This is returned instead of `None` or empty string.
+
+**Affected fields**: Any property returning `IMultiString` or `IMultiUnicode`:
+- `ILexSense.Definition`, `ILexSense.Gloss`
+- `ILexEntry.LiteralMeaning`, `ILexEntry.Bibliography`
+- Many others...
+
+**Helper function available in `run_operation` and `run_module`**:
+```python
+# Check if a multilingual field is empty (handles '***' placeholder)
+if is_empty_multistring(sense.Definition.BestAnalysisAlternative.Text):
+    report.Info("Definition is empty")
+
+# Or use the constant directly
+if text == FLEX_EMPTY_PLACEHOLDER:  # '***'
+    ...
+```
+
 ## Key Technical Decisions
 
 - **Self-contained extraction**: Can regenerate indexes from source (no external dependencies)

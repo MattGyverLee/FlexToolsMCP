@@ -145,6 +145,18 @@ claude mcp add flextools-mcp -s user python D:/Github/FlexToolsMCP/src/server.py
 
 # Or project-specific (from the FlexToolsMCP directory)
 claude mcp add flextools-mcp python src/server.py
+
+# List configured MCP servers
+claude mcp list
+
+# Remove from user scope
+claude mcp remove flextools-mcp -s user
+
+# Remove from project scope
+claude mcp remove flextools-mcp -s project
+
+# Remove from all scopes
+claude mcp remove flextools-mcp -s user && claude mcp remove flextools-mcp -s project
 ```
 
 #### Other MCP-Compatible Tools

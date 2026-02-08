@@ -121,11 +121,25 @@ A generic AI cannot:
 
 ### Hallucination Risk
 
-Without authoritative API documentation, AI models confidently suggest:
-- Functions that don't exist (`lexicon.GetAllSenses()`)
-- Wrong parameter orders
-- Deprecated patterns
-- Syntax that works in C# but not Python
+Even when AI models have been trained on documentation or given context about an API, they cannot hold 2,295 LibLCM entities + 1,400 FlexLibs2 methods in working memory. The result is **syntactically plausible hallucinations**:
+
+```python
+# These look correct but DON'T EXIST:
+lexicon.GetAllSenses()           # Invented - no such method
+entry.GetPartOfSpeech()          # Invented - POS is on MSA, not entry
+sense.SemanticDomains.Add(sd)    # Wrong - it's SemanticDomainsRS, a reference collection
+LexEntryOperations.FindByGloss() # Invented - search works differently
+```
+
+The AI follows naming conventions it learned from similar APIs, producing code that:
+- Compiles/parses without syntax errors
+- Follows reasonable naming patterns
+- Looks professional and confident
+- **Doesn't work**
+
+This is particularly insidious because the code *looks* right. You don't discover the problem until runtime, and the error messages ("AttributeError: 'LexEntryOperations' has no attribute 'FindByGloss'") don't explain what you *should* have used instead.
+
+**The MCP solves this by providing authoritative, indexed lookups.** The AI doesn't guess - it queries the actual API and returns only functions that exist.
 
 ## What the MCP Provides
 

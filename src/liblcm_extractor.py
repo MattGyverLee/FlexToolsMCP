@@ -296,6 +296,91 @@ def get_relationship_description(kind: str) -> str:
     return descriptions.get(kind, "Object property")
 
 
+def infer_output_behavior_lcm(name: str, return_type: str, is_multistring: bool = False,
+                               property_kind: str = "", is_method: bool = True) -> dict:
+    """
+    Infer structured output behavior for LibLCM methods and properties.
+
+    LibLCM is raw .NET API, so outputs differ from FlexLibs2 wrappers:
+    - Multistring properties return '***' for empty, not empty string
+    - Collections return empty enumerables, not None
+    - Atomic references may return None
+
+    Returns dict with success/empty/failure behavior.
+    """
+    output = {
+        "success": {"type": return_type},
+        "empty": None,
+        "failure": [],
+        "notes": []
+    }
+
+    rt_lower = return_type.lower() if return_type else ""
+    name_lower = name.lower()
+
+    # Handle multistring properties (the '***' issue)
+    if is_multistring:
+        output["empty"] = {
+            "value": '"***"',
+            "description": "Returns '***' placeholder when field is empty, NOT empty string"
+        }
+        output["notes"].append("WARNING: Use normalize_text() or is_empty_multistring() to handle '***'")
+        output["notes"].append("FlexLibs2 wrapper methods handle this automatically")
+        return output
+
+    # Handle property kinds (relationship suffixes)
+    if property_kind in ("OS", "OC", "RS", "RC"):
+        # Collection/Sequence properties
+        output["empty"] = {
+            "value": "empty IEnumerable",
+            "description": "Empty collection when no items (never null)"
+        }
+    elif property_kind in ("OA", "RA"):
+        # Atomic reference properties
+        output["empty"] = {
+            "value": "null",
+            "description": "Null when reference is not set"
+        }
+
+    # Infer from return type
+    if not output["empty"]:
+        if rt_lower == "string":
+            output["empty"] = {
+                "value": '"***" or null',
+                "description": "May return '***' for multilingual fields or null"
+            }
+            output["notes"].append("Check for '***' placeholder in multilingual text fields")
+        elif rt_lower == "bool" or rt_lower == "boolean":
+            output["empty"] = None  # Booleans don't have empty concept
+        elif rt_lower == "int32" or rt_lower == "int" or rt_lower == "int64":
+            if "count" in name_lower:
+                output["empty"] = {"value": "0", "description": "Zero when no items"}
+        elif rt_lower == "void":
+            output["success"] = {"type": "void", "description": "No return value"}
+            output["empty"] = None
+        elif rt_lower.startswith("i") and rt_lower != "int":
+            # Interface type (e.g., ILexEntry, ILexSense)
+            output["empty"] = {
+                "value": "null",
+                "description": "Null when object not found"
+            }
+
+    # Infer from method name patterns
+    if is_method:
+        if name.startswith("Get"):
+            if not output["empty"]:
+                output["empty"] = {"value": "null or default", "description": "Default value when not found"}
+        elif name.startswith("Find"):
+            output["empty"] = {"value": "null", "description": "Null when not found"}
+        elif name.startswith("Create") or name.startswith("Make"):
+            output["notes"].append("Creates new object - may throw on failure")
+            output["failure"].append({"exception": "InvalidOperationException", "when": "Creation fails"})
+        elif name.startswith("Delete") or name.startswith("Remove"):
+            output["notes"].append("Destructive operation")
+
+    return output
+
+
 # ---- Property Extraction -----------------------------------------------------
 
 def extract_property(pinfo) -> Optional[Dict[str, Any]]:
@@ -330,7 +415,8 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
         can_read = pinfo.CanRead
         can_write = pinfo.CanWrite
 
-        return {
+        # Build result
+        result = {
             "name": name,
             "pythonic_name": pythonic_name,
             "type": type_name,
@@ -342,6 +428,25 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
             "can_write": can_write,
             "description": f"{get_relationship_description(kind)}" if kind else f"Property of type {type_name}"
         }
+
+        # Add structured output behavior
+        result["output_behavior"] = infer_output_behavior_lcm(
+            name=name,
+            return_type=type_name,
+            is_multistring=is_ms,
+            property_kind=kind,
+            is_method=False
+        )
+
+        # Keep legacy empty_value_behavior for backwards compatibility with multistrings
+        if is_ms:
+            result["empty_value_behavior"] = {
+                "returns_when_empty": "***",
+                "warning": "Returns '***' placeholder when empty, not empty string or None",
+                "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'"
+            }
+
+        return result
     except Exception as e:
         log.debug(f"Error extracting property {pinfo.Name if hasattr(pinfo, 'Name') else 'unknown'}: {e}")
         return None
@@ -397,10 +502,20 @@ def extract_method(minfo) -> Optional[Dict[str, Any]]:
         # Categorize method
         category = categorize_method(name)
 
+        # Infer output behavior
+        output_behavior = infer_output_behavior_lcm(
+            name=name,
+            return_type=return_type,
+            is_multistring=False,  # Methods don't directly return multistrings
+            property_kind="",
+            is_method=True
+        )
+
         return {
             "name": name,
             "signature": signature,
             "return_type": return_type,
+            "output_behavior": output_behavior,
             "parameters": params,
             "category": category,
             "description": generate_method_description(name, category),

@@ -187,6 +187,105 @@ def generate_method_usage_hint(method_name: str, return_type: str = "") -> str:
         elif return_type.lower() in ("list", "iterator", "iterable") or return_type.startswith("List["):
             return "enumeration"
 
+
+def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
+                          raises: List[str], is_flexlibs2: bool = True) -> Dict[str, Any]:
+    """
+    Infer structured output behavior from method signature and documentation.
+
+    Returns a dict with:
+    - success: What's returned on success
+    - empty: What's returned when data is empty/not found (if applicable)
+    - failure: What happens on error
+    - notes: Any special considerations
+    """
+    output = {
+        "success": {},
+        "empty": None,
+        "failure": [],
+        "notes": []
+    }
+
+    name_lower = method_name.lower()
+    rt_lower = return_type.lower() if return_type else ""
+
+    # Determine success output type
+    if return_type:
+        output["success"]["type"] = return_type
+
+        # Parse returns_doc for more detail
+        if returns_doc:
+            output["success"]["description"] = returns_doc.strip()
+
+    # Infer empty/not-found behavior based on return type and method name
+    if rt_lower == "str":
+        # FlexLibs2 returns "" for empty text fields (handles '***')
+        if is_flexlibs2:
+            output["empty"] = {
+                "value": '""',
+                "description": "Empty string when field is not set"
+            }
+            output["notes"].append("FlexLibs2 handles '***' placeholder automatically, returns ''")
+        else:
+            output["empty"] = {
+                "value": '"***" or ""',
+                "description": "May return '***' for empty multilingual fields"
+            }
+    elif rt_lower in ("none", "optional") or "optional[" in rt_lower:
+        output["empty"] = {
+            "value": "None",
+            "description": "None when not found"
+        }
+    elif rt_lower in ("list", "iterator", "iterable") or rt_lower.startswith("list[") or rt_lower.startswith("iterator["):
+        output["empty"] = {
+            "value": "[]",
+            "description": "Empty list/iterator when no items"
+        }
+    elif rt_lower in ("bool", "boolean"):
+        output["empty"] = None  # Booleans don't have "empty" concept
+    elif rt_lower == "int":
+        # Check method name for clues
+        if "count" in name_lower:
+            output["empty"] = {
+                "value": "0",
+                "description": "Zero when no items"
+            }
+
+    # Infer based on method name patterns
+    if method_name.startswith("Find"):
+        if not output["empty"]:
+            output["empty"] = {
+                "value": "None",
+                "description": "None when not found"
+            }
+    elif method_name.startswith("Get"):
+        if "all" in name_lower or "list" in name_lower:
+            if not output["empty"]:
+                output["empty"] = {
+                    "value": "[]",
+                    "description": "Empty list when no items"
+                }
+    elif method_name.startswith("Create") or method_name.startswith("Add"):
+        output["notes"].append("Creates new object - requires write access")
+    elif method_name.startswith("Delete") or method_name.startswith("Remove"):
+        output["notes"].append("Destructive operation - requires write access")
+    elif method_name.startswith("Set") or method_name.startswith("Update"):
+        output["notes"].append("Modifies existing data - requires write access")
+
+    # Add failure information from raises
+    if raises:
+        for exc in raises:
+            output["failure"].append({"exception": exc})
+    else:
+        # Infer common failure modes
+        if method_name.startswith("Get") or method_name.startswith("Find"):
+            output["failure"].append({
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+            })
+
+    return output
+
     return "general"
 
 
@@ -789,6 +888,15 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] = None) -> Opt
     if node.name in DESCRIPTION_ENRICHMENTS:
         summary = DESCRIPTION_ENRICHMENTS[node.name].split('\n')[0]
 
+    # Infer structured output behavior
+    output_behavior = infer_output_behavior(
+        method_name=node.name,
+        return_type=return_type,
+        returns_doc=parsed_doc["returns"],
+        raises=parsed_doc["raises"],
+        is_flexlibs2=True
+    )
+
     method_info = {
         "name": node.name,
         "signature": f"{node.name}({', '.join(params)})",
@@ -798,6 +906,7 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] = None) -> Opt
         "parameters": param_details,
         "returns": parsed_doc["returns"],
         "return_type": return_type,
+        "output_behavior": output_behavior,
         "raises": parsed_doc["raises"],
         "example": parsed_doc["example"],
         "is_property": is_property,

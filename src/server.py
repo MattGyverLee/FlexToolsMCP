@@ -250,6 +250,7 @@ class SessionState:
     output_type: str = "auto"         # Output type: auto, operation, module
     project_name: str = ""            # FLEx project name (empty = prompt user)
     write_enabled: bool = False       # Write access: False = read-only/dry-run
+    test_mode: bool = False           # "test" keyword detected - enforces read-only
     initialized: bool = False
 
     def configure(self, **kwargs) -> None:
@@ -262,10 +263,15 @@ class SessionState:
             self.project_name = kwargs["project_name"]
         if "write_enabled" in kwargs:
             self.write_enabled = kwargs["write_enabled"]
+        if "test_mode" in kwargs:
+            self.test_mode = kwargs["test_mode"]
         self.initialized = True
-        operations_logger.info(f"Session configured: mode={self.api_mode}, "
-                               f"output={self.output_type}, project={self.project_name or '(prompt)'}, "
-                               f"write={self.write_enabled}")
+        mode_info = f"mode={self.api_mode}, output={self.output_type}"
+        mode_info += f", project={self.project_name or '(prompt)'}"
+        mode_info += f", write={self.write_enabled}"
+        if self.test_mode:
+            mode_info += " [TEST MODE - read-only enforced]"
+        operations_logger.info(f"Session configured: {mode_info}")
 
     def get_mode(self) -> str:
         """Get the current session API mode."""
@@ -283,15 +289,23 @@ class SessionState:
         """Get whether write access is enabled for the session."""
         return self.write_enabled
 
+    def is_test_mode(self) -> bool:
+        """Check if session is in test mode (read-only enforced)."""
+        return self.test_mode
+
     def summary(self) -> dict:
         """Return session state summary for tool responses."""
-        return {
+        result = {
             "api_mode": self.api_mode,
             "output_type": self.output_type,
             "project_name": self.project_name or "(not set)",
             "write_enabled": self.write_enabled,
             "initialized": self.initialized
         }
+        if self.test_mode:
+            result["test_mode"] = True
+            result["note"] = "TEST MODE: write_enabled forced to False"
+        return result
 
 
 # Global session state
@@ -915,12 +929,18 @@ async def handle_start(args: dict) -> list[TextContent]:
     project_name = args.get("project_name", "")
     write_enabled = args.get("write_enabled", False)
 
+    # "test" keyword enforces read-only mode
+    is_test_mode = "test" in task.lower()
+    if is_test_mode:
+        write_enabled = False  # Test always means read-only
+
     # Set session-wide settings
     session_state.configure(
         api_mode=api_mode,
         output_type=output_type,
         project_name=project_name,
-        write_enabled=write_enabled
+        write_enabled=write_enabled,
+        test_mode=is_test_mode
     )
 
     result = {
@@ -2298,6 +2318,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     project_name = args.get("project_name", session_state.get_project())
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
 
+    # Test mode enforces read-only
+    if session_state.is_test_mode():
+        write_enabled = False
+
     # Validate project_name is available
     if not project_name:
         return [TextContent(type="text", text=json.dumps({
@@ -2623,6 +2647,10 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
     # Use session state as fallback for project and write settings
     project_name = args.get("project_name", session_state.get_project())
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
+
+    # Test mode enforces read-only
+    if session_state.is_test_mode():
+        write_enabled = False
 
     # Validate project_name is available
     if not project_name:

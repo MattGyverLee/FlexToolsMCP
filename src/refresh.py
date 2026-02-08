@@ -275,6 +275,14 @@ def run_postprocess_patterns() -> bool:
     ]
     return run_command(cmd, "Extracting common patterns")
 
+def run_postprocess_casting_index() -> bool:
+    """Build casting index for pythonnet interface casting requirements."""
+    cmd = [
+        sys.executable,
+        "src/build_casting_index.py"
+    ]
+    return run_command(cmd, "Building casting index (pythonnet interface casting)")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -366,6 +374,10 @@ def main():
 
         # Extract patterns
         if not run_postprocess_patterns():
+            success = False
+
+        # Build casting index
+        if not run_postprocess_casting_index():
             success = False
 
     print("\n" + "=" * 60)

@@ -9,6 +9,8 @@ Developed for SIL Global by Matthew Lee with in connection with the SIL's AI Int
 
 An MCP (Model Context Protocol) server is an "external brain" and toolset that allows AI tools (Claude, GPT, Gemini, etc.) to complete tasks they wouldn't normally have the context or reach to do. Instead of humans calling endpoints, an AI model discovers available tools, understands their schemas, and calls them automatically during conversations to take actions or retrieve information.
 
+**Why do FieldWorks and FlexTools need one?** See [WHY-MCP.md](docs/WHY-MCP.md) for details on the LibLCM complexity problem, pythonnet casting issues, and why generic AI assistants fail without specialized tooling.
+
 ## What Does FlexTools MCP Do?
 
 FlexTools MCP provides AI assistants with:
@@ -22,6 +24,8 @@ FlexTools MCP provides AI assistants with:
 4. **Run Modules Directly** - Once the tests pass, back up the project and run it live on a project.
 3. **Direct Execution** - Discuss and run operations directly on FieldWorks databases without writing full modules
 4. **Natural Language Queries** - Ask questions like "delete any sense with the letter 'q' in the gloss" and have it executed
+
+**What makes this different from simple code indexing?** See [INNOVATIONS.md](docs/INNOVATIONS.md) for details on pythonnet casting detection, semantic categorization, navigation graphs, and workflow orchestration.
 
 ## Architecture
 
@@ -83,30 +87,9 @@ These queries have been successfully tested:
 
 ## Background
 
-Since I started working with AI, I dreamed of having an AI tool that could assist with or write "proper" FLExTools modules. The challenge was that the "agent" neeeded to deeply understand the FLEx Model, FLExTools preferences, which Flextools functions existed, and when to fall back to the Fieldworks API (flexlibs). This was too much data to be held in memory for AI work, or for most humans.
+This project evolved from early AI experiments in summer 2025 through the FlexLibs 2.0 rewrite at Christmas 2025, culminating in the MCP server architecture inspired by conversations with Larry Hayashi and Jason Naylor in February 2025.
 
-Since summer of 2025, I've tried to build a Chipp AI agent for this task by giving it existing documentation and some code, and the results were dismal. It would call functions that didn't exist and required significant handholding to massage the drafts into something workable.
-
-I realized that one barrier to progress was enabling FLExTools (flexlibs) to be access and edit the WHOLE FLEx database (not having to learn and switch between the FLextools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0. Instead of the ~70 functions currently supported in FlexLibs stable, FlexLibs 2.0 provides nearly 1,400 functions covering full CRUD operations for the Lexicon, Grammar, Texts, Words, Lists, Scripture, and Notebook domains. A byproduct of the process was an early abstracted annotated json representation of LibLCM ([flex-api-enhanced.json](index/liblcm/flex-api-enhanced.json)).
-
-In Feb 4th conversations with Larry Hayashi and Jason Naylor, I realized that instead of building an AI Agent with all of the skills (running and looping in-memory, which is very expensive and inefficient), What was needed was an MCP server (an external brain) that could quickly and efficiently look up the needed functions and structure that the AI could piece together. 
-
-The evening of Feb 5th, I started by enriching the shallow annotated code indexes of FlexLib and LibLCM that I had, and then built a new index of FlexLibs 2.0 (which already links the Python and C# functions explicitly). The results are:
-
-- [flexlibs_api.json](index/flexlibs/flexlibs_api.json) - FlexLibs stable (~71 methods)
-- [flexlibs2_api.json](index/flexlibs/flexlibs2_api.json) - FlexLibs 2.0 (~1,400 methods)
-- [liblcm_api.json](index/liblcm/liblcm_api.json) - LibLCM C# API
-
-The MCP server was built with a host of tools to enable AI assistants to query those abstractions based on natural language input. 
-
-The breakthrough came when Claude Code (using the MCP) could generate at will:
-- **Legacy FlexTool Modules** that prefer FlexLibs stable calls with LibLCM fallback
-- **Modern FlexTool Modules** that use entirely FlexLibs 2.0 calls
-- **Pure LibLCM Modules** that skip FlexLibs entirely and make direct LibLCM calls
-
-Beyond FlexTools module generation, the MCP can alternately run code directly on the database, enabling natural language editing of ANY FLEx data without writing a full module.
-
-My goal was to succesfully write FLExTools, but I accidentally created what Doug hoped to see, a scary-powerful natural-language interface to interact with Fieldworks Data.  
+**Full story:** [BACKGROUND.md](docs/BACKGROUND.md)
 
 ## Installation
 
@@ -167,10 +150,11 @@ Configure the MCP server endpoint according to your tool's documentation.
 
 ## MCP Tools
 
-The server exposes 9 tools:
+The server exposes 12 tools:
 
 | Tool | Description |
 |------|-------------|
+| `start` | **BEGIN HERE** - Unified entry point that orchestrates the discovery workflow |
 | `get_object_api` | Get methods/properties for objects like ILexEntry, LexSenseOperations |
 | `search_by_capability` | Natural language search with synonym expansion |
 | `get_navigation_path` | Find paths between object types (ILexEntry -> ILexSense) |
@@ -181,6 +165,149 @@ The server exposes 9 tools:
 | `start_module` | Interactive wizard to create a new FlexTools module |
 | `run_module` | Execute a FlexTools module against a FieldWorks project |
 | `run_operation` | Execute FlexLibs2 operations directly without module boilerplate |
+| `resolve_property` | Resolve property names and get pythonnet casting requirements |
+
+## Recommended Workflow
+
+**IMPORTANT:** Follow this workflow to avoid common pitfalls. Skipping directly to `run_operation` or `run_module` often leads to errors, incorrect code, or data corruption.
+
+### Quick Start: Use `start`
+
+The easiest way is to use the unified `start` tool, which orchestrates the entire discovery workflow automatically:
+
+```
+User Query: "I want to delete senses with 'test' in the gloss"
+                    |
+                    v
+    +---------------------------+
+    |         start             |  task="delete senses with test in gloss"
+    |   - Analyzes your task    |  output_type="operation" or "module"
+    |   - Finds relevant APIs   |  flavor="flexlibs2"
+    |   - Checks casting needs  |
+    |   - Gets code examples    |
+    |   - Returns action plan   |  -> Complete plan with code skeleton
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    |   run_operation/module    |  write_enabled=FALSE (dry run)
+    +---------------------------+
+                    |
+            Review output
+                    |
+                    v
+    +---------------------------+
+    |   run with write access   |  write_enabled=TRUE
+    |       BACKUP FIRST!       |
+    +---------------------------+
+```
+
+### Manual Workflow (For Reference)
+
+If you prefer to run individual tools or need more control, here's the detailed workflow:
+
+#### Phase 1: Discovery (Required)
+
+```
+User Query: "I want to delete senses with 'test' in the gloss"
+                    |
+                    v
+    +---------------------------+
+    | 1. search_by_capability   |  "delete sense gloss"
+    |    - Find relevant APIs   |  -> LexSenseOperations.Delete, GetGloss
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    | 2. get_navigation_path    |  ILexEntry -> ILexSense
+    |    - How to traverse      |  -> entry.SensesOS
+    +---------------------------+
+```
+
+#### Phase 2: Understanding (Required)
+
+```
+    +---------------------------+
+    | 3. get_object_api         |  LexSenseOperations
+    |    - Full API details     |  -> Delete(), GetGloss(), GetAll()
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    | 4. resolve_property       |  "PartOfSpeechRA"
+    |    - Property names       |  -> CASTING WARNING: Not on IMoMorphSynAnalysis!
+    |    - Casting requirements |  -> Use get_pos_from_msa() helper
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    | 5. find_examples          |  operation_type="delete"
+    |    - Code patterns        |  -> Example delete code
+    +---------------------------+
+```
+
+#### Phase 3: Implementation
+
+```
+    +---------------------------+
+    | 6. context7 (if available)|  Get latest Python/API docs
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    | 7. get_module_template    |  (if building a module)
+    |    - Boilerplate code     |
+    +---------------------------+
+                    |
+                    v
+    +---------------------------+
+    | 8. Write the code         |  Using discovered APIs
+    +---------------------------+
+```
+
+#### Phase 4: Testing (Required before write)
+
+```
+    +---------------------------+
+    | 9. run_operation/module   |  write_enabled=FALSE (default)
+    |    - DRY RUN FIRST        |  -> See what WOULD happen
+    +---------------------------+
+                    |
+          Review output
+                    |
+          Fix any issues
+                    |
+                    v
+    +---------------------------+
+    | 10. run with write access |  write_enabled=TRUE
+    |     - BACKUP FIRST!       |  -> User permission required
+    +---------------------------+
+```
+
+### Why This Workflow Matters
+
+| Skipping Step | What Goes Wrong |
+|---------------|-----------------|
+| search_by_capability | Using wrong or non-existent functions |
+| get_navigation_path | Can't traverse from entries to senses |
+| resolve_property | pythonnet casting errors at runtime |
+| find_examples | Reinventing patterns that already exist |
+| Dry run | Data corruption, unintended deletions |
+
+### Pythonnet Casting Warning
+
+When working with collections like `MorphoSyntaxAnalysesOC`, objects are returned as base interface types. Use `resolve_property` to check if casting is needed:
+
+```python
+# WRONG - PartOfSpeechRA not visible on base type
+for msa in entry.MorphoSyntaxAnalysesOC:
+    pos = msa.PartOfSpeechRA  # AttributeError!
+
+# RIGHT - Use FlexLibs2 casting helper
+from flexlibs2.code.lcm_casting import get_pos_from_msa
+for msa in entry.MorphoSyntaxAnalysesOC:
+    pos = get_pos_from_msa(msa)  # Works!
+```
 
 ## API Modes
 
@@ -196,9 +323,10 @@ The server supports three API modes for different use cases:
 
 ```
 /src
-  server.py              # MCP server with 9 tools
+  server.py              # MCP server with 12 tools
   flexlibs2_analyzer.py  # FlexLibs Python AST extraction
   liblcm_extractor.py    # LibLCM .NET reflection extraction
+  build_casting_index.py # Pythonnet casting requirements generator
   refresh.py             # Unified refresh script
 
 /index
@@ -207,8 +335,12 @@ The server supports three API modes for different use cases:
     flexlibs_api.json    # FlexLibs stable (~71 methods)
     flexlibs2_api.json   # FlexLibs 2.0 (~1,400 methods)
   navigation_graph.json  # Object relationship graph
+  casting_index.json     # Pythonnet interface casting requirements
 
 /docs
+  WHY-MCP.md             # Why FieldWorks needs an MCP
+  BACKGROUND.md          # Project history and motivation
+  INNOVATIONS.md         # What makes this MCP unique
   PROGRESS.md            # Project progress log
   TASKS.md               # Task tracking
   DECISIONS.md           # Architecture decisions

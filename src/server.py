@@ -350,7 +350,7 @@ class APIIndex:
         index = cls()
 
         # Load LibLCM
-        liblcm_path = index_dir / "liblcm" / "flex-api-enhanced.json"
+        liblcm_path = index_dir / "liblcm" / "liblcm_api.json"
         if liblcm_path.exists():
             with open(liblcm_path, "r", encoding="utf-8") as f:
                 index.liblcm = json.load(f)
@@ -694,6 +694,24 @@ Defaults to DRY_RUN mode. Always backup before write_enabled=True.""",
                 },
                 "required": ["operations", "project_name"]
             }
+        ),
+        Tool(
+            name="resolve_property",
+            description="Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s). LibLCM uses suffixes (OA, OS, OC, RA, RS, RC) to indicate relationship types. This tool maps friendly names like 'Senses' to their actual API names like 'SensesOS'.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "property_name": {
+                        "type": "string",
+                        "description": "Property name to resolve (e.g., 'Senses', 'SensesOS', 'Entries')"
+                    },
+                    "context_entity": {
+                        "type": "string",
+                        "description": "Optional entity context for disambiguation (e.g., 'ILexEntry', 'ILexSense')"
+                    }
+                },
+                "required": ["property_name"]
+            }
         )
     ]
 
@@ -728,6 +746,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_run_operation(arguments)
     elif name == "get_operation_logs":
         return await handle_get_operation_logs(arguments)
+    elif name == "resolve_property":
+        return await handle_resolve_property(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -961,6 +981,20 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
             if term in synonyms:
                 expanded_terms.update(synonyms[term])
 
+        # Expand pythonic names to suffixed equivalents (e.g., "senses" -> "sensesos")
+        # This allows searching for "Senses" to find "SensesOS"
+        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
+        by_pythonic = suffix_index.get("by_pythonic_name", {})
+        pythonic_expansions = set()
+        for term in list(expanded_terms):
+            # Check if term matches a pythonic name (case-insensitive)
+            for pythonic_name, matches in by_pythonic.items():
+                if pythonic_name.lower() == term:
+                    # Add all suffixed variants
+                    for match in matches:
+                        pythonic_expansions.add(match["full_name"].lower())
+        expanded_terms.update(pythonic_expansions)
+
         def search_source(source_name, index_data, boost=0):
             """Search a single source and return results."""
             source_results = []
@@ -968,6 +1002,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 return source_results
 
             for entity_name, entity in index_data.get("entities", {}).items():
+                # Search methods
                 for method in entity.get("methods", []):
                     score = boost  # Mode-based boost
                     text_to_search = "{} {} {}".format(
@@ -993,6 +1028,39 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                             "description": method.get("summary", method.get("description", ""))[:150],
                             "category": entity.get("category", "general"),
                         })
+
+                # Search properties (LibLCM only, for pythonic name matching)
+                if source_name == "liblcm":
+                    for prop in entity.get("properties", []):
+                        score = boost
+                        prop_name = prop.get('name', '')
+                        pythonic_name = prop.get('pythonic_name', prop_name)
+                        text_to_search = "{} {} {} {}".format(
+                            prop_name,
+                            pythonic_name,
+                            prop.get('description', ''),
+                            prop.get('kind', '')
+                        ).lower()
+
+                        for term in expanded_terms:
+                            if term in text_to_search:
+                                score += 1
+                            if term == prop_name.lower() or term == pythonic_name.lower():
+                                score += 3  # Exact property name match gets higher boost
+
+                        if score > boost:
+                            source_results.append({
+                                "score": score,
+                                "source": source_name,
+                                "entity": entity_name,
+                                "name": prop_name,
+                                "pythonic_name": pythonic_name if pythonic_name != prop_name else None,
+                                "type": "property",
+                                "kind": prop.get("kind"),
+                                "target_type": prop.get("target_type"),
+                                "description": prop.get("description", "")[:150],
+                                "category": entity.get("category", "general"),
+                            })
             return source_results
 
         # Search primary sources with boost
@@ -1040,6 +1108,63 @@ def normalize_object_name(name: str) -> str:
     if not name.startswith("I"):
         name = f"I{name}"
     return name
+
+
+def resolve_pythonic_property(name: str, context_entity: str = None) -> List[Dict]:
+    """
+    Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s).
+
+    Args:
+        name: Property name (e.g., 'Senses' or 'SensesOS')
+        context_entity: Optional entity context (e.g., 'ILexEntry')
+
+    Returns:
+        List of matching properties with their full names and kinds
+    """
+    if not api_index or not api_index.liblcm:
+        return []
+
+    suffix_index = api_index.liblcm.get("suffix_index", {})
+    if not suffix_index:
+        return []
+
+    results = []
+
+    # Check if it's a pythonic name (suffix-free)
+    by_pythonic = suffix_index.get("by_pythonic_name", {})
+    if name in by_pythonic:
+        matches = by_pythonic[name]
+        if context_entity:
+            # Filter to matching entity
+            results = [m for m in matches if m["entity"] == context_entity]
+        else:
+            results = matches
+
+    # Check if it's a full name (with suffix)
+    if not results:
+        by_full = suffix_index.get("by_full_name", {})
+        if context_entity:
+            key = f"{context_entity}.{name}"
+            if key in by_full:
+                match = by_full[key]
+                results = [{
+                    "entity": match["entity"],
+                    "full_name": name,
+                    "pythonic_name": match["pythonic_name"],
+                    "kind": match["kind"]
+                }]
+        else:
+            # Search all entities for this full name
+            for key, match in by_full.items():
+                if key.endswith(f".{name}"):
+                    results.append({
+                        "entity": match["entity"],
+                        "full_name": name,
+                        "pythonic_name": match["pythonic_name"],
+                        "kind": match["kind"]
+                    })
+
+    return results
 
 
 def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list:
@@ -2426,6 +2551,75 @@ async def handle_get_operation_logs(args: dict) -> list[TextContent]:
             "unique_api_patterns": len(api_patterns),
             "unique_error_patterns": len(pattern_tracker.patterns.get("error_patterns", {}))
         }
+
+    return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+async def handle_resolve_property(args: dict) -> list[TextContent]:
+    """Resolve pythonic property names to LibLCM equivalents."""
+    property_name = args["property_name"]
+    context_entity = args.get("context_entity")
+
+    # Use the helper function
+    matches = resolve_pythonic_property(property_name, context_entity)
+
+    if not matches:
+        # Try to provide helpful suggestions
+        result = {
+            "property_name": property_name,
+            "context_entity": context_entity,
+            "found": False,
+            "message": f"No property '{property_name}' found",
+            "suggestions": []
+        }
+
+        # Check if this might be a typo
+        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
+        by_pythonic = suffix_index.get("by_pythonic_name", {})
+
+        # Find similar pythonic names
+        property_lower = property_name.lower()
+        for pythonic_name in by_pythonic.keys():
+            if property_lower in pythonic_name.lower() or pythonic_name.lower() in property_lower:
+                result["suggestions"].append(pythonic_name)
+            elif abs(len(property_name) - len(pythonic_name)) <= 2:
+                # Check edit distance for close matches
+                if sum(a != b for a, b in zip(property_lower, pythonic_name.lower())) <= 2:
+                    result["suggestions"].append(pythonic_name)
+
+        result["suggestions"] = list(set(result["suggestions"]))[:10]
+    else:
+        result = {
+            "property_name": property_name,
+            "context_entity": context_entity,
+            "found": True,
+            "matches": matches,
+            "suffix_guide": {
+                "OA": "Owning Atomic - single owned child object",
+                "OS": "Owning Sequence - ordered collection of owned objects",
+                "OC": "Owning Collection - unordered collection of owned objects",
+                "RA": "Reference Atomic - single referenced object",
+                "RS": "Reference Sequence - ordered collection of references",
+                "RC": "Reference Collection - unordered collection of references"
+            }
+        }
+
+        # Add usage examples if we found matches
+        if matches:
+            result["usage_examples"] = []
+            for match in matches[:3]:  # Limit to first 3
+                entity = match.get("entity", "")
+                full_name = match.get("full_name", property_name)
+                kind = match.get("kind", "property")
+
+                if kind in ("OS", "OC", "RS", "RC"):
+                    result["usage_examples"].append(
+                        f"for item in obj.{full_name}:  # Iterate {kind} collection"
+                    )
+                elif kind in ("OA", "RA"):
+                    result["usage_examples"].append(
+                        f"ref = obj.{full_name}  # Get single {kind} reference"
+                    )
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 

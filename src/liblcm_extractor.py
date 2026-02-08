@@ -311,6 +311,11 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
         kind = determine_property_kind(name)
         relationship = get_relationship_type(kind)
 
+        # Compute pythonic_name by stripping 2-char suffix for relationship properties
+        pythonic_name = name
+        if kind in ("OA", "OS", "OC", "RA", "RS", "RC"):
+            pythonic_name = name[:-2]  # Strip suffix like SensesOS -> Senses
+
         # Determine target type for relationships
         target_type = None
         if kind in ("OS", "OC", "RS", "RC"):
@@ -327,6 +332,7 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
 
         return {
             "name": name,
+            "pythonic_name": pythonic_name,
             "type": type_name,
             "kind": kind if kind else "property",
             "relationship": relationship,
@@ -785,6 +791,44 @@ def build_api_documentation(assemblies, fetch_descriptions: bool = False) -> Dic
 
     # Sort relationships
     api_doc["relationships"].sort(key=lambda r: (r["source"], r["property"]))
+
+    # Build suffix_index for pythonic name lookups
+    suffix_index = {
+        "by_pythonic_name": {},  # "Senses" -> [{"entity": "ILexEntry", "full_name": "SensesOS", "kind": "OS"}, ...]
+        "by_full_name": {}       # "SensesOS" -> {"entity": "ILexEntry", "pythonic_name": "Senses", "kind": "OS"}
+    }
+
+    for entity_id, entity_data in api_doc["entities"].items():
+        for prop in entity_data.get("properties", []):
+            name = prop.get("name", "")
+            pythonic_name = prop.get("pythonic_name", name)
+            kind = prop.get("kind", "property")
+
+            # Only index properties with suffixes (relationship properties)
+            if kind in ("OA", "OS", "OC", "RA", "RS", "RC") and pythonic_name != name:
+                # Add to by_pythonic_name index
+                if pythonic_name not in suffix_index["by_pythonic_name"]:
+                    suffix_index["by_pythonic_name"][pythonic_name] = []
+                suffix_index["by_pythonic_name"][pythonic_name].append({
+                    "entity": entity_id,
+                    "full_name": name,
+                    "kind": kind
+                })
+
+                # Add to by_full_name index
+                key = f"{entity_id}.{name}"
+                suffix_index["by_full_name"][key] = {
+                    "entity": entity_id,
+                    "pythonic_name": pythonic_name,
+                    "kind": kind
+                }
+
+    # Sort the pythonic name entries by entity for consistent output
+    for pythonic_name in suffix_index["by_pythonic_name"]:
+        suffix_index["by_pythonic_name"][pythonic_name].sort(key=lambda x: x["entity"])
+
+    api_doc["suffix_index"] = suffix_index
+    log.info(f"  Suffix index: {len(suffix_index['by_pythonic_name'])} pythonic names, {len(suffix_index['by_full_name'])} full names")
 
     log.info(f"Processed {processed}/{total_types} types")
     log.info(f"  Interfaces: {api_doc['metadata']['total_interfaces']}")

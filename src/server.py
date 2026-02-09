@@ -252,6 +252,10 @@ class SessionState:
     write_enabled: bool = False       # Write access: False = read-only/dry-run
     test_mode: bool = False           # "test" keyword detected - enforces read-only
     initialized: bool = False
+    discovered_apis: set = None       # APIs discovered via get_object_api/search_by_capability
+
+    def __init__(self):
+        self.discovered_apis = set()
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool)."""
@@ -272,6 +276,25 @@ class SessionState:
         if self.test_mode:
             mode_info += " [TEST MODE - read-only enforced]"
         operations_logger.info(f"Session configured: {mode_info}")
+
+    def record_discovered_api(self, entity: str, method: str) -> None:
+        """Record an API that was discovered via get_object_api or search_by_capability."""
+        api_key = f"{entity}.{method}" if entity else method
+        self.discovered_apis.add(api_key)
+
+    def get_discovered_apis(self) -> set:
+        """Get the set of discovered API methods."""
+        return self.discovered_apis
+
+    def was_api_discovered(self, entity: str, method: str) -> bool:
+        """Check if a specific API was discovered."""
+        api_key = f"{entity}.{method}" if entity else method
+        # Also check just the method name for flexibility
+        return api_key in self.discovered_apis or method in self.discovered_apis
+
+    def clear_discovered_apis(self) -> None:
+        """Clear discovered APIs (for new session)."""
+        self.discovered_apis = set()
 
     def get_mode(self) -> str:
         """Get the current session API mode."""
@@ -300,7 +323,8 @@ class SessionState:
             "output_type": self.output_type,
             "project_name": self.project_name or "(not set)",
             "write_enabled": self.write_enabled,
-            "initialized": self.initialized
+            "initialized": self.initialized,
+            "discovered_api_count": len(self.discovered_apis)
         }
         if self.test_mode:
             result["test_mode"] = True
@@ -1019,228 +1043,80 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
 
 
 async def handle_start(args: dict) -> list[TextContent]:
-    """Unified entry point that orchestrates the discovery workflow."""
-    task = args["task"]
-    output_type = args.get("output_type", "auto")
+    """Initialize a FlexTools MCP session with mode and project settings.
+
+    This sets up the session for subsequent API discovery and operations.
+    After calling start(), discuss the goal with the user, then use
+    search_by_capability() or get_object_api() to discover the correct APIs.
+    """
     api_mode = args.get("api_mode", "flexlibs2")
     project_name = args.get("project_name", "")
     write_enabled = args.get("write_enabled", False)
+    task = args.get("task", "")  # Optional task description for context
 
     # "test" keyword enforces read-only mode
-    is_test_mode = "test" in task.lower()
+    is_test_mode = "test" in task.lower() if task else False
     if is_test_mode:
         write_enabled = False  # Test always means read-only
+
+    # Clear any previously discovered APIs for fresh session
+    session_state.clear_discovered_apis()
 
     # Set session-wide settings
     session_state.configure(
         api_mode=api_mode,
-        output_type=output_type,
+        output_type="auto",
         project_name=project_name,
         write_enabled=write_enabled,
         test_mode=is_test_mode
     )
 
+    # Build response
     result = {
-        "task": task,
+        "status": "session_initialized",
         "session": session_state.summary(),
-        "workflow_completed": True,
-        "steps": {}
+        "message": "Session configured. Now discuss the goal with the user.",
+        "next_steps": [
+            "1. Discuss the task/goal with the user to understand requirements",
+            "2. Use search_by_capability(query='...') to find relevant APIs",
+            "3. Use get_object_api(object_type='...') to get detailed API info",
+            "4. Write code using ONLY the discovered APIs",
+            "5. Use run_operation() or run_module() to execute"
+        ]
     }
 
-    # Step 1: Search for relevant capabilities
-    search_args = {"query": task, "max_results": 10, "api_mode": api_mode}
-    search_result = await handle_search_by_capability(search_args)
-    search_data = json.loads(search_result[0].text)
-
-    result["steps"]["1_search_by_capability"] = {
-        "status": "completed",
-        "found": len(search_data.get("results", [])),
-        "top_matches": []
-    }
-
-    # Extract top API matches
-    discovered_apis = []
-    discovered_objects = set()
-    for match in search_data.get("results", [])[:5]:
-        api_info = {
-            "entity": match.get("entity", ""),
-            "method": match.get("name", ""),
-            "signature": match.get("signature", ""),
-            "description": match.get("description", "")[:100] + "..." if len(match.get("description", "")) > 100 else match.get("description", "")
+    # Add mode-specific guidance
+    mode_guidance = {
+        "flexlibs2": {
+            "description": "FlexLibs 2.0 - Pythonic wrapper with Operations classes",
+            "example": "project.LexEntries.GetAll(), project.Wordforms.GetForm(wf)",
+            "note": "Recommended mode - best documentation and examples"
+        },
+        "flexlibs_stable": {
+            "description": "FlexLibs Stable - Original wrapper with LibLCM fallback",
+            "example": "project.LexiconAllEntries(), entry.SensesOS",
+            "note": "Use when compatibility with existing scripts needed"
+        },
+        "liblcm": {
+            "description": "Pure LibLCM - Direct C# API access via pythonnet",
+            "example": "entry.SensesOS, sense.Gloss.get_String(wsHandle)",
+            "note": "Low-level access - requires understanding of LCM suffixes (OS/OC/OA/RS/RC/RA)"
         }
-        discovered_apis.append(api_info)
-        result["steps"]["1_search_by_capability"]["top_matches"].append(api_info)
-
-        # Track object types for navigation
-        entity = match.get("entity", "")
-        if entity:
-            discovered_objects.add(entity)
-            # Also add the interface version
-            if entity.endswith("Operations"):
-                base = entity.replace("Operations", "")
-                discovered_objects.add(f"I{base}")
-                discovered_objects.add(f"ILex{base}")
-
-    # Step 2: Get navigation paths between discovered objects
-    result["steps"]["2_navigation"] = {
-        "status": "completed",
-        "paths": []
     }
 
-    # Try to find common navigation patterns
-    common_sources = ["ILexEntry", "ILexSense", "IWfiWordform", "IText"]
-    for source in common_sources:
-        for target in discovered_objects:
-            if source != target and target.startswith("I"):
-                try:
-                    nav_args = {"source": source, "target": target}
-                    nav_result = await handle_get_navigation_path(nav_args)
-                    nav_data = json.loads(nav_result[0].text)
-                    if nav_data.get("path_found"):
-                        result["steps"]["2_navigation"]["paths"].append({
-                            "from": source,
-                            "to": target,
-                            "steps": nav_data.get("path", [])[:3]  # First 3 steps
-                        })
-                except:
-                    pass
-                if len(result["steps"]["2_navigation"]["paths"]) >= 3:
-                    break
-        if len(result["steps"]["2_navigation"]["paths"]) >= 3:
-            break
+    result["mode_info"] = mode_guidance.get(api_mode, mode_guidance["flexlibs2"])
 
-    # Step 3: Check for casting requirements
-    result["steps"]["3_casting_warnings"] = {
-        "status": "completed",
-        "warnings": []
-    }
+    # Warnings
+    warnings = []
+    if not project_name:
+        warnings.append("No project_name set - will need to specify when running operations")
+    if write_enabled:
+        warnings.append("WRITE MODE ENABLED - operations will modify the database")
+    if is_test_mode:
+        warnings.append("TEST MODE - write operations disabled regardless of write_enabled setting")
 
-    # Check casting index for any properties mentioned in task or discovered APIs
-    if api_index.casting_index:
-        casting_props = api_index.casting_index.get("properties", {})
-        poly_collections = api_index.casting_index.get("polymorphic_collections", {})
-
-        # Keywords that might indicate casting-sensitive operations
-        casting_keywords = ["PartOfSpeech", "MSA", "Morph", "Allomorph", "Form"]
-        task_lower = task.lower()
-
-        for keyword in casting_keywords:
-            if keyword.lower() in task_lower:
-                # Check if there are casting requirements
-                for prop_name, prop_info in casting_props.items():
-                    if keyword.lower() in prop_name.lower():
-                        result["steps"]["3_casting_warnings"]["warnings"].append({
-                            "property": prop_name,
-                            "defined_on": prop_info.get("defined_on", [])[:3],
-                            "NOT_on": prop_info.get("requires_cast_from", [])[:2],
-                            "helper": "Use cast_to_concrete() or get_pos_from_msa() from flexlibs2.code.lcm_casting"
-                        })
-                        break
-
-        # Check for polymorphic collection usage
-        for coll_name, coll_info in poly_collections.items():
-            if any(coll_name.lower() in api.get("signature", "").lower() for api in discovered_apis):
-                result["steps"]["3_casting_warnings"]["warnings"].append({
-                    "collection": coll_name,
-                    "base_type": coll_info.get("base_type"),
-                    "concrete_types": coll_info.get("concrete_types", [])[:3],
-                    "hint": coll_info.get("casting_hint", "")
-                })
-
-    # Step 4: Find examples
-    result["steps"]["4_examples"] = {
-        "status": "completed",
-        "examples": []
-    }
-
-    # Determine operation types from task
-    operation_types = []
-    task_lower = task.lower()
-    if any(w in task_lower for w in ["delete", "remove", "clear"]):
-        operation_types.append("delete")
-    if any(w in task_lower for w in ["create", "add", "new", "insert"]):
-        operation_types.append("create")
-    if any(w in task_lower for w in ["update", "change", "modify", "set", "edit"]):
-        operation_types.append("update")
-    if any(w in task_lower for w in ["get", "find", "list", "show", "count", "report"]):
-        operation_types.append("read")
-
-    if not operation_types:
-        operation_types = ["read"]  # Default
-
-    for op_type in operation_types[:2]:  # Limit to 2 operation types
-        for api in discovered_apis[:2]:  # Limit to first 2 APIs
-            try:
-                example_args = {
-                    "method_name": api.get("method", ""),
-                    "operation_type": op_type
-                }
-                example_result = await handle_find_examples(example_args)
-                example_data = json.loads(example_result[0].text)
-                if example_data.get("examples"):
-                    result["steps"]["4_examples"]["examples"].append({
-                        "method": api.get("method"),
-                        "operation": op_type,
-                        "code": example_data.get("examples", [{}])[0].get("code", "")[:200]
-                    })
-            except:
-                pass
-
-    # Step 5: Determine output recommendation
-    if output_type == "auto":
-        # Recommend based on complexity
-        is_complex = (
-            len(operation_types) > 1 or
-            "all" in task_lower or
-            "each" in task_lower or
-            "every" in task_lower or
-            len(result["steps"]["3_casting_warnings"]["warnings"]) > 0
-        )
-        is_simple_query = (
-            len(operation_types) == 1 and
-            operation_types[0] == "read" and
-            len(discovered_apis) <= 3
-        )
-
-        if is_simple_query:
-            recommended_output = "operation"
-            reason = "Simple read operation - use run_operation for quick results"
-        elif is_complex:
-            recommended_output = "module"
-            reason = "Complex task with multiple operations or casting requirements - module provides better structure"
-        else:
-            recommended_output = "operation"
-            reason = "Moderate complexity - operation is simpler, but module works too"
-    else:
-        recommended_output = output_type
-        reason = f"User requested {output_type}"
-
-    result["recommendation"] = {
-        "output_type": recommended_output,
-        "reason": reason,
-        "api_mode": api_mode
-    }
-
-    # Step 6: Generate code skeleton
-    if recommended_output == "operation":
-        skeleton = generate_operation_skeleton(task, discovered_apis, api_mode)
-    else:
-        skeleton = generate_module_skeleton(task, discovered_apis, api_mode)
-
-    result["code_skeleton"] = skeleton
-
-    # Step 7: Next steps guidance
-    result["next_steps"] = [
-        f"1. Review the discovered APIs and code skeleton above",
-        f"2. Customize the code for your specific needs",
-        f"3. Run with write_enabled=False first (dry run): run_{recommended_output}(..., write_enabled=False)",
-        f"4. Review the dry run output carefully",
-        f"5. BACKUP your project",
-        f"6. Run with write_enabled=True when ready"
-    ]
-
-    if result["steps"]["3_casting_warnings"]["warnings"]:
-        result["next_steps"].insert(1, "WARNING: Review casting requirements - use helpers from flexlibs2.code.lcm_casting")
+    if warnings:
+        result["warnings"] = warnings
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
@@ -1449,6 +1325,24 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
 
     if not result["found"]:
         result["message"] = f"No API documentation found for '{object_type}'. Try searching with search_by_capability or list_categories to explore available APIs."
+    else:
+        # Record discovered APIs for validation in run_operation
+        if "flexlibs2" in result:
+            entity_name = result["flexlibs2"].get("name", object_type)
+            for method in result["flexlibs2"].get("methods", []):
+                method_name = method.get("name", "")
+                if method_name:
+                    session_state.record_discovered_api(entity_name, method_name)
+        if "liblcm" in result:
+            entity_name = result["liblcm"].get("name", object_type)
+            for prop in result["liblcm"].get("properties", []):
+                prop_name = prop.get("name", "")
+                if prop_name:
+                    session_state.record_discovered_api(entity_name, prop_name)
+            for method in result["liblcm"].get("methods", []):
+                method_name = method.get("name", "")
+                if method_name:
+                    session_state.record_discovered_api(entity_name, method_name)
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
@@ -1694,6 +1588,13 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         # Sort by score and limit results
         results.sort(key=lambda x: x["score"], reverse=True)
         results = results[:max_results]
+
+    # Record discovered APIs for validation in run_operation
+    for r in results:
+        entity = r.get("entity", "")
+        method = r.get("name", "")
+        if entity and method:
+            session_state.record_discovered_api(entity, method)
 
     return [TextContent(type="text", text=json.dumps({
         "query": query,
@@ -2764,6 +2665,20 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps({
             "error": "project_name required",
             "message": "No project specified. Either set project_name in start() or provide it directly.",
+            "session": session_state.summary()
+        }, indent=2))]
+
+    # Check if API discovery was performed
+    skip_api_check = args.get("skip_api_check", False)
+    if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "API discovery required",
+            "message": "No APIs have been discovered yet. Before running operations, you MUST use one of these tools first:\n"
+                      "1. start(task='...') - discovers relevant APIs automatically\n"
+                      "2. get_object_api(object_type='...') - get API for specific object\n"
+                      "3. search_by_capability(query='...') - search for APIs by description\n\n"
+                      "This prevents using incorrect/hallucinated method names.",
+            "hint": "Call start() or search_by_capability() first, then use the discovered methods in your code.",
             "session": session_state.summary()
         }, indent=2))]
 

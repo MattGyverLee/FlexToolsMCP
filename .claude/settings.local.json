@@ -20,7 +20,9 @@
       "mcp__flextoolsmcp__start_module",
       "mcp__flextoolsmcp__get_operation_logs",
       "Bash(find:*)",
-      "mcp__flextoolsmcp__resolve_property"
+      "mcp__flextoolsmcp__resolve_property",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

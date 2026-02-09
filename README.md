@@ -84,7 +84,8 @@ These queries have been successfully tested:
 "Show me the full morpheme analysis of the first word in the the first text."
 "Regarding both glosses (fuzzy match) and part of speech, are there any likely synonyms in this database?"
 "Propose glosses in French for 3 senses with examples sentence translations that confirm the context." 
-"Are there any User Approved wordforms with stars (***) in one or more morphemes?"
+"Are there any User Approved Analyses with one or more unlinked morphemes?"
+"I need a module that will fuzzily identify duplicate lexemes (levenshtein) with similar glosses (semantically) and the same POS."
 ```
 
 ## Background

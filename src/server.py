@@ -337,7 +337,12 @@ session_state = SessionState()
 
 
 def detect_cud_operations(code: str) -> dict:
-    """Detect Create, Update, Delete operations in code and assess risk.
+    """Detect Create, Update, Delete operations in code that modify the FLEx database.
+
+    Only detects actual FlexLibs2/LCM database modifications, not:
+    - Local Python list operations (results.append(), etc.)
+    - Variable assignments to local variables
+    - Comments containing keywords
 
     Returns dict with:
       - is_cud: bool - whether CUD operations detected
@@ -345,56 +350,106 @@ def detect_cud_operations(code: str) -> dict:
       - risks: list - specific risks identified
       - affected_types: list - data types that may be affected
     """
-    code_lower = code.lower()
-
-    # Operation patterns
-    create_patterns = ['create', 'add', 'new', 'insert', 'append']
-    update_patterns = ['set', 'update', 'modify', 'change', 'edit', 'replace']
-    delete_patterns = ['delete', 'remove', 'destroy', 'clear', 'purge']
+    import re
 
     operations = []
     risks = []
     affected = set()
 
-    # Check for create operations
-    for p in create_patterns:
-        if p in code_lower:
-            operations.append(f"CREATE ({p})")
-            risks.append(f"New data will be added to the database")
+    # Remove comments to avoid false positives
+    code_no_comments = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
+
+    # === CREATE operations (actual database writes) ===
+    create_patterns = [
+        # FlexLibs2/LCM .Create() methods (factory or operations)
+        (r'\.Create\s*\(', 'Create()'),
+        # .Add() on LCM collections (OC, OS, RC suffixes indicate LCM collections)
+        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC|'
+         r'SubentriesOS|AllomorphsOS|ExamplesOS|ReversalEntriesOC|'
+         r'EvaluationsRC|PossibilitiesOS|SubPossibilitiesOS|'
+         r'PronunciationsOS|LexEntryRefsOS|ComponentLexemesRS)\s*\.\s*Add\s*\(', 'collection.Add()'),
+        # Generic .Add() with LCM object context (be more conservative)
+        (r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', 'Add()'),
+        # .Insert() on LCM sequences
+        (r'\.(SensesOS|MorphBundlesOS|SubentriesOS|AllomorphsOS|ExamplesOS|'
+         r'PossibilitiesOS|SubPossibilitiesOS|PronunciationsOS)\s*\.\s*Insert\s*\(', 'Insert()'),
+        # project.*.Create (FlexLibs2 operations Create methods)
+        (r'project\.\w+\.Create\s*\(', 'project.*.Create()'),
+    ]
+
+    for pattern, label in create_patterns:
+        if re.search(pattern, code_no_comments, re.IGNORECASE):
+            operations.append(f"CREATE ({label})")
+            risks.append("New data will be added to the database")
             break
 
-    # Check for update operations
-    for p in update_patterns:
-        if p in code_lower:
-            operations.append(f"UPDATE ({p})")
-            risks.append(f"Existing data will be modified")
+    # === UPDATE operations (actual database writes) ===
+    update_patterns = [
+        # .set_String() - multistring value setting
+        (r'\.set_String\s*\(', 'set_String()'),
+        # .SetOccurrences, .SetForm, etc.
+        (r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', 'Set*()'),
+        # .CopyAlternatives() - copying multistring values
+        (r'\.CopyAlternatives\s*\(', 'CopyAlternatives()'),
+        # Direct property assignment to LCM object properties
+        # Matches: entry.Foo = ..., sense.BarRA = ..., etc.
+        (r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+         r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
+         r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
+         r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
+         r'Bibliography|Etymology|Comment|Note)\s*=', 'property assignment'),
+        # project.*.Set* or project.*.Update* methods
+        (r'project\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', 'project.*.Set/Update()'),
+        # Approve/Reject analysis (changes approval status)
+        (r'\.(Approve|Reject|SetApprovalStatus)\s*\(', 'approval change'),
+    ]
+
+    for pattern, label in update_patterns:
+        if re.search(pattern, code_no_comments, re.IGNORECASE):
+            operations.append(f"UPDATE ({label})")
+            risks.append("Existing data will be modified")
             break
 
-    # Check for delete operations
-    for p in delete_patterns:
-        if p in code_lower:
-            operations.append(f"DELETE ({p})")
-            risks.append(f"Data will be permanently removed")
+    # === DELETE operations (actual database writes) ===
+    delete_patterns = [
+        # .Delete() methods
+        (r'\.Delete\s*\(', 'Delete()'),
+        # .Remove() on LCM collections
+        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC|'
+         r'SubentriesOS|AllomorphsOS|ExamplesOS|ReversalEntriesOC|'
+         r'EvaluationsRC|PossibilitiesOS|SubPossibilitiesOS)\s*\.\s*Remove\s*\(', 'collection.Remove()'),
+        # .Clear() on LCM collections
+        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC)\s*\.\s*Clear\s*\(', 'collection.Clear()'),
+        # project.*.Delete methods
+        (r'project\.\w+\.Delete\s*\(', 'project.*.Delete()'),
+    ]
+
+    for pattern, label in delete_patterns:
+        if re.search(pattern, code_no_comments, re.IGNORECASE):
+            operations.append(f"DELETE ({label})")
+            risks.append("Data will be permanently removed")
             break
 
-    # Identify affected data types
-    type_patterns = {
-        'entry': 'Lexicon entries',
-        'sense': 'Senses',
-        'example': 'Example sentences',
-        'gloss': 'Glosses',
-        'definition': 'Definitions',
-        'pos': 'Parts of speech',
-        'allomorph': 'Allomorphs',
-        'reversal': 'Reversal entries',
-        'text': 'Texts',
-        'wordform': 'Wordforms',
-        'analysis': 'Analyses'
-    }
+    # Identify affected data types (only if CUD operations detected)
+    if operations:
+        type_patterns = {
+            r'\bentry\b': 'Lexicon entries',
+            r'\bsense\b': 'Senses',
+            r'\bexample\b': 'Example sentences',
+            r'\bgloss\b': 'Glosses',
+            r'\bdefinition\b': 'Definitions',
+            r'\bpos\b': 'Parts of speech',
+            r'\ballomorph\b': 'Allomorphs',
+            r'\breversal\b': 'Reversal entries',
+            r'\btext\b': 'Texts',
+            r'\bwordform\b': 'Wordforms',
+            r'\banalysis\b': 'Analyses',
+            r'\bmorph\s*bundle\b': 'Morph bundles',
+        }
 
-    for pattern, label in type_patterns.items():
-        if pattern in code_lower:
-            affected.add(label)
+        for pattern, label in type_patterns.items():
+            if re.search(pattern, code_no_comments, re.IGNORECASE):
+                affected.add(label)
 
     return {
         "is_cud": len(operations) > 0,

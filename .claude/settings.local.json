@@ -22,7 +22,9 @@
       "Bash(find:*)",
       "mcp__flextoolsmcp__resolve_property",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__paratext-registry__orgs_list_projects",
+      "mcp__paratext-registry__auth_get_status"
     ]
   }
 }

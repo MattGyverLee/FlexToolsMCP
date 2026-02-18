@@ -110,6 +110,17 @@ This project evolved from early AI experiments in summer 2025 through the FlexLi
 
 ### Setup
 
+First, Install a current version of FLEx and FLExTools (with Python). Make sure that python installs (e.g. `C:\Program Files\Python311\Scripts\` and `C:\Program Files\Python311\`) into your Windows Path. Reboot if you have not done so after installing Python.
+
+The eventual goal is to clone several repositories beside one another.
+
+```
+/FlexTools-MCP (the MCP itself)
+/flexlibs2 (needed to use the new flexlibs in the MCP, note below that the repo is called flexlibs, but it needs to be cloned into a folder named flexlibs2 so it doesn't conflict)
+/flexlibs flexlibs is installed by FlexTools as a python libary. (Optional for reference, but there is a command in the MCP to update documentation from this folder the next time flexlibs is updated)
+/liblcm (optional and useful for reference, but not required) Note thst liblcm is installed as a compiled binary with FLEx. 
+```
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/MattGyverLee/FlexToolsMCP.git
@@ -121,11 +132,26 @@ This project evolved from early AI experiments in summer 2025 through the FlexLi
    pip install -r requirements.txt
    ```
 
-3. Configure paths:
+3. Clone flexlibs2 into a folder beside the FLExtools MCP:
+
+**Note:** The repo is named the same as `flexlibs`, so this command puts it in the `flextools2` folder. If you use another method of cloning, rename the resulting folder 'flexlibs' to 'flexlibs2'.
+```bash
+   cd ..
+   git clone https://github.com/MattGyverLee/flexlibs.git flexlibs2
+```
+4. Install flexlibs2 as a library alongside flexlibs (comes with FlexTools) so that the MCP can use it.
+```bash
+pip install ./flexlibs2
+```
+
+5. Clone a copy of  
+
+5. Configure paths inside the FLExToolsMCP folder:
    ```bash
    cp .env.example .env
    # Edit .env with your local paths
    ```
+
 
 4. Refresh indexes (if needed):
    ```bash

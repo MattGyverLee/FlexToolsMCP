@@ -1490,9 +1490,9 @@ def main():
             sys.exit(1)
 
     else:
-        # Default: analyze both if paths exist
-        default_flexlibs2 = r"D:\Github\flexlibs2"
-        default_flexlibs = r"D:\Github\flexlibs"
+        # Default: analyze both if paths exist from environment
+        default_flexlibs2 = os.environ.get("FLEXLIBS2_PATH", r"D:\Github\flexlibs2")
+        default_flexlibs = os.environ.get("FLEXLIBS_PATH", r"D:\Github\flexlibs")
 
         if Path(default_flexlibs2).exists():
             try:

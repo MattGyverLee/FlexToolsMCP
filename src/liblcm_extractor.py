@@ -38,12 +38,26 @@ log = logging.getLogger("liblcm-extractor")
 SCHEMA_VERSION = "unified-api-doc/2.0"
 
 # ---- Default DLL Paths -------------------------------------------------------
-DEFAULT_DLL_PATHS = [
-    Path(r"D:/Github/Fieldworks/Output/Debug"),
-    Path(r"D:/Github/Fieldworks/Output/Release"),
-    Path(r"C:/Program Files/SIL/FieldWorks 9"),
-    Path(r"C:/Program Files (x86)/SIL/FieldWorks 9"),
-]
+def get_default_dll_paths():
+    """Build list of default DLL paths from environment and standard locations."""
+    paths = []
+
+    # Check FIELDWORKS_DLL_PATH environment variable first
+    env_path = os.environ.get("FIELDWORKS_DLL_PATH")
+    if env_path:
+        paths.append(Path(env_path))
+
+    # Add standard paths
+    paths.extend([
+        Path(r"D:/Github/Fieldworks/Output/Debug"),
+        Path(r"D:/Github/Fieldworks/Output/Release"),
+        Path(r"C:/Program Files/SIL/FieldWorks 9"),
+        Path(r"C:/Program Files (x86)/SIL/FieldWorks 9"),
+    ])
+
+    return paths
+
+DEFAULT_DLL_PATHS = get_default_dll_paths()
 
 # ---- Required Assemblies (order matters - dependencies first) ----------------
 REQUIRED_ASSEMBLIES = [

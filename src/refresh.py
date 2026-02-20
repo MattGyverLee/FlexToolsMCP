@@ -305,12 +305,12 @@ def main():
     )
     parser.add_argument(
         "--flexlibs2-path",
-        default="D:/Github/flexlibs2",
+        default=os.environ.get("FLEXLIBS2_PATH", "D:/Github/flexlibs2"),
         help="Path to FlexLibs 2.0 repository"
     )
     parser.add_argument(
         "--flexlibs-path",
-        default="D:/Github/flexlibs",
+        default=os.environ.get("FLEXLIBS_PATH", "D:/Github/flexlibs"),
         help="Path to FlexLibs stable repository"
     )
     parser.add_argument(

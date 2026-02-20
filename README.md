@@ -162,13 +162,19 @@ pip install ./flexlibs2
    ```bash
    python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
    ```
+   If this succeeds, both the MCP and Flexlibs2 are installed correctly. Your LLM tool will call `python ./server.py` as needed in the future, you don't need to run the server manually.
 
 ### Connecting to AI Assistants
 
 #### Claude Code
+
+Tools like Claude Code work best when you select a folder that can be edited. The MCP may want to create files to solve problems, so it needs a space to do this.
+
+I created a folder `C:/Github/MCPlayground` that I open in Claude Code to play with MCPs. This will allow you to export and import data as desired. Create and open such a folder in VSCode.
+
 ```bash
 # User-wide installation (available in all projects)
-claude mcp add flextools-mcp -s user python D:/Github/FlexToolsMCP/src/server.py
+claude mcp add flextools-mcp -s user python C:/Github/FlexToolsMCP/src/server.py
 
 # Or project-specific (from the FlexToolsMCP directory)
 claude mcp add flextools-mcp python src/server.py
@@ -185,6 +191,49 @@ claude mcp remove flextools-mcp -s project
 # Remove from all scopes
 claude mcp remove flextools-mcp -s user && claude mcp remove flextools-mcp -s project
 ```
+
+Alternately, add this to the correct config file (either at the project or user level):
+
+```JSON
+{
+  "mcpServers": {
+    "flextools-mcp": {
+      "command": "python",
+      "args": [
+        "C:/Github/FlexToolsMCP/src/server.py"
+      ]
+    }
+  }
+}
+```
+
+#### Antigravity
+
+Tools like Antigravity work best when you select a folder that can be edited. The MCP may want to create files to solve problems, so it needs a space to do this.
+
+I created a folder `C:/Github/MCPlayground` that I open in Antigravity to play with MCPs. This will allow you to export and import data as desired. Create and open such a folder in Antigravity.
+
+Once Antigravity is open to your folder, click the `...` in the top-right of the chat window and choose `MCP Servers`. The Pratext MCP server will not be in the list of proposed services, so click the `Manage MCP Servers` link at the top.
+
+You will see `View RAW Config` at the top, click it.
+
+Add the following to your Antigravity configuration file (`.antigravity/config.json` or similar):
+
+```json
+{
+  "mcpServers": {
+    "flextools-mcp": {
+      "command": "python",
+      "args": [
+        "c://work//FlexToolsMCP//src//server.py",
+        "--transport=stdio"
+      ]
+    }
+  }
+}
+```
+
+Adjust the path to match your FlexToolsMCP installation location.
 
 #### Other MCP-Compatible Tools
 Configure the MCP server endpoint according to your tool's documentation.

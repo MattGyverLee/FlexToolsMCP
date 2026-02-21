@@ -23,7 +23,7 @@ from typing import Dict, List, Any, Optional, Tuple
 # ---- Version Detection -------------------------------------------------------
 
 def detect_flexlibs_version(flexlibs_path: str) -> str:
-    """Detect FlexLibs stable version from source code."""
+    """Detect FlexLibs stable version from source code or installed package."""
     base_path = Path(flexlibs_path)
 
     # Try flexlibs/__init__.py first (most reliable)
@@ -62,12 +62,20 @@ def detect_flexlibs_version(flexlibs_path: str) -> str:
         except Exception:
             pass
 
+    # Fallback: try to import installed flexlibs package
+    try:
+        import flexlibs
+        if hasattr(flexlibs, 'version'):
+            return flexlibs.version
+    except ImportError:
+        pass
+
     # Default fallback
     return "0.0.0"
 
 
 def detect_flexlibs2_version(flexlibs2_path: str) -> str:
-    """Detect FlexLibs 2.0 version from source code."""
+    """Detect FlexLibs 2.0 version from source code or installed package."""
     base_path = Path(flexlibs2_path)
 
     # Try flexlibs2/__init__.py first (most reliable)
@@ -105,6 +113,14 @@ def detect_flexlibs2_version(flexlibs2_path: str) -> str:
                     return match.group(1)
         except Exception:
             pass
+
+    # Fallback: try to import installed flexlibs2 package
+    try:
+        import flexlibs2
+        if hasattr(flexlibs2, 'version'):
+            return flexlibs2.version
+    except ImportError:
+        pass
 
     # Default fallback
     return "0.0.0"

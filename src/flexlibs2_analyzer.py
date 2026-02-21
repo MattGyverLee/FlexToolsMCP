@@ -26,13 +26,24 @@ def detect_flexlibs_version(flexlibs_path: str) -> str:
     """Detect FlexLibs stable version from source code."""
     base_path = Path(flexlibs_path)
 
-    # Try setup.py first
+    # Try flexlibs/__init__.py first (most reliable)
+    init_py = base_path / "flexlibs" / "__init__.py"
+    if init_py.exists():
+        try:
+            with open(init_py, 'r', encoding='utf-8') as f:
+                content = f.read()
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Try setup.py
     setup_py = base_path / "setup.py"
     if setup_py.exists():
         try:
             with open(setup_py, 'r', encoding='utf-8') as f:
                 content = f.read()
-                # Look for version = "X.Y.Z"
                 match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
                 if match:
                     return match.group(1)
@@ -59,7 +70,19 @@ def detect_flexlibs2_version(flexlibs2_path: str) -> str:
     """Detect FlexLibs 2.0 version from source code."""
     base_path = Path(flexlibs2_path)
 
-    # Try setup.py first
+    # Try flexlibs2/__init__.py first (most reliable)
+    init_py = base_path / "flexlibs2" / "__init__.py"
+    if init_py.exists():
+        try:
+            with open(init_py, 'r', encoding='utf-8') as f:
+                content = f.read()
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Try setup.py
     setup_py = base_path / "setup.py"
     if setup_py.exists():
         try:

@@ -591,26 +591,59 @@ class APIIndex:
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
-        """Load all API indexes from the index directory."""
+        """Load all API indexes from the index directory with versioning support.
+
+        Automatically loads the latest versioned API files. If a versioned file
+        is missing, attempts to auto-refresh it.
+        """
         index = cls()
 
-        # Load LibLCM
-        liblcm_path = index_dir / "liblcm" / "liblcm_api.json"
-        if liblcm_path.exists():
-            with open(liblcm_path, "r", encoding="utf-8") as f:
-                index.liblcm = json.load(f)
+        # Load LibLCM (look for versioned files)
+        liblcm_dir = index_dir / "liblcm"
+        liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
+        if not liblcm_path:
+            operations_logger.info("No LibLCM API file found, attempting auto-refresh...")
+            if auto_refresh_missing_api_file("liblcm", "liblcm_api", liblcm_dir):
+                liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 
-        # Load FlexLibs 2.0
-        flexlibs2_path = index_dir / "flexlibs" / "flexlibs2_api.json"
-        if flexlibs2_path.exists():
-            with open(flexlibs2_path, "r", encoding="utf-8") as f:
-                index.flexlibs2 = json.load(f)
+        if liblcm_path:
+            try:
+                with open(liblcm_path, "r", encoding="utf-8") as f:
+                    index.liblcm = json.load(f)
+                operations_logger.info(f"Loaded LibLCM from {liblcm_path.name}")
+            except Exception as e:
+                operations_logger.error(f"Failed to load LibLCM: {e}")
 
-        # Load FlexLibs Stable
-        flexlibs_stable_path = index_dir / "flexlibs" / "flexlibs_api.json"
-        if flexlibs_stable_path.exists():
-            with open(flexlibs_stable_path, "r", encoding="utf-8") as f:
-                index.flexlibs_stable = json.load(f)
+        # Load FlexLibs 2.0 (look for versioned files)
+        flexlibs_dir = index_dir / "flexlibs"
+        flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+        if not flexlibs2_path:
+            operations_logger.info("No FlexLibs 2.0 API file found, attempting auto-refresh...")
+            if auto_refresh_missing_api_file("flexlibs2", "flexlibs2_api", flexlibs_dir):
+                flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+
+        if flexlibs2_path:
+            try:
+                with open(flexlibs2_path, "r", encoding="utf-8") as f:
+                    index.flexlibs2 = json.load(f)
+                operations_logger.info(f"Loaded FlexLibs 2.0 from {flexlibs2_path.name}")
+            except Exception as e:
+                operations_logger.error(f"Failed to load FlexLibs 2.0: {e}")
+
+        # Load FlexLibs Stable (look for versioned files)
+        flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+        if not flexlibs_stable_path:
+            operations_logger.info("No FlexLibs stable API file found, attempting auto-refresh...")
+            if auto_refresh_missing_api_file("flexlibs", "flexlibs_api", flexlibs_dir):
+                flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+
+        if flexlibs_stable_path:
+            try:
+                with open(flexlibs_stable_path, "r", encoding="utf-8") as f:
+                    index.flexlibs_stable = json.load(f)
+                operations_logger.info(f"Loaded FlexLibs stable from {flexlibs_stable_path.name}")
+            except Exception as e:
+                operations_logger.error(f"Failed to load FlexLibs stable: {e}")
 
         # Load navigation graph
         nav_graph_path = index_dir / "navigation_graph.json"
@@ -640,6 +673,87 @@ api_index: Optional[APIIndex] = None
 def get_index_dir() -> Path:
     """Get the index directory path."""
     return Path(__file__).parent.parent / "index"
+
+
+def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Path]:
+    """Find the latest versioned API file for a library.
+
+    Args:
+        index_dir: Parent directory (e.g., index/liblcm or index/flexlibs)
+        prefix: File prefix (e.g., 'liblcm_api', 'flexlibs2_api')
+
+    Returns:
+        Path to latest versioned file, or None if not found
+    """
+    if not index_dir.exists():
+        return None
+
+    import glob
+    pattern = str(index_dir / f"{prefix}_v*.json")
+    files = glob.glob(pattern)
+
+    if not files:
+        return None
+
+    # Sort by version number (works for semantic versioning)
+    files.sort(key=lambda x: tuple(map(int, re.search(r'v(\d+)\.(\d+)\.(\d+)', x).groups())))
+    return Path(files[-1]) if files else None
+
+
+def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Path) -> bool:
+    """Auto-refresh a missing API file by running the analyzer.
+
+    Args:
+        library_name: Name of library ('flexlibs', 'flexlibs2', 'liblcm')
+        prefix: File prefix for versioned files
+        index_dir: Parent directory
+
+    Returns:
+        True if refresh was attempted/successful, False otherwise
+    """
+    try:
+        # Import refresh functions
+        import sys
+        from pathlib import Path as PathlibPath
+
+        refresh_script = Path(__file__).parent / "refresh.py"
+        if not refresh_script.exists():
+            operations_logger.error(f"Refresh script not found: {refresh_script}")
+            return False
+
+        import subprocess
+        project_root = Path(__file__).parent.parent
+
+        cmd = [sys.executable, str(refresh_script)]
+
+        if library_name == 'flexlibs':
+            cmd.append("--flexlibs-only")
+        elif library_name == 'flexlibs2':
+            cmd.append("--flexlibs2-only")
+        elif library_name == 'liblcm':
+            cmd.append("--liblcm-only")
+        else:
+            return False
+
+        operations_logger.info(f"Auto-refreshing {library_name} API index...")
+        result = subprocess.run(
+            cmd,
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if result.returncode == 0:
+            operations_logger.info(f"Successfully refreshed {library_name} API index")
+            return True
+        else:
+            operations_logger.warning(f"Failed to refresh {library_name}: {result.stderr[:500]}")
+            return False
+
+    except Exception as e:
+        operations_logger.warning(f"Could not auto-refresh {library_name}: {e}")
+        return False
 
 
 @server.list_tools()

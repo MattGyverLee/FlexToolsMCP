@@ -11,13 +11,8 @@ pip install -r requirements.txt
 # Configure paths (copy and edit .env)
 cp .env.example .env
 
-# Refresh all API indexes from source
+# Refresh all API indexes from source (generates versioned files)
 python src/refresh.py
-
-# Or refresh individually:
-python src/flexlibs2_analyzer.py --flexlibs-path D:/Github/flexlibs --output index/flexlibs/flexlibs_api.json
-python src/flexlibs2_analyzer.py --flexlibs2-path D:/Github/flexlibs2 --output index/flexlibs/flexlibs2_api.json
-python src/liblcm_extractor.py --output index/liblcm/liblcm_api.json
 
 # Test the MCP server loads correctly
 python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
@@ -68,10 +63,12 @@ Configure paths in `.env` file. These external repositories are dependencies:
   refresh.py             # Unified refresh script
 
 /index
-  /liblcm                # LibLCM API documentation (JSON)
-  /flexlibs              # FlexLibs stable + 2.0 API documentation (JSON)
-    flexlibs_api.json    # FlexLibs stable (~71 methods)
-    flexlibs2_api.json   # FlexLibs 2.0 (~1400 methods)
+  /liblcm                # LibLCM API documentation (versioned JSON)
+    liblcm_api_v8.2.3.json    # Version 8.2.3
+    liblcm_api_v8.3.0.json    # Version 8.3.0 (etc.)
+  /flexlibs              # FlexLibs API documentation (versioned JSON)
+    flexlibs_api_v1.0.0.json      # FlexLibs stable version 1.0.0
+    flexlibs2_api_v2.1.5.json     # FlexLibs 2.0 version 2.1.5
 
 /docs
   PROGRESS.md            # Project progress log
@@ -110,6 +107,12 @@ python src/refresh.py --flexlibs2-only
 python src/refresh.py --liblcm-only
 ```
 
+**API Versioning**: Files are now stored with version suffixes (e.g., `flexlibs2_api_v2.1.5.json`).
+- Server automatically detects library versions and loads matching API files
+- Missing versions are auto-refreshed on startup
+- Multiple versions can coexist in the index directory
+- See [docs/VERSIONING.md](docs/VERSIONING.md) for complete details
+
 ## FLEx Data Conventions
 
 ### Empty Multistring Fields ('***' Placeholder)
@@ -139,3 +142,4 @@ if text == FLEX_EMPTY_PLACEHOLDER:  # '***'
 - **Static analysis primary**: AST parsing for Python, .NET reflection for C#
 - **Semantic categorization**: Entities categorized by namespace and naming patterns
 - **Object-centric organization**: Index organized around objects (ILexEntry, ILexSense, etc.)
+- **API versioning**: Supports multiple library versions simultaneously via filename suffixes (e.g., `liblcm_api_v8.2.3.json`). Server auto-detects and loads matching versions, auto-refreshing missing ones on startup

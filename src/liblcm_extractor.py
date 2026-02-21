@@ -59,6 +59,38 @@ def get_default_dll_paths():
 
 DEFAULT_DLL_PATHS = get_default_dll_paths()
 
+
+# ---- Version Detection -------------------------------------------------------
+
+def get_liblcm_version(assemblies: List) -> str:
+    """Extract LibLCM version from loaded assemblies."""
+    if not PYTHONNET_AVAILABLE or not assemblies:
+        return "0.0.0"
+
+    try:
+        # Try to get version from SIL.LCModel assembly
+        for assembly in assemblies:
+            try:
+                asm_name = assembly.GetName()
+                if "SIL.LCModel" in asm_name.Name:
+                    version = asm_name.Version
+                    return f"{version.Major}.{version.Minor}.{version.Build}"
+            except Exception:
+                pass
+
+        # Fallback: try first assembly
+        if assemblies:
+            try:
+                version = assemblies[0].GetName().Version
+                return f"{version.Major}.{version.Minor}.{version.Build}"
+            except Exception:
+                pass
+
+    except Exception as e:
+        log.warning(f"Could not extract version from assemblies: {e}")
+
+    return "0.0.0"
+
 # ---- Required Assemblies (order matters - dependencies first) ----------------
 REQUIRED_ASSEMBLIES = [
     "SIL.Core.dll",
@@ -970,13 +1002,14 @@ def build_api_documentation(assemblies, fetch_descriptions: bool = False) -> Dic
     return api_doc
 
 
-def stamp_document(api_doc: Dict[str, Any], dll_dir: Path) -> Dict[str, Any]:
+def stamp_document(api_doc: Dict[str, Any], dll_dir: Path, version: str = "0.0.0") -> Dict[str, Any]:
     """Add schema and generation metadata to the document."""
     return {
         "_schema": SCHEMA_VERSION,
         "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "liblcm",
+            "version": version,
             "path": str(dll_dir.absolute()),
             "description": "LibLCM - FieldWorks Language and Culture Model (.NET assemblies)",
             "url": "https://github.com/sillsdev/liblcm"
@@ -1059,11 +1092,15 @@ Examples:
         # Load assemblies
         assemblies = load_assemblies(assembly_paths, dll_dir)
 
+        # Detect version
+        version = get_liblcm_version(assemblies)
+        log.info(f"Detected LibLCM version: {version}")
+
         # Build documentation
         api_doc = build_api_documentation(assemblies, args.fetch_descriptions)
 
         # Add metadata
-        stamped_doc = stamp_document(api_doc, dll_dir)
+        stamped_doc = stamp_document(api_doc, dll_dir, version)
 
         # Ensure output directory exists
         output_path = Path(args.output)

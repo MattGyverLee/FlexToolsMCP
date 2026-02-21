@@ -20,6 +20,73 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
 
+# ---- Version Detection -------------------------------------------------------
+
+def detect_flexlibs_version(flexlibs_path: str) -> str:
+    """Detect FlexLibs stable version from source code."""
+    base_path = Path(flexlibs_path)
+
+    # Try setup.py first
+    setup_py = base_path / "setup.py"
+    if setup_py.exists():
+        try:
+            with open(setup_py, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Look for version = "X.Y.Z"
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Try pyproject.toml
+    pyproject = base_path / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            with open(pyproject, 'r', encoding='utf-8') as f:
+                content = f.read()
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Default fallback
+    return "0.0.0"
+
+
+def detect_flexlibs2_version(flexlibs2_path: str) -> str:
+    """Detect FlexLibs 2.0 version from source code."""
+    base_path = Path(flexlibs2_path)
+
+    # Try setup.py first
+    setup_py = base_path / "setup.py"
+    if setup_py.exists():
+        try:
+            with open(setup_py, 'r', encoding='utf-8') as f:
+                content = f.read()
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Try pyproject.toml
+    pyproject = base_path / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            with open(pyproject, 'r', encoding='utf-8') as f:
+                content = f.read()
+                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
+                if match:
+                    return match.group(1)
+        except Exception:
+            pass
+
+    # Default fallback
+    return "0.0.0"
+
+
 # Description enrichment: adds common search terms to method descriptions
 # This helps users find methods when searching with linguistics terminology
 DESCRIPTION_ENRICHMENTS = {
@@ -1051,13 +1118,16 @@ def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
     if not base_path.exists():
         raise FileNotFoundError(f"FlexLibs 2.0 code directory not found: {base_path}")
 
+    version = detect_flexlibs2_version(flexlibs2_path)
     print(f"[INFO] Analyzing FlexLibs 2.0 at: {base_path}")
+    print(f"[INFO] Detected version: {version}")
 
     result = {
         "_schema": "unified-api-doc/2.0",
         "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "flexlibs2",
+            "version": version,
             "path": str(flexlibs2_path),
             "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)"
         },
@@ -1187,13 +1257,16 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
     if not code_path.exists():
         raise FileNotFoundError(f"FlexLibs stable code directory not found: {code_path}")
 
+    version = detect_flexlibs_version(flexlibs_path)
     print(f"[INFO] Analyzing FlexLibs stable at: {code_path}")
+    print(f"[INFO] Detected version: {version}")
 
     result = {
         "_schema": "unified-api-doc/2.0",
         "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "flexlibs",
+            "version": version,
             "path": str(flexlibs_path),
             "description": "FlexLibs stable - Shallow Python wrapper for LibLCM (~40 functions)"
         },

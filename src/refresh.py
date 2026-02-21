@@ -17,6 +17,8 @@ import argparse
 import subprocess
 import sys
 import os
+import json
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -43,6 +45,45 @@ load_env()
 def get_project_root() -> Path:
     """Get the project root directory."""
     return Path(__file__).parent.parent
+
+
+def extract_version_from_json(json_path: Path) -> str:
+    """Extract version from a generated API JSON file."""
+    try:
+        if json_path.exists():
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('_source', {}).get('version', '0.0.0')
+    except Exception:
+        pass
+    return '0.0.0'
+
+
+def get_versioned_output_path(base_path: Path, version: str) -> Path:
+    """Generate versioned filename: lib_api_vX.Y.Z.json"""
+    stem = base_path.stem  # e.g., 'flexlibs_api'
+    parent = base_path.parent
+    return parent / f"{stem}_v{version}.json"
+
+
+def find_existing_versions(base_dir: Path, prefix: str) -> dict:
+    """Find all existing versioned API files for a library.
+
+    Returns dict mapping version -> file_path
+    e.g., {'1.0.0': Path(...), '1.1.0': Path(...)}
+    """
+    versions = {}
+    if not base_dir.exists():
+        return versions
+
+    pattern = re.compile(rf"{re.escape(prefix)}_v(\d+\.\d+\.\d+)\.json$")
+    for file in base_dir.glob(f"{prefix}_v*.json"):
+        match = pattern.match(file.name)
+        if match:
+            version = match.group(1)
+            versions[version] = file
+
+    return versions
 
 
 def run_command(cmd: list, description: str) -> bool:
@@ -78,56 +119,98 @@ def run_command(cmd: list, description: str) -> bool:
 
 
 def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
-    """Refresh FlexLibs stable index."""
+    """Refresh FlexLibs stable index with versioning."""
     if flexlibs_path is None:
         flexlibs_path = os.environ.get("FLEXLIBS_PATH", "D:/Github/flexlibs")
 
-    output_path = get_project_root() / "index" / "flexlibs" / "flexlibs_api.json"
+    index_dir = get_project_root() / "index" / "flexlibs"
+    temp_output = index_dir / "flexlibs_api_temp.json"
 
     cmd = [
         sys.executable,
         "src/flexlibs2_analyzer.py",
         "--flexlibs-path", flexlibs_path,
-        "--output", str(output_path)
+        "--output", str(temp_output)
     ]
 
-    return run_command(cmd, "Refreshing FlexLibs stable index")
+    if not run_command(cmd, "Refreshing FlexLibs stable index"):
+        return False
+
+    # Extract version from temp file and rename to versioned file
+    version = extract_version_from_json(temp_output)
+    versioned_path = get_versioned_output_path(index_dir / "flexlibs_api.json", version)
+
+    try:
+        temp_output.rename(versioned_path)
+        print(f"[INFO] Saved FlexLibs stable v{version} to {versioned_path.name}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to move file: {e}")
+        return False
 
 
 def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
-    """Refresh FlexLibs 2.0 index."""
+    """Refresh FlexLibs 2.0 index with versioning."""
     if flexlibs2_path is None:
         flexlibs2_path = os.environ.get("FLEXLIBS2_PATH", "D:/Github/flexlibs2")
 
-    output_path = get_project_root() / "index" / "flexlibs" / "flexlibs2_api.json"
+    index_dir = get_project_root() / "index" / "flexlibs"
+    temp_output = index_dir / "flexlibs2_api_temp.json"
 
     cmd = [
         sys.executable,
         "src/flexlibs2_analyzer.py",
         "--flexlibs2-path", flexlibs2_path,
-        "--output", str(output_path)
+        "--output", str(temp_output)
     ]
 
-    return run_command(cmd, "Refreshing FlexLibs 2.0 index")
+    if not run_command(cmd, "Refreshing FlexLibs 2.0 index"):
+        return False
+
+    # Extract version from temp file and rename to versioned file
+    version = extract_version_from_json(temp_output)
+    versioned_path = get_versioned_output_path(index_dir / "flexlibs2_api.json", version)
+
+    try:
+        temp_output.rename(versioned_path)
+        print(f"[INFO] Saved FlexLibs 2.0 v{version} to {versioned_path.name}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to move file: {e}")
+        return False
 
 
 def refresh_liblcm(dll_path: str = None) -> bool:
-    """Refresh LibLCM index."""
+    """Refresh LibLCM index with versioning."""
     if dll_path is None:
         dll_path = os.environ.get("FIELDWORKS_DLL_PATH")
 
-    output_path = get_project_root() / "index" / "liblcm" / "liblcm_api.json"
+    index_dir = get_project_root() / "index" / "liblcm"
+    temp_output = index_dir / "liblcm_api_temp.json"
 
     cmd = [
         sys.executable,
         "src/liblcm_extractor.py",
-        "--output", str(output_path)
+        "--output", str(temp_output)
     ]
 
     if dll_path:
         cmd.extend(["--dll-path", dll_path])
 
-    return run_command(cmd, "Refreshing LibLCM index")
+    if not run_command(cmd, "Refreshing LibLCM index"):
+        return False
+
+    # Extract version from temp file and rename to versioned file
+    version = extract_version_from_json(temp_output)
+    versioned_path = get_versioned_output_path(index_dir / "liblcm_api.json", version)
+
+    try:
+        temp_output.rename(versioned_path)
+        print(f"[INFO] Saved LibLCM v{version} to {versioned_path.name}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to move file: {e}")
+        return False
 
 
 def apply_categorization() -> bool:
@@ -138,7 +221,19 @@ def apply_categorization() -> bool:
         import json
         from collections import Counter
 
-        liblcm_path = get_project_root() / "index" / "liblcm" / "liblcm_api.json"
+        index_dir = get_project_root() / "index" / "liblcm"
+
+        # Find the most recently generated versioned file
+        versions = find_existing_versions(index_dir, "liblcm_api")
+        if not versions:
+            print("[WARN] No LibLCM API files found to categorize")
+            return True
+
+        # Get the latest version (sorted lexicographically, which works for semantic versioning)
+        latest_version = sorted(versions.keys())[-1]
+        liblcm_path = versions[latest_version]
+
+        print(f"[INFO] Applying categorization to {liblcm_path.name}")
 
         with open(liblcm_path, 'r', encoding='utf-8') as f:
             lcm = json.load(f)

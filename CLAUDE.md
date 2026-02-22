@@ -117,23 +117,38 @@ python src/refresh.py --liblcm-only
 
 ### Empty Multistring Fields ('***' Placeholder)
 
-FLEx/LCM uses `'***'` as a placeholder when multilingual string fields (Definition, Gloss, etc.) have no value set. This is returned instead of `None` or empty string.
+FLEx/LCM uses `'***'` as a placeholder when multilingual string fields (Definition, Gloss, etc.) have no value set.
 
-**Affected fields**: Any property returning `IMultiString` or `IMultiUnicode`:
+**FlexLibs2 v2.0+ automatically converts "***" to ""** in all public methods that return multistring values. This is a breaking change from stable FlexLibs v1.x but provides better UX consistency. See [FlexLibs2 MIGRATION_GUIDE](../flexlibs2/docs/MIGRATION_GUIDE.md) for migration details.
+
+**Affected fields** (in LibLCM / direct C# access): Any property returning `IMultiString` or `IMultiUnicode`:
 - `ILexSense.Definition`, `ILexSense.Gloss`
 - `ILexEntry.LiteralMeaning`, `ILexEntry.Bibliography`
 - Many others...
 
-**Helper function available in `run_operation` and `run_module`**:
+**FlexLibs2 Operations Methods** - automatically normalize:
 ```python
-# Check if a multilingual field is empty (handles '***' placeholder)
-if is_empty_multistring(sense.Definition.BestAnalysisAlternative.Text):
-    report.Info("Definition is empty")
+# These methods return "" for empty, not "***"
+gloss = sense.GetGloss()  # Returns "" if empty, not "***"
+definition = sense.GetDefinition()  # Returns "" if empty
+form = entry.GetLexemeForm()  # Returns "" if empty
 
-# Or use the constant directly
-if text == FLEX_EMPTY_PLACEHOLDER:  # '***'
-    ...
+# Simple Python-style empty checks work
+if not gloss:
+    print("Gloss is empty")
 ```
+
+**Direct C# field access** - still returns "***":
+```python
+# If you access C# objects directly, you still see "***"
+raw_gloss = sense.Gloss.BestAnalysisAlternative.Text  # Returns "***" if empty
+
+# Need explicit check for direct access
+if raw_gloss == "***":
+    print("Gloss is empty")
+```
+
+**Breaking Change Note**: FlexLibs v1.x scripts that check `if gloss == "***":` need to be updated to `if not gloss:` or `if gloss == ""`. See MIGRATION_GUIDE.md.
 
 ## Key Technical Decisions
 

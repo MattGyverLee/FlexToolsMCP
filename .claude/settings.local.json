@@ -24,7 +24,19 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "mcp__paratext-registry__orgs_list_projects",
-      "mcp__paratext-registry__auth_get_status"
+      "mcp__paratext-registry__auth_get_status",
+      "Bash(xargs:*)",
+      "Bash(/tmp/test_summary.py:*)",
+      "Bash(for file in \"LexEntryOperations.py\" \"LexSenseOperations.py\" \"AllomorphOperations.py\")",
+      "Bash(do)",
+      "Bash(path=\"D:/Github/flexlibs2/flexlibs2/code/Lexicon/$file\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(/tmp/refactor.py:*)",
+      "Bash(/tmp/phase2_report.txt:*)",
+      "Bash(/tmp/refactor_operations.py:*)",
+      "Bash(/tmp/refactor_all.py:*)",
+      "Bash(__NEW_LINE_45b88a14bfb4c9f4__ python3 /tmp/refactor_all.py)"
     ]
   }
 }

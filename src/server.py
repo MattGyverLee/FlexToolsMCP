@@ -459,23 +459,334 @@ def detect_cud_operations(code: str) -> dict:
     }
 
 
-def format_cud_warning(cud_info: dict, write_enabled: bool) -> dict:
-    """Format a warning message for CUD operations requiring confirmation."""
-    return {
-        "confirmation_required": True,
-        "reason": "This operation involves Create/Update/Delete actions",
-        "detected_operations": cud_info["operations"],
-        "potential_risks": cud_info["risks"],
-        "affected_data": cud_info["affected_types"],
-        "write_mode": "ENABLED - changes WILL be made" if write_enabled else "DISABLED (dry-run)",
-        "action_required": "Set confirmed=True to proceed. Make sure you have a backup!",
-        "recommendation": [
-            "1. Review the code carefully",
-            "2. Run with write_enabled=False first (dry-run)",
-            "3. Backup your project",
-            "4. Then run with confirmed=True and write_enabled=True"
+def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = False) -> dict:
+    """Format enhanced warning with staged confirmation for data-affecting operations.
+
+    Args:
+        cud_info: Dict with 'operations', 'risks', 'affected_types'
+        write_enabled: Whether write mode is enabled
+        confirmed: Whether user has confirmed code review
+
+    Shows clear progression through safety stages.
+    """
+    if not confirmed:
+        # Stage 1: Code review
+        return {
+            "confirmation_required": True,
+            "stage": "code_review",
+            "reason": "This operation involves Create/Update/Delete actions",
+            "detected_operations": cud_info["operations"],
+            "potential_risks": cud_info["risks"],
+            "affected_data": cud_info["affected_types"],
+            "current_state": {
+                "write_mode": "ENABLED" if write_enabled else "DISABLED (dry-run)",
+                "confirmed": False
+            },
+            "progress": "1/3 - YOU ARE HERE: Review the code",
+            "what_happens_next": (
+                "Set confirmed=True to proceed to dry-run mode (RECOMMENDED: write_enabled will remain False)"
+                if not write_enabled
+                else "DANGER: Write mode is enabled. STRONGLY recommend setting write_enabled=False first"
+            ),
+            "safe_progression": [
+                "1. Review the code carefully (YOU ARE HERE)",
+                "2. Set confirmed=True with write_enabled=False to dry-run",
+                "3. Review dry-run output",
+                "4. Backup your project",
+                "5. Set confirmed=True with write_enabled=True to execute"
+            ]
+        }
+
+    if confirmed and not write_enabled:
+        # Stage 2: Dry-run
+        return {
+            "executing": "dry_run",
+            "stage": "dry_run",
+            "confirmed": True,
+            "write_mode": "DISABLED",
+            "progress": "2/3 - DRY-RUN: Showing what WOULD happen",
+            "will_modify_database": False,
+            "note": "This shows exactly what would happen if write_enabled=True",
+            "next_steps": [
+                "1. Review the dry-run output above carefully",
+                "2. Backup your project (if output looks good)",
+                "3. Run again with write_enabled=True to execute"
+            ]
+        }
+
+    if confirmed and write_enabled:
+        # Stage 3: Execute
+        return {
+            "executing": "live",
+            "stage": "execute",
+            "confirmed": True,
+            "write_mode": "ENABLED",
+            "progress": "3/3 - EXECUTING: Making changes to database",
+            "will_modify_database": True,
+            "operations_that_will_execute": cud_info["operations"],
+            "affected_data": cud_info["affected_types"],
+            "warning": "DATABASE WILL BE MODIFIED - MAKE SURE YOU HAVE A BACKUP!",
+            "final_check": "Backup complete? Ready to proceed?"
+        }
+
+
+def format_merge_operation_warning(survivor: str, victim: str, auto_deduplicate: bool = None, confirmed: bool = False) -> dict:
+    """Format warning for MergeObject operation with deduplication transparency.
+
+    FlexLibs2 MergeObject has auto_deduplicate=True by default, which users may not realize.
+    This function makes the deduplication behavior explicit before it happens.
+    """
+    # If auto_deduplicate not explicitly set, it defaults to True in FlexLibs2
+    will_deduplicate = auto_deduplicate if auto_deduplicate is not None else True
+
+    if not confirmed:
+        # Stage 1: Merge review
+        warning = {
+            "confirmation_required": True,
+            "stage": "merge_review",
+            "operation": "merge_with_deduplication" if will_deduplicate else "merge_only",
+            "merge_details": {
+                "survivor": f"{survivor} (will receive merged data)",
+                "victim": f"{victim} (will be DELETED after merge)",
+                "irreversible": True
+            },
+            "warning": "IRREVERSIBLE: Victim will be DELETED after merge"
+        }
+
+        if will_deduplicate:
+            warning["deduplication"] = {
+                "enabled": True,
+                "note": "FlexLibs2 auto_deduplicate parameter defaults to True",
+                "what_will_be_deduplicated": [
+                    "Duplicate senses (same gloss + definition + semantic domain)",
+                    "Duplicate pronunciations (same form per writing system)",
+                    "Duplicate allomorphs (same form + morph type)",
+                    "Duplicate examples (same content)"
+                ],
+                "how_to_disable": "Set auto_deduplicate=False to skip deduplication"
+            }
+
+        warning["next_steps"] = [
+            "1. Review both entries to understand what will merge",
+            "2. Understand what deduplication will remove (see above)",
+            "3. Consider running with auto_deduplicate=False first",
+            "4. Then set confirmed=True to proceed"
         ]
+        return warning
+
+    if confirmed:
+        # Stage 2: Execute merge
+        result = {
+            "executing": "merge",
+            "confirmed": True,
+            "survivor": survivor,
+            "victim_deleted": True,
+            "merge_completed": True
+        }
+
+        if will_deduplicate:
+            result["deduplication_performed"] = {
+                "enabled": True,
+                "note": "Deduplication checked: senses, pronunciations, allomorphs, examples",
+                "log_location": "~/.flextoolsmcp/logs/operations.log",
+                "checking": [
+                    "Senses: merged if duplicates found",
+                    "Pronunciations: deleted if duplicates found",
+                    "Allomorphs: deleted if duplicates found",
+                    "Examples: deleted if duplicates found"
+                ]
+            }
+        else:
+            result["deduplication_performed"] = {
+                "enabled": False,
+                "note": "Deduplication skipped - duplicates kept"
+            }
+
+        return result
+
+
+# --- Phase 1: Disambiguation Helper Functions ---
+
+def detect_best_api_mode(task_description: str) -> dict:
+    """Analyze task description and suggest best API mode with confidence."""
+    task_lower = task_description.lower()
+
+    # High confidence indicators for CUD operations
+    cud_keywords = ["create", "update", "delete", "modify", "add entry", "remove", "merge"]
+    read_keywords = ["read", "get", "list", "find", "search", "count", "export", "query"]
+
+    if any(kw in task_lower for kw in cud_keywords):
+        return {
+            "recommended_mode": "flexlibs2",
+            "confidence": "high",
+            "reasoning": "CUD operations best supported in FlexLibs2",
+            "auto_applied": True
+        }
+
+    if any(kw in task_lower for kw in read_keywords):
+        return {
+            "recommended_mode": "flexlibs2",
+            "confidence": "medium",
+            "reasoning": "Read operations work in all modes, FlexLibs2 recommended",
+            "auto_applied": True,
+            "note": "Override with api_mode parameter if needed"
+        }
+
+    # Low confidence - ask user
+    return {
+        "recommended_mode": None,
+        "confidence": "low",
+        "reasoning": "Cannot determine best mode from task description",
+        "auto_applied": False,
+        "question": "Which API would you prefer for this task?",
+        "options": ["flexlibs2 (recommended)", "flexlibs_stable", "liblcm"]
     }
+
+
+def rank_object_matches(partial_name: str, matches: list, api_mode: str) -> dict:
+    """Rank partial object type matches by relevance and confidence."""
+
+    if not matches:
+        return {"matches": [], "auto_resolved": False}
+
+    for match in matches:
+        score = 0
+        reasons = []
+
+        # Exact match gets highest score
+        if match.get("name", "").lower() == partial_name.lower():
+            score = 100
+            reasons.append("Exact match")
+
+        # Source preference matches session mode
+        if match.get("source") == api_mode:
+            score += 30
+            reasons.append(f"Matches session API mode ({api_mode})")
+
+        # Operations classes preferred for FlexLibs2
+        if "Operations" in match.get("name", "") and api_mode == "flexlibs2":
+            score += 20
+            reasons.append("Operations class (FlexLibs2 pattern)")
+
+        # Lexicon domain is most common
+        if match.get("category") == "lexicon":
+            score += 10
+            reasons.append("Lexicon is most common domain")
+
+        # Substring position matters (earlier = better)
+        pos = match.get("name", "").lower().find(partial_name.lower())
+        if pos == 0:  # Starts with search term
+            score += 15
+            reasons.append("Name starts with search term")
+
+        match["score"] = score
+        match["reasoning"] = "; ".join(reasons) if reasons else "Default ranking"
+        match["confidence"] = "high" if score >= 60 else "medium" if score >= 30 else "low"
+
+    matches.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    if not matches:
+        return {"matches": [], "auto_resolved": False}
+
+    top = matches[0]
+    # Auto-resolve if clear winner (30+ point gap)
+    auto_resolve = len(matches) == 1 or (top.get("score", 0) - matches[1].get("score", 0) >= 30)
+
+    return {
+        "auto_resolved": auto_resolve,
+        "selected": top.get("name") if auto_resolve else None,
+        "confidence": top.get("confidence"),
+        "reasoning": top.get("reasoning"),
+        "all_matches": matches[:5],  # Top 5 matches
+        "needs_clarification": not auto_resolve
+    }
+
+
+def detect_module_domain(task_description: str, module_name: str) -> dict:
+    """Detect module domain from task description keywords."""
+
+    domain_keywords = {
+        "lexicon": ["entry", "entries", "sense", "gloss", "definition", "headword",
+                    "allomorph", "lexeme", "citation", "etymology", "pronunciation"],
+        "grammar": ["pos", "part of speech", "paradigm", "inflection", "affix",
+                    "morpheme", "feature", "category", "phoneme"],
+        "texts": ["text", "paragraph", "segment", "baseline", "translation",
+                  "interlinear", "annotation"],
+        "wordform": ["wordform", "analysis", "parse", "bundle"],
+    }
+
+    task_lower = task_description.lower()
+    scores = {domain: sum(1 for kw in keywords if kw in task_lower)
+              for domain, keywords in domain_keywords.items()}
+
+    sorted_domains = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_domain, top_score = sorted_domains[0]
+    second_score = sorted_domains[1][1] if len(sorted_domains) > 1 else 0
+
+    if top_score == 0:
+        return {
+            "auto_resolved": False,
+            "selected": None,
+            "confidence": "low",
+            "needs_clarification": True,
+            "question": "Which domain does this module work with?",
+            "options": ["lexicon", "grammar", "texts", "wordform", "general"]
+        }
+
+    if top_score > second_score:
+        return {
+            "auto_resolved": True,
+            "selected": top_domain,
+            "confidence": "high" if top_score >= 3 else "medium",
+            "reasoning": f"Task description suggests {top_domain} domain ({top_score} matching keywords)"
+        }
+
+    # Tied scores - ask user
+    return {
+        "auto_resolved": False,
+        "selected": top_domain,  # Default to top but ask
+        "confidence": "low",
+        "needs_clarification": True,
+        "question": f"Is this a {top_domain} or {sorted_domains[1][0]} module?"
+    }
+
+
+# --- Phase 2: Transparency & Validation Helper Functions ---
+
+def validate_project_context(project_name: str, write_enabled: bool) -> dict:
+    """Validate project context and show what will be affected."""
+
+    if not project_name:
+        return {
+            "error": "project_name_required",
+            "message": "Project name must be set before running operations",
+            "how_to_set": [
+                "Option 1: Set in start(project_name='MyProject')",
+                "Option 2: Set in this call with project_name='MyProject' parameter"
+            ],
+            "session_state": session_state.summary() if session_state.initialized else None
+        }
+
+    return {
+        "project_validated": True,
+        "target_project": project_name,
+        "write_mode": "ENABLED - will modify project" if write_enabled else "READ-ONLY - safe exploration",
+        "ready_to_execute": True
+    }
+
+
+def build_response_with_context(data: dict, include_session: bool = True) -> dict:
+    """Add session context to tool response."""
+
+    if include_session and session_state.initialized:
+        data["session_context"] = {
+            "api_mode": session_state.api_mode,
+            "write_enabled": session_state.write_enabled,
+            "project": session_state.project_name or "(not set)",
+            "test_mode": session_state.test_mode
+        }
+
+    return data
 
 
 from mcp.server.stdio import stdio_server
@@ -1219,7 +1530,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     After calling start(), discuss the goal with the user, then use
     search_by_capability() or get_object_api() to discover the correct APIs.
     """
-    api_mode = args.get("api_mode", "flexlibs2")
+    api_mode = args.get("api_mode", None)  # None = auto-detect
     project_name = args.get("project_name", "")
     write_enabled = args.get("write_enabled", False)
     task = args.get("task", "")  # Optional task description for context
@@ -1228,6 +1539,16 @@ async def handle_start(args: dict) -> list[TextContent]:
     is_test_mode = "test" in task.lower() if task else False
     if is_test_mode:
         write_enabled = False  # Test always means read-only
+
+    # Auto-detect best API mode if not explicitly specified
+    mode_detection = None
+    if not api_mode:
+        mode_detection = detect_best_api_mode(task)
+        if mode_detection["auto_applied"]:
+            api_mode = mode_detection["recommended_mode"]
+        else:
+            # Low confidence - user should specify
+            api_mode = "flexlibs2"  # Default if unclear
 
     # Clear any previously discovered APIs for fresh session
     session_state.clear_discovered_apis()
@@ -1254,6 +1575,19 @@ async def handle_start(args: dict) -> list[TextContent]:
             "5. Use run_operation() or run_module() to execute"
         ]
     }
+
+    # Add API mode disambiguation info if detected
+    if mode_detection:
+        result["disambiguation"] = {
+            "detected": True,
+            "confidence": mode_detection["confidence"],
+            "reasoning": mode_detection["reasoning"],
+            "auto_applied": mode_detection["auto_applied"],
+            "selected": api_mode
+        }
+        if not mode_detection["auto_applied"]:
+            result["disambiguation"]["options"] = mode_detection.get("options", [])
+            result["disambiguation"]["question"] = mode_detection.get("question", "")
 
     # Add mode-specific guidance
     mode_guidance = {
@@ -1497,6 +1831,53 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     if not result["found"]:
         result["message"] = f"No API documentation found for '{object_type}'. Try searching with search_by_capability or list_categories to explore available APIs."
     else:
+        # Add disambiguation ranking to partial matches
+        if "flexlibs2_matches" in result:
+            matches_with_source = [
+                {**m, "source": "flexlibs2"} for m in result["flexlibs2_matches"]
+            ]
+            ranked = rank_object_matches(object_type, matches_with_source, mode)
+            if ranked.get("auto_resolved"):
+                result["disambiguation"] = {
+                    "detected": True,
+                    "auto_resolved": True,
+                    "selected": ranked["selected"],
+                    "confidence": ranked["confidence"],
+                    "reasoning": ranked["reasoning"]
+                }
+            elif ranked.get("needs_clarification"):
+                result["disambiguation"] = {
+                    "detected": True,
+                    "auto_resolved": False,
+                    "alternatives": ranked.get("all_matches", []),
+                    "question": "Multiple matches found. Which did you mean?"
+                }
+            # Update matches with ranking info
+            for match, ranked_match in zip(result["flexlibs2_matches"], ranked.get("all_matches", [])):
+                match["score"] = ranked_match.get("score")
+                match["confidence"] = ranked_match.get("confidence")
+                match["reasoning"] = ranked_match.get("reasoning")
+
+        if "liblcm_matches" in result:
+            matches_with_source = [
+                {**m, "source": "liblcm"} for m in result["liblcm_matches"]
+            ]
+            ranked = rank_object_matches(object_type, matches_with_source, mode)
+            if ranked.get("auto_resolved"):
+                if "disambiguation" not in result:  # Don't override flexlibs2 result
+                    result["disambiguation"] = {
+                        "detected": True,
+                        "auto_resolved": True,
+                        "selected": ranked["selected"],
+                        "confidence": ranked["confidence"],
+                        "reasoning": ranked["reasoning"]
+                    }
+            # Update matches with ranking info
+            for match, ranked_match in zip(result["liblcm_matches"], ranked.get("all_matches", [])):
+                match["score"] = ranked_match.get("score")
+                match["confidence"] = ranked_match.get("confidence")
+                match["reasoning"] = ranked_match.get("reasoning")
+
         # Record discovered APIs for validation in run_operation
         if "flexlibs2" in result:
             entity_name = result["flexlibs2"].get("name", object_type)
@@ -1514,6 +1895,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 method_name = method.get("name", "")
                 if method_name:
                     session_state.record_discovered_api(entity_name, method_name)
+
+        # Add session context to response
+        result = build_response_with_context(result, include_session=True)
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
@@ -1767,7 +2151,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         if entity and method:
             session_state.record_discovered_api(entity, method)
 
-    return [TextContent(type="text", text=json.dumps({
+    result = {
         "query": query,
         "api_mode": api_mode,
         "api_mode_description": config["description"],
@@ -1777,7 +2161,12 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         "semantic_available": api_index.semantic_search.enabled if api_index.semantic_search else False,
         "results_count": len(results),
         "results": results
-    }, indent=2))]
+    }
+
+    # Add session context
+    result = build_response_with_context(result, include_session=True)
+
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 def normalize_object_name(name: str) -> str:
@@ -3247,17 +3636,23 @@ if __name__ == "__main__":
                 if any(api in operations for api in [p["pattern"].split(".")[-1]])
             ][:2]  # Limit to 2 warnings
 
+        # Add session context
+        execution_result = build_response_with_context(execution_result, include_session=True)
+
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, default=str))]
 
     except subprocess.TimeoutExpired:
         operations_logger.error(f"[FAIL] Operation timed out after {timeout_seconds} seconds")
         pattern_tracker.record_operation(operations, success=False, error_msg="Timeout", error_type="Timeout")
         operations_logger.info(f"=== Operation End ===\n")
-        return [TextContent(type="text", text=json.dumps({
+        timeout_result = {
             "success": False,
             "error": "Execution timed out after {} seconds".format(timeout_seconds),
             "warnings": warnings
-        }, indent=2))]
+        }
+        # Add session context
+        timeout_result = build_response_with_context(timeout_result, include_session=True)
+        return [TextContent(type="text", text=json.dumps(timeout_result, indent=2))]
 
     except Exception as e:
         error_msg = str(e)
@@ -3448,6 +3843,9 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                         "example": f"for item in obj.{coll_name}:\n    concrete = cast_to_concrete(item)\n    # Now access derived properties"
                     }
                     break
+
+    # Add session context
+    result = build_response_with_context(result, include_session=True)
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 

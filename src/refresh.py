@@ -3,7 +3,14 @@
 """
 FlexTools MCP Index Refresh Script
 
-Regenerates all API documentation indexes from source codebases.
+Regenerates all API documentation indexes from source libraries.
+Uses installed packages by default; falls back to .env paths if configured.
+
+Priority order (per library):
+  1. Installed package (from pip)
+  2. Path from .env (if uncommented)
+  3. Fails with helpful error (instructs user to install or configure)
+
 Run this when LibLCM, FlexLibs stable, or FlexLibs 2.0 is updated.
 
 Usage:
@@ -11,6 +18,10 @@ Usage:
     python src/refresh.py --flexlibs2-only    # Only refresh FlexLibs 2.0
     python src/refresh.py --flexlibs-only     # Only refresh FlexLibs stable
     python src/refresh.py --liblcm-only       # Only refresh LibLCM
+
+Configuration:
+    By default, all paths in .env are commented out (prefers installed packages).
+    Uncomment paths in .env only if using repository clones instead of pip installs.
 """
 
 import argparse
@@ -24,7 +35,12 @@ from datetime import datetime
 
 
 def load_env():
-    """Load environment variables from .env file."""
+    """Load environment variables from .env file.
+
+    This allows developers to override the default behavior:
+    - Leave paths commented out (default) → use installed packages
+    - Uncomment paths in .env → use repository clones instead
+    """
     env_file = Path(__file__).parent.parent / ".env"
     if env_file.exists():
         print(f"[INFO] Loading configuration from {env_file}")
@@ -120,16 +136,22 @@ def run_command(cmd: list, description: str) -> bool:
 
 def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
     """Refresh FlexLibs stable index from installed package (live version)."""
-    # Always prefer installed package to guarantee index matches installed version.
-    # Fall back to explicit path / env var / hardcoded default only if not installed.
+    # Priority: installed package > explicit path > .env FLEXLIBS_PATH > fail
     try:
         import flexlibs
         flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
         print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
     except ImportError:
         if flexlibs_path is None:
-            flexlibs_path = os.environ.get("FLEXLIBS_PATH", "D:/Github/flexlibs")
-        print(f"[INFO] FlexLibs not installed; falling back to repo path: {flexlibs_path}")
+            flexlibs_path = os.environ.get("FLEXLIBS_PATH")
+
+        if flexlibs_path:
+            print(f"[INFO] FlexLibs not installed; using repo path from .env: {flexlibs_path}")
+        else:
+            print("[ERROR] FlexLibs not installed and FLEXLIBS_PATH not set in .env")
+            print("        Install FlexLibs with: pip install flexlibs")
+            print("        Or uncomment FLEXLIBS_PATH in .env")
+            return False
 
     index_dir = get_project_root() / "index" / "flexlibs"
     temp_output = index_dir / "flexlibs_api_temp.json"
@@ -159,16 +181,22 @@ def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
 
 def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
     """Refresh FlexLibs 2.0 index from installed package (live version)."""
-    # Always prefer installed package to guarantee index matches installed version.
-    # Fall back to explicit path / env var / hardcoded default only if not installed.
+    # Priority: installed package > explicit path > .env FLEXLIBS2_PATH > fail
     try:
         import flexlibs2
         flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
         print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
     except ImportError:
         if flexlibs2_path is None:
-            flexlibs2_path = os.environ.get("FLEXLIBS2_PATH", "D:/Github/flexlibs2")
-        print(f"[INFO] FlexLibs 2.0 not installed; falling back to repo path: {flexlibs2_path}")
+            flexlibs2_path = os.environ.get("FLEXLIBS2_PATH")
+
+        if flexlibs2_path:
+            print(f"[INFO] FlexLibs 2.0 not installed; using repo path from .env: {flexlibs2_path}")
+        else:
+            print("[ERROR] FlexLibs 2.0 not installed and FLEXLIBS2_PATH not set in .env")
+            print("        Install FlexLibs 2.0 with: pip install ./flexlibs2")
+            print("        Or uncomment FLEXLIBS2_PATH in .env")
+            return False
 
     index_dir = get_project_root() / "index" / "flexlibs"
     temp_output = index_dir / "flexlibs2_api_temp.json"
@@ -198,6 +226,7 @@ def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
 
 def refresh_liblcm(dll_path: str = None) -> bool:
     """Refresh LibLCM index with versioning."""
+    # Priority: explicit path > .env FIELDWORKS_DLL_PATH > auto-detect from FieldWorks
     if dll_path is None:
         dll_path = os.environ.get("FIELDWORKS_DLL_PATH")
 
@@ -211,7 +240,10 @@ def refresh_liblcm(dll_path: str = None) -> bool:
     ]
 
     if dll_path:
+        print(f"[INFO] Using DLL path: {dll_path}")
         cmd.extend(["--dll-path", dll_path])
+    else:
+        print("[INFO] Auto-detecting FieldWorks DLL path from installation...")
 
     if not run_command(cmd, "Refreshing LibLCM index"):
         return False

@@ -120,15 +120,16 @@ def run_command(cmd: list, description: str) -> bool:
 
 def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
     """Refresh FlexLibs stable index from installed package (live version)."""
-    # Prefer installed package (live version), fallback to env var or repo
-    if flexlibs_path is None:
-        try:
-            import flexlibs
-            flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
-            print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
-        except ImportError:
+    # Always prefer installed package to guarantee index matches installed version.
+    # Fall back to explicit path / env var / hardcoded default only if not installed.
+    try:
+        import flexlibs
+        flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
+        print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
+    except ImportError:
+        if flexlibs_path is None:
             flexlibs_path = os.environ.get("FLEXLIBS_PATH", "D:/Github/flexlibs")
-            print(f"[INFO] Using FlexLibs from: {flexlibs_path}")
+        print(f"[INFO] FlexLibs not installed; falling back to repo path: {flexlibs_path}")
 
     index_dir = get_project_root() / "index" / "flexlibs"
     temp_output = index_dir / "flexlibs_api_temp.json"
@@ -158,15 +159,16 @@ def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
 
 def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
     """Refresh FlexLibs 2.0 index from installed package (live version)."""
-    # Prefer installed package (live version), fallback to env var or repo
-    if flexlibs2_path is None:
-        try:
-            import flexlibs2
-            flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
-            print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
-        except ImportError:
+    # Always prefer installed package to guarantee index matches installed version.
+    # Fall back to explicit path / env var / hardcoded default only if not installed.
+    try:
+        import flexlibs2
+        flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
+        print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
+    except ImportError:
+        if flexlibs2_path is None:
             flexlibs2_path = os.environ.get("FLEXLIBS2_PATH", "D:/Github/flexlibs2")
-            print(f"[INFO] Using FlexLibs 2.0 from: {flexlibs2_path}")
+        print(f"[INFO] FlexLibs 2.0 not installed; falling back to repo path: {flexlibs2_path}")
 
     index_dir = get_project_root() / "index" / "flexlibs"
     temp_output = index_dir / "flexlibs2_api_temp.json"
@@ -414,13 +416,13 @@ def main():
     )
     parser.add_argument(
         "--flexlibs2-path",
-        default=os.environ.get("FLEXLIBS2_PATH", "D:/Github/flexlibs2"),
-        help="Path to FlexLibs 2.0 repository"
+        default=None,
+        help="Path to FlexLibs 2.0 repository (fallback; installed package is always preferred)"
     )
     parser.add_argument(
         "--flexlibs-path",
-        default=os.environ.get("FLEXLIBS_PATH", "D:/Github/flexlibs"),
-        help="Path to FlexLibs stable repository"
+        default=None,
+        help="Path to FlexLibs stable repository (fallback; installed package is always preferred)"
     )
     parser.add_argument(
         "--dll-path",

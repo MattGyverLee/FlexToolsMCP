@@ -1131,6 +1131,14 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
                 },
                 "required": ["property_name"]
             }
+        ),
+        Tool(
+            name="list_mcp_tools",
+            description="List all available MCP tools with their descriptions, organized by workflow phase. Call this to understand what tools are available and the recommended order of use.",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
         )
     ]
 
@@ -1169,6 +1177,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_get_operation_logs(arguments)
     elif name == "resolve_property":
         return await handle_resolve_property(arguments)
+    elif name == "list_mcp_tools":
+        return await handle_list_mcp_tools(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -2088,6 +2098,89 @@ async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
             "liblcm": len(entities["liblcm"])
         }
     }, indent=2))]
+
+
+async def handle_list_mcp_tools(args: dict) -> list[TextContent]:
+    """Return a structured summary of all available MCP tools."""
+    tools = {
+        "workflow": "Use 'start' for guided discovery, or follow steps 1-6 manually.",
+        "phases": {
+            "discovery": [
+                {
+                    "name": "start",
+                    "step": "BEGIN HERE",
+                    "summary": "Guided wizard that orchestrates the full workflow: analyzes your task, finds APIs, navigation paths, casting requirements, examples, and returns an action plan."
+                },
+                {
+                    "name": "search_by_capability",
+                    "step": "1",
+                    "summary": "Natural language search for methods/functions by what they do (e.g., 'add gloss to sense')."
+                },
+                {
+                    "name": "get_navigation_path",
+                    "step": "2",
+                    "summary": "Find how to navigate between object types (e.g., ILexEntry -> ILexSense)."
+                },
+                {
+                    "name": "get_object_api",
+                    "step": "3",
+                    "summary": "Get detailed methods/properties for an object (e.g., ILexEntry, LexSenseOperations)."
+                },
+                {
+                    "name": "resolve_property",
+                    "step": "4",
+                    "summary": "Check property names and pythonnet casting requirements before accessing them."
+                },
+                {
+                    "name": "find_examples",
+                    "step": "5",
+                    "summary": "Find code examples by method name or operation type (create, read, update, delete)."
+                },
+            ],
+            "implementation": [
+                {
+                    "name": "get_module_template",
+                    "summary": "Get the official FlexTools module boilerplate template."
+                },
+                {
+                    "name": "start_module",
+                    "summary": "Interactive wizard to create a new FlexTools module with customized boilerplate."
+                },
+            ],
+            "execution": [
+                {
+                    "name": "run_operation",
+                    "step": "6",
+                    "summary": "Execute FlexLibs2 operations directly against a FieldWorks project."
+                },
+                {
+                    "name": "run_module",
+                    "step": "6",
+                    "summary": "Execute a FlexTools module against a FieldWorks project."
+                },
+            ],
+            "utility": [
+                {
+                    "name": "list_categories",
+                    "summary": "List API categories (lexicon, grammar, texts, etc.) with entity counts."
+                },
+                {
+                    "name": "list_entities_in_category",
+                    "summary": "List all entities (classes/interfaces) in a specific category."
+                },
+                {
+                    "name": "get_operation_logs",
+                    "summary": "View operation logs, error patterns, and API usage recommendations."
+                },
+                {
+                    "name": "list_mcp_tools",
+                    "summary": "This tool. Lists all available tools organized by workflow phase."
+                },
+            ]
+        },
+        "total_tools": 14
+    }
+    return [TextContent(type="text", text=json.dumps(tools, indent=2))]
 
 
 async def handle_get_module_template(args: dict) -> list[TextContent]:

@@ -81,13 +81,29 @@ Configure paths in `.env` file. These external repositories are dependencies:
 
 ## MCP Server Tools
 
-The server exposes 6 tools:
-- `get_object_api` - Get methods/properties for objects like ILexEntry, LexSenseOperations
+The server exposes 14 tools (call `list_mcp_tools` for full details):
+
+**Discovery:**
+- `start` - Guided wizard that orchestrates the full workflow
 - `search_by_capability` - Natural language search with synonym expansion
 - `get_navigation_path` - Find paths between object types (ILexEntry -> ILexSense)
+- `get_object_api` - Get methods/properties for objects like ILexEntry, LexSenseOperations
+- `resolve_property` - Check pythonnet casting requirements for properties
 - `find_examples` - Get code examples by operation type (create, read, update, delete)
+
+**Implementation:**
+- `get_module_template` - Get the official FlexTools module boilerplate
+- `start_module` - Interactive wizard to create a new module
+
+**Execution:**
+- `run_operation` - Execute FlexLibs2 operations directly
+- `run_module` - Execute a FlexTools module against a project
+
+**Utility:**
 - `list_categories` - List API categories (lexicon, grammar, texts, etc.)
 - `list_entities_in_category` - List entities in a category
+- `get_operation_logs` - View operation logs and error patterns
+- `list_mcp_tools` - List all tools organized by workflow phase
 
 ## Refreshing Indexes
 

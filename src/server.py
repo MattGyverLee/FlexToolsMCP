@@ -15,6 +15,8 @@ import tempfile
 import os
 import logging
 import re
+import importlib
+import inspect
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Optional, List, Dict
@@ -1211,6 +1213,84 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     return result
 
 
+# ============================================================
+# Live Docstring Introspection
+# ============================================================
+
+# Cache: (namespace, entity_name) -> dict | None
+_live_docstring_cache: Dict[tuple, Optional[dict]] = {}
+
+
+def get_live_docstrings(entity_name: str, namespace: str) -> Optional[dict]:
+    """Import a FlexLibs2 class and extract live docstrings.
+
+    Returns dict with 'class_doc' and 'methods' mapping, or None if
+    the module/class can't be imported (package not installed, etc.).
+    Results are cached so repeated lookups for the same entity are free.
+    """
+    cache_key = (namespace, entity_name)
+    if cache_key in _live_docstring_cache:
+        return _live_docstring_cache[cache_key]
+
+    try:
+        module = importlib.import_module(namespace)
+        cls = getattr(module, entity_name, None)
+        if cls is None:
+            _live_docstring_cache[cache_key] = None
+            return None
+
+        result: dict = {
+            "class_doc": inspect.getdoc(cls),
+            "methods": {},
+        }
+
+        for name in dir(cls):
+            if name.startswith('_'):
+                continue
+            try:
+                member = getattr(cls, name)
+                doc = inspect.getdoc(member)
+                if doc:
+                    result["methods"][name] = doc
+            except Exception:
+                continue
+
+        _live_docstring_cache[cache_key] = result
+        return result
+    except Exception:
+        _live_docstring_cache[cache_key] = None
+        return None
+
+
+def merge_live_docs(paginated_result: dict, live_docs: dict) -> None:
+    """Overlay live docstrings onto a paginated entity result (in place).
+
+    Replaces summary/description with current values from the installed
+    package while preserving all precompiled structural fields (parameters,
+    lcm_mapping, output_behavior, etc.).
+    """
+    # Class-level summary
+    class_doc = live_docs.get("class_doc")
+    if class_doc:
+        first_line = class_doc.strip().split('\n')[0].strip()
+        if first_line:
+            paginated_result["summary"] = first_line
+
+    # Per-method summaries and descriptions
+    live_methods = live_docs.get("methods", {})
+    for method in paginated_result.get("methods", []):
+        method_name = method.get("name")
+        if not method_name or method_name not in live_methods:
+            continue
+        doc = live_methods[method_name].strip()
+        lines = doc.split('\n')
+        if lines:
+            method["summary"] = lines[0].strip()
+            method["description"] = doc
+
+    paginated_result["live_docs"] = True
+
+
 async def handle_start(args: dict) -> list[TextContent]:
     """Initialize a FlexTools MCP session with mode and project settings.
 
@@ -1452,10 +1532,17 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         entities = api_index.flexlibs2.get("entities", {})
         # Try exact match first
         if object_type in entities:
+            entity = entities[object_type]
             result["flexlibs2"] = paginate_entity(
-                entities[object_type], summary_only, method_filter, limit, offset
+                entity, summary_only, method_filter, limit, offset
             )
             result["found"] = True
+            # Overlay live docstrings from installed package
+            namespace = entity.get("namespace", "")
+            if namespace:
+                live = get_live_docstrings(object_type, namespace)
+                if live:
+                    merge_live_docs(result["flexlibs2"], live)
         else:
             # Try partial match (e.g., "LexEntry" matches "LexEntryOperations")
             for name, entity in entities.items():

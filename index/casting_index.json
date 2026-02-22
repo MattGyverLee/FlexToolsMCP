@@ -1,6 +1,6 @@
 {
   "_schema": "casting-index/1.0",
-  "_generated_at": "2026-02-21T23:03:50.019818+00:00",
+  "_generated_at": "2026-02-22T04:47:19.061695+00:00",
   "_description": "Maps properties to interfaces, identifying pythonnet casting requirements",
   "properties": {
     "AvailableWritingSystems": {

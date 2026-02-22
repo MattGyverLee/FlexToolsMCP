@@ -149,7 +149,7 @@ def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
     versioned_path = get_versioned_output_path(index_dir / "flexlibs_api.json", version)
 
     try:
-        temp_output.rename(versioned_path)
+        os.replace(temp_output, versioned_path)
         print(f"[INFO] Saved FlexLibs stable v{version} to {versioned_path.name}")
         return True
     except Exception as e:
@@ -188,7 +188,7 @@ def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
     versioned_path = get_versioned_output_path(index_dir / "flexlibs2_api.json", version)
 
     try:
-        temp_output.rename(versioned_path)
+        os.replace(temp_output, versioned_path)
         print(f"[INFO] Saved FlexLibs 2.0 v{version} to {versioned_path.name}")
         return True
     except Exception as e:
@@ -221,7 +221,7 @@ def refresh_liblcm(dll_path: str = None) -> bool:
     versioned_path = get_versioned_output_path(index_dir / "liblcm_api.json", version)
 
     try:
-        temp_output.rename(versioned_path)
+        os.replace(temp_output, versioned_path)
         print(f"[INFO] Saved LibLCM v{version} to {versioned_path.name}")
         return True
     except Exception as e:

@@ -2870,11 +2870,12 @@ if __name__ == '__main__':
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:
-    """Execute a FlexTools module against a FieldWorks project using FlexLibs directly."""
+    """Execute a FlexTools module against a FieldWorks project."""
     module_code = args["module_code"]
     # Use session state as fallback for project and write settings
     project_name = args.get("project_name", session_state.get_project())
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
+    api_mode = session_state.get_api_mode()
 
     # Test mode enforces read-only
     if session_state.is_test_mode():
@@ -2898,6 +2899,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         ))]
 
     timeout_seconds = args.get("timeout_seconds", 300)
+
+    # Get API mode-specific imports
+    api_imports, _ = _get_api_mode_imports(api_mode)
+
+    # Log module start
+    operations_logger.info(f"=== Module Start ===")
+    operations_logger.info(f"Project: {project_name}")
+    operations_logger.info(f"Write enabled: {write_enabled}")
+    operations_logger.info(f"API mode: {api_mode}")
+    operations_logger.debug(f"Module code length: {len(module_code)} bytes")
 
     # Build warnings
     warnings = []
@@ -3025,8 +3036,8 @@ def run_module():
     project = None
 
     try:
-        # Initialize FlexLibs
-        from flexlibs import FLExInitialize, FLExCleanup, FLExProject
+        # API Mode-specific imports
+        {{API_MODE_IMPORTS}}
 
         FLExInitialize()
 
@@ -3114,6 +3125,9 @@ if __name__ == "__main__":
     # Escape the module code for embedding in the script
     # We use repr() to safely escape all special characters
     escaped_module_code = repr(module_code)
+
+    # Replace API mode imports in the runner script
+    runner_script = runner_script.replace('{{API_MODE_IMPORTS}}', api_imports)
 
     # Create the complete script with configuration
     full_script = '''# Configuration
@@ -3209,6 +3223,157 @@ MODULE_CODE = {module_code}
             pass
 
 
+def _get_api_mode_imports(api_mode: str) -> tuple[str, dict]:
+    """Generate imports and namespace dict for a given API mode.
+
+    Args:
+        api_mode: One of 'flexlibs_stable', 'flexlibs2', 'liblcm'
+
+    Returns:
+        (imports_code, namespace_dict_entries)
+    """
+    if api_mode == "flexlibs_stable":
+        imports = """from flexlibs import FLExInitialize, FLExCleanup, FLExProject"""
+        namespace_entries = {}
+
+    elif api_mode == "flexlibs2":
+        imports = """from flexlibs import FLExInitialize, FLExCleanup, FLExProject
+
+# Import all flexlibs2 Operations classes
+from flexlibs2 import (
+    # Exceptions
+    FP_FileLockedError, FP_FileNotFoundError, FP_MigrationRequired,
+    FP_NullParameterError, FP_ParameterError, FP_ProjectError,
+    FP_ReadOnlyError, FP_RuntimeError, FP_WritingSystemError,
+    # Grammar
+    POSOperations, PhonemeOperations, NaturalClassOperations,
+    EnvironmentOperations, MorphRuleOperations, InflectionFeatureOperations,
+    GramCatOperations, PhonologicalRuleOperations,
+    # Lexicon
+    LexEntryOperations, LexSenseOperations, ExampleOperations,
+    LexReferenceOperations, VariantOperations, PronunciationOperations,
+    SemanticDomainOperations, ReversalOperations, EtymologyOperations,
+    AllomorphOperations,
+    # TextsWords
+    TextOperations, WordformOperations, WfiAnalysisOperations,
+    ParagraphOperations, SegmentOperations, WfiGlossOperations,
+    WfiMorphBundleOperations, MediaOperations, FilterOperations,
+    DiscourseOperations,
+    # Notebook
+    NoteOperations, PersonOperations, LocationOperations,
+    AnthropologyOperations, DataNotebookOperations,
+    # Lists
+    PublicationOperations, AgentOperations, ConfidenceOperations,
+    OverlayOperations, TranslationTypeOperations, PossibilityListOperations,
+    # System
+    WritingSystemOperations, ProjectSettingsOperations,
+    AnnotationDefOperations, CheckOperations, CustomFieldOperations,
+)"""
+        namespace_entries = {
+            "FP_FileLockedError": "FP_FileLockedError",
+            "FP_FileNotFoundError": "FP_FileNotFoundError",
+            "FP_MigrationRequired": "FP_MigrationRequired",
+            "FP_NullParameterError": "FP_NullParameterError",
+            "FP_ParameterError": "FP_ParameterError",
+            "FP_ProjectError": "FP_ProjectError",
+            "FP_ReadOnlyError": "FP_ReadOnlyError",
+            "FP_RuntimeError": "FP_RuntimeError",
+            "FP_WritingSystemError": "FP_WritingSystemError",
+            "POSOperations": "POSOperations",
+            "PhonemeOperations": "PhonemeOperations",
+            "NaturalClassOperations": "NaturalClassOperations",
+            "EnvironmentOperations": "EnvironmentOperations",
+            "MorphRuleOperations": "MorphRuleOperations",
+            "InflectionFeatureOperations": "InflectionFeatureOperations",
+            "GramCatOperations": "GramCatOperations",
+            "PhonologicalRuleOperations": "PhonologicalRuleOperations",
+            "LexEntryOperations": "LexEntryOperations",
+            "LexSenseOperations": "LexSenseOperations",
+            "ExampleOperations": "ExampleOperations",
+            "LexReferenceOperations": "LexReferenceOperations",
+            "VariantOperations": "VariantOperations",
+            "PronunciationOperations": "PronunciationOperations",
+            "SemanticDomainOperations": "SemanticDomainOperations",
+            "ReversalOperations": "ReversalOperations",
+            "EtymologyOperations": "EtymologyOperations",
+            "AllomorphOperations": "AllomorphOperations",
+            "TextOperations": "TextOperations",
+            "WordformOperations": "WordformOperations",
+            "WfiAnalysisOperations": "WfiAnalysisOperations",
+            "ParagraphOperations": "ParagraphOperations",
+            "SegmentOperations": "SegmentOperations",
+            "WfiGlossOperations": "WfiGlossOperations",
+            "WfiMorphBundleOperations": "WfiMorphBundleOperations",
+            "MediaOperations": "MediaOperations",
+            "FilterOperations": "FilterOperations",
+            "DiscourseOperations": "DiscourseOperations",
+            "NoteOperations": "NoteOperations",
+            "PersonOperations": "PersonOperations",
+            "LocationOperations": "LocationOperations",
+            "AnthropologyOperations": "AnthropologyOperations",
+            "DataNotebookOperations": "DataNotebookOperations",
+            "PublicationOperations": "PublicationOperations",
+            "AgentOperations": "AgentOperations",
+            "ConfidenceOperations": "ConfidenceOperations",
+            "OverlayOperations": "OverlayOperations",
+            "TranslationTypeOperations": "TranslationTypeOperations",
+            "PossibilityListOperations": "PossibilityListOperations",
+            "WritingSystemOperations": "WritingSystemOperations",
+            "ProjectSettingsOperations": "ProjectSettingsOperations",
+            "AnnotationDefOperations": "AnnotationDefOperations",
+            "CheckOperations": "CheckOperations",
+            "CustomFieldOperations": "CustomFieldOperations",
+        }
+
+    elif api_mode == "liblcm":
+        imports = """import clr
+clr.AddReference('SIL.LCModel')
+from SIL.LCModel import *
+from SIL.LCModel.Core.WritingSystems import *
+
+def FLExInitialize():
+    \"\"\"Initialize LibLCM backend.\"\"\"
+    pass
+
+def FLExCleanup():
+    \"\"\"Cleanup LibLCM backend.\"\"\"
+    pass
+
+class FLExProject:
+    \"\"\"Wrapper for direct LibLCM project access.\"\"\"
+    def __init__(self):
+        self._backend = None
+        self._cache = None
+
+    def OpenProject(self, projectName, writeEnabled=False):
+        \"\"\"Open project using LibLCM directly.\"\"\"
+        try:
+            from SIL.LCModel import LcmCache
+            self._cache = LcmCache.CreateCacheForNewLcmProject(projectName, "en", "en", "en",
+                                                               writeSystemType=LcmWriteSystemType.kDefault)
+            self._backend = self._cache.ServiceLocator
+        except Exception as e:
+            raise RuntimeError(f"Failed to open LibLCM project: {e}")
+
+    def CloseProject(self):
+        \"\"\"Close project.\"\"\"
+        if self._cache:
+            self._cache.Dispose()
+
+    def __getattr__(self, name):
+        \"\"\"Delegate unknown attributes to backend.\"\"\"
+        if self._backend:
+            return getattr(self._backend, name)
+        raise AttributeError(f"Project not initialized: {name}")
+"""
+        namespace_entries = {}
+
+    else:
+        raise ValueError(f"Unknown API mode: {api_mode}")
+
+    return imports, namespace_entries
+
+
 async def handle_run_operation(args: dict) -> list[TextContent]:
     """Execute FlexLibs2 operations directly without module boilerplate."""
     operations = args["operations"]
@@ -3252,11 +3417,13 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
         ))]
 
     timeout_seconds = args.get("timeout_seconds", 120)
+    api_mode = session_state.get_api_mode()
 
     # Log operation start
     operations_logger.info(f"=== Operation Start ===")
     operations_logger.info(f"Project: {project_name}")
     operations_logger.info(f"Write enabled: {write_enabled}")
+    operations_logger.info(f"API mode: {api_mode}")
     operations_logger.debug(f"Code:\n{operations}")
 
     # Build warnings
@@ -3274,9 +3441,12 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             ""
         ])
 
-    # Create the runner script with all flexlibs2 imports
+    # Get API mode-specific imports
+    api_imports, api_namespace = _get_api_mode_imports(api_mode)
+
+    # Create the runner script template
     runner_script = '''# -*- coding: utf-8 -*-
-"""FlexLibs2 Operation Runner - Generated by FlexToolsMCP"""
+"""FlexTools Operation Runner - Generated by FlexToolsMCP"""
 import sys
 import json
 import traceback
@@ -3394,39 +3564,8 @@ def run_operation():
     report = SimpleReporter()
 
     try:
-        # Initialize FlexLibs
-        from flexlibs import FLExInitialize, FLExCleanup, FLExProject
-
-        # Import all flexlibs2 Operations classes
-        from flexlibs2 import (
-            # Exceptions
-            FP_FileLockedError, FP_FileNotFoundError, FP_MigrationRequired,
-            FP_NullParameterError, FP_ParameterError, FP_ProjectError,
-            FP_ReadOnlyError, FP_RuntimeError, FP_WritingSystemError,
-            # Grammar
-            POSOperations, PhonemeOperations, NaturalClassOperations,
-            EnvironmentOperations, MorphRuleOperations, InflectionFeatureOperations,
-            GramCatOperations, PhonologicalRuleOperations,
-            # Lexicon
-            LexEntryOperations, LexSenseOperations, ExampleOperations,
-            LexReferenceOperations, VariantOperations, PronunciationOperations,
-            SemanticDomainOperations, ReversalOperations, EtymologyOperations,
-            AllomorphOperations,
-            # TextsWords
-            TextOperations, WordformOperations, WfiAnalysisOperations,
-            ParagraphOperations, SegmentOperations, WfiGlossOperations,
-            WfiMorphBundleOperations, MediaOperations, FilterOperations,
-            DiscourseOperations,
-            # Notebook
-            NoteOperations, PersonOperations, LocationOperations,
-            AnthropologyOperations, DataNotebookOperations,
-            # Lists
-            PublicationOperations, AgentOperations, ConfidenceOperations,
-            OverlayOperations, TranslationTypeOperations, PossibilityListOperations,
-            # System
-            WritingSystemOperations, ProjectSettingsOperations,
-            AnnotationDefOperations, CheckOperations, CustomFieldOperations,
-        )
+        # API Mode-specific imports
+        {{API_MODE_IMPORTS}}
 
         FLExInitialize()
 
@@ -3441,69 +3580,79 @@ def run_operation():
         # Make variables available to the operations code
         write_enabled = WRITE_ENABLED
 
-        # Execute the operations
-        exec(OPERATIONS, {{
+        # Build execution namespace - include available API classes
+        exec_namespace = {{
             "project": project,
             "report": report,
             "write_enabled": write_enabled,
             "safe_str": safe_str,
             "is_empty_multistring": is_empty_multistring,
             "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
-            # All Operations classes
-            "FP_FileLockedError": FP_FileLockedError,
-            "FP_FileNotFoundError": FP_FileNotFoundError,
-            "FP_MigrationRequired": FP_MigrationRequired,
-            "FP_NullParameterError": FP_NullParameterError,
-            "FP_ParameterError": FP_ParameterError,
-            "FP_ProjectError": FP_ProjectError,
-            "FP_ReadOnlyError": FP_ReadOnlyError,
-            "FP_RuntimeError": FP_RuntimeError,
-            "FP_WritingSystemError": FP_WritingSystemError,
-            "POSOperations": POSOperations,
-            "PhonemeOperations": PhonemeOperations,
-            "NaturalClassOperations": NaturalClassOperations,
-            "EnvironmentOperations": EnvironmentOperations,
-            "MorphRuleOperations": MorphRuleOperations,
-            "InflectionFeatureOperations": InflectionFeatureOperations,
-            "GramCatOperations": GramCatOperations,
-            "PhonologicalRuleOperations": PhonologicalRuleOperations,
-            "LexEntryOperations": LexEntryOperations,
-            "LexSenseOperations": LexSenseOperations,
-            "ExampleOperations": ExampleOperations,
-            "LexReferenceOperations": LexReferenceOperations,
-            "VariantOperations": VariantOperations,
-            "PronunciationOperations": PronunciationOperations,
-            "SemanticDomainOperations": SemanticDomainOperations,
-            "ReversalOperations": ReversalOperations,
-            "EtymologyOperations": EtymologyOperations,
-            "AllomorphOperations": AllomorphOperations,
-            "TextOperations": TextOperations,
-            "WordformOperations": WordformOperations,
-            "WfiAnalysisOperations": WfiAnalysisOperations,
-            "ParagraphOperations": ParagraphOperations,
-            "SegmentOperations": SegmentOperations,
-            "WfiGlossOperations": WfiGlossOperations,
-            "WfiMorphBundleOperations": WfiMorphBundleOperations,
-            "MediaOperations": MediaOperations,
-            "FilterOperations": FilterOperations,
-            "DiscourseOperations": DiscourseOperations,
-            "NoteOperations": NoteOperations,
-            "PersonOperations": PersonOperations,
-            "LocationOperations": LocationOperations,
-            "AnthropologyOperations": AnthropologyOperations,
-            "DataNotebookOperations": DataNotebookOperations,
-            "PublicationOperations": PublicationOperations,
-            "AgentOperations": AgentOperations,
-            "ConfidenceOperations": ConfidenceOperations,
-            "OverlayOperations": OverlayOperations,
-            "TranslationTypeOperations": TranslationTypeOperations,
-            "PossibilityListOperations": PossibilityListOperations,
-            "WritingSystemOperations": WritingSystemOperations,
-            "ProjectSettingsOperations": ProjectSettingsOperations,
-            "AnnotationDefOperations": AnnotationDefOperations,
-            "CheckOperations": CheckOperations,
-            "CustomFieldOperations": CustomFieldOperations,
-        }})
+        }}
+
+        # Add API-specific classes if available (FlexLibs2 mode)
+        try:
+            exec_namespace.update({{
+                "FP_FileLockedError": FP_FileLockedError,
+                "FP_FileNotFoundError": FP_FileNotFoundError,
+                "FP_MigrationRequired": FP_MigrationRequired,
+                "FP_NullParameterError": FP_NullParameterError,
+                "FP_ParameterError": FP_ParameterError,
+                "FP_ProjectError": FP_ProjectError,
+                "FP_ReadOnlyError": FP_ReadOnlyError,
+                "FP_RuntimeError": FP_RuntimeError,
+                "FP_WritingSystemError": FP_WritingSystemError,
+                "POSOperations": POSOperations,
+                "PhonemeOperations": PhonemeOperations,
+                "NaturalClassOperations": NaturalClassOperations,
+                "EnvironmentOperations": EnvironmentOperations,
+                "MorphRuleOperations": MorphRuleOperations,
+                "InflectionFeatureOperations": InflectionFeatureOperations,
+                "GramCatOperations": GramCatOperations,
+                "PhonologicalRuleOperations": PhonologicalRuleOperations,
+                "LexEntryOperations": LexEntryOperations,
+                "LexSenseOperations": LexSenseOperations,
+                "ExampleOperations": ExampleOperations,
+                "LexReferenceOperations": LexReferenceOperations,
+                "VariantOperations": VariantOperations,
+                "PronunciationOperations": PronunciationOperations,
+                "SemanticDomainOperations": SemanticDomainOperations,
+                "ReversalOperations": ReversalOperations,
+                "EtymologyOperations": EtymologyOperations,
+                "AllomorphOperations": AllomorphOperations,
+                "TextOperations": TextOperations,
+                "WordformOperations": WordformOperations,
+                "WfiAnalysisOperations": WfiAnalysisOperations,
+                "ParagraphOperations": ParagraphOperations,
+                "SegmentOperations": SegmentOperations,
+                "WfiGlossOperations": WfiGlossOperations,
+                "WfiMorphBundleOperations": WfiMorphBundleOperations,
+                "MediaOperations": MediaOperations,
+                "FilterOperations": FilterOperations,
+                "DiscourseOperations": DiscourseOperations,
+                "NoteOperations": NoteOperations,
+                "PersonOperations": PersonOperations,
+                "LocationOperations": LocationOperations,
+                "AnthropologyOperations": AnthropologyOperations,
+                "DataNotebookOperations": DataNotebookOperations,
+                "PublicationOperations": PublicationOperations,
+                "AgentOperations": AgentOperations,
+                "ConfidenceOperations": ConfidenceOperations,
+                "OverlayOperations": OverlayOperations,
+                "TranslationTypeOperations": TranslationTypeOperations,
+                "PossibilityListOperations": PossibilityListOperations,
+                "WritingSystemOperations": WritingSystemOperations,
+                "ProjectSettingsOperations": ProjectSettingsOperations,
+                "AnnotationDefOperations": AnnotationDefOperations,
+                "CheckOperations": CheckOperations,
+                "CustomFieldOperations": CustomFieldOperations,
+            }})
+        except NameError:
+            # Not in FlexLibs2 mode - some classes won't be available
+            pass
+
+        # Execute the operations
+        exec(OPERATIONS, exec_namespace)
 
         # Collect results
         result["success"] = True
@@ -3541,8 +3690,18 @@ if __name__ == "__main__":
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
-        operations=repr(operations)
+        operations=repr(operations),
+        API_MODE_IMPORTS=api_imports
     )
+
+    # For flexlibs2, add Operations classes to exec namespace
+    # For other modes, the namespace will only have the basic project/report/helpers
+    if api_mode == "flexlibs2":
+        # Build exec namespace with all flexlibs2 Operations classes
+        exec_namespace_additions = api_namespace
+    else:
+        # For flexlibs_stable and liblcm, minimal namespace
+        exec_namespace_additions = {}
 
     # Write to temporary file
     try:

@@ -175,7 +175,6 @@ def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
 
     result = {
         "_schema": "common-patterns/1.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "by_object": unique_patterns_by_object,
         "by_operation": {
             op: patterns[:30] for op, patterns in patterns_by_operation.items()

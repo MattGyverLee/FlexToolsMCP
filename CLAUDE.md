@@ -40,6 +40,24 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
             FieldWorks Database
 ```
 
+## Project Philosophy
+
+FlexTools MCP makes FieldWorks automation accessible to non-programmers by:
+
+- **Indexing, not executing**: The MCP doesn't run code. It provides comprehensive, searchable API documentation so Claude can generate correct FlexTools scripts. Intelligence is in the indexing and presentation.
+
+- **Object-centric, not function-centric**: APIs are organized around what users manipulate (ILexEntry, ILexSense, etc.), not library namespaces. Users think "I want to modify entries", not "which library module should I call?"
+
+- **Self-contained extraction**: All documentation is extracted from source via static analysis (AST for Python, reflection for C#). No external APIs. Regenerable and auditable.
+
+- **Semantic understanding**: Uses embeddings to find APIs by intent ("add a gloss to a sense") rather than exact keyword matching.
+
+- **Pattern learning**: Tracks what works and what fails to gradually improve recommendations over time.
+
+- **Version multiplexing**: Supports multiple library versions coexisting, auto-detecting which to use based on project context.
+
+- **Safety-first**: Read-only by default (`write_enabled=False`). Explicit confirmation required for Create/Update/Delete operations.
+
 ## Related Repositories
 
 Configure paths in `.env` file. These external repositories are dependencies:

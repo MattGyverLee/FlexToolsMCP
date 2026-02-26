@@ -289,7 +289,6 @@ def build_navigation_graph(liblcm_path: Path) -> Dict[str, Any]:
 
     result = {
         "_schema": "navigation-graph/1.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "entities": rel_data["entities"],
         "graph": rel_data["graph"],
         "common_paths": common_paths,

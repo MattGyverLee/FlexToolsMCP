@@ -1,6 +1,5 @@
 {
   "_schema": "unified-api-doc/2.0",
-  "_generated_at": "2026-02-26T16:16:00.826452+00:00",
   "_source": {
     "type": "flexlibs2",
     "version": "2.1.0",
@@ -29,7 +28,6 @@
     "lcm_interfaces_used": [
       "CellarPropertyType",
       "CellarPropertyTypeFilter",
-      "CopyObject",
       "FwObjDataTypes",
       "GenDate",
       "IAnalysis",
@@ -14086,7 +14084,7 @@
         },
         {
           "name": "Duplicate",
-          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
           "summary": "Duplicate a phonological environment, creating a new copy with a new GUID.",
           "description": "Duplicate a phonological environment, creating a new copy with a new GUID.\n",
           "usage_hint": null,
@@ -14106,8 +14104,8 @@
             {
               "name": "deep",
               "type": "bool",
-              "default": false,
-              "description": "If True, deep copy owned context objects (LeftContextOA, RightContextOA). If False (default), contexts are not copied."
+              "default": true,
+              "description": "If True (default), deep copy owned context objects (LeftContextOA, RightContextOA). If False, contexts are not copied."
             }
           ],
           "returns": "IPhEnvironment: The newly created duplicate environment with a new GUID. ",
@@ -14134,7 +14132,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If item_or_hvo is None."
           ],
-          "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> word_initial = envOps.Create(\"Word Initial\")\n            >>> envOps.SetStringRepresentation(word_initial, \"#_\")\n            >>> # Shallow copy (no context objects)\n            >>> copy = envOps.Duplicate(word_initial)\n            >>> print(envOps.GetName(copy))\n            Word Initial\n\n            >>> # Deep copy (includes owned context objects)\n            >>> between_vowels = envOps.Create(\"Between Vowels\")\n            >>> copy = envOps.Duplicate(between_vowels, deep=True)\n",
+          "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> word_initial = envOps.Create(\"Word Initial\")\n            >>> envOps.SetStringRepresentation(word_initial, \"#_\")\n            >>> # Deep copy (default - includes owned context objects)\n            >>> copy = envOps.Duplicate(word_initial)\n            >>> print(envOps.GetName(copy))\n            Word Initial\n\n            >>> # Shallow copy (no context objects)\n            >>> between_vowels = envOps.Create(\"Between Vowels\")\n            >>> copy = envOps.Duplicate(between_vowels, deep=False)\n",
           "is_property": false,
           "is_classmethod": false,
           "is_staticmethod": false,
@@ -14155,7 +14153,9 @@
               ".Add()",
               ".CopyAlternatives()"
             ],
-            "utilities_used": [],
+            "utilities_used": [
+              "TsStringUtils.MakeString"
+            ],
             "mapping_type": "composite",
             "param_usage": {
               "item_or_hvo": [
@@ -14172,7 +14172,12 @@
               {
                 "type": "default_value",
                 "param": "deep",
-                "default": "False"
+                "default": "True"
+              },
+              {
+                "type": "ws_default",
+                "pattern": "WSHandle",
+                "description": "Applies default writing system if not specified"
               },
               {
                 "type": "type_conversion",
@@ -14857,6 +14862,7 @@
       "lcm_dependencies": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -19948,7 +19954,7 @@
         },
         {
           "name": "Duplicate",
-          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
           "summary": "Duplicate a phoneme, creating a new copy with a new GUID.",
           "description": "Duplicate a phoneme, creating a new copy with a new GUID.\n",
           "usage_hint": null,
@@ -19968,8 +19974,8 @@
             {
               "name": "deep",
               "type": "bool",
-              "default": false,
-              "description": "If True, also duplicate owned objects (codes/allophones). If False (default), only copy simple properties and references."
+              "default": true,
+              "description": "If True (default), also duplicate owned objects (codes/allophones). If False, only copy simple properties and references."
             }
           ],
           "returns": "IPhPhoneme: The newly created duplicate phoneme with a new GUID. ",
@@ -20001,7 +20007,7 @@
             "FP_NullParameterError: If item_or_hvo is None.",
             "FP_ParameterError: If no phoneme set exists."
           ],
-          "example": "            >>> phonemeOps = PhonemeOperations(project)\n            >>> p_phoneme = phonemeOps.Find(\"/p/\")\n            >>> if p_phoneme:\n            ...     # Duplicate phoneme (shallow - no codes)\n            ...     dup = phonemeOps.Duplicate(p_phoneme)\n            ...     print(f\"Original: {phonemeOps.GetGuid(dup)}\")\n            ...     print(f\"Representation: {phonemeOps.GetRepresentation(dup)}\")\n            ...\n            ...     # Deep duplicate (includes allophonic codes)\n            ...     deep_dup = phonemeOps.Duplicate(p_phoneme, deep=True)\n            ...     codes = phonemeOps.GetCodes(deep_dup)\n            ...     print(f\"Codes: {len(codes)}\")\n",
+          "example": "            >>> phonemeOps = PhonemeOperations(project)\n            >>> p_phoneme = phonemeOps.Find(\"/p/\")\n            >>> if p_phoneme:\n            ...     # Duplicate phoneme (deep - includes allophonic codes)\n            ...     dup = phonemeOps.Duplicate(p_phoneme)\n            ...     print(f\"Original: {phonemeOps.GetGuid(dup)}\")\n            ...     print(f\"Representation: {phonemeOps.GetRepresentation(dup)}\")\n            ...\n            ...     # Shallow duplicate (no codes)\n            ...     shallow_dup = phonemeOps.Duplicate(p_phoneme, deep=False)\n            ...     codes = phonemeOps.GetCodes(deep_dup)\n            ...     print(f\"Codes: {len(codes)}\")\n",
           "is_property": false,
           "is_classmethod": false,
           "is_staticmethod": false,
@@ -20016,7 +20022,8 @@
               "PhonemeSetsOS (OwningSequence)",
               "CodesOS (OwningSequence)",
               "PhonemesOC (OwningCollection)",
-              "FeaturesOA (OwningAtomic)"
+              "FeaturesOA (OwningAtomic)",
+              "ClassID"
             ],
             "methods_called": [
               ".Create()",
@@ -20040,7 +20047,7 @@
               {
                 "type": "default_value",
                 "param": "deep",
-                "default": "False"
+                "default": "True"
               },
               {
                 "type": "type_conversion",
@@ -21244,9 +21251,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ],
       "tags": [
         "grammar",
@@ -21665,7 +21672,7 @@
         },
         {
           "name": "Duplicate",
-          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
           "summary": "Duplicate a phonological rule, creating a new copy with a new GUID.",
           "description": "Duplicate a phonological rule, creating a new copy with a new GUID.\n",
           "usage_hint": null,
@@ -21685,8 +21692,8 @@
             {
               "name": "deep",
               "type": "bool",
-              "default": false,
-              "description": "If True, deep copy owned objects (StrucDescOS, RightHandSidesOS). If False (default), owned objects are not copied."
+              "default": true,
+              "description": "If True (default), deep copy owned objects (StrucDescOS, RightHandSidesOS). If False, owned objects are not copied."
             }
           ],
           "returns": "IPhPhonRule: The newly created duplicate rule with a new GUID. ",
@@ -21713,13 +21720,14 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If item_or_hvo is None."
           ],
-          "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> voicing = phonRuleOps.Create(\"Voicing Assimilation\")\n            >>> # Shallow copy (no owned objects)\n            >>> copy = phonRuleOps.Duplicate(voicing)\n            >>> print(phonRuleOps.GetName(copy))\n            Voicing Assimilation\n\n            >>> # Deep copy (includes StrucDescOS and RightHandSidesOS)\n            >>> rule = phonRuleOps.Create(\"Complex Rule\")\n            >>> copy = phonRuleOps.Duplicate(rule, deep=True)\n",
+          "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> voicing = phonRuleOps.Create(\"Voicing Assimilation\")\n            >>> # Deep copy (default - includes StrucDescOS and RightHandSidesOS)\n            >>> copy = phonRuleOps.Duplicate(voicing)\n            >>> print(phonRuleOps.GetName(copy))\n            Voicing Assimilation\n\n            >>> # Shallow copy (no owned objects)\n            >>> rule = phonRuleOps.Create(\"Complex Rule\")\n            >>> copy = phonRuleOps.Duplicate(rule, deep=False)\n",
           "is_property": false,
           "is_classmethod": false,
           "is_staticmethod": false,
           "lcm_mapping": {
             "factories_used": [
-              "IPhRegularRuleFactory"
+              "IPhRegularRuleFactory",
+              "IPhSegRuleRHSFactory"
             ],
             "repositories_used": [],
             "properties_accessed": [
@@ -21733,8 +21741,7 @@
               ".Create()",
               ".Insert()",
               ".Add()",
-              ".CopyAlternatives()",
-              ".Clear()"
+              ".CopyAlternatives()"
             ],
             "utilities_used": [],
             "mapping_type": "composite",
@@ -21753,7 +21760,7 @@
               {
                 "type": "default_value",
                 "param": "deep",
-                "default": "False"
+                "default": "True"
               },
               {
                 "type": "type_conversion",
@@ -22895,6 +22902,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -112487,6 +112495,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112514,6 +112523,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112535,6 +112545,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112559,10 +112570,13 @@
         ".Add()",
         ".CopyAlternatives()"
       ],
-      "utilities_used": [],
+      "utilities_used": [
+        "TsStringUtils.MakeString"
+      ],
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112582,6 +112596,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112600,6 +112615,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112618,6 +112634,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112636,6 +112653,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112652,6 +112670,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112670,6 +112689,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112690,6 +112710,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112708,6 +112729,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -112724,6 +112746,7 @@
       "lcm_deps": [
         "IPhEnvironmentFactory",
         "IPhEnvironment",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114118,9 +114141,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.CompareTo": {
@@ -114138,9 +114161,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.Create": {
@@ -114170,9 +114193,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.Delete": {
@@ -114196,9 +114219,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.Duplicate": {
@@ -114215,7 +114238,8 @@
         "PhonemeSetsOS (OwningSequence)",
         "CodesOS (OwningSequence)",
         "PhonemesOC (OwningCollection)",
-        "FeaturesOA (OwningAtomic)"
+        "FeaturesOA (OwningAtomic)",
+        "ClassID"
       ],
       "methods_called": [
         ".Create()",
@@ -114229,9 +114253,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.Exists": {
@@ -114249,9 +114273,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.Find": {
@@ -114275,9 +114299,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetAll": {
@@ -114299,9 +114323,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetBasicIPASymbol": {
@@ -114321,9 +114345,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetCodes": {
@@ -114343,9 +114367,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetDescription": {
@@ -114365,9 +114389,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetFeatures": {
@@ -114387,9 +114411,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetRepresentation": {
@@ -114409,9 +114433,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.GetSyncableProperties": {
@@ -114434,9 +114458,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.IsConsonant": {
@@ -114461,9 +114485,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.IsVowel": {
@@ -114488,9 +114512,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.RemoveCode": {
@@ -114512,9 +114536,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.SetDescription": {
@@ -114536,9 +114560,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.SetRepresentation": {
@@ -114560,9 +114584,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonemeOperations.__init__": {
@@ -114580,9 +114604,9 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "ICmObjectRepository",
         "ITsString",
-        "TsStringUtils",
-        "CopyObject"
+        "TsStringUtils"
       ]
     },
     "PhonologicalRuleOperations.AddInputSegment": {
@@ -114609,6 +114633,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114639,6 +114664,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114659,6 +114685,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114690,6 +114717,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114715,6 +114743,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114724,7 +114753,8 @@
       "method": "Duplicate",
       "mapping_type": "composite",
       "factories_used": [
-        "IPhRegularRuleFactory"
+        "IPhRegularRuleFactory",
+        "IPhSegRuleRHSFactory"
       ],
       "repositories_used": [],
       "properties_accessed": [
@@ -114738,8 +114768,7 @@
         ".Create()",
         ".Insert()",
         ".Add()",
-        ".CopyAlternatives()",
-        ".Clear()"
+        ".CopyAlternatives()"
       ],
       "utilities_used": [],
       "lcm_deps": [
@@ -114749,6 +114778,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114769,6 +114799,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114789,6 +114820,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114812,6 +114844,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114834,6 +114867,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114854,6 +114888,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114876,6 +114911,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114898,6 +114934,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114923,6 +114960,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114947,6 +114985,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114967,6 +115006,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -114995,6 +115035,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -115019,6 +115060,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -115047,6 +115089,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -115069,6 +115112,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]
@@ -115089,6 +115133,7 @@
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "IPhIterationContextFactory",
+        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ]

@@ -1006,7 +1006,6 @@ def stamp_document(api_doc: Dict[str, Any], dll_dir: Path, version: str = "0.0.0
     """Add schema and generation metadata to the document."""
     return {
         "_schema": SCHEMA_VERSION,
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "liblcm",
             "version": version,

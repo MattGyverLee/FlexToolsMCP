@@ -1163,7 +1163,6 @@ def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
 
     result = {
         "_schema": "unified-api-doc/2.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "flexlibs2",
             "version": version,
@@ -1302,7 +1301,6 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
 
     result = {
         "_schema": "unified-api-doc/2.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_source": {
             "type": "flexlibs",
             "version": version,

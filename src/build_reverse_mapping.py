@@ -126,7 +126,6 @@ def build_reverse_mapping(
     # Initialize result structure
     result = {
         "_schema": "reverse-mapping/1.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "properties": defaultdict(list),  # property_name -> [FlexLibs wrappers]
         "methods": defaultdict(list),      # method_name -> [FlexLibs wrappers]
         "factories": defaultdict(list),    # factory_name -> [FlexLibs wrappers]

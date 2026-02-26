@@ -225,7 +225,6 @@ def save_embeddings(embeddings: np.ndarray, items: List[Dict], index_dir: Path):
     # Save metadata
     metadata = {
         "_schema": "semantic-search/1.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_model": DEFAULT_MODEL,
         "items": items,
         "statistics": {

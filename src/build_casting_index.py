@@ -77,7 +77,6 @@ def build_casting_index(liblcm_path: Path) -> dict:
     # Build the casting index
     casting_index = {
         "_schema": "casting-index/1.0",
-        "_generated_at": datetime.now(timezone.utc).isoformat(),
         "_description": "Maps properties to interfaces, identifying pythonnet casting requirements",
         "properties": {},
         "polymorphic_collections": {},

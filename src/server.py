@@ -250,12 +250,13 @@ class SessionState:
     output_type: str = "auto"         # Output type: auto, operation, module
     project_name: str = ""            # FLEx project name (empty = prompt user)
     write_enabled: bool = False       # Write access: False = read-only/dry-run
-    test_mode: bool = False           # "test" keyword detected - enforces read-only
     initialized: bool = False
-    discovered_apis: set = None       # APIs discovered via get_object_api/search_by_capability
+    discovered_apis: set = None       # APIs discovered via search_by_capability
+    validated_apis: set = None        # APIs validated via get_object_api (required before use)
 
     def __init__(self):
         self.discovered_apis = set()
+        self.validated_apis = set()
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool)."""
@@ -267,14 +268,10 @@ class SessionState:
             self.project_name = kwargs["project_name"]
         if "write_enabled" in kwargs:
             self.write_enabled = kwargs["write_enabled"]
-        if "test_mode" in kwargs:
-            self.test_mode = kwargs["test_mode"]
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
         mode_info += f", write={self.write_enabled}"
-        if self.test_mode:
-            mode_info += " [TEST MODE - read-only enforced]"
         operations_logger.info(f"Session configured: {mode_info}")
 
     def record_discovered_api(self, entity: str, method: str) -> None:
@@ -295,6 +292,15 @@ class SessionState:
     def clear_discovered_apis(self) -> None:
         """Clear discovered APIs (for new session)."""
         self.discovered_apis = set()
+        self.validated_apis = set()
+
+    def record_validated_api(self, entity: str) -> None:
+        """Record an API that was validated via get_object_api."""
+        self.validated_apis.add(entity)
+
+    def get_unvalidated_apis(self) -> set:
+        """Get APIs discovered but not yet validated via get_object_api."""
+        return self.discovered_apis - self.validated_apis
 
     def get_mode(self) -> str:
         """Get the current session API mode."""
@@ -311,11 +317,6 @@ class SessionState:
     def is_write_enabled(self) -> bool:
         """Get whether write access is enabled for the session."""
         return self.write_enabled
-
-    def is_test_mode(self) -> bool:
-        """Check if session is in test mode (read-only enforced)."""
-        return self.test_mode
-
     def summary(self) -> dict:
         """Return session state summary for tool responses."""
         result = {
@@ -326,9 +327,6 @@ class SessionState:
             "initialized": self.initialized,
             "discovered_api_count": len(self.discovered_apis)
         }
-        if self.test_mode:
-            result["test_mode"] = True
-            result["note"] = "TEST MODE: write_enabled forced to False"
         return result
 
 
@@ -782,8 +780,7 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
         data["session_context"] = {
             "api_mode": session_state.api_mode,
             "write_enabled": session_state.write_enabled,
-            "project": session_state.project_name or "(not set)",
-            "test_mode": session_state.test_mode
+            "project": session_state.project_name or "(not set)"
         }
 
     return data
@@ -1244,52 +1241,50 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="start",
-            description="""[WORKFLOW - BEGIN HERE] Start any FlexTools task with guided discovery.
+            description="""[WORKFLOW - BEGIN HERE] Initialize the FlexTools MCP session.
 
-This wizard orchestrates the entire workflow:
-1. Analyzes your task to find relevant APIs (search_by_capability)
-2. Determines navigation paths between objects (get_navigation_path)
-3. Checks for pythonnet casting requirements (resolve_property)
-4. Finds code examples (find_examples)
-5. Recommends operation vs module based on complexity
-6. Returns a complete action plan with code skeleton
+REQUIRED: Sets api_mode to determine which API (flexlibs2, flexlibs_stable, or liblcm) to use.
+OPTIONAL: task description for initial API discovery, project_name for operations, etc.
 
-Use this INSTEAD of jumping directly to run_operation or run_module.""",
+After calling start():
+- Use search_by_capability(query='...') for API discovery
+- Use get_object_api(object_type='...') for detailed API info
+- Use run_operation() or run_module() to execute code against a FieldWorks project
+
+Task and project_name can be set now or updated/provided later as needed.""",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "api_mode": {
+                        "type": "string",
+                        "enum": ["flexlibs2", "flexlibs_stable", "liblcm"],
+                        "description": "API mode - REQUIRED: 'flexlibs2' (recommended, ~1400 methods), 'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API). Defaults to flexlibs2."
+                    },
                     "task": {
                         "type": "string",
-                        "description": "What do you want to accomplish? Describe in natural language (e.g., 'delete senses with test in gloss', 'count entries by part of speech', 'add French translations')"
+                        "description": "Optional: Task/goal description in natural language (e.g., 'delete senses with test in gloss', 'count entries by part of speech'). Can be provided now or discovered organically later."
+                    },
+                    "project_name": {
+                        "type": "string",
+                        "description": "Optional: FLEx project name for run_operation()/run_module(). Can be set now or provided when executing."
                     },
                     "output_type": {
                         "type": "string",
                         "enum": ["auto", "operation", "module"],
-                        "description": "Output type: 'auto' (recommended - picks based on complexity), 'operation' (quick one-off task), 'module' (reusable FlexTools script)",
-                        "default": "auto"
-                    },
-                    "api_mode": {
-                        "type": "string",
-                        "enum": ["flexlibs2", "flexlibs_stable", "liblcm"],
-                        "description": "API mode: 'flexlibs2' (recommended, ~1400 methods), 'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)",
-                        "default": "flexlibs2"
-                    },
-                    "project_name": {
-                        "type": "string",
-                        "description": "FLEx project name to use for this session. If not specified, will prompt when running operations."
+                        "description": "Optional: Output type - 'auto' (default, picks based on complexity), 'operation' (quick one-off), 'module' (reusable script)"
                     },
                     "write_enabled": {
                         "type": "boolean",
-                        "description": "Enable write access for the session. Default is False (read-only/dry-run mode). Set True only after testing!",
+                        "description": "Enable write access. Default is False (dry-run/read-only). Set True only after testing!",
                         "default": False
                     }
                 },
-                "required": ["task"]
+                "required": []
             }
         ),
         Tool(
             name="get_object_api",
-            description="[WORKFLOW STEP 3] Get detailed methods and properties for a FlexTools/LibLCM object like ILexEntry, LexSenseOperations. Use after search_by_capability identifies relevant objects. Use summary_only=true first, then request specific methods.",
+            description="[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER search_by_capability to validate and understand the APIs you want to use.\n\nWARNING: Calling get_object_api is required BEFORE using an API in run_operation/run_module. This ensures you have full context of the signature and behavior, reducing debugging.\n\nTip: Use summary_only=true first to explore large objects, then drill down into specific methods.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1332,7 +1327,7 @@ Use this INSTEAD of jumping directly to run_operation or run_module.""",
         ),
         Tool(
             name="search_by_capability",
-            description="[WORKFLOW STEP 1 - START HERE] Search for methods/functions by what they do. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'. ALWAYS call this first to discover the right APIs before writing code. Follow with get_navigation_path and get_object_api.",
+            description="[WORKFLOW STEP 2] Search for methods/functions by capability. Returns multiple options. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'.\n\nRECOMMENDED WORKFLOW:\n1. search_by_capability() - discover options (may find more than you'll use)\n2. Review results, choose which APIs you actually need\n3. get_object_api() - for each API you selected, get full details\n4. Write code using the validated APIs\n5. run_operation() or run_module() - execute with full context",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1625,6 +1620,21 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if api_index is None:
         api_index = APIIndex.load(get_index_dir())
 
+    # start() is the only tool that doesn't require initialization
+    # All other discovery/execution tools require calling start() first
+    if name != "start" and not session_state.initialized:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "Session not initialized",
+            "message": "You must call start() first to initialize the session and set the API mode.",
+            "hint": "Call start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
+            "available_task_examples": [
+                "Add gloss to sense definitions",
+                "Delete senses with test in gloss",
+                "Count entries by part of speech",
+                "Create new lexical entries"
+            ]
+        }, indent=2))]
+
     if name == "start":
         return await handle_start(arguments)
     elif name == "get_object_api":
@@ -1706,11 +1716,6 @@ async def handle_start(args: dict) -> list[TextContent]:
     write_enabled = args.get("write_enabled", False)
     task = args.get("task", "")  # Optional task description for context
 
-    # "test" keyword enforces read-only mode
-    is_test_mode = "test" in task.lower() if task else False
-    if is_test_mode:
-        write_enabled = False  # Test always means read-only
-
     # Auto-detect best API mode if not explicitly specified
     mode_detection = None
     if not api_mode:
@@ -1729,8 +1734,7 @@ async def handle_start(args: dict) -> list[TextContent]:
         api_mode=api_mode,
         output_type="auto",
         project_name=project_name,
-        write_enabled=write_enabled,
-        test_mode=is_test_mode
+        write_enabled=write_enabled
     )
 
     # Build response
@@ -1787,8 +1791,6 @@ async def handle_start(args: dict) -> list[TextContent]:
         warnings.append("No project_name set - will need to specify when running operations")
     if write_enabled:
         warnings.append("WRITE MODE ENABLED - operations will modify the database")
-    if is_test_mode:
-        warnings.append("TEST MODE - write operations disabled regardless of write_enabled setting")
 
     if warnings:
         result["warnings"] = warnings
@@ -2069,6 +2071,10 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
 
         # Add session context to response
         result = build_response_with_context(result, include_session=True)
+
+    # Record this API as validated (can now be used in run_operation/run_module)
+    if result.get("found"):
+        session_state.record_validated_api(object_type)
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
@@ -3046,11 +3052,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Use session state as fallback for project and write settings
     project_name = args.get("project_name", session_state.get_project())
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
-    api_mode = session_state.get_api_mode()
+    api_mode = session_state.get_mode()
 
     # Test mode enforces read-only
-    if session_state.is_test_mode():
-        write_enabled = False
 
     # Validate project_name is available
     if not project_name:
@@ -3073,6 +3077,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Get API mode-specific imports
     api_imports, _ = _get_api_mode_imports(api_mode)
+    # Add indentation for embedding in runner_script (uses .replace(), not .format())
+    import textwrap
+    api_imports_indented = textwrap.indent(api_imports, '        ')
 
     # Log module start
     operations_logger.info(f"=== Module Start ===")
@@ -3298,7 +3305,7 @@ if __name__ == "__main__":
     escaped_module_code = repr(module_code)
 
     # Replace API mode imports in the runner script
-    runner_script = runner_script.replace('{{API_MODE_IMPORTS}}', api_imports)
+    runner_script = runner_script.replace('{{API_MODE_IMPORTS}}', api_imports_indented)
 
     # Create the complete script with configuration
     full_script = '''# Configuration
@@ -3553,8 +3560,6 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
 
     # Test mode enforces read-only
-    if session_state.is_test_mode():
-        write_enabled = False
 
     # Validate project_name is available
     if not project_name:
@@ -3588,7 +3593,7 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
         ))]
 
     timeout_seconds = args.get("timeout_seconds", 120)
-    api_mode = session_state.get_api_mode()
+    api_mode = session_state.get_mode()
 
     # Log operation start
     operations_logger.info(f"=== Operation Start ===")
@@ -3614,6 +3619,7 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
 
     # Get API mode-specific imports
     api_imports, api_namespace = _get_api_mode_imports(api_mode)
+    # Imports are now at module level (before the function), so no indentation needed
 
     # Create the runner script template
     runner_script = '''# -*- coding: utf-8 -*-
@@ -3721,6 +3727,10 @@ class SimpleReporter:
 # ============================================================
 # Main Execution
 # ============================================================
+# API Mode-specific imports
+{API_MODE_IMPORTS}
+
+
 def run_operation():
     result = {{
         "success": False,
@@ -3735,9 +3745,6 @@ def run_operation():
     report = SimpleReporter()
 
     try:
-        # API Mode-specific imports
-        {{API_MODE_IMPORTS}}
-
         FLExInitialize()
 
         # Open project

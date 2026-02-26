@@ -1,6 +1,5 @@
 {
   "_schema": "navigation-graph/1.0",
-  "_generated_at": "2026-02-22T04:47:18.071298+00:00",
   "entities": {
     "UndoResult": {
       "children": [],

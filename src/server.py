@@ -902,57 +902,114 @@ class APIIndex:
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
-        """Load all API indexes from the index directory with versioning support.
+        """Load all API indexes matching the installed library versions.
 
-        Automatically loads the latest versioned API files. If a versioned file
-        is missing, attempts to auto-refresh it.
+        Detects installed library versions and loads the corresponding API indexes.
+        Falls back to latest version if exact match not found.
         """
         index = cls()
 
-        # Load LibLCM (look for versioned files)
+        # === LIBLCM ===
+        installed_liblcm = get_installed_liblcm_version()
         liblcm_dir = index_dir / "liblcm"
-        liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
+
+        liblcm_path = None
+        if installed_liblcm:
+            operations_logger.info(f"Detected installed LibLCM: {installed_liblcm}")
+            liblcm_path = find_versioned_api_file(liblcm_dir, "liblcm_api", installed_liblcm)
+
+        # Fall back to latest if exact match not found
+        if not liblcm_path:
+            if installed_liblcm:
+                operations_logger.info(f"No API file for LibLCM {installed_liblcm}, falling back to latest")
+            liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
+
+        # Auto-refresh if still not found
         if not liblcm_path:
             operations_logger.info("No LibLCM API file found, attempting auto-refresh...")
             if auto_refresh_missing_api_file("liblcm", "liblcm_api", liblcm_dir):
-                liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
+                if installed_liblcm:
+                    liblcm_path = find_versioned_api_file(liblcm_dir, "liblcm_api", installed_liblcm)
+                if not liblcm_path:
+                    liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 
         if liblcm_path:
             try:
                 with open(liblcm_path, "r", encoding="utf-8") as f:
                     index.liblcm = json.load(f)
-                operations_logger.info(f"Loaded LibLCM from {liblcm_path.name}")
+                if installed_liblcm:
+                    operations_logger.info(f"Loaded LibLCM {installed_liblcm} from {liblcm_path.name}")
+                else:
+                    operations_logger.info(f"Loaded LibLCM from {liblcm_path.name}")
             except Exception as e:
                 operations_logger.error(f"Failed to load LibLCM: {e}")
 
-        # Load FlexLibs 2.0 (look for versioned files)
+        # === FLEXLIBS 2.0 ===
+        installed_flexlibs2 = get_installed_flexlibs2_version()
         flexlibs_dir = index_dir / "flexlibs"
-        flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+
+        flexlibs2_path = None
+        if installed_flexlibs2:
+            operations_logger.info(f"Detected installed FlexLibs 2.0: {installed_flexlibs2}")
+            flexlibs2_path = find_versioned_api_file(flexlibs_dir, "flexlibs2_api", installed_flexlibs2)
+
+        # Fall back to latest if exact match not found
+        if not flexlibs2_path:
+            if installed_flexlibs2:
+                operations_logger.info(f"No API file for FlexLibs 2.0 {installed_flexlibs2}, falling back to latest")
+            flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+
+        # Auto-refresh if still not found
         if not flexlibs2_path:
             operations_logger.info("No FlexLibs 2.0 API file found, attempting auto-refresh...")
             if auto_refresh_missing_api_file("flexlibs2", "flexlibs2_api", flexlibs_dir):
-                flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+                if installed_flexlibs2:
+                    flexlibs2_path = find_versioned_api_file(flexlibs_dir, "flexlibs2_api", installed_flexlibs2)
+                if not flexlibs2_path:
+                    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
 
         if flexlibs2_path:
             try:
                 with open(flexlibs2_path, "r", encoding="utf-8") as f:
                     index.flexlibs2 = json.load(f)
-                operations_logger.info(f"Loaded FlexLibs 2.0 from {flexlibs2_path.name}")
+                if installed_flexlibs2:
+                    operations_logger.info(f"Loaded FlexLibs 2.0 {installed_flexlibs2} from {flexlibs2_path.name}")
+                else:
+                    operations_logger.info(f"Loaded FlexLibs 2.0 from {flexlibs2_path.name}")
             except Exception as e:
                 operations_logger.error(f"Failed to load FlexLibs 2.0: {e}")
 
-        # Load FlexLibs Stable (look for versioned files)
-        flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+        # === FLEXLIBS STABLE ===
+        installed_flexlibs = get_installed_flexlibs_version()
+
+        flexlibs_stable_path = None
+        if installed_flexlibs:
+            operations_logger.info(f"Detected installed FlexLibs stable: {installed_flexlibs}")
+            flexlibs_stable_path = find_versioned_api_file(flexlibs_dir, "flexlibs_api", installed_flexlibs)
+
+        # Fall back to latest if exact match not found
+        if not flexlibs_stable_path:
+            if installed_flexlibs:
+                operations_logger.info(f"No API file for FlexLibs {installed_flexlibs}, falling back to latest")
+            flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+
+        # Auto-refresh if still not found
         if not flexlibs_stable_path:
             operations_logger.info("No FlexLibs stable API file found, attempting auto-refresh...")
             if auto_refresh_missing_api_file("flexlibs", "flexlibs_api", flexlibs_dir):
-                flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+                if installed_flexlibs:
+                    flexlibs_stable_path = find_versioned_api_file(flexlibs_dir, "flexlibs_api", installed_flexlibs)
+                if not flexlibs_stable_path:
+                    flexlibs_stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
 
         if flexlibs_stable_path:
             try:
                 with open(flexlibs_stable_path, "r", encoding="utf-8") as f:
                     index.flexlibs_stable = json.load(f)
-                operations_logger.info(f"Loaded FlexLibs stable from {flexlibs_stable_path.name}")
+                if installed_flexlibs:
+                    operations_logger.info(f"Loaded FlexLibs stable {installed_flexlibs} from {flexlibs_stable_path.name}")
+                else:
+                    operations_logger.info(f"Loaded FlexLibs stable from {flexlibs_stable_path.name}")
             except Exception as e:
                 operations_logger.error(f"Failed to load FlexLibs stable: {e}")
 
@@ -986,6 +1043,94 @@ def get_index_dir() -> Path:
     return Path(__file__).parent.parent / "index"
 
 
+def get_installed_liblcm_version() -> Optional[str]:
+    """Detect the version of LibLCM currently installed.
+
+    Returns:
+        Version string (e.g., '11.0.0') or None if not detected
+    """
+    try:
+        import clr
+        clr.AddReference('SIL.LCModel')
+
+        # Get version from assembly metadata
+        try:
+            import System
+            asm = System.Reflection.Assembly.Load('SIL.LCModel')
+            version_attr = asm.GetName().Version
+            version = f"{version_attr.Major}.{version_attr.Minor}.{version_attr.Build}"
+            operations_logger.debug(f"Detected LibLCM version from assembly: {version}")
+            return version
+        except Exception as ex:
+            operations_logger.debug(f"Could not extract LibLCM version from assembly: {ex}")
+            return None
+    except Exception as e:
+        operations_logger.debug(f"Could not detect LibLCM version: {e}")
+        return None
+
+
+def get_installed_flexlibs2_version() -> Optional[str]:
+    """Detect the version of FlexLibs 2.0 currently installed.
+
+    Returns:
+        Version string (e.g., '2.1.0') or None if not detected
+    """
+    try:
+        import flexlibs2
+
+        # Try __version__ attribute
+        if hasattr(flexlibs2, '__version__'):
+            version = flexlibs2.__version__
+            operations_logger.debug(f"Detected FlexLibs 2.0 version: {version}")
+            return version
+
+        # Try getting from package metadata
+        try:
+            from importlib.metadata import version
+            pkg_version = version('flexlibs2')
+            operations_logger.debug(f"Detected FlexLibs 2.0 version from metadata: {pkg_version}")
+            return pkg_version
+        except Exception:
+            pass
+
+        operations_logger.debug("FlexLibs 2.0 installed but version not detected")
+        return None
+    except Exception as e:
+        operations_logger.debug(f"Could not detect FlexLibs 2.0 version: {e}")
+        return None
+
+
+def get_installed_flexlibs_version() -> Optional[str]:
+    """Detect the version of stable FlexLibs currently installed.
+
+    Returns:
+        Version string (e.g., '1.2.8') or None if not detected
+    """
+    try:
+        import flexlibs
+
+        # Try __version__ attribute
+        if hasattr(flexlibs, '__version__'):
+            version = flexlibs.__version__
+            operations_logger.debug(f"Detected FlexLibs stable version: {version}")
+            return version
+
+        # Try getting from package metadata
+        try:
+            from importlib.metadata import version
+            pkg_version = version('flexlibs')
+            operations_logger.debug(f"Detected FlexLibs stable version from metadata: {pkg_version}")
+            return pkg_version
+        except Exception:
+            pass
+
+        operations_logger.debug("FlexLibs stable installed but version not detected")
+        return None
+    except Exception as e:
+        operations_logger.debug(f"Could not detect FlexLibs version: {e}")
+        return None
+
+
 def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Path]:
     """Find the latest versioned API file for a library.
 
@@ -1009,6 +1154,32 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
     # Sort by version number (works for semantic versioning)
     files.sort(key=lambda x: tuple(map(int, re.search(r'v(\d+)\.(\d+)\.(\d+)', x).groups())))
     return Path(files[-1]) if files else None
+
+
+def find_versioned_api_file(index_dir: Path, prefix: str, target_version: str) -> Optional[Path]:
+    """Find the API file matching a specific installed library version.
+
+    Args:
+        index_dir: Parent directory (e.g., index/liblcm or index/flexlibs)
+        prefix: File prefix (e.g., 'liblcm_api', 'flexlibs2_api')
+        target_version: Version to match (e.g., '11.0.0')
+
+    Returns:
+        Path to matching file, or None if not found
+    """
+    if not index_dir.exists():
+        return None
+
+    # Try exact match first
+    exact_path = index_dir / f"{prefix}_v{target_version}.json"
+    if exact_path.exists():
+        operations_logger.info(f"Found exact version match: {prefix}_v{target_version}.json")
+        return exact_path
+
+    # If exact match not found, log and return None
+    # (caller will decide whether to fall back to latest or auto-refresh)
+    operations_logger.debug(f"No exact match found for {prefix} v{target_version}")
+    return None
 
 
 def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Path) -> bool:

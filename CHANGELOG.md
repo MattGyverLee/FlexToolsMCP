@@ -2,6 +2,33 @@
 
 All notable changes to FlexTools MCP are documented in this file.
 
+## [1.2.0] - 2026-02-26
+
+### Added
+- **Library Version Detection**: MCP now detects installed library versions (LibLCM, FlexLibs, FlexLibs 2.0)
+- **Version-Matched API Loading**: Loads API documentation matching the installed library version
+- **Version Detection Functions**:
+  - `get_installed_liblcm_version()` - Detects LibLCM from .NET assembly metadata
+  - `get_installed_flexlibs2_version()` - Detects FlexLibs 2.0 from package metadata
+  - `get_installed_flexlibs_version()` - Detects stable FlexLibs from package metadata
+
+### Changed
+- `APIIndex.load()` now matches installed library versions instead of always loading latest
+- API files are loaded in order of preference: exact version match → latest version → auto-refresh
+- Enhanced startup logging shows detected versions
+
+### Technical Details
+- Added `find_versioned_api_file()` to find API files matching specific versions
+- Updated `APIIndex.load()` to detect and use installed library versions
+- Graceful fallback to latest version if exact match not found
+- Auto-refresh triggered only if no suitable API file exists
+
+### Benefits
+- Documentation always matches installed library versions
+- Supports testing with specific/older versions
+- Better visibility into version mismatches
+- Enables version-specific debugging
+
 ## [1.1.0] - 2026-02-25
 
 ### Added

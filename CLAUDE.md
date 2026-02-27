@@ -168,6 +168,14 @@ if raw_gloss == "***":
 
 **Breaking Change Note**: FlexLibs v1.x scripts that check `if gloss == "***":` need to be updated to `if not gloss:` or `if gloss == ""`. See MIGRATION_GUIDE.md.
 
+## Debugging Missing Properties
+
+When users encounter `AttributeError` or "has no attribute" errors:
+1. Direct them to use the `resolve_property` tool
+2. It will show casting requirements and polymorphic collection warnings
+3. Often indicates they need to cast to a concrete interface first (e.g., `InterfaceType(obj)`)
+4. For direct C# field access, check if property requires `pythonnet` casting
+
 ## Key Technical Decisions
 
 - **Self-contained extraction**: Can regenerate indexes from source (no external dependencies)

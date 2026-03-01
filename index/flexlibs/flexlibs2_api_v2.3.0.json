@@ -1,5 +1,4 @@
 {
-  "_patterns_added": "2026-03-01T01:35:18.861214+00:00",
   "_schema": "unified-api-doc/2.0",
   "_source": {
     "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)",

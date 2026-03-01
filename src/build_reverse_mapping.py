@@ -326,9 +326,6 @@ def add_python_wrappers_to_liblcm(
 
     print(f"[INFO] Added python_wrappers to {wrappers_added} entities")
 
-    # Update metadata
-    liblcm["_python_wrappers_added"] = datetime.now(timezone.utc).isoformat()
-
     # Save
     output = output_path or liblcm_path
     save_json(liblcm, output)

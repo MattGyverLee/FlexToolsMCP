@@ -118,13 +118,13 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPerson",
-        "ICmAgentEvaluation",
-        "ILangProject",
         "ICmAgentRepository",
-        "ICmAgent",
         "ICmAgentFactory",
-        "ITsString"
+        "ICmAgent",
+        "ICmAgentEvaluation",
+        "ITsString",
+        "ICmPerson",
+        "ILangProject"
       ]
     },
     "Allomorph": {
@@ -274,12 +274,12 @@
         }
       },
       "wraps_interfaces": [
-        "IMoStemAllomorphFactory",
-        "IPhEnvironment",
-        "ILexEntry",
         "IMoAffixAllomorphFactory",
+        "IMoStemAllomorphFactory",
         "IMoForm",
-        "ITsString"
+        "ILexEntry",
+        "ITsString",
+        "IPhEnvironment"
       ]
     },
     "Annotation": {
@@ -393,11 +393,11 @@
         }
       },
       "wraps_interfaces": [
-        "ICmAnnotationDefn",
+        "ICmAnnotationDefnRepository",
         "ICmPossibility",
         "ICmAnnotationDefnFactory",
-        "ICmAnnotationDefnRepository",
-        "ITsString"
+        "ITsString",
+        "ICmAnnotationDefn"
       ]
     },
     "AnthropologyOperations": {
@@ -594,13 +594,13 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPerson",
         "ICmPossibility",
         "ICmPossibilityListFactory",
         "ICmAnthroItemFactory",
         "ICmAnthroItem",
         "IText",
-        "ITsString"
+        "ITsString",
+        "ICmPerson"
       ]
     },
     "ApprovalStatusTypes": {
@@ -608,17 +608,17 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ICmAgentEvaluation",
-        "IWfiAnalysis",
+        "IWfiWordform",
+        "IPartOfSpeech",
         "IWfiMorphBundleFactory",
+        "ICmAgent",
+        "IWfiAnalysisFactory",
+        "ICmAgentEvaluation",
+        "ITsString",
+        "IWfiAnalysisRepository",
         "IWfiGlossFactory",
         "ICmAgentEvaluationFactory",
-        "IWfiWordform",
-        "ICmAgent",
-        "IWfiAnalysisRepository",
-        "IWfiAnalysisFactory",
-        "IPartOfSpeech",
-        "ITsString"
+        "IWfiAnalysis"
       ]
     },
     "BaseOperations": {
@@ -830,13 +830,13 @@
       },
       "wraps_interfaces": [
         "ICmPossibility",
-        "ICmPossibilityListFactory",
-        "ILexEntry",
         "ICmPossibilityFactory",
+        "ICmPossibilityListFactory",
         "IWfiWordform",
-        "ICmPossibilityList",
         "IText",
-        "ITsString"
+        "ILexEntry",
+        "ITsString",
+        "ICmPossibilityList"
       ]
     },
     "CompoundRule": {
@@ -951,11 +951,11 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiGlossRepository",
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "ITsString",
         "IWfiAnalysisRepository",
-        "ITsString"
+        "IWfiGlossRepository"
       ]
     },
     "ConstChartClauseMarkerOperations": {
@@ -1010,10 +1010,10 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartRow",
-        "IConstChartWordGroup",
         "IConstChartClauseMarkerFactory",
-        "IConstChartClauseMarker"
+        "IConstChartClauseMarker",
+        "IConstChartWordGroup",
+        "IConstChartRow"
       ]
     },
     "ConstChartMovedTextOperations": {
@@ -1054,10 +1054,10 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartMovedTextMarker",
-        "IConstChartWordGroup",
         "IConstChartMovedTextMarkerFactory",
-        "IDsConstChart"
+        "IDsConstChart",
+        "IConstChartMovedTextMarker",
+        "IConstChartWordGroup"
       ]
     },
     "ConstChartOperations": {
@@ -1125,14 +1125,14 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartRow",
-        "IDsDiscourse",
         "ICmPossibility",
-        "IDsConstChartFactory",
-        "IDsConstChartRepository",
-        "IDsConstChart",
+        "IConstChartRow",
         "IDsDiscourseFactory",
-        "ITsString"
+        "IDsConstChartRepository",
+        "IDsDiscourse",
+        "IDsConstChart",
+        "ITsString",
+        "IDsConstChartFactory"
       ]
     },
     "ConstChartRowOperations": {
@@ -1211,8 +1211,8 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString"
+        "ITsString",
+        "IConstChartWordGroup"
       ]
     },
     "ConstChartTagOperations": {
@@ -1273,12 +1273,12 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPossibility",
-        "IConstChartTagFactory",
-        "ICmPossibilityFactory",
         "IConstChartTag",
+        "ICmPossibility",
+        "ICmPossibilityFactory",
         "IDsConstChart",
-        "ITsString"
+        "ITsString",
+        "IConstChartTagFactory"
       ]
     },
     "ConstChartWordGroupOperations": {
@@ -1353,8 +1353,8 @@
       "wraps_interfaces": [
         "IConstChartRow",
         "ISegment",
-        "IAnalysis",
         "IConstChartWordGroupFactory",
+        "IAnalysis",
         "IConstChartWordGroup"
       ]
     },
@@ -1419,14 +1419,14 @@
         }
       },
       "wraps_interfaces": [
-        "ICmObjectRepository",
+        "ILexExampleSentence",
         "ICmPossibilityRepository",
+        "IFwMetaDataCacheManaged",
+        "ICmObjectRepository",
+        "IMoForm",
         "ILexSense",
         "ILexEntry",
-        "ITsString",
-        "ILexExampleSentence",
-        "IMoForm",
-        "IFwMetaDataCacheManaged"
+        "ITsString"
       ]
     },
     "DataNotebookOperations": {
@@ -1665,16 +1665,16 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPerson",
-        "IRnGenericRec",
         "ICmPossibility",
-        "IRnResearchNbkRepository",
-        "ICmFile",
-        "ICmPossibilityRepository",
-        "IRnGenericRecFactory",
+        "ITsString",
         "ICmFileFactory",
+        "IRnResearchNbkRepository",
+        "ICmPossibilityRepository",
+        "IRnGenericRec",
+        "IRnGenericRecFactory",
         "IText",
-        "ITsString"
+        "ICmFile",
+        "ICmPerson"
       ]
     },
     "DiscourseOperations": {
@@ -1792,22 +1792,22 @@
         }
       },
       "wraps_interfaces": [
-        "IDsChart",
-        "IConstChartRow",
-        "IConstChartWordGroup",
-        "ICmPossibility",
-        "IConstChartClauseMarker",
-        "IConstChartMovedTextMarker",
-        "IDsDiscourseData",
-        "IConstChartMovedTextMarkerFactory",
-        "IConstChartRowFactory",
-        "IText",
-        "IDsConstChartFactory",
-        "IConstChartClauseMarkerFactory",
         "IConstChartTag",
+        "ICmPossibility",
+        "IConstChartRow",
+        "IDsDiscourseData",
+        "IDsChart",
         "IConstChartWordGroupFactory",
+        "IConstChartMovedTextMarker",
+        "IConstChartRowFactory",
+        "IConstChartMovedTextMarkerFactory",
         "IDsConstChart",
-        "ITsString"
+        "IText",
+        "ITsString",
+        "IConstChartClauseMarkerFactory",
+        "IConstChartClauseMarker",
+        "IConstChartWordGroup",
+        "IDsConstChartFactory"
       ]
     },
     "EnvironmentOperations": {
@@ -1889,8 +1889,8 @@
         }
       },
       "wraps_interfaces": [
-        "IPhEnvironment",
         "IPhEnvironmentFactory",
+        "IPhEnvironment",
         "ICmObjectRepository",
         "ITsString"
       ]
@@ -2044,10 +2044,10 @@
         }
       },
       "wraps_interfaces": [
-        "ILexEntry",
+        "ITsString",
         "ILexEtymologyFactory",
         "ILexEtymology",
-        "ITsString"
+        "ILexEntry"
       ]
     },
     "ExampleOperations": {
@@ -2234,12 +2234,12 @@
         }
       },
       "wraps_interfaces": [
-        "ICmTranslationFactory",
-        "ILexSense",
-        "ILexExampleSentenceFactory",
-        "ITsString",
+        "ICmTranslation",
         "ILexExampleSentence",
-        "ICmTranslation"
+        "ILexExampleSentenceFactory",
+        "ILexSense",
+        "ITsString",
+        "ICmTranslationFactory"
       ]
     },
     "FLExProject": {
@@ -2413,29 +2413,29 @@
         }
       },
       "wraps_interfaces": [
-        "ILexSense",
+        "IStTxtPara",
+        "IFwMetaDataCacheManaged",
+        "ISegmentRepository",
+        "ICmSemanticDomain",
+        "ICmPossibilityRepository",
+        "ICmObjectRepository",
+        "ITsString",
+        "ICmPossibilityList",
+        "ILexEntryRepository",
+        "IReversalIndexEntry",
         "IWfiWordformRepository",
         "IDataReader",
         "IUndoStackManager",
-        "ILexRefTypeRepository",
-        "ICmSemanticDomain",
-        "IReversalIndex",
-        "IMoMorphType",
-        "IWfiAnalysisRepository",
-        "IFwMetaDataCacheManaged",
-        "IWfiAnalysis",
-        "ILexEntry",
-        "ISegmentRepository",
         "ILexEntryRefFactory",
-        "ITsStrBldr",
+        "ILexEntry",
+        "IReversalIndex",
+        "IWfiAnalysisRepository",
+        "IMoMorphType",
         "ITextRepository",
-        "ICmObjectRepository",
-        "ILexEntryRepository",
-        "ICmPossibilityRepository",
-        "IStTxtPara",
-        "IReversalIndexEntry",
-        "ICmPossibilityList",
-        "ITsString"
+        "ILexRefTypeRepository",
+        "ILexSense",
+        "ITsStrBldr",
+        "IWfiAnalysis"
       ]
     },
     "FilterOperations": {
@@ -2450,14 +2450,14 @@
         }
       },
       "wraps_interfaces": [
-        "ICmFilter",
         "IFsClosedFeature",
-        "ICmObjectRepository",
-        "ILexEntry",
         "ICmFilterFactory",
         "IWfiWordform",
+        "ICmObjectRepository",
         "IText",
-        "ITsString"
+        "ILexEntry",
+        "ITsString",
+        "ICmFilter"
       ]
     },
     "FilterTypes": {
@@ -2465,14 +2465,14 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ICmFilter",
         "IFsClosedFeature",
-        "ICmObjectRepository",
-        "ILexEntry",
         "ICmFilterFactory",
         "IWfiWordform",
+        "ICmObjectRepository",
         "IText",
-        "ITsString"
+        "ILexEntry",
+        "ITsString",
+        "ICmFilter"
       ]
     },
     "GramCatOperations": {
@@ -2550,9 +2550,9 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPossibilityFactory",
+        "ITsString",
         "ICmPossibility",
-        "ITsString"
+        "ICmPossibilityFactory"
       ]
     },
     "InflectionFeatureOperations": {
@@ -2679,13 +2679,13 @@
         }
       },
       "wraps_interfaces": [
-        "IFsComplexFeature",
-        "IMoInflClass",
-        "IMoInflClassFactory",
-        "IFsComplexFeatureFactory",
-        "IFsFeatDefn",
         "IFsFeatStrucFactory",
+        "IFsComplexFeature",
         "IFsFeatStruc",
+        "IFsComplexFeatureFactory",
+        "IMoInflClass",
+        "IFsFeatDefn",
+        "IMoInflClassFactory",
         "ITsString"
       ]
     },
@@ -3039,21 +3039,21 @@
         }
       },
       "wraps_interfaces": [
-        "ILexSenseFactory",
-        "ILexEntryRefFactory",
-        "ILexPronunciationFactory",
-        "ILexEntryRepository",
-        "ILexSense",
         "ILexEntryFactory",
-        "ILexEntry",
-        "IMoStemAllomorphFactory",
-        "ILexEtymologyFactory",
-        "IMoMorphType",
         "IMoAffixAllomorphFactory",
-        "ICmFileFactory",
+        "ILexEtymologyFactory",
+        "ILexPronunciationFactory",
+        "IMoStemAllomorphFactory",
+        "ITsString",
         "ILexEntryRef",
         "IMoForm",
-        "ITsString"
+        "ILexSense",
+        "ILexEntryRefFactory",
+        "ILexEntry",
+        "ICmFileFactory",
+        "IMoMorphType",
+        "ILexSenseFactory",
+        "ILexEntryRepository"
       ]
     },
     "LexRefMappingTypes": {
@@ -3061,14 +3061,14 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ILexSense",
-        "ICmPossibilityListFactory",
-        "ILexEntry",
-        "ILexReference",
-        "ILexRefTypeRepository",
         "ILexRefType",
-        "ILexRefTypeFactory",
+        "ICmPossibilityListFactory",
         "ILexReferenceFactory",
+        "ILexRefTypeRepository",
+        "ILexSense",
+        "ILexRefTypeFactory",
+        "ILexReference",
+        "ILexEntry",
         "ITsString"
       ]
     },
@@ -3222,14 +3222,14 @@
         }
       },
       "wraps_interfaces": [
-        "ILexSense",
-        "ICmPossibilityListFactory",
-        "ILexEntry",
-        "ILexReference",
-        "ILexRefTypeRepository",
         "ILexRefType",
-        "ILexRefTypeFactory",
+        "ICmPossibilityListFactory",
         "ILexReferenceFactory",
+        "ILexRefTypeRepository",
+        "ILexSense",
+        "ILexRefTypeFactory",
+        "ILexReference",
+        "ILexEntry",
         "ITsString"
       ]
     },
@@ -3715,17 +3715,17 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPictureFactory",
-        "ICmTranslationFactory",
-        "ILexSenseFactory",
-        "IMoStemMsaFactory",
-        "ILexSense",
-        "ILexEntry",
-        "IReversalIndexEntry",
         "ICmSemanticDomain",
+        "IReversalIndexEntry",
+        "IMoStemMsaFactory",
         "ILexExampleSentenceFactory",
+        "ICmPictureFactory",
+        "ILexSense",
         "ICmPicture",
-        "ITsString"
+        "ILexEntry",
+        "ITsString",
+        "ICmTranslationFactory",
+        "ILexSenseFactory"
       ]
     },
     "LocationOperations": {
@@ -3859,9 +3859,9 @@
       },
       "wraps_interfaces": [
         "ICmLocation",
-        "ICmPossibilityRepository",
+        "ITsString",
         "ICmLocationFactory",
-        "ITsString"
+        "ICmPossibilityRepository"
       ]
     },
     "MSACollection": {
@@ -3943,12 +3943,12 @@
         }
       },
       "wraps_interfaces": [
-        "ICmFolderFactory",
-        "ICmObjectRepository",
-        "ICmFile",
         "ICmFolder",
+        "ITsString",
         "ICmFileFactory",
-        "ITsString"
+        "ICmObjectRepository",
+        "ICmFolderFactory",
+        "ICmFile"
       ]
     },
     "MediaType": {
@@ -3956,12 +3956,12 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ICmFolderFactory",
-        "ICmObjectRepository",
-        "ICmFile",
         "ICmFolder",
+        "ITsString",
         "ICmFileFactory",
-        "ITsString"
+        "ICmObjectRepository",
+        "ICmFolderFactory",
+        "ICmFile"
       ]
     },
     "MorphRuleOperations": {
@@ -4082,10 +4082,10 @@
         }
       },
       "wraps_interfaces": [
-        "IMoExoCompoundFactory",
-        "IMoEndoCompoundFactory",
+        "ITsString",
         "IMoInflAffixTemplateFactory",
-        "ITsString"
+        "IMoEndoCompoundFactory",
+        "IMoExoCompoundFactory"
       ]
     },
     "MorphosyntaxAnalysis": {
@@ -4183,11 +4183,11 @@
         }
       },
       "wraps_interfaces": [
-        "IPhPhoneme",
-        "IPhNCSegmentsFactory",
-        "IPhNCSegments",
         "IPhNaturalClass",
-        "ITsString"
+        "IPhNCSegments",
+        "IPhNCSegmentsFactory",
+        "ITsString",
+        "IPhPhoneme"
       ]
     },
     "NoteOperations": {
@@ -4324,13 +4324,13 @@
         }
       },
       "wraps_interfaces": [
-        "ICmBaseAnnotationFactory",
-        "ICmAnnotationDefn",
-        "IScrScriptureNoteFactory",
         "ICmPossibility",
         "IScrScriptureNote",
+        "IScrScriptureNoteFactory",
+        "ICmBaseAnnotationFactory",
         "ICmBaseAnnotation",
-        "ITsString"
+        "ITsString",
+        "ICmAnnotationDefn"
       ]
     },
     "OverlayOperations": {
@@ -4476,9 +4476,9 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "ICmPossibilityFactory",
-        "IDsConstChartFactory",
         "IDsConstChart",
-        "ITsString"
+        "ITsString",
+        "IDsConstChartFactory"
       ]
     },
     "POSOperations": {
@@ -4605,10 +4605,10 @@
         }
       },
       "wraps_interfaces": [
-        "ILexEntryRepository",
+        "ITsString",
         "IPartOfSpeechFactory",
         "IPartOfSpeech",
-        "ITsString"
+        "ILexEntryRepository"
       ]
     },
     "ParagraphOperations": {
@@ -4674,10 +4674,10 @@
         }
       },
       "wraps_interfaces": [
-        "IStTxtParaFactory",
         "ITsString",
+        "IStTxtPara",
         "IText",
-        "IStTxtPara"
+        "IStTxtParaFactory"
       ]
     },
     "PersonOperations": {
@@ -4869,14 +4869,14 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPerson",
-        "ICmPossibility",
-        "ILangProject",
-        "ICmPossibilityRepository",
         "ICmLocation",
-        "ICmPersonFactory",
         "ICmPersonRepository",
-        "ITsString"
+        "ICmPossibility",
+        "ICmPossibilityRepository",
+        "ICmPersonFactory",
+        "ITsString",
+        "ICmPerson",
+        "ILangProject"
       ]
     },
     "PhonemeOperations": {
@@ -5022,13 +5022,13 @@
         }
       },
       "wraps_interfaces": [
-        "IPhPhonemeFactory",
-        "ICmObjectRepository",
-        "IPhPhoneme",
         "IPhCodeFactory",
         "IPhCode",
         "IFsFeatStruc",
-        "ITsString"
+        "ICmObjectRepository",
+        "IPhPhonemeFactory",
+        "ITsString",
+        "IPhPhoneme"
       ]
     },
     "PhonologicalContext": {
@@ -5170,14 +5170,14 @@
         }
       },
       "wraps_interfaces": [
-        "IPhSimpleContextSegFactory",
-        "ICmObjectRepository",
-        "IPhSegRuleRHSFactory",
         "IPhSimpleContextNCFactory",
-        "IPhSegmentRuleFactory",
+        "IPhSimpleContextSegFactory",
         "IPhRegularRuleFactory",
+        "IPhSegRuleRHSFactory",
+        "ICmObjectRepository",
         "IPhIterationContextFactory",
-        "ITsString"
+        "ITsString",
+        "IPhSegmentRuleFactory"
       ]
     },
     "PossibilityListOperations": {
@@ -5371,11 +5371,11 @@
       },
       "wraps_interfaces": [
         "ICmPossibility",
-        "ICmPossibilityRepository",
-        "ICmPossibilityListFactory",
         "ICmPossibilityFactory",
-        "ICmPossibilityList",
-        "ITsString"
+        "ICmPossibilityListFactory",
+        "ICmPossibilityRepository",
+        "ITsString",
+        "ICmPossibilityList"
       ]
     },
     "ProhibitionCollection": {
@@ -5406,8 +5406,8 @@
         }
       },
       "wraps_interfaces": [
-        "ILangProject",
-        "ITsString"
+        "ITsString",
+        "ILangProject"
       ]
     },
     "PronunciationOperations": {
@@ -5546,12 +5546,12 @@
         }
       },
       "wraps_interfaces": [
-        "ILexPronunciationFactory",
-        "ICmFile",
-        "ILexEntry",
-        "ICmFileFactory",
         "ILexPronunciation",
-        "ITsString"
+        "ITsString",
+        "ILexPronunciationFactory",
+        "ICmFileFactory",
+        "ILexEntry",
+        "ICmFile"
       ]
     },
     "PublicationOperations": {
@@ -5706,8 +5706,8 @@
       },
       "wraps_interfaces": [
         "ICmPossibilityRepository",
-        "ICmPossibilityFactory",
         "ICmPossibility",
+        "ICmPossibilityFactory",
         "ITsString"
       ]
     },
@@ -5789,11 +5789,11 @@
         }
       },
       "wraps_interfaces": [
-        "IReversalIndexEntryFactory",
-        "ILexSense",
         "IReversalIndexEntry",
-        "IReversalIndex",
-        "ITsString"
+        "ILexSense",
+        "IReversalIndexEntryFactory",
+        "ITsString",
+        "IReversalIndex"
       ]
     },
     "ReversalIndexOperations": {
@@ -5846,11 +5846,11 @@
         }
       },
       "wraps_interfaces": [
-        "IReversalIndexRepository",
-        "ILangProject",
-        "IReversalIndex",
         "IReversalIndexFactory",
-        "ITsString"
+        "IReversalIndexRepository",
+        "ITsString",
+        "IReversalIndex",
+        "ILangProject"
       ]
     },
     "ReversalOperations": {
@@ -5985,11 +5985,11 @@
         }
       },
       "wraps_interfaces": [
-        "IReversalIndexEntryFactory",
-        "ILexSense",
         "IReversalIndexEntry",
-        "IReversalIndex",
-        "ITsString"
+        "ILexSense",
+        "IReversalIndexEntryFactory",
+        "ITsString",
+        "IReversalIndex"
       ]
     },
     "RuleCollection": {
@@ -6037,10 +6037,10 @@
         }
       },
       "wraps_interfaces": [
+        "IScrBookAnnotationsFactory",
         "IScrBook",
-        "IScrScriptureNote",
         "IScrBookAnnotations",
-        "IScrBookAnnotationsFactory"
+        "IScrScriptureNote"
       ]
     },
     "ScrBookOperations": {
@@ -6100,12 +6100,12 @@
         }
       },
       "wraps_interfaces": [
-        "IScrBookFactory",
-        "IScrBookRepository",
-        "IScripture",
         "IScrSection",
         "IScrBook",
-        "ITsString"
+        "IScrBookRepository",
+        "ITsString",
+        "IScrBookFactory",
+        "IScripture"
       ]
     },
     "ScrDraftOperations": {
@@ -6160,10 +6160,10 @@
         }
       },
       "wraps_interfaces": [
-        "IScrDraftFactory",
-        "IScripture",
+        "ITsString",
         "IScrDraft",
-        "ITsString"
+        "IScrDraftFactory",
+        "IScripture"
       ]
     },
     "ScrNoteOperations": {
@@ -6219,15 +6219,15 @@
         }
       },
       "wraps_interfaces": [
-        "IScrBookAnnotations",
-        "IStTxtParaFactory",
-        "IScrScriptureNoteFactory",
-        "IScrTxtPara",
-        "IStTextFactory",
+        "IScrBook",
         "IScrScriptureNote",
         "IScrBookAnnotationsFactory",
-        "IScrBook",
-        "ITsString"
+        "IScrScriptureNoteFactory",
+        "IStTextFactory",
+        "ITsString",
+        "IScrTxtPara",
+        "IScrBookAnnotations",
+        "IStTxtParaFactory"
       ]
     },
     "ScrSectionOperations": {
@@ -6292,14 +6292,14 @@
         }
       },
       "wraps_interfaces": [
-        "IScrSectionFactory",
-        "IStTxtParaFactory",
         "IStText",
-        "IScrTxtPara",
-        "IStTextFactory",
         "IScrSection",
         "IScrBook",
-        "ITsString"
+        "IStTextFactory",
+        "ITsString",
+        "IScrTxtPara",
+        "IScrSectionFactory",
+        "IStTxtParaFactory"
       ]
     },
     "ScrTxtParaOperations": {
@@ -6341,12 +6341,12 @@
         }
       },
       "wraps_interfaces": [
-        "IScrTxtParaFactory",
-        "IScrTxtPara",
-        "IStStyle",
-        "IStTextFactory",
         "IScrSection",
-        "ITsString"
+        "IStTextFactory",
+        "IStStyle",
+        "IScrTxtParaFactory",
+        "ITsString",
+        "IScrTxtPara"
       ]
     },
     "SegmentOperations": {
@@ -6482,10 +6482,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "IStTxtPara",
+        "ISegmentFactory",
         "ISegment",
-        "ISegmentFactory"
+        "ITsString"
       ]
     },
     "SemanticDomainOperations": {
@@ -6621,10 +6621,10 @@
         }
       },
       "wraps_interfaces": [
+        "ITsString",
         "ICmSemanticDomain",
         "ICmSemanticDomainFactory",
-        "ILexSenseRepository",
-        "ITsString"
+        "ILexSenseRepository"
       ]
     },
     "SmartCollection": {
@@ -6638,13 +6638,13 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "IWfiMorphBundleFactory",
-        "IWfiGlossFactory",
         "IWfiWordformRepository",
         "IWfiWordform",
         "IWfiWordformFactory",
+        "IWfiMorphBundleFactory",
         "IWfiAnalysisFactory",
-        "ITsString"
+        "ITsString",
+        "IWfiGlossFactory"
       ]
     },
     "TextOperations": {
@@ -6767,17 +6767,17 @@
         }
       },
       "wraps_interfaces": [
-        "ITextRepository",
-        "ICmFolderFactory",
-        "IStTxtParaFactory",
-        "ICmPossibility",
-        "IStTextFactory",
         "IStTxtPara",
+        "ICmPossibility",
+        "ICmMediaFactory",
+        "ITextRepository",
+        "IStTextFactory",
+        "ICmFolderFactory",
+        "ICmMedia",
+        "IText",
         "ITextFactory",
         "ITsString",
-        "ICmMediaFactory",
-        "IText",
-        "ICmMedia"
+        "IStTxtParaFactory"
       ]
     },
     "TranslationTypeOperations": {
@@ -6912,10 +6912,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITextRepository",
         "ICmPossibility",
-        "ICmPossibilityListFactory",
         "ICmPossibilityFactory",
+        "ITextRepository",
+        "ICmPossibilityListFactory",
         "IStTxtParaRepository",
         "ITsString"
       ]
@@ -7062,11 +7062,11 @@
       },
       "wraps_interfaces": [
         "ILexEntryTypeRepository",
-        "ILexEntry",
         "IVariantComponentLexeme",
+        "ILexEntryRef",
         "ILexEntryType",
         "ILexEntryRefFactory",
-        "ILexEntryRef",
+        "ILexEntry",
         "ITsString"
       ]
     },
@@ -7140,12 +7140,12 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiMorphBundle",
-        "IWfiAnalysis",
         "IWfiWordform",
-        "IWfiAnalysisFactory",
         "IPartOfSpeech",
-        "ITsString"
+        "IWfiAnalysisFactory",
+        "ITsString",
+        "IWfiMorphBundle",
+        "IWfiAnalysis"
       ]
     },
     "WfiGlossOperations": {
@@ -7210,10 +7210,10 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiAnalysis",
-        "IWfiGlossFactory",
         "IWfiGloss",
-        "ITsString"
+        "ITsString",
+        "IWfiGlossFactory",
+        "IWfiAnalysis"
       ]
     },
     "WfiMorphBundleOperations": {
@@ -7289,12 +7289,12 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiMorphBundle",
-        "IWfiAnalysis",
-        "IWfiMorphBundleFactory",
         "ILexSense",
+        "IWfiMorphBundleFactory",
+        "ITsString",
+        "IWfiMorphBundle",
         "IMoMorphType",
-        "ITsString"
+        "IWfiAnalysis"
       ]
     },
     "WfiWordformOperations": {
@@ -7361,11 +7361,11 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiAnalysis",
         "IWfiWordformRepository",
         "IWfiWordform",
         "IWfiWordformFactory",
-        "ITsString"
+        "ITsString",
+        "IWfiAnalysis"
       ]
     },
     "WordformOperations": {
@@ -7450,13 +7450,13 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiMorphBundleFactory",
-        "IWfiGlossFactory",
         "IWfiWordformRepository",
         "IWfiWordform",
         "IWfiWordformFactory",
+        "IWfiMorphBundleFactory",
         "IWfiAnalysisFactory",
-        "ITsString"
+        "ITsString",
+        "IWfiGlossFactory"
       ]
     },
     "WritingSystemOperations": {
@@ -7471,9 +7471,9 @@
         }
       },
       "wraps_interfaces": [
+        "ITsString",
         "IMultiString",
-        "IMultiUnicode",
-        "ITsString"
+        "IMultiUnicode"
       ]
     }
   },

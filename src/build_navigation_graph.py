@@ -329,7 +329,6 @@ def update_liblcm_with_relationships(liblcm_path: Path, nav_graph: Dict):
 
     print(f"[INFO] Updated relationships for {updated} entities")
 
-    liblcm["_relationships_added"] = datetime.now(timezone.utc).isoformat()
     save_json(liblcm, liblcm_path)
 
 

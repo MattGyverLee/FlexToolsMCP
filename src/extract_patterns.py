@@ -277,7 +277,6 @@ def add_patterns_to_flexlibs(flexlibs2_path: Path, patterns: Dict):
 
     print(f"[INFO] Added patterns to {updated} entities")
 
-    flexlibs2["_patterns_added"] = datetime.now(timezone.utc).isoformat()
     save_json(flexlibs2, flexlibs2_path)
 
 

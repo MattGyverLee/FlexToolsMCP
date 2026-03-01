@@ -284,7 +284,7 @@ def save_embeddings(embeddings: np.ndarray, items: List[Dict], index_dir: Path):
     }
 
     with open(embeddings_dir / "metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
+        json.dump(metadata, f, indent=2, sort_keys=True)
 
     # Save FAISS index
     faiss.normalize_L2(embeddings)  # Re-normalize since we loaded from file

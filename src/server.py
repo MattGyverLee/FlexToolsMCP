@@ -97,7 +97,7 @@ class PatternTracker:
         """Save patterns to disk."""
         try:
             with open(self.patterns_file, 'w', encoding='utf-8') as f:
-                json.dump(self.patterns, f, indent=2, ensure_ascii=False)
+                json.dump(self.patterns, f, indent=2, ensure_ascii=False, sort_keys=True)
         except Exception as e:
             operations_logger.warning(f"Failed to save patterns: {e}")
 

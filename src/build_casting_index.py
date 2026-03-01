@@ -219,7 +219,7 @@ def main():
     output_filename = f"casting_index_liblcm-v{liblcm_version}.json"
     output_path = index_dir / output_filename
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(casting_index, f, indent=2, ensure_ascii=False)
+        json.dump(casting_index, f, indent=2, ensure_ascii=False, sort_keys=True)
 
     # Print summary
     print(f"[OK] Casting index saved to {output_path}")

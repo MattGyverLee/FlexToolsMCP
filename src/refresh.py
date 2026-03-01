@@ -370,7 +370,7 @@ def apply_categorization() -> bool:
 
         # Save updated file
         with open(liblcm_path, 'w', encoding='utf-8') as f:
-            json.dump(lcm, f, indent=2, ensure_ascii=False)
+            json.dump(lcm, f, indent=2, ensure_ascii=False, sort_keys=True)
 
         # Count categories
         categories = Counter()

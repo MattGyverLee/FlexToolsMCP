@@ -77,9 +77,9 @@ def load_json(path: Path) -> Dict:
 
 
 def save_json(data: Dict, path: Path):
-    """Save a JSON file with UTF-8 encoding."""
+    """Save a JSON file with UTF-8 encoding and sorted keys."""
     with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+        json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
     print(f"[INFO] Saved: {path}")
 
 

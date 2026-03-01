@@ -1107,7 +1107,7 @@ Examples:
 
         # Write output
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(stamped_doc, f, indent=2, ensure_ascii=False)
+            json.dump(stamped_doc, f, indent=2, ensure_ascii=False, sort_keys=True)
 
         log.info(f"API documentation written to: {output_path}")
 

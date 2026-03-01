@@ -1571,7 +1571,7 @@ def main():
 
             print(f"[INFO] Writing results to: {output_file}")
             with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(api_data, f, indent=2, ensure_ascii=False)
+                json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
 
             print_summary(api_data, "stable")
 
@@ -1589,7 +1589,7 @@ def main():
 
             print(f"[INFO] Writing results to: {output_file}")
             with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(api_data, f, indent=2, ensure_ascii=False)
+                json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
 
             print_summary(api_data, "2.0")
 

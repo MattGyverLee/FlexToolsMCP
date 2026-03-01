@@ -80,9 +80,20 @@ def build_casting_index(liblcm_path: Path) -> dict:
         "_schema": "casting-index/1.0",
         "_description": "Maps properties to interfaces, identifying pythonnet casting requirements",
         "properties": {},
+        "property_to_concrete_mapping": {},
+        "class_name_mapping": {},
         "polymorphic_collections": {},
         "interface_hierarchy": {},
     }
+
+    # Build class name -> interface mapping
+    # ClassName is typically the interface name without the "I" prefix and with proper casing
+    for entity_name, entity_data in entities.items():
+        if entity_data.get("type") == "interface":
+            # Convert interface name to ClassName (IMoStemMsa -> MoStemMsa)
+            if entity_name.startswith("I"):
+                class_name = entity_name[1:]
+                casting_index["class_name_mapping"][class_name] = entity_name
 
     # For each property, determine if it requires casting
     for prop_name, defining_interfaces in property_to_interfaces.items():
@@ -106,6 +117,31 @@ def build_casting_index(liblcm_path: Path) -> dict:
                 "defined_on": sorted(defining_interfaces),
                 "requires_cast_from": sorted(base_interfaces_without),
                 "pythonnet_warning": True,
+            }
+
+    # Build reverse mapping: property -> concrete types that have it
+    # This is built from polymorphic collections and interface hierarchies
+    for prop_name, defining_interfaces in property_to_interfaces.items():
+        # For each defined interface, find all concrete subtypes
+        concrete_types_with_prop = set()
+
+        for interface in defining_interfaces:
+            # Add the interface itself (concrete type)
+            concrete_types_with_prop.add(interface)
+            # Add all descendants (they inherit the property)
+            def get_all_descendants(iface):
+                descendants = set()
+                for child in interface_children.get(iface, []):
+                    descendants.add(child)
+                    descendants.update(get_all_descendants(child))
+                return descendants
+            concrete_types_with_prop.update(get_all_descendants(interface))
+
+        if concrete_types_with_prop and len(concrete_types_with_prop) <= 20:
+            # Only include if not too many (avoid noise)
+            casting_index["property_to_concrete_mapping"][prop_name] = {
+                "available_on": sorted(concrete_types_with_prop),
+                "note": "Property is available on these concrete types and their descendants"
             }
 
     # Add polymorphic collections info
@@ -188,6 +224,8 @@ def main():
     # Print summary
     print(f"[OK] Casting index saved to {output_path}")
     print(f"     Properties with casting requirements: {len(casting_index['properties'])}")
+    print(f"     Property-to-concrete mappings: {len(casting_index['property_to_concrete_mapping'])}")
+    print(f"     ClassName-to-interface mappings: {len(casting_index['class_name_mapping'])}")
     print(f"     Polymorphic collections documented: {len(casting_index['polymorphic_collections'])}")
     print(f"     Interface hierarchies: {len(casting_index['interface_hierarchy'])}")
 

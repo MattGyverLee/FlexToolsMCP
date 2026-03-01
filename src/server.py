@@ -1157,13 +1157,16 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
 
     import glob
     # Search in both main directory and archive subdirectory
-    pattern = str(index_dir / f"{prefix}_v*.json")
-    files = glob.glob(pattern)
+    # Handle both patterns: underscore (liblcm_api_v*.json) and hyphen (casting_index_liblcm-v*.json)
+    pattern_underscore = str(index_dir / f"{prefix}_v*.json")
+    pattern_hyphen = str(index_dir / f"{prefix}-v*.json")
+    files = glob.glob(pattern_underscore) + glob.glob(pattern_hyphen)
 
     archive_dir = index_dir / "archive"
     if archive_dir.exists():
-        archive_pattern = str(archive_dir / f"{prefix}_v*.json")
-        files.extend(glob.glob(archive_pattern))
+        archive_pattern_underscore = str(archive_dir / f"{prefix}_v*.json")
+        archive_pattern_hyphen = str(archive_dir / f"{prefix}-v*.json")
+        files.extend(glob.glob(archive_pattern_underscore) + glob.glob(archive_pattern_hyphen))
 
     if not files:
         return None
@@ -1187,17 +1190,25 @@ def find_versioned_api_file(index_dir: Path, prefix: str, target_version: str) -
     if not index_dir.exists():
         return None
 
-    # Try exact match first in main directory
-    exact_path = index_dir / f"{prefix}_v{target_version}.json"
-    if exact_path.exists():
+    # Try exact match first in main directory (both underscore and hyphen patterns)
+    exact_path_underscore = index_dir / f"{prefix}_v{target_version}.json"
+    exact_path_hyphen = index_dir / f"{prefix}-v{target_version}.json"
+    if exact_path_underscore.exists():
         operations_logger.info(f"Found exact version match: {prefix}_v{target_version}.json")
-        return exact_path
+        return exact_path_underscore
+    if exact_path_hyphen.exists():
+        operations_logger.info(f"Found exact version match: {prefix}-v{target_version}.json")
+        return exact_path_hyphen
 
-    # Try archive directory
-    archive_path = index_dir / "archive" / f"{prefix}_v{target_version}.json"
-    if archive_path.exists():
+    # Try archive directory (both patterns)
+    archive_path_underscore = index_dir / "archive" / f"{prefix}_v{target_version}.json"
+    archive_path_hyphen = index_dir / "archive" / f"{prefix}-v{target_version}.json"
+    if archive_path_underscore.exists():
         operations_logger.info(f"Found exact version match in archive: {prefix}_v{target_version}.json")
-        return archive_path
+        return archive_path_underscore
+    if archive_path_hyphen.exists():
+        operations_logger.info(f"Found exact version match in archive: {prefix}-v{target_version}.json")
+        return archive_path_hyphen
 
     # If exact match not found, log and return None
     # (caller will decide whether to fall back to latest or auto-refresh)
@@ -4210,6 +4221,8 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     if include_casting_info and api_index.casting_index:
         casting_props = api_index.casting_index.get("properties", {})
         poly_collections = api_index.casting_index.get("polymorphic_collections", {})
+        prop_to_concrete = api_index.casting_index.get("property_to_concrete_mapping", {})
+        class_name_map = api_index.casting_index.get("class_name_mapping", {})
 
         # Check if property requires casting
         if property_name in casting_props:
@@ -4220,8 +4233,12 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                 "NOT_available_on": casting_info.get("requires_cast_from", []),
                 "warning": f"Property '{property_name}' is NOT available on base interfaces: {', '.join(casting_info.get('requires_cast_from', []))}. You must cast to a concrete interface first.",
                 "pattern": "concrete = InterfaceType(obj)  # Cast based on obj.ClassName",
-                "flexlibs2_helper": "from flexlibs2.code.lcm_casting import cast_to_concrete"
+                "flexlibs2_helper": "Use CastingOperations.cast_to_concrete(obj) from flexlibs2"
             }
+
+            # Add concrete type information from property mapping
+            if property_name in prop_to_concrete:
+                result["pythonnet_casting"]["available_on_concrete_types"] = prop_to_concrete[property_name].get("available_on", [])
 
         # Check if context_entity is a polymorphic collection
         if context_entity:
@@ -4233,9 +4250,26 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                         "concrete_types": coll_info.get("concrete_types", []),
                         "unique_properties_by_type": coll_info.get("unique_properties_by_type", {}),
                         "casting_hint": coll_info.get("casting_hint", ""),
-                        "example": f"for item in obj.{coll_name}:\n    concrete = cast_to_concrete(item)\n    # Now access derived properties"
+                        "example": f"for item in obj.{coll_name}:\n    concrete = CastingOperations.cast_to_concrete(item)\n    # Now access derived properties"
                     }
                     break
+
+        # If property is in the polymorphic collection, show which concrete types have it
+        if property_name in prop_to_concrete and context_entity:
+            prop_info = prop_to_concrete[property_name]
+            available_types = prop_info.get("available_on", [])
+            # Filter to just the types relevant to the context polymorphic collection
+            if context_entity in poly_collections:
+                poly_info = poly_collections[context_entity]
+                relevant_types = [t for t in available_types if t in poly_info.get("concrete_types", [])]
+                if relevant_types:
+                    result["property_availability_in_context"] = {
+                        "property": property_name,
+                        "polymorphic_collection": context_entity,
+                        "has_property_on": relevant_types,
+                        "missing_from": [t for t in poly_info.get("concrete_types", []) if t not in relevant_types],
+                        "guidance": f"'{property_name}' is only available on {', '.join(relevant_types)}. Check the concrete type with obj.ClassName == '{relevant_types[0][1:]}' before accessing."
+                    }
 
     # Add session context
     result = build_response_with_context(result, include_session=True)

@@ -2492,6 +2492,34 @@ def generate_code_from_path(steps: list) -> str:
     return "\n".join(lines)
 
 
+def _add_polymorphic_warnings(result: dict, steps: list) -> None:
+    """Add casting warnings for polymorphic collections in the navigation path."""
+    if not api_index.casting_index or not steps:
+        return
+
+    poly_collections = api_index.casting_index.get("polymorphic_collections", {})
+    warnings = []
+
+    for step in steps:
+        # Check if this step is a polymorphic collection
+        property_name = step.get("property") or step.get("via", "").split(".")[-1]
+        if property_name in poly_collections:
+            poly_info = poly_collections[property_name]
+            warning = {
+                "property": property_name,
+                "base_type": poly_info.get("base_type", ""),
+                "concrete_types": poly_info.get("concrete_types", []),
+                "message": f"The {property_name} property returns {poly_info.get('base_type', 'a base type')}. "
+                           f"You may need to cast to a concrete type: {', '.join(poly_info.get('concrete_types', []))}",
+                "suggestion": f"Use CastingOperations.cast_to_concrete(obj) to cast to the concrete type."
+            }
+            warnings.append(warning)
+
+    if warnings:
+        result["casting_warnings"] = warnings
+        result["casting_hint"] = "This path accesses polymorphic collections. Use CastingOperations from FlexLibs2 to access type-specific properties."
+
+
 async def handle_get_navigation_path(args: dict) -> list[TextContent]:
     """Find navigation path between two object types using precomputed graph."""
     from_obj = args["from_object"]
@@ -2526,6 +2554,7 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         result["steps"] = path_info["steps"]
         result["code"] = path_info.get("code_pattern", "")
         result["description"] = f"Navigate from {from_normalized} to {to_normalized}"
+        _add_polymorphic_warnings(result, path_info["steps"])
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     # Fall back to BFS pathfinding
@@ -2536,6 +2565,7 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         result["steps"] = steps
         result["code"] = generate_code_from_path(steps)
         result["description"] = f"Path found via BFS ({len(steps)} step{'s' if len(steps) != 1 else ''})"
+        _add_polymorphic_warnings(result, steps)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     # No path found

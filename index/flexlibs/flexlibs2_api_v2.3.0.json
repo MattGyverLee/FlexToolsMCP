@@ -7,13 +7,13 @@
     "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)"
   },
   "metadata": {
-    "total_classes": 97,
-    "total_methods": 1503,
+    "total_classes": 98,
+    "total_methods": 1511,
     "total_properties": 154,
     "methods_with_return_type": 905,
-    "files_analyzed": 83,
+    "files_analyzed": 84,
     "categories": {
-      "general": 18,
+      "general": 19,
       "discourse": 6,
       "grammar": 16,
       "lexicon": 15,
@@ -220,7 +220,7 @@
       "direct": 620,
       "convenience": 208,
       "composite": 127,
-      "pure_python": 548
+      "pure_python": 556
     }
   },
   "entities": {
@@ -972,6 +972,411 @@
             "utilities_used": [],
             "mapping_type": "pure_python",
             "param_usage": {},
+            "transformations": []
+          }
+        }
+      ],
+      "properties": [],
+      "lcm_dependencies": [],
+      "tags": [
+        "general",
+        "operations"
+      ]
+    },
+    "CastingOperations": {
+      "id": "CastingOperations",
+      "name": "CastingOperations",
+      "type": "class",
+      "namespace": "flexlibs2.code.CastingOperations",
+      "source_file": "CastingOperations",
+      "category": "general",
+      "summary": "Utility class for casting LCM objects to concrete interface types.",
+      "description": "Utility class for casting LCM objects to concrete interface types.\n\nPythonnet strictly respects .NET interface typing, which can make it challenging\nto work with polymorphic collections that return base interface types. These utilities\nhelp you discover and cast to the concrete implementations.",
+      "usage_hint": "Provides operations for working with general data in FieldWorks",
+      "example": "",
+      "base_classes": [],
+      "methods": [
+        {
+          "name": "cast_phonological_rule",
+          "signature": "cast_phonological_rule(rule_obj)",
+          "summary": "Cast a phonological rule to its concrete type.",
+          "description": "Cast a phonological rule to its concrete type.\n\nPhonological rules can be different subtypes (metathesis, insertion, etc.).\nThis function casts to the actual concrete type.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "rule_obj",
+              "type": "",
+              "default": null,
+              "description": "An IPhPhonologicalRule object"
+            }
+          ],
+          "returns": "The rule cast to its concrete type",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "rule_obj": [
+                "arg[0] of _cast_phonological_rule()"
+              ]
+            },
+            "transformations": []
+          }
+        },
+        {
+          "name": "cast_to_concrete",
+          "signature": "cast_to_concrete(obj)",
+          "summary": "Cast an LCM object to its concrete interface type.",
+          "description": "Cast an LCM object to its concrete interface type.\n\nWhen you retrieve an object from a polymorphic collection, it's typed as the\nbase interface (e.g., IMoMorphSynAnalysis). This function inspects the object's\nClassName and casts it to the actual concrete type (e.g., IMoAffixAllomorph).\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "obj",
+              "type": "",
+              "default": null,
+              "description": "An LCM object that may be a base interface type"
+            }
+          ],
+          "returns": "The same object cast to its concrete interface type, or the original if already concrete or if concrete type is not available ",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "        \n            # Morph could be IMoAffixAllomorph or IMoStemAllomorph\n            morph = entry.LexemeFormOA\n            concrete = CastingOperations.cast_to_concrete(morph)\n            # Now concrete type is known, can access type-specific properties\n            if concrete.ClassName == 'MoAffixAllomorph':\n                affix_type = concrete.AffixType",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "obj": [
+                "arg[0] of _cast_to_concrete()"
+              ]
+            },
+            "transformations": []
+          }
+        },
+        {
+          "name": "clone_properties",
+          "signature": "clone_properties(source_obj, dest_obj, project=None)",
+          "summary": "Deep clone properties from one object to another.",
+          "description": "Deep clone properties from one object to another.\n\nUseful for copying data between similar objects while preserving\nobject identity and relationships.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "source_obj",
+              "type": "",
+              "default": null,
+              "description": "Source LCM object to copy from"
+            },
+            {
+              "name": "dest_obj",
+              "type": "",
+              "default": null,
+              "description": "Destination LCM object to copy to"
+            },
+            {
+              "name": "project",
+              "type": "",
+              "default": null,
+              "description": "Optional FLExProject for factory access"
+            }
+          ],
+          "returns": "The dest_obj with cloned properties",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "source_obj": [
+                "arg[0] of _clone_properties()"
+              ],
+              "dest_obj": [
+                "arg[1] of _clone_properties()"
+              ],
+              "project": [
+                "arg[2] of _clone_properties()"
+              ]
+            },
+            "transformations": [
+              {
+                "type": "default_value",
+                "param": "project",
+                "default": "None"
+              }
+            ]
+          }
+        },
+        {
+          "name": "get_common_properties",
+          "signature": "get_common_properties(objects)",
+          "summary": "Find properties that all objects in a collection share.",
+          "description": "Find properties that all objects in a collection share.\n\nWhen batch processing objects, determine what properties you can safely\naccess on all of them.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "objects",
+              "type": "",
+              "default": null,
+              "description": "List/iterable of LCM objects"
+            }
+          ],
+          "returns": "Set of property names common to all objects",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "objects": [
+                "arg[0] of _get_common_properties()"
+              ]
+            },
+            "transformations": []
+          }
+        },
+        {
+          "name": "get_concrete_type_properties",
+          "signature": "get_concrete_type_properties(lcm_obj)",
+          "summary": "Get all properties available on an object's concrete type.",
+          "description": "Get all properties available on an object's concrete type.\n\nDiscovers the full property set for an object after casting to its concrete type.\nUseful for introspection and batch operations.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "lcm_obj",
+              "type": "",
+              "default": null,
+              "description": "An LCM object"
+            }
+          ],
+          "returns": "Dict mapping property names to their types",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "lcm_obj": [
+                "arg[0] of _get_concrete_type_properties()"
+              ]
+            },
+            "transformations": []
+          }
+        },
+        {
+          "name": "get_from_pos_from_msa",
+          "signature": "get_from_pos_from_msa(msa)",
+          "summary": "Extract the source Part of Speech from a derivational MSA.",
+          "description": "Extract the source Part of Speech from a derivational MSA.\n\nFor derivational analyses that show what a word is derived from,\nthis returns the POS of the source form.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "msa",
+              "type": "",
+              "default": null,
+              "description": "An IMoDerivationalMorphoSynAnalysis object"
+            }
+          ],
+          "returns": "The source IPartOfSpeech, or None if not derivational or not found",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "msa": [
+                "arg[0] of _get_from_pos_from_msa()"
+              ]
+            },
+            "transformations": [
+              {
+                "type": "conditional",
+                "description": "Conditional logic for handling special cases"
+              }
+            ]
+          }
+        },
+        {
+          "name": "get_pos_from_msa",
+          "signature": "get_pos_from_msa(msa)",
+          "summary": "Extract the Part of Speech from a Morph-Syntax Analysis.",
+          "description": "Extract the Part of Speech from a Morph-Syntax Analysis.\n\nThis is a common pattern: entries have allomorphs/morphemes with MSAs that\nspecify the part of speech. This helper navigates that relationship.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "msa",
+              "type": "",
+              "default": null,
+              "description": "An IMoMorphSynAnalysis object (or any type of morph analysis)"
+            }
+          ],
+          "returns": "The IPartOfSpeech object, or None if not found ",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "        \n            entry = project.LexEntry.Find(\"walk\")\n            for sense in entry.SensesOS:\n                msa = sense.MorphoSyntaxAnalysisRA\n                pos = CastingOperations.get_pos_from_msa(msa)\n                if pos:\n                    print(f\"Part of Speech: {pos.Name.BestAnalysisAlternative.Text}\")",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "msa": [
+                "arg[0] of _get_pos_from_msa()"
+              ]
+            },
+            "transformations": [
+              {
+                "type": "conditional",
+                "description": "Conditional logic for handling special cases"
+              },
+              {
+                "type": "type_conversion",
+                "pattern": "int",
+                "description": "Converts to int"
+              }
+            ]
+          }
+        },
+        {
+          "name": "validate_merge_compatibility",
+          "signature": "validate_merge_compatibility(survivor_obj, victim_obj)",
+          "summary": "Check if two objects can be safely merged.",
+          "description": "Check if two objects can be safely merged.\n\nBefore merging entries or senses, validate that they have compatible structures\nto avoid data loss or corruption.\n",
+          "usage_hint": null,
+          "parameters": [
+            {
+              "name": "survivor_obj",
+              "type": "",
+              "default": null,
+              "description": "The object that will survive the merge"
+            },
+            {
+              "name": "victim_obj",
+              "type": "",
+              "default": null,
+              "description": "The object that will be merged into survivor"
+            }
+          ],
+          "returns": "Tuple (bool, str) - (is_compatible, explanation)",
+          "return_type": "",
+          "output_behavior": {
+            "success": {},
+            "empty": null,
+            "failure": [],
+            "notes": []
+          },
+          "raises": [],
+          "example": "",
+          "is_property": false,
+          "is_classmethod": false,
+          "is_staticmethod": true,
+          "lcm_mapping": {
+            "factories_used": [],
+            "repositories_used": [],
+            "properties_accessed": [],
+            "methods_called": [],
+            "utilities_used": [],
+            "mapping_type": "pure_python",
+            "param_usage": {
+              "survivor_obj": [
+                "arg[0] of _validate_merge_compatibility()"
+              ],
+              "victim_obj": [
+                "arg[1] of _validate_merge_compatibility()"
+              ]
+            },
             "transformations": []
           }
         }
@@ -113764,6 +114169,7 @@
       "description": "Operations related to general",
       "entities": [
         "BaseOperations",
+        "CastingOperations",
         "FP_ProjectError",
         "FP_FileNotFoundError",
         "FP_FileLockedError",
@@ -114027,6 +114433,94 @@
     "BaseOperations.__init__": {
       "class": "BaseOperations",
       "method": "__init__",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.cast_phonological_rule": {
+      "class": "CastingOperations",
+      "method": "cast_phonological_rule",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.cast_to_concrete": {
+      "class": "CastingOperations",
+      "method": "cast_to_concrete",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.clone_properties": {
+      "class": "CastingOperations",
+      "method": "clone_properties",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.get_common_properties": {
+      "class": "CastingOperations",
+      "method": "get_common_properties",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.get_concrete_type_properties": {
+      "class": "CastingOperations",
+      "method": "get_concrete_type_properties",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.get_from_pos_from_msa": {
+      "class": "CastingOperations",
+      "method": "get_from_pos_from_msa",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.get_pos_from_msa": {
+      "class": "CastingOperations",
+      "method": "get_pos_from_msa",
+      "mapping_type": "pure_python",
+      "factories_used": [],
+      "repositories_used": [],
+      "properties_accessed": [],
+      "methods_called": [],
+      "utilities_used": [],
+      "lcm_deps": []
+    },
+    "CastingOperations.validate_merge_compatibility": {
+      "class": "CastingOperations",
+      "method": "validate_merge_compatibility",
       "mapping_type": "pure_python",
       "factories_used": [],
       "repositories_used": [],

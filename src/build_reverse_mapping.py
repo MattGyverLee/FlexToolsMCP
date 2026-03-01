@@ -20,12 +20,60 @@ import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, Set, Tuple, Optional
 
 
 def get_project_root() -> Path:
     """Get the project root directory."""
     return Path(__file__).parent.parent
+
+
+def find_latest_versioned_file(directory: Path, pattern: str) -> Optional[Path]:
+    """Find the latest versioned API file matching pattern.
+
+    Searches in both the main directory and archive subdirectory.
+
+    Args:
+        directory: Directory to search in
+        pattern: Glob pattern like "flexlibs2_api_v*.json"
+
+    Returns:
+        Path to latest file, or None if not found
+    """
+    import re as regex
+
+    if not directory.exists():
+        return None
+
+    # Extract version pattern (e.g., "v(\d+\.\d+\.\d+)" from pattern)
+    version_pattern = regex.compile(r"v(\d+)\.(\d+)\.(\d+)")
+    files_with_versions = {}
+
+    # Search main directory
+    for file in directory.glob(pattern):
+        match = version_pattern.search(file.name)
+        if match:
+            major, minor, patch = map(int, match.groups())
+            version_tuple = (major, minor, patch)
+            files_with_versions[version_tuple] = file
+
+    # Also search archive subdirectory
+    archive_dir = directory / "archive"
+    if archive_dir.exists():
+        for file in archive_dir.glob(pattern):
+            match = version_pattern.search(file.name)
+            if match:
+                major, minor, patch = map(int, match.groups())
+                version_tuple = (major, minor, patch)
+                # Main directory takes precedence if both exist
+                if version_tuple not in files_with_versions:
+                    files_with_versions[version_tuple] = file
+
+    if not files_with_versions:
+        return None
+
+    latest = max(files_with_versions.keys())
+    return files_with_versions[latest]
 
 
 def load_json(path: Path) -> Dict:
@@ -328,11 +376,29 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
+    flexlibs_dir = root / "index" / "flexlibs"
+    liblcm_dir = root / "index" / "liblcm"
 
-    flexlibs2_path = root / "index" / "flexlibs" / "flexlibs2_api.json"
-    flexlibs_path = root / "index" / "flexlibs" / "flexlibs_api.json"
-    liblcm_path = root / "index" / "liblcm" / "flex-api-enhanced.json"
-    output_path = root / args.output
+    # Find latest versioned API files
+    flexlibs2_path = find_latest_versioned_file(flexlibs_dir, "flexlibs2_api_v*.json")
+    flexlibs_path = find_latest_versioned_file(flexlibs_dir, "flexlibs_api_v*.json")
+    liblcm_path = find_latest_versioned_file(liblcm_dir, "liblcm_api_v*.json")
+
+    if not flexlibs2_path:
+        print("[ERROR] FlexLibs 2.0 API file not found")
+        return 1
+    if not liblcm_path:
+        print("[ERROR] LibLCM API file not found")
+        return 1
+
+    # Extract version from liblcm_path for versioned filename
+    version_match = re.search(r'liblcm_api_v(\d+\.\d+\.\d+)', str(liblcm_path))
+    if version_match:
+        liblcm_version = version_match.group(1)
+        output_filename = f"reverse_mapping_liblcm-v{liblcm_version}.json"
+        output_path = root / "index" / output_filename
+    else:
+        output_path = root / args.output
 
     # Build reverse mapping
     result = build_reverse_mapping(flexlibs2_path, flexlibs_path, liblcm_path)

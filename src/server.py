@@ -1010,17 +1010,29 @@ class APIIndex:
             except Exception as e:
                 operations_logger.error(f"Failed to load FlexLibs stable: {e}")
 
-        # Load navigation graph
-        nav_graph_path = index_dir / "navigation_graph.json"
-        if nav_graph_path.exists():
+        # Load navigation graph (find latest liblcm version)
+        nav_graph_path = find_latest_versioned_api_file(index_dir, "navigation_graph_liblcm")
+        if nav_graph_path and nav_graph_path.exists():
             with open(nav_graph_path, "r", encoding="utf-8") as f:
                 index.navigation_graph = json.load(f)
+        else:
+            # Fall back to unversioned for compatibility
+            nav_graph_path = index_dir / "navigation_graph.json"
+            if nav_graph_path.exists():
+                with open(nav_graph_path, "r", encoding="utf-8") as f:
+                    index.navigation_graph = json.load(f)
 
         # Load casting index (pythonnet interface casting requirements)
-        casting_path = index_dir / "casting_index.json"
-        if casting_path.exists():
+        casting_path = find_latest_versioned_api_file(index_dir, "casting_index_liblcm")
+        if casting_path and casting_path.exists():
             with open(casting_path, "r", encoding="utf-8") as f:
                 index.casting_index = json.load(f)
+        else:
+            # Fall back to unversioned for compatibility
+            casting_path = index_dir / "casting_index.json"
+            if casting_path.exists():
+                with open(casting_path, "r", encoding="utf-8") as f:
+                    index.casting_index = json.load(f)
 
         # Load semantic search (optional)
         index.semantic_search = SemanticSearch.load(index_dir)
@@ -1131,6 +1143,8 @@ def get_installed_flexlibs_version() -> Optional[str]:
 def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Path]:
     """Find the latest versioned API file for a library.
 
+    Searches in both the main directory and archive subdirectories.
+
     Args:
         index_dir: Parent directory (e.g., index/liblcm or index/flexlibs)
         prefix: File prefix (e.g., 'liblcm_api', 'flexlibs2_api')
@@ -1142,8 +1156,14 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
         return None
 
     import glob
+    # Search in both main directory and archive subdirectory
     pattern = str(index_dir / f"{prefix}_v*.json")
     files = glob.glob(pattern)
+
+    archive_dir = index_dir / "archive"
+    if archive_dir.exists():
+        archive_pattern = str(archive_dir / f"{prefix}_v*.json")
+        files.extend(glob.glob(archive_pattern))
 
     if not files:
         return None
@@ -1167,11 +1187,17 @@ def find_versioned_api_file(index_dir: Path, prefix: str, target_version: str) -
     if not index_dir.exists():
         return None
 
-    # Try exact match first
+    # Try exact match first in main directory
     exact_path = index_dir / f"{prefix}_v{target_version}.json"
     if exact_path.exists():
         operations_logger.info(f"Found exact version match: {prefix}_v{target_version}.json")
         return exact_path
+
+    # Try archive directory
+    archive_path = index_dir / "archive" / f"{prefix}_v{target_version}.json"
+    if archive_path.exists():
+        operations_logger.info(f"Found exact version match in archive: {prefix}_v{target_version}.json")
+        return archive_path
 
     # If exact match not found, log and return None
     # (caller will decide whether to fall back to latest or auto-refresh)

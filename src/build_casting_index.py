@@ -12,6 +12,7 @@ Usage:
 """
 
 import json
+import re
 from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -145,20 +146,42 @@ def build_casting_index(liblcm_path: Path) -> dict:
     return casting_index
 
 
+def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str]:
+    """Find the latest LibLCM API file and extract its version."""
+    pattern = re.compile(r"liblcm_api_v(\d+\.\d+\.\d+)\.json$")
+    versions = {}
+
+    for file in liblcm_dir.glob("liblcm_api_v*.json"):
+        match = pattern.match(file.name)
+        if match:
+            version = match.group(1)
+            versions[version] = file
+
+    if not versions:
+        return None, None
+
+    latest = sorted(versions.keys())[-1]
+    return versions[latest], latest
+
+
 def main():
     """Build and save the casting index."""
     index_dir = Path(__file__).parent.parent / "index"
-    liblcm_path = index_dir / "liblcm" / "liblcm_api.json"
+    liblcm_dir = index_dir / "liblcm"
 
-    if not liblcm_path.exists():
-        print(f"[ERROR] LibLCM API not found at {liblcm_path}")
+    # Find latest LibLCM version
+    liblcm_path, liblcm_version = find_latest_liblcm(liblcm_dir)
+
+    if not liblcm_path:
+        print(f"[ERROR] No LibLCM API files found in {liblcm_dir}")
         return 1
 
     print("[INFO] Building casting index...")
     casting_index = build_casting_index(liblcm_path)
 
-    # Save the index
-    output_path = index_dir / "casting_index.json"
+    # Save with version suffix
+    output_filename = f"casting_index_liblcm-v{liblcm_version}.json"
+    output_path = index_dir / output_filename
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(casting_index, f, indent=2, ensure_ascii=False)
 

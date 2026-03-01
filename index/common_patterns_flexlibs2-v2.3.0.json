@@ -260,7 +260,7 @@
         "description": "Duplicate a text, creating a new text with the same properties.",
         "operation": "general",
         "object_type": "IText",
-        "code": "# Shallow duplicate (text shell only, no paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=False)\nprint(project.Texts.GetName(duplicate))\n            Genesis (copy)\nprint(project.Texts.GetParagraphCount(duplicate))\n            0\n\n# Deep duplicate (with all paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=True)\nprint(project.Texts.GetParagraphCount(duplicate))\n            10\n\n        Warning:\n            - deep=True for Text can be slow for long texts with many paragraphs\n            - The duplicate will have a \" (copy)\" suffix added to the name\n            - The duplicate will have identical content but a new GUID\n            - Media files are NOT duplicated (to avoid file duplication)\n            - Segments will need re-parsing if you want analyses",
+        "code": "# Deep duplicate (default: with all paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text)  # deep=True by default\nprint(project.Texts.GetParagraphCount(duplicate))\n            10\n\n# Shallow duplicate (text shell only, no paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=False)\nprint(project.Texts.GetName(duplicate))\n            Genesis (copy)\nprint(project.Texts.GetParagraphCount(duplicate))\n            0\n\n        Warning:\n            - deep=True for Text can be slow for long texts with many paragraphs\n            - The duplicate will have a \" (copy)\" suffix added to the name\n            - The duplicate will have identical content but a new GUID\n            - Media files are NOT duplicated (to avoid file duplication)\n            - Segments will need re-parsing if you want analyses",
         "source": "docstring",
         "class": "TextOperations",
         "method": "Duplicate"
@@ -367,6 +367,33 @@
     ],
     "IMoForm": [
       {
+        "description": "Initialize Allomorph wrapper with an allomorph object.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "allomorph = allomorphOps.GetAll(entry)[0]\n            wrapped = Allomorph(allomorph)",
+        "source": "docstring",
+        "class": "Allomorph",
+        "method": "__init__"
+      },
+      {
+        "description": "Cast to IMoAffixAllomorph if this is an affix allomorph.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Can now access IMoAffixAllomorph-specific methods/properties\n                affix_type = concrete.AffixType\n                # Advanced operations...",
+        "source": "docstring",
+        "class": "Allomorph",
+        "method": "as_affix_allomorph"
+      },
+      {
+        "description": "Cast to IMoStemAllomorph if this is a stem allomorph.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemName\n                # Advanced operations...",
+        "source": "docstring",
+        "class": "Allomorph",
+        "method": "as_stem_allomorph"
+      },
+      {
         "description": "Add a phonological environment to an allomorph.",
         "operation": "create",
         "object_type": "IMoForm",
@@ -394,15 +421,6 @@
         "method": "Create"
       },
       {
-        "description": "Get all allomorphs for a lexical entry, or all allomorphs in the entire project.",
-        "operation": "read",
-        "object_type": "IMoForm",
-        "code": "allomorphOps = AllomorphOperations(project)\n# Get allomorphs for specific entry\nentry = project.LexiconAllEntries()[0]\nfor allomorph in allomorphOps.GetAll(entry):\n    form = allomorphOps.GetForm(allomorph)\n    print(f\"Allomorph: {form}\")\n            Allomorph: run\n            Allomorph: ran\n            Allomorph: runn-\n\n# Get ALL allomorphs in entire project\nfor allomorph in allomorphOps.GetAll():\n    form = allomorphOps.GetForm(allomorph)\n    print(f\"Allomorph: {form}\")",
-        "source": "docstring",
-        "class": "AllomorphOperations",
-        "method": "GetAll"
-      },
-      {
         "description": "Get all syncable properties of an allomorph for comparison.",
         "operation": "read",
         "object_type": "IMoForm",
@@ -410,6 +428,51 @@
         "source": "docstring",
         "class": "AllomorphOperations",
         "method": "GetSyncableProperties"
+      },
+      {
+        "description": "Initialize an AllomorphCollection.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "collection = AllomorphCollection()\n            collection = AllomorphCollection([allomorph1, allomorph2, allomorph3])",
+        "source": "docstring",
+        "class": "AllomorphCollection",
+        "method": "__init__"
+      },
+      {
+        "description": "Get only the affix allomorphs from the collection.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "affixes = allomorphs.affix_allomorphs()\n            print(f\"Found {len(affixes)} affix allomorphs\")\n\n            # Chain with other filters\n            ing_affixes = allomorphs.affix_allomorphs().filter(form_contains='ing')",
+        "source": "docstring",
+        "class": "AllomorphCollection",
+        "method": "affix_allomorphs"
+      },
+      {
+        "description": "Filter the collection by common allomorph properties.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "# Filter by form\n            ing_allomorphs = allomorphs.filter(form_contains='ing')\n\n            # Filter by environment\n            env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\n            env_allomorphs = allomorphs.filter(environment=env)\n\n            # Custom filtering\n            long_forms = allomorphs.where(lambda a: len(a.form) > 3)\n\n            # Chain filters\n            ing_stems = allomorphs.filter(form_contains='ing').stem_allomorphs()",
+        "source": "docstring",
+        "class": "AllomorphCollection",
+        "method": "filter"
+      },
+      {
+        "description": "Get only the stem allomorphs from the collection.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "stems = allomorphs.stem_allomorphs()\n            print(f\"Found {len(stems)} stem allomorphs\")\n\n            # Chain with other filters\n            ing_stems = allomorphs.stem_allomorphs().filter(form_contains='ing')",
+        "source": "docstring",
+        "class": "AllomorphCollection",
+        "method": "stem_allomorphs"
+      },
+      {
+        "description": "Filter using a custom predicate function.",
+        "operation": "general",
+        "object_type": "IMoForm",
+        "code": "# Complex predicate: allomorphs with form length > 3\n            long_forms = allomorphs.where(lambda a: len(a.form) > 3)\n\n            # Combining conditions\n            stem_with_env = allomorphs.where(\n                lambda a: a.is_stem_allomorph and len(a.environment) > 0\n            )\n\n            # Type checking combined with other criteria\n            affix_only = allomorphs.where(lambda a: a.is_affix_allomorph)",
+        "source": "docstring",
+        "class": "AllomorphCollection",
+        "method": "where"
       }
     ],
     "ILexEtymology": [
@@ -511,7 +574,7 @@
         "description": "Duplicate a lexical entry, creating a new entry with the same properties.",
         "operation": "general",
         "object_type": "ILexEntry",
-        "code": "# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n# Deep duplicate (with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry, deep=True)\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
+        "code": "# Deep duplicate (default: with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry)  # deep=True by default\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
         "source": "docstring",
         "class": "LexEntryOperations",
         "method": "Duplicate"
@@ -830,7 +893,7 @@
         "description": "Merge one sense into another (IRREVERSIBLE operation).",
         "operation": "merge",
         "object_type": "ILexSense",
-        "code": "# Merge duplicate sense into main sense\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is now deleted, data merged into 'keep'\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (SEMICOLON separator!)\n# Gloss: \"gloss 1; gloss 2\" (SEMICOLON separator!)",
+        "code": "# Merge duplicate sense into main sense with auto-deduplication\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is deleted, data merged into 'keep'\n# Any duplicate examples are also auto-removed\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (LibLCM uses SEMICOLON separator)\n# Gloss: \"gloss 1; gloss 2\" (LibLCM uses SEMICOLON separator)",
         "source": "docstring",
         "class": "LexSenseOperations",
         "method": "MergeObject"
@@ -1108,19 +1171,19 @@
         "description": "Compare two morphological rules and return detailed differences.",
         "operation": "iterate",
         "object_type": "general",
-        "code": "rule1 = project1_ruleOps.Find(\"Plural Formation\")\nrule2 = project2_ruleOps.Find(\"Plural Formation\")\nis_diff, diffs = project1_ruleOps.CompareTo(\n    rule1, rule2,\n    ops1=project1_ruleOps,\n    ops2=project2_ruleOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
+        "code": "is_diff, diffs = ruleOps.CompareTo(rule1, rule2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
         "source": "docstring",
         "class": "MorphRuleOperations",
         "method": "CompareTo"
       },
       {
-        "description": "Check if a morphological rule is active.",
+        "description": "Check if a morphological rule is disabled.",
         "operation": "iterate",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    active = ruleOps.IsActive(rule)\n    status = \"active\" if active else \"inactive\"\n    print(f\"{name}: {status}\")\n            Plural Formation: active\n            Obsolete Rule: inactive\n\n# Check before applying rule\nrule = list(ruleOps.GetAll())[0]\nif ruleOps.IsActive(rule):\n    print(f\"{ruleOps.GetName(rule)} will be applied\")",
+        "code": "for rule in ruleOps.GetAllCompoundRules():\n    status = \"disabled\" if ruleOps.IsDisabled(rule) else \"active\"\n    print(f\"{ruleOps.GetName(rule)}: {status}\")",
         "source": "docstring",
         "class": "MorphRuleOperations",
-        "method": "IsActive"
+        "method": "IsDisabled"
       },
       {
         "description": "Compare two natural classes and return detailed differences.",
@@ -1777,228 +1840,228 @@
         "method": "IsPreposed"
       },
       {
+        "description": "Initialize wrapper with an IMoAdhocProhib object.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "prohib = collection[0]\n            wrapped = AdhocProhibition(prohib)",
+        "source": "docstring",
+        "class": "AdhocProhibition",
+        "method": "__init__"
+      },
+      {
+        "description": "Cast to allomorph prohibition type if applicable.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "concrete = wrapped.as_allomorph_prohibition()\n            if concrete:\n                allo = concrete.AllomorphRA\n                prohibited = concrete.ProhibitedAllomorphRA",
+        "source": "docstring",
+        "class": "AdhocProhibition",
+        "method": "as_allomorph_prohibition"
+      },
+      {
+        "description": "Cast to grammatical prohibition type if applicable.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "concrete = wrapped.as_grammatical_prohibition()\n            if concrete:\n                feature = concrete.FeatureRA\n                feature_value = concrete.FeatureValueRA",
+        "source": "docstring",
+        "class": "AdhocProhibition",
+        "method": "as_grammatical_prohibition"
+      },
+      {
+        "description": "Cast to morpheme prohibition type if applicable.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "concrete = wrapped.as_morpheme_prohibition()\n            if concrete:\n                morpheme = concrete.MorphemeRA\n                prohibited = concrete.ProhibitedMorphemeRA",
+        "source": "docstring",
+        "class": "AdhocProhibition",
+        "method": "as_morpheme_prohibition"
+      },
+      {
+        "description": "Initialize AffixTemplate wrapper with a template object.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "template = morphRuleOps.GetAllAffixTemplates()[0]\n            wrapped = AffixTemplate(template)",
+        "source": "docstring",
+        "class": "AffixTemplate",
+        "method": "__init__"
+      },
+      {
+        "description": "Initialize an AffixTemplateCollection.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "collection = AffixTemplateCollection()\n            collection = AffixTemplateCollection([template1, template2, template3])",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "__init__"
+      },
+      {
+        "description": "Filter the collection by common template properties.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Filter by name\n            verb_templates = templates.filter(name_contains='Verb')\n\n            # Filter by stratum\n            stratum1 = templates.filter(stratum='Stratum1')\n\n            # Custom filtering\n            with_slots = templates.where(lambda t: t.has_any_slots)\n\n            # Chain filters\n            verb_stratum = templates.filter(name_contains='Verb').filter(stratum='Stratum1')",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "filter"
+      },
+      {
+        "description": "Get only the templates for a specific part of speech.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Filter by POS name\n            verb_templates = templates.for_pos('Verb')\n\n            # Filter by POS object\n            verb_pos = posOps.Find('Verb')\n            verb_templates = templates.for_pos(verb_pos)",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "for_pos"
+      },
+      {
+        "description": "Get only the templates that have all four slot types.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "full_templates = templates.full_templates()\n            print(f\"Found {len(full_templates)} templates with all slot types\")",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "full_templates"
+      },
+      {
+        "description": "Filter using a custom predicate function.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Complex predicate: templates with both prefix and suffix slots\n            full_templates = templates.where(\n                lambda t: t.has_prefix_slots and t.has_suffix_slots\n            )\n\n            # Combining conditions\n            complex_filter = templates.where(\n                lambda t: t.has_any_slots and (t.name or \"\").startswith('Verb')\n            )\n\n            # Capability checking\n            prefix_templates = templates.where(lambda t: t.has_prefix_slots)",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "where"
+      },
+      {
+        "description": "Get only the templates that have any slots.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "templates_with_slots = templates.with_any_slots()\n            print(f\"Found {len(templates_with_slots)} templates with slots\")",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_any_slots"
+      },
+      {
+        "description": "Get only the templates that have enclitic slots.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "enclitic_templates = templates.with_enclitic_slots()\n            print(f\"Found {len(enclitic_templates)} templates with enclitic slots\")",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_enclitic_slots"
+      },
+      {
+        "description": "Get only the templates that have prefix slots.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "prefix_templates = templates.with_prefix_slots()\n            print(f\"Found {len(prefix_templates)} templates with prefix slots\")\n\n            # Chain with other filters\n            verb_prefix = templates.with_prefix_slots().filter(name_contains='Verb')",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_prefix_slots"
+      },
+      {
+        "description": "Get only the templates that have proclitic slots.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "proclitic_templates = templates.with_proclitic_slots()\n            print(f\"Found {len(proclitic_templates)} templates with proclitic slots\")",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_proclitic_slots"
+      },
+      {
+        "description": "Get only the templates that have slots of a specific type.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Get templates with prefix slots\n            prefix_templates = templates.with_slots('prefix')\n\n            # Get templates with suffix slots\n            suffix_templates = templates.with_slots('suffix')\n\n            # Get templates with proclitic slots\n            proclitic_templates = templates.with_slots('proclitic')",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_slots"
+      },
+      {
+        "description": "Get only the templates that have suffix slots.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "suffix_templates = templates.with_suffix_slots()\n            print(f\"Found {len(suffix_templates)} templates with suffix slots\")\n\n            # Chain with other filters\n            verb_suffix = templates.with_suffix_slots().filter(name_contains='Verb')",
+        "source": "docstring",
+        "class": "AffixTemplateCollection",
+        "method": "with_suffix_slots"
+      },
+      {
+        "description": "Initialize CompoundRule wrapper with a rule object.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "rule = morphRuleOps.GetAll()[0]\n            wrapped = CompoundRule(rule)",
+        "source": "docstring",
+        "class": "CompoundRule",
+        "method": "__init__"
+      },
+      {
+        "description": "Cast to IMoEndoCompound if this is an endo compound rule.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "if rule_obj.as_endo_compound():\n                concrete = rule_obj.as_endo_compound()\n                # Can now access IMoEndoCompound-specific methods/properties\n                # Advanced operations...",
+        "source": "docstring",
+        "class": "CompoundRule",
+        "method": "as_endo_compound"
+      },
+      {
+        "description": "Cast to IMoExoCompound if this is an exo compound rule.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "if rule_obj.as_exo_compound():\n                concrete = rule_obj.as_exo_compound()\n                # Can now access IMoExoCompound-specific methods/properties",
+        "source": "docstring",
+        "class": "CompoundRule",
+        "method": "as_exo_compound"
+      },
+      {
+        "description": "Initialize a CompoundRuleCollection.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "collection = CompoundRuleCollection()\n            collection = CompoundRuleCollection([rule1, rule2, rule3])",
+        "source": "docstring",
+        "class": "CompoundRuleCollection",
+        "method": "__init__"
+      },
+      {
+        "description": "Get only the endocentric (MoEndoCompound) rules from the collection.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "endo = rules.endo_compounds()\n            print(f\"Found {len(endo)} endocentric rules\")\n\n            # Chain with other filters\n            verb_endo = rules.endo_compounds().filter(name_contains='Verb')",
+        "source": "docstring",
+        "class": "CompoundRuleCollection",
+        "method": "endo_compounds"
+      },
+      {
+        "description": "Get only the exocentric (MoExoCompound) rules from the collection.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "exo = rules.exo_compounds()\n            print(f\"Found {len(exo)} exocentric rules\")\n\n            # Chain with other filters\n            noun_exo = rules.exo_compounds().filter(name_contains='Noun')",
+        "source": "docstring",
+        "class": "CompoundRuleCollection",
+        "method": "exo_compounds"
+      },
+      {
+        "description": "Filter the collection by common rule properties.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Filter by name\n            verb_rules = rules.filter(name_contains='Verb')\n\n            # Filter by head dependency\n            lhs_head = rules.filter(head_dependency=0)\n\n            # Custom filtering\n            with_contexts = rules.where(lambda r: r.left_context or r.right_context)\n\n            # Chain filters\n            verb_lhs = rules.filter(name_contains='Verb').filter(head_dependency=0)",
+        "source": "docstring",
+        "class": "CompoundRuleCollection",
+        "method": "filter"
+      },
+      {
+        "description": "Filter using a custom predicate function.",
+        "operation": "general",
+        "object_type": "general",
+        "code": "# Complex predicate: rules with both left and right contexts\n            full_context = rules.where(\n                lambda r: r.left_context is not None and r.right_context is not None\n            )\n\n            # Combining conditions\n            endo_with_context = rules.where(\n                lambda r: r.is_endo_compound and (r.left_context or r.right_context)\n            )\n\n            # Type checking combined with other criteria\n            exo_rules = rules.where(lambda r: r.is_exo_compound)",
+        "source": "docstring",
+        "class": "CompoundRuleCollection",
+        "method": "where"
+      },
+      {
         "description": "Duplicate a phonological environment, creating a new copy with a new GUID.",
         "operation": "general",
         "object_type": "general",
-        "code": "envOps = EnvironmentOperations(project)\nword_initial = envOps.Create(\"Word Initial\")\nenvOps.SetStringRepresentation(word_initial, \"#_\")\n# Shallow copy (no context objects)\ncopy = envOps.Duplicate(word_initial)\nprint(envOps.GetName(copy))\n            Word Initial\n\n# Deep copy (includes owned context objects)\nbetween_vowels = envOps.Create(\"Between Vowels\")\ncopy = envOps.Duplicate(between_vowels, deep=True)",
+        "code": "envOps = EnvironmentOperations(project)\nword_initial = envOps.Create(\"Word Initial\")\nenvOps.SetStringRepresentation(word_initial, \"#_\")\n# Deep copy (default - includes owned context objects)\ncopy = envOps.Duplicate(word_initial)\nprint(envOps.GetName(copy))\n            Word Initial\n\n# Shallow copy (no context objects)\nbetween_vowels = envOps.Create(\"Between Vowels\")\ncopy = envOps.Duplicate(between_vowels, deep=False)",
         "source": "docstring",
         "class": "EnvironmentOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a grammatical category, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "gramCatOps = GramCatOperations(project)\nperson = gramCatOps.Create(\"person\")\n# Shallow copy (no subcategories)\nperson_copy = gramCatOps.Duplicate(person)\nprint(gramCatOps.GetName(person_copy))\n            person\n\n# Deep copy (includes all subcategories)\nnumber = gramCatOps.Create(\"number\")\nsingular = gramCatOps.Create(\"singular\", parent=number)\nplural = gramCatOps.Create(\"plural\", parent=number)\nnumber_copy = gramCatOps.Duplicate(number, deep=True)\norig_subs = gramCatOps.GetSubcategories(number)\ncopy_subs = gramCatOps.GetSubcategories(number_copy)\nprint(f\"Original has {len(orig_subs)} subcategories\")\nprint(f\"Copy has {len(copy_subs)} subcategories\")",
-        "source": "docstring",
-        "class": "GramCatOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a morphological rule, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nplural = ruleOps.Create(\"Plural Formation\", \"Adds -s suffix\")\n# Duplicate the rule\ncopy = ruleOps.Duplicate(plural)\nprint(ruleOps.GetName(copy))\n            Plural Formation\n\n# Modify the duplicate\nruleOps.SetName(copy, \"Plural Formation (Variant)\")\nruleOps.SetActive(copy, True)",
-        "source": "docstring",
-        "class": "MorphRuleOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a natural class, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "ncOps = NaturalClassOperations(project)\nstops = ncOps.Create(\"Voiceless Stops\", \"VLS\")\n# Add some phonemes...\n# Now duplicate it to create \"Voiced Stops\"\nvoiced = ncOps.Duplicate(stops)\nncOps.SetName(voiced, \"Voiced Stops\")\nncOps.SetAbbreviation(voiced, \"VCD\")\nprint(f\"Original: {ncOps.GetGuid(stops)}\")\nprint(f\"Duplicate: {ncOps.GetGuid(voiced)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321",
-        "source": "docstring",
-        "class": "NaturalClassOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a phoneme, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "phonemeOps = PhonemeOperations(project)\np_phoneme = phonemeOps.Find(\"/p/\")\nif p_phoneme:\n    # Duplicate phoneme (shallow - no codes)\n    dup = phonemeOps.Duplicate(p_phoneme)\n    print(f\"Original: {phonemeOps.GetGuid(dup)}\")\n    print(f\"Representation: {phonemeOps.GetRepresentation(dup)}\")\n\n    # Deep duplicate (includes allophonic codes)\n    deep_dup = phonemeOps.Duplicate(p_phoneme, deep=True)\n    codes = phonemeOps.GetCodes(deep_dup)\n    print(f\"Codes: {len(codes)}\")",
-        "source": "docstring",
-        "class": "PhonemeOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a phoneme with the given representation exists.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "phonemeOps = PhonemeOperations(project)\nif not phonemeOps.Exists(\"/ŋ/\"):\n    phonemeOps.Create(\"/ŋ/\")\n    phonemeOps.SetDescription(phonemeOps.Find(\"/ŋ/\"), \"velar nasal\")",
-        "source": "docstring",
-        "class": "PhonemeOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Duplicate a phonological rule, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nvoicing = phonRuleOps.Create(\"Voicing Assimilation\")\n# Shallow copy (no owned objects)\ncopy = phonRuleOps.Duplicate(voicing)\nprint(phonRuleOps.GetName(copy))\n            Voicing Assimilation\n\n# Deep copy (includes StrucDescOS and RightHandSidesOS)\nrule = phonRuleOps.Create(\"Complex Rule\")\ncopy = phonRuleOps.Duplicate(rule, deep=True)",
-        "source": "docstring",
-        "class": "PhonologicalRuleOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a phonological rule with the given name exists.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "phonRuleOps = PhonologicalRuleOperations(project)\nif phonRuleOps.Exists(\"Voicing Assimilation\"):\n    print(\"Rule already exists\")\nelse:\n    rule = phonRuleOps.Create(\"Voicing Assimilation\")\n\n        See Also:\n            Find, GetAll, Create",
-        "source": "docstring",
-        "class": "PhonologicalRuleOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Duplicate a part of speech, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "posOps = POSOperations(project)\nnoun = posOps.Find(\"Noun\")\n# Shallow copy (no subcategories)\nnoun_copy = posOps.Duplicate(noun)\nprint(posOps.GetName(noun_copy))\n            Noun\n\n# Deep copy (includes all subcategories)\nverb = posOps.Find(\"Verb\")\nverb_copy = posOps.Duplicate(verb, deep=True)\norig_subs = posOps.GetSubcategories(verb)\ncopy_subs = posOps.GetSubcategories(verb_copy)\nprint(f\"Original has {len(orig_subs)} subcategories\")\nprint(f\"Copy has {len(copy_subs)} subcategories\")",
-        "source": "docstring",
-        "class": "POSOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a part of speech with the given name exists.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "posOps = POSOperations(project)\nif not posOps.Exists(\"Noun\"):\n    posOps.Create(\"Noun\", \"N\")",
-        "source": "docstring",
-        "class": "POSOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Duplicate an allomorph, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "IMoForm",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif len(allomorphs) > 1:  # Don't duplicate lexeme form\n    # Duplicate an alternate form\n    dup = allomorphOps.Duplicate(allomorphs[1])\n    print(f\"Original: {allomorphOps.GetGuid(allomorphs[1])}\")\n    print(f\"Duplicate: {allomorphOps.GetGuid(dup)}\")\n    print(f\"Form: {allomorphOps.GetForm(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            Form: walk",
-        "source": "docstring",
-        "class": "AllomorphOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate an etymology, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "ILexEtymology",
-        "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netymologies = list(etymOps.GetAll(entry))\nif etymologies:\n    # Duplicate etymology\n    dup = etymOps.Duplicate(etymologies[0])\n    print(f\"Original: {etymOps.GetGuid(etymologies[0])}\")\n    print(f\"Duplicate: {etymOps.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Verify content was copied\n    print(f\"Source: {etymOps.GetSource(dup)}\")\n    print(f\"Form: {etymOps.GetForm(dup)}\")",
-        "source": "docstring",
-        "class": "EtymologyOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate an example sentence, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "ILexExampleSentence",
-        "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexamples = list(exampleOps.GetAll(sense))\nif examples:\n    # Shallow duplicate (no translations)\n    dup = exampleOps.Duplicate(examples[0])\n    print(f\"Original: {exampleOps.GetGuid(examples[0])}\")\n    print(f\"Duplicate: {exampleOps.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Deep duplicate (includes translations)\n    deep_dup = exampleOps.Duplicate(examples[0], deep=True)\n    trans = exampleOps.GetTranslation(deep_dup)\n    print(f\"Translation: {trans}\")",
-        "source": "docstring",
-        "class": "ExampleOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a lexical entry, creating a new entry with the same properties.",
-        "operation": "general",
-        "object_type": "ILexEntry",
-        "code": "# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n# Deep duplicate (with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry, deep=True)\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
-        "source": "docstring",
-        "class": "LexEntryOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a lexical entry with the given lexeme form exists.",
-        "operation": "general",
-        "object_type": "ILexEntry",
-        "code": "if not project.LexEntry.Exists(\"run\"):\n    entry = project.LexEntry.Create(\"run\")\n\n# Check in specific writing system\nif project.LexEntry.Exists(\"maison\", project.WSHandle('fr')):\n    print(\"French entry exists\")",
-        "source": "docstring",
-        "class": "LexEntryOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Check if a morph type name exists in the project.",
-        "operation": "general",
-        "object_type": "ILexEntry",
-        "code": "is_valid, mt, is_stem = project.LexEntry.ValidateMorphType(\"suffix\")\nif is_valid:\n    print(f\"Valid morph type: {mt.Name.BestAnalysisAlternative.Text}\")\n    print(f\"Is stem type: {is_stem}\")\n            Valid morph type: suffix\n            Is stem type: False\n\nis_valid, mt, is_stem = project.LexEntry.ValidateMorphType(\"invalid\")\nprint(f\"Valid: {is_valid}\")\n            Valid: False",
-        "source": "docstring",
-        "class": "LexEntryOperations",
-        "method": "ValidateMorphType"
-      },
-      {
-        "description": "Show a component entry as a subentry under a complex form entry.",
-        "operation": "general",
-        "object_type": "ILexReference",
-        "code": "# Show \"run\" as a component under \"running shoe\"\nrun_entry = project.LexEntry.Find(\"run\")\nshoe_entry = project.LexEntry.Find(\"running shoe\")\nif run_entry and shoe_entry:\n    ref = project.LexReferences.ShowComplexFormsIn(\n        run_entry,\n        shoe_entry\n    )\n\n# Show multiple components under one complex form\nrun_entry = project.LexEntry.Find(\"run\")\naway_entry = project.LexEntry.Find(\"away\")\nrunaway_entry = project.LexEntry.Find(\"runaway\")\nif run_entry and away_entry and runaway_entry:\n    # This would typically be done differently, creating one\n    # reference with multiple targets\n    pass",
-        "source": "docstring",
-        "class": "LexReferenceOperations",
-        "method": "ShowComplexFormsIn"
-      },
-      {
-        "description": "Duplicate a sense, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "ILexSense",
-        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    # Shallow duplicate (no examples/subsenses)\n    dup = project.Senses.Duplicate(senses[0])\n    print(f\"Original: {project.Senses.GetGuid(senses[0])}\")\n    print(f\"Duplicate: {project.Senses.GetGuid(dup)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n\n    # Deep duplicate (includes all owned objects)\n    deep_dup = project.Senses.Duplicate(senses[0], deep=True)\n    print(f\"Examples: {project.Senses.GetExampleCount(deep_dup)}\")",
-        "source": "docstring",
-        "class": "LexSenseOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Rename the image file for a picture and update the reference.",
-        "operation": "general",
-        "object_type": "ILexSense",
-        "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    pictures = project.Senses.GetPictures(senses[0])\n    if pictures:\n        # Rename the picture file\n        new_path = project.Senses.RenamePicture(pictures[0], \"dog_brown.jpg\")\n        print(f\"Renamed to: {new_path}\")\n            Renamed to: Pictures/dog_brown.jpg",
-        "source": "docstring",
-        "class": "LexSenseOperations",
-        "method": "RenamePicture"
-      },
-      {
-        "description": "Duplicate a pronunciation, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "ILexPronunciation",
-        "code": "entry = list(project.LexiconAllEntries())[0]\npronunciations = list(project.Pronunciations.GetAll(entry))\nif pronunciations:\n    # Shallow duplicate (no media files)\n    dup = project.Pronunciations.Duplicate(pronunciations[0])\n    print(f\"Original: {project.Pronunciations.GetGuid(pronunciations[0])}\")\n    print(f\"Duplicate: {project.Pronunciations.GetGuid(dup)}\")\n    ipa = project.Pronunciations.GetForm(dup, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            IPA: rʌn\n\n    # Deep duplicate (includes media files)\n    deep_dup = project.Pronunciations.Duplicate(pronunciations[0], deep=True)\n    count = project.Pronunciations.GetMediaCount(deep_dup)\n    print(f\"Media files: {count}\")",
-        "source": "docstring",
-        "class": "PronunciationOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Duplicate a reversal entry, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "IReversalIndexEntry",
-        "code": "en_index = project.Reversal.GetIndex(\"en\")\nentry = project.Reversal.Find(en_index, \"run\")\nif entry:\n    # Shallow duplicate (no subentries)\n    dup = project.Reversal.Duplicate(entry)\n    form = project.Reversal.GetForm(dup)\n    print(f\"Duplicate form: {form}\")\n            Duplicate form: run\n\n    # Deep duplicate (includes all subentries)\n    deep_dup = project.Reversal.Duplicate(entry, deep=True)\n    subentries = project.Reversal.GetSubentries(deep_dup)\n    print(f\"Subentries: {len(subentries)}\")\n            Subentries: 3",
-        "source": "docstring",
-        "class": "ReversalOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a reversal entry with the given form exists.",
-        "operation": "general",
-        "object_type": "IReversalIndexEntry",
-        "code": "en_index = project.Reversal.GetIndex(\"en\")\nif not project.Reversal.Exists(en_index, \"run\"):\n    entry = project.Reversal.Create(en_index, \"run\")\nelse:\n    print(\"Entry already exists\")",
-        "source": "docstring",
-        "class": "ReversalOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Duplicate a semantic domain, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "# Shallow duplicate (no subdomains)\ndomain = project.SemanticDomains.Find(\"900.1\")\nif domain:\n    dup = project.SemanticDomains.Duplicate(domain)\n    print(f\"Original: {project.SemanticDomains.GetNumber(domain)}\")\n    print(f\"Duplicate: {project.SemanticDomains.GetNumber(dup)}\")\n    # Note: Duplicate will have empty number - must be set manually\n\n    # Deep duplicate (includes all subdomains)\n    deep_dup = project.SemanticDomains.Duplicate(domain, deep=True)\n    subdomains = project.SemanticDomains.GetSubdomains(deep_dup)\n    print(f\"Subdomains: {len(subdomains)}\")",
-        "source": "docstring",
-        "class": "SemanticDomainOperations",
-        "method": "Duplicate"
-      },
-      {
-        "description": "Check if a semantic domain with the given number exists.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "if project.SemanticDomains.Exists(\"7.2.1\"):\n    print(\"Walk domain exists\")\n            Walk domain exists\n\nif not project.SemanticDomains.Exists(\"999.999\"):\n    print(\"Custom domain 999.999 does not exist\")\n            Custom domain 999.999 does not exist",
-        "source": "docstring",
-        "class": "SemanticDomainOperations",
-        "method": "Exists"
-      },
-      {
-        "description": "Duplicate a variant reference, creating a new copy with a new GUID.",
-        "operation": "general",
-        "object_type": "general",
-        "code": "entry = project.LexEntry.Find(\"colour\")\nvariants = list(project.Variants.GetAll(entry))\nif variants:\n    # Duplicate the variant reference\n    dup = project.Variants.Duplicate(variants[0])\n    print(f\"Original: {variants[0].Guid}\")\n    print(f\"Duplicate: {dup.Guid}\")\n    vtype = project.Variants.GetType(dup)\n    print(f\"Type: {project.Variants.GetTypeName(vtype)}\")\n            Original: 12345678-1234-1234-1234-123456789abc\n            Duplicate: 87654321-4321-4321-4321-cba987654321\n            Type: Spelling Variant",
-        "source": "docstring",
-        "class": "VariantOperations",
         "method": "Duplicate"
       }
     ],
@@ -2166,13 +2229,22 @@
         "method": "InflectionClassCreate"
       },
       {
-        "description": "Create a new morphological rule.",
+        "description": "Create a new inflectional affix template on a part of speech.",
         "operation": "create",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nplural = ruleOps.Create(\"Plural Formation\", \"Adds -s suffix\")\nprint(ruleOps.GetName(plural))\n            Plural Formation\n\npast = ruleOps.Create(\"Past Tense\")\nruleOps.SetDescription(past, \"Forms past tense verbs\")\nruleOps.SetActive(past, True)",
+        "code": "verb = posOps.Find(\"Verb\")\ntemplate = ruleOps.CreateAffixTemplate(verb, \"Verb Inflection\")\nprint(ruleOps.GetName(template))\n            Verb Inflection",
         "source": "docstring",
         "class": "MorphRuleOperations",
-        "method": "Create"
+        "method": "CreateAffixTemplate"
+      },
+      {
+        "description": "Create a new compound rule in MoMorphData.",
+        "operation": "create",
+        "object_type": "general",
+        "code": "rule = ruleOps.CreateCompoundRule(\"Noun-Noun Compound\")\nexo = ruleOps.CreateCompoundRule(\"Verb-Noun\", endocentric=False)",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "CreateCompoundRule"
       },
       {
         "description": "Add a phoneme to a natural class.",
@@ -2263,15 +2335,6 @@
         "source": "docstring",
         "class": "AllomorphOperations",
         "method": "AddPhoneEnv"
-      },
-      {
-        "description": "Create a new allomorph for a lexical entry.",
-        "operation": "create",
-        "object_type": "IMoForm",
-        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nmorphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
-        "source": "docstring",
-        "class": "AllomorphOperations",
-        "method": "Create"
       }
     ],
     "delete": [
@@ -2387,7 +2450,7 @@
         "description": "Delete a morphological rule.",
         "operation": "delete",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nobsolete = ruleOps.Create(\"Obsolete Rule\")\n# ... realize it's not needed\nruleOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a rule that is in use may cause errors\n            - This includes rules referenced by:\n              - Morphological processes\n              - Allomorph conditions\n              - Other rule definitions\n            - Deletion is permanent and cannot be undone\n            - Consider deactivating instead of deleting\n\n        See Also:\n            Create, SetActive, GetAll",
+        "code": "ruleOps.Delete(rule)\n\n        Warning:\n            - Deletion is permanent and cannot be undone\n            - Deleting a rule that is referenced elsewhere may cause errors\n            - Consider disabling instead of deleting (SetDisabled)\n\n        See Also:\n            CreateCompoundRule, CreateAffixTemplate, SetDisabled",
         "source": "docstring",
         "class": "MorphRuleOperations",
         "method": "Delete"
@@ -2701,37 +2764,37 @@
         "method": "InflectionClassSetName"
       },
       {
-        "description": "Set the active state of a morphological rule.",
+        "description": "Set the description of a morphological rule or template.",
         "operation": "update",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\n\n# Activate a rule\nruleOps.SetActive(rule, True)\nprint(f\"Active: {ruleOps.IsActive(rule)}\")\n            Active: True\n\n# Deactivate obsolete rules\nfor rule in ruleOps.GetAll():\n    name = ruleOps.GetName(rule)\n    if \"obsolete\" in name.lower():\n        ruleOps.SetActive(rule, False)",
-        "source": "docstring",
-        "class": "MorphRuleOperations",
-        "method": "SetActive"
-      },
-      {
-        "description": "Set the description of a morphological rule.",
-        "operation": "update",
-        "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\nruleOps.SetDescription(rule, \"Adds -s suffix to form plural nouns\")\n\n# Provide detailed descriptions\ndesc = \"Forms past tense by adding -ed to regular verb stems\"\nruleOps.SetDescription(rule, desc)",
+        "code": "ruleOps.SetDescription(rule, \"Forms compound nouns\")\n\n        See Also:\n            GetDescription, SetName",
         "source": "docstring",
         "class": "MorphRuleOperations",
         "method": "SetDescription"
       },
       {
-        "description": "Set the name of a morphological rule.",
+        "description": "Set the disabled state of a morphological rule.",
         "operation": "update",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\nruleOps.SetName(rule, \"Noun Pluralization\")\n\n# Use descriptive names\nruleOps.SetName(rule, \"Plural Formation (Regular Nouns)\")",
+        "code": "ruleOps.SetDisabled(rule, True)   # Disable\nruleOps.SetDisabled(rule, False)  # Enable",
+        "source": "docstring",
+        "class": "MorphRuleOperations",
+        "method": "SetDisabled"
+      },
+      {
+        "description": "Set the name of a morphological rule or template.",
+        "operation": "update",
+        "object_type": "general",
+        "code": "ruleOps.SetName(rule, \"Noun-Noun Compound\")\n\n        See Also:\n            GetName, SetDescription",
         "source": "docstring",
         "class": "MorphRuleOperations",
         "method": "SetName"
       },
       {
-        "description": "Set the stratum of a morphological rule.",
+        "description": "Set the stratum of a morphological rule or template.",
         "operation": "update",
         "object_type": "general",
-        "code": "ruleOps = MorphRuleOperations(project)\nrule = list(ruleOps.GetAll())[0]\n\n# Create or get a stratum\nmorph_data = project.lp.MorphologicalDataOA\nif morph_data.StrataOS.Count > 0:\n    stratum = morph_data.StrataOS[0]\n    ruleOps.SetStratum(rule, stratum)\n\n# Clear stratum assignment\nruleOps.SetStratum(rule, None)",
+        "code": "morph_data = project.lp.MorphologicalDataOA\nif morph_data and morph_data.StrataOS.Count > 0:\n    ruleOps.SetStratum(rule, morph_data.StrataOS[0])\n\n# Clear stratum assignment\nruleOps.SetStratum(rule, None)\n\n        See Also:\n            GetStratum",
         "source": "docstring",
         "class": "MorphRuleOperations",
         "method": "SetStratum"
@@ -2823,7 +2886,7 @@
         "description": "Merge one entry into another (IRREVERSIBLE operation).",
         "operation": "merge",
         "object_type": "ILexEntry",
-        "code": "# Merge duplicate entry into main entry\nmain = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Find(\"run\")  # Duplicate with same form\nproject.LexEntry.MergeObject(main, duplicate)\n# 'duplicate' is now deleted, all data merged into 'main'\n\n# Merge with different lexeme forms (creates alternate)\nentry1 = project.LexEntry.Find(\"color\")\nentry2 = project.LexEntry.Find(\"colour\")\nproject.LexEntry.MergeObject(entry1, entry2)\n# 'colour' becomes alternate form of 'color'",
+        "code": "# Merge duplicate entry into main entry with auto-deduplication\nmain = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Find(\"run\")\nproject.LexEntry.MergeObject(main, duplicate)\n# 'duplicate' is deleted, all data merged into 'main'\n# Senses, pronunciations, allomorphs are auto-deduplicated\n# Alternate forms and MSAs are already deduplicated by LibLCM\n\n# Merge with deduplication disabled\nentry1 = project.LexEntry.Find(\"color\")\nentry2 = project.LexEntry.Find(\"colour\")\nproject.LexEntry.MergeObject(entry1, entry2, auto_deduplicate=False)",
         "source": "docstring",
         "class": "LexEntryOperations",
         "method": "MergeObject"
@@ -2832,7 +2895,7 @@
         "description": "Merge one sense into another (IRREVERSIBLE operation).",
         "operation": "merge",
         "object_type": "ILexSense",
-        "code": "# Merge duplicate sense into main sense\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is now deleted, data merged into 'keep'\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (SEMICOLON separator!)\n# Gloss: \"gloss 1; gloss 2\" (SEMICOLON separator!)",
+        "code": "# Merge duplicate sense into main sense with auto-deduplication\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is deleted, data merged into 'keep'\n# Any duplicate examples are also auto-removed\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (LibLCM uses SEMICOLON separator)\n# Gloss: \"gloss 1; gloss 2\" (LibLCM uses SEMICOLON separator)",
         "source": "docstring",
         "class": "LexSenseOperations",
         "method": "MergeObject"
@@ -2849,8 +2912,8 @@
     ]
   },
   "statistics": {
-    "total_patterns": 1096,
-    "unique_patterns": 115,
+    "total_patterns": 1200,
+    "unique_patterns": 122,
     "objects_covered": 10,
     "operations": [
       "iterate",

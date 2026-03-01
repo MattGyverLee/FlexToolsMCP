@@ -41,7 +41,8 @@
       "Bash(git -C \"D:/Github/flexlibs2\" add -A)",
       "Bash(git -C \"D:/Github/flexlibs2\" commit -m \"Phase 3-4: Complete validation consolidation refactoring across all 62 operations files\n\n- Consolidated 252+ write-enabled checks to _EnsureWriteEnabled\\(\\)\n- Consolidated 352+ null checks to _ValidateParam\\(\\)\n- Removed FP_ReadOnlyError and FP_NullParameterError imports from all files\n- Achieved ~80% reduction in duplicate validation code\n- Improved maintainability with single source of truth in BaseOperations\n- All 62 operations files across 11 categories refactored\n- 0 errors in refactoring process\n- ~1,200+ lines of code consolidated\n\nCategories refactored:\n- Grammar \\(8\\), Discourse \\(6\\), Lexicon \\(10\\), Lists \\(6\\), System \\(5\\)\n- Notebook \\(5\\), Scripture \\(6\\), TextsWords \\(8\\), Wordform \\(4\\), Reversal \\(2\\), Shared \\(2\\)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\")",
       "Bash(\"D:/Github/FlexToolsMCP/PHASE_3_4_STATISTICS.txt\":*)",
-      "Bash(/tmp/phase4_summary.txt:*)"
+      "Bash(/tmp/phase4_summary.txt:*)",
+      "Bash(git -C /d/Github/FlexToolsMCP diff index/liblcm/liblcm_api_v11.0.0.json)"
     ]
   }
 }

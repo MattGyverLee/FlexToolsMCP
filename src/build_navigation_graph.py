@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import json
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -350,14 +351,31 @@ def print_summary(result: Dict):
         print(f"  {path_key}: {steps}")
 
 
+def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str]:
+    """Find the latest LibLCM API file and extract its version."""
+    pattern = re.compile(r"liblcm_api_v(\d+\.\d+\.\d+)\.json$")
+    versions = {}
+
+    for file in liblcm_dir.glob("liblcm_api_v*.json"):
+        match = pattern.match(file.name)
+        if match:
+            version = match.group(1)
+            versions[version] = file
+
+    if not versions:
+        return None, None
+
+    latest = sorted(versions.keys())[-1]
+    return versions[latest], latest
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Build navigation graph from LibLCM relationships"
     )
     parser.add_argument(
         "--output",
-        default="index/navigation_graph.json",
-        help="Output path for navigation graph JSON"
+        help="Output path for navigation graph JSON (auto-versioned if not specified)"
     )
     parser.add_argument(
         "--update-liblcm",
@@ -368,8 +386,21 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
-    liblcm_path = root / "index" / "liblcm" / "flex-api-enhanced.json"
-    output_path = root / args.output
+    liblcm_dir = root / "index" / "liblcm"
+
+    # Find latest LibLCM version
+    liblcm_path, liblcm_version = find_latest_liblcm(liblcm_dir)
+
+    if not liblcm_path:
+        print(f"[ERROR] No LibLCM API files found in {liblcm_dir}")
+        return 1
+
+    # Determine output path
+    if args.output:
+        output_path = root / args.output
+    else:
+        output_filename = f"navigation_graph_liblcm-v{liblcm_version}.json"
+        output_path = root / "index" / output_filename
 
     # Build navigation graph
     result = build_navigation_graph(liblcm_path)

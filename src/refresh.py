@@ -427,6 +427,16 @@ def run_postprocess_casting_index() -> bool:
     return run_command(cmd, "Building casting index (pythonnet interface casting)")
 
 
+def run_archive_old_versions() -> bool:
+    """Archive old versions of API files."""
+    cmd = [
+        sys.executable,
+        "src/archive_old_versions.py",
+        "--keep", "1"  # Keep only the latest version
+    ]
+    return run_command(cmd, "Archiving old API versions")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Refresh FlexTools MCP API indexes"
@@ -521,6 +531,10 @@ def main():
 
         # Build casting index
         if not run_postprocess_casting_index():
+            success = False
+
+        # Archive old versions
+        if not run_archive_old_versions():
             success = False
 
     print("\n" + "=" * 60)

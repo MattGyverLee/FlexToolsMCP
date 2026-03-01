@@ -8,10 +8,11 @@ enabling natural language search queries.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 
 try:
@@ -31,20 +32,59 @@ def get_index_dir() -> Path:
     return Path(__file__).parent.parent / "index"
 
 
+def find_latest_versioned_file(directory: Path, pattern: str) -> Optional[Path]:
+    """Find the latest versioned API file matching pattern.
+
+    Searches in both the main directory and archive subdirectory.
+    """
+    version_pattern = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
+    files_with_versions = {}
+
+    if not directory.exists():
+        return None
+
+    # Search main directory
+    for file in directory.glob(pattern):
+        match = version_pattern.search(file.name)
+        if match:
+            major, minor, patch = map(int, match.groups())
+            version_tuple = (major, minor, patch)
+            files_with_versions[version_tuple] = file
+
+    # Also search archive subdirectory
+    archive_dir = directory / "archive"
+    if archive_dir.exists():
+        for file in archive_dir.glob(pattern):
+            match = version_pattern.search(file.name)
+            if match:
+                major, minor, patch = map(int, match.groups())
+                version_tuple = (major, minor, patch)
+                # Main directory takes precedence if both exist
+                if version_tuple not in files_with_versions:
+                    files_with_versions[version_tuple] = file
+
+    if not files_with_versions:
+        return None
+
+    latest = max(files_with_versions.keys())
+    return files_with_versions[latest]
+
+
 def load_flexlibs_data() -> Tuple[Dict, Dict]:
     """Load FlexLibs stable and 2.0 API data."""
     index_dir = get_index_dir()
+    flexlibs_dir = index_dir / "flexlibs"
 
     flexlibs_stable = {}
     flexlibs2 = {}
 
-    stable_path = index_dir / "flexlibs" / "flexlibs_api.json"
-    if stable_path.exists():
+    stable_path = find_latest_versioned_file(flexlibs_dir, "flexlibs_api_v*.json")
+    if stable_path and stable_path.exists():
         with open(stable_path, "r", encoding="utf-8") as f:
             flexlibs_stable = json.load(f)
 
-    flexlibs2_path = index_dir / "flexlibs" / "flexlibs2_api.json"
-    if flexlibs2_path.exists():
+    flexlibs2_path = find_latest_versioned_file(flexlibs_dir, "flexlibs2_api_v*.json")
+    if flexlibs2_path and flexlibs2_path.exists():
         with open(flexlibs2_path, "r", encoding="utf-8") as f:
             flexlibs2 = json.load(f)
 
@@ -54,9 +94,10 @@ def load_flexlibs_data() -> Tuple[Dict, Dict]:
 def load_liblcm_data() -> Dict:
     """Load LibLCM API data."""
     index_dir = get_index_dir()
-    liblcm_path = index_dir / "liblcm" / "flex-api-enhanced.json"
+    liblcm_dir = index_dir / "liblcm"
 
-    if liblcm_path.exists():
+    liblcm_path = find_latest_versioned_file(liblcm_dir, "liblcm_api_v*.json")
+    if liblcm_path and liblcm_path.exists():
         with open(liblcm_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}

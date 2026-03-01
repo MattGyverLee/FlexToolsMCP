@@ -4247,6 +4247,44 @@
       ],
       "pythonnet_warning": true
     },
+    "FeatureConstraints": {
+      "defined_on": [
+        "IMoAffixProcess",
+        "IPhRegularRule"
+      ],
+      "requires_cast_from": [
+        "ICmObject",
+        "ICmObjectOrId",
+        "IMoAffixForm",
+        "IMoForm",
+        "IPhSegmentRule"
+      ],
+      "pythonnet_warning": true
+    },
+    "InputOS": {
+      "defined_on": [
+        "IMoAffixProcess"
+      ],
+      "requires_cast_from": [
+        "ICmObject",
+        "ICmObjectOrId",
+        "IMoAffixForm",
+        "IMoForm"
+      ],
+      "pythonnet_warning": true
+    },
+    "OutputOS": {
+      "defined_on": [
+        "IMoAffixProcess"
+      ],
+      "requires_cast_from": [
+        "ICmObject",
+        "ICmObjectOrId",
+        "IMoAffixForm",
+        "IMoForm"
+      ],
+      "pythonnet_warning": true
+    },
     "FeaturesOC": {
       "defined_on": [
         "IFsFeatureSystem"
@@ -7779,17 +7817,6 @@
       ],
       "pythonnet_warning": true
     },
-    "FeatureConstraints": {
-      "defined_on": [
-        "IPhRegularRule"
-      ],
-      "requires_cast_from": [
-        "ICmObject",
-        "ICmObjectOrId",
-        "IPhSegmentRule"
-      ],
-      "pythonnet_warning": true
-    },
     "RightHandSidesOS": {
       "defined_on": [
         "IPhRegularRule"
@@ -9609,30 +9636,6 @@
       ],
       "pythonnet_warning": true
     },
-    "InputOS": {
-      "defined_on": [
-        "IMoAffixProcess"
-      ],
-      "requires_cast_from": [
-        "ICmObject",
-        "ICmObjectOrId",
-        "IMoAffixForm",
-        "IMoForm"
-      ],
-      "pythonnet_warning": true
-    },
-    "OutputOS": {
-      "defined_on": [
-        "IMoAffixProcess"
-      ],
-      "requires_cast_from": [
-        "ICmObject",
-        "ICmObjectOrId",
-        "IMoAffixForm",
-        "IMoForm"
-      ],
-      "pythonnet_warning": true
-    },
     "ToProdRestrictRC": {
       "defined_on": [
         "IMoCompoundRule",
@@ -10896,12 +10899,17 @@
     "AlternateFormsOS": {
       "base_type": "IMoForm",
       "concrete_types": [
+        "IMoAffixProcess",
         "IMoAffixAllomorph",
         "IMoAffixForm",
-        "IMoAffixProcess",
         "IMoStemAllomorph"
       ],
       "unique_properties_by_type": {
+        "IMoAffixProcess": [
+          "FeatureConstraints",
+          "InputOS",
+          "OutputOS"
+        ],
         "IMoAffixAllomorph": [
           "MsEnvFeaturesOA",
           "MsEnvPartOfSpeechRA",
@@ -10910,10 +10918,6 @@
         ],
         "IMoAffixForm": [
           "InflectionClassesRC"
-        ],
-        "IMoAffixProcess": [
-          "InputOS",
-          "OutputOS"
         ],
         "IMoStemAllomorph": [
           "PhoneEnvRC",
@@ -10925,12 +10929,17 @@
     "LexemeFormOA": {
       "base_type": "IMoForm",
       "concrete_types": [
+        "IMoAffixProcess",
         "IMoAffixAllomorph",
         "IMoAffixForm",
-        "IMoAffixProcess",
         "IMoStemAllomorph"
       ],
       "unique_properties_by_type": {
+        "IMoAffixProcess": [
+          "FeatureConstraints",
+          "InputOS",
+          "OutputOS"
+        ],
         "IMoAffixAllomorph": [
           "MsEnvFeaturesOA",
           "MsEnvPartOfSpeechRA",
@@ -10939,10 +10948,6 @@
         ],
         "IMoAffixForm": [
           "InflectionClassesRC"
-        ],
-        "IMoAffixProcess": [
-          "InputOS",
-          "OutputOS"
         ],
         "IMoStemAllomorph": [
           "PhoneEnvRC",
@@ -10954,12 +10959,17 @@
     "AllomorphsOS": {
       "base_type": "IMoForm",
       "concrete_types": [
+        "IMoAffixProcess",
         "IMoAffixAllomorph",
         "IMoAffixForm",
-        "IMoAffixProcess",
         "IMoStemAllomorph"
       ],
       "unique_properties_by_type": {
+        "IMoAffixProcess": [
+          "FeatureConstraints",
+          "InputOS",
+          "OutputOS"
+        ],
         "IMoAffixAllomorph": [
           "MsEnvFeaturesOA",
           "MsEnvPartOfSpeechRA",
@@ -10968,10 +10978,6 @@
         ],
         "IMoAffixForm": [
           "InflectionClassesRC"
-        ],
-        "IMoAffixProcess": [
-          "InputOS",
-          "OutputOS"
         ],
         "IMoStemAllomorph": [
           "PhoneEnvRC",
@@ -10983,12 +10989,17 @@
     "FormOS": {
       "base_type": "IMoForm",
       "concrete_types": [
+        "IMoAffixProcess",
         "IMoAffixAllomorph",
         "IMoAffixForm",
-        "IMoAffixProcess",
         "IMoStemAllomorph"
       ],
       "unique_properties_by_type": {
+        "IMoAffixProcess": [
+          "FeatureConstraints",
+          "InputOS",
+          "OutputOS"
+        ],
         "IMoAffixAllomorph": [
           "MsEnvFeaturesOA",
           "MsEnvPartOfSpeechRA",
@@ -10997,10 +11008,6 @@
         ],
         "IMoAffixForm": [
           "InflectionClassesRC"
-        ],
-        "IMoAffixProcess": [
-          "InputOS",
-          "OutputOS"
         ],
         "IMoStemAllomorph": [
           "PhoneEnvRC",

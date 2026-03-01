@@ -17,6 +17,8 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
 
+from json_utils import sort_json_arrays
+
 
 def build_casting_index(liblcm_path: Path) -> dict:
     """
@@ -218,6 +220,7 @@ def main():
     # Save with version suffix
     output_filename = f"casting_index_liblcm-v{liblcm_version}.json"
     output_path = index_dir / output_filename
+    casting_index = sort_json_arrays(casting_index)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(casting_index, f, indent=2, ensure_ascii=False, sort_keys=True)
 

@@ -28,8 +28,8 @@
         "Create": {
           "lcm_calls": [
             "AnalyzingAgentsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -56,10 +56,10 @@
         "Duplicate": {
           "lcm_calls": [
             "AnalyzingAgentsOC (OwningCollection)",
-            ".Create()",
-            ".Insert()",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -118,13 +118,13 @@
         }
       },
       "wraps_interfaces": [
-        "ICmAgentRepository",
-        "ICmAgentFactory",
         "ICmAgent",
         "ICmAgentEvaluation",
-        "ITsString",
+        "ICmAgentFactory",
+        "ICmAgentRepository",
         "ICmPerson",
-        "ILangProject"
+        "ILangProject",
+        "ITsString"
       ]
     },
     "Allomorph": {
@@ -161,51 +161,51 @@
         },
         "Create": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
-            "Form",
             "AlternateFormsOS (OwningSequence)",
-            ".Create()",
+            "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "AlternateFormsOS (OwningSequence)",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
-            "ClassName",
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
-            "PhoneEnvRC (ReferenceCollection)",
-            "Form",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "AlternateFormsOS (OwningSequence)",
-            ".Create()",
-            ".CopyAlternatives()",
+            "ClassName",
+            "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)",
+            "Owner",
+            "PhoneEnvRC (ReferenceCollection)",
             ".Add()",
+            ".CopyAlternatives()",
+            ".Create()",
             ".Insert()"
           ],
           "mapping_type": "composite"
         },
         "GetAll": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
+            "AlternateFormsOS (OwningSequence)",
             "LexemeFormOA",
-            "AlternateFormsOS (OwningSequence)"
+            "LexemeFormOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -224,8 +224,8 @@
         },
         "GetMorphType": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA"
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -237,10 +237,10 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
-            "Guid",
             "Form",
+            "Guid",
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -267,19 +267,19 @@
         },
         "SetMorphType": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA"
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)"
           ],
           "mapping_type": "direct"
         }
       },
       "wraps_interfaces": [
-        "IMoAffixAllomorphFactory",
-        "IMoStemAllomorphFactory",
-        "IMoForm",
         "ILexEntry",
-        "ITsString",
-        "IPhEnvironment"
+        "IMoAffixAllomorphFactory",
+        "IMoForm",
+        "IMoStemAllomorphFactory",
+        "IPhEnvironment",
+        "ITsString"
       ]
     },
     "Annotation": {
@@ -305,9 +305,9 @@
             "AnnotationDefsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
             "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".Create()",
-            ".set_String()",
-            ".Add()"
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
@@ -324,12 +324,12 @@
         "Duplicate": {
           "lcm_calls": [
             "Owner",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -393,11 +393,11 @@
         }
       },
       "wraps_interfaces": [
+        "ICmAnnotationDefn",
+        "ICmAnnotationDefnFactory",
         "ICmAnnotationDefnRepository",
         "ICmPossibility",
-        "ICmAnnotationDefnFactory",
-        "ITsString",
-        "ICmAnnotationDefn"
+        "ITsString"
       ]
     },
     "AnthropologyOperations": {
@@ -422,8 +422,8 @@
           "lcm_calls": [
             "AnthroListOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -431,8 +431,8 @@
         "CreateSubitem": {
           "lcm_calls": [
             "SubPossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -440,8 +440,8 @@
         "Delete": {
           "lcm_calls": [
             "AnthroListOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)",
             "Owner",
+            "PossibilitiesOS (OwningSequence)",
             "SubPossibilitiesOS (OwningSequence)",
             ".Remove()"
           ],
@@ -449,15 +449,15 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
             "AnthroListOA (OwningAtomic)",
             "CategoryRA (ReferenceAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
+            "Owner",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -594,13 +594,13 @@
         }
       },
       "wraps_interfaces": [
+        "ICmAnthroItem",
+        "ICmAnthroItemFactory",
+        "ICmPerson",
         "ICmPossibility",
         "ICmPossibilityListFactory",
-        "ICmAnthroItemFactory",
-        "ICmAnthroItem",
         "IText",
-        "ITsString",
-        "ICmPerson"
+        "ITsString"
       ]
     },
     "ApprovalStatusTypes": {
@@ -608,17 +608,17 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "IWfiWordform",
-        "IPartOfSpeech",
-        "IWfiMorphBundleFactory",
         "ICmAgent",
-        "IWfiAnalysisFactory",
         "ICmAgentEvaluation",
+        "ICmAgentEvaluationFactory",
+        "IPartOfSpeech",
         "ITsString",
+        "IWfiAnalysis",
+        "IWfiAnalysisFactory",
         "IWfiAnalysisRepository",
         "IWfiGlossFactory",
-        "ICmAgentEvaluationFactory",
-        "IWfiAnalysis"
+        "IWfiMorphBundleFactory",
+        "IWfiWordform"
       ]
     },
     "BaseOperations": {
@@ -684,8 +684,8 @@
           "lcm_calls": [
             "Guid",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -708,12 +708,12 @@
         "Duplicate": {
           "lcm_calls": [
             "Owner",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -831,12 +831,12 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "ICmPossibilityList",
         "ICmPossibilityListFactory",
-        "IWfiWordform",
-        "IText",
         "ILexEntry",
+        "IText",
         "ITsString",
-        "ICmPossibilityList"
+        "IWfiWordform"
       ]
     },
     "CompoundRule": {
@@ -861,8 +861,8 @@
           "lcm_calls": [
             "ConfidenceLevelsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -879,10 +879,10 @@
           "lcm_calls": [
             "ConfidenceLevelsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -901,8 +901,8 @@
         },
         "GetAnalysesWithConfidence": {
           "lcm_calls": [
-            "Hvo",
-            "ConfidenceRA (ReferenceAtomic)"
+            "ConfidenceRA (ReferenceAtomic)",
+            "Hvo"
           ],
           "mapping_type": "convenience"
         },
@@ -914,8 +914,8 @@
         },
         "GetGlossesWithConfidence": {
           "lcm_calls": [
-            "Hvo",
-            "ConfidenceRA (ReferenceAtomic)"
+            "ConfidenceRA (ReferenceAtomic)",
+            "Hvo"
           ],
           "mapping_type": "convenience"
         },
@@ -971,10 +971,10 @@
         },
         "Create": {
           "lcm_calls": [
-            "WordGroupRA (ReferenceAtomic)",
             "ClauseMarkersOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            "WordGroupRA (ReferenceAtomic)",
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -1010,10 +1010,10 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartClauseMarkerFactory",
         "IConstChartClauseMarker",
-        "IConstChartWordGroup",
-        "IConstChartRow"
+        "IConstChartClauseMarkerFactory",
+        "IConstChartRow",
+        "IConstChartWordGroup"
       ]
     },
     "ConstChartMovedTextOperations": {
@@ -1041,8 +1041,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "RowsOS (OwningSequence)",
-            "CellsOS (OwningSequence)"
+            "CellsOS (OwningSequence)",
+            "RowsOS (OwningSequence)"
           ],
           "mapping_type": "direct"
         },
@@ -1054,10 +1054,10 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartMovedTextMarkerFactory",
-        "IDsConstChart",
         "IConstChartMovedTextMarker",
-        "IConstChartWordGroup"
+        "IConstChartMovedTextMarkerFactory",
+        "IConstChartWordGroup",
+        "IDsConstChart"
       ]
     },
     "ConstChartOperations": {
@@ -1066,10 +1066,10 @@
       "methods": {
         "Create": {
           "lcm_calls": [
-            "TemplateRA (ReferenceAtomic)",
             "ChartsOC (OwningCollection)",
-            ".Create()",
+            "TemplateRA (ReferenceAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -1088,8 +1088,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "DiscourseDataOA (OwningAtomic)",
-            "ChartsOC (OwningCollection)"
+            "ChartsOC (OwningCollection)",
+            "DiscourseDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -1127,12 +1127,12 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "IConstChartRow",
-        "IDsDiscourseFactory",
+        "IDsConstChart",
+        "IDsConstChartFactory",
         "IDsConstChartRepository",
         "IDsDiscourse",
-        "IDsConstChart",
-        "ITsString",
-        "IDsConstChartFactory"
+        "IDsDiscourseFactory",
+        "ITsString"
       ]
     },
     "ConstChartRowOperations": {
@@ -1142,8 +1142,8 @@
         "Create": {
           "lcm_calls": [
             "RowsOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -1188,9 +1188,9 @@
           "lcm_calls": [
             "Owner",
             "RowsOS (OwningSequence)",
-            ".Remove()",
             ".Insert()",
-            ".MoveTo()"
+            ".MoveTo()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -1210,9 +1210,9 @@
       "wraps_interfaces": [
         "IConstChartRow",
         "IConstChartRowFactory",
+        "IConstChartWordGroup",
         "IDsConstChart",
-        "ITsString",
-        "IConstChartWordGroup"
+        "ITsString"
       ]
     },
     "ConstChartTagOperations": {
@@ -1222,9 +1222,9 @@
         "Create": {
           "lcm_calls": [
             "TagsOC (OwningCollection)",
+            ".Add()",
             ".Create()",
-            ".set_String()",
-            ".Add()"
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
@@ -1273,12 +1273,12 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartTag",
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IConstChartTag",
+        "IConstChartTagFactory",
         "IDsConstChart",
-        "ITsString",
-        "IConstChartTagFactory"
+        "ITsString"
       ]
     },
     "ConstChartWordGroupOperations": {
@@ -1288,10 +1288,10 @@
         "Create": {
           "lcm_calls": [
             "BeginSegmentRA (ReferenceAtomic)",
-            "EndSegmentRA (ReferenceAtomic)",
             "CellsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            "EndSegmentRA (ReferenceAtomic)",
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -1351,11 +1351,11 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartRow",
-        "ISegment",
-        "IConstChartWordGroupFactory",
         "IAnalysis",
-        "IConstChartWordGroup"
+        "IConstChartRow",
+        "IConstChartWordGroup",
+        "IConstChartWordGroupFactory",
+        "ISegment"
       ]
     },
     "ContextCollection": {
@@ -1419,13 +1419,13 @@
         }
       },
       "wraps_interfaces": [
-        "ILexExampleSentence",
+        "ICmObjectRepository",
         "ICmPossibilityRepository",
         "IFwMetaDataCacheManaged",
-        "ICmObjectRepository",
-        "IMoForm",
-        "ILexSense",
         "ILexEntry",
+        "ILexExampleSentence",
+        "ILexSense",
+        "IMoForm",
         "ITsString"
       ]
     },
@@ -1469,8 +1469,8 @@
         "Create": {
           "lcm_calls": [
             "RecordsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -1478,8 +1478,8 @@
         "CreateSubRecord": {
           "lcm_calls": [
             "SubRecordsOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -1496,12 +1496,12 @@
         "Duplicate": {
           "lcm_calls": [
             "Owner",
-            "SubRecordsOS (OwningSequence)",
             "RecordsOC (OwningCollection)",
-            ".Create()",
+            "SubRecordsOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -1531,15 +1531,15 @@
         },
         "GetAllRecordTypes": {
           "lcm_calls": [
-            "RecTypesOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "RecTypesOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
         "GetAllStatuses": {
           "lcm_calls": [
-            "StatusOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "StatusOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -1665,16 +1665,16 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPossibility",
-        "ITsString",
+        "ICmFile",
         "ICmFileFactory",
-        "IRnResearchNbkRepository",
+        "ICmPerson",
+        "ICmPossibility",
         "ICmPossibilityRepository",
         "IRnGenericRec",
         "IRnGenericRecFactory",
+        "IRnResearchNbkRepository",
         "IText",
-        "ICmFile",
-        "ICmPerson"
+        "ITsString"
       ]
     },
     "DiscourseOperations": {
@@ -1684,25 +1684,25 @@
         "AddRow": {
           "lcm_calls": [
             "RowsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "CreateChart": {
           "lcm_calls": [
-            "ContentsOA (OwningAtomic)",
             "ChartsOC (OwningCollection)",
-            ".Create()",
+            "ContentsOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "DeleteChart": {
           "lcm_calls": [
-            "Owner",
             "ChartsOC (OwningCollection)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -1717,20 +1717,20 @@
         },
         "Duplicate": {
           "lcm_calls": [
+            "ChartsOC (OwningCollection)",
             "Owner",
             "RowsOS (OwningSequence)",
-            "ChartsOC (OwningCollection)",
-            ".Create()",
-            ".Insert()",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
         "GetAllCharts": {
           "lcm_calls": [
-            "ContentsOA (OwningAtomic)",
-            "ChartsOC (OwningCollection)"
+            "ChartsOC (OwningCollection)",
+            "ContentsOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -1792,22 +1792,22 @@
         }
       },
       "wraps_interfaces": [
-        "IConstChartTag",
         "ICmPossibility",
-        "IConstChartRow",
-        "IDsDiscourseData",
-        "IDsChart",
-        "IConstChartWordGroupFactory",
-        "IConstChartMovedTextMarker",
-        "IConstChartRowFactory",
-        "IConstChartMovedTextMarkerFactory",
-        "IDsConstChart",
-        "IText",
-        "ITsString",
-        "IConstChartClauseMarkerFactory",
         "IConstChartClauseMarker",
+        "IConstChartClauseMarkerFactory",
+        "IConstChartMovedTextMarker",
+        "IConstChartMovedTextMarkerFactory",
+        "IConstChartRow",
+        "IConstChartRowFactory",
+        "IConstChartTag",
         "IConstChartWordGroup",
-        "IDsConstChartFactory"
+        "IConstChartWordGroupFactory",
+        "IDsChart",
+        "IDsConstChart",
+        "IDsConstChartFactory",
+        "IDsDiscourseData",
+        "IText",
+        "ITsString"
       ]
     },
     "EnvironmentOperations": {
@@ -1816,40 +1816,40 @@
       "methods": {
         "Create": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "EnvironmentsOS (OwningSequence)",
-            ".Create()",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "EnvironmentsOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
-            "LeftContextOA (OwningAtomic)",
-            "RightContextOA (OwningAtomic)",
-            "EnvironmentsOS (OwningSequence)",
             "ClassID",
-            ".Create()",
-            ".Insert()",
+            "EnvironmentsOS (OwningSequence)",
+            "LeftContextOA (OwningAtomic)",
+            "PhonologicalDataOA (OwningAtomic)",
+            "RightContextOA (OwningAtomic)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
         "GetAll": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
-            "EnvironmentsOS (OwningSequence)"
+            "EnvironmentsOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -1889,9 +1889,9 @@
         }
       },
       "wraps_interfaces": [
-        "IPhEnvironmentFactory",
-        "IPhEnvironment",
         "ICmObjectRepository",
+        "IPhEnvironment",
+        "IPhEnvironmentFactory",
         "ITsString"
       ]
     },
@@ -1904,32 +1904,32 @@
             "EtymologyOS (OwningSequence)",
             "Form",
             "Gloss",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
             "EtymologyOS (OwningSequence)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
+            "Comment",
+            "EtymologyOS (OwningSequence)",
             "Form",
             "Gloss",
-            "Comment",
             "LanguageNotesRA (ReferenceAtomic)",
-            "EtymologyOS (OwningSequence)",
-            ".Create()",
+            "Owner",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -1986,11 +1986,11 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "LanguageRA (ReferenceAtomic)",
-            "Guid",
+            "Comment",
             "Form",
             "Gloss",
-            "Comment",
+            "Guid",
+            "LanguageRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -1998,8 +1998,8 @@
         "Reorder": {
           "lcm_calls": [
             "EtymologyOS (OwningSequence)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -2044,10 +2044,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
-        "ILexEtymologyFactory",
+        "ILexEntry",
         "ILexEtymology",
-        "ILexEntry"
+        "ILexEtymologyFactory",
+        "ITsString"
       ]
     },
     "ExampleOperations": {
@@ -2071,30 +2071,30 @@
         "Create": {
           "lcm_calls": [
             "ExamplesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
             "ExamplesOS (OwningSequence)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
+            "ExamplesOS (OwningSequence)",
             "Owner",
             "TranslationsOC (OwningCollection)",
             "TypeRA (ReferenceAtomic)",
-            "ExamplesOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -2169,10 +2169,10 @@
         },
         "MoveMediaFile": {
           "lcm_calls": [
-            "MediaFilesOS (OwningSequence)",
             "Guid",
-            ".Remove()",
-            ".Add()"
+            "MediaFilesOS (OwningSequence)",
+            ".Add()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -2193,16 +2193,16 @@
         "RemoveTranslation": {
           "lcm_calls": [
             "TranslationsOC (OwningCollection)",
-            ".set_String()",
-            ".get_String()"
+            ".get_String()",
+            ".set_String()"
           ],
           "mapping_type": "convenience"
         },
         "Reorder": {
           "lcm_calls": [
             "ExamplesOS (OwningSequence)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -2225,21 +2225,21 @@
         "SetTranslation": {
           "lcm_calls": [
             "TranslationsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
-            ".set_String()",
-            ".get_String()"
+            ".Create()",
+            ".get_String()",
+            ".set_String()"
           ],
           "mapping_type": "composite"
         }
       },
       "wraps_interfaces": [
         "ICmTranslation",
+        "ICmTranslationFactory",
         "ILexExampleSentence",
         "ILexExampleSentenceFactory",
         "ILexSense",
-        "ITsString",
-        "ICmTranslationFactory"
+        "ITsString"
       ]
     },
     "FLExProject": {
@@ -2248,8 +2248,8 @@
       "methods": {
         "BuildGotoURL": {
           "lcm_calls": [
-            "Guid",
-            "ClassID"
+            "ClassID",
+            "Guid"
           ],
           "mapping_type": "direct"
         },
@@ -2279,11 +2279,11 @@
         },
         "LexiconAddComplexForm": {
           "lcm_calls": [
-            "EntryRefsOS (OwningSequence)",
-            "ComponentLexemesRS (ReferenceSequence)",
             "ComplexEntryTypesRS (ReferenceSequence)",
-            ".Create()",
-            ".Add()"
+            "ComponentLexemesRS (ReferenceSequence)",
+            "EntryRefsOS (OwningSequence)",
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -2314,8 +2314,8 @@
         "LexiconDeleteObject": {
           "lcm_calls": [
             "ClassName",
-            "Owner",
             "Hvo",
+            "Owner",
             ".Delete()",
             ".Remove()"
           ],
@@ -2323,8 +2323,8 @@
         },
         "LexiconGetAlternateForm": {
           "lcm_calls": [
-            "Form",
             "AlternateFormsOS (OwningSequence)",
+            "Form",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -2362,8 +2362,8 @@
         },
         "LexiconSetListFieldSingle": {
           "lcm_calls": [
-            "Hvo",
-            "ClassName"
+            "ClassName",
+            "Hvo"
           ],
           "mapping_type": "direct"
         },
@@ -2413,29 +2413,29 @@
         }
       },
       "wraps_interfaces": [
-        "IStTxtPara",
-        "IFwMetaDataCacheManaged",
-        "ISegmentRepository",
-        "ICmSemanticDomain",
-        "ICmPossibilityRepository",
         "ICmObjectRepository",
-        "ITsString",
         "ICmPossibilityList",
-        "ILexEntryRepository",
-        "IReversalIndexEntry",
-        "IWfiWordformRepository",
+        "ICmPossibilityRepository",
+        "ICmSemanticDomain",
         "IDataReader",
-        "IUndoStackManager",
-        "ILexEntryRefFactory",
+        "IFwMetaDataCacheManaged",
         "ILexEntry",
-        "IReversalIndex",
-        "IWfiAnalysisRepository",
-        "IMoMorphType",
-        "ITextRepository",
+        "ILexEntryRefFactory",
+        "ILexEntryRepository",
         "ILexRefTypeRepository",
         "ILexSense",
+        "IMoMorphType",
+        "IReversalIndex",
+        "IReversalIndexEntry",
+        "ISegmentRepository",
+        "IStTxtPara",
+        "ITextRepository",
         "ITsStrBldr",
-        "IWfiAnalysis"
+        "ITsString",
+        "IUndoStackManager",
+        "IWfiAnalysis",
+        "IWfiAnalysisRepository",
+        "IWfiWordformRepository"
       ]
     },
     "FilterOperations": {
@@ -2450,14 +2450,14 @@
         }
       },
       "wraps_interfaces": [
-        "IFsClosedFeature",
+        "ICmFilter",
         "ICmFilterFactory",
-        "IWfiWordform",
         "ICmObjectRepository",
-        "IText",
+        "IFsClosedFeature",
         "ILexEntry",
+        "IText",
         "ITsString",
-        "ICmFilter"
+        "IWfiWordform"
       ]
     },
     "FilterTypes": {
@@ -2465,14 +2465,14 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "IFsClosedFeature",
+        "ICmFilter",
         "ICmFilterFactory",
-        "IWfiWordform",
         "ICmObjectRepository",
-        "IText",
+        "IFsClosedFeature",
         "ILexEntry",
+        "IText",
         "ITsString",
-        "ICmFilter"
+        "IWfiWordform"
       ]
     },
     "GramCatOperations": {
@@ -2484,8 +2484,8 @@
             "MsFeatureSystemOA (OwningAtomic)",
             "SubPossibilitiesOS (OwningSequence)",
             "TypesOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -2501,13 +2501,13 @@
         "Duplicate": {
           "lcm_calls": [
             "MsFeatureSystemOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "Owner",
+            "SubPossibilitiesOS (OwningSequence)",
             "TypesOC (OwningCollection)",
-            ".Create()",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -2550,9 +2550,9 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "ICmPossibility",
-        "ICmPossibilityFactory"
+        "ICmPossibilityFactory",
+        "ITsString"
       ]
     },
     "InflectionFeatureOperations": {
@@ -2561,34 +2561,34 @@
       "methods": {
         "FeatureCreate": {
           "lcm_calls": [
-            "MsFeatureSystemOA (OwningAtomic)",
             "FeaturesOS (OwningSequence)",
-            ".Create()",
+            "MsFeatureSystemOA (OwningAtomic)",
             ".Add()",
-            ".set_String()",
-            ".get_String()"
+            ".Create()",
+            ".get_String()",
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "FeatureDelete": {
           "lcm_calls": [
-            "MsFeatureSystemOA (OwningAtomic)",
             "FeaturesOS (OwningSequence)",
+            "MsFeatureSystemOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "FeatureGetAll": {
           "lcm_calls": [
-            "MsFeatureSystemOA (OwningAtomic)",
-            "FeaturesOS (OwningSequence)"
+            "FeaturesOS (OwningSequence)",
+            "MsFeatureSystemOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
         "FeatureGetValues": {
           "lcm_calls": [
-            "ValuesOC (OwningCollection)",
-            "FeaturesOS (OwningSequence)"
+            "FeaturesOS (OwningSequence)",
+            "ValuesOC (OwningCollection)"
           ],
           "mapping_type": "direct"
         },
@@ -2600,15 +2600,15 @@
         },
         "FeatureStructureDelete": {
           "lcm_calls": [
-            "Owner",
-            "FeaturesOA (OwningAtomic)"
+            "FeaturesOA (OwningAtomic)",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
         "FeatureStructureGetAll": {
           "lcm_calls": [
-            "MsFeatureSystemOA (OwningAtomic)",
-            "FeaturesOS (OwningSequence)"
+            "FeaturesOS (OwningSequence)",
+            "MsFeatureSystemOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -2640,10 +2640,10 @@
         "InflectionClassCreate": {
           "lcm_calls": [
             "MorphologicalDataOA (OwningAtomic)",
-            "ProdRestrictOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "ProdRestrictOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -2651,8 +2651,8 @@
         "InflectionClassDelete": {
           "lcm_calls": [
             "MorphologicalDataOA (OwningAtomic)",
-            "ProdRestrictOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
+            "ProdRestrictOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -2660,8 +2660,8 @@
         "InflectionClassGetAll": {
           "lcm_calls": [
             "MorphologicalDataOA (OwningAtomic)",
-            "ProdRestrictOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "ProdRestrictOA (OwningAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -2679,12 +2679,12 @@
         }
       },
       "wraps_interfaces": [
-        "IFsFeatStrucFactory",
         "IFsComplexFeature",
-        "IFsFeatStruc",
         "IFsComplexFeatureFactory",
-        "IMoInflClass",
         "IFsFeatDefn",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IMoInflClass",
         "IMoInflClassFactory",
         "ITsString"
       ]
@@ -2701,13 +2701,13 @@
       "methods": {
         "AddComplexFormComponent": {
           "lcm_calls": [
-            "EntryRefsOS (OwningSequence)",
-            "PrimaryLexemesRS (ReferenceSequence)",
             "ComponentLexemesRS (ReferenceSequence)",
-            "ShowComplexFormsInRS (ReferenceSequence)",
+            "EntryRefsOS (OwningSequence)",
             "Hvo",
-            ".Create()",
-            ".Add()"
+            "PrimaryLexemesRS (ReferenceSequence)",
+            "ShowComplexFormsInRS (ReferenceSequence)",
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -2727,25 +2727,25 @@
         },
         "AddSense": {
           "lcm_calls": [
-            "SensesOS (OwningSequence)",
             "Gloss",
-            ".Create()",
+            "SensesOS (OwningSequence)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Create": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)",
             "SensesOS (OwningSequence)",
+            ".Add()",
             ".Create()",
-            ".set_String()",
-            ".Add()"
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
@@ -2757,37 +2757,37 @@
         },
         "Duplicate": {
           "lcm_calls": [
+            "AlternateFormsOS (OwningSequence)",
+            "CitationForm",
+            "ClassName",
+            "Comment",
             "DoNotPublishInRC (ReferenceCollection)",
             "DoNotShowMainEntryInRC (ReferenceCollection)",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
-            "CitationForm",
-            "Comment",
-            "SensesOS (OwningSequence)",
-            "AlternateFormsOS (OwningSequence)",
-            "PronunciationsOS (OwningSequence)",
             "EtymologyOS (OwningSequence)",
             "Form",
-            "ClassName",
-            "PhoneEnvRC (ReferenceCollection)",
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
-            "LocationRA (ReferenceAtomic)",
-            "MediaFilesOS (OwningSequence)",
             "Gloss",
             "LanguageNotesRA (ReferenceAtomic)",
-            ".Create()",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "LocationRA (ReferenceAtomic)",
+            "MediaFilesOS (OwningSequence)",
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)",
+            "PhoneEnvRC (ReferenceCollection)",
+            "PronunciationsOS (OwningSequence)",
+            "SensesOS (OwningSequence)",
+            ".Add()",
             ".BestAnalysisAlternative()",
             ".CopyAlternatives()",
-            ".Add()"
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "Find": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -2804,8 +2804,8 @@
         },
         "GetAvailableMorphTypes": {
           "lcm_calls": [
-            "MorphTypesOA (OwningAtomic)",
             "LexDbOA (OwningAtomic)",
+            "MorphTypesOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
             "SubPossibilitiesOS (OwningSequence)"
           ],
@@ -2813,10 +2813,10 @@
         },
         "GetBestVernacularAlternative": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "CitationForm",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -2843,8 +2843,8 @@
         },
         "GetComplexFormComponents": {
           "lcm_calls": [
-            "EntryRefsOS (OwningSequence)",
-            "ComponentLexemesRS (ReferenceSequence)"
+            "ComponentLexemesRS (ReferenceSequence)",
+            "EntryRefsOS (OwningSequence)"
           ],
           "mapping_type": "direct"
         },
@@ -2883,9 +2883,9 @@
         },
         "GetLexemeForm": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -2898,18 +2898,18 @@
         },
         "GetLongName": {
           "lcm_calls": [
-            "SensesOS (OwningSequence)",
             "Gloss",
+            "SensesOS (OwningSequence)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
         },
         "GetMorphType": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
+            "LexemeFormOA",
             "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA"
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -2939,13 +2939,13 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
+            "CitationForm",
+            "Comment",
             "DoNotPublishInRC (ReferenceCollection)",
             "DoNotShowMainEntryInRC (ReferenceCollection)",
             "Form",
-            "CitationForm",
-            "Comment",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -2958,11 +2958,11 @@
         },
         "RemoveComplexFormComponent": {
           "lcm_calls": [
-            "EntryRefsOS (OwningSequence)",
             "ComponentLexemesRS (ReferenceSequence)",
+            "EntryRefsOS (OwningSequence)",
+            "Hvo",
             "PrimaryLexemesRS (ReferenceSequence)",
             "ShowComplexFormsInRS (ReferenceSequence)",
-            "Hvo",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -3003,9 +3003,9 @@
         },
         "SetLexemeForm": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
             ".set_String()"
           ],
           "mapping_type": "convenience"
@@ -3018,10 +3018,10 @@
         },
         "SetMorphType": {
           "lcm_calls": [
-            "MorphTypeRA (ReferenceAtomic)",
-            "MorphTypeRA",
+            "LexemeFormOA",
             "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA"
+            "MorphTypeRA",
+            "MorphTypeRA (ReferenceAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -3039,21 +3039,21 @@
         }
       },
       "wraps_interfaces": [
+        "ICmFileFactory",
+        "ILexEntry",
         "ILexEntryFactory",
-        "IMoAffixAllomorphFactory",
+        "ILexEntryRef",
+        "ILexEntryRefFactory",
+        "ILexEntryRepository",
         "ILexEtymologyFactory",
         "ILexPronunciationFactory",
-        "IMoStemAllomorphFactory",
-        "ITsString",
-        "ILexEntryRef",
-        "IMoForm",
         "ILexSense",
-        "ILexEntryRefFactory",
-        "ILexEntry",
-        "ICmFileFactory",
-        "IMoMorphType",
         "ILexSenseFactory",
-        "ILexEntryRepository"
+        "IMoAffixAllomorphFactory",
+        "IMoForm",
+        "IMoMorphType",
+        "IMoStemAllomorphFactory",
+        "ITsString"
       ]
     },
     "LexRefMappingTypes": {
@@ -3061,14 +3061,14 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ILexRefType",
         "ICmPossibilityListFactory",
-        "ILexReferenceFactory",
-        "ILexRefTypeRepository",
-        "ILexSense",
-        "ILexRefTypeFactory",
-        "ILexReference",
         "ILexEntry",
+        "ILexRefType",
+        "ILexRefTypeFactory",
+        "ILexRefTypeRepository",
+        "ILexReference",
+        "ILexReferenceFactory",
+        "ILexSense",
         "ITsString"
       ]
     },
@@ -3078,8 +3078,8 @@
       "methods": {
         "AddTarget": {
           "lcm_calls": [
-            "TargetsRS (ReferenceSequence)",
             "ClassName",
+            "TargetsRS (ReferenceSequence)",
             ".Add()"
           ],
           "mapping_type": "convenience"
@@ -3089,33 +3089,33 @@
             "ClassName",
             "MembersOC (OwningCollection)",
             "TargetsRS (ReferenceSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "CreateType": {
           "lcm_calls": [
-            "ReferencesOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "ReferencesOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
             "MembersOC (OwningCollection)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "DeleteType": {
           "lcm_calls": [
-            "ReferencesOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
+            "ReferencesOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -3128,9 +3128,9 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "SensesOS (OwningSequence)",
             "ClassName",
-            "Hvo"
+            "Hvo",
+            "SensesOS (OwningSequence)"
           ],
           "mapping_type": "convenience"
         },
@@ -3140,19 +3140,19 @@
         },
         "GetComplexFormEntries": {
           "lcm_calls": [
-            "MembersOC (OwningCollection)",
-            "TargetsRS (ReferenceSequence)",
+            "ClassName",
             "Hvo",
-            "ClassName"
+            "MembersOC (OwningCollection)",
+            "TargetsRS (ReferenceSequence)"
           ],
           "mapping_type": "convenience"
         },
         "GetComponentEntries": {
           "lcm_calls": [
-            "MembersOC (OwningCollection)",
-            "TargetsRS (ReferenceSequence)",
+            "ClassName",
             "Hvo",
-            "ClassName"
+            "MembersOC (OwningCollection)",
+            "TargetsRS (ReferenceSequence)"
           ],
           "mapping_type": "convenience"
         },
@@ -3164,9 +3164,9 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "ReferenceTypeRA (ReferenceAtomic)",
-            "Guid",
             "Comment",
+            "Guid",
+            "ReferenceTypeRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -3222,14 +3222,14 @@
         }
       },
       "wraps_interfaces": [
-        "ILexRefType",
         "ICmPossibilityListFactory",
-        "ILexReferenceFactory",
-        "ILexRefTypeRepository",
-        "ILexSense",
-        "ILexRefTypeFactory",
-        "ILexReference",
         "ILexEntry",
+        "ILexRefType",
+        "ILexRefTypeFactory",
+        "ILexRefTypeRepository",
+        "ILexReference",
+        "ILexReferenceFactory",
+        "ILexSense",
         "ITsString"
       ]
     },
@@ -3254,8 +3254,8 @@
         "AddExample": {
           "lcm_calls": [
             "ExamplesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -3264,8 +3264,8 @@
           "lcm_calls": [
             "PictureFileRA (ReferenceAtomic)",
             "PicturesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -3286,20 +3286,20 @@
         },
         "Create": {
           "lcm_calls": [
-            "SensesOS (OwningSequence)",
             "Gloss",
-            ".Create()",
+            "SensesOS (OwningSequence)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "CreateSubsense": {
           "lcm_calls": [
-            "SensesOS (OwningSequence)",
             "Gloss",
-            ".Create()",
+            "SensesOS (OwningSequence)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -3316,9 +3316,9 @@
           "lcm_calls": [
             "Owner",
             "SensesOS (OwningSequence)",
+            ".Add()",
             ".Create()",
-            ".Insert()",
-            ".Add()"
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -3445,15 +3445,15 @@
         },
         "GetOwningEntry": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
         "GetParentSense": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -3525,19 +3525,19 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
+            "Definition",
+            "Gloss",
+            "Guid",
             "MorphoSyntaxAnalysisRA (ReferenceAtomic)",
             "StatusRA (ReferenceAtomic)",
-            "Guid",
-            "Gloss",
-            "Definition",
             ".get_String()"
           ],
           "mapping_type": "convenience"
         },
         "GetUsageTypes": {
           "lcm_calls": [
-            "UsageTypesRC (ReferenceCollection)",
-            "Guid"
+            "Guid",
+            "UsageTypesRC (ReferenceCollection)"
           ],
           "mapping_type": "direct"
         },
@@ -3549,10 +3549,10 @@
         },
         "MovePicture": {
           "lcm_calls": [
-            "PicturesOS (OwningSequence)",
             "Guid",
-            ".Remove()",
-            ".Add()"
+            "PicturesOS (OwningSequence)",
+            ".Add()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -3572,8 +3572,8 @@
         },
         "RemovePicture": {
           "lcm_calls": [
-            "PicturesOS (OwningSequence)",
             "PictureFileRA (ReferenceAtomic)",
+            "PicturesOS (OwningSequence)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -3601,8 +3601,8 @@
         "Reorder": {
           "lcm_calls": [
             "SensesOS (OwningSequence)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -3671,8 +3671,8 @@
         "SetPartOfSpeech": {
           "lcm_calls": [
             "MorphoSyntaxAnalysisRA (ReferenceAtomic)",
-            "PartOfSpeechRA (ReferenceAtomic)",
             "PartOfSpeechRA",
+            "PartOfSpeechRA (ReferenceAtomic)",
             ".Create()"
           ],
           "mapping_type": "convenience"
@@ -3715,17 +3715,17 @@
         }
       },
       "wraps_interfaces": [
-        "ICmSemanticDomain",
-        "IReversalIndexEntry",
-        "IMoStemMsaFactory",
-        "ILexExampleSentenceFactory",
-        "ICmPictureFactory",
-        "ILexSense",
         "ICmPicture",
-        "ILexEntry",
-        "ITsString",
+        "ICmPictureFactory",
+        "ICmSemanticDomain",
         "ICmTranslationFactory",
-        "ILexSenseFactory"
+        "ILexEntry",
+        "ILexExampleSentenceFactory",
+        "ILexSense",
+        "ILexSenseFactory",
+        "IMoStemMsaFactory",
+        "IReversalIndexEntry",
+        "ITsString"
       ]
     },
     "LocationOperations": {
@@ -3736,8 +3736,8 @@
           "lcm_calls": [
             "LocationsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -3745,8 +3745,8 @@
         "CreateSublocation": {
           "lcm_calls": [
             "SubPossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -3754,8 +3754,8 @@
         "Delete": {
           "lcm_calls": [
             "LocationsOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
+            "SubPossibilitiesOS (OwningSequence)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -3763,12 +3763,12 @@
         "Duplicate": {
           "lcm_calls": [
             "LocationsOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -3811,8 +3811,8 @@
         },
         "GetRegion": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -3849,19 +3849,19 @@
         "SetRegion": {
           "lcm_calls": [
             "LocationsOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Remove()",
-            ".Add()"
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         }
       },
       "wraps_interfaces": [
         "ICmLocation",
-        "ITsString",
         "ICmLocationFactory",
-        "ICmPossibilityRepository"
+        "ICmPossibilityRepository",
+        "ITsString"
       ]
     },
     "MSACollection": {
@@ -3902,8 +3902,8 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            ".Create()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()"
           ],
           "mapping_type": "convenience"
         },
@@ -3943,12 +3943,12 @@
         }
       },
       "wraps_interfaces": [
-        "ICmFolder",
-        "ITsString",
+        "ICmFile",
         "ICmFileFactory",
-        "ICmObjectRepository",
+        "ICmFolder",
         "ICmFolderFactory",
-        "ICmFile"
+        "ICmObjectRepository",
+        "ITsString"
       ]
     },
     "MediaType": {
@@ -3956,12 +3956,12 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "ICmFolder",
-        "ITsString",
+        "ICmFile",
         "ICmFileFactory",
-        "ICmObjectRepository",
+        "ICmFolder",
         "ICmFolderFactory",
-        "ICmFile"
+        "ICmObjectRepository",
+        "ITsString"
       ]
     },
     "MorphRuleOperations": {
@@ -3971,31 +3971,31 @@
         "CreateAffixTemplate": {
           "lcm_calls": [
             "AffixTemplatesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "CreateCompoundRule": {
           "lcm_calls": [
-            "MorphologicalDataOA (OwningAtomic)",
             "CompoundRulesOS (OwningSequence)",
-            ".Create()",
+            "MorphologicalDataOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "ClassName",
-            "MorphologicalDataOA (OwningAtomic)",
-            "Hvo",
-            "CompoundRulesOS (OwningSequence)",
-            "Owner",
-            "AffixTemplatesOS (OwningSequence)",
             "AdhocCoProhibitionsOC (OwningCollection)",
+            "AffixTemplatesOS (OwningSequence)",
+            "ClassName",
+            "CompoundRulesOS (OwningSequence)",
+            "Hvo",
+            "MorphologicalDataOA (OwningAtomic)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
@@ -4004,15 +4004,15 @@
           "lcm_calls": [
             "ClassName",
             "StratumRA (ReferenceAtomic)",
-            ".CopyAlternatives()",
-            ".Add()"
+            ".Add()",
+            ".CopyAlternatives()"
           ],
           "mapping_type": "convenience"
         },
         "GetAllAdhocCoProhibitions": {
           "lcm_calls": [
-            "MorphologicalDataOA (OwningAtomic)",
-            "AdhocCoProhibitionsOC (OwningCollection)"
+            "AdhocCoProhibitionsOC (OwningCollection)",
+            "MorphologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -4031,8 +4031,8 @@
         },
         "GetAllCompoundRules": {
           "lcm_calls": [
-            "MorphologicalDataOA (OwningAtomic)",
-            "CompoundRulesOS (OwningSequence)"
+            "CompoundRulesOS (OwningSequence)",
+            "MorphologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -4056,8 +4056,8 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "StratumRA (ReferenceAtomic)",
             "Guid",
+            "StratumRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -4082,10 +4082,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
-        "IMoInflAffixTemplateFactory",
         "IMoEndoCompoundFactory",
-        "IMoExoCompoundFactory"
+        "IMoExoCompoundFactory",
+        "IMoInflAffixTemplateFactory",
+        "ITsString"
       ]
     },
     "MorphosyntaxAnalysis": {
@@ -4107,31 +4107,31 @@
         },
         "Create": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "NaturalClassesOS (OwningSequence)",
-            ".Create()",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "NaturalClassesOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
+            "NaturalClassesOS (OwningSequence)",
             "PhonologicalDataOA (OwningAtomic)",
             "SegmentsRC (ReferenceCollection)",
-            "NaturalClassesOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -4143,8 +4143,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
-            "NaturalClassesOS (OwningSequence)"
+            "NaturalClassesOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -4183,11 +4183,11 @@
         }
       },
       "wraps_interfaces": [
-        "IPhNaturalClass",
         "IPhNCSegments",
         "IPhNCSegmentsFactory",
-        "ITsString",
-        "IPhPhoneme"
+        "IPhNaturalClass",
+        "IPhPhoneme",
+        "ITsString"
       ]
     },
     "NoteOperations": {
@@ -4198,27 +4198,27 @@
           "lcm_calls": [
             "Comment",
             "RepliesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Create": {
           "lcm_calls": [
+            "AnnotationsOC (OwningCollection)",
             "BeginObjectRA (ReferenceAtomic)",
             "Comment",
-            "AnnotationsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
             "AnnotationsOC (OwningCollection)",
+            "Owner",
             ".Delete()",
             ".Remove()"
           ],
@@ -4226,16 +4226,16 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
-            "Comment",
             "AnnotationTypeRA (ReferenceAtomic)",
-            "BeginObjectRA (ReferenceAtomic)",
-            "RepliesOS (OwningSequence)",
             "AnnotationsOC (OwningCollection)",
-            ".Create()",
+            "BeginObjectRA (ReferenceAtomic)",
+            "Comment",
+            "Owner",
+            "RepliesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -4273,8 +4273,8 @@
         },
         "GetOwner": {
           "lcm_calls": [
-            "Owner",
-            "BeginObjectRA (ReferenceAtomic)"
+            "BeginObjectRA (ReferenceAtomic)",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -4288,8 +4288,8 @@
           "lcm_calls": [
             "AnnotationTypeRA (ReferenceAtomic)",
             "BeginObjectRA (ReferenceAtomic)",
-            "Guid",
             "Comment",
+            "Guid",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -4298,8 +4298,8 @@
           "lcm_calls": [
             "AnnotationsOC (OwningCollection)",
             "Owner",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -4324,13 +4324,13 @@
         }
       },
       "wraps_interfaces": [
+        "ICmAnnotationDefn",
+        "ICmBaseAnnotation",
+        "ICmBaseAnnotationFactory",
         "ICmPossibility",
         "IScrScriptureNote",
         "IScrScriptureNoteFactory",
-        "ICmBaseAnnotationFactory",
-        "ICmBaseAnnotation",
-        "ITsString",
-        "ICmAnnotationDefn"
+        "ITsString"
       ]
     },
     "OverlayOperations": {
@@ -4347,11 +4347,11 @@
         },
         "Create": {
           "lcm_calls": [
-            "TemplateRA (ReferenceAtomic)",
             "PossItemsRC (ReferenceCollection)",
+            "TemplateRA (ReferenceAtomic)",
+            ".Add()",
             ".Create()",
-            ".set_String()",
-            ".Add()"
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
@@ -4367,13 +4367,13 @@
         "Duplicate": {
           "lcm_calls": [
             "Owner",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossItemsRC (ReferenceCollection)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
+            "SubPossibilitiesOS (OwningSequence)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -4385,9 +4385,9 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "TemplateRA (ReferenceAtomic)",
+            "PossItemsRC (ReferenceCollection)",
             "RowsOS (OwningSequence)",
-            "PossItemsRC (ReferenceCollection)"
+            "TemplateRA (ReferenceAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -4431,8 +4431,8 @@
         },
         "GetPossItems": {
           "lcm_calls": [
-            "SubPossibilitiesOS (OwningSequence)",
-            "PossItemsRS (ReferenceSequence)"
+            "PossItemsRS (ReferenceSequence)",
+            "SubPossibilitiesOS (OwningSequence)"
           ],
           "mapping_type": "direct"
         },
@@ -4460,9 +4460,9 @@
           "lcm_calls": [
             "Owner",
             "PossItemsRC (ReferenceCollection)",
-            ".Remove()",
             ".Add()",
-            ".Insert()"
+            ".Insert()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -4477,8 +4477,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "IDsConstChart",
-        "ITsString",
-        "IDsConstChartFactory"
+        "IDsConstChartFactory",
+        "ITsString"
       ]
     },
     "POSOperations": {
@@ -4488,8 +4488,8 @@
         "AddSubcategory": {
           "lcm_calls": [
             "SubPossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -4498,8 +4498,8 @@
           "lcm_calls": [
             "PartsOfSpeechOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -4514,14 +4514,14 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "PartsOfSpeechOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "Owner",
+            "PartsOfSpeechOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -4555,8 +4555,8 @@
         },
         "GetEntryCount": {
           "lcm_calls": [
-            "MorphoSyntaxAnalysesOC (OwningCollection)",
-            "Hvo"
+            "Hvo",
+            "MorphoSyntaxAnalysesOC (OwningCollection)"
           ],
           "mapping_type": "convenience"
         },
@@ -4605,10 +4605,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
-        "IPartOfSpeechFactory",
+        "ILexEntryRepository",
         "IPartOfSpeech",
-        "ILexEntryRepository"
+        "IPartOfSpeechFactory",
+        "ITsString"
       ]
     },
     "ParagraphOperations": {
@@ -4619,8 +4619,8 @@
           "lcm_calls": [
             "ContentsOA (OwningAtomic)",
             "ParagraphsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -4642,8 +4642,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "ParagraphsOS (OwningSequence)",
-            "ContentsOA (OwningAtomic)"
+            "ContentsOA (OwningAtomic)",
+            "ParagraphsOS (OwningSequence)"
           ],
           "mapping_type": "direct"
         },
@@ -4674,10 +4674,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "IStTxtPara",
+        "IStTxtParaFactory",
         "IText",
-        "IStTxtParaFactory"
+        "ITsString"
       ]
     },
     "PersonOperations": {
@@ -4694,8 +4694,8 @@
         "AddNote": {
           "lcm_calls": [
             "Comment",
-            ".set_String()",
-            ".get_String()"
+            ".get_String()",
+            ".set_String()"
           ],
           "mapping_type": "convenience"
         },
@@ -4716,8 +4716,8 @@
         "Create": {
           "lcm_calls": [
             "PeopleOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -4732,14 +4732,14 @@
         "Duplicate": {
           "lcm_calls": [
             "Comment",
-            "PositionsRC (ReferenceCollection)",
-            "PlacesOfResidenceRC (ReferenceCollection)",
             "LanguagesRC (ReferenceCollection)",
             "PeopleOC (OwningCollection)",
-            ".Create()",
-            ".Insert()",
+            "PlacesOfResidenceRC (ReferenceCollection)",
+            "PositionsRC (ReferenceCollection)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -4822,11 +4822,11 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "Guid",
-            "PositionsRC (ReferenceCollection)",
-            "PlacesOfResidenceRC (ReferenceCollection)",
-            "LanguagesRC (ReferenceCollection)",
             "Comment",
+            "Guid",
+            "LanguagesRC (ReferenceCollection)",
+            "PlacesOfResidenceRC (ReferenceCollection)",
+            "PositionsRC (ReferenceCollection)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -4870,13 +4870,13 @@
       },
       "wraps_interfaces": [
         "ICmLocation",
+        "ICmPerson",
+        "ICmPersonFactory",
         "ICmPersonRepository",
         "ICmPossibility",
         "ICmPossibilityRepository",
-        "ICmPersonFactory",
-        "ITsString",
-        "ICmPerson",
-        "ILangProject"
+        "ILangProject",
+        "ITsString"
       ]
     },
     "PhonemeOperations": {
@@ -4886,60 +4886,60 @@
         "AddCode": {
           "lcm_calls": [
             "CodesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Create": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "PhonemeSetsOS (OwningSequence)",
             "PhonemesOC (OwningCollection)",
-            ".Create()",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "PhonemeSetsOS (OwningSequence)",
             "PhonemesOC (OwningCollection)",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
+            "ClassID",
+            "CodesOS (OwningSequence)",
+            "FeaturesOA (OwningAtomic)",
             "PhonemeSetsOS (OwningSequence)",
             "PhonemesOC (OwningCollection)",
-            "FeaturesOA (OwningAtomic)",
-            "CodesOS (OwningSequence)",
-            "ClassID",
-            ".Create()",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "Find": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
-            "PhonemesOC (OwningCollection)",
             "PhonemeSetsOS (OwningSequence)",
+            "PhonemesOC (OwningCollection)",
+            "PhonologicalDataOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
         },
         "GetAll": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
+            "PhonemeSetsOS (OwningSequence)",
             "PhonemesOC (OwningCollection)",
-            "PhonemeSetsOS (OwningSequence)"
+            "PhonologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -4983,9 +4983,9 @@
         },
         "IsConsonant": {
           "lcm_calls": [
-            "FeaturesOA (OwningAtomic)",
-            "FeatureSpecsOC (OwningCollection)",
             "FeatureRA (ReferenceAtomic)",
+            "FeatureSpecsOC (OwningCollection)",
+            "FeaturesOA (OwningAtomic)",
             "ValueRA (ReferenceAtomic)",
             ".get_String()"
           ],
@@ -4993,9 +4993,9 @@
         },
         "IsVowel": {
           "lcm_calls": [
-            "FeaturesOA (OwningAtomic)",
-            "FeatureSpecsOC (OwningCollection)",
             "FeatureRA (ReferenceAtomic)",
+            "FeatureSpecsOC (OwningCollection)",
+            "FeaturesOA (OwningAtomic)",
             "ValueRA (ReferenceAtomic)",
             ".get_String()"
           ],
@@ -5022,13 +5022,13 @@
         }
       },
       "wraps_interfaces": [
-        "IPhCodeFactory",
-        "IPhCode",
-        "IFsFeatStruc",
         "ICmObjectRepository",
+        "IFsFeatStruc",
+        "IPhCode",
+        "IPhCodeFactory",
+        "IPhPhoneme",
         "IPhPhonemeFactory",
-        "ITsString",
-        "IPhPhoneme"
+        "ITsString"
       ]
     },
     "PhonologicalContext": {
@@ -5051,58 +5051,58 @@
       "methods": {
         "AddInputSegment": {
           "lcm_calls": [
-            "StrucDescOS (OwningSequence)",
             "FeatureStructureRA (ReferenceAtomic)",
-            ".Create()",
-            ".Add()"
+            "StrucDescOS (OwningSequence)",
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "AddOutputSegment": {
           "lcm_calls": [
-            "RightHandSidesOS (OwningSequence)",
             "FeatureStructureRA (ReferenceAtomic)",
+            "RightHandSidesOS (OwningSequence)",
             "StrucChangeOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
         "Create": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "PhonRulesOS (OwningSequence)",
-            ".Create()",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "PhonRulesOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
             "PhonRulesOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)",
             "StratumRA (ReferenceAtomic)",
-            ".Create()",
-            ".Remove()",
-            ".Insert()",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()",
+            ".Remove()"
           ],
           "mapping_type": "composite"
         },
         "GetAll": {
           "lcm_calls": [
-            "PhonologicalDataOA (OwningAtomic)",
-            "PhonRulesOS (OwningSequence)"
+            "PhonRulesOS (OwningSequence)",
+            "PhonologicalDataOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -5126,8 +5126,8 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "StratumRA (ReferenceAtomic)",
             "Guid",
+            "StratumRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -5140,9 +5140,9 @@
         },
         "SetLeftContext": {
           "lcm_calls": [
-            "StrucDescOS (OwningSequence)",
-            "LeftContextOA (OwningAtomic)",
             "FeatureStructureRA (ReferenceAtomic)",
+            "LeftContextOA (OwningAtomic)",
+            "StrucDescOS (OwningSequence)",
             ".Create()"
           ],
           "mapping_type": "composite"
@@ -5155,9 +5155,9 @@
         },
         "SetRightContext": {
           "lcm_calls": [
-            "StrucDescOS (OwningSequence)",
-            "RightContextOA (OwningAtomic)",
             "FeatureStructureRA (ReferenceAtomic)",
+            "RightContextOA (OwningAtomic)",
+            "StrucDescOS (OwningSequence)",
             ".Create()"
           ],
           "mapping_type": "composite"
@@ -5170,14 +5170,14 @@
         }
       },
       "wraps_interfaces": [
-        "IPhSimpleContextNCFactory",
-        "IPhSimpleContextSegFactory",
-        "IPhRegularRuleFactory",
-        "IPhSegRuleRHSFactory",
         "ICmObjectRepository",
         "IPhIterationContextFactory",
-        "ITsString",
-        "IPhSegmentRuleFactory"
+        "IPhRegularRuleFactory",
+        "IPhSegRuleRHSFactory",
+        "IPhSegmentRuleFactory",
+        "IPhSimpleContextNCFactory",
+        "IPhSimpleContextSegFactory",
+        "ITsString"
       ]
     },
     "PossibilityListOperations": {
@@ -5187,10 +5187,10 @@
         "CreateItem": {
           "lcm_calls": [
             "Guid",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5204,20 +5204,20 @@
         },
         "DeleteItem": {
           "lcm_calls": [
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
+            "SubPossibilitiesOS (OwningSequence)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -5235,29 +5235,29 @@
         },
         "GetAllLists": {
           "lcm_calls": [
-            "SemanticDomainListOA (OwningAtomic)",
-            "PartsOfSpeechOA (OwningAtomic)",
-            "LocationsOA (OwningAtomic)",
-            "PeopleOA (OwningAtomic)",
-            "EducationOA (OwningAtomic)",
-            "TranslationTagsOA (OwningAtomic)",
             "AnthroListOA (OwningAtomic)",
+            "ComplexEntryTypesOA (OwningAtomic)",
             "ConfidenceLevelsOA (OwningAtomic)",
+            "DialectLabelsOA (OwningAtomic)",
+            "DomainTypesOA (OwningAtomic)",
+            "EducationOA (OwningAtomic)",
+            "GenreListOA (OwningAtomic)",
+            "LexDbOA (OwningAtomic)",
+            "LocationsOA (OwningAtomic)",
+            "MorphTypesOA (OwningAtomic)",
+            "PartsOfSpeechOA (OwningAtomic)",
+            "PeopleOA (OwningAtomic)",
+            "PublicationTypesOA (OwningAtomic)",
             "RestrictionsOA (OwningAtomic)",
             "RolesOA (OwningAtomic)",
-            "StatusOA (OwningAtomic)",
-            "TimeOfDayOA (OwningAtomic)",
-            "LexDbOA (OwningAtomic)",
-            "TextMarkupTagsOA (OwningAtomic)",
-            "GenreListOA (OwningAtomic)",
-            "PublicationTypesOA (OwningAtomic)",
-            "UsageTypesOA (OwningAtomic)",
-            "DomainTypesOA (OwningAtomic)",
+            "SemanticDomainListOA (OwningAtomic)",
             "SenseTypesOA (OwningAtomic)",
-            "DialectLabelsOA (OwningAtomic)",
-            "VariantEntryTypesOA (OwningAtomic)",
-            "ComplexEntryTypesOA (OwningAtomic)",
-            "MorphTypesOA (OwningAtomic)"
+            "StatusOA (OwningAtomic)",
+            "TextMarkupTagsOA (OwningAtomic)",
+            "TimeOfDayOA (OwningAtomic)",
+            "TranslationTagsOA (OwningAtomic)",
+            "UsageTypesOA (OwningAtomic)",
+            "VariantEntryTypesOA (OwningAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -5317,8 +5317,8 @@
         },
         "GetParentItem": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -5337,10 +5337,10 @@
         "MoveItem": {
           "lcm_calls": [
             "Guid",
-            "SubPossibilitiesOS (OwningSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Remove()",
-            ".Add()"
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -5372,10 +5372,10 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "ICmPossibilityList",
         "ICmPossibilityListFactory",
         "ICmPossibilityRepository",
-        "ITsString",
-        "ICmPossibilityList"
+        "ITsString"
       ]
     },
     "ProhibitionCollection": {
@@ -5406,8 +5406,8 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
-        "ILangProject"
+        "ILangProject",
+        "ITsString"
       ]
     },
     "PronunciationOperations": {
@@ -5425,8 +5425,8 @@
           "lcm_calls": [
             "Form",
             "PronunciationsOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5441,15 +5441,15 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
+            "Form",
             "LocationRA (ReferenceAtomic)",
             "MediaFilesOS (OwningSequence)",
-            "Form",
+            "Owner",
             "PronunciationsOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
             ".Add()",
             ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()",
             ".get_String()",
             ".set_String()"
           ],
@@ -5500,19 +5500,19 @@
         },
         "GetSyncableProperties": {
           "lcm_calls": [
-            "LocationRA (ReferenceAtomic)",
-            "Guid",
             "Form",
+            "Guid",
+            "LocationRA (ReferenceAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
         },
         "MoveMediaFile": {
           "lcm_calls": [
-            "MediaFilesOS (OwningSequence)",
             "Guid",
-            ".Remove()",
-            ".Add()"
+            "MediaFilesOS (OwningSequence)",
+            ".Add()",
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -5526,8 +5526,8 @@
         "Reorder": {
           "lcm_calls": [
             "PronunciationsOS (OwningSequence)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -5546,12 +5546,12 @@
         }
       },
       "wraps_interfaces": [
-        "ILexPronunciation",
-        "ITsString",
-        "ILexPronunciationFactory",
+        "ICmFile",
         "ICmFileFactory",
         "ILexEntry",
-        "ICmFile"
+        "ILexPronunciation",
+        "ILexPronunciationFactory",
+        "ITsString"
       ]
     },
     "PublicationOperations": {
@@ -5561,40 +5561,40 @@
         "AddDivision": {
           "lcm_calls": [
             "SubPossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Create": {
           "lcm_calls": [
-            "PublicationTypesOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "PublicationTypesOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
+            "PossibilitiesOS (OwningSequence)",
             "PublicationTypesOA (OwningAtomic)",
             "SubPossibilitiesOS (OwningSequence)",
-            "PossibilitiesOS (OwningSequence)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
+            "PossibilitiesOS (OwningSequence)",
             "PublicationTypesOA (OwningAtomic)",
             "SubPossibilitiesOS (OwningSequence)",
-            "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -5606,8 +5606,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "PublicationTypesOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "PublicationTypesOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -5638,9 +5638,9 @@
         },
         "GetIsDefault": {
           "lcm_calls": [
-            "PublicationTypesOA (OwningAtomic)",
+            "Hvo",
             "PossibilitiesOS (OwningSequence)",
-            "Hvo"
+            "PublicationTypesOA (OwningAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -5658,8 +5658,8 @@
         },
         "GetParent": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -5683,11 +5683,11 @@
         },
         "SetIsDefault": {
           "lcm_calls": [
-            "PublicationTypesOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
+            "PublicationTypesOA (OwningAtomic)",
+            ".Add()",
             ".Insert()",
-            ".Remove()",
-            ".Add()"
+            ".Remove()"
           ],
           "mapping_type": "convenience"
         },
@@ -5705,9 +5705,9 @@
         }
       },
       "wraps_interfaces": [
-        "ICmPossibilityRepository",
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "ICmPossibilityRepository",
         "ITsString"
       ]
     },
@@ -5732,8 +5732,8 @@
           "lcm_calls": [
             "EntriesOC (OwningCollection)",
             "SensesRS (ReferenceSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5789,11 +5789,11 @@
         }
       },
       "wraps_interfaces": [
-        "IReversalIndexEntry",
         "ILexSense",
+        "IReversalIndex",
+        "IReversalIndexEntry",
         "IReversalIndexEntryFactory",
-        "ITsString",
-        "IReversalIndex"
+        "ITsString"
       ]
     },
     "ReversalIndexOperations": {
@@ -5802,10 +5802,10 @@
       "methods": {
         "Create": {
           "lcm_calls": [
-            "ReversalIndexesOC (OwningCollection)",
             "LexDbOA (OwningAtomic)",
-            ".Create()",
+            "ReversalIndexesOC (OwningCollection)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5846,11 +5846,11 @@
         }
       },
       "wraps_interfaces": [
+        "ILangProject",
+        "IReversalIndex",
         "IReversalIndexFactory",
         "IReversalIndexRepository",
-        "ITsString",
-        "IReversalIndex",
-        "ILangProject"
+        "ITsString"
       ]
     },
     "ReversalOperations": {
@@ -5867,8 +5867,8 @@
         "Create": {
           "lcm_calls": [
             "EntriesOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5876,8 +5876,8 @@
         "CreateSubentry": {
           "lcm_calls": [
             "SubentriesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -5891,14 +5891,14 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
-            "SensesRS (ReferenceSequence)",
-            "PartsOfSpeechRC (ReferenceCollection)",
-            "SubentriesOS (OwningSequence)",
             "EntriesOC (OwningCollection)",
-            ".Create()",
-            ".CopyAlternatives()",
+            "Owner",
+            "PartsOfSpeechRC (ReferenceCollection)",
+            "SensesRS (ReferenceSequence)",
+            "SubentriesOS (OwningSequence)",
             ".Add()",
+            ".CopyAlternatives()",
+            ".Create()",
             ".Insert()"
           ],
           "mapping_type": "composite"
@@ -5985,11 +5985,11 @@
         }
       },
       "wraps_interfaces": [
-        "IReversalIndexEntry",
         "ILexSense",
+        "IReversalIndex",
+        "IReversalIndexEntry",
         "IReversalIndexEntryFactory",
-        "ITsString",
-        "IReversalIndex"
+        "ITsString"
       ]
     },
     "RuleCollection": {
@@ -6012,8 +6012,8 @@
         "Create": {
           "lcm_calls": [
             "FootnotesOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -6037,9 +6037,9 @@
         }
       },
       "wraps_interfaces": [
-        "IScrBookAnnotationsFactory",
         "IScrBook",
         "IScrBookAnnotations",
+        "IScrBookAnnotationsFactory",
         "IScrScriptureNote"
       ]
     },
@@ -6100,12 +6100,12 @@
         }
       },
       "wraps_interfaces": [
-        "IScrSection",
         "IScrBook",
-        "IScrBookRepository",
-        "ITsString",
         "IScrBookFactory",
-        "IScripture"
+        "IScrBookRepository",
+        "IScrSection",
+        "IScripture",
+        "ITsString"
       ]
     },
     "ScrDraftOperations": {
@@ -6115,8 +6115,8 @@
         "Create": {
           "lcm_calls": [
             "ArchivedDraftsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -6160,10 +6160,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "IScrDraft",
         "IScrDraftFactory",
-        "IScripture"
+        "IScripture",
+        "ITsString"
       ]
     },
     "ScrNoteOperations": {
@@ -6176,8 +6176,8 @@
             "FootnotesOS (OwningSequence)",
             "NotesOS (OwningSequence)",
             "ParagraphsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -6212,22 +6212,22 @@
           "lcm_calls": [
             "DiscussionOA (OwningAtomic)",
             "ParagraphsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         }
       },
       "wraps_interfaces": [
         "IScrBook",
-        "IScrScriptureNote",
-        "IScrBookAnnotationsFactory",
-        "IScrScriptureNoteFactory",
-        "IStTextFactory",
-        "ITsString",
-        "IScrTxtPara",
         "IScrBookAnnotations",
-        "IStTxtParaFactory"
+        "IScrBookAnnotationsFactory",
+        "IScrScriptureNote",
+        "IScrScriptureNoteFactory",
+        "IScrTxtPara",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITsString"
       ]
     },
     "ScrSectionOperations": {
@@ -6285,21 +6285,21 @@
           "lcm_calls": [
             "HeadingOA (OwningAtomic)",
             "ParagraphsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         }
       },
       "wraps_interfaces": [
-        "IStText",
-        "IScrSection",
         "IScrBook",
-        "IStTextFactory",
-        "ITsString",
-        "IScrTxtPara",
+        "IScrSection",
         "IScrSectionFactory",
-        "IStTxtParaFactory"
+        "IScrTxtPara",
+        "IStText",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITsString"
       ]
     },
     "ScrTxtParaOperations": {
@@ -6310,8 +6310,8 @@
           "lcm_calls": [
             "ContentOA (OwningAtomic)",
             "ParagraphsOS (OwningSequence)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -6342,11 +6342,11 @@
       },
       "wraps_interfaces": [
         "IScrSection",
-        "IStTextFactory",
-        "IStStyle",
+        "IScrTxtPara",
         "IScrTxtParaFactory",
-        "ITsString",
-        "IScrTxtPara"
+        "IStStyle",
+        "IStTextFactory",
+        "ITsString"
       ]
     },
     "SegmentOperations": {
@@ -6356,8 +6356,8 @@
         "Create": {
           "lcm_calls": [
             "SegmentsOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -6374,11 +6374,11 @@
           "lcm_calls": [
             "Owner",
             "SegmentsOS (OwningSequence)",
-            ".Create()",
             ".Add()",
             ".CopyAlternatives()",
-            ".Remove()",
-            ".Insert()"
+            ".Create()",
+            ".Insert()",
+            ".Remove()"
           ],
           "mapping_type": "composite"
         },
@@ -6438,9 +6438,9 @@
         "RebuildSegments": {
           "lcm_calls": [
             "SegmentsOS (OwningSequence)",
+            ".Add()",
             ".Clear()",
             ".Create()",
-            ".Add()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -6482,9 +6482,9 @@
         }
       },
       "wraps_interfaces": [
-        "IStTxtPara",
-        "ISegmentFactory",
         "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
         "ITsString"
       ]
     },
@@ -6494,34 +6494,34 @@
       "methods": {
         "Create": {
           "lcm_calls": [
+            "PossibilitiesOS (OwningSequence)",
             "SemanticDomainListOA (OwningAtomic)",
             "SubPossibilitiesOS (OwningSequence)",
-            "PossibilitiesOS (OwningSequence)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
+            "PossibilitiesOS (OwningSequence)",
             "SemanticDomainListOA (OwningAtomic)",
             "SubPossibilitiesOS (OwningSequence)",
-            "PossibilitiesOS (OwningSequence)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "SemanticDomainListOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)",
             "OccurrencesRS (ReferenceSequence)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "SemanticDomainListOA (OwningAtomic)",
+            "SubPossibilitiesOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Insert()",
-            ".Add()"
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -6539,8 +6539,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "SemanticDomainListOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "SemanticDomainListOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -6570,8 +6570,8 @@
         },
         "GetParent": {
           "lcm_calls": [
-            "Owner",
-            "ClassName"
+            "ClassName",
+            "Owner"
           ],
           "mapping_type": "direct"
         },
@@ -6621,10 +6621,10 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "ICmSemanticDomain",
         "ICmSemanticDomainFactory",
-        "ILexSenseRepository"
+        "ILexSenseRepository",
+        "ITsString"
       ]
     },
     "SmartCollection": {
@@ -6638,13 +6638,13 @@
       "method_count": 0,
       "methods": {},
       "wraps_interfaces": [
-        "IWfiWordformRepository",
+        "ITsString",
+        "IWfiAnalysisFactory",
+        "IWfiGlossFactory",
+        "IWfiMorphBundleFactory",
         "IWfiWordform",
         "IWfiWordformFactory",
-        "IWfiMorphBundleFactory",
-        "IWfiAnalysisFactory",
-        "ITsString",
-        "IWfiGlossFactory"
+        "IWfiWordformRepository"
       ]
     },
     "TextOperations": {
@@ -6656,8 +6656,8 @@
             "MediaFileRA (ReferenceAtomic)",
             "MediaFilesOA (OwningAtomic)",
             "MediaFilesOC (OwningCollection)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -6665,8 +6665,8 @@
           "lcm_calls": [
             "ContentsOA (OwningAtomic)",
             "TextsOC (OwningCollection)",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -6680,11 +6680,11 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "ParagraphsOS (OwningSequence)",
             "ContentsOA (OwningAtomic)",
-            ".Create()",
+            "ParagraphsOS (OwningSequence)",
+            ".Add()",
             ".CopyAlternatives()",
-            ".Add()"
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -6746,16 +6746,16 @@
         "GetSyncableProperties": {
           "lcm_calls": [
             "GenresRC (ReferenceCollection)",
-            "MediaFilesRC (ReferenceCollection)",
-            "Guid"
+            "Guid",
+            "MediaFilesRC (ReferenceCollection)"
           ],
           "mapping_type": "convenience"
         },
         "SetGenre": {
           "lcm_calls": [
             "GenresRC (ReferenceCollection)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
@@ -6767,17 +6767,17 @@
         }
       },
       "wraps_interfaces": [
-        "IStTxtPara",
-        "ICmPossibility",
-        "ICmMediaFactory",
-        "ITextRepository",
-        "IStTextFactory",
         "ICmFolderFactory",
         "ICmMedia",
+        "ICmMediaFactory",
+        "ICmPossibility",
+        "IStTextFactory",
+        "IStTxtPara",
+        "IStTxtParaFactory",
         "IText",
         "ITextFactory",
-        "ITsString",
-        "IStTxtParaFactory"
+        "ITextRepository",
+        "ITsString"
       ]
     },
     "TranslationTypeOperations": {
@@ -6786,10 +6786,10 @@
       "methods": {
         "Create": {
           "lcm_calls": [
-            "TranslationTagsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
+            "TranslationTagsOA (OwningAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -6797,27 +6797,27 @@
         "Delete": {
           "lcm_calls": [
             "Guid",
-            "TranslationTagsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
+            "TranslationTagsOA (OwningAtomic)",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "TranslationTagsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
-            ".Create()",
-            ".Insert()",
+            "TranslationTagsOA (OwningAtomic)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()",
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
         "Find": {
           "lcm_calls": [
-            "TranslationTagsOA (OwningAtomic)",
             "PossibilitiesOS (OwningSequence)",
+            "TranslationTagsOA (OwningAtomic)",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -6830,8 +6830,8 @@
         },
         "GetAll": {
           "lcm_calls": [
-            "TranslationTagsOA (OwningAtomic)",
-            "PossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "TranslationTagsOA (OwningAtomic)"
           ],
           "mapping_type": "direct"
         },
@@ -6914,9 +6914,9 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "ICmPossibilityFactory",
-        "ITextRepository",
         "ICmPossibilityListFactory",
         "IStTxtParaRepository",
+        "ITextRepository",
         "ITsString"
       ]
     },
@@ -6933,37 +6933,37 @@
         },
         "Create": {
           "lcm_calls": [
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
-            "VariantEntryTypesRS (ReferenceSequence)",
             "EntryRefsOS (OwningSequence)",
             "Form",
-            ".Create()",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "VariantEntryTypesRS (ReferenceSequence)",
             ".Add()",
-            ".set_String()",
-            ".get_String()"
+            ".Create()",
+            ".get_String()",
+            ".set_String()"
           ],
           "mapping_type": "composite"
         },
         "Delete": {
           "lcm_calls": [
-            "Owner",
             "EntryRefsOS (OwningSequence)",
+            "Owner",
             ".Remove()"
           ],
           "mapping_type": "convenience"
         },
         "Duplicate": {
           "lcm_calls": [
-            "Owner",
-            "VariantEntryTypesRS (ReferenceSequence)",
-            "ComponentLexemesRS (ReferenceSequence)",
             "ComplexEntryTypesRS (ReferenceSequence)",
-            "PrimaryLexemesRS (ReferenceSequence)",
+            "ComponentLexemesRS (ReferenceSequence)",
             "EntryRefsOS (OwningSequence)",
+            "Owner",
+            "PrimaryLexemesRS (ReferenceSequence)",
+            "VariantEntryTypesRS (ReferenceSequence)",
+            ".Add()",
             ".Create()",
-            ".Insert()",
-            ".Add()"
+            ".Insert()"
           ],
           "mapping_type": "composite"
         },
@@ -6981,10 +6981,10 @@
         },
         "GetAllTypes": {
           "lcm_calls": [
-            "PossibilitiesOS (OwningSequence)",
-            "VariantEntryTypesOA (OwningAtomic)",
             "LexDbOA (OwningAtomic)",
-            "SubPossibilitiesOS (OwningSequence)"
+            "PossibilitiesOS (OwningSequence)",
+            "SubPossibilitiesOS (OwningSequence)",
+            "VariantEntryTypesOA (OwningAtomic)"
           ],
           "mapping_type": "convenience"
         },
@@ -6996,10 +6996,10 @@
         },
         "GetForm": {
           "lcm_calls": [
-            "Owner",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "Owner",
             ".get_String()"
           ],
           "mapping_type": "convenience"
@@ -7043,10 +7043,10 @@
         },
         "SetForm": {
           "lcm_calls": [
-            "Owner",
-            "LexemeFormOA (OwningAtomic)",
-            "LexemeFormOA",
             "Form",
+            "LexemeFormOA",
+            "LexemeFormOA (OwningAtomic)",
+            "Owner",
             ".set_String()"
           ],
           "mapping_type": "convenience"
@@ -7054,20 +7054,20 @@
         "SetType": {
           "lcm_calls": [
             "VariantEntryTypesRS (ReferenceSequence)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         }
       },
       "wraps_interfaces": [
-        "ILexEntryTypeRepository",
-        "IVariantComponentLexeme",
-        "ILexEntryRef",
-        "ILexEntryType",
-        "ILexEntryRefFactory",
         "ILexEntry",
-        "ITsString"
+        "ILexEntryRef",
+        "ILexEntryRefFactory",
+        "ILexEntryType",
+        "ILexEntryTypeRepository",
+        "ITsString",
+        "IVariantComponentLexeme"
       ]
     },
     "WfiAnalysisOperations": {
@@ -7077,16 +7077,16 @@
         "Approve": {
           "lcm_calls": [
             "Owner",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
         "Create": {
           "lcm_calls": [
             "AnalysesOC (OwningCollection)",
-            ".Create()",
-            ".Add()"
+            ".Add()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -7140,12 +7140,12 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiWordform",
         "IPartOfSpeech",
-        "IWfiAnalysisFactory",
         "ITsString",
+        "IWfiAnalysis",
+        "IWfiAnalysisFactory",
         "IWfiMorphBundle",
-        "IWfiAnalysis"
+        "IWfiWordform"
       ]
     },
     "WfiGlossOperations": {
@@ -7155,17 +7155,17 @@
         "Approve": {
           "lcm_calls": [
             "Owner",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         },
         "Create": {
           "lcm_calls": [
-            "MeaningsOC (OwningCollection)",
             "Form",
-            ".Create()",
+            "MeaningsOC (OwningCollection)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -7210,10 +7210,10 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiGloss",
         "ITsString",
-        "IWfiGlossFactory",
-        "IWfiAnalysis"
+        "IWfiAnalysis",
+        "IWfiGloss",
+        "IWfiGlossFactory"
       ]
     },
     "WfiMorphBundleOperations": {
@@ -7222,11 +7222,11 @@
       "methods": {
         "Create": {
           "lcm_calls": [
-            "SenseRA (ReferenceAtomic)",
-            "MorphBundlesOS (OwningSequence)",
             "Form",
-            ".Create()",
+            "MorphBundlesOS (OwningSequence)",
+            "SenseRA (ReferenceAtomic)",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -7290,11 +7290,11 @@
       },
       "wraps_interfaces": [
         "ILexSense",
-        "IWfiMorphBundleFactory",
-        "ITsString",
-        "IWfiMorphBundle",
         "IMoMorphType",
-        "IWfiAnalysis"
+        "ITsString",
+        "IWfiAnalysis",
+        "IWfiMorphBundle",
+        "IWfiMorphBundleFactory"
       ]
     },
     "WfiWordformOperations": {
@@ -7354,18 +7354,18 @@
         "SetApprovedAnalysis": {
           "lcm_calls": [
             "AnalysesOC (OwningCollection)",
-            ".Clear()",
-            ".Add()"
+            ".Add()",
+            ".Clear()"
           ],
           "mapping_type": "convenience"
         }
       },
       "wraps_interfaces": [
-        "IWfiWordformRepository",
+        "ITsString",
+        "IWfiAnalysis",
         "IWfiWordform",
         "IWfiWordformFactory",
-        "ITsString",
-        "IWfiAnalysis"
+        "IWfiWordformRepository"
       ]
     },
     "WordformOperations": {
@@ -7374,11 +7374,11 @@
       "methods": {
         "Create": {
           "lcm_calls": [
+            "Form",
             "WordformInventoryOA (OwningAtomic)",
             "WordformsOC (OwningCollection)",
-            "Form",
-            ".Create()",
             ".Add()",
+            ".Create()",
             ".set_String()"
           ],
           "mapping_type": "composite"
@@ -7393,21 +7393,21 @@
         },
         "Duplicate": {
           "lcm_calls": [
-            "WordformInventoryOA (OwningAtomic)",
-            "Form",
             "AnalysesOC (OwningCollection)",
-            "WordformsOC (OwningCollection)",
             "CategoryRA (ReferenceAtomic)",
+            "Form",
+            "Gloss",
+            "InflClassRA (ReferenceAtomic)",
             "MeaningsOC (OwningCollection)",
             "MorphBundlesOS (OwningSequence)",
-            "Gloss",
-            "SenseRA (ReferenceAtomic)",
-            "MsaRA (ReferenceAtomic)",
             "MorphRA (ReferenceAtomic)",
-            "InflClassRA (ReferenceAtomic)",
-            ".Create()",
+            "MsaRA (ReferenceAtomic)",
+            "SenseRA (ReferenceAtomic)",
+            "WordformInventoryOA (OwningAtomic)",
+            "WordformsOC (OwningCollection)",
             ".Add()",
-            ".CopyAlternatives()"
+            ".CopyAlternatives()",
+            ".Create()"
           ],
           "mapping_type": "composite"
         },
@@ -7450,13 +7450,13 @@
         }
       },
       "wraps_interfaces": [
-        "IWfiWordformRepository",
+        "ITsString",
+        "IWfiAnalysisFactory",
+        "IWfiGlossFactory",
+        "IWfiMorphBundleFactory",
         "IWfiWordform",
         "IWfiWordformFactory",
-        "IWfiMorphBundleFactory",
-        "IWfiAnalysisFactory",
-        "ITsString",
-        "IWfiGlossFactory"
+        "IWfiWordformRepository"
       ]
     },
     "WritingSystemOperations": {
@@ -7471,9 +7471,9 @@
         }
       },
       "wraps_interfaces": [
-        "ITsString",
         "IMultiString",
-        "IMultiUnicode"
+        "IMultiUnicode",
+        "ITsString"
       ]
     }
   },

@@ -27,6 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
+from json_utils import sort_json_arrays
+
 # ---- Logging -----------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -1106,6 +1108,7 @@ Examples:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write output
+        stamped_doc = sort_json_arrays(stamped_doc)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(stamped_doc, f, indent=2, ensure_ascii=False, sort_keys=True)
 

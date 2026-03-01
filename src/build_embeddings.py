@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 
+from json_utils import sort_json_arrays
+
 try:
     from sentence_transformers import SentenceTransformer
     import faiss
@@ -283,6 +285,7 @@ def save_embeddings(embeddings: np.ndarray, items: List[Dict], index_dir: Path):
         }
     }
 
+    metadata = sort_json_arrays(metadata)
     with open(embeddings_dir / "metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, sort_keys=True)
 

@@ -19,6 +19,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
+from json_utils import sort_json_arrays
+
 
 # ---- Version Detection -------------------------------------------------------
 
@@ -1570,6 +1572,7 @@ def main():
             output_file = args.output or "flexlibs_api.json"
 
             print(f"[INFO] Writing results to: {output_file}")
+            api_data = sort_json_arrays(api_data)
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
 
@@ -1588,6 +1591,7 @@ def main():
             output_file = args.output or "flexlibs2_api.json"
 
             print(f"[INFO] Writing results to: {output_file}")
+            api_data = sort_json_arrays(api_data)
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
 
@@ -1609,8 +1613,9 @@ def main():
                 api_data = analyze_flexlibs2(default_flexlibs2)
                 output_file = args.output or "flexlibs2_api.json"
                 print(f"[INFO] Writing results to: {output_file}")
+                api_data = sort_json_arrays(api_data)
                 with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(api_data, f, indent=2, ensure_ascii=False)
+                    json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
                 print_summary(api_data, "2.0")
             except Exception as e:
                 print(f"[ERROR] FlexLibs 2.0: {e}")
@@ -1620,8 +1625,9 @@ def main():
                 api_data = analyze_flexlibs_stable(default_flexlibs)
                 output_file = "flexlibs_api.json"
                 print(f"\n[INFO] Writing results to: {output_file}")
+                api_data = sort_json_arrays(api_data)
                 with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(api_data, f, indent=2, ensure_ascii=False)
+                    json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
                 print_summary(api_data, "stable")
             except Exception as e:
                 print(f"[ERROR] FlexLibs stable: {e}")

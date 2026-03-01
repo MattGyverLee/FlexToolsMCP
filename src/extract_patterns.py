@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Set, Optional
 
+from json_utils import sort_json_arrays
+
 
 def get_project_root() -> Path:
     """Get the project root directory."""
@@ -78,6 +80,7 @@ def load_json(path: Path) -> Dict:
 
 def save_json(data: Dict, path: Path):
     """Save a JSON file with UTF-8 encoding and sorted keys."""
+    data = sort_json_arrays(data)
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
     print(f"[INFO] Saved: {path}")

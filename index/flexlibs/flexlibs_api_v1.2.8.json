@@ -24,49 +24,49 @@
       "example": "",
       "id": "FLExProject",
       "lcm_dependencies": [
-        "ICmObjectRepository",
-        "ILexEntryRepository",
-        "ILexEntry",
-        "LexEntryTags",
-        "ILexSense",
-        "LexSenseTags",
-        "IWfiWordformRepository",
-        "WfiWordformTags",
-        "WfiGlossTags",
-        "IWfiAnalysisRepository",
-        "IWfiAnalysis",
-        "WfiAnalysisTags",
-        "WfiMorphBundleTags",
-        "LexExampleSentenceTags",
-        "MoFormTags",
-        "ILexRefTypeRepository",
-        "ICmPossibilityRepository",
-        "ICmPossibilityList",
-        "ICmSemanticDomain",
-        "TextTags",
-        "ITextRepository",
-        "IStTxtPara",
-        "ISegmentRepository",
-        "IReversalIndex",
-        "IReversalIndexEntry",
-        "ReversalIndexEntryTags",
-        "IMoMorphType",
-        "SpecialWritingSystemCodes",
-        "IMultiUnicode",
-        "IMultiString",
-        "LcmInvalidClassException",
-        "LcmInvalidFieldException",
-        "LcmFileLockedException",
-        "LcmDataMigrationForbiddenException",
-        "IUndoStackManager",
         "CellarPropertyType",
         "CellarPropertyTypeFilter",
+        "ICmObjectRepository",
+        "ICmPossibilityList",
+        "ICmPossibilityRepository",
+        "ICmSemanticDomain",
         "IFwMetaDataCacheManaged",
-        "ITsString",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "ILexRefTypeRepository",
+        "ILexSense",
+        "IMoMorphType",
+        "IMultiString",
+        "IMultiUnicode",
+        "IReversalIndex",
+        "IReversalIndexEntry",
+        "ISegmentRepository",
+        "IStTxtPara",
+        "ITextRepository",
         "ITsStrBldr",
+        "ITsString",
+        "IUndoStackManager",
+        "IWfiAnalysis",
+        "IWfiAnalysisRepository",
+        "IWfiWordformRepository",
+        "LcmDataMigrationForbiddenException",
+        "LcmFileLockedException",
+        "LcmInvalidClassException",
+        "LcmInvalidFieldException",
+        "LexEntryTags",
+        "LexExampleSentenceTags",
+        "LexSenseTags",
+        "MoFormTags",
+        "ReflectionHelper",
+        "ReversalIndexEntryTags",
+        "SpecialWritingSystemCodes",
+        "TextTags",
         "TsStringUtils",
-        "WorkerThreadException",
-        "ReflectionHelper"
+        "WfiAnalysisTags",
+        "WfiGlossTags",
+        "WfiMorphBundleTags",
+        "WfiWordformTags",
+        "WorkerThreadException"
       ],
       "methods": [
         {
@@ -134,8 +134,8 @@
               ]
             },
             "properties_accessed": [
-              "Guid",
-              "ClassID"
+              "ClassID",
+              "Guid"
             ],
             "repositories_used": [],
             "transformations": [
@@ -1664,9 +1664,9 @@
               ]
             },
             "properties_accessed": [
-              "LexemeFormOA (OwningAtomic)",
+              "Form",
               "LexemeFormOA",
-              "Form"
+              "LexemeFormOA (OwningAtomic)"
             ],
             "repositories_used": [],
             "transformations": [
@@ -2528,9 +2528,9 @@
               ]
             },
             "properties_accessed": [
-              "LexemeFormOA (OwningAtomic)",
+              "Form",
               "LexemeFormOA",
-              "Form"
+              "LexemeFormOA (OwningAtomic)"
             ],
             "repositories_used": [],
             "transformations": [
@@ -2673,8 +2673,8 @@
               ]
             },
             "properties_accessed": [
-              "Hvo",
-              "ClassName"
+              "ClassName",
+              "Hvo"
             ],
             "repositories_used": [],
             "transformations": [],
@@ -4153,8 +4153,8 @@
       "method": "BuildGotoURL",
       "methods_called": [],
       "properties_accessed": [
-        "Guid",
-        "ClassID"
+        "ClassID",
+        "Guid"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -5940,9 +5940,9 @@
         ".get_String()"
       ],
       "properties_accessed": [
-        "LexemeFormOA (OwningAtomic)",
+        "Form",
         "LexemeFormOA",
-        "Form"
+        "LexemeFormOA (OwningAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -6793,9 +6793,9 @@
         ".set_String()"
       ],
       "properties_accessed": [
-        "LexemeFormOA (OwningAtomic)",
+        "Form",
         "LexemeFormOA",
-        "Form"
+        "LexemeFormOA (OwningAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -6911,8 +6911,8 @@
       "method": "LexiconSetListFieldSingle",
       "methods_called": [],
       "properties_accessed": [
-        "Hvo",
-        "ClassName"
+        "ClassName",
+        "Hvo"
       ],
       "repositories_used": [],
       "utilities_used": []

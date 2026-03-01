@@ -33,6 +33,8 @@ import re
 from pathlib import Path
 from datetime import datetime
 
+from json_utils import sort_json_arrays
+
 
 def load_env():
     """Load environment variables from .env file.
@@ -369,6 +371,7 @@ def apply_categorization() -> bool:
                 changes += 1
 
         # Save updated file
+        lcm = sort_json_arrays(lcm)
         with open(liblcm_path, 'w', encoding='utf-8') as f:
             json.dump(lcm, f, indent=2, ensure_ascii=False, sort_keys=True)
 

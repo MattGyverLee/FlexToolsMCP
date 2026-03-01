@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 
 from mcp.server import Server
 
+from json_utils import sort_json_arrays
+
 
 # ============================================================
 # Operation Logging System
@@ -96,8 +98,9 @@ class PatternTracker:
     def save(self):
         """Save patterns to disk."""
         try:
+            patterns_to_save = sort_json_arrays(self.patterns)
             with open(self.patterns_file, 'w', encoding='utf-8') as f:
-                json.dump(self.patterns, f, indent=2, ensure_ascii=False, sort_keys=True)
+                json.dump(patterns_to_save, f, indent=2, ensure_ascii=False, sort_keys=True)
         except Exception as e:
             operations_logger.warning(f"Failed to save patterns: {e}")
 

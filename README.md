@@ -89,6 +89,7 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 | Document | Purpose |
 |----------|---------|
+| [HISTORY.md](HISTORY.md) | Release notes and version history |
 | [SETUP.md](SETUP.md) | Installation and AI tool configuration |
 | [USAGE.md](USAGE.md) | How to use the MCP, workflows, examples |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Project structure, architecture, contributing |

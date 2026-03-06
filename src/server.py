@@ -526,6 +526,7 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
 
     has_print = 'print(' in code_no_comments
     has_report_info = re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
+    has_report_direct = re.search(r'report\s*\(', code_no_comments) and not re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
 
     if tool_type == "operation":
         # run_operation: if outputting, use print(); if not outputting, that's fine
@@ -535,6 +536,13 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
                 "uses_correct_mechanism": True,
                 "mechanism_type": "print",
                 "message": None
+            }
+        elif has_report_direct:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "report",
+                "message": "Operations code calls report() directly, but report is not available. Only modules have access to report. Use print() instead for output."
             }
         elif has_report_info:
             return {
@@ -560,6 +568,13 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
                 "uses_correct_mechanism": True,
                 "mechanism_type": "report",
                 "message": None
+            }
+        elif has_report_direct:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "report",
+                "message": "Module code calls report() directly, but the report object must be accessed with a method like report.Info(message). Use report.Info(), report.Warning(), or report.Error() instead."
             }
         elif has_print:
             return {
@@ -4248,6 +4263,16 @@ if __name__ == "__main__":
         execution_result["exit_code"] = result.returncode
         if args.get("show_code", True):
             execution_result["code_executed"] = operations
+
+        # Detect polymorphic attribute errors and suggest resolve_property
+        if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
+            polymorphic_info = detect_polymorphic_error(execution_result["error"])
+            if polymorphic_info["is_polymorphic_error"]:
+                execution_result["polymorphic_error_detected"] = True
+                execution_result["error_type"] = "PolymorphicAttributeError"
+                execution_result["object_type"] = polymorphic_info["object_type"]
+                execution_result["property_name"] = polymorphic_info["property_name"]
+                execution_result["help"] = polymorphic_info["suggestion"]
 
         # Log operation result
         if execution_result.get("success"):

@@ -500,14 +500,16 @@ def detect_module_structure(code: str) -> dict:
 
 
 def check_output_mechanism(code: str, tool_type: str) -> dict:
-    """Check that code uses correct output mechanism for its tool type.
+    """Check that code uses correct output mechanism IF it produces output.
 
-    For run_operation (raw operations code): MUST use print()
-    For run_module (FlexTools modules): MUST use report.Info() (or report.*)
+    For run_operation (raw operations code): IF outputting, use print()
+    For run_module (FlexTools modules): IF outputting, use report.Info() (or report.*)
+
+    Code with NO output is always valid.
 
     Returns dict with:
       - has_output: bool - whether code produces output
-      - uses_correct_mechanism: bool - uses tool-appropriate output
+      - uses_correct_mechanism: bool - uses tool-appropriate output (if outputting)
       - mechanism_type: str - detected mechanism (print, report, none)
       - message: str - guidance if incorrect
     """
@@ -519,7 +521,7 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
     has_report_info = re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
 
     if tool_type == "operation":
-        # run_operation: code should use print()
+        # run_operation: if outputting, use print(); if not outputting, that's fine
         if has_print:
             return {
                 "has_output": True,
@@ -532,18 +534,19 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
                 "has_output": True,
                 "uses_correct_mechanism": False,
                 "mechanism_type": "report",
-                "message": "Operations code should use print() for output, not report.Info(). (report is only available in modules)"
+                "message": "Operations code uses report.Info(), but only modules have access to report. Use print() instead for output."
             }
         else:
+            # No output: this is valid
             return {
                 "has_output": False,
-                "uses_correct_mechanism": False,
+                "uses_correct_mechanism": True,
                 "mechanism_type": "none",
-                "message": "Code produces no output. Use print() to output results so they appear in the response."
+                "message": None
             }
 
     elif tool_type == "module":
-        # run_module: code should use report.Info(), not print()
+        # run_module: if outputting, use report.Info(); if not outputting, that's fine
         if has_report_info:
             return {
                 "has_output": True,
@@ -556,17 +559,18 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
                 "has_output": True,
                 "uses_correct_mechanism": False,
                 "mechanism_type": "print",
-                "message": "Module code should use report.Info() for output, not print(). This ensures output is captured in the FlexTools result format."
+                "message": "Module code uses print(), but output should use report.Info() to be captured in the FlexTools result format."
             }
         else:
+            # No output: this is valid
             return {
                 "has_output": False,
-                "uses_correct_mechanism": False,
+                "uses_correct_mechanism": True,
                 "mechanism_type": "none",
-                "message": "Code produces no output. Use report.Info() to output results so they appear in the module result."
+                "message": None
             }
 
-    return {"has_output": False, "uses_correct_mechanism": False, "mechanism_type": "unknown"}
+    return {"has_output": False, "uses_correct_mechanism": True, "mechanism_type": "unknown"}
 
 
 def detect_polymorphic_error(error_msg: str) -> dict:

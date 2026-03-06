@@ -625,6 +625,103 @@ def detect_polymorphic_error(error_msg: str) -> dict:
     return {"is_polymorphic_error": False}
 
 
+def detect_undefined_variables(code: str) -> dict:
+    """Detect likely undefined variables in code using static analysis.
+
+    Looks for variable usage patterns that suggest undefined names:
+    - CapitalizedName(...) - likely undeclared class/function (e.g., API_MODE_IMPORTS, SomeOperations)
+    - UPPERCASE_VAR - likely internal variable or constant
+    - References to MCP internals
+
+    Returns dict with:
+      - has_undefined: bool - whether undefined variables detected
+      - undefined_vars: list - variable names that appear undefined
+      - suggestion: str - guidance for fixing
+    """
+    import re
+    import ast
+
+    try:
+        # Parse to AST to find actual undefined variables
+        tree = ast.parse(code)
+        defined_names = set()
+        used_names = set()
+
+        class NameCollector(ast.NodeVisitor):
+            def visit_FunctionDef(self, node):
+                defined_names.add(node.name)
+                # Add function parameters
+                for arg in node.args.args:
+                    defined_names.add(arg.arg)
+                self.generic_visit(node)
+
+            def visit_ClassDef(self, node):
+                defined_names.add(node.name)
+                self.generic_visit(node)
+
+            def visit_Assign(self, node):
+                # Track assignments (x = value)
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        defined_names.add(target.id)
+                self.generic_visit(node)
+
+            def visit_ImportFrom(self, node):
+                # Track imports
+                for alias in node.names:
+                    defined_names.add(alias.asname or alias.name)
+                self.generic_visit(node)
+
+            def visit_Import(self, node):
+                # Track imports
+                for alias in node.names:
+                    defined_names.add(alias.asname or alias.name)
+                self.generic_visit(node)
+
+            def visit_Name(self, node):
+                # Track name usage
+                if isinstance(node.ctx, ast.Load):  # Reading, not writing
+                    used_names.add(node.id)
+                self.generic_visit(node)
+
+        collector = NameCollector()
+        collector.visit(tree)
+
+        # Add built-in names
+        builtins = {
+            "print", "len", "range", "list", "dict", "str", "int", "float", "bool",
+            "True", "False", "None", "Exception", "ValueError", "TypeError",
+            "for", "if", "else", "elif", "while", "def", "class",
+            "project", "report", "modifyAllowed", "FLExProject"  # FlexTools/module context
+        }
+        defined_names.update(builtins)
+
+        # Find undefined variables
+        undefined = used_names - defined_names
+
+        # Filter out likely false positives (imported in patterns, etc)
+        suspicious = []
+        for var in undefined:
+            # Flag internal-looking names and MCP variables
+            if (var.startswith("API_") or var.isupper() or
+                var[0].isupper() and "Operations" in var or
+                "API_MODE" in var):
+                suspicious.append(var)
+
+        if suspicious:
+            return {
+                "has_undefined": True,
+                "undefined_vars": sorted(suspicious),
+                "suggestion": f"Undefined variables detected: {', '.join(suspicious)}. Make sure all classes and modules are imported (e.g., 'from flexlibs2 import ...'). Do not use internal MCP variables like API_MODE_IMPORTS."
+            }
+
+        return {"has_undefined": False, "undefined_vars": []}
+
+    except SyntaxError:
+        # Can't parse code, skip check
+        return {"has_undefined": False, "undefined_vars": []}
+
+
 def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = False) -> dict:
     """Format enhanced warning with staged confirmation for data-affecting operations.
 
@@ -3368,6 +3465,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "guidance": "In FlexTools modules, use report.Info(message) to output results. The report object is provided to Main() for this purpose."
         }, indent=2))]
 
+    # Check for undefined variables that indicate hallucinated/internal names
+    undefined_check = detect_undefined_variables(module_code)
+    if undefined_check["has_undefined"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "undefined_variables",
+            "message": undefined_check["suggestion"],
+            "undefined_vars": undefined_check["undefined_vars"],
+            "guidance": "All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
+        }, indent=2))]
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Get API mode-specific imports
@@ -3914,6 +4021,16 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "has_output": output_check["has_output"],
             "detected_mechanism": output_check["mechanism_type"],
             "guidance": "In operations code, use print(message) to output results. The report object is only available in FlexTools modules."
+        }, indent=2))]
+
+    # Check for undefined variables that indicate hallucinated/internal names
+    undefined_check = detect_undefined_variables(operations)
+    if undefined_check["has_undefined"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "undefined_variables",
+            "message": undefined_check["suggestion"],
+            "undefined_vars": undefined_check["undefined_vars"],
+            "guidance": "All classes/modules must be imported first. Use 'from flexlibs2 import ClassName' or 'import module'. Do not use internal MCP variable names like API_MODE_IMPORTS."
         }, indent=2))]
 
     timeout_seconds = args.get("timeout_seconds", 120)

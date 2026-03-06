@@ -499,6 +499,76 @@ def detect_module_structure(code: str) -> dict:
     }
 
 
+def check_output_mechanism(code: str, tool_type: str) -> dict:
+    """Check that code uses correct output mechanism for its tool type.
+
+    For run_operation (raw operations code): MUST use print()
+    For run_module (FlexTools modules): MUST use report.Info() (or report.*)
+
+    Returns dict with:
+      - has_output: bool - whether code produces output
+      - uses_correct_mechanism: bool - uses tool-appropriate output
+      - mechanism_type: str - detected mechanism (print, report, none)
+      - message: str - guidance if incorrect
+    """
+    import re
+
+    code_no_comments = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
+
+    has_print = 'print(' in code_no_comments
+    has_report_info = re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
+
+    if tool_type == "operation":
+        # run_operation: code should use print()
+        if has_print:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": True,
+                "mechanism_type": "print",
+                "message": None
+            }
+        elif has_report_info:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "report",
+                "message": "Operations code should use print() for output, not report.Info(). (report is only available in modules)"
+            }
+        else:
+            return {
+                "has_output": False,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "none",
+                "message": "Code produces no output. Use print() to output results so they appear in the response."
+            }
+
+    elif tool_type == "module":
+        # run_module: code should use report.Info(), not print()
+        if has_report_info:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": True,
+                "mechanism_type": "report",
+                "message": None
+            }
+        elif has_print:
+            return {
+                "has_output": True,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "print",
+                "message": "Module code should use report.Info() for output, not print(). This ensures output is captured in the FlexTools result format."
+            }
+        else:
+            return {
+                "has_output": False,
+                "uses_correct_mechanism": False,
+                "mechanism_type": "none",
+                "message": "Code produces no output. Use report.Info() to output results so they appear in the module result."
+            }
+
+    return {"has_output": False, "uses_correct_mechanism": False, "mechanism_type": "unknown"}
+
+
 def detect_polymorphic_error(error_msg: str) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
@@ -3236,6 +3306,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "session": session_state.summary()
         }, indent=2))]
 
+    # Check output mechanism - modules must use report.Info(), not print()
+    output_check = check_output_mechanism(module_code, "module")
+    if not output_check["uses_correct_mechanism"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_output_mechanism",
+            "message": output_check["message"],
+            "has_output": output_check["has_output"],
+            "detected_mechanism": output_check["mechanism_type"],
+            "guidance": "In FlexTools modules, use report.Info(message) to output results. The report object is provided to Main() for this purpose."
+        }, indent=2))]
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Get API mode-specific imports
@@ -3764,6 +3845,17 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(
             format_cud_warning(cud_info, write_enabled), indent=2
         ))]
+
+    # Check output mechanism - operations must use print(), not report.Info()
+    output_check = check_output_mechanism(operations, "operation")
+    if not output_check["uses_correct_mechanism"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_output_mechanism",
+            "message": output_check["message"],
+            "has_output": output_check["has_output"],
+            "detected_mechanism": output_check["mechanism_type"],
+            "guidance": "In operations code, use print(message) to output results. The report object is only available in FlexTools modules."
+        }, indent=2))]
 
     timeout_seconds = args.get("timeout_seconds", 120)
     api_mode = session_state.get_mode()

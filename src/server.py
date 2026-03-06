@@ -1040,20 +1040,6 @@ class SemanticSearch:
         return results
 
 
-def extract_version_from_path(file_path: Path) -> str:
-    """Extract version from API file path.
-
-    Example: liblcm_api_v11.0.0.json -> 11.0.0
-    """
-    if not file_path:
-        return None
-    filename = file_path.stem  # Remove .json
-    parts = filename.split("_v")
-    if len(parts) >= 2:
-        return parts[-1]
-    return None
-
-
 @dataclass
 class APIIndex:
     """Holds the loaded API documentation indexes."""
@@ -1106,7 +1092,9 @@ class APIIndex:
             try:
                 with open(liblcm_path, "r", encoding="utf-8") as f:
                     index.liblcm = json.load(f)
-                index.liblcm_version = extract_version_from_path(liblcm_path)
+                # Extract version from filename (e.g., liblcm_api_v11.0.0.json -> 11.0.0)
+                parts = liblcm_path.stem.split("_v")
+                index.liblcm_version = parts[-1] if len(parts) >= 2 else None
                 if installed_liblcm:
                     operations_logger.info(f"Loaded LibLCM {installed_liblcm} from {liblcm_path.name}")
                 else:
@@ -1142,7 +1130,9 @@ class APIIndex:
             try:
                 with open(flexlibs2_path, "r", encoding="utf-8") as f:
                     index.flexlibs2 = json.load(f)
-                index.flexlibs2_version = extract_version_from_path(flexlibs2_path)
+                # Extract version from filename (e.g., flexlibs2_api_v2.3.0.json -> 2.3.0)
+                parts = flexlibs2_path.stem.split("_v")
+                index.flexlibs2_version = parts[-1] if len(parts) >= 2 else None
                 if installed_flexlibs2:
                     operations_logger.info(f"Loaded FlexLibs 2.0 {installed_flexlibs2} from {flexlibs2_path.name}")
                 else:
@@ -1177,7 +1167,9 @@ class APIIndex:
             try:
                 with open(flexlibs_stable_path, "r", encoding="utf-8") as f:
                     index.flexlibs_stable = json.load(f)
-                index.flexlibs_stable_version = extract_version_from_path(flexlibs_stable_path)
+                # Extract version from filename (e.g., flexlibs_api_v1.2.8.json -> 1.2.8)
+                parts = flexlibs_stable_path.stem.split("_v")
+                index.flexlibs_stable_version = parts[-1] if len(parts) >= 2 else None
                 if installed_flexlibs:
                     operations_logger.info(f"Loaded FlexLibs stable {installed_flexlibs} from {flexlibs_stable_path.name}")
                 else:

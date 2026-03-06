@@ -499,6 +499,36 @@ def detect_module_structure(code: str) -> dict:
     }
 
 
+def detect_polymorphic_error(error_msg: str) -> dict:
+    """Detect polymorphic attribute errors and suggest resolve_property.
+
+    Identifies errors like "'IPhSegmentRule' object has no attribute 'RightHandSidesOS'"
+    and suggests using resolve_property to find the correct property and casting.
+
+    Returns dict with:
+      - is_polymorphic_error: bool - whether this looks like a polymorphic issue
+      - object_type: str - the object type from the error (e.g., 'IPhSegmentRule')
+      - property_name: str - the missing property (e.g., 'RightHandSidesOS')
+      - suggestion: str - suggested resolve_property call
+    """
+    import re
+
+    # Match pattern: 'ObjectType' object has no attribute 'PropertyName'
+    pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
+    match = re.search(pattern, error_msg)
+
+    if match:
+        object_type, property_name = match.groups()
+        return {
+            "is_polymorphic_error": True,
+            "object_type": object_type,
+            "property_name": property_name,
+            "suggestion": f"Call resolve_property(property_name='{property_name}', context_entity='{object_type}') to find the correct property and required casting."
+        }
+
+    return {"is_polymorphic_error": False}
+
+
 def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = False) -> dict:
     """Format enhanced warning with staged confirmation for data-affecting operations.
 
@@ -3509,6 +3539,16 @@ MODULE_CODE = {module_code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["module_code"] = module_code
+
+        # Detect polymorphic attribute errors and suggest resolve_property
+        if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
+            polymorphic_info = detect_polymorphic_error(execution_result["error"])
+            if polymorphic_info["is_polymorphic_error"]:
+                execution_result["polymorphic_error_detected"] = True
+                execution_result["error_type"] = "PolymorphicAttributeError"
+                execution_result["object_type"] = polymorphic_info["object_type"]
+                execution_result["property_name"] = polymorphic_info["property_name"]
+                execution_result["help"] = polymorphic_info["suggestion"]
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
 

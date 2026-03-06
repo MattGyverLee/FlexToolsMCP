@@ -460,6 +460,45 @@ def detect_cud_operations(code: str) -> dict:
     }
 
 
+def detect_module_structure(code: str) -> dict:
+    """Check if code is in valid FlexTools module format.
+
+    A valid FlexTools module must have:
+    - from flextoolslib import statement
+    - def Main(project, report, modifyAllowed): function
+    - FlexToolsModuleClass(...) instantiation
+    - docs = {...} dictionary with FTM_* keys
+
+    Returns dict with:
+      - is_valid_module: bool - whether all required elements are present
+      - missing_elements: list - what's missing (for error messaging)
+    """
+    import re
+
+    missing = []
+
+    # Check for flextoolslib import
+    if "from flextoolslib import" not in code:
+        missing.append("from flextoolslib import *")
+
+    # Check for Main function with correct signature
+    if not re.search(r'^\s*def Main\s*\(', code, re.MULTILINE):
+        missing.append("def Main(project, report, modifyAllowed):")
+
+    # Check for FlexToolsModuleClass instantiation
+    if "FlexToolsModuleClass(" not in code:
+        missing.append("FlexToolsModule = FlexToolsModuleClass(Main, docs)")
+
+    # Check for docs dictionary
+    if not re.search(r'^\s*docs\s*=\s*\{', code, re.MULTILINE):
+        missing.append("docs = {FTM_Name: ..., FTM_Version: ..., ...}")
+
+    return {
+        "is_valid_module": len(missing) == 0,
+        "missing_elements": missing
+    }
+
+
 def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = False) -> dict:
     """Format enhanced warning with staged confirmation for data-affecting operations.
 
@@ -1459,7 +1498,7 @@ Task and project_name can be set now or updated/provided later as needed.""",
         ),
         Tool(
             name="get_module_template",
-            description="[WORKFLOW - IMPLEMENTATION] Get the official FlexTools module template. Use this AFTER completing discovery (search_by_capability, get_navigation_path, get_object_api, resolve_property, find_examples) to get the boilerplate for writing your module.",
+            description="[WORKFLOW - REQUIRED BEFORE RUN_MODULE] Get the official FlexTools module template. Must call this to get boilerplate before submitting code to run_module. After discovery (search_by_capability, get_navigation_path, get_object_api, etc.), call this with module_name and synopsis to get properly structured template.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1516,7 +1555,7 @@ Task and project_name can be set now or updated/provided later as needed.""",
         ),
         Tool(
             name="run_module",
-            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Complete discovery workflow first. Use get_module_template for boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
+            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Code must be in FlexTools module format with def Main(project, report, modifyAllowed), FlexToolsModuleClass, from flextoolslib import, and docs dict. Use get_module_template to get the proper boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -3142,6 +3181,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(
             format_cud_warning(cud_info, write_enabled), indent=2
         ))]
+
+    # Validate module structure - must be proper FlexTools module format
+    structure_check = detect_module_structure(module_code)
+    if not structure_check["is_valid_module"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_module_format",
+            "message": "Code is not in FlexTools module format. Call get_module_template first to get the correct boilerplate.",
+            "missing_elements": structure_check["missing_elements"],
+            "next_step": "Call get_module_template with module_name and synopsis to get the proper template, then fill in your logic inside the Main() function."
+        }, indent=2))]
 
     timeout_seconds = args.get("timeout_seconds", 300)
 

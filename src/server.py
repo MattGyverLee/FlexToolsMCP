@@ -3192,6 +3192,20 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "next_step": "Call get_module_template with module_name and synopsis to get the proper template, then fill in your logic inside the Main() function."
         }, indent=2))]
 
+    # Require API discovery before executing module code
+    skip_api_check = args.get("skip_api_check", False)
+    if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "API discovery required",
+            "message": "No APIs have been discovered yet. Before running modules, you MUST use one of these tools first:\n"
+                      "1. start(task='...') - discovers relevant APIs automatically\n"
+                      "2. get_object_api(object_type='...') - get API for specific object\n"
+                      "3. search_by_capability(query='...') - search for APIs by description\n\n"
+                      "This prevents using incorrect/hallucinated method names like 'project.Wordforms' or 'report.add()'.",
+            "hint": "Call get_object_api() for each object/operation you use in your module (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
+            "session": session_state.summary()
+        }, indent=2))]
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Get API mode-specific imports

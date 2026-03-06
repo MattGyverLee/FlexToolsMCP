@@ -3525,7 +3525,15 @@ def run_module():
         }
 
     except Exception as e:
-        result["error"] = "Execution error: {}\\n{}".format(str(e), traceback.format_exc())
+        error_msg = str(e)
+
+        # Support RESULTS: pattern for output (used by generated code)
+        # Example: raise Exception(f"RESULTS: Total entries: {count}")
+        if error_msg.startswith("RESULTS:"):
+            result["success"] = True
+            result["output"] = error_msg[8:].strip()  # Remove "RESULTS:" prefix
+        else:
+            result["error"] = "Execution error: {}\\n{}".format(error_msg, traceback.format_exc())
 
     finally:
         # Clean up

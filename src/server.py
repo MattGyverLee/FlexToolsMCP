@@ -256,10 +256,12 @@ class SessionState:
     initialized: bool = False
     discovered_apis: set = None       # APIs discovered via search_by_capability
     validated_apis: set = None        # APIs validated via get_object_api (required before use)
+    api_versions: dict = None         # Track active API versions: {api_name: version}
 
     def __init__(self):
         self.discovered_apis = set()
         self.validated_apis = set()
+        self.api_versions = {}
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool)."""
@@ -271,10 +273,15 @@ class SessionState:
             self.project_name = kwargs["project_name"]
         if "write_enabled" in kwargs:
             self.write_enabled = kwargs["write_enabled"]
+        if "api_versions" in kwargs:
+            self.api_versions = kwargs["api_versions"]
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
         mode_info += f", write={self.write_enabled}"
+        if self.api_versions:
+            versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
+            mode_info += f", versions={{{versions_str}}}"
         operations_logger.info(f"Session configured: {mode_info}")
 
     def record_discovered_api(self, entity: str, method: str) -> None:
@@ -1033,6 +1040,20 @@ class SemanticSearch:
         return results
 
 
+def extract_version_from_path(file_path: Path) -> str:
+    """Extract version from API file path.
+
+    Example: liblcm_api_v11.0.0.json -> 11.0.0
+    """
+    if not file_path:
+        return None
+    filename = file_path.stem  # Remove .json
+    parts = filename.split("_v")
+    if len(parts) >= 2:
+        return parts[-1]
+    return None
+
+
 @dataclass
 class APIIndex:
     """Holds the loaded API documentation indexes."""
@@ -1042,6 +1063,11 @@ class APIIndex:
     navigation_graph: dict = None
     casting_index: dict = None
     semantic_search: SemanticSearch = None
+
+    # Track loaded API versions for session logging
+    liblcm_version: str = None
+    flexlibs2_version: str = None
+    flexlibs_stable_version: str = None
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
@@ -1080,6 +1106,7 @@ class APIIndex:
             try:
                 with open(liblcm_path, "r", encoding="utf-8") as f:
                     index.liblcm = json.load(f)
+                index.liblcm_version = extract_version_from_path(liblcm_path)
                 if installed_liblcm:
                     operations_logger.info(f"Loaded LibLCM {installed_liblcm} from {liblcm_path.name}")
                 else:
@@ -1115,6 +1142,7 @@ class APIIndex:
             try:
                 with open(flexlibs2_path, "r", encoding="utf-8") as f:
                     index.flexlibs2 = json.load(f)
+                index.flexlibs2_version = extract_version_from_path(flexlibs2_path)
                 if installed_flexlibs2:
                     operations_logger.info(f"Loaded FlexLibs 2.0 {installed_flexlibs2} from {flexlibs2_path.name}")
                 else:
@@ -1149,6 +1177,7 @@ class APIIndex:
             try:
                 with open(flexlibs_stable_path, "r", encoding="utf-8") as f:
                     index.flexlibs_stable = json.load(f)
+                index.flexlibs_stable_version = extract_version_from_path(flexlibs_stable_path)
                 if installed_flexlibs:
                     operations_logger.info(f"Loaded FlexLibs stable {installed_flexlibs} from {flexlibs_stable_path.name}")
                 else:
@@ -1912,12 +1941,23 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Clear any previously discovered APIs for fresh session
     session_state.clear_discovered_apis()
 
+    # Build API versions dict from current APIIndex
+    api_versions = {}
+    if api_index:
+        if api_index.liblcm_version:
+            api_versions["liblcm"] = api_index.liblcm_version
+        if api_index.flexlibs2_version:
+            api_versions["flexlibs2"] = api_index.flexlibs2_version
+        if api_index.flexlibs_stable_version:
+            api_versions["flexlibs_stable"] = api_index.flexlibs_stable_version
+
     # Set session-wide settings
     session_state.configure(
         api_mode=api_mode,
         output_type="auto",
         project_name=project_name,
-        write_enabled=write_enabled
+        write_enabled=write_enabled,
+        api_versions=api_versions
     )
 
     # Build response

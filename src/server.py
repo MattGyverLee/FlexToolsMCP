@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 from mcp.server import Server
 
-from json_utils import sort_json_arrays
+from src.json_utils import sort_json_arrays
 
 
 # ============================================================

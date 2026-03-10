@@ -40,7 +40,7 @@ pip install ./flexlibs2
 
 # Test it works
 cd FlexToolsMCP
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
 ```
 
 ### 2. Connect to Your AI Assistant

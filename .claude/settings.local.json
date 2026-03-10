@@ -43,7 +43,9 @@
       "Bash(\"D:/Github/FlexToolsMCP/PHASE_3_4_STATISTICS.txt\":*)",
       "Bash(/tmp/phase4_summary.txt:*)",
       "Bash(git -C /d/Github/FlexToolsMCP diff index/liblcm/liblcm_api_v11.0.0.json)",
-      "Bash(/d/Apps/anaconda3/python:*)"
+      "Bash(/d/Apps/anaconda3/python:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)"
     ]
   }
 }

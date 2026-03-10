@@ -15,10 +15,19 @@ import tempfile
 import os
 import logging
 import re
+import warnings
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Optional, List, Dict
 from dataclasses import dataclass, field
+import io
+from contextlib import redirect_stdout, redirect_stderr
+
+# Suppress noisy third-party warnings and output
+os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
+os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+warnings.filterwarnings('ignore', message='.*position_ids.*')
+warnings.filterwarnings('ignore', message='.*unauthenticated requests.*')
 
 from mcp.server import Server
 
@@ -1103,7 +1112,9 @@ class SemanticSearch:
 
             # Load model (lazy - only when needed)
             model_name = metadata.get("_model", "all-MiniLM-L6-v2")
-            search.model = SentenceTransformer(model_name)
+            with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                warnings.filterwarnings('ignore')
+                search.model = SentenceTransformer(model_name)
 
             search.enabled = True
         except Exception as e:

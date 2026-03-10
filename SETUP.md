@@ -46,13 +46,13 @@ pip install ./flexlibs2
 ```bash
 cd FlexToolsMCP
 cp .env.example .env
-# Edit .env with your local paths
+
 ```
 
 ### 6. Test the Installation
 
 ```bash
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
 ```
 
 If this succeeds, the MCP and FlexLibs2 are installed correctly.

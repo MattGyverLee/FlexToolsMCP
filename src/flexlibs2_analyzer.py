@@ -19,7 +19,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
-from json_utils import sort_json_arrays
+from .json_utils import sort_json_arrays
 
 
 # ---- Version Detection -------------------------------------------------------

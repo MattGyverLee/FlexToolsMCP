@@ -17,7 +17,7 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from json_utils import sort_json_arrays
+from .json_utils import sort_json_arrays
 
 
 def build_casting_index(liblcm_path: Path) -> dict:

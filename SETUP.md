@@ -57,6 +57,52 @@ python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_i
 
 If this succeeds, the MCP and FlexLibs2 are installed correctly.
 
+## Updating FlexToolsMCP
+
+### Pull Latest Changes
+
+To get the latest version from main:
+
+```bash
+cd FlexToolsMCP
+git pull origin main
+```
+
+### Update to a Specific Release Version
+
+To see available versions:
+
+```bash
+git tag -l | sort -V
+```
+
+To switch to a specific version (e.g., v1.4.1):
+
+```bash
+git checkout v1.4.1
+```
+
+To go back to the latest main branch:
+
+```bash
+git checkout main
+```
+
+### Reinstall Dependencies (if needed)
+
+After updating, you may need to reinstall or upgrade packages:
+
+```bash
+pip install -r requirements.txt --upgrade
+pip install ./flexlibs2 --upgrade
+```
+
+Then test that everything still works:
+
+```bash
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
+```
+
 ## Connecting to AI Assistants
 
 **Note:** Indexes refresh automatically when you update FieldWorks or any of the libraries. You don't need to manually refresh.

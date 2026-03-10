@@ -48,7 +48,10 @@ See [SETUP.md](SETUP.md#connecting-to-ai-assistants) for Claude Code, Antigravit
 
 **Note:** Each AI tool has different MCP configuration syntax. See SETUP.md for your specific tool.
 
-### 3. Start Using
+### 3. Updating to New Versions
+See [SETUP.md](SETUP.md#updating-flextoolsmcp) for how to pull new releases.
+
+### 4. Start Using
 See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ## What's Included

@@ -17,11 +17,11 @@ repos:
         args: ["--select", "E9,F63,F7,F82", "--no-fix"]
         name: Ruff (fatal errors only)
 
-  # Verify critical files parse correctly
+  # Verify src/ files: syntax + import guards for dual-mode compatibility
   - repo: local
     hooks:
-      - id: verify-critical-files
-        name: Verify server.py and refresh.py parse
+      - id: verify-src-imports
+        name: Verify src/ imports (dual-mode safe)
         entry: python scripts/verify_python.py
         language: python
         always_run: true

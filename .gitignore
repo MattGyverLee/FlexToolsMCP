@@ -35,3 +35,5 @@ index/flexlibs/archive/
 # Uncomment if you don't want to commit indexes:
 # index/liblcm/*.json
 # index/flexlibs/*.json
+
+user-logs/

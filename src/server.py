@@ -3846,7 +3846,7 @@ def _get_api_mode_imports(api_mode: str) -> tuple[str, dict]:
         namespace_entries = {}
 
     elif api_mode == "flexlibs2":
-        imports = """from flexlibs import FLExInitialize, FLExCleanup, FLExProject
+        imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
 
 # Import all flexlibs2 Operations classes
 from flexlibs2 import (

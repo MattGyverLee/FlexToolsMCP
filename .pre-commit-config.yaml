@@ -26,3 +26,10 @@ repos:
         language: python
         always_run: true
         pass_filenames: false
+
+      - id: check-flexlibs2-ops
+        name: Check FlexLibs2 Operations classes load
+        entry: python scripts/check_flexlibs2_ops.py
+        language: python
+        always_run: true
+        pass_filenames: false

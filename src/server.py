@@ -1740,7 +1740,7 @@ Task and project_name can be set now or updated/provided later as needed.""",
         ),
         Tool(
             name="get_object_api",
-            description="[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER search_by_capability to validate and understand the APIs you want to use.\n\nWARNING: Calling get_object_api is required BEFORE using an API in run_operation/run_module. This ensures you have full context of the signature and behavior, reducing debugging.\n\nTip: Use summary_only=true first to explore large objects, then drill down into specific methods.",
+            description="[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER search_by_capability to validate and understand the APIs you want to use.\n\nWARNING: Calling get_object_api is required BEFORE using an API in run_operation/run_module. This ensures you have full context of the signature and behavior, reducing debugging.\n\nIMPORTANT: Each API result includes 'import_statement' showing exactly what to add at the top of your code. When you use LexEntryOperations, LexSenseOperations, or any Operations class in your code, you MUST include the import statement shown in the API response.\n\nTip: Use summary_only=true first to explore large objects, then drill down into specific methods.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1783,7 +1783,7 @@ Task and project_name can be set now or updated/provided later as needed.""",
         ),
         Tool(
             name="search_by_capability",
-            description="[WORKFLOW STEP 2] Search for methods/functions by capability. Returns multiple options. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'.\n\nRECOMMENDED WORKFLOW:\n1. search_by_capability() - discover options (may find more than you'll use)\n2. Review results, choose which APIs you actually need\n3. get_object_api() - for each API you selected, get full details\n4. Write code using the validated APIs\n5. run_operation() or run_module() - execute with full context",
+            description="[WORKFLOW STEP 2] Search for methods/functions by capability. Returns multiple options. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'.\n\nRECOMMENDED WORKFLOW:\n1. search_by_capability() - discover options (may find more than you'll use)\n2. Review results, choose which APIs you actually need\n3. get_object_api() - for each API you selected, get full details (includes import_statement)\n4. IMPORTANT: When writing code, include ALL import statements shown in API results\n5. Write code using the validated APIs\n6. run_operation() or run_module() - execute with full context\n\nNote: API results include 'import_statement' field—this MUST be in your code.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -2121,13 +2121,48 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int) -> dict:
-    """Apply pagination and filtering to an entity's methods."""
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexlibs2") -> dict:
+    """Apply pagination and filtering to an entity's methods.
+
+    Args:
+        entity: The entity dict from API index
+        summary_only: If True, only return method signatures
+        method_filter: Filter methods by name pattern
+        limit: Max methods to return
+        offset: Starting offset for pagination
+        object_type: The class/object name (used to generate import statement)
+        library: Library name (flexlibs2 or flexlibs)
+    """
     result = {
         "category": entity.get("category"),
         "summary": entity.get("summary", ""),
         "source_file": entity.get("source_file", ""),
     }
+
+    # Add import statement for Operations classes
+    OPERATIONS_CLASSES = {
+        "POSOperations", "PhonemeOperations", "NaturalClassOperations",
+        "EnvironmentOperations", "MorphRuleOperations", "InflectionFeatureOperations",
+        "GramCatOperations", "PhonologicalRuleOperations",
+        "LexEntryOperations", "LexSenseOperations", "ExampleOperations",
+        "LexReferenceOperations", "VariantOperations", "PronunciationOperations",
+        "SemanticDomainOperations", "ReversalOperations", "EtymologyOperations",
+        "AllomorphOperations",
+        "TextOperations", "WordformOperations", "WfiAnalysisOperations",
+        "ParagraphOperations", "SegmentOperations", "WfiGlossOperations",
+        "WfiMorphBundleOperations", "MediaOperations", "FilterOperations",
+        "DiscourseOperations",
+        "NoteOperations", "PersonOperations", "LocationOperations",
+        "AnthropologyOperations", "DataNotebookOperations",
+        "PublicationOperations", "AgentOperations", "ConfidenceOperations",
+        "OverlayOperations", "TranslationTypeOperations", "PossibilityListOperations",
+        "WritingSystemOperations", "ProjectSettingsOperations",
+        "AnnotationDefOperations", "CheckOperations", "CustomFieldOperations",
+    }
+
+    if object_type in OPERATIONS_CLASSES:
+        result["import_statement"] = f"from {library} import {object_type}"
+        result["import_required"] = True
 
     methods = entity.get("methods", [])
 
@@ -2429,7 +2464,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         if object_type in entities:
             entity = entities[object_type]
             result["flexlibs2"] = paginate_entity(
-                entity, summary_only, method_filter, limit, offset
+                entity, summary_only, method_filter, limit, offset,
+                object_type=object_type, library="flexlibs2"
             )
             result["found"] = True
         else:
@@ -2450,7 +2486,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         entities = api_index.liblcm.get("entities", {})
         if object_type in entities:
             result["liblcm"] = paginate_entity(
-                entities[object_type], summary_only, method_filter, limit, offset
+                entities[object_type], summary_only, method_filter, limit, offset,
+                object_type=object_type, library="liblcm"
             )
             result["found"] = True
         else:

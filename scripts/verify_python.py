@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Pre-commit hook: verify key Python files parse and import correctly.
+"""Pre-commit hook: verify key Python files parse, import, and run correctly.
 
-Three levels of checking:
+Four levels of checking:
 1. AST syntax check — all src/*.py files
 2. Import guard check — ensures relative imports have `if __package__:` guards
-3. Runtime import check — actually runs `python src/server.py` and
-   `python src/refresh.py` in a subprocess to catch real import errors
-   (e.g., broken relative imports, missing local modules)
+3. Runtime import check — runs scripts in subprocess to catch real import errors
+4. Functional check — server.py reports tool count, refresh.py runs --help
 
-Level 3 is what catches bugs like the .json_utils import that worked
-as a package but failed when run as `python src/server.py`.
+When full dependencies are installed (desktop), level 4 actually loads the
+API index and counts registered tools. When deps are missing (CI), it falls
+back to counting Tool() instances in the AST.
 """
 import ast
 import os
@@ -23,12 +23,8 @@ SRC_DIR = "src"
 # Modules that live in src/ (intra-package imports we must validate)
 LOCAL_MODULES = {"json_utils"}
 
-# Scripts to actually run and verify no import errors
-# Each tuple: (script_path, description)
-RUNTIME_CHECK_SCRIPTS = [
-    ("src/server.py", "MCP server"),
-    ("src/refresh.py", "refresh script"),
-]
+# Expected minimum tool count for server.py (update if tools are added/removed)
+MIN_TOOL_COUNT = 10
 
 
 class ImportChecker(ast.NodeVisitor):
@@ -40,11 +36,9 @@ class ImportChecker(ast.NodeVisitor):
         self.errors = []
 
     def visit_ImportFrom(self, node):
-        # Check relative imports (from .json_utils import ...)
         if node.level > 0 and node.module:
             self._check_guarded_relative(node)
 
-        # Check absolute imports of local modules
         if node.level == 0 and node.module in LOCAL_MODULES:
             module_file = os.path.join(self.src_dir, node.module + ".py")
             if not os.path.isfile(module_file):
@@ -105,25 +99,13 @@ def check_syntax_and_imports(path):
 
 
 def check_runtime_import(script_path, description):
-    """Actually run the script in a subprocess and check for import errors.
-
-    Executes the script but intercepts __name__ == '__main__' so we only
-    run the top-level imports and definitions, not the actual main() logic.
-    This catches real runtime import failures without starting the server
-    or triggering index refreshes.
-    """
-    # We compile and exec the file with __name__ set to something other than
-    # '__main__', so the `if __name__ == "__main__":` block is skipped.
-    # This runs all top-level code (imports, class/function defs, constants).
-    check_code = f"""\
-import sys, os
-# Add src/ to path so absolute imports of local modules work
-sys.path.insert(0, os.path.join(os.getcwd(), {os.path.dirname(script_path)!r}))
-# Compile and exec with __name__ != '__main__' to skip entry point
-with open({script_path!r}) as _f:
-    _code = compile(_f.read(), {script_path!r}, 'exec')
-exec(_code, {{'__name__': '_import_check', '__file__': {script_path!r}}})
-"""
+    """Run the script in a subprocess to catch real import errors."""
+    check_code = (
+        f"import sys, os; "
+        f"sys.path.insert(0, os.path.join(os.getcwd(), {os.path.dirname(script_path)!r})); "
+        f"_code = compile(open({script_path!r}).read(), {script_path!r}, 'exec'); "
+        f"exec(_code, {{'__name__': '_import_check', '__file__': {script_path!r}}})"
+    )
     result = subprocess.run(
         [sys.executable, "-c", check_code],
         capture_output=True,
@@ -133,21 +115,13 @@ exec(_code, {{'__name__': '_import_check', '__file__': {script_path!r}}})
 
     if result.returncode != 0:
         stderr = result.stderr.strip()
-        # Only fail on import-related errors — other runtime errors
-        # (missing .env, missing index files, missing third-party packages
-        # not installed in this env) are not import bugs we can catch here.
         import_errors = ("ImportError", "ModuleNotFoundError")
         error_lines = stderr.split("\n")
         if any(err in stderr for err in import_errors):
-            # Extract the module name from the last error line
-            # e.g., "ModuleNotFoundError: No module named 'mcp'"
             last_line = error_lines[-1] if error_lines else ""
-            # Check if the missing module is one of our local modules
-            # (not a third-party package). Local modules live in src/.
             is_local_module_error = any(
                 mod in last_line for mod in LOCAL_MODULES
             )
-            # Also catch relative import errors (from . import ...)
             is_relative_import_error = (
                 "attempted relative import" in last_line
                 or "No module named '__main__" in last_line
@@ -159,12 +133,114 @@ exec(_code, {{'__name__': '_import_check', '__file__': {script_path!r}}})
                 )
                 print(stderr, file=sys.stderr)
                 return False
-            # Third-party missing package — not our bug, skip
             print(
                 f"  Note: {description} has uninstalled third-party dependency "
                 f"(not a code bug, skipping)",
             )
     return True
+
+
+# ── Functional checks ──────────────────────────────────────────────
+
+
+def check_server_tools():
+    """Verify server.py exposes the expected number of MCP tools.
+
+    With full deps: imports server module and counts tools from list_tools().
+    Without deps: counts Tool() constructor calls in the AST.
+    """
+    # Try the real thing first — actually load the server and count tools
+    check_code = (
+        "import asyncio; "
+        "from src.server import APIIndex, get_index_dir, list_tools; "
+        "tools = asyncio.run(list_tools()); "
+        "print(len(tools))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", check_code],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    if result.returncode == 0 and result.stdout.strip().isdigit():
+        tool_count = int(result.stdout.strip())
+        if tool_count >= MIN_TOOL_COUNT:
+            print(f"  server.py: {tool_count} tools registered (runtime) ✓")
+            return True
+        else:
+            print(
+                f"TOOL COUNT ERROR: server.py has {tool_count} tools, "
+                f"expected >= {MIN_TOOL_COUNT}",
+                file=sys.stderr,
+            )
+            return False
+
+    # Fallback: count Tool() instances in the AST
+    print("  server.py: deps not installed, falling back to AST tool count")
+    return _count_tools_from_ast()
+
+
+def _count_tools_from_ast():
+    """Count Tool() constructor calls in server.py via AST."""
+    with open("src/server.py") as f:
+        tree = ast.parse(f.read(), filename="src/server.py")
+
+    tool_count = 0
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "Tool"
+        ):
+            tool_count += 1
+
+    if tool_count >= MIN_TOOL_COUNT:
+        print(f"  server.py: {tool_count} Tool() definitions found (AST) ✓")
+        return True
+    else:
+        print(
+            f"TOOL COUNT ERROR: server.py has {tool_count} Tool() calls, "
+            f"expected >= {MIN_TOOL_COUNT}",
+            file=sys.stderr,
+        )
+        return False
+
+
+def check_refresh_runs():
+    """Verify refresh.py runs successfully with --help.
+
+    This exercises the full import chain and argparse setup without
+    actually refreshing any indexes.
+    """
+    result = subprocess.run(
+        [sys.executable, "src/refresh.py", "--help"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    if result.returncode != 0:
+        print("REFRESH ERROR: `python src/refresh.py --help` failed", file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        return False
+
+    # Verify key options are present in help output
+    help_text = result.stdout
+    expected_flags = ["--flexlibs2-only", "--flexlibs-only", "--liblcm-only"]
+    missing = [f for f in expected_flags if f not in help_text]
+    if missing:
+        print(
+            f"REFRESH ERROR: --help output missing expected flags: {missing}",
+            file=sys.stderr,
+        )
+        return False
+
+    print(f"  refresh.py: --help OK, all {len(expected_flags)} flags present ✓")
+    return True
+
+
+# ── Main ────────────────────────────────────────────────────────────
 
 
 def find_python_files(directory):
@@ -185,21 +261,31 @@ def main():
         print(f"No Python files found in {SRC_DIR}/", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Checking {len(files)} src/ files...")
+    print(f"Phase 1: Checking {len(files)} src/ files (syntax + import guards)...")
     for path in files:
         if not check_syntax_and_imports(path):
             all_ok = False
 
     # Phase 2: Runtime import check on critical scripts
-    print("Running server.py and refresh.py to verify imports...")
-    for script_path, description in RUNTIME_CHECK_SCRIPTS:
+    print("Phase 2: Runtime import check (server.py, refresh.py)...")
+    for script_path, description in [
+        ("src/server.py", "MCP server"),
+        ("src/refresh.py", "refresh script"),
+    ]:
         if not check_runtime_import(script_path, description):
             all_ok = False
 
+    # Phase 3: Functional checks
+    print("Phase 3: Functional checks...")
+    if not check_server_tools():
+        all_ok = False
+    if not check_refresh_runs():
+        all_ok = False
+
     if all_ok:
-        print(f"All {len(files)} src/ files: syntax OK, imports OK, runtime OK.")
+        print(f"\nAll {len(files)} src/ files: syntax OK, imports OK, runtime OK.")
     else:
-        print("Pre-commit check FAILED. See errors above.", file=sys.stderr)
+        print("\nPre-commit check FAILED. See errors above.", file=sys.stderr)
     sys.exit(0 if all_ok else 1)
 
 

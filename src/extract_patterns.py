@@ -19,7 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Set, Optional
 
-from .json_utils import sort_json_arrays
+if __package__:
+    from .json_utils import sort_json_arrays
+else:
+    from json_utils import sort_json_arrays
 
 
 def get_project_root() -> Path:

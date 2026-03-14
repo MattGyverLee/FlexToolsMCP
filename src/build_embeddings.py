@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 
-from .json_utils import sort_json_arrays
+if __package__:
+    from .json_utils import sort_json_arrays
+else:
+    from json_utils import sort_json_arrays
 
 try:
     from sentence_transformers import SentenceTransformer

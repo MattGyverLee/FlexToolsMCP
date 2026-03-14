@@ -634,6 +634,55 @@ def detect_polymorphic_error(error_msg: str) -> dict:
     return {"is_polymorphic_error": False}
 
 
+def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
+    """Gate #2: Detect if user code imports from the wrong library for the selected API mode.
+
+    Args:
+        code: User's module/operation code
+        api_mode: Selected API mode ('flexlibs_stable', 'flexlibs2', 'liblcm')
+
+    Returns:
+        dict with 'has_wrong_imports', 'wrong_imports', and 'suggestion'
+    """
+    import re
+
+    result = {
+        "has_wrong_imports": False,
+        "wrong_imports": [],
+        "suggestion": ""
+    }
+
+    # Extract all import statements
+    import_pattern = r'(?:from|import)\s+([\w.]+)'
+    imports = re.findall(import_pattern, code)
+
+    if api_mode == "flexlibs2":
+        # In flexlibs2 mode, flag imports from stable flexlibs
+        wrong_libs = [imp for imp in imports if imp.startswith('flexlibs') and not imp.startswith('flexlibs2')]
+        if wrong_libs:
+            result["has_wrong_imports"] = True
+            result["wrong_imports"] = wrong_libs
+            result["suggestion"] = (
+                f"Code in flexlibs2 mode is importing from flexlibs (stable). "
+                f"Detected: {', '.join(set(wrong_libs))}. "
+                f"Use 'from flexlibs2 import ...' instead for API consistency."
+            )
+
+    elif api_mode == "flexlibs_stable":
+        # In stable mode, warn about flexlibs2 imports that might not work
+        wrong_libs = [imp for imp in imports if imp.startswith('flexlibs2')]
+        if wrong_libs:
+            result["has_wrong_imports"] = True
+            result["wrong_imports"] = wrong_libs
+            result["suggestion"] = (
+                f"Code in flexlibs (stable) mode is importing from flexlibs2. "
+                f"Detected: {', '.join(set(wrong_libs))}. "
+                f"Use 'from flexlibs import ...' for API consistency."
+            )
+
+    return result
+
+
 def detect_undefined_variables(code: str) -> dict:
     """Detect likely undefined variables in code using static analysis.
 
@@ -3486,6 +3535,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "guidance": "All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
         }, indent=2))]
 
+    # Gate #2: Check for wrong library imports
+    wrong_imports_check = detect_wrong_library_imports(module_code, api_mode)
+    if wrong_imports_check["has_wrong_imports"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "wrong_library_imports",
+            "message": wrong_imports_check["suggestion"],
+            "wrong_imports": wrong_imports_check["wrong_imports"],
+            "api_mode": api_mode,
+            "guidance": f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
+        }, indent=2))]
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Get API mode-specific imports
@@ -3832,6 +3892,39 @@ MODULE_CODE = {module_code}
             pass
 
 
+def _validate_api_mode(api_mode: str) -> tuple[bool, str]:
+    """Validate that the requested API mode libraries are properly installed.
+
+    Args:
+        api_mode: One of 'flexlibs_stable', 'flexlibs2', 'liblcm'
+
+    Returns:
+        (is_valid, error_message)
+    """
+    if api_mode == "flexlibs2":
+        try:
+            import flexlibs2
+            # Check version is reasonable
+            if not hasattr(flexlibs2, '__version__'):
+                return False, "flexlibs2 missing version info"
+            return True, ""
+        except ImportError as e:
+            return False, f"flexlibs2 not found: {e}"
+
+    elif api_mode == "flexlibs_stable":
+        try:
+            import flexlibs
+            return True, ""
+        except ImportError as e:
+            return False, f"flexlibs not found: {e}"
+
+    elif api_mode == "liblcm":
+        # LibLCM is optional, validated at runtime
+        return True, ""
+
+    return False, f"Unknown API mode: {api_mode}"
+
+
 def _get_api_mode_imports(api_mode: str) -> tuple[str, dict]:
     """Generate imports and namespace dict for a given API mode.
 
@@ -3840,7 +3933,14 @@ def _get_api_mode_imports(api_mode: str) -> tuple[str, dict]:
 
     Returns:
         (imports_code, namespace_dict_entries)
+
+    Raises:
+        ValueError: If API mode is invalid or required libraries are not installed
     """
+    # Gate #1: Validate API mode is valid
+    is_valid, error_msg = _validate_api_mode(api_mode)
+    if not is_valid:
+        raise ValueError(f"API mode validation failed: {error_msg}")
     if api_mode == "flexlibs_stable":
         imports = """from flexlibs import FLExInitialize, FLExCleanup, FLExProject"""
         namespace_entries = {}
@@ -4023,6 +4123,9 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             format_cud_warning(cud_info, write_enabled), indent=2
         ))]
 
+    # Get API mode early for validation
+    api_mode = session_state.get_mode()
+
     # Check output mechanism - operations must use print(), not report.Info()
     output_check = check_output_mechanism(operations, "operation")
     if not output_check["uses_correct_mechanism"]:
@@ -4044,8 +4147,18 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "guidance": "All classes/modules must be imported first. Use 'from flexlibs2 import ClassName' or 'import module'. Do not use internal MCP variable names like API_MODE_IMPORTS."
         }, indent=2))]
 
+    # Gate #2: Check for wrong library imports
+    wrong_imports_check = detect_wrong_library_imports(operations, api_mode)
+    if wrong_imports_check["has_wrong_imports"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "wrong_library_imports",
+            "message": wrong_imports_check["suggestion"],
+            "wrong_imports": wrong_imports_check["wrong_imports"],
+            "api_mode": api_mode,
+            "guidance": f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
+        }, indent=2))]
+
     timeout_seconds = args.get("timeout_seconds", 120)
-    api_mode = session_state.get_mode()
 
     # Log operation start
     operations_logger.info(f"=== Operation Start ===")

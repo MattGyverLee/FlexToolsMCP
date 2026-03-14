@@ -31,7 +31,10 @@ warnings.filterwarnings('ignore', message='.*unauthenticated requests.*')
 
 from mcp.server import Server
 
-from .json_utils import sort_json_arrays
+try:
+    from .json_utils import sort_json_arrays
+except ImportError:
+    from json_utils import sort_json_arrays
 
 
 # ============================================================

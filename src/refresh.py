@@ -33,7 +33,10 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-from .json_utils import sort_json_arrays
+try:
+    from .json_utils import sort_json_arrays
+except ImportError:
+    from json_utils import sort_json_arrays
 
 
 def load_env():

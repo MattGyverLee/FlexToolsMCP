@@ -15,9 +15,9 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 
-try:
+if __package__:
     from .json_utils import sort_json_arrays
-except ImportError:
+else:
     from json_utils import sort_json_arrays
 
 try:

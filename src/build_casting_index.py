@@ -17,9 +17,9 @@ from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timezone
 
-try:
+if __package__:
     from .json_utils import sort_json_arrays
-except ImportError:
+else:
     from json_utils import sort_json_arrays
 
 

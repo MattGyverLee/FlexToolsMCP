@@ -33,9 +33,9 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-try:
+if __package__:
     from .json_utils import sort_json_arrays
-except ImportError:
+else:
     from json_utils import sort_json_arrays
 
 

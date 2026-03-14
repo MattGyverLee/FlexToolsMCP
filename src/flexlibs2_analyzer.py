@@ -19,9 +19,9 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
-try:
+if __package__:
     from .json_utils import sort_json_arrays
-except ImportError:
+else:
     from json_utils import sort_json_arrays
 
 

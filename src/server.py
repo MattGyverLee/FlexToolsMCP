@@ -634,6 +634,86 @@ def detect_polymorphic_error(error_msg: str) -> dict:
     return {"is_polymorphic_error": False}
 
 
+def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
+    """Detect Operations classes used without imports and suggest what to add.
+
+    Args:
+        code: User's module/operation code
+        api_mode: Selected API mode ('flexlibs_stable', 'flexlibs2', 'liblcm')
+
+    Returns:
+        dict with 'missing_imports', 'has_missing', and 'suggestion'
+    """
+    import re
+
+    # Known Operations classes in flexlibs2
+    KNOWN_OPERATIONS = {
+        # Grammar
+        "POSOperations", "PhonemeOperations", "NaturalClassOperations",
+        "EnvironmentOperations", "MorphRuleOperations", "InflectionFeatureOperations",
+        "GramCatOperations", "PhonologicalRuleOperations",
+        # Lexicon
+        "LexEntryOperations", "LexSenseOperations", "ExampleOperations",
+        "LexReferenceOperations", "VariantOperations", "PronunciationOperations",
+        "SemanticDomainOperations", "ReversalOperations", "EtymologyOperations",
+        "AllomorphOperations",
+        # TextsWords
+        "TextOperations", "WordformOperations", "WfiAnalysisOperations",
+        "ParagraphOperations", "SegmentOperations", "WfiGlossOperations",
+        "WfiMorphBundleOperations", "MediaOperations", "FilterOperations",
+        "DiscourseOperations",
+        # Notebook
+        "NoteOperations", "PersonOperations", "LocationOperations",
+        "AnthropologyOperations", "DataNotebookOperations",
+        # Lists
+        "PublicationOperations", "AgentOperations", "ConfidenceOperations",
+        "OverlayOperations", "TranslationTypeOperations", "PossibilityListOperations",
+        # System
+        "WritingSystemOperations", "ProjectSettingsOperations",
+        "AnnotationDefOperations", "CheckOperations", "CustomFieldOperations",
+    }
+
+    result = {
+        "missing_imports": [],
+        "has_missing": False,
+        "suggestion": ""
+    }
+
+    # Find all words that match Operations class names
+    pattern = r'\b(' + '|'.join(KNOWN_OPERATIONS) + r')\b'
+    matches = re.findall(pattern, code)
+
+    if not matches:
+        return result
+
+    # Check which are imported
+    import_pattern = r'from\s+\w+\s+import\s+([^#\n]+)'
+    import_lines = re.findall(import_pattern, code)
+    imported = set()
+    for line in import_lines:
+        # Parse comma-separated imports
+        parts = [p.strip() for p in line.split(',')]
+        imported.update(parts)
+
+    # Find missing imports
+    used = set(matches)
+    missing = used - imported
+
+    if missing:
+        result["has_missing"] = True
+        result["missing_imports"] = sorted(list(missing))
+
+        library = "flexlibs2" if api_mode == "flexlibs2" else "flexlibs"
+        import_stmt = f"from {library} import {', '.join(sorted(missing))}"
+
+        result["suggestion"] = (
+            f"Code uses {len(missing)} Operations class(es) without importing: {', '.join(sorted(missing))}. "
+            f"Add this import at the top:\n\n    {import_stmt}\n"
+        )
+
+    return result
+
+
 def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
     """Gate #2: Detect if user code imports from the wrong library for the selected API mode.
 
@@ -3535,6 +3615,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "guidance": "All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
         }, indent=2))]
 
+    # Check for missing Operations class imports
+    missing_ops_check = detect_missing_operations_imports(module_code, api_mode)
+    if missing_ops_check["has_missing"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "missing_imports",
+            "message": missing_ops_check["suggestion"],
+            "missing_imports": missing_ops_check["missing_imports"],
+            "api_mode": api_mode,
+            "guidance": "Add the import statement shown above to the top of your code."
+        }, indent=2))]
+
     # Gate #2: Check for wrong library imports
     wrong_imports_check = detect_wrong_library_imports(module_code, api_mode)
     if wrong_imports_check["has_wrong_imports"]:
@@ -4060,6 +4151,17 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "message": undefined_check["suggestion"],
             "undefined_vars": undefined_check["undefined_vars"],
             "guidance": "All classes/modules must be imported first. Use 'from flexlibs2 import ClassName' or 'import module'. Do not use internal MCP variable names like API_MODE_IMPORTS."
+        }, indent=2))]
+
+    # Check for missing Operations class imports
+    missing_ops_check = detect_missing_operations_imports(operations, api_mode)
+    if missing_ops_check["has_missing"]:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "missing_imports",
+            "message": missing_ops_check["suggestion"],
+            "missing_imports": missing_ops_check["missing_imports"],
+            "api_mode": api_mode,
+            "guidance": "Add the import statement shown above to the top of your code."
         }, indent=2))]
 
     # Gate #2: Check for wrong library imports

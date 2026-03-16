@@ -1,11 +1,21 @@
-# FlexToolsMCP +1 Upgrade Plan
-# Features: Output Formatting, Config Management, Session History + Undo, Lazy Module Loading
+# FlexToolsMCP v1.3.0: Minor Version Upgrade
+# Subtitle: Features: Output Formatting, Config Management, Session History + Undo, Lazy Module Loading
 
 ## Context
 
+FlexToolsMCP v1.2.0 → v1.3.0 (minor version bump, 0.1 upgrade)
+
 FlexToolsMCP is a mature MCP server. Two sibling CLI projects (Flexlibs-CLI, Fieldworks-CLI)
-introduced 4 portable patterns worth back-porting. This plan adds them as an incremental "+1"
-upgrade without breaking existing tools or callers.
+introduced 4 portable patterns worth back-porting. This plan adds them as Features 1-4, plus infrastructure (Feature 5 future).
+
+**Why a minor version bump (not major)?**
+- No breaking API changes — all existing tools work unchanged
+- All existing code continues to work without modification (via re-exports)
+- New features are additive: 3 new tools, expanded SessionState, modularized architecture
+- Backward compatible with v1.2.0 and earlier
+- Re-export facade means internal reorganization is invisible to callers
+
+v1.3.0 is a comprehensive upgrade: production-ready with new capabilities, better error handling, persistent config, undo/history tracking, and cleaner internal architecture.
 
 ---
 
@@ -313,15 +323,60 @@ Formalize `_validate_api_mode` flexlibs import (lines 4035-4050) — extract to 
 
 ---
 
-## New Tool Summary
+## v1.3.0 Release Summary
 
-| Tool | Purpose |
-|------|---------|
-| `manage_config` | Get/set/delete/list persistent config values |
-| `get_session_history` | List operations run this session; show undo availability |
-| `undo_last_operation` | Undo most recent write via FLEx ActionHandler |
+### Features (5 major additions)
 
-Total tool count: 12 existing → 15 tools
+| Feature | What's New | Impact |
+|---------|-----------|--------|
+| **Feature 1** | Centralized error handling via `@tool_handler` + `make_error()` | Consistent error envelopes, better resilience |
+| **Feature 2** | Persistent dotted-key JSON config (`~/.flextoolsmcp/config.json`) | Users can customize paths and settings without code changes |
+| **Feature 3** | Session history + undo/redo via `get_session_history`, `undo_last_operation` tools | Track operations, see what will be undone, leverage FLEx ActionHandler |
+| **Feature 4** | Formalized lazy module loading for MCP, semantic search, flexlibs2 | Better startup resilience if dependencies missing |
+| **Feature 5** | Modularized server.py architecture (8 focused modules, 300-600 lines each) | Easier to navigate, test, and maintain; re-exports preserve backward compatibility |
+
+### New Tools (3 tools added)
+
+| Tool | Purpose | Type |
+|------|---------|------|
+| `manage_config` | Get/set/delete/list persistent config values | Admin |
+| `get_session_history` | List operations run this session; show undo availability | Admin |
+| `undo_last_operation` | Undo most recent write via FLEx ActionHandler | Execution |
+
+**Tool count**: 12 existing → 15 tools
+
+### Internal Architecture
+
+**New structure** (modularized but backward compatible):
+```
+src/server/
+  __init__.py           # Re-exports for backward compatibility
+  kernel.py             # Shared state (api_index, session_state, pattern_tracker)
+  session.py            # SessionState, PatternTracker, operation tracking
+  handlers/
+    api.py              # Read-only API queries
+    execution.py        # Write operations, undo, logging
+    admin.py            # Configuration, session management
+    navigation.py       # Navigation paths, examples
+    catalog.py          # Category listings
+  validators.py         # Validation gates
+  patterns.py           # Pattern tracking, recommendations
+```
+
+### Backward Compatibility
+
+✓ All existing 12 tools remain unchanged
+✓ No breaking changes to tool signatures or response formats
+✓ Existing code calling `run_operation`, `get_object_api`, etc. continues to work (re-exports via `__init__.py`)
+✓ `SessionState.summary()` expanded but doesn't change existing fields
+✓ Can also use new modular imports if desired: `from server.handlers.execution import handle_run_operation`
+
+### What "v1.3.0" Signifies
+
+- **Minor version**: New features + architectural improvement, fully backward compatible
+- **Stable API**: Users can upgrade from v1.2.0 safely — no code changes required
+- **Production-ready**: Full test coverage, documented caveats, error handling
+- **Clean internals**: Modularized architecture with facade for transparent upgrade
 
 ---
 
@@ -358,13 +413,162 @@ pip install mcp  # restore
 
 ---
 
+## Feature 5: Modularize server.py (Included in v1.3.0, Backward Compatible)
+
+**Problem**: server.py is 4,000 lines. Hard to navigate, understand, and test individual handlers.
+
+**Solution**: Split into focused modules with re-export facade. Ships with v1.3.0 alongside Features 1-4.
+
+```
+src/
+  server.py                   # Thin entry point (imports and re-exports from server/)
+  server/
+    __init__.py              # Re-exports all public API for backward compatibility
+    kernel.py                # Shared state: api_index, session_state, pattern_tracker
+    session.py               # SessionState, PatternTracker
+    handlers/
+      __init__.py            # Imports all handlers
+      api.py                 # get_object_api, search_by_capability, resolve_property
+      navigation.py          # get_navigation_path, find_examples
+      catalog.py             # list_categories, list_entities_in_category
+      execution.py           # run_operation, run_module, get_operation_logs, undo_last_operation
+      admin.py               # start, manage_config, get_session_history, get_module_template, start_module
+    validators.py            # Validation gates: detect_cud_operations, detect_undefined_variables, etc.
+    navigation.py            # find_path_bfs, navigation graph logic
+    patterns.py              # PatternTracker, pattern extraction, recommendations
+```
+
+**Backward Compatibility** (key innovation):
+
+All old imports continue to work via re-exports:
+
+```python
+# src/server/__init__.py
+# Re-export everything from handlers for backward compatibility
+from .handlers.api import handle_get_object_api, handle_search_by_capability, handle_resolve_property
+from .handlers.execution import handle_run_operation, handle_run_module, handle_get_operation_logs, handle_undo_last_operation
+from .handlers.admin import handle_start, handle_manage_config, handle_get_session_history, ...
+from .session import SessionState, PatternTracker
+# ... etc
+
+# Old code still works (v1.2.0 → v1.4.0 compatible):
+from server import handle_run_operation  # ✓ works via __init__
+
+# New code can also use modular paths:
+from server.handlers.execution import handle_run_operation  # ✓ also works
+```
+
+**Benefits**:
+- Each handler file: 200-400 lines (human-readable)
+- Clear grouping by concern: read-only vs execution vs admin
+- Easier to find code: `handlers/execution.py` for run_operation
+- Easier to test: mock imports, unit test individual handlers
+- Clearer dependencies: import chains visible at module level
+- **ZERO breaking changes**: backward compatible via re-exports
+
+**Challenges**:
+- Circular imports between handlers and core utilities
+- Solution: use `kernel.py` module with shared state (session_state, api_index, pattern_tracker, etc.)
+
+**Kernel structure**:
+```python
+# server/kernel.py
+api_index: Optional[APIIndex] = None
+session_state: SessionState = SessionState()
+pattern_tracker: PatternTracker = PatternTracker()
+operations_logger: logging.Logger = setup_logging()
+# All handlers import from kernel, avoiding circular deps
+```
+
+**Version**: v1.3.0 (ships with Features 1-4)
+
+**Why include modularization in v1.3.0?**
+- Zero breaking changes due to re-export facade
+- Cleaner codebase delivered simultaneously with new features
+- Internal architecture improvement aligns with adding new tools
+- Users get benefits immediately (easier to read code, test contributions)
+
+**Scope**: Split server.py into ~8 modules, each 300-600 lines. No new features, purely structural. Risk: medium (requires careful import structure and full test coverage, but backward compatibility facade eliminates integration risk).
+
+---
+
 ## Implementation Order
 
-1. `src/response_utils.py` (standalone, no deps)
-2. `src/config.py` (standalone, no deps)
-3. Feature 4 lazy loading in `server.py` (isolated at top of file)
-4. Feature 1 `@tool_handler` + `make_error` in `server.py`
-5. Feature 2 `manage_config` tool in `server.py`
-6. Feature 3 `SessionState` changes + `get_session_history` tool
-7. Feature 3 `undo_last_operation` tool (last, depends on session history)
-8. Feature 2 config fallback in `refresh.py`
+### Single Release: v1.3.0 (All Features 1-5)
+
+Unified release combining new functionality (Features 1-4) and architectural improvement (Feature 5).
+
+**Step-by-step implementation:**
+
+1. **Create new utility modules** (standalone, no interdependencies):
+   - `src/response_utils.py` (Feature 1)
+   - `src/config.py` (Feature 2)
+
+2. **Modularize server structure** (Feature 5 - structural foundation):
+   - Create `src/server/` directory
+   - Create `src/server/kernel.py` (shared state)
+   - Create `src/server/session.py` (SessionState, PatternTracker)
+   - Create `src/server/handlers/` subdirectory:
+     - `handlers/api.py` (get_object_api, search_by_capability, resolve_property)
+     - `handlers/navigation.py` (get_navigation_path, find_examples)
+     - `handlers/catalog.py` (list_categories, list_entities_in_category)
+     - `handlers/execution.py` (run_operation, run_module, get_operation_logs, undo_last_operation)
+     - `handlers/admin.py` (start, manage_config, get_session_history, get_module_template, start_module)
+   - Create `src/server/validators.py` (validation gates)
+   - Create `src/server/navigation.py` (find_path_bfs, navigation logic)
+   - Create `src/server/patterns.py` (PatternTracker, patterns)
+   - Create `src/server/__init__.py` (re-exports for backward compatibility)
+
+3. **Update main entry point**:
+   - Rename `src/server.py` → `src/server_v1_legacy.py` (backup)
+   - Create new thin `src/server.py` that imports from `src/server/__init__.py`
+
+4. **Add Feature 1 (Centralized Error Handling)**:
+   - Import `make_error`, `@tool_handler` from `response_utils`
+   - Apply to all handlers in their respective modules
+   - ~40 lines changed across handler modules
+
+5. **Add Feature 2 (Config Management)**:
+   - Import config functions in `handlers/admin.py`
+   - Add `manage_config` tool
+   - Update `get_index_dir()`, `get_log_dir()` to use config
+   - ~15 lines changed in kernel.py, handlers
+
+6. **Add Feature 4 (Lazy Loading)**:
+   - Add `_ensure_flexlibs2()` function in kernel.py
+   - Wrap MCP imports with try/except in `src/server/__init__.py`
+   - ~20 lines in kernel.py
+
+7. **Add Feature 3 (Session History + Undo)**:
+   - Expand SessionState in `session.py`: operations_history, undo_stack, redo_stack, record_operation(), can_undo(), pop_undo()
+   - Add `_extract_operation_details()` method in `session.py`
+   - Add `get_session_history` tool in `handlers/admin.py`
+   - Add `undo_last_operation` tool in `handlers/execution.py`
+   - Update `handle_run_operation()` and `handle_run_module()` to call `record_operation()`
+   - ~120 lines in session.py, handlers
+
+8. **Update `src/refresh.py`**:
+   - Add config fallback after .env reading
+   - ~10 lines
+
+9. **Testing & validation**:
+   - All old imports work via `src/server/__init__.py` re-exports
+   - New imports via `src/server.handlers.*` also work
+   - Full test suite passes
+   - Verify backward compatibility with v1.2.0 code
+
+### Future Maintenance (v1.5.0+)
+
+**v1.5.0+ updates** (if needed):
+- Bug fixes and patch releases
+- New features from user feedback
+- Keep v1.x API stable
+
+**v2.0.0 Planning** (far future, if ever):
+- Only consider if truly breaking changes are needed
+- Would require explicit deprecation period
+
+**Release timeline**:
+1. **v1.3.0** (Features 1-5 combined, single integrated release)
+2. **v1.5.x+** (patches and maintenance as needed)
+3. **v2.0.0** (only if absolutely necessary breaking changes arise)

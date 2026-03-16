@@ -236,7 +236,7 @@ def check_refresh_runs():
         )
         return False
 
-    print(f"  refresh.py: --help OK, all {len(expected_flags)} flags present ✓")
+    print(f"  refresh.py: --help OK, all {len(expected_flags)} flags present [OK]")
     return True
 
 

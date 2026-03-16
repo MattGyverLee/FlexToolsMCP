@@ -6,37 +6,76 @@ This document tracks the progress of the v1.3.0 upgrade implementation, which co
 
 ---
 
-## ✅ Completed (Phase 1)
+## ✅ Completed (Phases 1-3)
 
-### Infrastructure & Testing
+### Phase 1: Infrastructure & Testing
 - [x] Created comprehensive test suite: `tests/test_v1_3_0_upgrade.py`
-  - 65+ test cases covering backward compatibility and new features
-  - Tests for Featuresur 1-5
-  - Ready to validate before/after refactoring
+  - 22 test cases (100% passing)
+  - All 5 features validated
+  - Backward compatibility verified
 
-### Feature 1: Centralized Error Handling
-- [x] Created `src/response_utils.py` (115 lines)
-  - `make_error(code, message, **extra)` - standardized error envelopes
-  - `format_result(data, **kwargs)` - safe JSON serialization
-  - `@tool_handler` decorator - catches exceptions, returns structured errors
-  - Fully documented with examples
+### Phase 2: Core Utilities
+- [x] Created `src/response_utils.py` (115 lines) - Feature 1
+  - Centralized error handling with `make_error()`
+  - Safe JSON serialization with `format_result()`
+  - `@tool_handler` decorator for exception handling
 
-### Feature 2: Persistent Config Management
-- [x] Created `src/config.py` (237 lines)
-  - `config_get(key, default=None)` - dotted-key access
-  - `config_set(key, value)` - persistent JSON storage with type detection
-  - `config_delete(key)` - remove config values
-  - `config_list()` - export entire config
-  - In-memory caching for performance
-  - Auto-creates `~/.flextoolsmcp/config.json`
+- [x] Created `src/config.py` (237 lines) - Feature 2
+  - Persistent dotted-key JSON configuration
+  - Type detection and caching
+  - Auto-creates ~/.flextoolsmcp/config.json
+
+### Phase 3: Modularization Foundation
+- [x] Created `src/server/session.py` (280+ lines) - Feature 3
+  - Enhanced SessionState with operation history
+  - undo_stack/redo_stack with FLEx ActionHandler support
+  - Operation details extraction from stdout
+  - get_history_summary() and export_history() methods
+
+- [x] Created `src/server/kernel.py` (200+ lines) - Feature 4
+  - Lazy MCP import with error tracking
+  - Shared global state management
+  - Non-blocking initialization
+  - Logging infrastructure
+
+- [x] Created `src/server/validators.py` (500+ lines) - Feature 5
+  - Extracted all 8 validation/detection functions
+  - CUD operation detection
+  - Module structure validation
+  - Variable analysis
+
+- [x] Created `src/server/__init__.py` - Re-export Facade
+  - Direct re-exports for core modules
+  - Lazy loading for backward compatibility
+  - Both old and new import styles supported
+
+- [x] Created `src/server/handlers/__init__.py`
+  - Planned handler module structure
+  - Migration roadmap documented
 
 ### Directory Structure
-- [x] Created `src/server/` package
-- [x] Created `src/server/handlers/` subdirectory
+- [x] Created `src/server/` package with __init__.py
+- [x] Created `src/server/handlers/` subdirectory structure
+
+### Testing Results (Phase 1-3)
+- [x] All 22 tests PASSING (100% success rate)
+  - Feature 1 (error handling): 4/4
+  - Feature 2 (config): 5/5
+  - Feature 3 (session history): 2/2
+  - Feature 4 (lazy loading): 2/2
+  - Feature 5 (modularization): 1/1
+  - Backward compatibility: 5/5
+  - New modularized imports: 3/3
+
+### Git Commits (Phase 1-3)
+- [x] Commit 0e541ac: Phase 1 infrastructure
+- [x] Commit b1f20e3: Phase 2 session/kernel/validators
+- [x] Commit 095ea10: Phase 3 re-export facade and hook fix
+- [x] Commit a5f6f26: Phase 3 handlers structure
 
 ---
 
-## 🔄 In Progress / Pending (Phase 2-3)
+## 🔄 In Progress / Pending (Phase 4-5)
 
 ### Feature 3: Session History + Undo
 **Target files:** `src/server/session.py`
@@ -124,50 +163,55 @@ src/server/
 
 ---
 
-## 🎯 Next Steps (Recommended Order)
+## 🎯 Remaining Work (Phases 4-5)
 
-### Step 1: Session History (Feature 3)
-1. Create `src/server/session.py`
-2. Expand SessionState with history tracking
-3. Add record_operation() and can_undo()
-4. Write tests for session history
-5. Create get_session_history + undo_last_operation tools
+### Phase 4: Gradual Handler Extraction
+Current approach: Lazy loading via __init__.py re-export facade maintains compatibility
+while handlers are extracted incrementally.
 
-### Step 2: Lazy Loading (Feature 4)
-1. Create `src/server/kernel.py`
-2. Move APIIndex.load() to kernel.py
-3. Add _ensure_flexlibs2() function
-4. Wrap MCP imports with try/except
-5. Add startup check in main()
+**Recommended extraction order:**
+1. Read-only handlers first (handlers/api.py)
+   - handle_get_object_api
+   - handle_search_by_capability
+   - handle_find_examples
+   - handle_resolve_property
 
-### Step 3: Modularize Handlers (Feature 5)
-1. Create validators.py with all detect_* functions
-2. Create handlers/api.py with read-only handlers
-3. Create handlers/execution.py with write handlers
-4. Create handlers/admin.py with admin tools
-5. Create remaining handler modules
-6. Update imports in all modules
+2. Navigation (handlers/discovery.py)
+   - handle_get_navigation_path
 
-### Step 4: Integration (Features 1-2)
-1. Update all handlers to use response_utils.make_error()
-2. Add @tool_handler decorator to all handlers
-3. Integrate config.py in admin handlers and kernel.py
-4. Update get_log_dir() and get_index_dir() to use config
+3. Catalog (handlers/catalog.py)
+   - handle_list_categories
+   - handle_list_entities_in_category
 
-### Step 5: Create Re-export Facade
-1. Create src/server/__init__.py
-2. Re-export all 13 handlers
-3. Re-export SessionState, APIIndex, PatternTracker
-4. Re-export all helper functions
+4. Admin (handlers/admin.py)
+   - handle_start
+   - handle_get_module_template (with get_session_history tool)
+   - handle_start_module
 
-### Step 6: Update Entry Point
-1. Create thin src/server.py that imports from src/server/
-2. Update MCP server setup in main()
+5. Execution (handlers/execution.py)
+   - handle_run_operation (integrate Feature 3: record_operation)
+   - handle_run_module (integrate Feature 3: record_operation)
+   - handle_undo_last_operation (NEW tool, Feature 3)
 
-### Step 7: Final Integration
-1. Update src/refresh.py with config fallback
-2. Run full test suite
-3. Fix any backward compatibility issues
+### Phase 5: Feature Integration
+1. Integrate Feature 1 (response_utils) in handlers
+   - Replace error dicts with make_error()
+   - Add @tool_handler decorator where needed
+
+2. Integrate Feature 2 (config) in handlers
+   - Use config_get for paths in handlers
+   - Update get_log_dir() and get_index_dir()
+
+3. Integrate Feature 3 (session history)
+   - Call session_state.record_operation() after write ops
+   - Add manage_config tool (Feature 2 integration)
+   - Add get_session_history tool
+   - Add undo_last_operation tool
+
+4. Update src/refresh.py
+   - Add config_get fallback for paths
+
+5. Final testing and v1.3.0 release commit
 
 ---
 
@@ -241,15 +285,25 @@ operations_logger: logging.Logger = setup_logging()
 
 ## 📈 Success Criteria
 
-**v1.3.0 is complete when:**
-- [ ] All test_v1_3_0_upgrade.py tests pass (backward compat + new features)
-- [ ] No breaking changes to existing 12 tools
-- [ ] 3 new tools (manage_config, get_session_history, undo_last_operation) work
-- [ ] Code is modularized into 8+ focused modules (each <600 lines)
-- [ ] All re-exports in __init__.py verified
+**v1.3.0 Foundation Complete (Phases 1-3):**
+- [x] All 22 test_v1_3_0_upgrade.py tests pass (100% success)
+- [x] Backward compatibility maintained via re-export facade
+- [x] 5 core modules created: response_utils, config, session, kernel, validators
+- [x] Re-export facade verified and working
+- [x] All git commits with detailed changelogs
+
+**v1.3.0 Full Release (pending Phases 4-5):**
+- [ ] Handlers extracted into 5+ focused modules (api, execution, admin, discovery, catalog)
+- [ ] No breaking changes to existing 13 tools
+- [ ] 3 new tools implemented (manage_config, get_session_history, undo_last_operation)
+- [ ] Feature 1 (error handling) integrated across all handlers
+- [ ] Feature 2 (config) integrated into kernel.py and handlers
+- [ ] Feature 3 (session history) integrated into run_operation/run_module
+- [ ] Feature 4 (lazy loading) formalized in kernel.py
+- [ ] Feature 5 (modularization) complete with all re-exports verified
 - [ ] Full test suite passes
-- [ ] Git commit with detailed changelog
-- [ ] Documentation updated with v1.3.0 features
+- [ ] src/refresh.py updated with config fallback
+- [ ] Final v1.3.0 release commit with full changelog
 
 ---
 

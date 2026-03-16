@@ -64,12 +64,11 @@ Configure paths in `.env` file. These external repositories are dependencies:
 
 | Repository | Purpose | Default Path |
 |------------|---------|--------------|
-| **FieldWorks** | User-facing GUI for managing lexicons | D:\Github\Fieldworks |
-| **LibLCM** | C# data model and API for FieldWorks databases | D:\Github\liblcm |
-| **FlexLibs** (stable) | Shallow IronPython wrapper (~40 functions) | D:\Github\flexlibs |
-| **FlexLibs 2.0** | Deep IronPython wrapper (~90% coverage) | D:\Github\flexlibs2 |
-| **FlexTools** | GUI app for running Python macros | D:\Github\FlexTools |
-| **FLExTools-Generator** | Existing work extracting LibLCM/FlexLibs info (reference) | D:\Github\FLExTools-Generator |
+| **FieldWorks** | User-facing GUI for managing lexicons | ../FieldWorks |
+| **LibLCM** | C# data model and API for FieldWorks databases | ../liblcm |
+| **FlexLibs** (stable) | Shallow IronPython wrapper (~40 functions) | ../flexlibs |
+| **FlexLibs 2.0** | Deep IronPython wrapper (~90% coverage) | ../flexlibs2 |
+| **FlexTools** | GUI app for running Python macros | ../flextools |
 
 ## Project Structure
 

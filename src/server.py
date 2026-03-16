@@ -2067,6 +2067,50 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
                 },
                 "required": ["property_name"]
             }
+        ),
+        Tool(
+            name="manage_config",
+            description="Get, set, delete, or list persistent configuration values for FlexToolsMCP.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["get", "set", "delete", "list"],
+                        "description": "Configuration action to perform"
+                    },
+                    "key": {
+                        "type": "string",
+                        "description": "Dotted key (e.g., 'paths.flexlibs2') for get/set/delete actions"
+                    },
+                    "value": {
+                        "description": "Value to set (required for 'set' action)"
+                    }
+                },
+                "required": ["action"]
+            }
+        ),
+        Tool(
+            name="get_session_history",
+            description="View this session's operation history and undo/redo availability.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "include_operations": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include full list of operations in response"
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="undo_last_operation",
+            description="Undo the most recent database write operation. Uses FLEx ActionHandler.Undo().",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
         )
     ]
 
@@ -2120,6 +2164,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_get_operation_logs(arguments)
     elif name == "resolve_property":
         return await handle_resolve_property(arguments)
+    elif name == "manage_config":
+        from src.server.handlers.admin import handle_manage_config
+        return await handle_manage_config(arguments)
+    elif name == "get_session_history":
+        from src.server.handlers.admin import handle_get_session_history
+        return await handle_get_session_history(arguments)
+    elif name == "undo_last_operation":
+        from src.server.handlers.admin import handle_undo_last_operation
+        return await handle_undo_last_operation(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

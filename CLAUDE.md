@@ -184,3 +184,7 @@ When users encounter `AttributeError` or "has no attribute" errors:
 - **Semantic categorization**: Entities categorized by namespace and naming patterns
 - **Object-centric organization**: Index organized around objects (ILexEntry, ILexSense, etc.)
 - **API versioning**: Supports multiple library versions simultaneously via filename suffixes (e.g., `liblcm_api_v8.2.3.json`). Server auto-detects and loads matching versions, auto-refreshing missing ones on startup
+
+## Don'ts:
+- This is a Windows system; don't use emojis in console messages.
+- Call Python with `python` instead of `python3`.

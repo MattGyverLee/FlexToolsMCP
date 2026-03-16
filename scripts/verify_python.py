@@ -196,7 +196,7 @@ def _count_tools_from_ast():
             tool_count += 1
 
     if tool_count >= MIN_TOOL_COUNT:
-        print(f"  server.py: {tool_count} Tool() definitions found (AST) ✓")
+        print(f"  server.py: {tool_count} Tool() definitions found (AST) [OK]")
         return True
     else:
         print(

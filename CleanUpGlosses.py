@@ -1,6 +1,6 @@
 #
 #   Clean Up Glosses
-#    - A FlexTools Module -
+#    - A FLExTools Module -
 #
 #   Scans all glosses, finds periods between two letters and replaces them with spaces
 #
@@ -44,7 +44,7 @@ PERIOD_BETWEEN_LETTERS = re.compile(r'(?<=\w)\.(?=\w)')
 
 def Main(project, report, modifyAllowed):
     """
-    Main entry point for the FlexTools module.
+    Main entry point for the FLExTools module.
 
     Args:
         project: FLExProject instance providing access to the FieldWorks database

@@ -91,7 +91,7 @@ If you're iterating on FlexLibs 2.0 without changing the version number:
 | **LibLCM** | C# data model (2,295 entities) | Required - via FieldWorks |
 | **FlexLibs** | Python wrappers stable (~71 methods) | Optional - indexed for legacy modules |
 | **FlexLibs 2.0** | Python wrappers comprehensive (~1,400 methods) | Optional - indexed for modern modules |
-| **FlexTools** | GUI for running modules | Optional - reference only |
+| **FLExTools** | GUI for running modules | Optional - reference only |
 
 Python packages (see `requirements.txt`):
 - `pythonnet` - Access .NET libraries from Python
@@ -143,7 +143,7 @@ The MCP sits between AI assistants and FieldWorks data:
 ```
 User Request -> AI Assistant -> MCP Server -> Indexed Documentation
                     |
-            Generated FlexTools Script
+            Generated FLExTools Script
                     |
             FLExTools (IronPython)
                     |

@@ -1,12 +1,28 @@
-# FlexTools MCP
+# FLExTools MCP
 
-An MCP server that enables AI assistants to write FlexTools scripts and directly manipulate FieldWorks lexicon data using natural language.
+An MCP server that enables AI assistants to write FLExTools scripts and directly manipulate FieldWorks lexicon data using natural language.
 
 Developed for SIL Global by Matthew Lee in connection with the SIL's AI Integration Advisory Board and the FLExTrans team.
 
 ## Quick Overview
 
-**What it does:** FlexTools MCP gives AI assistants (Claude, Copilot, Gemini) the knowledge to write FLExTools modules by providing indexed, searchable documentation of LibLCM and FlexLibs APIs.
+**What it does:** FLExTools MCP gives AI assistants (Claude, Copilot, Gemini) the knowledge to write FLExTools modules by providing indexed, searchable documentation of LibLCM and FlexLibs APIs.
+
+** Videos **
+
+## Videos
+
+**[The MCP Connection: Talking to your Dictinary](https://vimeo.com/showcase/12149678?video=1171396540)**
+
+This podcast, for a linguistic audience, gives an overview of using the FLExTools MCP.
+
+[![MCP Video Thumbnail](./docs/MCPodcast.png)](https://vimeo.com/showcase/12149678?video=1171396540)
+
+**[MCPs for FLEx and FLExTools: LangTech AI Software Engineering CoP](https://www.youtube.com/watch?v=JyNwUbAWYIM)**
+
+This presentation, given to an audience of programmers, discusses the background, architecture, and advantages of an MCP, and introduces the FLExTools MCP.
+
+[![COP Video Thumbnail](./docs/COP-Thumbnail.png)](https://www.youtube.com/watch?v=JyNwUbAWYIM)
 
 **Three ways to use it:**
 1. Generate legacy modules (FlexLibs stable)
@@ -119,7 +135,7 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 ```
 User Request -> AI Assistant -> MCP Server -> Indexed APIs
                     |
-            Generated FlexTools Script or Direct Execution
+            Generated FLExTools Script or Direct Execution
                     |
             FLExTools (IronPython) or FlexLibs 2.0
                     |

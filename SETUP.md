@@ -18,7 +18,7 @@
 
 Install a current version of FLEx and FLExTools (with Python). Make sure Python paths (e.g. `C:\Program Files\Python311\Scripts\` and `C:\Program Files\Python311\`) are in your Windows Path. **Reboot after installing Python if this is your first Python installation.**
 
-### 2. Clone FlexToolsMCP
+### 2. Clone FLExToolsMCP
 
 ```bash
 git clone https://github.com/MattGyverLee/FlexToolsMCP.git
@@ -57,7 +57,7 @@ python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_i
 
 If this succeeds, the MCP and FlexLibs2 are installed correctly.
 
-## Updating FlexToolsMCP
+## Updating FLExToolsMCP
 
 ### Pull Latest Changes
 
@@ -115,7 +115,7 @@ Create a folder for experimenting with MCPs (e.g., `C:/Github/MCPlayground`), th
 # User-wide installation (available in all projects)
 claude mcp add flextools-mcp -s user python C:/Github/FlexToolsMCP/src/server.py
 
-# Or project-specific (from the FlexToolsMCP directory)
+# Or project-specific (from the FLExToolsMCP directory)
 claude mcp add flextools-mcp python src/server.py
 
 # List configured MCP servers
@@ -150,7 +150,7 @@ Alternatively, add this to your Claude Code config file (`.claude/mcp_servers.js
 
 Create a folder for experimenting with MCPs (e.g., `C:/Github/MCPlayground`), then open it in Antigravity.
 
-Once open, click the `...` in the top-right of the chat window and choose `MCP Servers`. If FlexTools MCP isn't in the list, click the `Manage MCP Servers` link at the top.
+Once open, click the `...` in the top-right of the chat window and choose `MCP Servers`. If FLExTools MCP isn't in the list, click the `Manage MCP Servers` link at the top.
 
 Click `View RAW Config` and add the following to your Antigravity configuration file (`.antigravity/config.json` or similar):
 
@@ -168,7 +168,7 @@ Click `View RAW Config` and add the following to your Antigravity configuration 
 }
 ```
 
-Adjust the path to match your FlexToolsMCP installation location.
+Adjust the path to match your FLExToolsMCP installation location.
 
 ### Other MCP-Compatible Tools
 

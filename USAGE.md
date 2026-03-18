@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers how to use FlexTools MCP to generate and run FLExTools modules, execute operations directly on FieldWorks databases, and understand the recommended workflow.
+This guide covers how to use FLExTools MCP to generate and run FLExTools modules, execute operations directly on FieldWorks databases, and understand the recommended workflow.
 
 ## MCP Tools Reference
 
@@ -17,9 +17,9 @@ The server exposes 12 tools:
 | `find_examples` | Get code examples by operation type (create, read, update, delete) |
 | `list_categories` | List API categories (lexicon, grammar, texts, etc.) |
 | `list_entities_in_category` | List entities in a category |
-| `get_module_template` | Get the official FlexTools module template |
-| `start_module` | Interactive wizard to create a new FlexTools module |
-| `run_module` | Execute a FlexTools module against a FieldWorks project |
+| `get_module_template` | Get the official FLExTools module template |
+| `start_module` | Interactive wizard to create a new FLExTools module |
+| `run_module` | Execute a FLExTools module against a FieldWorks project |
 | `run_operation` | Execute FlexLibs2 operations directly without module boilerplate |
 | `resolve_property` | Resolve property names and get pythonnet casting requirements |
 

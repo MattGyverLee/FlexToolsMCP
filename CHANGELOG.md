@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to FlexTools MCP are documented in this file.
+All notable changes to FLExTools MCP are documented in this file.
 
 ## [1.2.0] - 2026-02-26
 
@@ -53,7 +53,7 @@ All notable changes to FlexTools MCP are documented in this file.
 ## [1.0.0] - 2026-02-15
 
 ### Initial Release
-- MCP server with 6 tools for FlexTools script generation
+- MCP server with 6 tools for FLExTools script generation
 - FlexLibs2 API indexing and semantic search
 - LibLCM API reflection and documentation
 - Operation and module execution with dry-run support

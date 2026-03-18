@@ -1,7 +1,7 @@
-# FlexTools AI Assistant - Project Plan
+# FLExTools AI Assistant - Project Plan
 
 ## Project Goal
-Build an MCP server that enables AI assistants (Claude Code, Copilot, Gemini CLI) to help users write FlexTools scripts for editing FieldWorks lexicons. The MCP provides indexed, searchable documentation of the LibLCM and FlexLibs APIs with usage examples.
+Build an MCP server that enables AI assistants (Claude Code, Copilot, Gemini CLI) to help users write FLExTools scripts for editing FieldWorks lexicons. The MCP provides indexed, searchable documentation of the LibLCM and FlexLibs APIs with usage examples.
 
 ## Core Architecture
 
@@ -9,7 +9,7 @@ Build an MCP server that enables AI assistants (Claude Code, Copilot, Gemini CLI
 ```
 User Request → AI Assistant → MCP Server → Indexed Documentation
                      ↓
-             Generated FlexTools Script
+             Generated FLExTools Script
                      ↓
              FLExTools (IronPython)
                      ↓
@@ -163,18 +163,18 @@ Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the act
    - Find C# test files in FieldWorks source
    - Extract test logic and expected behaviors
    - Convert to IronPython equivalents
-   
+
 2. **Create seed tests manually** (20-30 tests):
    - Common operations (add gloss, merge entries, etc.)
    - Known edge cases
    - Different writing systems
-   
+
 3. **Agent expansion** (optional):
    - Generate variations of seed tests
    - Different data, edge cases, boundaries
    - **Human validation required** (review 10% random sample)
 
-**Output**: 
+**Output**:
 - `test_suite/` directory with pytest tests
 - Test coverage report
 
@@ -229,11 +229,11 @@ Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the act
 1. **Fill missing descriptions**:
    - Where XML docs are empty
    - Generate from method name + signature + context
-   
+
 2. **Semantic categorization**:
    - Tag methods by linguistic concept (gloss, definition, phonology, morphology, etc.)
    - Tag by operation type (create, read, update, delete, merge)
-   
+
 3. **Add navigation patterns**:
    - Manually document for top 20 objects (Entry, Sense, Form, etc.)
    - "How to get from Entry to ExampleSentence"
@@ -269,7 +269,7 @@ Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the act
           "description": "Writing system handle (use WritingSystemFactory)"
         },
         {
-          "name": "text", 
+          "name": "text",
           "type": "string",
           "description": "Gloss text to set"
         }
@@ -368,7 +368,7 @@ def list_entities_in_category(category: str, source: str = "all") -> list:
 
 ### Orchestrator Agent
 - Coordinates pipeline
-- Resolves conflicts between agents  
+- Resolves conflicts between agents
 - Maintains consistency
 - Tracks completion percentage
 - Manages validation gates between phases
@@ -472,14 +472,14 @@ def list_entities_in_category(category: str, source: str = "all") -> list:
 class FlexLibsTestRunner:
     def setUp(self):
         self.db = create_test_database()
-        
+
     def execute_test(self, test_code: str):
         try:
             exec(test_code, {'DB': self.db})
             return validate_db_state(self.db)
         finally:
             self.tearDown()
-    
+
     def tearDown(self):
         self.db.rollback_or_restore()
 ```
@@ -649,7 +649,7 @@ search_fieldworks_api(
 - MCP server runs locally (Python)
 - Works with Claude Code, Copilot, Gemini CLI (MCP support confirmed)
 - Index stored as JSON files or SQLite
-- Usage of the MCP will assume required Fieldworks and liblcm binaries are installed (if only targeting LIBLCM). When creating Python scripts with the MCP, we will assume that either flexLibs (stable) or flexlibs 2.0 is installed. 
+- Usage of the MCP will assume required Fieldworks and liblcm binaries are installed (if only targeting LIBLCM). When creating Python scripts with the MCP, we will assume that either flexLibs (stable) or flexlibs 2.0 is installed.
 
 ---
 

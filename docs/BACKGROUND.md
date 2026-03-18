@@ -1,10 +1,10 @@
-# FlexTools MCP Background
+# FLExTools MCP Background
 
-The story of how and why FlexTools MCP was created.
+The story of how and why FLExTools MCP was created.
 
 ## The Dream
 
-Since I started working with AI, I dreamed of having an AI tool that could assist with or write "proper" FLExTools modules. The challenge was that the "agent" needed to deeply understand the FLEx Model, FLExTools preferences, which FlexTools functions existed, and when to fall back to the FieldWorks API (flexlibs). This was too much data to be held in memory for AI work, or for most humans.
+Since I started working with AI, I dreamed of having an AI tool that could assist with or write "proper" FLExTools modules. The challenge was that the "agent" needed to deeply understand the FLEx Model, FLExTools preferences, which FLExTools functions existed, and when to fall back to the FieldWorks API (flexlibs). This was too much data to be held in memory for AI work, or for most humans.
 
 ## Early Attempts (Summer 2025)
 
@@ -12,7 +12,7 @@ Since summer of 2025, I've tried to build a Chipp AI agent for this task by givi
 
 ## FlexLibs 2.0 (Christmas 2025)
 
-I realized that one barrier to progress was enabling FLExTools (flexlibs) to access and edit the WHOLE FLEx database (not having to learn and switch between the FlexTools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0.
+I realized that one barrier to progress was enabling FLExTools (flexlibs) to access and edit the WHOLE FLEx database (not having to learn and switch between the FLExTools and FLEx backends). Christmas of 2025, I set Claude Code on the task of a COMPLETE rewrite of FlexLibs that I'm calling FlexLibs 2.0.
 
 Instead of the ~70 functions currently supported in FlexLibs stable, FlexLibs 2.0 provides nearly 1,400 functions covering full CRUD operations for the Lexicon, Grammar, Texts, Words, Lists, Scripture, and Notebook domains.
 
@@ -41,7 +41,7 @@ The breakthrough came when Claude Code (using the MCP) could generate at will:
 
 ## Beyond Code Generation
 
-Beyond FlexTools module generation, the MCP can alternately run code directly on the database, enabling natural language editing of ANY FLEx data without writing a full module.
+Beyond FLExTools module generation, the MCP can alternately run code directly on the database, enabling natural language editing of ANY FLEx data without writing a full module.
 
 My goal was to successfully write FLExTool modules, but I accidentally created what Doug hoped to see: a scary-powerful natural-language interface to interact with FieldWorks data.
 

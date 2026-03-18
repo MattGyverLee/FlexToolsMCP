@@ -23,13 +23,13 @@ python src/server.py
 
 ## Project Overview
 
-FlexTools MCP is an MCP server that enables AI assistants (Claude Code, Copilot, Gemini CLI) to help users write FlexTools scripts for editing FieldWorks lexicons. The server provides indexed, searchable documentation of the LibLCM and FlexLibs APIs with usage examples.
+FLExTools MCP is an MCP server that enables AI assistants (Claude Code, Copilot, Gemini CLI) to help users write FLExTools scripts for editing FieldWorks lexicons. The server provides indexed, searchable documentation of the LibLCM and FlexLibs APIs with usage examples.
 
 ### Architecture Stack
 ```
 User Request -> AI Assistant -> MCP Server -> Indexed Documentation
                     |
-            Generated FlexTools Script
+            Generated FLExTools Script
                     |
             FLExTools (IronPython)
                     |
@@ -42,9 +42,9 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
 
 ## Project Philosophy
 
-FlexTools MCP makes FieldWorks automation accessible to non-programmers by:
+FLExTools MCP makes FieldWorks automation accessible to non-programmers by:
 
-- **Indexing, not executing**: The MCP doesn't run code. It provides comprehensive, searchable API documentation so Claude can generate correct FlexTools scripts. Intelligence is in the indexing and presentation.
+- **Indexing, not executing**: The MCP doesn't run code. It provides comprehensive, searchable API documentation so Claude can generate correct FLExTools scripts. Intelligence is in the indexing and presentation.
 
 - **Object-centric, not function-centric**: APIs are organized around what users manipulate (ILexEntry, ILexSense, etc.), not library namespaces. Users think "I want to modify entries", not "which library module should I call?"
 
@@ -68,7 +68,7 @@ Configure paths in `.env` file. These external repositories are dependencies:
 | **LibLCM** | C# data model and API for FieldWorks databases | ../liblcm |
 | **FlexLibs** (stable) | Shallow IronPython wrapper (~40 functions) | ../flexlibs |
 | **FlexLibs 2.0** | Deep IronPython wrapper (~90% coverage) | ../flexlibs2 |
-| **FlexTools** | GUI app for running Python macros | ../flextools |
+| **FLExTools** | GUI app for running Python macros | ../flextools |
 
 ## Project Structure
 

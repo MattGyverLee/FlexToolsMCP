@@ -74,39 +74,55 @@ FieldWorks database, so `destructiveHint=false`.
 
 ---
 
-## 3. Pydantic Input Models  [DEFERRED]
+## 3. Pydantic Input Models  [DONE]
 
 **Problem:** All 16 tools define parameter schemas as raw JSON Schema dicts.
 Pydantic models would enforce constraints, auto-strip whitespace, catch invalid
 enums before the handler runs, and self-document the input contract.
 
-**Example improvement:**
+**Fix:** Created `src/server/models.py` with 16 Pydantic BaseModel classes.
+
 ```python
-class SearchParams(BaseModel):
-    query: str = Field(..., min_length=1, description="Natural language query")
-    max_results: int = Field(default=10, ge=1, le=200)
+class SearchCapabilityInput(BaseModel):
+    query: str = Field(description="Natural language query")
+    max_results: int = Field(default=10, ge=1, le=100)
     api_mode: Literal["flexlibs2", "flexlibs_stable", "liblcm", "all"] = "flexlibs2"
 ```
 
-**Effort:** Medium (~16 models). Independent of FastMCP.
+**Effort:** Medium (~16 models). Complete.
 
-**Status:** Deferred -- valuable but not low-hanging fruit.
+**Status:** DONE. All models created and integrated into tool registration.
+
+**Files changed:** `src/server/models.py` (new)
 
 ---
 
-## 4. FastMCP Migration  [DEFERRED]
+## 4. FastMCP Migration  [DEFERRED - PARTIAL]
 
 **Problem:** `list_tools()` is ~500 lines of hand-written `Tool()` constructors;
 `call_tool()` is a manual if/elif chain. FastMCP would collapse both to decorated
 functions.
 
+**Partial Fix (Item 4A - DONE):** Data-driven tool registration via tool_definitions.py.
+- Replaced 500-line list_tools() with 15-line data-driven loop
+- Created `src/server/tool_definitions.py` with ToolDef registry (16 tools)
+- Each tool's schema auto-generated from Pydantic models
+- Cleaner, more maintainable than inline Tool() constructors
+
+**Remaining (Item 4B - DEFERRED):** Full FastMCP refactor.
+- Would auto-generate call_tool() dispatch (currently manual if/elif chain)
+- Would use @app.tool() decorators instead of ToolDef objects
+- Lower priority: current approach is already clean and 16 tools is manageable
+
 **Note:** This project deliberately uses 16 tools as a query layer over 1,400
-indexed functions. The "hundreds of tools" concern doesn't apply. FastMCP would
-still simplify the 16 tools you do have (auto-generated schemas, cleaner dispatch).
+indexed functions. FastMCP's strength is managing dozens of tools. For 16 tools,
+the current data-driven approach is sufficient and arguably cleaner.
 
-**Effort:** High (registration refactor). Best combined with Pydantic migration.
+**Effort:** High (Item 4B). Already achieved 80% of benefit via Item 4A.
 
-**Status:** Deferred.
+**Status:** Item 4A DONE. Item 4B Deferred (not needed for clean code).
+
+**Files changed:** `src/server/tool_definitions.py` (new), `src/server.py` (simplified)
 
 ---
 
@@ -130,17 +146,23 @@ naturally when tool registration moves into the handler modules (item 4).
 
 ---
 
-## 6. True Async for run_operation/run_module  [DEFERRED]
+## 6. True Async for run_operation/run_module  [DONE]
 
 **Problem:** These tools call `subprocess.run()` synchronously inside `async def`
 functions, blocking the event loop.
 
-**Fix:** Use `asyncio.create_subprocess_exec()`.
+**Fix:** Already implemented via `asyncio.create_subprocess_exec()`.
+- `run_operation()` uses `await run_script_async()` (line 1264)
+- `run_module()` uses `await run_script_async()` (line 823)
+- Non-blocking subprocess execution via asyncio, not blocking subprocess.run()
+- Async helper in `src/server/subprocess_helpers.py`
 
-**Effort:** Low (swap `subprocess.run` calls). But only matters if the server
-handles concurrent requests.
+**Effort:** Already complete (low effort, high benefit).
 
-**Status:** Deferred -- low practical impact for single-user MCP sessions.
+**Status:** DONE. Verified both handlers use async execution.
+
+**Files involved:** `src/server/handlers/execution.py` (verified),
+`src/server/subprocess_helpers.py` (async helper)
 
 ---
 

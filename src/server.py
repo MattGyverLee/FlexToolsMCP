@@ -40,34 +40,9 @@ if __package__:
         session_state,
         pattern_tracker,
     )
-    from .server.handlers.api import (
-        handle_get_object_api,
-        handle_search_by_capability,
-        handle_find_examples,
-        handle_resolve_property,
-    )
-    from .server.handlers.catalog import (
-        handle_list_categories,
-        handle_list_entities_in_category,
-    )
-    from .server.handlers.discovery import (
-        handle_get_navigation_path,
-    )
-    from .server.handlers.admin import (
-        handle_start,
-        handle_manage_config,
-        handle_get_session_history,
-        handle_undo_last_operation,
-        handle_get_module_template,
-    )
-    from .server.handlers.execution import (
-        handle_start_module,
-        handle_run_module,
-        handle_run_operation,
-        handle_get_operation_logs,
-    )
     from .server.utils import model_to_tool_schema
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
+    from .server.dispatch import get_tool_handler
 else:
     from json_utils import sort_json_arrays
     from server.kernel import (
@@ -77,34 +52,9 @@ else:
         session_state,
         pattern_tracker,
     )
-    from server.handlers.api import (
-        handle_get_object_api,
-        handle_search_by_capability,
-        handle_find_examples,
-        handle_resolve_property,
-    )
-    from server.handlers.catalog import (
-        handle_list_categories,
-        handle_list_entities_in_category,
-    )
-    from server.handlers.discovery import (
-        handle_get_navigation_path,
-    )
-    from server.handlers.admin import (
-        handle_start,
-        handle_manage_config,
-        handle_get_session_history,
-        handle_undo_last_operation,
-        handle_get_module_template,
-    )
-    from server.handlers.execution import (
-        handle_start_module,
-        handle_run_module,
-        handle_run_operation,
-        handle_get_operation_logs,
-    )
     from server.utils import model_to_tool_schema
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
+    from server.dispatch import get_tool_handler
 
 
 # ============================================================
@@ -739,8 +689,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if api_index is None:
         api_index = APIIndex.load(get_index_dir())
 
-    # flextools_start is the only tool that doesn't require initialization
-    # All other discovery/execution tools require calling flextools_start first
+    # Session initialization gate: flextools_start is the only tool that doesn't require it
     if name != "flextools_start" and not session_state.initialized:
         return [TextContent(type="text", text=json.dumps({
             "error": "Session not initialized",
@@ -754,40 +703,26 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             ]
         }, indent=2))]
 
-    if name == "flextools_start":
-        return await handle_start(arguments)
-    elif name == "flextools_get_object_api":
-        return await handle_get_object_api(arguments)
-    elif name == "flextools_search_by_capability":
-        return await handle_search_by_capability(arguments)
-    elif name == "flextools_get_navigation_path":
-        return await handle_get_navigation_path(arguments)
-    elif name == "flextools_find_examples":
-        return await handle_find_examples(arguments)
-    elif name == "flextools_list_categories":
-        return await handle_list_categories(arguments)
-    elif name == "flextools_list_entities_in_category":
-        return await handle_list_entities_in_category(arguments)
-    elif name == "flextools_get_module_template":
-        return await handle_get_module_template(arguments)
-    elif name == "flextools_start_module":
-        return await handle_start_module(arguments)
-    elif name == "flextools_run_module":
-        return await handle_run_module(arguments)
-    elif name == "flextools_run_operation":
-        return await handle_run_operation(arguments)
-    elif name == "flextools_get_operation_logs":
-        return await handle_get_operation_logs(arguments)
-    elif name == "flextools_resolve_property":
-        return await handle_resolve_property(arguments)
-    elif name == "flextools_manage_config":
-        return await handle_manage_config(arguments)
-    elif name == "flextools_get_session_history":
-        return await handle_get_session_history(arguments)
-    elif name == "flextools_undo_last_operation":
-        return await handle_undo_last_operation(arguments)
-    else:
+    # Look up handler and input model from dispatch router
+    route = get_tool_handler(name)
+    if route is None:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
+
+    handler, input_model = route
+
+    # Validate and parse arguments using Pydantic model
+    try:
+        validated_args = input_model(**arguments)
+    except Exception as e:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "Input validation failed",
+            "message": str(e),
+            "tool": name,
+            "received_arguments": arguments,
+        }, indent=2))]
+
+    # Dispatch to handler with validated input (convert to dict for backward compatibility)
+    return await handler(validated_args.model_dump())
 
 
 async def main():

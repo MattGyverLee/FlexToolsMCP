@@ -13,6 +13,7 @@ Provides checks for code structure, safety, and correctness:
 
 import re
 import ast
+import textwrap
 from typing import Dict, List, Set, Optional, Any
 
 
@@ -603,6 +604,124 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
     return {}
 
 
+def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
+    """Find raw LibLCM calls that mutate state.
+
+    Detects patterns like:
+    - _cache.CreateObject(...)
+    - _cache.DeleteObject(...)
+    - _cache.BeginNonUndoableTask()
+    - obj.Add(...), obj.Remove(...), obj.Clear(...)
+    - obj.MoveTo(...), obj.Insert(...)
+
+    Returns list of mutations with their line numbers for protection context checking.
+    """
+    mutations = []
+    liblcm_mutable_patterns = [
+        (r'_cache\s*\.\s*CreateObject\s*\(', 'CreateObject', 'Create'),
+        (r'_cache\s*\.\s*DeleteObject\s*\(', 'DeleteObject', 'Delete'),
+        (r'_cache\s*\.\s*BeginNonUndoableTask\s*\(', 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
+        (r'\.Add\s*\(', 'Add', 'Mutate'),
+        (r'\.Remove\s*\(', 'Remove', 'Mutate'),
+        (r'\.Clear\s*\(', 'Clear', 'Mutate'),
+        (r'\.MoveTo\s*\(', 'MoveTo', 'Reorder'),
+        (r'\.Insert\s*\(', 'Insert', 'Mutate'),
+    ]
+
+    for line_num, line in enumerate(code.split('\n'), 1):
+        # Skip comments
+        line_content = re.sub(r'#.*$', '', line)
+
+        for pattern, method_name, category in liblcm_mutable_patterns:
+            if re.search(pattern, line_content):
+                mutations.append({
+                    'method': method_name,
+                    'line': line_num,
+                    'category': category,
+                    'context': line_content.strip()[:60]  # First 60 chars for display
+                })
+
+    return mutations
+
+
+def find_protected_ranges(code: str) -> List[tuple]:
+    """Find line ranges protected by modifyEnabled or writeEnabled guards.
+
+    Detects:
+    - with project.modifyEnabled: blocks
+    - with self.project.modifyEnabled: blocks
+    - if project.writeEnabled: blocks
+    - if self.project.writeEnabled: blocks
+    - if project.writeEnabled == True: blocks
+
+    Returns list of (start_line, end_line) tuples for protected ranges.
+    """
+    protected = []
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return protected  # Can't parse, assume no protection
+
+    class ProtectionFinder(ast.NodeVisitor):
+        def visit_With(self, node):
+            """Find 'with project.modifyEnabled:' blocks."""
+            for item in node.items:
+                ctx_expr = item.context_expr
+                # Match: project.modifyEnabled or self.project.modifyEnabled
+                if self._is_modify_enabled(ctx_expr):
+                    start_line = node.lineno
+                    end_line = node.end_lineno or start_line + 1000
+                    protected.append((start_line, end_line))
+                    break
+
+            self.generic_visit(node)
+
+        def visit_If(self, node):
+            """Find 'if project.writeEnabled:' blocks."""
+            if self._is_write_enabled_check(node.test):
+                start_line = node.lineno
+                # end_lineno includes the if line, body starts after
+                if node.body:
+                    end_line = node.body[-1].end_lineno or start_line + 1000
+                else:
+                    end_line = node.end_lineno or start_line + 1
+
+                protected.append((start_line, end_line))
+
+            self.generic_visit(node)
+
+        def _is_modify_enabled(self, node):
+            """Check if expression is 'project.modifyEnabled' or similar."""
+            if isinstance(node, ast.Attribute):
+                if node.attr == 'modifyEnabled':
+                    return True
+            return False
+
+        def _is_write_enabled_check(self, node):
+            """Check if condition checks 'writeEnabled'."""
+            # Pattern: project.writeEnabled (attribute)
+            if isinstance(node, ast.Attribute):
+                return node.attr == 'writeEnabled'
+
+            # Pattern: project.writeEnabled == True (compare)
+            if isinstance(node, ast.Compare):
+                # Check left side
+                if isinstance(node.left, ast.Attribute):
+                    if node.left.attr == 'writeEnabled':
+                        return True
+                # Check comparators
+                for comp in node.comparators:
+                    if isinstance(comp, ast.Attribute):
+                        if comp.attr == 'writeEnabled':
+                            return True
+            return False
+
+    finder = ProtectionFinder()
+    finder.visit(tree)
+    return protected
+
+
 def certify_script_readonly(code: str, api_index) -> dict:
     """Certify whether a script makes any FlexLibs2 mutating calls using API index.
 
@@ -610,24 +729,38 @@ def certify_script_readonly(code: str, api_index) -> dict:
     high confidence. Falls back to regex-based detection for code not in the index
     (raw LCM, custom logic, etc.).
 
+    Also detects raw LibLCM mutations and checks if they're protected by
+    modifyEnabled or writeEnabled guards.
+
     Args:
         code: Python code to analyze
         api_index: Loaded API index with is_mutating field per method
 
     Returns:
         {
-          "is_certified_readonly": bool,     # True = no mutating calls detected
-          "confidence": str,                 # "high" | "medium" | "low"
-          "mutating_calls": [                # Detected write operations
+          "is_certified_readonly": bool,           # True = no unprotected mutations
+          "confidence": str,                       # "high" | "medium" | "low"
+          "mutating_calls": [                      # Detected FlexLibs2 mutations
               {"class": str, "method": str, "is_mutating": bool, "source": str}
           ],
-          "unknown_calls": [...],            # Calls not found in index
-          "raw_lcm_patterns": [...],         # Regex-detected raw LCM writes
+          "unprotected_liblcm_calls": [            # Raw LCM calls without guard
+              {"method": str, "line": int, "context": str}
+          ],
+          "protected_liblcm_calls": [              # Raw LCM calls with guard
+              {"method": str, "line": int, "context": str}
+          ],
+          "unknown_calls": [...],                  # Calls not found in index
+          "raw_lcm_patterns": [...],               # Regex-detected raw LCM writes
         }
     """
+    # Normalize code by removing leading indentation (important for test strings)
+    code = textwrap.dedent(code)
+
     mutating_calls = []
     unknown_calls = []
     raw_lcm_patterns = []
+    unprotected_liblcm_calls = []
+    protected_liblcm_calls = []
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
     # Step 1: Extract FlexLibs2 Operations method calls using regex
@@ -684,20 +817,52 @@ def certify_script_readonly(code: str, api_index) -> dict:
         raw_lcm_patterns.extend(cud_info["operations"])
         confidence_sources["regex"] += 1
 
-    # Step 4: Determine confidence level
-    total_calls = len(mutating_calls) + len(unknown_calls)
+    # Step 4: Detect raw LibLCM mutations and check if they're protected
+    liblcm_mutations = find_liblcm_mutations(code)
+    protected_ranges = find_protected_ranges(code)
+
+    for mutation in liblcm_mutations:
+        line_num = mutation['line']
+        is_protected = any(
+            start <= line_num <= end
+            for start, end in protected_ranges
+        )
+
+        if is_protected:
+            protected_liblcm_calls.append({
+                'method': mutation['method'],
+                'line': line_num,
+                'category': mutation['category'],
+                'context': mutation['context']
+            })
+        else:
+            unprotected_liblcm_calls.append({
+                'method': mutation['method'],
+                'line': line_num,
+                'category': mutation['category'],
+                'context': mutation['context'],
+                'is_mutating': True
+            })
+
+    # Step 6: Determine confidence level
+    total_calls = len(mutating_calls) + len(unknown_calls) + len(unprotected_liblcm_calls)
     if total_calls == 0 and not raw_lcm_patterns:
         confidence = "high"
-    elif confidence_sources["unknown"] == 0 and confidence_sources["regex"] == 0:
+    elif confidence_sources["unknown"] == 0 and confidence_sources["regex"] == 0 and not unprotected_liblcm_calls:
         confidence = "high"
-    elif confidence_sources["unknown"] == 0:
+    elif confidence_sources["unknown"] == 0 and not unprotected_liblcm_calls:
         confidence = "medium"
     else:
         confidence = "low"
 
-    # Step 5: Build certification result
+    # Step 7: Build certification result
+    # Script is read-only certified if:
+    # 1. No FlexLibs2 mutating calls
+    # 2. No unprotected raw LibLCM mutations
+    # 3. No raw LCM patterns detected
     is_certified_readonly = (
         not any(m.get("is_mutating") for m in mutating_calls)
+        and not unprotected_liblcm_calls
         and not raw_lcm_patterns
     )
 
@@ -706,6 +871,8 @@ def certify_script_readonly(code: str, api_index) -> dict:
         "confidence": confidence,
         "mutating_calls": [m for m in mutating_calls if m.get("is_mutating")],
         "readonly_calls": [m for m in mutating_calls if not m.get("is_mutating")],
+        "unprotected_liblcm_calls": unprotected_liblcm_calls,
+        "protected_liblcm_calls": protected_liblcm_calls,
         "unknown_calls": unknown_calls,
         "raw_lcm_patterns": raw_lcm_patterns,
     }

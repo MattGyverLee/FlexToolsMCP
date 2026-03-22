@@ -137,6 +137,95 @@ def test_confidence_levels():
     print("[OK] Confidence levels assigned correctly")
 
 
+def test_unprotected_liblcm_calls():
+    """Test that unprotected raw LibLCM mutations are detected."""
+    api_index = load_api_index()
+
+    code = """
+    # Direct LibLCM call without protection
+    project._cache.CreateObject(...)
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], "Should NOT be certified readonly"
+    assert len(cert["unprotected_liblcm_calls"]) > 0, "Should detect unprotected LibLCM call"
+    assert any(c["method"] == "CreateObject" for c in cert["unprotected_liblcm_calls"])
+
+    print("[OK] Unprotected LibLCM calls detected correctly")
+
+
+def test_protected_liblcm_with_modifyenabled():
+    """Test that LibLCM mutations protected by modifyEnabled are allowed."""
+    api_index = load_api_index()
+
+    code = """
+    with project.modifyEnabled:
+        project._cache.CreateObject(...)
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], "Should be certified readonly when protected"
+    assert len(cert["unprotected_liblcm_calls"]) == 0, "Should have no unprotected calls"
+    assert len(cert["protected_liblcm_calls"]) > 0, "Should detect protected LibLCM call"
+
+    print("[OK] Protected LibLCM calls with modifyEnabled allowed")
+
+
+def test_protected_liblcm_with_writeenabled():
+    """Test that LibLCM mutations protected by writeEnabled check are allowed."""
+    api_index = load_api_index()
+
+    code = """
+    if project.writeEnabled:
+        project._cache.CreateObject(...)
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], "Should be certified readonly when protected"
+    assert len(cert["unprotected_liblcm_calls"]) == 0, "Should have no unprotected calls"
+    assert len(cert["protected_liblcm_calls"]) > 0, "Should detect protected LibLCM call"
+
+    print("[OK] Protected LibLCM calls with writeEnabled check allowed")
+
+
+def test_mixed_protected_and_unprotected():
+    """Test mixed protected and unprotected LibLCM calls."""
+    api_index = load_api_index()
+
+    code = """
+    # Unprotected call
+    project._cache.CreateObject(...)
+
+    # Protected call
+    with project.modifyEnabled:
+        entry.SensesOS.Add(sense)
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], "Should NOT be certified due to unprotected call"
+    assert len(cert["unprotected_liblcm_calls"]) > 0, "Should detect unprotected CreateObject"
+    assert len(cert["protected_liblcm_calls"]) > 0, "Should detect protected Add"
+
+    print("[OK] Mixed protected/unprotected LibLCM calls detected correctly")
+
+
+def test_collection_mutations():
+    """Test detection of collection mutations (Add, Remove, Clear, Insert)."""
+    api_index = load_api_index()
+
+    code = """
+    entry.SensesOS.Add(sense)
+    entry.SensesOS.Remove(old_sense)
+    entry.AlternateFormsOS.Clear()
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], "Should NOT be certified readonly"
+    assert len(cert["unprotected_liblcm_calls"]) >= 3, "Should detect all 3 unprotected mutations"
+
+    print("[OK] Collection mutations detected correctly")
+
+
 if __name__ == "__main__":
     print("Running script certification tests...\n")
 
@@ -147,6 +236,11 @@ if __name__ == "__main__":
         test_mixed_operations()
         test_index_lookup_source()
         test_confidence_levels()
+        test_unprotected_liblcm_calls()
+        test_protected_liblcm_with_modifyenabled()
+        test_protected_liblcm_with_writeenabled()
+        test_mixed_protected_and_unprotected()
+        test_collection_mutations()
 
         print("\n[DONE] All certification tests passed!")
     except AssertionError as e:

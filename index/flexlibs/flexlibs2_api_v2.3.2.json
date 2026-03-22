@@ -13028,7 +13028,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "direct",
             "methods_called": [
@@ -13093,7 +13093,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "direct",
             "methods_called": [
@@ -13158,7 +13158,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "direct",
             "methods_called": [
@@ -13252,7 +13252,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "direct",
             "methods_called": [
@@ -13334,7 +13334,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "direct",
             "methods_called": [
@@ -34134,7 +34134,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "pure_python",
             "methods_called": [],
@@ -53496,7 +53496,7 @@
           "is_property": false,
           "is_staticmethod": false,
           "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
+            "calls_ensure_write_enabled": true,
             "factories_used": [],
             "mapping_type": "pure_python",
             "methods_called": [],

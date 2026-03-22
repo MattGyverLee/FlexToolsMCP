@@ -195,7 +195,11 @@ def check_server_tools():
 
 
 def _count_tools_from_ast():
-    """Count Tool() constructor calls in server.py via AST."""
+    """Count Tool() constructor calls in server.py AND ToolDef instances in tool_definitions.py.
+
+    Supports both inline Tool() definitions and dynamic generation via tool_definitions.py.
+    """
+    # Count Tool() calls in server.py (for inline definitions)
     with open("src/server.py") as f:
         tree = ast.parse(f.read(), filename="src/server.py")
 
@@ -208,12 +212,32 @@ def _count_tools_from_ast():
         ):
             tool_count += 1
 
+    # Count ToolDef() calls in tool_definitions.py (for dynamic generation)
+    # This is used when tools are defined in tool_definitions.py and iterated in list_tools()
+    try:
+        with open("src/server/tool_definitions.py") as f:
+            tooldef_tree = ast.parse(f.read(), filename="src/server/tool_definitions.py")
+
+        tooldef_count = 0
+        for node in ast.walk(tooldef_tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "ToolDef"
+            ):
+                tooldef_count += 1
+
+        tool_count += tooldef_count
+    except FileNotFoundError:
+        # tool_definitions.py doesn't exist, just use the Tool() count from server.py
+        pass
+
     if tool_count >= MIN_TOOL_COUNT:
-        print(f"  server.py: {tool_count} Tool() definitions found (AST) [OK]")
+        print(f"  server.py + tool_definitions.py: {tool_count} tool definitions found (AST) [OK]")
         return True
     else:
         print(
-            f"TOOL COUNT ERROR: server.py has {tool_count} Tool() calls, "
+            f"TOOL COUNT ERROR: server.py + tool_definitions.py has {tool_count} tool definitions, "
             f"expected >= {MIN_TOOL_COUNT}",
             file=sys.stderr,
         )

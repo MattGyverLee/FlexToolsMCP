@@ -6,7 +6,7 @@ repos:
       - id: check-ast
         name: Check Python syntax (AST)
       - id: check-yaml
-      - id: end-of-file-fixer
+      # - id: end-of-file-fixer  # Disabled: causing file thrash with JSON indexes
       - id: trailing-whitespace
 
   # Ruff - fast Python linter (syntax errors, undefined names, etc.)

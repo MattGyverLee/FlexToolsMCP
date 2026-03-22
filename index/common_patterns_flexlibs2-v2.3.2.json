@@ -2065,6 +2065,15 @@
         "source": "docstring"
       },
       {
+        "class": "FLExProject",
+        "code": "project = FLExProject()\n            project.OpenProject(\"MyProject\", writeEnabled=True)\n            try:\n                with project.Transaction(\"import batch\"):\n                    for word, gloss in data:\n                        entry = project.LexEntry.Create(word, \"stem\")\n                        project.Senses.Create(entry, gloss, \"en\")\n            except Exception as e:\n                print(f\"Import failed and was rolled back: {e}\")\n            project.CloseProject()",
+        "description": "Return a context manager for a safe rollback transaction.",
+        "method": "Transaction",
+        "object_type": "general",
+        "operation": "iterate",
+        "source": "docstring"
+      },
+      {
         "class": "FilterOperations",
         "code": "is_diff, diffs = ops1.CompareTo(filter1, filter2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
         "description": "Compare two filters for differences.",
@@ -2195,15 +2204,6 @@
         "code": "is_diff, diffs = ops1.CompareTo(overlay1, overlay2, ops1, ops2)\nif is_diff:\n    for prop, details in diffs['properties'].items():\n        print(f\"{prop}: {details['source']} -> {details['target']}\")",
         "description": "Compare two overlays and return detailed differences.",
         "method": "CompareTo",
-        "object_type": "general",
-        "operation": "iterate",
-        "source": "docstring"
-      },
-      {
-        "class": "OverlayOperations",
-        "code": "overlay_ops = OverlayOperations(project)\nchart = discourse_ops.GetAllCharts(text)[0]\noverlays = list(overlay_ops.GetAll(chart))\nfor overlay in overlays:\n    name = overlay_ops.GetName(overlay)\n    visible = overlay_ops.IsVisible(overlay)\n    status = \"visible\" if visible else \"hidden\"\n    print(f\"{name}: {status}\")\n            Participants: visible\n            Discourse Features: hidden\n            Theme: visible",
-        "description": "Check if an overlay is currently visible.",
-        "method": "IsVisible",
         "object_type": "general",
         "operation": "iterate",
         "source": "docstring"
@@ -2923,7 +2923,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1202,
+    "total_patterns": 1207,
     "unique_patterns": 122
   }
 }

@@ -1810,6 +1810,12 @@
         "ITsString"
       ]
     },
+    "EnumerableWrapper": {
+      "category": "general",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": []
+    },
     "EnvironmentOperations": {
       "category": "grammar",
       "method_count": 13,
@@ -2244,7 +2250,7 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 96,
+      "method_count": 101,
       "methods": {
         "BuildGotoURL": {
           "lcm_calls": [
@@ -4332,6 +4338,12 @@
         "IScrScriptureNoteFactory",
         "ITsString"
       ]
+    },
+    "OperationsMethod": {
+      "category": "general",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": []
     },
     "OverlayOperations": {
       "category": "lists",
@@ -7475,6 +7487,18 @@
         "IMultiUnicode",
         "ITsString"
       ]
+    },
+    "_FLExTransaction": {
+      "category": "general",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": []
+    },
+    "_FLExUndoableOperation": {
+      "category": "general",
+      "method_count": 1,
+      "methods": {},
+      "wraps_interfaces": []
     }
   },
   "by_liblcm_entity": {
@@ -30665,7 +30689,7 @@
         "description": "Open a project.",
         "mapping_type": "direct",
         "method": "OpenProject",
-        "signature": "OpenProject(projectName, writeEnabled=False)"
+        "signature": "OpenProject(projectName, writeEnabled=False, undoable=False)"
       },
       {
         "class": "LexEntryOperations",

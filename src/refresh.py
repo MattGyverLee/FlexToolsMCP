@@ -139,13 +139,16 @@ def run_command(cmd: list, description: str) -> bool:
         return False
 
 
-def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
+def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:
     """Refresh FlexLibs stable index from installed package (live version)."""
     # Priority: installed package > explicit path > .env FLEXLIBS_PATH > fail
     try:
         import flexlibs
-        flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
-        print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
+        if flexlibs.__file__:
+            flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
+            print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
+        else:
+            raise ImportError("flexlibs.__file__ is None")
     except ImportError:
         if flexlibs_path is None:
             flexlibs_path = os.environ.get("FLEXLIBS_PATH")
@@ -184,13 +187,16 @@ def refresh_flexlibs_stable(flexlibs_path: str = None) -> bool:
         return False
 
 
-def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
+def refresh_flexlibs2(flexlibs2_path: str | None = None) -> bool:
     """Refresh FlexLibs 2.0 index from installed package (live version)."""
     # Priority: installed package > explicit path > .env FLEXLIBS2_PATH > fail
     try:
         import flexlibs2
-        flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
-        print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
+        if flexlibs2.__file__:
+            flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
+            print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
+        else:
+            raise ImportError("flexlibs2.__file__ is None")
     except ImportError:
         if flexlibs2_path is None:
             flexlibs2_path = os.environ.get("FLEXLIBS2_PATH")
@@ -229,7 +235,7 @@ def refresh_flexlibs2(flexlibs2_path: str = None) -> bool:
         return False
 
 
-def refresh_liblcm(dll_path: str = None) -> bool:
+def refresh_liblcm(dll_path: str | None = None) -> bool:
     """Refresh LibLCM index with versioning."""
     # Priority: explicit path > .env FIELDWORKS_DLL_PATH > auto-detect from FieldWorks
     if dll_path is None:

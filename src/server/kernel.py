@@ -12,13 +12,19 @@ Manages:
 """
 
 import sys
+import json
 import logging
+import re
 from pathlib import Path
-from typing import Optional, Tuple
+from datetime import datetime
+from typing import Optional, Tuple, Dict, List, TYPE_CHECKING
 from dataclasses import dataclass, field
 
 # Import local modules
 from .session import SessionState
+
+if TYPE_CHECKING:
+    from server import APIIndex
 
 # Import PatternTracker (will be defined in patterns.py later, for now import from server.py)
 # This is imported at module level after everything is set up
@@ -63,11 +69,11 @@ def _ensure_flexlibs2() -> Tuple[Optional[object], Optional[str]]:
         # This will be called when FlexLibs 2.0 operations are attempted
         # For now, just verify it can be imported
         if __package__:
-            import flexlibs2
+            import flexlibs2  # type: ignore
         else:
             import sys
             sys.path.insert(0, str(Path(__file__).parent.parent.parent / "flexlibs2" / "src"))
-            import flexlibs2
+            import flexlibs2  # type: ignore
         return flexlibs2, None
     except ImportError as e:
         error_msg = f"FlexLibs 2.0 not available: {e}"
@@ -125,16 +131,183 @@ def setup_logging():
 operations_logger = setup_logging()
 
 
+# ===== Pattern Tracking =====
+
+@dataclass
+class PatternTracker:
+    """Tracks API patterns with success/failure counts for learning."""
+    patterns_file: Optional[Path] = None
+    patterns: Dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.patterns_file is None:
+            self.patterns_file = get_log_dir() / "patterns.json"
+        self.load()
+
+    def load(self):
+        """Load patterns from disk."""
+        if self.patterns_file.exists():
+            try:
+                with open(self.patterns_file, 'r', encoding='utf-8') as f:
+                    self.patterns = json.load(f)
+            except Exception as e:
+                operations_logger.warning(f"Failed to load patterns: {e}")
+                self.patterns = {"api_patterns": {}, "error_patterns": {}}
+        else:
+            self.patterns = {"api_patterns": {}, "error_patterns": {}}
+
+    def save(self):
+        """Save patterns to disk."""
+        try:
+            # Import here to avoid circular dependency
+            from ..json_utils import sort_json_arrays
+            patterns_to_save = sort_json_arrays(self.patterns)
+            with open(self.patterns_file, 'w', encoding='utf-8') as f:
+                json.dump(patterns_to_save, f, indent=2, ensure_ascii=False, sort_keys=True)
+        except Exception as e:
+            operations_logger.warning(f"Failed to save patterns: {e}")
+
+    def extract_api_calls(self, code: str) -> List[str]:
+        """Extract API method calls from code."""
+        patterns = []
+        # Match patterns like: ClassName(project).Method() or ops.Method()
+        method_pattern = r'(\w+Operations)\s*\(\s*\w+\s*\)\s*\.\s*(\w+)'
+        for match in re.finditer(method_pattern, code):
+            patterns.append(f"{match.group(1)}.{match.group(2)}")
+
+        # Match patterns like: project.MethodName()
+        project_pattern = r'project\s*\.\s*(\w+)\s*\('
+        for match in re.finditer(project_pattern, code):
+            patterns.append(f"project.{match.group(1)}")
+
+        # Match attribute access like: entry.SensesOS, sense.Gloss
+        attr_pattern = r'(\w+)\s*\.\s*((?:[A-Z]\w*OS|[A-Z]\w*OC|[A-Z]\w*RS|[A-Z]\w*RC|Gloss\w*|Definition\w*|Headword|Form\w*))'
+        for match in re.finditer(attr_pattern, code):
+            patterns.append(f"*.{match.group(2)}")
+
+        return list(set(patterns))  # Deduplicate
+
+    def record_operation(self, code: str, success: bool, error_msg: str | None = None, error_type: str | None = None):
+        """Record an operation's success or failure for pattern learning."""
+        api_calls = self.extract_api_calls(code)
+
+        for api_call in api_calls:
+            if api_call not in self.patterns["api_patterns"]:
+                self.patterns["api_patterns"][api_call] = {
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "last_used": None,
+                    "common_errors": {}
+                }
+
+            pattern_data = self.patterns["api_patterns"][api_call]
+            pattern_data["last_used"] = datetime.now().isoformat()
+
+            if success:
+                pattern_data["success_count"] += 1
+            else:
+                pattern_data["failure_count"] += 1
+                if error_type:
+                    if error_type not in pattern_data["common_errors"]:
+                        pattern_data["common_errors"][error_type] = {"count": 0, "example": ""}
+                    pattern_data["common_errors"][error_type]["count"] += 1
+                    if error_msg:
+                        pattern_data["common_errors"][error_type]["example"] = error_msg[:200]
+
+        # Track error patterns for FlexLibs bug identification
+        if not success and error_msg:
+            error_key = self._normalize_error(error_msg)
+            if error_key not in self.patterns["error_patterns"]:
+                self.patterns["error_patterns"][error_key] = {
+                    "count": 0,
+                    "examples": [],
+                    "api_calls": [],
+                    "first_seen": datetime.now().isoformat(),
+                    "potential_fix": None
+                }
+
+            err_pattern = self.patterns["error_patterns"][error_key]
+            err_pattern["count"] += 1
+            if len(err_pattern["examples"]) < 3:
+                err_pattern["examples"].append({
+                    "code": code[:500],
+                    "error": error_msg[:500],
+                    "timestamp": datetime.now().isoformat()
+                })
+            for api_call in api_calls:
+                if api_call not in err_pattern["api_calls"]:
+                    err_pattern["api_calls"].append(api_call)
+
+        self.save()
+
+    def _normalize_error(self, error_msg: str) -> str:
+        """Normalize error message to group similar errors."""
+        # Remove specific values, keep the pattern
+        normalized = error_msg
+        # Remove hex addresses
+        normalized = re.sub(r'0x[0-9a-fA-F]+', '0x...', normalized)
+        # Remove line numbers
+        normalized = re.sub(r'line \d+', 'line N', normalized)
+        # Remove specific object names in quotes
+        normalized = re.sub(r"'[^']{20,}'", "'...'", normalized)
+        # Take first 100 chars as key
+        return normalized[:100]
+
+    def get_recommendations(self) -> Dict:
+        """Get pattern-based recommendations for API usage."""
+        recommendations = {
+            "preferred_patterns": [],
+            "patterns_to_avoid": [],
+            "common_errors_needing_fix": []
+        }
+
+        # Find high-success patterns
+        for api_call, data in self.patterns.get("api_patterns", {}).items():
+            total = data["success_count"] + data["failure_count"]
+            if total >= 3:  # Need at least 3 uses to make a recommendation
+                success_rate = data["success_count"] / total
+                if success_rate >= 0.8:
+                    recommendations["preferred_patterns"].append({
+                        "pattern": api_call,
+                        "success_rate": round(success_rate * 100, 1),
+                        "uses": total
+                    })
+                elif success_rate <= 0.3:
+                    recommendations["patterns_to_avoid"].append({
+                        "pattern": api_call,
+                        "success_rate": round(success_rate * 100, 1),
+                        "uses": total,
+                        "common_errors": list(data.get("common_errors", {}).keys())[:3]
+                    })
+
+        # Find recurring errors that need FlexLibs fixes
+        for error_key, data in self.patterns.get("error_patterns", {}).items():
+            if data["count"] >= 2:  # Recurring error
+                recommendations["common_errors_needing_fix"].append({
+                    "error_pattern": error_key,
+                    "count": data["count"],
+                    "affected_apis": data["api_calls"][:5],
+                    "potential_fix": data.get("potential_fix")
+                })
+
+        # Sort by relevance
+        recommendations["preferred_patterns"].sort(key=lambda x: -x["uses"])
+        recommendations["patterns_to_avoid"].sort(key=lambda x: x["success_rate"])
+        recommendations["common_errors_needing_fix"].sort(key=lambda x: -x["count"])
+
+        return recommendations
+
+
 # ===== Shared Kernel State =====
 
 # Global session state (shared across all tool handlers)
 session_state: SessionState = SessionState()
 
 # Global API index (loaded during server startup)
-api_index: Optional[object] = None  # Will be APIIndex type, avoid circular import
+api_index: Optional["APIIndex"] = None
 
-# Global pattern tracker (imported from patterns.py after it's defined)
-pattern_tracker: Optional[object] = None
+# Global pattern tracker (initialized here, used by handlers)
+pattern_tracker: PatternTracker = PatternTracker()
 
 # MCP Server instance (lazy loaded in main())
 mcp_server: Optional[object] = None

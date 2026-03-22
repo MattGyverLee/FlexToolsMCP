@@ -129,6 +129,9 @@ def __getattr__(name: str):
 
 
 # For direct re-exports of commonly used items
+# Note: Lazy-loaded items (handle_*, APIIndex, etc.) are not in __all__ because
+# they're dynamically loaded via __getattr__ and don't exist at import time.
+# They can still be imported and used at runtime, but Pylance won't see them here.
 __all__ = [
     # Session management
     'SessionState',
@@ -154,28 +157,4 @@ __all__ = [
     'initialize_kernel',
     'reset_session',
     'get_session_state',
-
-    # Lazy-loaded items (from __getattr__)
-    'handle_start',
-    'handle_get_object_api',
-    'handle_search_by_capability',
-    'handle_get_navigation_path',
-    'handle_find_examples',
-    'handle_list_categories',
-    'handle_list_entities_in_category',
-    'handle_get_module_template',
-    'handle_manage_config',
-    'handle_get_session_history',
-    'handle_undo_last_operation',
-    'handle_start_module',
-    'handle_run_module',
-    'handle_run_operation',
-    'handle_get_operation_logs',
-    'handle_resolve_property',
-    'APIIndex',
-    'PatternTracker',
-    'SemanticSearch',
-    'Server',
-    'build_response_with_context',
-    'main',
 ]

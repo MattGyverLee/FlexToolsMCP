@@ -116,7 +116,10 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
     - delete: Delete a config key
     - list: List entire configuration
     """
-    from src.config import config_get, config_set, config_delete, config_list
+    try:
+        from ..config import config_get, config_set, config_delete, config_list
+    except ImportError:
+        from src.config import config_get, config_set, config_delete, config_list
 
     action = args.get("action", "list")
     key = args.get("key", "")

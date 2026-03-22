@@ -1,0 +1,10 @@
+{
+  "typeCheckingMode": "standard",
+  "pythonVersion": "3.13",
+  "pythonPath": "D:\\Apps\\anaconda3\\python.exe",
+  "venvPath": "D:\\Apps\\anaconda3",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": "warning",
+  "exclude": ["**/node_modules", "**/__pycache__", "build", "dist", "tests"],
+  "extraPaths": ["src"]
+}

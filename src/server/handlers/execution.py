@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from mcp.types import TextContent
 
 # Import shared state from kernel
@@ -62,7 +62,7 @@ except (ImportError, ValueError):
     from src.response_utils import build_response_with_context
 
 
-def _validate_api_mode(api_mode: str) -> tuple[bool, str]:
+def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
     Args:
@@ -73,7 +73,7 @@ def _validate_api_mode(api_mode: str) -> tuple[bool, str]:
     """
     if api_mode == "flexlibs2":
         try:
-            import flexlibs2
+            import flexlibs2  # type: ignore
             # Check version is reasonable
             if not hasattr(flexlibs2, '__version__'):
                 return False, "flexlibs2 missing version info"
@@ -83,7 +83,7 @@ def _validate_api_mode(api_mode: str) -> tuple[bool, str]:
 
     elif api_mode == "flexlibs_stable":
         try:
-            import flexlibs
+            import flexlibs  # type: ignore
             return True, ""
         except ImportError as e:
             return False, f"flexlibs not found: {e}"
@@ -95,7 +95,7 @@ def _validate_api_mode(api_mode: str) -> tuple[bool, str]:
     return False, f"Unknown API mode: {api_mode}"
 
 
-def _get_api_mode_imports(api_mode: str) -> tuple[str, dict]:
+def _get_api_mode_imports(api_mode: str) -> Tuple[str, dict]:
     """Generate imports and namespace dict for a given API mode.
 
     Args:

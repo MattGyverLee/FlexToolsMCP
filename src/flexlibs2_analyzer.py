@@ -952,7 +952,7 @@ def _classify_mapping_type(lcm_data: Dict[str, Any]) -> str:
     return "convenience"
 
 
-def analyze_method(node, class_name: str, lcm_imports: List[Dict] = None) -> Optional[Dict[str, Any]]:
+def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None) -> Optional[Dict[str, Any]]:
     """Analyze a method definition and extract its API information."""
     if node.name.startswith('_') and node.name != '__init__':
         return None  # Skip private methods except __init__
@@ -1442,7 +1442,7 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
     return result
 
 
-def cross_reference_liblcm(flexlibs_data: Dict[str, Any], liblcm_path: str = None) -> Dict[str, Any]:
+def cross_reference_liblcm(flexlibs_data: Dict[str, Any], liblcm_path: str | None = None) -> Dict[str, Any]:
     """
     Cross-reference FlexLibs lcm_mapping with LibLCM index to validate references.
 

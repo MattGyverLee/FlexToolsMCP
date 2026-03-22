@@ -356,7 +356,7 @@ def print_summary(result: Dict):
         print(f"  {path_key}: {steps}")
 
 
-def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str]:
+def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str] | tuple[None, None]:
     """Find the latest LibLCM API file and extract its version."""
     pattern = re.compile(r"liblcm_api_v(\d+\.\d+\.\d+)\.json$")
     versions = {}

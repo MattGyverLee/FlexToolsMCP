@@ -67,7 +67,7 @@ DEFAULT_DLL_PATHS = get_default_dll_paths()
 
 # ---- Version Detection -------------------------------------------------------
 
-def get_liblcm_version(assemblies: List) -> str:
+def get_liblcm_version(assemblies: List[Any]) -> str:
     """Extract LibLCM version from loaded assemblies."""
     if not PYTHONNET_AVAILABLE or not assemblies:
         return "0.0.0"
@@ -214,7 +214,7 @@ def find_assemblies(dll_dir: Path) -> Tuple[List[Path], List[str]]:
     return found, missing
 
 
-def load_assemblies(assembly_paths: List[Path], dll_dir: Path) -> List:
+def load_assemblies(assembly_paths: List[Path], dll_dir: Path) -> List[Any]:
     """Load .NET assemblies using pythonnet."""
     if not PYTHONNET_AVAILABLE:
         raise RuntimeError("pythonnet is not available")
@@ -697,7 +697,7 @@ def generate_usage_hint(name: str, kind: str) -> str:
     return f"{kind.capitalize()} in the FieldWorks API"
 
 
-def extract_type(t, fetch_descriptions: bool = False) -> Optional[Dict[str, Any]]:
+def extract_type(t: Any, fetch_descriptions: bool = False) -> Optional[Dict[str, Any]]:
     """Extract complete type information in unified format."""
     if not PYTHONNET_AVAILABLE:
         return None
@@ -844,7 +844,7 @@ def reflect_types(assemblies) -> List:
 
 # ---- Main Extraction ---------------------------------------------------------
 
-def build_api_documentation(assemblies, fetch_descriptions: bool = False) -> Dict[str, Any]:
+def build_api_documentation(assemblies: List[Any], fetch_descriptions: bool = False) -> Dict[str, Any]:
     """Build complete API documentation from loaded assemblies."""
     log.info("Building API documentation...")
 

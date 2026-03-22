@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd d:\\Github\\_Projects\\_LEX\\FlexToolsMCP && \"D:\\Apps\\anaconda3\\python.exe\" -m pyright --outputjson src/ > .vscode/diagnostics.json 2>&1 || true",
+            "statusMessage": "Exporting Pylance diagnostics...",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

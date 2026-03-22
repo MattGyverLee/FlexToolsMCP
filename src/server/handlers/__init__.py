@@ -27,28 +27,6 @@ Both work thanks to the re-export facade.
 # Placeholder for future handler module imports
 # These will be gradually populated as handlers are extracted from server.py
 
-__all__ = [
-    # api.py - Read-only operations
-    'handle_get_object_api',
-    'handle_search_by_capability',
-    'handle_find_examples',
-    'handle_resolve_property',
-
-    # execution.py - Write operations
-    'handle_run_operation',
-    'handle_run_module',
-    'handle_undo_last_operation',
-
-    # admin.py - Admin operations
-    'handle_start',
-    'handle_manage_config',
-    'handle_get_session_history',
-    'handle_get_module_template',
-
-    # discovery.py - Navigation
-    'handle_get_navigation_path',
-
-    # catalog.py - Listing
-    'handle_list_categories',
-    'handle_list_entities_in_category',
-]
+# __all__ is intentionally empty since handlers are being gradually extracted.
+# Import directly from submodules: from .api import handle_get_object_api, etc.
+__all__ = []

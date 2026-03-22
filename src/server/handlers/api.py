@@ -10,13 +10,19 @@ Provides read-only API discovery tools:
 
 import json
 from mcp.types import TextContent
-from typing import List, Dict, Any
+from typing import List, Dict, Any, cast
 
 # Import kernel and config with dual-mode support
 try:
-    from ..kernel import api_index, session_state
+    from ..kernel import api_index as _api_index, session_state
+    from ..server import APIIndex
 except ImportError:
-    from src.server.kernel import api_index, session_state
+    from src.server.kernel import api_index as _api_index, session_state
+    from src.server import APIIndex
+
+# Type narrowing: handlers assume api_index is loaded by server.py
+assert _api_index is not None, "api_index must be initialized before handler calls"
+api_index: APIIndex = cast(APIIndex, _api_index)
 
 
 # ============================================================
@@ -176,7 +182,7 @@ def normalize_object_name(name: str) -> str:
     return name
 
 
-def resolve_pythonic_property(name: str, context_entity: str = None) -> List[Dict]:
+def resolve_pythonic_property(name: str, context_entity: str | None = None) -> List[Dict[str, Any]]:
     """
     Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s).
 
@@ -767,7 +773,6 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
         if matches:
             result["usage_examples"] = []
             for match in matches[:3]:  # Limit to first 3
-                entity = match.get("entity", "")
                 full_name = match.get("full_name", property_name)
                 kind = match.get("kind", "property")
 

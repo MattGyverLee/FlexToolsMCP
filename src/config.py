@@ -76,6 +76,7 @@ def _get_cache() -> Dict[str, Any]:
         _config_cache = _load_config()
         _cache_loaded = True
 
+    assert _config_cache is not None
     return _config_cache
 
 

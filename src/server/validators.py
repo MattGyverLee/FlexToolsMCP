@@ -598,3 +598,6 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
             "warning": "DATABASE WILL BE MODIFIED - MAKE SURE YOU HAVE A BACKUP!",
             "final_check": "Backup complete? Ready to proceed?"
         }
+
+    # Unreachable - covers all cases (confirmed: bool, write_enabled: bool)
+    return {}

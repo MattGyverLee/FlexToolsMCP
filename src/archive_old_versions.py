@@ -28,7 +28,8 @@ def parse_version(filename: str) -> Tuple[int, int, int]:
     """Extract version tuple from filename like 'liblcm_api_v11.0.0.json'."""
     match = re.search(r'v(\d+)\.(\d+)\.(\d+)', filename)
     if match:
-        return tuple(map(int, match.groups()))
+        major, minor, patch = match.groups()
+        return (int(major), int(minor), int(patch))
     return (0, 0, 0)
 
 

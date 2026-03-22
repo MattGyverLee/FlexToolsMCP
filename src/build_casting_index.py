@@ -14,6 +14,7 @@ Usage:
 import json
 import re
 from pathlib import Path
+from typing import Optional, Tuple
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -187,7 +188,7 @@ def build_casting_index(liblcm_path: Path) -> dict:
     return casting_index
 
 
-def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str]:
+def find_latest_liblcm(liblcm_dir: Path) -> Optional[Tuple[Path, str]]:
     """Find the latest LibLCM API file and extract its version."""
     pattern = re.compile(r"liblcm_api_v(\d+\.\d+\.\d+)\.json$")
     versions = {}
@@ -199,7 +200,7 @@ def find_latest_liblcm(liblcm_dir: Path) -> tuple[Path, str]:
             versions[version] = file
 
     if not versions:
-        return None, None
+        return None
 
     latest = sorted(versions.keys())[-1]
     return versions[latest], latest
@@ -211,7 +212,12 @@ def main():
     liblcm_dir = index_dir / "liblcm"
 
     # Find latest LibLCM version
-    liblcm_path, liblcm_version = find_latest_liblcm(liblcm_dir)
+    result = find_latest_liblcm(liblcm_dir)
+    if not result:
+        liblcm_path = None
+        liblcm_version = None
+    else:
+        liblcm_path, liblcm_version = result
 
     if not liblcm_path:
         print(f"[ERROR] No LibLCM API files found in {liblcm_dir}")

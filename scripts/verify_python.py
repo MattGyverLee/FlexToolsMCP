@@ -54,14 +54,27 @@ class ImportChecker(ast.NodeVisitor):
         with open(self.filepath) as f:
             lines = f.readlines()
 
-        import_line = node.lineno
+        import_line = node.lineno - 1  # Convert to 0-indexed
         found_guard = False
-        for i in range(import_line - 2, max(import_line - 5, -1), -1):
-            if i < 0:
-                break
+
+        # Look backwards from the import to find an if __package__: block
+        # We need to check:
+        # 1. Immediate preceding lines (within 10 lines for grouped imports)
+        # 2. Proper indentation (import must be indented relative to the if statement)
+
+        import_indent = len(lines[import_line]) - len(lines[import_line].lstrip())
+
+        for i in range(import_line - 1, max(0, import_line - 50), -1):
             line = lines[i].strip()
-            if "__package__" in line and line.startswith("if"):
+            line_indent = len(lines[i]) - len(lines[i].lstrip())
+
+            # Found an if __package__: at a lower indentation level
+            if "__package__" in line and line.startswith("if") and line_indent < import_indent:
                 found_guard = True
+                break
+
+            # Stop looking if we hit another top-level statement
+            if line and not line.startswith("#") and line_indent == 0 and "if __package__" not in line:
                 break
 
         if not found_guard:

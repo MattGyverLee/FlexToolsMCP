@@ -147,8 +147,8 @@ def is_exception_class(name: str) -> bool:
 
 def build_reverse_mapping(
     flexlibs2_path: Path,
-    flexlibs_path: Path = None,
-    liblcm_path: Path = None
+    flexlibs_path: Path | None = None,
+    liblcm_path: Path | None = None
 ) -> Dict[str, Any]:
     """Build reverse mapping from LibLCM -> FlexLibs.
 
@@ -315,7 +315,7 @@ def build_reverse_mapping(
 def add_python_wrappers_to_liblcm(
     liblcm_path: Path,
     reverse_mapping: Dict,
-    output_path: Path = None
+    output_path: Path | None = None
 ):
     """Add python_wrappers field to LibLCM entities."""
 
@@ -393,6 +393,10 @@ def main():
     if not liblcm_path:
         print("[ERROR] LibLCM API file not found")
         return 1
+
+    # Type narrowing: checks above ensure these are not None
+    assert flexlibs2_path is not None
+    assert liblcm_path is not None
 
     # Extract version from liblcm_path for versioned filename
     version_match = re.search(r'liblcm_api_v(\d+\.\d+\.\d+)', str(liblcm_path))

@@ -18,7 +18,7 @@ import re
 import warnings
 from pathlib import Path
 from datetime import datetime
-from typing import Any, Optional, List, Dict
+from typing import Any, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -33,23 +33,26 @@ from mcp.server import Server
 
 if __package__:
     from .json_utils import sort_json_arrays
-if __package__:
+    from .server.kernel import (
+        get_log_dir,
+        setup_logging,
+        operations_logger,
+        session_state,
+        pattern_tracker,
+    )
     from .server.handlers.api import (
         handle_get_object_api,
         handle_search_by_capability,
         handle_find_examples,
         handle_resolve_property,
     )
-if __package__:
     from .server.handlers.catalog import (
         handle_list_categories,
         handle_list_entities_in_category,
     )
-if __package__:
     from .server.handlers.discovery import (
         handle_get_navigation_path,
     )
-if __package__:
     from .server.handlers.admin import (
         handle_start,
         handle_manage_config,
@@ -57,7 +60,6 @@ if __package__:
         handle_undo_last_operation,
         handle_get_module_template,
     )
-if __package__:
     from .server.handlers.execution import (
         handle_start_module,
         handle_run_module,
@@ -66,6 +68,13 @@ if __package__:
     )
 else:
     from json_utils import sort_json_arrays
+    from server.kernel import (
+        get_log_dir,
+        setup_logging,
+        operations_logger,
+        session_state,
+        pattern_tracker,
+    )
     from server.handlers.api import (
         handle_get_object_api,
         handle_search_by_capability,
@@ -176,323 +185,12 @@ KNOWN_EXCEPTIONS = {
 }
 
 
-# ============================================================
-# Operation Logging System
-# ============================================================
-
-def get_log_dir() -> Path:
-    """Get the log directory path (~/.flextoolsmcp/logs/)."""
-    log_dir = Path.home() / ".flextoolsmcp" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    return log_dir
+# Logging and kernel state are now imported from server.kernel
+# See imports at top (from .server.kernel import ...)
 
 
-def setup_logging():
-    """Configure file logging for operations."""
-    log_dir = get_log_dir()
-    log_file = log_dir / "operations.log"
-
-    # Create a logger for operations
-    logger = logging.getLogger("flextoolsmcp.operations")
-    logger.setLevel(logging.DEBUG)
-
-    # Avoid adding duplicate handlers
-    if not logger.handlers:
-        # File handler with rotation (max 5MB, keep 3 backups)
-        from logging.handlers import RotatingFileHandler
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=5*1024*1024,  # 5MB
-            backupCount=3,
-            encoding='utf-8'
-        )
-        file_handler.setLevel(logging.DEBUG)
-
-        # Format: timestamp | level | message
-        formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)-7s | %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-    return logger
-
-
-# Initialize the operations logger
-operations_logger = setup_logging()
-
-
-@dataclass
-class PatternTracker:
-    """Tracks API patterns with success/failure counts for learning."""
-    patterns_file: Path = None
-    patterns: Dict = field(default_factory=dict)
-
-    def __post_init__(self):
-        if self.patterns_file is None:
-            self.patterns_file = get_log_dir() / "patterns.json"
-        self.load()
-
-    def load(self):
-        """Load patterns from disk."""
-        if self.patterns_file.exists():
-            try:
-                with open(self.patterns_file, 'r', encoding='utf-8') as f:
-                    self.patterns = json.load(f)
-            except Exception as e:
-                operations_logger.warning(f"Failed to load patterns: {e}")
-                self.patterns = {"api_patterns": {}, "error_patterns": {}}
-        else:
-            self.patterns = {"api_patterns": {}, "error_patterns": {}}
-
-    def save(self):
-        """Save patterns to disk."""
-        try:
-            patterns_to_save = sort_json_arrays(self.patterns)
-            with open(self.patterns_file, 'w', encoding='utf-8') as f:
-                json.dump(patterns_to_save, f, indent=2, ensure_ascii=False, sort_keys=True)
-        except Exception as e:
-            operations_logger.warning(f"Failed to save patterns: {e}")
-
-    def extract_api_calls(self, code: str) -> List[str]:
-        """Extract API method calls from code."""
-        patterns = []
-        # Match patterns like: ClassName(project).Method() or ops.Method()
-        method_pattern = r'(\w+Operations)\s*\(\s*\w+\s*\)\s*\.\s*(\w+)'
-        for match in re.finditer(method_pattern, code):
-            patterns.append(f"{match.group(1)}.{match.group(2)}")
-
-        # Match patterns like: project.MethodName()
-        project_pattern = r'project\s*\.\s*(\w+)\s*\('
-        for match in re.finditer(project_pattern, code):
-            patterns.append(f"project.{match.group(1)}")
-
-        # Match attribute access like: entry.SensesOS, sense.Gloss
-        attr_pattern = r'(\w+)\s*\.\s*((?:[A-Z]\w*OS|[A-Z]\w*OC|[A-Z]\w*RS|[A-Z]\w*RC|Gloss\w*|Definition\w*|Headword|Form\w*))'
-        for match in re.finditer(attr_pattern, code):
-            patterns.append(f"*.{match.group(2)}")
-
-        return list(set(patterns))  # Deduplicate
-
-    def record_operation(self, code: str, success: bool, error_msg: str = None, error_type: str = None):
-        """Record an operation's success or failure for pattern learning."""
-        api_calls = self.extract_api_calls(code)
-
-        for api_call in api_calls:
-            if api_call not in self.patterns["api_patterns"]:
-                self.patterns["api_patterns"][api_call] = {
-                    "success_count": 0,
-                    "failure_count": 0,
-                    "last_used": None,
-                    "common_errors": {}
-                }
-
-            pattern_data = self.patterns["api_patterns"][api_call]
-            pattern_data["last_used"] = datetime.now().isoformat()
-
-            if success:
-                pattern_data["success_count"] += 1
-            else:
-                pattern_data["failure_count"] += 1
-                if error_type:
-                    if error_type not in pattern_data["common_errors"]:
-                        pattern_data["common_errors"][error_type] = {"count": 0, "example": ""}
-                    pattern_data["common_errors"][error_type]["count"] += 1
-                    if error_msg:
-                        pattern_data["common_errors"][error_type]["example"] = error_msg[:200]
-
-        # Track error patterns for FlexLibs bug identification
-        if not success and error_msg:
-            error_key = self._normalize_error(error_msg)
-            if error_key not in self.patterns["error_patterns"]:
-                self.patterns["error_patterns"][error_key] = {
-                    "count": 0,
-                    "examples": [],
-                    "api_calls": [],
-                    "first_seen": datetime.now().isoformat(),
-                    "potential_fix": None
-                }
-
-            err_pattern = self.patterns["error_patterns"][error_key]
-            err_pattern["count"] += 1
-            if len(err_pattern["examples"]) < 3:
-                err_pattern["examples"].append({
-                    "code": code[:500],
-                    "error": error_msg[:500],
-                    "timestamp": datetime.now().isoformat()
-                })
-            for api_call in api_calls:
-                if api_call not in err_pattern["api_calls"]:
-                    err_pattern["api_calls"].append(api_call)
-
-        self.save()
-
-    def _normalize_error(self, error_msg: str) -> str:
-        """Normalize error message to group similar errors."""
-        # Remove specific values, keep the pattern
-        normalized = error_msg
-        # Remove hex addresses
-        normalized = re.sub(r'0x[0-9a-fA-F]+', '0x...', normalized)
-        # Remove line numbers
-        normalized = re.sub(r'line \d+', 'line N', normalized)
-        # Remove specific object names in quotes
-        normalized = re.sub(r"'[^']{20,}'", "'...'", normalized)
-        # Take first 100 chars as key
-        return normalized[:100]
-
-    def get_recommendations(self) -> Dict:
-        """Get pattern-based recommendations for API usage."""
-        recommendations = {
-            "preferred_patterns": [],
-            "patterns_to_avoid": [],
-            "common_errors_needing_fix": []
-        }
-
-        # Find high-success patterns
-        for api_call, data in self.patterns.get("api_patterns", {}).items():
-            total = data["success_count"] + data["failure_count"]
-            if total >= 3:  # Need at least 3 uses to make a recommendation
-                success_rate = data["success_count"] / total
-                if success_rate >= 0.8:
-                    recommendations["preferred_patterns"].append({
-                        "pattern": api_call,
-                        "success_rate": round(success_rate * 100, 1),
-                        "uses": total
-                    })
-                elif success_rate <= 0.3:
-                    recommendations["patterns_to_avoid"].append({
-                        "pattern": api_call,
-                        "success_rate": round(success_rate * 100, 1),
-                        "uses": total,
-                        "common_errors": list(data.get("common_errors", {}).keys())[:3]
-                    })
-
-        # Find recurring errors that need FlexLibs fixes
-        for error_key, data in self.patterns.get("error_patterns", {}).items():
-            if data["count"] >= 2:  # Recurring error
-                recommendations["common_errors_needing_fix"].append({
-                    "error_pattern": error_key,
-                    "count": data["count"],
-                    "affected_apis": data["api_calls"][:5],
-                    "potential_fix": data.get("potential_fix")
-                })
-
-        # Sort by relevance
-        recommendations["preferred_patterns"].sort(key=lambda x: -x["uses"])
-        recommendations["patterns_to_avoid"].sort(key=lambda x: x["success_rate"])
-        recommendations["common_errors_needing_fix"].sort(key=lambda x: -x["count"])
-
-        return recommendations
-
-
-# Global pattern tracker
-pattern_tracker = PatternTracker()
-
-
-# ============================================================
-# Session State Management
-# ============================================================
-
-@dataclass
-class SessionState:
-    """Tracks session-wide settings to ensure consistency across tool calls.
-
-    Set by the 'start' tool and respected by all other tools unless overridden.
-    """
-    api_mode: str = "flexlibs2"       # API mode: flexlibs2, flexlibs_stable, liblcm
-    output_type: str = "auto"         # Output type: auto, operation, module
-    project_name: str = ""            # FLEx project name (empty = prompt user)
-    write_enabled: bool = False       # Write access: False = read-only/dry-run
-    initialized: bool = False
-    discovered_apis: set = None       # APIs discovered via search_by_capability
-    validated_apis: set = None        # APIs validated via get_object_api (required before use)
-    api_versions: dict = None         # Track active API versions: {api_name: version}
-
-    def __init__(self):
-        self.discovered_apis = set()
-        self.validated_apis = set()
-        self.api_versions = {}
-
-    def configure(self, **kwargs) -> None:
-        """Configure session settings (called by start tool)."""
-        if "api_mode" in kwargs:
-            self.api_mode = kwargs["api_mode"]
-        if "output_type" in kwargs:
-            self.output_type = kwargs["output_type"]
-        if "project_name" in kwargs:
-            self.project_name = kwargs["project_name"]
-        if "write_enabled" in kwargs:
-            self.write_enabled = kwargs["write_enabled"]
-        if "api_versions" in kwargs:
-            self.api_versions = kwargs["api_versions"]
-        self.initialized = True
-        mode_info = f"mode={self.api_mode}, output={self.output_type}"
-        mode_info += f", project={self.project_name or '(prompt)'}"
-        mode_info += f", write={self.write_enabled}"
-        if self.api_versions:
-            versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
-            mode_info += f", versions={{{versions_str}}}"
-        operations_logger.info(f"Session configured: {mode_info}")
-
-    def record_discovered_api(self, entity: str, method: str) -> None:
-        """Record an API that was discovered via get_object_api or search_by_capability."""
-        api_key = f"{entity}.{method}" if entity else method
-        self.discovered_apis.add(api_key)
-
-    def get_discovered_apis(self) -> set:
-        """Get the set of discovered API methods."""
-        return self.discovered_apis
-
-    def was_api_discovered(self, entity: str, method: str) -> bool:
-        """Check if a specific API was discovered."""
-        api_key = f"{entity}.{method}" if entity else method
-        # Also check just the method name for flexibility
-        return api_key in self.discovered_apis or method in self.discovered_apis
-
-    def clear_discovered_apis(self) -> None:
-        """Clear discovered APIs (for new session)."""
-        self.discovered_apis = set()
-        self.validated_apis = set()
-
-    def record_validated_api(self, entity: str) -> None:
-        """Record an API that was validated via get_object_api."""
-        self.validated_apis.add(entity)
-
-    def get_unvalidated_apis(self) -> set:
-        """Get APIs discovered but not yet validated via get_object_api."""
-        return self.discovered_apis - self.validated_apis
-
-    def get_mode(self) -> str:
-        """Get the current session API mode."""
-        return self.api_mode
-
-    def get_output_type(self) -> str:
-        """Get the current session output type."""
-        return self.output_type
-
-    def get_project(self) -> str:
-        """Get the current session project name (empty if not set)."""
-        return self.project_name
-
-    def is_write_enabled(self) -> bool:
-        """Get whether write access is enabled for the session."""
-        return self.write_enabled
-    def summary(self) -> dict:
-        """Return session state summary for tool responses."""
-        result = {
-            "api_mode": self.api_mode,
-            "output_type": self.output_type,
-            "project_name": self.project_name or "(not set)",
-            "write_enabled": self.write_enabled,
-            "initialized": self.initialized,
-            "discovered_api_count": len(self.discovered_apis)
-        }
-        return result
-
-
-# Global session state
-session_state = SessionState()
+# Session state is now imported from server.kernel (initialized there)
+# See imports at top (from .server.kernel import session_state)
 
 
 # Helper validation functions were extracted to validators module
@@ -502,9 +200,15 @@ from mcp.types import (
     Tool,
     TextContent,
     CallToolResult,
+    ToolAnnotations,
 )
 
 # Optional imports for semantic search
+if TYPE_CHECKING:
+    import numpy as np
+    import faiss
+    from sentence_transformers import SentenceTransformer
+
 try:
     import numpy as np
     import faiss
@@ -603,17 +307,17 @@ class SemanticSearch:
 @dataclass
 class APIIndex:
     """Holds the loaded API documentation indexes."""
-    liblcm: dict = None
-    flexlibs2: dict = None
-    flexlibs_stable: dict = None
-    navigation_graph: dict = None
-    casting_index: dict = None
-    semantic_search: SemanticSearch = None
+    liblcm: dict | None = None
+    flexlibs2: dict | None = None
+    flexlibs_stable: dict | None = None
+    navigation_graph: dict | None = None
+    casting_index: dict | None = None
+    semantic_search: SemanticSearch | None = None
 
     # Track loaded API versions for session logging
-    liblcm_version: str = None
-    flexlibs2_version: str = None
-    flexlibs_stable_version: str = None
+    liblcm_version: str | None = None
+    flexlibs2_version: str | None = None
+    flexlibs_stable_version: str | None = None
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
@@ -787,11 +491,11 @@ def get_installed_liblcm_version() -> Optional[str]:
     """
     try:
         import clr
-        clr.AddReference('SIL.LCModel')
+        clr.AddReference('SIL.LCModel')  # type: ignore
 
         # Get version from assembly metadata
         try:
-            import System
+            import System  # type: ignore
             asm = System.Reflection.Assembly.Load('SIL.LCModel')
             version_attr = asm.GetName().Version
             version = f"{version_attr.Major}.{version_attr.Minor}.{version_attr.Build}"
@@ -816,7 +520,7 @@ def get_installed_flexlibs2_version() -> Optional[str]:
 
         # Try __version__ attribute
         if hasattr(flexlibs2, '__version__'):
-            version = flexlibs2.__version__
+            version = flexlibs2.__version__  # type: ignore
             operations_logger.debug(f"Detected FlexLibs 2.0 version: {version}")
             return version
 
@@ -843,11 +547,11 @@ def get_installed_flexlibs_version() -> Optional[str]:
         Version string (e.g., '1.2.8') or None if not detected
     """
     try:
-        import flexlibs
+        import flexlibs  # type: ignore
 
         # Try __version__ attribute
         if hasattr(flexlibs, '__version__'):
-            version = flexlibs.__version__
+            version = flexlibs.__version__  # type: ignore
             operations_logger.debug(f"Detected FlexLibs stable version: {version}")
             return version
 
@@ -899,7 +603,11 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
         return None
 
     # Sort by version number (works for semantic versioning)
-    files.sort(key=lambda x: tuple(map(int, re.search(r'v(\d+)\.(\d+)\.(\d+)', x).groups())))
+    def extract_version(filename: str) -> tuple:
+        match = re.search(r'v(\d+)\.(\d+)\.(\d+)', filename)
+        return tuple(map(int, match.groups())) if match else (0, 0, 0)
+
+    files.sort(key=extract_version)
     return Path(files[-1]) if files else None
 
 
@@ -1004,18 +712,24 @@ async def list_tools() -> list[Tool]:
     """List available tools."""
     return [
         Tool(
-            name="start",
+            name="flextools_start",
             description="""[WORKFLOW - BEGIN HERE] Initialize the FlexTools MCP session.
 
 REQUIRED: Sets api_mode to determine which API (flexlibs2, flexlibs_stable, or liblcm) to use.
 OPTIONAL: task description for initial API discovery, project_name for operations, etc.
 
-After calling start():
-- Use search_by_capability(query='...') for API discovery
-- Use get_object_api(object_type='...') for detailed API info
-- Use run_operation() or run_module() to execute code against a FieldWorks project
+After calling flextools_start():
+- Use flextools_search_by_capability(query='...') for API discovery
+- Use flextools_get_object_api(object_type='...') for detailed API info
+- Use flextools_run_operation() or flextools_run_module() to execute code against a FieldWorks project
 
 Task and project_name can be set now or updated/provided later as needed.""",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1047,8 +761,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="get_object_api",
-            description="[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER search_by_capability to validate and understand the APIs you want to use.\n\nWARNING: Calling get_object_api is required BEFORE using an API in run_operation/run_module. This ensures you have full context of the signature and behavior, reducing debugging.\n\nIMPORTANT: Each API result includes 'import_statement' showing exactly what to add at the top of your code. When you use LexEntryOperations, LexSenseOperations, or any Operations class in your code, you MUST include the import statement shown in the API response.\n\nTip: Use summary_only=true first to explore large objects, then drill down into specific methods.",
+            name="flextools_get_object_api",
+            description="[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER flextools_search_by_capability to validate and understand the APIs you want to use.\n\nWARNING: Calling flextools_get_object_api is required BEFORE using an API in flextools_run_operation/flextools_run_module. This ensures you have full context of the signature and behavior, reducing debugging.\n\nIMPORTANT: Each API result includes 'import_statement' showing exactly what to add at the top of your code. When you use LexEntryOperations, LexSenseOperations, or any Operations class in your code, you MUST include the import statement shown in the API response.\n\nTip: Use summary_only=true first to explore large objects, then drill down into specific methods.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1090,8 +810,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="search_by_capability",
-            description="[WORKFLOW STEP 2] Search for methods/functions by capability. Returns multiple options. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'.\n\nRECOMMENDED WORKFLOW:\n1. search_by_capability() - discover options (may find more than you'll use)\n2. Review results, choose which APIs you actually need\n3. get_object_api() - for each API you selected, get full details (includes import_statement)\n4. IMPORTANT: When writing code, include ALL import statements shown in API results\n5. Write code using the validated APIs\n6. run_operation() or run_module() - execute with full context\n\nNote: API results include 'import_statement' field—this MUST be in your code.",
+            name="flextools_search_by_capability",
+            description="[WORKFLOW STEP 2] Search for methods/functions by capability. Returns multiple options. Use natural language queries like 'add gloss to sense', 'create new entry', 'get all entries'.\n\nRECOMMENDED WORKFLOW:\n1. flextools_search_by_capability() - discover options (may find more than you'll use)\n2. Review results, choose which APIs you actually need\n3. flextools_get_object_api() - for each API you selected, get full details (includes import_statement)\n4. IMPORTANT: When writing code, include ALL import statements shown in API results\n5. Write code using the validated APIs\n6. flextools_run_operation() or flextools_run_module() - execute with full context\n\nNote: API results include 'import_statement' field -- this MUST be in your code.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1115,8 +841,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="get_navigation_path",
-            description="[WORKFLOW STEP 2] Find how to navigate between object types in the FieldWorks data model. Example: ILexEntry -> ILexSense -> ILexExampleSentence. Call this after search_by_capability to understand how to traverse the data model.",
+            name="flextools_get_navigation_path",
+            description="[WORKFLOW STEP 2] Find how to navigate between object types in the FieldWorks data model. Example: ILexEntry -> ILexSense -> ILexExampleSentence. Call this after flextools_search_by_capability to understand how to traverse the data model.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1133,8 +865,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="find_examples",
+            name="flextools_find_examples",
             description="[WORKFLOW STEP 5] Find code examples for a method or operation type (create, read, update, delete). Use before writing code to see proven patterns. Examples come from FlexLibs2 with 82% coverage.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1160,16 +898,28 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="list_categories",
+            name="flextools_list_categories",
             description="List all available API categories (lexicon, grammar, texts, etc.) with their entity counts.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {}
             }
         ),
         Tool(
-            name="list_entities_in_category",
+            name="flextools_list_entities_in_category",
             description="List all entities (classes/interfaces) in a specific category.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1182,8 +932,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="get_module_template",
-            description="[WORKFLOW - REQUIRED BEFORE RUN_MODULE] Get the official FlexTools module template. Must call this to get boilerplate before submitting code to run_module. After discovery (search_by_capability, get_navigation_path, get_object_api, etc.), call this with module_name and synopsis to get properly structured template.",
+            name="flextools_get_module_template",
+            description="[WORKFLOW - REQUIRED BEFORE RUN_MODULE] Get the official FlexTools module template. Must call this to get boilerplate before submitting code to flextools_run_module. After discovery (flextools_search_by_capability, flextools_get_navigation_path, flextools_get_object_api, etc.), call this with module_name and synopsis to get properly structured template.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1204,8 +960,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="start_module",
+            name="flextools_start_module",
             description="Interactive wizard to start creating a new FlexTools module. Checks Python version, gathers requirements, and generates a customized template with appropriate boilerplate code. Call with no arguments to get the list of questions, or provide answers to generate the template.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1239,8 +1001,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="run_module",
-            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Code must be in FlexTools module format with def Main(project, report, modifyAllowed), FlexToolsModuleClass, from flextoolslib import, and docs dict. Use get_module_template to get the proper boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
+            name="flextools_run_module",
+            description="[WORKFLOW STEP 6 - EXECUTE] Execute a FlexTools module against a FieldWorks project. PREREQUISITE: Code must be in FlexTools module format with def Main(project, report, modifyAllowed), FlexToolsModuleClass, from flextoolslib import, and docs dict. Use flextools_get_module_template to get the proper boilerplate. ALWAYS test with write_enabled=False first. Backup before write_enabled=True.",
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
+                destructiveHint=True,
+                idempotentHint=False,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1276,8 +1044,14 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="get_operation_logs",
+            name="flextools_get_operation_logs",
             description="View operation logs and pattern recommendations. Shows recent failures, common error patterns, and API usage recommendations based on success/failure tracking.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1300,15 +1074,15 @@ Task and project_name can be set now or updated/provided later as needed.""",
             }
         ),
         Tool(
-            name="run_operation",
+            name="flextools_run_operation",
             description="""[WORKFLOW STEP 6 - EXECUTE] Execute FlexLibs2 operations directly against a FieldWorks project.
 
 PREREQUISITE WORKFLOW - Do these steps FIRST:
-1. search_by_capability - Find the right functions
-2. get_navigation_path - Understand object traversal
-3. get_object_api - Get API details
-4. resolve_property - Check for casting requirements
-5. find_examples - Get code patterns
+1. flextools_search_by_capability - Find the right functions
+2. flextools_get_navigation_path - Understand object traversal
+3. flextools_get_object_api - Get API details
+4. flextools_resolve_property - Check for casting requirements
+5. flextools_find_examples - Get code patterns
 
 Skipping these steps often leads to: wrong functions, runtime errors, data corruption.
 
@@ -1316,6 +1090,12 @@ Available: project, report, write_enabled, safe_str(), is_empty_multistring()
 Auto-imported: All flexlibs2 Operations classes, FLExProject, FP_* exceptions
 
 ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled=True.""",
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
+                destructiveHint=True,
+                idempotentHint=False,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1351,8 +1131,14 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
             }
         ),
         Tool(
-            name="resolve_property",
+            name="flextools_resolve_property",
             description="[WORKFLOW STEP 4] Resolve property names and check pythonnet casting requirements. CRITICAL: Call this before accessing properties like PartOfSpeechRA to avoid runtime errors. Returns casting warnings and FlexLibs2 helper functions.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1374,8 +1160,14 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
             }
         ),
         Tool(
-            name="manage_config",
+            name="flextools_manage_config",
             description="Get, set, delete, or list persistent configuration values for FlexToolsMCP.",
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1396,8 +1188,14 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
             }
         ),
         Tool(
-            name="get_session_history",
+            name="flextools_get_session_history",
             description="View this session's operation history and undo/redo availability.",
+            annotations=ToolAnnotations(
+                readOnlyHint=True,
+                destructiveHint=False,
+                idempotentHint=True,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1410,8 +1208,14 @@ ALWAYS run with write_enabled=False first (dry-run). Backup before write_enabled
             }
         ),
         Tool(
-            name="undo_last_operation",
+            name="flextools_undo_last_operation",
             description="Undo the most recent database write operation. Uses FLEx ActionHandler.Undo().",
+            annotations=ToolAnnotations(
+                readOnlyHint=False,
+                destructiveHint=True,
+                idempotentHint=False,
+                openWorldHint=False,
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {}
@@ -1428,13 +1232,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if api_index is None:
         api_index = APIIndex.load(get_index_dir())
 
-    # start() is the only tool that doesn't require initialization
-    # All other discovery/execution tools require calling start() first
-    if name != "start" and not session_state.initialized:
+    # flextools_start is the only tool that doesn't require initialization
+    # All other discovery/execution tools require calling flextools_start first
+    if name != "flextools_start" and not session_state.initialized:
         return [TextContent(type="text", text=json.dumps({
             "error": "Session not initialized",
-            "message": "You must call start() first to initialize the session and set the API mode.",
-            "hint": "Call start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
+            "message": "You must call flextools_start() first to initialize the session and set the API mode.",
+            "hint": "Call flextools_start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
             "available_task_examples": [
                 "Add gloss to sense definitions",
                 "Delete senses with test in gloss",
@@ -1443,37 +1247,37 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             ]
         }, indent=2))]
 
-    if name == "start":
+    if name == "flextools_start":
         return await handle_start(arguments)
-    elif name == "get_object_api":
+    elif name == "flextools_get_object_api":
         return await handle_get_object_api(arguments)
-    elif name == "search_by_capability":
+    elif name == "flextools_search_by_capability":
         return await handle_search_by_capability(arguments)
-    elif name == "get_navigation_path":
+    elif name == "flextools_get_navigation_path":
         return await handle_get_navigation_path(arguments)
-    elif name == "find_examples":
+    elif name == "flextools_find_examples":
         return await handle_find_examples(arguments)
-    elif name == "list_categories":
+    elif name == "flextools_list_categories":
         return await handle_list_categories(arguments)
-    elif name == "list_entities_in_category":
+    elif name == "flextools_list_entities_in_category":
         return await handle_list_entities_in_category(arguments)
-    elif name == "get_module_template":
+    elif name == "flextools_get_module_template":
         return await handle_get_module_template(arguments)
-    elif name == "start_module":
+    elif name == "flextools_start_module":
         return await handle_start_module(arguments)
-    elif name == "run_module":
+    elif name == "flextools_run_module":
         return await handle_run_module(arguments)
-    elif name == "run_operation":
+    elif name == "flextools_run_operation":
         return await handle_run_operation(arguments)
-    elif name == "get_operation_logs":
+    elif name == "flextools_get_operation_logs":
         return await handle_get_operation_logs(arguments)
-    elif name == "resolve_property":
+    elif name == "flextools_resolve_property":
         return await handle_resolve_property(arguments)
-    elif name == "manage_config":
+    elif name == "flextools_manage_config":
         return await handle_manage_config(arguments)
-    elif name == "get_session_history":
+    elif name == "flextools_get_session_history":
         return await handle_get_session_history(arguments)
-    elif name == "undo_last_operation":
+    elif name == "flextools_undo_last_operation":
         return await handle_undo_last_operation(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -1484,7 +1288,7 @@ async def main():
     global api_index
 
     # Pre-load indexes
-    print("[INFO] Loading API indexes...", file=__import__("sys").stderr)
+    print("[INFO] Loading API indexes...", file=sys.stderr)
     api_index = APIIndex.load(get_index_dir())
 
     if api_index.liblcm:

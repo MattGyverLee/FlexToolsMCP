@@ -19,6 +19,9 @@ except ImportError:
     # Fallback for when module isn't fully modularized yet
     from src.server.kernel import api_index
 
+# Type narrowing: handlers assume api_index is loaded by server.py
+assert api_index is not None, "api_index must be initialized before handler calls"
+
 
 async def handle_list_categories(args: dict) -> list[TextContent]:
     """List all available API categories."""

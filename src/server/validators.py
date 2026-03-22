@@ -527,3 +527,74 @@ def validate_project_context(project_name: str, write_enabled: bool, session_ini
         "write_mode": "ENABLED - will modify project" if write_enabled else "READ-ONLY - safe exploration",
         "ready_to_execute": True
     }
+
+
+def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = False) -> dict:
+    """Format enhanced warning with staged confirmation for data-affecting operations.
+
+    Args:
+        cud_info: Dict with 'operations', 'risks', 'affected_types'
+        write_enabled: Whether write mode is enabled
+        confirmed: Whether user has confirmed code review
+
+    Shows clear progression through safety stages.
+    """
+    if not confirmed:
+        # Stage 1: Code review
+        return {
+            "confirmation_required": True,
+            "stage": "code_review",
+            "reason": "This operation involves Create/Update/Delete actions",
+            "detected_operations": cud_info["operations"],
+            "potential_risks": cud_info["risks"],
+            "affected_data": cud_info["affected_types"],
+            "current_state": {
+                "write_mode": "ENABLED" if write_enabled else "DISABLED (dry-run)",
+                "confirmed": False
+            },
+            "progress": "1/3 - YOU ARE HERE: Review the code",
+            "what_happens_next": (
+                "Set confirmed=True to proceed to dry-run mode (RECOMMENDED: write_enabled will remain False)"
+                if not write_enabled
+                else "DANGER: Write mode is enabled. STRONGLY recommend setting write_enabled=False first"
+            ),
+            "safe_progression": [
+                "1. Review the code carefully (YOU ARE HERE)",
+                "2. Set confirmed=True with write_enabled=False to dry-run",
+                "3. Review dry-run output",
+                "4. Backup your project",
+                "5. Set confirmed=True with write_enabled=True to execute"
+            ]
+        }
+
+    if confirmed and not write_enabled:
+        # Stage 2: Dry-run
+        return {
+            "executing": "dry_run",
+            "stage": "dry_run",
+            "confirmed": True,
+            "write_mode": "DISABLED",
+            "progress": "2/3 - DRY-RUN: Showing what WOULD happen",
+            "will_modify_database": False,
+            "note": "This shows exactly what would happen if write_enabled=True",
+            "next_steps": [
+                "1. Review the dry-run output above carefully",
+                "2. Backup your project (if output looks good)",
+                "3. Run again with write_enabled=True to execute"
+            ]
+        }
+
+    if confirmed and write_enabled:
+        # Stage 3: Execute
+        return {
+            "executing": "live",
+            "stage": "execute",
+            "confirmed": True,
+            "write_mode": "ENABLED",
+            "progress": "3/3 - EXECUTING: Making changes to database",
+            "will_modify_database": True,
+            "operations_that_will_execute": cud_info["operations"],
+            "affected_data": cud_info["affected_types"],
+            "warning": "DATABASE WILL BE MODIFIED - MAKE SURE YOU HAVE A BACKUP!",
+            "final_check": "Backup complete? Ready to proceed?"
+        }

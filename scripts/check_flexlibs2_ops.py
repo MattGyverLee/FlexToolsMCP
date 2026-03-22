@@ -56,28 +56,30 @@ def _extract_exec_namespace_exceptions(source):
 
 
 def check_server_internal_consistency():
-    """Verify the 3 copies of the Operations list in server.py match."""
+    """Verify the 3 copies of the Operations list match across server.py and execution.py."""
     with open("src/server.py") as f:
-        source = f.read()
+        server_source = f.read()
+    with open("src/server/handlers/execution.py") as f:
+        execution_source = f.read()
 
     errors = []
 
-    # 1. KNOWN_OPERATIONS (used in detect_missing_operations_imports)
-    known_ops = _extract_set_from_ast(source, "KNOWN_OPERATIONS")
+    # 1. KNOWN_OPERATIONS (defined in server.py)
+    known_ops = _extract_set_from_ast(server_source, "KNOWN_OPERATIONS")
     if not known_ops:
         errors.append("Could not find KNOWN_OPERATIONS set in server.py")
         return errors
 
-    # 2. OPERATIONS_CLASSES (used in get_object_api for import statements)
-    ops_classes = _extract_set_from_ast(source, "OPERATIONS_CLASSES")
+    # 2. OPERATIONS_CLASSES (defined in server.py)
+    ops_classes = _extract_set_from_ast(server_source, "OPERATIONS_CLASSES")
     if not ops_classes:
         errors.append("Could not find OPERATIONS_CLASSES set in server.py")
         return errors
 
-    # 3. exec_namespace (used in run_operation to inject classes)
-    exec_ops = _extract_exec_namespace_ops(source)
+    # 3. exec_namespace (injected in execution.py - the actual runtime code)
+    exec_ops = _extract_exec_namespace_ops(execution_source)
     if not exec_ops:
-        errors.append("Could not find Operations classes in exec_namespace block")
+        errors.append("Could not find Operations classes in exec_namespace block in execution.py")
         return errors
 
     # Compare all three
@@ -98,17 +100,17 @@ def check_server_internal_consistency():
         only_exec = exec_ops - known_ops
         if only_known:
             errors.append(
-                f"In KNOWN_OPERATIONS but not exec_namespace: {sorted(only_known)}"
+                f"In KNOWN_OPERATIONS but not exec_namespace (execution.py): {sorted(only_known)}"
             )
         if only_exec:
             errors.append(
-                f"In exec_namespace but not KNOWN_OPERATIONS: {sorted(only_exec)}"
+                f"In exec_namespace (execution.py) but not KNOWN_OPERATIONS: {sorted(only_exec)}"
             )
 
-    # Also verify FP_* exceptions list is consistent
-    exec_exceptions = _extract_exec_namespace_exceptions(source)
+    # Also verify FP_* exceptions list is consistent (check in execution.py)
+    exec_exceptions = _extract_exec_namespace_exceptions(execution_source)
     if not exec_exceptions:
-        errors.append("Could not find FP_* exceptions in exec_namespace block")
+        errors.append("Could not find FP_* exceptions in exec_namespace block in execution.py")
 
     return errors, known_ops, exec_exceptions
 

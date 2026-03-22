@@ -64,7 +64,7 @@ def __getattr__(name: str):
 
     # List of all handler functions and classes that should be lazy-loaded from server.py
     LAZY_IMPORTS = {
-        # Handler functions (13 tools)
+        # Handler functions (16 tools)
         'handle_start',
         'handle_get_object_api',
         'handle_search_by_capability',
@@ -73,6 +73,9 @@ def __getattr__(name: str):
         'handle_list_categories',
         'handle_list_entities_in_category',
         'handle_get_module_template',
+        'handle_manage_config',
+        'handle_get_session_history',
+        'handle_undo_last_operation',
         'handle_start_module',
         'handle_run_module',
         'handle_run_operation',
@@ -161,6 +164,9 @@ __all__ = [
     'handle_list_categories',
     'handle_list_entities_in_category',
     'handle_get_module_template',
+    'handle_manage_config',
+    'handle_get_session_history',
+    'handle_undo_last_operation',
     'handle_start_module',
     'handle_run_module',
     'handle_run_operation',

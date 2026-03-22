@@ -113,3 +113,31 @@ def tool_handler(func: Callable) -> Callable:
             return error_dict
 
     return wrapper
+
+
+def build_response_with_context(data: Dict[str, Any], include_session: bool = True) -> Dict[str, Any]:
+    """Add session context to tool response.
+
+    If session is initialized, adds api_mode, write_enabled, and project to the response.
+
+    Args:
+        data: The response data dict
+        include_session: Whether to include session context (if available)
+
+    Returns:
+        The data dict, optionally with session_context added
+    """
+    # Import here to avoid circular imports
+    try:
+        from server.kernel import session_state
+    except ImportError:
+        from src.server.kernel import session_state
+
+    if include_session and hasattr(session_state, 'initialized') and session_state.initialized:
+        data["session_context"] = {
+            "api_mode": session_state.api_mode,
+            "write_enabled": session_state.write_enabled,
+            "project": session_state.project_name or "(not set)"
+        }
+
+    return data

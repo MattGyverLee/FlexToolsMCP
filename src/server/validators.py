@@ -601,3 +601,111 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
 
     # Unreachable - covers all cases (confirmed: bool, write_enabled: bool)
     return {}
+
+
+def certify_script_readonly(code: str, api_index) -> dict:
+    """Certify whether a script makes any FlexLibs2 mutating calls using API index.
+
+    Uses the is_mutating flag from the API index to identify write operations with
+    high confidence. Falls back to regex-based detection for code not in the index
+    (raw LCM, custom logic, etc.).
+
+    Args:
+        code: Python code to analyze
+        api_index: Loaded API index with is_mutating field per method
+
+    Returns:
+        {
+          "is_certified_readonly": bool,     # True = no mutating calls detected
+          "confidence": str,                 # "high" | "medium" | "low"
+          "mutating_calls": [                # Detected write operations
+              {"class": str, "method": str, "is_mutating": bool, "source": str}
+          ],
+          "unknown_calls": [...],            # Calls not found in index
+          "raw_lcm_patterns": [...],         # Regex-detected raw LCM writes
+        }
+    """
+    mutating_calls = []
+    unknown_calls = []
+    raw_lcm_patterns = []
+    confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
+
+    # Step 1: Extract FlexLibs2 Operations method calls using regex
+    # Pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
+    operations_call_pattern = r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\.\s*(\w+)\s*\('
+    operations_calls = re.findall(operations_call_pattern, code)
+
+    # Step 2: Look up each call in the API index
+    if api_index and api_index.get("flexlibs2"):
+        entities = api_index["flexlibs2"].get("entities", {})
+
+        for class_name, method_name in operations_calls:
+            if class_name in entities:
+                class_entity = entities[class_name]
+                methods = class_entity.get("methods", [])
+
+                # Search for method in class
+                method_found = False
+                for method in methods:
+                    if method.get("name") == method_name:
+                        method_found = True
+                        is_mutating = method.get("is_mutating", False)
+                        mutating_calls.append({
+                            "class": class_name,
+                            "method": method_name,
+                            "is_mutating": is_mutating,
+                            "source": "index"
+                        })
+                        confidence_sources["index"] += 1
+                        break
+
+                if not method_found:
+                    # Class found but method not in index - conservative: treat as mutating
+                    unknown_calls.append({
+                        "class": class_name,
+                        "method": method_name,
+                        "reason": "method not in index"
+                    })
+                    mutating_calls.append({
+                        "class": class_name,
+                        "method": method_name,
+                        "is_mutating": True,
+                        "source": "unknown"
+                    })
+                    confidence_sources["unknown"] += 1
+            else:
+                # Class not in index - fall through to regex
+                pass
+
+    # Step 3: Regex-based detection for patterns not in index
+    # Use existing detect_cud_operations() for raw LCM patterns
+    cud_info = detect_cud_operations(code)
+    if cud_info["is_cud"]:
+        raw_lcm_patterns.extend(cud_info["operations"])
+        confidence_sources["regex"] += 1
+
+    # Step 4: Determine confidence level
+    total_calls = len(mutating_calls) + len(unknown_calls)
+    if total_calls == 0 and not raw_lcm_patterns:
+        confidence = "high"
+    elif confidence_sources["unknown"] == 0 and confidence_sources["regex"] == 0:
+        confidence = "high"
+    elif confidence_sources["unknown"] == 0:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    # Step 5: Build certification result
+    is_certified_readonly = (
+        not any(m.get("is_mutating") for m in mutating_calls)
+        and not raw_lcm_patterns
+    )
+
+    return {
+        "is_certified_readonly": is_certified_readonly,
+        "confidence": confidence,
+        "mutating_calls": [m for m in mutating_calls if m.get("is_mutating")],
+        "readonly_calls": [m for m in mutating_calls if not m.get("is_mutating")],
+        "unknown_calls": unknown_calls,
+        "raw_lcm_patterns": raw_lcm_patterns,
+    }

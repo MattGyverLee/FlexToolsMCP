@@ -46,7 +46,8 @@ try:
         detect_missing_operations_imports,
         detect_wrong_library_imports,
         check_output_mechanism,
-        format_cud_warning
+        format_cud_warning,
+        certify_script_readonly
     )
 except ImportError:
     from src.server.validators import (
@@ -57,7 +58,8 @@ except ImportError:
         detect_missing_operations_imports,
         detect_wrong_library_imports,
         check_output_mechanism,
-        format_cud_warning
+        format_cud_warning,
+        certify_script_readonly
     )
 
 # Import response utilities
@@ -494,11 +496,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "session": session_state.summary()
         }, indent=2))]
 
-    # Check for CUD operations requiring confirmation
+    # Check for CUD operations requiring confirmation (both regex and index-based)
     confirmed = args.get("confirmed", False)
     cud_info = detect_cud_operations(module_code)
+    cert = certify_script_readonly(module_code, api_index)
 
-    if cud_info["is_cud"] and not confirmed:
+    # Only require confirmation if script is NOT certified readonly
+    if not cert["is_certified_readonly"] and not confirmed:
         return [TextContent(type="text", text=json.dumps(
             format_cud_warning(cud_info, write_enabled), indent=2
         ))]
@@ -820,8 +824,10 @@ MODULE_CODE = {module_code}
 
     try:
         # Determine if we need the write lock
-        # Only lock if: write_enabled=True AND CUD operations detected
-        needs_lock = write_enabled and cud_info["is_cud"]
+        # Use index-based certification as primary, regex-based as fallback
+        # Only lock if: write_enabled=True AND script is NOT certified readonly
+        is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
+        needs_lock = write_enabled and is_mutating_script
 
         if needs_lock:
             # Serialize CUD operations on same project to prevent database corruption
@@ -876,6 +882,13 @@ MODULE_CODE = {module_code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["module_code"] = module_code
+
+        # Include write certification result
+        execution_result["write_certification"] = {
+            "is_certified_readonly": cert["is_certified_readonly"],
+            "confidence": cert["confidence"],
+            "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
+        }
 
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
@@ -940,11 +953,13 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "session": session_state.summary()
         }, indent=2))]
 
-    # Check for CUD operations requiring confirmation
+    # Check for CUD operations requiring confirmation (both regex and index-based)
     confirmed = args.get("confirmed", False)
     cud_info = detect_cud_operations(operations)
+    cert = certify_script_readonly(operations, api_index)
 
-    if cud_info["is_cud"] and not confirmed:
+    # Only require confirmation if script is NOT certified readonly
+    if not cert["is_certified_readonly"] and not confirmed:
         return [TextContent(type="text", text=json.dumps(
             format_cud_warning(cud_info, write_enabled), indent=2
         ))]
@@ -1274,8 +1289,10 @@ if __name__ == "__main__":
         env['PYTHONUTF8'] = '1'
 
         # Determine if we need the write lock
-        # Only lock if: write_enabled=True AND CUD operations detected
-        needs_lock = write_enabled and cud_info["is_cud"]
+        # Use index-based certification as primary, regex-based as fallback
+        # Only lock if: write_enabled=True AND script is NOT certified readonly
+        is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
+        needs_lock = write_enabled and is_mutating_script
 
         if needs_lock:
             # Serialize CUD operations on same project to prevent database corruption
@@ -1330,6 +1347,13 @@ if __name__ == "__main__":
         execution_result["exit_code"] = result["returncode"]
         if args.get("show_code", True):
             execution_result["code_executed"] = operations
+
+        # Include write certification result
+        execution_result["write_certification"] = {
+            "is_certified_readonly": cert["is_certified_readonly"],
+            "confidence": cert["confidence"],
+            "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
+        }
 
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):

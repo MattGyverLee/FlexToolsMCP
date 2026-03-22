@@ -15,6 +15,7 @@ import sys
 import json
 import logging
 import re
+import asyncio
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List, TYPE_CHECKING
@@ -311,6 +312,29 @@ pattern_tracker: PatternTracker = PatternTracker()
 
 # MCP Server instance (lazy loaded in main())
 mcp_server: Optional[object] = None
+
+# ===== Write Operation Serialization =====
+# Per-project write locks to prevent concurrent CUD operations on same database
+# Key: project_name, Value: asyncio.Lock
+# Only locked when: write_enabled=True AND is_cud=True
+project_write_locks: Dict[str, asyncio.Lock] = {}
+
+
+def get_project_write_lock(project_name: str) -> asyncio.Lock:
+    """Get or create the write lock for a project.
+
+    Write locks serialize CUD (Create/Update/Delete) operations on the same
+    FieldWorks project to prevent database corruption from concurrent writes.
+
+    Args:
+        project_name: Name of the FieldWorks project
+
+    Returns:
+        asyncio.Lock for this project (creates if doesn't exist)
+    """
+    if project_name not in project_write_locks:
+        project_write_locks[project_name] = asyncio.Lock()
+    return project_write_locks[project_name]
 
 
 def get_index_dir() -> Path:

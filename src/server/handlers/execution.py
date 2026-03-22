@@ -28,12 +28,12 @@ except ImportError:
 
 # Import shared state from kernel
 try:
-    from ..kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker
+    from ..kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
     from ..session import SessionState
     if not isinstance(session_state, SessionState):
         session_state = SessionState()
 except ImportError:
-    from src.server.kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker
+    from src.server.kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
     from src.server.session import SessionState
 
 # Import helper functions from validators module
@@ -819,11 +819,24 @@ MODULE_CODE = {module_code}
         }, indent=2))]
 
     try:
-        # Run the script asynchronously (non-blocking)
-        result = await run_script_async(
-            temp_script_path,
-            timeout_seconds=timeout_seconds
-        )
+        # Determine if we need the write lock
+        # Only lock if: write_enabled=True AND CUD operations detected
+        needs_lock = write_enabled and cud_info["is_cud"]
+
+        if needs_lock:
+            # Serialize CUD operations on same project to prevent database corruption
+            write_lock = get_project_write_lock(project_name)
+            async with write_lock:
+                result = await run_script_async(
+                    temp_script_path,
+                    timeout_seconds=timeout_seconds
+                )
+        else:
+            # No lock needed: read-only or metadata-only operations
+            result = await run_script_async(
+                temp_script_path,
+                timeout_seconds=timeout_seconds
+            )
 
         stdout = result["stdout"]
         stderr = result["stderr"]
@@ -1260,12 +1273,26 @@ if __name__ == "__main__":
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUTF8'] = '1'
 
-        # Run the script asynchronously (non-blocking)
-        result = await run_script_async(
-            temp_script_path,
-            timeout_seconds=timeout_seconds,
-            env=env
-        )
+        # Determine if we need the write lock
+        # Only lock if: write_enabled=True AND CUD operations detected
+        needs_lock = write_enabled and cud_info["is_cud"]
+
+        if needs_lock:
+            # Serialize CUD operations on same project to prevent database corruption
+            write_lock = get_project_write_lock(project_name)
+            async with write_lock:
+                result = await run_script_async(
+                    temp_script_path,
+                    timeout_seconds=timeout_seconds,
+                    env=env
+                )
+        else:
+            # No lock needed: read-only or metadata-only operations
+            result = await run_script_async(
+                temp_script_path,
+                timeout_seconds=timeout_seconds,
+                env=env
+            )
 
         stdout = result["stdout"]
         stderr = result["stderr"]

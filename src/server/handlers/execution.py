@@ -20,6 +20,12 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from mcp.types import TextContent
 
+# Import async subprocess helper
+try:
+    from ..subprocess_helpers import run_script_async
+except ImportError:
+    from src.server.subprocess_helpers import run_script_async
+
 # Import shared state from kernel
 try:
     from ..kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker
@@ -813,18 +819,22 @@ MODULE_CODE = {module_code}
         }, indent=2))]
 
     try:
-        # Run the script in a subprocess
-        result = subprocess.run(
-            [sys.executable, temp_script_path],
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            encoding='utf-8',
-            stdin=subprocess.DEVNULL
+        # Run the script asynchronously (non-blocking)
+        result = await run_script_async(
+            temp_script_path,
+            timeout_seconds=timeout_seconds
         )
 
-        stdout = result.stdout
-        stderr = result.stderr
+        stdout = result["stdout"]
+        stderr = result["stderr"]
+
+        # Handle timeout case
+        if result["timeout"]:
+            return [TextContent(type="text", text=json.dumps({
+                "success": False,
+                "error": f"Execution timeout: script exceeded {timeout_seconds} seconds",
+                "warnings": warnings
+            }, indent=2))]
 
         # Parse the JSON result from stdout
         if "===FLEXTOOLS_RESULT_JSON===" in stdout:
@@ -848,7 +858,7 @@ MODULE_CODE = {module_code}
 
         # Add warnings, metadata, and optionally the full module code for learning
         execution_result["warnings"] = warnings
-        execution_result["exit_code"] = result.returncode
+        execution_result["exit_code"] = result["returncode"]
         if stderr and not execution_result.get("error"):
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
@@ -1250,20 +1260,23 @@ if __name__ == "__main__":
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUTF8'] = '1'
 
-        # Run the script in a subprocess
-        result = subprocess.run(
-            [sys.executable, temp_script_path],
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            encoding='utf-8',
-            errors='replace',
-            stdin=subprocess.DEVNULL,
+        # Run the script asynchronously (non-blocking)
+        result = await run_script_async(
+            temp_script_path,
+            timeout_seconds=timeout_seconds,
             env=env
         )
 
-        stdout = result.stdout
-        stderr = result.stderr
+        stdout = result["stdout"]
+        stderr = result["stderr"]
+
+        # Handle timeout case
+        if result["timeout"]:
+            return [TextContent(type="text", text=json.dumps({
+                "success": False,
+                "error": f"Execution timeout: script exceeded {timeout_seconds} seconds",
+                "warnings": warnings
+            }, indent=2))]
 
         # Parse the JSON result from stdout
         if "===FLEXTOOLS_RESULT_JSON===" in stdout:
@@ -1287,7 +1300,7 @@ if __name__ == "__main__":
 
         # Add warnings, return code, and optionally the executed code for learning
         execution_result["warnings"] = warnings
-        execution_result["exit_code"] = result.returncode
+        execution_result["exit_code"] = result["returncode"]
         if args.get("show_code", True):
             execution_result["code_executed"] = operations
 

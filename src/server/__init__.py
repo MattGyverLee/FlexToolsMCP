@@ -18,6 +18,26 @@ NEW STYLE (direct from modules):
   from server.kernel import api_index
 """
 
+# Re-export Pydantic input models
+from .models import (
+    FlexToolsStartInput,
+    ManageConfigInput,
+    GetSessionHistoryInput,
+    UndoLastOperationInput,
+    GetModuleTemplateInput,
+    SearchCapabilityInput,
+    GetObjectApiInput,
+    GetNavigationPathInput,
+    FindExamplesInput,
+    ListCategoriesInput,
+    ListEntitiesInCategoryInput,
+    ResolvePropertyInput,
+    StartModuleInput,
+    GetOperationLogsInput,
+    RunOperationInput,
+    RunModuleInput,
+)
+
 # Re-export session management (Feature 3)
 from .session import SessionState, OperationRecord
 

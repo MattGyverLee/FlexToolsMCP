@@ -109,20 +109,40 @@ functions.
 - Each tool's schema auto-generated from Pydantic models
 - Cleaner, more maintainable than inline Tool() constructors
 
-**Remaining (Item 4B - DEFERRED):** Full FastMCP refactor.
-- Would auto-generate call_tool() dispatch (currently manual if/elif chain)
-- Would use @app.tool() decorators instead of ToolDef objects
-- Lower priority: current approach is already clean and 16 tools is manageable
+**Item 4B: Dispatch Router + Input Validation (DONE)**
+Replaced the 16-way if/elif chain with a clean dispatch router:
 
-**Note:** This project deliberately uses 16 tools as a query layer over 1,400
-indexed functions. FastMCP's strength is managing dozens of tools. For 16 tools,
-the current data-driven approach is sufficient and arguably cleaner.
+```python
+# Before: 54 lines of if/elif
+if name == "flextools_start":
+    return await handle_start(arguments)
+elif name == "flextools_get_object_api":
+    return await handle_get_object_api(arguments)
+# ... (13 more)
 
-**Effort:** High (Item 4B). Already achieved 80% of benefit via Item 4A.
+# After: 15 lines using router
+route = get_tool_handler(name)  # Dict-based lookup
+validated_args = input_model(**arguments)  # Pydantic validation
+return await handler(validated_args.model_dump())  # Dispatch
+```
 
-**Status:** Item 4A DONE. Item 4B Deferred (not needed for clean code).
+**Benefits:**
+- Single source of truth: DISPATCH_ROUTES dict in dispatch.py
+- Input validation with Pydantic before handler runs
+- Catches invalid input early (type, enum, range violations)
+- DRY: tool definitions linked to dispatch (no duplication)
+- Easier to add/remove tools (one place to update)
+- Backward compatible: handlers still receive dicts
 
-**Files changed:** `src/server/tool_definitions.py` (new), `src/server.py` (simplified)
+**Note:** FastMCP would auto-generate this dispatch logic with decorators. For this
+project's 16 tools, a hand-written router is simpler, more transparent, and achieves
+the same goal without a new dependency.
+
+**Effort:** Medium (done). Already achieved 90%+ of FastMCP benefit.
+
+**Status:** Item 4A DONE. Item 4B DONE. FastMCP full migration deferred (unnecessary).
+
+**Files changed:** `src/server/dispatch.py` (new, 90 lines), `src/server.py` (simplified)
 
 ---
 
@@ -214,3 +234,76 @@ indexes eagerly would waste memory and startup time. The current pattern --
 lazy-load on `flextools_start()` -- is correct for this use case.
 
 **Status:** Closed. No action required.
+
+---
+
+## Summary: Items 3, 4, 6 [ALL COMPLETE]
+
+### What Was Accomplished
+
+**Item 3: Pydantic Input Models** ✅
+- Created `src/server/models.py` with 16 Pydantic BaseModel classes
+- All tool inputs now type-safe, validated, with automatic constraint enforcement
+- IDE autocomplete support for all parameter fields
+
+**Item 4A: Data-Driven Tool Registration** ✅
+- Created `src/server/tool_definitions.py` with ToolDef registry
+- Replaced 500-line `list_tools()` with 15-line data-driven loop
+- Tool definitions now single source of truth
+
+**Item 4B: Dispatch Router + Input Validation** ✅
+- Created `src/server/dispatch.py` with clean tool → handler mapping
+- Replaced 16-way if/elif chain in `call_tool()` with dict-based router
+- Input validation with Pydantic happens before handler dispatch
+
+**Item 6: Async Subprocess Execution** ✅
+- Verified `run_operation()` and `run_module()` use `asyncio.create_subprocess_exec()`
+- Non-blocking execution via `run_script_async()` helper
+- No event loop blocking
+
+### Architecture Improvements
+
+```
+User Request
+    ↓
+Tool Registration (tool_definitions.py + Pydantic models)
+    ↓
+Input Schema Generation (model_to_tool_schema)
+    ↓
+Tool Call (call_tool with validation)
+    ↓
+Dispatch Router (DISPATCH_ROUTES dict)
+    ↓
+Input Validation (Pydantic model instantiation)
+    ↓
+Handler Execution (receives validated dict)
+    ↓
+Response
+```
+
+### Code Quality Metrics
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| list_tools() | 500 lines | 15 lines | -97% |
+| call_tool() dispatch | 54 lines (if/elif) | 15 lines (router) | -72% |
+| Total tools module | 1,323 lines | ~1,200 lines | -9% |
+| Tool registration | Hand-written | Data-driven | Better |
+| Input validation | None | Pydantic | Comprehensive |
+| Async subprocess | subprocess.run | asyncio | Non-blocking |
+
+### Benefits Realized
+
+✅ **Type Safety** - Pydantic models provide IDE autocomplete and validation
+✅ **Reduced Duplication** - Single source of truth for tool definitions
+✅ **Better Error Messages** - Pydantic validation errors caught before dispatch
+✅ **Cleaner Code** - Removed nested if/elif chains, replaced with dict lookup
+✅ **Easier Maintenance** - Adding/removing tools requires minimal changes
+✅ **Non-Blocking Execution** - Async subprocess prevents event loop blocking
+✅ **Backward Compatible** - No breaking changes to handler signatures
+
+### Files Changed
+
+- **Created:** `src/server/models.py`, `src/server/tool_definitions.py`, `src/server/dispatch.py`
+- **Updated:** `src/server.py` (simplified), `scripts/verify_python.py` (tool counting)
+- **Modified:** `src/server/__init__.py` (Pydantic exports)

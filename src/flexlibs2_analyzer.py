@@ -785,6 +785,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         "mapping_type": "pure_python",  # Default, will be updated
         "param_usage": {},  # Maps param name -> list of LCM usages
         "transformations": [],  # List of detected transformations
+        "calls_ensure_write_enabled": False,  # Whether method calls _EnsureWriteEnabled()
     }
 
     # Extract parameter names from the function definition
@@ -804,6 +805,14 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
 
     # Walk the method body AST
     for child in ast.walk(node):
+        # Detect self._EnsureWriteEnabled() calls - indicator of mutating operation
+        if isinstance(child, ast.Call):
+            if (isinstance(child.func, ast.Attribute)
+                    and child.func.attr == '_EnsureWriteEnabled'
+                    and isinstance(child.func.value, ast.Name)
+                    and child.func.value.id == 'self'):
+                result["calls_ensure_write_enabled"] = True
+
         # Track parameter usage in calls
         if isinstance(child, ast.Call) and param_names:
             _track_param_usage(child, param_names, result["param_usage"])
@@ -1029,6 +1038,13 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
         is_flexlibs2=True
     )
 
+    # Derive is_mutating from AST evidence + name-prefix heuristic
+    # Ground truth: self._EnsureWriteEnabled() call in method body
+    _WRITE_HINTS = {"modification", "creation", "deletion", "manipulation", "persistence"}
+    _asm_confirmed = lcm_calls.get("calls_ensure_write_enabled", False)
+    _name_suggests = generate_method_usage_hint(node.name, return_type) in _WRITE_HINTS
+    is_mutating = _asm_confirmed or _name_suggests
+
     method_info = {
         "name": node.name,
         "signature": f"{node.name}({', '.join(params)})",
@@ -1044,6 +1060,7 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
         "is_property": is_property,
         "is_classmethod": is_classmethod,
         "is_staticmethod": is_staticmethod,
+        "is_mutating": is_mutating,
         "lcm_mapping": lcm_calls
     }
 

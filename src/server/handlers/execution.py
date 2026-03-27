@@ -24,7 +24,7 @@ from mcp.types import TextContent
 try:
     from ..subprocess_helpers import run_script_async
 except ImportError:
-    from src.server.subprocess_helpers import run_script_async
+    from server.subprocess_helpers import run_script_async
 
 # Import shared state from kernel
 try:
@@ -33,8 +33,8 @@ try:
     if not isinstance(session_state, SessionState):
         session_state = SessionState()
 except ImportError:
-    from src.server.kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
-    from src.server.session import SessionState
+    from server.kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
+    from server.session import SessionState
 
 # Import helper functions from validators module
 try:
@@ -50,7 +50,7 @@ try:
         certify_script_readonly
     )
 except ImportError:
-    from src.server.validators import (
+    from server.validators import (
         detect_cud_operations,
         detect_module_structure,
         detect_polymorphic_error,
@@ -67,7 +67,7 @@ try:
     from ...response_utils import build_response_with_context
 except (ImportError, ValueError):
     # Fallback for different import contexts
-    from src.response_utils import build_response_with_context
+    from response_utils import build_response_with_context
 
 
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:

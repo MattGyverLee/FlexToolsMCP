@@ -370,7 +370,7 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
 
     # Load API indexes (non-blocking - will load what's available)
     try:
-        from src.server import APIIndex  # Temporary import, will be resolved during modularization
+        from server import APIIndex  # Temporary import, will be resolved during modularization
         api_index = APIIndex.load(get_index_dir())
         operations_logger.info("API indexes loaded successfully")
     except Exception as e:

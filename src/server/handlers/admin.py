@@ -22,8 +22,8 @@ try:
         session_state = SessionState()
 except ImportError:
     # Fallback for when module isn't fully modularized yet
-    from src.server.kernel import session_state, get_log_dir, api_index
-    from src.server.session import SessionState
+    from server.kernel import session_state, get_log_dir, api_index
+    from server.session import SessionState
 
 
 async def handle_start(args: dict) -> list[TextContent]:
@@ -119,7 +119,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
     try:
         from ..config import config_get, config_set, config_delete, config_list
     except ImportError:
-        from src.config import config_get, config_set, config_delete, config_list
+        from config import config_get, config_set, config_delete, config_list
 
     action = args.get("action", "list")
     key = args.get("key", "")

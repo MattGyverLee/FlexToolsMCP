@@ -61,27 +61,27 @@ try:
     )
 except ImportError:
     # Fallback imports for non-package mode
-    from handlers.admin import (
+    from server.handlers.admin import (
         handle_start,
         handle_manage_config,
         handle_get_session_history,
         handle_undo_last_operation,
         handle_get_module_template,
     )
-    from handlers.api import (
+    from server.handlers.api import (
         handle_get_object_api,
         handle_search_by_capability,
         handle_find_examples,
         handle_resolve_property,
     )
-    from handlers.catalog import (
+    from server.handlers.catalog import (
         handle_list_categories,
         handle_list_entities_in_category,
     )
-    from handlers.discovery import (
+    from server.handlers.discovery import (
         handle_get_navigation_path,
     )
-    from handlers.execution import (
+    from server.handlers.execution import (
         handle_start_module,
         handle_run_module,
         handle_run_operation,

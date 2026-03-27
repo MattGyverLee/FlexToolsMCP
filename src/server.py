@@ -29,6 +29,12 @@ os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
 warnings.filterwarnings('ignore', message='.*position_ids.*')
 warnings.filterwarnings('ignore', message='.*unauthenticated requests.*')
 
+# Ensure src is in sys.path when running as a script
+if __package__ is None:
+    _src_path = str(Path(__file__).parent)
+    if _src_path not in sys.path:
+        sys.path.insert(0, _src_path)
+
 from mcp.server import Server
 
 if __package__:

@@ -17,10 +17,9 @@ from mcp.types import TextContent
 try:
     from ..kernel import api_index
 except ImportError:
-    from src.server.kernel import api_index
+    from server.kernel import api_index
 
-# Type narrowing: handlers assume api_index is loaded by server.py
-assert api_index is not None, "api_index must be initialized before handler calls"
+# Type note: api_index is initialized by server.py before any handlers are called
 
 
 def normalize_object_name(name: str) -> str:

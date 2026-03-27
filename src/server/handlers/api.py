@@ -14,15 +14,11 @@ from typing import List, Dict, Any, cast
 
 # Import kernel and config with dual-mode support
 try:
-    from ..kernel import api_index as _api_index, session_state
-    from ..server import APIIndex
+    from ..kernel import api_index, session_state
 except ImportError:
-    from src.server.kernel import api_index as _api_index, session_state
-    from src.server import APIIndex
+    from server.kernel import api_index, session_state
 
-# Type narrowing: handlers assume api_index is loaded by server.py
-assert _api_index is not None, "api_index must be initialized before handler calls"
-api_index: APIIndex = cast(APIIndex, _api_index)
+# Type note: api_index is initialized by server.py before any handlers are called
 
 
 # ============================================================

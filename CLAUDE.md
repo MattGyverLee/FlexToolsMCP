@@ -186,6 +186,8 @@ When users encounter `AttributeError` or "has no attribute" errors:
 
 ## Writing FLExTools Modules
 
+**READ FIRST:** See [`docs/FLEXTOOLS-STYLE-GUIDE.md`](docs/FLEXTOOLS-STYLE-GUIDE.md) for comprehensive best practices that should guide all script generation.
+
 ### Preferred: FlexLibs 2.0
 
 When generating FLExTools scripts for users, **always use flexlibs2** template:

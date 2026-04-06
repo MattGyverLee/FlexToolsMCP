@@ -39,14 +39,14 @@ from flexlibs2.code.lcm_casting import (
 )
 
 
-def Main(project, report, modify):
+def Main(project, report, modifyAllowed):
     """
     Standard FLExTools entry point with LibLCM direct access.
 
     Args:
         project (FLExProject): FieldWorks database connection
         report (FTReport): Report object for output
-        modify (bool): Whether write operations are enabled
+        modifyAllowed (bool): Whether write operations are enabled (guard all writes with this)
 
     Note:
         This template accesses the underlying C# object model directly.
@@ -264,7 +264,7 @@ COMMON PATTERNS:
    sense.Gloss  # Direct property
 
 5. Write with permission check:
-   if modify:
+   if modifyAllowed:
        entry.LexemeForm = new_value  # Direct C# assignment
 
 PYTHONNET INTEGRATION:

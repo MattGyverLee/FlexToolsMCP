@@ -26,14 +26,14 @@ DATE:
 from flexlibs import FLExProject, FP_RuntimeError
 
 
-def Main(project, report, modify):
+def Main(project, report, modifyAllowed):
     """
     Standard FLExTools entry point for stable flexlibs.
 
     Args:
         project (FLExProject): FieldWorks database connection
         report (FTReport): Report object for output
-        modify (bool): Whether write operations are enabled
+        modifyAllowed (bool): Whether write operations are enabled (guard all writes with this)
     """
     try:
         # ================================================================
@@ -66,7 +66,7 @@ def Main(project, report, modify):
 
                 # Multistring fields return "***" when empty
                 # Must check explicitly
-                if modify:
+                if modifyAllowed:
                     # Your modification logic here
                     pass
 

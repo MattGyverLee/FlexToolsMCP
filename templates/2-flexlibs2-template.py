@@ -41,7 +41,7 @@ from flexlibs2 import (
 # IMPLEMENTATION
 # ============================================================================
 
-def Main(project, report, modify):
+def Main(project, report, modifyAllowed):
     """
     Standard FLExTools entry point.
 
@@ -53,7 +53,7 @@ def Main(project, report, modify):
     Args:
         project (FLExProject): FieldWorks database connection
         report (FTReport): Report object for output
-        modify (bool): Whether write operations are enabled
+        modifyAllowed (bool): Whether write operations are enabled (guard all writes with this)
 
     Returns:
         None (output via report parameter)
@@ -103,8 +103,8 @@ def Main(project, report, modify):
                     except Exception:
                         pass
 
-                    # Example: Modify (only if modify=True)
-                    if modify:
+                    # Example: Modify (only if modifyAllowed=True)
+                    if modifyAllowed:
                         # Your modification logic here
                         pass
 
@@ -201,10 +201,10 @@ COMMON PATTERNS:
        report.Info("Gloss is empty")
 
 4. Modify with permission check:
-   if modify:
+   if modifyAllowed:
        project.LexEntry.SetLexemeForm(entry, "new_form")
    else:
-       report.Info("(Would modify, but modify=False)")
+       report.Info("(Would modify, but modifyAllowed=False)")
 
 5. Error handling:
    try:

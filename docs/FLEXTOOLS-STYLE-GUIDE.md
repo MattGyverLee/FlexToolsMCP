@@ -117,14 +117,50 @@ def Main(project, report, modify):
 
 **Always wrap in try/except** - FLExTools silences unhandled exceptions.
 
-### 7. Write Permission Checking
+### 7. Write Permission Checking - CRITICAL
+
+**Parameter name is `modifyAllowed`** (standard FLExTools parameter)
 
 ```python
-if modify:
+def Main(project, report, modifyAllowed):
+    # ALWAYS check modifyAllowed before ANY write operation
+    if modifyAllowed:
+        project.LexEntry.SetLexemeForm(entry, new_form)
+        report.Info(f"✓ Updated: {new_form}")
+    else:
+        report.Info(f"(Would update to: {new_form})")
+```
+
+**UNPROTECTED WRITES ARE A CRITICAL BUG**
+- Every write must be guarded with `if modifyAllowed:`
+- Writes without protection will silently corrupt data
+- MCP tools detect and warn about unprotected writes
+- Always test in read-only mode first
+
+**Examples of unprotected writes (BAD):**
+```python
+# WRONG - No permission check!
+project.LexEntry.SetLexemeForm(entry, new_form)
+
+# WRONG - Missing permission check!
+entry.LexemeForm = new_value
+
+# WRONG - Modification without guard!
+project.LexSense.SetGloss(sense, "new gloss")
+```
+
+**Correct pattern:**
+```python
+# CORRECT - Protected write
+if modifyAllowed:
     project.LexEntry.SetLexemeForm(entry, new_form)
-    report.Info(f"✓ Updated: {new_form}")
+
+# CORRECT - Protected with reporting
+if modifyAllowed:
+    entry.LexemeForm = new_value
+    report.Info(f"Updated: {new_value}")
 else:
-    report.Info(f"(Would update to: {new_form})")
+    report.Info(f"(Would set to: {new_value})")
 ```
 
 Allow users to preview changes without write access enabled.
@@ -166,10 +202,10 @@ def multistring_safe(project, sense, field_name):
 - ✓ Import explicitly from flexlibs2
 - ✓ Use report.Info/Warning/Error appropriately
 - ✓ Wrap in try/except at multiple levels
-- ✓ Check modify flag before writing
+- ✓ **ALWAYS check `modifyAllowed` before ANY write** (CRITICAL)
 - ✓ Include helper functions for reuse
 - ✓ Report progress frequently
-- ✓ Test on actual FieldWorks projects
+- ✓ Test on actual FieldWorks projects (read-only first)
 - ✓ Document why you chose a specific flavor
 
 ### DON'T ✗
@@ -177,13 +213,14 @@ def multistring_safe(project, sense, field_name):
 - ✗ Use print() - FLExTools won't show it
 - ✗ Assume stable flexlibs is available/correct
 - ✗ Skip error handling (FLExTools silences exceptions)
-- ✗ Write without checking modify flag
+- ✗ **Write without checking `modifyAllowed` flag (DATA CORRUPTION RISK)**
 - ✗ Leave BuildGoToURL out (users benefit from navigation)
 - ✗ Process huge collections without reporting progress
 - ✗ Use LibLCM for simple operations (overkill)
 - ✗ Ignore multistring "***" handling (stable flexlibs/LibLCM)
 - ✗ Swallow exceptions silently (always report)
 - ✗ Generate code without using templates
+- ✗ Use parameter name `modify` - it's `modifyAllowed`
 
 ---
 
@@ -233,11 +270,74 @@ Dennis lost trust in flexlibs2 when hitting the OperationsMethod bug. Lesson:
 
 ---
 
+## Detecting Unprotected Writes
+
+The MCP can analyze generated scripts for **critical bugs**:
+
+### What to Check For
+
+```python
+# UNPROTECTED - Write without permission check
+❌ project.LexEntry.SetLexemeForm(entry, value)
+❌ entry.LexemeForm = new_value
+❌ project.LexSense.SetGloss(sense, gloss)
+
+# PROTECTED - Properly guarded
+✓ if modifyAllowed:
+✓     project.LexEntry.SetLexemeForm(entry, value)
+```
+
+### Common Unprotected Write Patterns
+
+1. **Direct assignment without guard**
+   ```python
+   project.LexEntry.SetLexemeForm(entry, value)  # ❌ Unprotected
+   ```
+
+2. **Method call that modifies**
+   ```python
+   project.LexSense.SetGloss(sense, "new")  # ❌ Unprotected
+   ```
+
+3. **C# property assignment (LibLCM)**
+   ```python
+   entry.LexemeForm = new_value  # ❌ Unprotected
+   ```
+
+4. **Bulk operations without guard**
+   ```python
+   for entry in entries:
+       project.LexEntry.SetLexemeForm(entry, f)  # ❌ Unprotected loop
+   ```
+
+### MCP Constraints
+
+The MCP should:
+1. **Detect** unprotected writes in generated code
+2. **Warn** the user before generating
+3. **Refuse** to generate obviously unsafe code
+4. **Suggest** how to fix the issue
+
+Example warning:
+```
+⚠️  WARNING: Generated code contains 3 unprotected writes:
+  - Line 45: project.LexEntry.SetLexemeForm() without modifyAllowed check
+  - Line 67: sense.Gloss assignment without guard
+  - Line 89: Bulk Set operation in unguarded loop
+
+Fix by wrapping writes:
+  if modifyAllowed:
+      project.LexEntry.SetLexemeForm(entry, value)
+```
+
+---
+
 ## Feedback Loop
 
 The MCP server learns from patterns:
 - `patterns.json` tracks successful methods
 - `operations.log` records what users try
+- Detects and reports unprotected write attempts
 - This guide should evolve as more patterns are discovered
 
 If you discover a new pattern or best practice:

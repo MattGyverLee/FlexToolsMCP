@@ -79,6 +79,15 @@ def Main(project, report, modify):
                 senses = project.LexSense.GetAllSenses(entry)
                 report.Info(f"  [{i+1}] {form} ({len(senses)} senses)")
 
+                # BuildGoToURL creates clickable links in FLExTools output
+                # Users can click to jump directly to entry in FieldWorks GUI
+                try:
+                    entry_url = project.BuildGotoURL(entry)
+                    report.Info(f"      Goto entry: {entry_url}")
+                except Exception:
+                    # BuildGoToURL might not be available, continue anyway
+                    pass
+
                 # Process each sense
                 for sense in senses:
                     gloss = project.LexSense.GetGloss(sense)
@@ -86,6 +95,13 @@ def Main(project, report, modify):
 
                     if gloss:
                         report.Info(f"      - {gloss}")
+
+                    # BuildGoToURL also works for senses
+                    try:
+                        sense_url = project.BuildGotoURL(sense)
+                        report.Info(f"        Goto sense: {sense_url}")
+                    except Exception:
+                        pass
 
                     # Example: Modify (only if modify=True)
                     if modify:
@@ -126,6 +142,36 @@ def process_entry(project, report, entry, modify):
         return True
     except Exception as e:
         report.Error(f"Error processing entry: {e}")
+        return False
+
+
+def report_with_link(project, report, obj, label):
+    """
+    Report an object with a clickable link to it in FieldWorks.
+
+    In FLExTools, this creates a clickable link that jumps directly
+    to the object in the FieldWorks GUI when clicked.
+
+    Args:
+        project: FLExProject instance
+        report: Report object
+        obj: Object to link to (entry, sense, etc.)
+        label: Text to display before the link
+
+    Returns:
+        Boolean - True if link created, False if error
+
+    Example:
+        report_with_link(project, report, entry, "Entry:")
+        Output in FLExTools: "Entry: ftp://localhost:5236/link?app=flex..."
+        (Users can click this to jump to the entry)
+    """
+    try:
+        url = project.BuildGotoURL(obj)
+        report.Info(f"{label} {url}")
+        return True
+    except Exception as e:
+        report.Debug(f"Could not generate link: {e}")
         return False
 
 
@@ -181,4 +227,38 @@ READ-ONLY VS WRITE:
   - Check modify flag before writing
   - If modify=False, still do read operations but skip writes
   - This allows users to preview changes without enabling write mode
+
+BUILDGOTOURL - CLICKABLE LINKS:
+  project.BuildGotoURL(obj) creates FLExTools-clickable links.
+  Users can click links to jump directly to objects in FieldWorks GUI.
+
+  Supported objects:
+    - Lexical entries: project.BuildGotoURL(entry)
+    - Senses: project.BuildGotoURL(sense)
+    - Reversal entries: project.BuildGotoURL(reversal_entry)
+    - And most other FLEx objects
+
+  Example usage:
+    entry_url = project.BuildGotoURL(entry)
+    report.Info(f"Entry: {entry_url}")
+
+  Or use the helper function:
+    report_with_link(project, report, entry, "Click to view:")
+
+  Output in FLExTools:
+    Click to view: ftp://localhost:5236/link?app=flex&authority=FLEx&id=47f65d6b...
+    (Users can click this hyperlink to jump to the entry)
+
+  Dennis's working example:
+    for entry in project.LexEntry.GetAll():
+        form = project.LexEntry.GetLexemeForm(entry)
+        report.Info(f"  {form}")
+        try:
+            url = project.BuildGotoURL(entry)
+            report.Info(f"  Goto: {url}")
+        except Exception:
+            pass  # BuildGotoURL not available in this environment
+
+  Always wrap in try/except - BuildGoToURL might not be available
+  in all environments or versions.
 """

@@ -55,6 +55,15 @@ def Main(project, report, modify):
                 # (flexlibs2 has much better coverage)
                 report.Info(f"  [{i+1}] {form}")
 
+                # BuildGoToURL creates clickable links in FLExTools output
+                # Users can click to jump to entry in FieldWorks GUI
+                try:
+                    entry_url = project.BuildGotoURL(entry)
+                    report.Info(f"      Goto: {entry_url}")
+                except Exception as url_error:
+                    # BuildGoToURL not available in all versions
+                    pass
+
                 # Multistring fields return "***" when empty
                 # Must check explicitly
                 if modify:
@@ -70,6 +79,33 @@ def Main(project, report, modify):
         report.Error(f"[ERROR] Fatal error: {e}")
         import traceback
         report.Error(traceback.format_exc())
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def report_with_goto(project, report, obj, label):
+    """
+    Report an object with a clickable link to it in FieldWorks.
+
+    Args:
+        project: FLExProject instance
+        report: Report object
+        obj: Object to link to (entry, sense, etc.)
+        label: Text to display before the link
+
+    Example:
+        report_with_goto(project, report, entry, "Lexeme:")
+        Output: "Lexeme: ftp://localhost:..."
+    """
+    try:
+        url = project.BuildGotoURL(obj)
+        report.Info(f"{label} {url}")
+        return True
+    except Exception as e:
+        report.Debug(f"Could not generate link: {e}")
+        return False
 
 
 # ============================================================================
@@ -110,6 +146,23 @@ MIGRATION PATH:
   2. Check if FlexLibs2 is available
   3. Use 2-flexlibs2-template.py instead
   4. Minimal code changes needed
+
+BUILDGOTOURL - CLICKABLE LINKS:
+  project.BuildGotoURL(obj) creates FLExTools-clickable links.
+  Users can click links to jump directly to objects in FieldWorks GUI.
+
+  Supported objects:
+    - Lexical entries: project.BuildGotoURL(entry)
+    - Senses: project.BuildGotoURL(sense)
+    - Reversal entries: project.BuildGotoURL(reversal_entry)
+    - And most other FLEx objects
+
+  Example output in FLExTools:
+    Found entry: ftp://localhost:5236/link?app=flex&authority=FLEx&id=47f65d6b-d92a-4149-a9c9-3ec5f6e1e2ab
+    (users can click this link)
+
+  Wrapped in try/except because BuildGotoURL may not be available
+  in all versions or environments.
 
 WHY NOT FLEXLIBS2?
   This template is only for systems where:

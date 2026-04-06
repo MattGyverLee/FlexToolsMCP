@@ -119,7 +119,10 @@ def Main(project, report, modify):
 
 ### 7. Write Permission Checking - CRITICAL
 
-**Parameter name is `modifyAllowed`** (standard FLExTools parameter)
+**ALWAYS check `modifyAllowed` before ANY write operation** (standard FLExTools parameter)
+
+Note: `modifyAllowed` is the **per-script control** (FLExTools passes this parameter).
+Don't confuse it with `project.writeEnabled` (system permission setting - different scope).
 
 ```python
 def Main(project, report, modifyAllowed):

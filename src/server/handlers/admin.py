@@ -12,6 +12,8 @@ These handlers manage session configuration and provide admin tools:
 """
 
 import json
+import os
+from pathlib import Path
 from mcp.types import TextContent
 
 # Import shared state from kernel
@@ -261,84 +263,115 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
 
 
 async def handle_get_module_template(args: dict) -> list[TextContent]:
-    """Return the official FlexTools module template."""
-    module_name = args.get("module_name", "<Module name>")
-    synopsis = args.get("synopsis", "<description>")
-    modifies_db = args.get("modifies_db", False)
+    """Return the official FlexTools module template from templates/ directory.
 
-    template = '''#
-#   {module_name}
-#    - A FlexTools Module -
-#
-#   {synopsis}
-#
-#   Platforms: Python .NET and IronPython
-#
-
-from flextoolslib import *
-
-#----------------------------------------------------------------
-# Documentation that the user sees:
-
-docs = {{FTM_Name        : "{module_name}",
-        FTM_Version     : 1,
-        FTM_ModifiesDB  : {modifies_db},
-        FTM_Synopsis    : "{synopsis}",
-        FTM_Description :
-"""
-<detailed description here>
-""" }}
-
-#----------------------------------------------------------------
-# The main processing function
-
-def Main(project, report, modifyAllowed):
+    This reads from the authoritative template files so they stay in sync with
+    the style guide and documentation. Users get the recommended best practices
+    directly, not a generic fallback.
     """
-    Main entry point for the FlexTools module.
+    flavor = args.get("flavor", "flexlibs2")  # Default to recommended flavor
 
-    Args:
-        project: FLExProject instance providing access to the FieldWorks database
-        report: Reporter object for logging (report.Info, report.Warning, report.Error)
-        modifyAllowed: Boolean indicating if database modifications are permitted
-    """
-    report.Info("Starting...")
+    # Map flavor names to template files
+    template_map = {
+        "flexlibs2": "2-flexlibs2-template.py",
+        "flexlibs_stable": "1-flexlibs-stable-template.py",
+        "liblcm": "3-liblcm-template.py",
+        "stable": "1-flexlibs-stable-template.py",  # Alias
+        "advanced": "3-liblcm-template.py",  # Alias
+    }
 
-    # Example: iterate all entries
-    # for entry in project.LexiconAllEntries():
-    #     headword = project.LexiconGetHeadword(entry)
-    #     report.Info("Entry: {{}}".format(headword))
+    if flavor not in template_map:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_flavor",
+            "message": f"Unknown flavor '{flavor}'",
+            "available_flavors": list(template_map.keys()),
+            "recommended": "flexlibs2"
+        }, indent=2))]
 
-    report.Info("Done.")
+    # Find templates directory relative to this file
+    # admin.py is in src/server/handlers/, templates are in root/templates/
+    # So we go up 3 levels: handlers -> server -> src -> root
+    current_file = Path(__file__)
+    root_dir = current_file.parent.parent.parent.parent  # Go up to project root
+    templates_dir = root_dir / "templates"
+    template_file = templates_dir / template_map[flavor]
 
-#----------------------------------------------------------------
+    if not template_file.exists():
+        return [TextContent(type="text", text=json.dumps({
+            "error": "template_not_found",
+            "message": f"Template file not found: {template_file}",
+            "hint": "Templates should be in the root/templates/ directory"
+        }, indent=2))]
 
-FlexToolsModule = FlexToolsModuleClass(Main, docs)
+    try:
+        with open(template_file, "r", encoding="utf-8") as f:
+            template_content = f.read()
+    except Exception as e:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "template_read_error",
+            "message": f"Failed to read template: {str(e)}"
+        }, indent=2))]
 
-#----------------------------------------------------------------
-if __name__ == '__main__':
-    print(FlexToolsModule.Help())
-'''.format(
-        module_name=module_name,
-        synopsis=synopsis,
-        modifies_db=modifies_db
-    )
+    # Flavor-specific guidance
+    flavor_guidance = {
+        "flexlibs2": {
+            "description": "Recommended - Best documented, 90% API coverage",
+            "use_when": "For most projects with FieldWorks 9.0+",
+            "advantages": [
+                "Automatic '***' multistring normalization",
+                "Better error messages",
+                "Comprehensive coverage (~200 functions)",
+                "Well documented with many examples"
+            ]
+        },
+        "1-flexlibs-stable-template.py": {
+            "description": "Legacy - Limited but stable",
+            "use_when": "For FieldWorks < 9.0 or when flexlibs2 not available",
+            "advantages": [
+                "Works with older FieldWorks versions",
+                "Limited API (~40 functions) but stable",
+                "Good for simple read-only operations"
+            ]
+        },
+        "3-liblcm-template.py": {
+            "description": "Advanced - Full API access",
+            "use_when": "For edge cases not covered by flexlibs2",
+            "advantages": [
+                "100% API coverage",
+                "Direct C# access for complex operations",
+                "Performance-critical code"
+            ],
+            "warning": "Complex code, hard to maintain. Use flexlibs2 first."
+        }
+    }
+
+    guidance = flavor_guidance.get(flavor, {})
+    if flavor in ["flexlibs_stable", "stable"]:
+        guidance = flavor_guidance.get("1-flexlibs-stable-template.py", {})
+    elif flavor in ["liblcm", "advanced"]:
+        guidance = flavor_guidance.get("3-liblcm-template.py", {})
 
     result = {
-        "template": template,
-        "notes": [
-            "FTM_Version should be an integer (1, 2, 3...), not a string",
-            "Main function must be named 'Main' (not 'MainFunction')",
-            "Use .format() for string formatting (IronPython compatible), not f-strings",
-            "Do not use type hints (IronPython does not support them)",
-            "Do not use pathlib (use os.path instead for IronPython compatibility)",
-            "FlexToolsModule = FlexToolsModuleClass(Main, docs) uses positional args"
-        ],
-        "report_methods": [
-            "report.Info(message) - Informational message",
-            "report.Warning(message) - Warning message",
-            "report.Error(message) - Error message",
-            "report.Blank() - Blank line",
-            "report.FileURL(path) - Create clickable file link"
+        "status": "success",
+        "flavor": flavor,
+        "template": template_content,
+        "source": f"templates/{template_map[flavor]} (authoritative)",
+        "guidance": guidance,
+        "style_guide": {
+            "reference": "docs/FLEXTOOLS-STYLE-GUIDE.md",
+            "key_sections": [
+                "Section 1: Choose the Right Flavor",
+                "Section 7: Write Permission Checking - CRITICAL (if modifyAllowed:)",
+                "Section 8: Helper Functions",
+                "Pattern: Always check modifyAllowed before ANY write"
+            ]
+        },
+        "next_steps": [
+            "1. Copy the template code above",
+            "2. Replace [Placeholders] with your logic",
+            "3. Pay special attention to 'if modifyAllowed:' guards",
+            "4. Test in read-only mode first (modifyAllowed=False)",
+            "5. Run flextools_run_module() when ready"
         ]
     }
 

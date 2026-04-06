@@ -18,10 +18,15 @@ from server.validators import certify_script_readonly
 
 
 def load_api_index():
-    """Load the FlexLibs2 API index."""
-    index_file = Path(__file__).parent.parent / "index" / "flexlibs" / "flexlibs2_api_v2.3.2.json"
-    if not index_file.exists():
-        raise FileNotFoundError(f"API index not found: {index_file}")
+    """Load the FlexLibs2 API index (latest version available)."""
+    index_dir = Path(__file__).parent.parent / "index" / "flexlibs"
+
+    # Find the latest flexlibs2 API file
+    flexlibs2_files = sorted(index_dir.glob("flexlibs2_api_v*.json"))
+    if not flexlibs2_files:
+        raise FileNotFoundError(f"No FlexLibs2 API index found in {index_dir}")
+
+    index_file = flexlibs2_files[-1]  # Use latest version
 
     with open(index_file, encoding='utf-8') as f:
         api = json.load(f)
@@ -188,6 +193,68 @@ def test_protected_liblcm_with_writeenabled():
     print("[OK] Protected LibLCM calls with writeEnabled check allowed")
 
 
+def test_protected_with_modifyallowed():
+    """Test that FlexLibs2 mutations protected by modifyAllowed parameter are allowed."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        entries = LexEntryOperations(project).GetAll()
+        for entry in entries:
+            if modifyAllowed:
+                LexEntryOperations(project).SetLexemeForm(entry, "new_form")
+                report.Info("Updated")
+            else:
+                report.Info("(Would update)")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], f"Should be certified readonly when protected by modifyAllowed, got: {cert}"
+    # Check that SetLexemeForm was detected but is protected (not in the unprotected list)
+    mutating = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
+    assert len(mutating) == 0, f"Should have no UNPROTECTED mutations, but got: {mutating}"
+
+    print("[OK] Protected FlexLibs2 mutations with modifyAllowed parameter allowed")
+
+
+def test_protected_liblcm_with_modifyallowed():
+    """Test that raw LibLCM mutations protected by modifyAllowed parameter are allowed."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            project._cache.CreateObject(...)
+            report.Info("Created")
+        else:
+            report.Info("(Would create)")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], "Should be certified readonly when protected by modifyAllowed"
+    assert len(cert["unprotected_liblcm_calls"]) == 0, "Should have no unprotected calls"
+    assert len(cert["protected_liblcm_calls"]) > 0, "Should detect protected LibLCM call"
+
+    print("[OK] Protected raw LibLCM calls with modifyAllowed parameter allowed")
+
+
+def test_modifyallowed_comparison():
+    """Test that modifyAllowed == True comparisons are recognized as guards."""
+    api_index = load_api_index()
+
+    code = """
+    if modifyAllowed == True:
+        project._cache.DeleteObject(...)
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], "Should be certified readonly with modifyAllowed == True guard"
+    assert len(cert["unprotected_liblcm_calls"]) == 0, "Should have no unprotected calls"
+    assert len(cert["protected_liblcm_calls"]) > 0, "Should detect protected LibLCM call"
+
+    print("[OK] modifyAllowed == True comparison recognized as guard")
+
+
 def test_mixed_protected_and_unprotected():
     """Test mixed protected and unprotected LibLCM calls."""
     api_index = load_api_index()
@@ -239,6 +306,9 @@ if __name__ == "__main__":
         test_unprotected_liblcm_calls()
         test_protected_liblcm_with_modifyenabled()
         test_protected_liblcm_with_writeenabled()
+        test_protected_with_modifyallowed()
+        test_protected_liblcm_with_modifyallowed()
+        test_modifyallowed_comparison()
         test_mixed_protected_and_unprotected()
         test_collection_mutations()
 

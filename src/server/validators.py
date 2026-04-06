@@ -774,16 +774,31 @@ def certify_script_readonly(code: str, api_index) -> dict:
     protected_liblcm_calls = []
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
-    # Step 1: Extract FlexLibs2 Operations method calls using regex
+    # Get protected ranges once for both FlexLibs2 and LibLCM checks
+    protected_ranges = find_protected_ranges(code)
+
+    # Step 1: Extract FlexLibs2 Operations method calls with line numbers
     # Pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
     operations_call_pattern = r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\.\s*(\w+)\s*\('
-    operations_calls = re.findall(operations_call_pattern, code)
+    operations_calls_with_lines = []
 
-    # Step 2: Look up each call in the API index
+    for match in re.finditer(operations_call_pattern, code):
+        class_name, method_name = match.groups()
+        # Calculate line number from character position
+        line_num = code[:match.start()].count('\n') + 1
+        operations_calls_with_lines.append((class_name, method_name, line_num))
+
+    # Step 2: Look up each call in the API index and check if protected
     if api_index and api_index.get("flexlibs2"):
         entities = api_index["flexlibs2"].get("entities", {})
 
-        for class_name, method_name in operations_calls:
+        for class_name, method_name, line_num in operations_calls_with_lines:
+            # Check if this call is protected by a guard
+            is_protected = any(
+                start <= line_num <= end
+                for start, end in protected_ranges
+            )
+
             if class_name in entities:
                 class_entity = entities[class_name]
                 methods = class_entity.get("methods", [])
@@ -794,29 +809,51 @@ def certify_script_readonly(code: str, api_index) -> dict:
                     if method.get("name") == method_name:
                         method_found = True
                         is_mutating = method.get("is_mutating", False)
-                        mutating_calls.append({
-                            "class": class_name,
-                            "method": method_name,
-                            "is_mutating": is_mutating,
-                            "source": "index"
-                        })
-                        confidence_sources["index"] += 1
+
+                        # Only add as unprotected mutation if it's actually mutating and not protected
+                        if is_mutating and not is_protected:
+                            mutating_calls.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "is_mutating": True,
+                                "source": "index",
+                                "line": line_num,
+                                "protected": False
+                            })
+                            confidence_sources["index"] += 1
+                        elif is_mutating and is_protected:
+                            # Protected mutation - don't add to mutating_calls
+                            pass
+                        else:
+                            # Read-only call - still track it
+                            mutating_calls.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "is_mutating": False,
+                                "source": "index",
+                                "line": line_num,
+                                "protected": True
+                            })
                         break
 
                 if not method_found:
                     # Class found but method not in index - conservative: treat as mutating
-                    unknown_calls.append({
-                        "class": class_name,
-                        "method": method_name,
-                        "reason": "method not in index"
-                    })
-                    mutating_calls.append({
-                        "class": class_name,
-                        "method": method_name,
-                        "is_mutating": True,
-                        "source": "unknown"
-                    })
-                    confidence_sources["unknown"] += 1
+                    if not is_protected:
+                        unknown_calls.append({
+                            "class": class_name,
+                            "method": method_name,
+                            "reason": "method not in index",
+                            "line": line_num
+                        })
+                        mutating_calls.append({
+                            "class": class_name,
+                            "method": method_name,
+                            "is_mutating": True,
+                            "source": "unknown",
+                            "line": line_num,
+                            "protected": False
+                        })
+                        confidence_sources["unknown"] += 1
             else:
                 # Class not in index - fall through to regex
                 pass
@@ -830,7 +867,7 @@ def certify_script_readonly(code: str, api_index) -> dict:
 
     # Step 4: Detect raw LibLCM mutations and check if they're protected
     liblcm_mutations = find_liblcm_mutations(code)
-    protected_ranges = find_protected_ranges(code)
+    # protected_ranges already calculated above in Step 2
 
     for mutation in liblcm_mutations:
         line_num = mutation['line']

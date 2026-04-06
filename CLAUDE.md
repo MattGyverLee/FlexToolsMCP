@@ -184,6 +184,92 @@ When users encounter `AttributeError` or "has no attribute" errors:
 - **Object-centric organization**: Index organized around objects (ILexEntry, ILexSense, etc.)
 - **API versioning**: Supports multiple library versions simultaneously via filename suffixes (e.g., `liblcm_api_v8.2.3.json`). Server auto-detects and loads matching versions, auto-refreshing missing ones on startup
 
+## Writing FLExTools Modules
+
+When generating FLExTools scripts for users, **always use this template**:
+
+```python
+"""
+FLExTools Module: [Brief Description]
+
+Purpose:
+    [What this module does and why]
+
+Requires:
+    - FlexLibs2 version 2.0+
+    - FieldWorks version [X.Y.Z]+
+
+Author: Claude Code
+Date: [Date]
+
+Usage:
+    Load in FLExTools and run on a FieldWorks project.
+"""
+
+# CRITICAL: Explicitly import from flexlibs2
+# This prevents FLExTools's default flexlibs (stable version) from shadowing flexlibs2
+from flexlibs2 import (
+    FLExProject,
+    LexEntryOperations,
+    LexSenseOperations,
+    ReversalOperations,
+    # Add other operations as needed
+)
+
+def Main(project, report, modify):
+    """
+    Standard FLExTools entry point.
+
+    Args:
+        project: FLExProject instance (FieldWorks database connection)
+        report: Report object for logging output
+        modify: Boolean - whether modifications are enabled
+    """
+    try:
+        # Your implementation here
+        entries = project.LexEntry.GetAll()
+        report.Info(f"Processing {len(entries)} entries...")
+
+        for entry in entries:
+            # Use flexlibs2 wrapped methods
+            senses = project.LexSense.GetAllSenses(entry)
+            for sense in senses:
+                gloss = project.LexSense.GetGloss(sense)
+                report.Info(f"  {gloss}")
+
+        report.Info("Complete!")
+
+    except Exception as e:
+        report.Error(f"Error: {e}")
+        import traceback
+        report.Error(traceback.format_exc())
+```
+
+### Why This Matters
+
+**Silent Failure Risk**: FLExTools loads stable flexlibs first. Without explicit flexlibs2 imports, your code will silently use the wrong (stable) version:
+
+```python
+# WRONG - Gets stable flexlibs version
+entry = project.LexEntry.GetAll()
+
+# CORRECT - Guarantees flexlibs2 version
+from flexlibs2 import LexEntryOperations
+entry = project.LexEntry.GetAll()
+```
+
+Users won't see an error—the code will "work" but with incorrect behavior/signatures.
+
+### Key Points
+
+1. **Always import from flexlibs2**, never rely on global imports
+2. **Include Requires section** - tell users what versions they need
+3. **Use flexlibs2 wrapped methods** - they handle edge cases (e.g., "***" multistring normalization)
+4. **Catch and report errors** - FLExTools captures exceptions, make them visible via report
+5. **Comment non-obvious code** - users will read and maintain this
+
 ## Don'ts:
 - This is a Windows system; don't use emojis in console messages.
 - Call Python with `python` instead of `python3`.
+- **Don't omit the flexlibs2 imports** - this causes silent failures with wrong library versions.
+- Don't assume FLExTools will inject the right library - be explicit.

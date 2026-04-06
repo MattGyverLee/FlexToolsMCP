@@ -645,9 +645,10 @@ def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
 
 
 def find_protected_ranges(code: str) -> List[tuple]:
-    """Find line ranges protected by modifyEnabled or writeEnabled guards.
+    """Find line ranges protected by modifyAllowed or modifyEnabled/writeEnabled guards.
 
     Detects:
+    - if modifyAllowed: blocks (FLExTools standard parameter)
     - with project.modifyEnabled: blocks
     - with self.project.modifyEnabled: blocks
     - if project.writeEnabled: blocks
@@ -678,7 +679,7 @@ def find_protected_ranges(code: str) -> List[tuple]:
             self.generic_visit(node)
 
         def visit_If(self, node):
-            """Find 'if project.writeEnabled:' blocks."""
+            """Find 'if modifyAllowed:' or 'if project.writeEnabled:' blocks."""
             if self._is_write_enabled_check(node.test):
                 start_line = node.lineno
                 # end_lineno includes the if line, body starts after
@@ -699,7 +700,11 @@ def find_protected_ranges(code: str) -> List[tuple]:
             return False
 
         def _is_write_enabled_check(self, node):
-            """Check if condition checks 'writeEnabled'."""
+            """Check if condition checks 'modifyAllowed', 'writeEnabled', etc."""
+            # Pattern: modifyAllowed (name - FLExTools standard parameter)
+            if isinstance(node, ast.Name):
+                return node.id == 'modifyAllowed'
+
             # Pattern: project.writeEnabled (attribute)
             if isinstance(node, ast.Attribute):
                 return node.attr == 'writeEnabled'
@@ -710,10 +715,16 @@ def find_protected_ranges(code: str) -> List[tuple]:
                 if isinstance(node.left, ast.Attribute):
                     if node.left.attr == 'writeEnabled':
                         return True
+                if isinstance(node.left, ast.Name):
+                    if node.left.id == 'modifyAllowed':
+                        return True
                 # Check comparators
                 for comp in node.comparators:
                     if isinstance(comp, ast.Attribute):
                         if comp.attr == 'writeEnabled':
+                            return True
+                    if isinstance(comp, ast.Name):
+                        if comp.id == 'modifyAllowed':
                             return True
             return False
 

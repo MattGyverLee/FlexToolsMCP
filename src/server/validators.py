@@ -924,3 +924,46 @@ def certify_script_readonly(code: str, api_index) -> dict:
         "unknown_calls": unknown_calls,
         "raw_lcm_patterns": raw_lcm_patterns,
     }
+
+
+def get_unprotected_write_guidance(cert: dict) -> dict:
+    """Generate detailed guidance for fixing unprotected mutations.
+
+    Args:
+        cert: Result from certify_script_readonly() with unprotected mutations
+
+    Returns:
+        Guidance dict with examples and step-by-step instructions
+    """
+    mutating = cert.get("mutating_calls", [])
+    unprotected_liblcm = cert.get("unprotected_liblcm_calls", [])
+
+    # Build list of unprotected mutations found
+    mutations_found = []
+    if mutating:
+        mutations_found.extend([f"{m['class']}.{m['method']}()" for m in mutating if m.get("is_mutating")])
+    if unprotected_liblcm:
+        mutations_found.extend([m['method'] + "()" for m in unprotected_liblcm])
+
+    return {
+        "error": "unprotected_mutations_detected",
+        "message": f"Found {len(mutations_found)} unprotected mutation(s). Code cannot run until protected.",
+        "mutations_found": mutations_found,
+        "why": "All write operations must be guarded with 'if modifyAllowed:' to prevent accidental data loss.",
+        "fix_pattern": {
+            "before": "project.LexEntry.SetLexemeForm(entry, 'new_form')",
+            "after": "if modifyAllowed:\n    project.LexEntry.SetLexemeForm(entry, 'new_form')\n    report.Info('Updated entry')\nelse:\n    report.Info('(Would update entry to: new_form)')"
+        },
+        "templates_to_review": [
+            "templates/2-flexlibs2-template.py (recommended - best documented)",
+            "templates/1-flexlibs-stable-template.py (for FieldWorks < 9.0)",
+            "templates/3-liblcm-template.py (for advanced use cases)"
+        ],
+        "next_steps": [
+            "1. Open a template above to see the if modifyAllowed: pattern in context",
+            "2. Update your code to wrap all mutations with: if modifyAllowed:",
+            "3. Move read-only logic before the if block",
+            "4. Add else block to preview what would be changed",
+            "5. Re-run with the updated code"
+        ]
+    }

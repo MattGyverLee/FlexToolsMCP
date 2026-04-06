@@ -162,6 +162,7 @@ def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:
             return False
 
     index_dir = get_project_root() / "index" / "flexlibs"
+    index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / "flexlibs_api_temp.json"
 
     cmd = [
@@ -210,6 +211,7 @@ def refresh_flexlibs2(flexlibs2_path: str | None = None) -> bool:
             return False
 
     index_dir = get_project_root() / "index" / "flexlibs"
+    index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / "flexlibs2_api_temp.json"
 
     cmd = [
@@ -242,6 +244,7 @@ def refresh_liblcm(dll_path: str | None = None) -> bool:
         dll_path = os.environ.get("FIELDWORKS_DLL_PATH")
 
     index_dir = get_project_root() / "index" / "liblcm"
+    index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / "liblcm_api_temp.json"
 
     cmd = [

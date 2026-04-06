@@ -47,7 +47,8 @@ try:
         detect_wrong_library_imports,
         check_output_mechanism,
         format_cud_warning,
-        certify_script_readonly
+        certify_script_readonly,
+        get_unprotected_write_guidance
     )
 except ImportError:
     from server.validators import (
@@ -59,7 +60,8 @@ except ImportError:
         detect_wrong_library_imports,
         check_output_mechanism,
         format_cud_warning,
-        certify_script_readonly
+        certify_script_readonly,
+        get_unprotected_write_guidance
     )
 
 # Import response utilities
@@ -496,16 +498,14 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "session": session_state.summary()
         }, indent=2))]
 
-    # Check for CUD operations requiring confirmation (both regex and index-based)
-    confirmed = args.get("confirmed", False)
+    # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(module_code)
     cert = certify_script_readonly(module_code, api_index)
 
-    # Only require confirmation if script is NOT certified readonly
-    if not cert["is_certified_readonly"] and not confirmed:
-        return [TextContent(type="text", text=json.dumps(
-            format_cud_warning(cud_info, write_enabled), indent=2
-        ))]
+    # CRITICAL: Refuse unprotected code unconditionally
+    if not cert["is_certified_readonly"]:
+        guidance = get_unprotected_write_guidance(cert)
+        return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
 
     # Validate module structure - must be proper FlexTools module format
     structure_check = detect_module_structure(module_code)
@@ -953,16 +953,14 @@ async def handle_run_operation(args: dict) -> list[TextContent]:
             "session": session_state.summary()
         }, indent=2))]
 
-    # Check for CUD operations requiring confirmation (both regex and index-based)
-    confirmed = args.get("confirmed", False)
+    # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(operations)
     cert = certify_script_readonly(operations, api_index)
 
-    # Only require confirmation if script is NOT certified readonly
-    if not cert["is_certified_readonly"] and not confirmed:
-        return [TextContent(type="text", text=json.dumps(
-            format_cud_warning(cud_info, write_enabled), indent=2
-        ))]
+    # CRITICAL: Refuse unprotected code unconditionally
+    if not cert["is_certified_readonly"]:
+        guidance = get_unprotected_write_guidance(cert)
+        return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
 
     # Get API mode early for validation
     api_mode = session_state.get_mode()

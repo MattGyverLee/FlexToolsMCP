@@ -49,6 +49,7 @@ if __package__:
     from .server.utils import model_to_tool_schema
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from .server.dispatch import get_tool_handler
+    from .server.constants import KNOWN_OPERATIONS, OPERATIONS_CLASSES
 else:
     from json_utils import sort_json_arrays
     from server.kernel import (
@@ -61,64 +62,14 @@ else:
     from server.utils import model_to_tool_schema
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from server.dispatch import get_tool_handler
+    from server.constants import KNOWN_OPERATIONS, OPERATIONS_CLASSES
 
 
 # ============================================================
 # FlexLibs2 Operations Contract
 # ============================================================
-# These sets are required by pre-commit hooks to verify runtime consistency
-
-KNOWN_OPERATIONS = {
-    # Grammar
-    "POSOperations", "PhonemeOperations", "NaturalClassOperations",
-    "EnvironmentOperations", "MorphRuleOperations", "InflectionFeatureOperations",
-    "GramCatOperations", "PhonologicalRuleOperations",
-    # Lexicon
-    "LexEntryOperations", "LexSenseOperations", "ExampleOperations",
-    "LexReferenceOperations", "VariantOperations", "PronunciationOperations",
-    "SemanticDomainOperations", "ReversalOperations", "EtymologyOperations",
-    "AllomorphOperations",
-    # TextsWords
-    "TextOperations", "WordformOperations", "WfiAnalysisOperations",
-    "ParagraphOperations", "SegmentOperations", "WfiGlossOperations",
-    "WfiMorphBundleOperations", "MediaOperations", "FilterOperations",
-    "DiscourseOperations",
-    # Notebook
-    "NoteOperations", "PersonOperations", "LocationOperations",
-    "AnthropologyOperations", "DataNotebookOperations",
-    # Lists
-    "PublicationOperations", "AgentOperations", "ConfidenceOperations",
-    "OverlayOperations", "TranslationTypeOperations", "PossibilityListOperations",
-    # System
-    "WritingSystemOperations", "ProjectSettingsOperations",
-    "AnnotationDefOperations", "CheckOperations", "CustomFieldOperations",
-}
-
-OPERATIONS_CLASSES = {
-    # Grammar
-    "POSOperations", "PhonemeOperations", "NaturalClassOperations",
-    "EnvironmentOperations", "MorphRuleOperations", "InflectionFeatureOperations",
-    "GramCatOperations", "PhonologicalRuleOperations",
-    # Lexicon
-    "LexEntryOperations", "LexSenseOperations", "ExampleOperations",
-    "LexReferenceOperations", "VariantOperations", "PronunciationOperations",
-    "SemanticDomainOperations", "ReversalOperations", "EtymologyOperations",
-    "AllomorphOperations",
-    # TextsWords
-    "TextOperations", "WordformOperations", "WfiAnalysisOperations",
-    "ParagraphOperations", "SegmentOperations", "WfiGlossOperations",
-    "WfiMorphBundleOperations", "MediaOperations", "FilterOperations",
-    "DiscourseOperations",
-    # Notebook
-    "NoteOperations", "PersonOperations", "LocationOperations",
-    "AnthropologyOperations", "DataNotebookOperations",
-    # Lists
-    "PublicationOperations", "AgentOperations", "ConfidenceOperations",
-    "OverlayOperations", "TranslationTypeOperations", "PossibilityListOperations",
-    # System
-    "WritingSystemOperations", "ProjectSettingsOperations",
-    "AnnotationDefOperations", "CheckOperations", "CustomFieldOperations",
-}
+# These constants are imported from server.constants
+# and are required by pre-commit hooks to verify runtime consistency
 
 # Exception classes used in flexlibs2 namespace
 KNOWN_EXCEPTIONS = {

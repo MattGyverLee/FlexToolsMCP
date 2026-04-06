@@ -28,7 +28,6 @@ from .models import (
     ResolvePropertyInput,
     StartModuleInput,
     GetOperationLogsInput,
-    RunOperationInput,
     RunModuleInput,
 )
 
@@ -220,11 +219,22 @@ Guides you through:
 
     "flextools_run_module": ToolDef(
         name="flextools_run_module",
-        description="""Execute a FlexTools module against a FieldWorks project.
+        description="""Execute code against a FieldWorks project.
+
+Accepts:
+- Full modules: def Main(project, report, modifyAllowed): ...
+- Code snippets: entries = project.LexEntry.GetAll()
+- Anything in between
+
+If code defines Main(), it will be called. Otherwise, code runs as-is.
 
 SAFETY: write_enabled defaults to False (dry-run mode). Set to True only after testing!
 
-Module must be in valid FlexTools format (call get_module_template first).""",
+All code has access to:
+- project: FLExProject instance
+- report: Output mechanism (report.Info/Warning/Error)
+- write_enabled: Boolean flag for write operations
+All flexlibs2 Operations classes are pre-imported.""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,
@@ -244,28 +254,6 @@ Returns: Recent log entries, errors, and AI-generated recommendations for fixing
             readOnlyHint=True,
             destructiveHint=False,
             idempotentHint=True,
-            openWorldHint=False,
-        ),
-    ),
-
-    "flextools_run_operation": ToolDef(
-        name="flextools_run_operation",
-        description="""Execute FlexLibs2 operations directly against a FieldWorks project.
-
-For quick one-off operations. For complex multi-step workflows, use flextools_run_module instead.
-
-SAFETY: write_enabled defaults to False (dry-run mode). Set to True only after testing!
-
-The 'operations' parameter contains Python code with access to:
-- project: FLExProject instance
-- report: Output mechanism for results
-- write_enabled: Boolean from session
-All flexlibs2 Operations classes are pre-imported.""",
-        input_model=RunOperationInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=False,
-            destructiveHint=True,
-            idempotentHint=False,
             openWorldHint=False,
         ),
     ),

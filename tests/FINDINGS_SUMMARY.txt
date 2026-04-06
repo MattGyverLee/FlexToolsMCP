@@ -37,27 +37,27 @@ Issue Categories:
      Issues: 724 | Severity: ⚠ Medium
      Problem: Accessing collection[0] without checking length
      Top File: LexSenseOperations.py (118 issues)
-     
-  2. Broad Exception Handling  
+
+  2. Broad Exception Handling
      Issues: 374 | Severity: ⚠ Medium
      Problem: Using 'except Exception:' instead of specific types
-     
+
   3. Bare Except Clauses
      Issues: 319 | Severity: ⚠ Medium
      Problem: Using 'except:' without specifying exception type
-     
+
   4. Silent Failures
      Issues: 249 | Severity: ⚠ Medium
      Problem: Catching exceptions with 'pass' (no logging/handling)
-     
+
   5. String/None Conversions
      Issues: 191 | Severity: ℹ Low
      Problem: str(None) returns "None" instead of ""
-     
+
   6. Unsafe Int Conversions
      Issues: 17 | Severity: ℹ Low
      Problem: int(value) without ValueError handling
-     
+
   7. Missing Multistring Checks
      Issues: 8 | Severity: ℹ Low
      Problem: Not checking for '***' placeholder in empty fields

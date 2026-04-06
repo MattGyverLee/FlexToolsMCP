@@ -2,6 +2,58 @@
 
 This guide helps AI assistants and users generate **correct, maintainable FLExTools scripts** that follow proven patterns from successful implementations.
 
+---
+
+## CRITICAL: Single Source of Truth
+
+**Write ONE module. Run it everywhere.**
+
+### Execution Contexts (Same Code)
+
+```
+┌─ FLExTools GUI
+│  └─ Load module → Run directly in FLExTools application
+│
+├─ FlexToolsMCP (MCP Server)
+│  ├─ run_module() → Run module via MCP (same code as GUI)
+│  └─ run_operation() → Quick ad-hoc snippets (ONE-OFFS only)
+```
+
+### The Rule
+
+**CANONICAL FORM:** A module with `Main(project, report, modifyAllowed)` function.
+
+✓ **DO:**
+- Write one module file with Main()
+- Run it via FLExTools GUI
+- Run it via `run_module()` in FlexToolsMCP
+- Use `run_operation()` only for quick tests/prototyping
+
+✗ **DON'T:**
+- Maintain separate `my_operation.py` and `my_module.py` files with similar logic
+- Copy-paste operation snippets into a separate module file
+- Let module and operation versions drift apart
+
+### Why This Matters
+
+**Code divergence = false sense of security.** If you have:
+- Operation version tested: "Works, I'll use it"
+- Module version (slightly different): "I already tested this"
+- Result: **Data corruption** or **silent failures**
+
+The `Main()` function allows **one codebase to work in both contexts**. Use it.
+
+### run_operation() is for Quick Snippets ONLY
+
+Use `run_operation()` for:
+- One-off queries: `entries = project.LexEntry.GetAll(); report.Info(len(entries))`
+- Prototyping before writing a full module
+- Testing APIs before committing to a module
+
+Don't use `run_operation()` for anything you'll reuse. **Write a module instead.**
+
+---
+
 ## For AI Assistants (Claude, Copilot, etc.)
 
 When generating FLExTools scripts using the MCP:
@@ -224,6 +276,43 @@ def multistring_safe(project, sense, field_name):
 - ✗ Swallow exceptions silently (always report)
 - ✗ Generate code without using templates
 - ✗ Use parameter name `modify` - it's `modifyAllowed`
+
+---
+
+## When to Use run_operation vs run_module
+
+### Use run_module() for Everything Except Quick Tests
+
+```python
+# ✓ USE run_module() for:
+# - Anything you'll run more than once
+# - Scripts that will be shared or reused
+# - Production automation
+# - Multi-step workflows
+
+def Main(project, report, modifyAllowed):
+    entries = project.LexEntry.GetAll()
+    report.Info(f"Found {len(entries)} entries")
+```
+
+### Use run_operation() ONLY for Ad-Hoc Snippets
+
+```python
+# ✓ USE run_operation() for:
+# - Quick one-off queries
+# - API testing/exploration
+# - Prototyping before writing a module
+
+# Example (no Main function):
+entries = project.LexEntry.GetAll()
+report.Info(f"Total: {len(entries)}")
+```
+
+### Important
+
+**If you write a module, always use `run_module()`.**
+
+Don't copy it into `run_operation()` and maintain two versions. The single Main() function design means one codebase works everywhere.
 
 ---
 

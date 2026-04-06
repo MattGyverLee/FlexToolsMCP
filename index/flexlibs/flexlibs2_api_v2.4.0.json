@@ -13755,7 +13755,7 @@
         },
         {
           "description": "Cast an LCM object to its concrete interface type.\n\nWhen you retrieve an object from a polymorphic collection, it's typed as the\nbase interface (e.g., IMoMorphSynAnalysis). This function inspects the object's\nClassName and casts it to the actual concrete type (e.g., IMoAffixAllomorph).\n",
-          "example": "        \n            # Morph could be IMoAffixAllomorph or IMoStemAllomorph\n            morph = entry.LexemeFormOA\n            concrete = CastingOperations.cast_to_concrete(morph)\n            # Now concrete type is known, can access type-specific properties\n            if concrete.ClassName == 'MoAffixAllomorph':\n                affix_type = concrete.AffixType",
+          "example": "            # Morph could be IMoAffixAllomorph or IMoStemAllomorph\n            morph = entry.LexemeFormOA\n            concrete = CastingOperations.cast_to_concrete(morph)\n            # Now concrete type is known, can access type-specific properties\n            if concrete.ClassName == 'MoAffixAllomorph':\n                affix_type = concrete.AffixType",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -14004,7 +14004,7 @@
         },
         {
           "description": "Extract the Part of Speech from a Morph-Syntax Analysis.\n\nThis is a common pattern: entries have allomorphs/morphemes with MSAs that\nspecify the part of speech. This helper navigates that relationship.\n",
-          "example": "        \n            entry = project.LexEntry.Find(\"walk\")\n            for sense in entry.SensesOS:\n                msa = sense.MorphoSyntaxAnalysisRA\n                pos = CastingOperations.get_pos_from_msa(msa)\n                if pos:\n                    print(f\"Part of Speech: {pos.Name.BestAnalysisAlternative.Text}\")",
+          "example": "            entry = project.LexEntry.Find(\"walk\")\n            for sense in entry.SensesOS:\n                msa = sense.MorphoSyntaxAnalysisRA\n                pos = CastingOperations.get_pos_from_msa(msa)\n                if pos:\n                    print(f\"Part of Speech: {pos.Name.BestAnalysisAlternative.Text}\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,

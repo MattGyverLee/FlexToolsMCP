@@ -257,40 +257,20 @@ class GetOperationLogsInput(BaseModel):
 # Execution Tools
 # ============================================================
 
-class RunOperationInput(BaseModel):
-    """Execute FlexLibs2 operations directly against a FieldWorks project."""
-    operations: str = Field(
-        description="Python code to execute. Has access to 'project', 'report', 'write_enabled'. "
-                    "All flexlibs2 Operations classes are pre-imported."
-    )
-    project_name: Optional[str] = Field(
-        default=None,
-        description="Name of the FieldWorks project. Uses session value if set by start()."
-    )
-    write_enabled: Optional[bool] = Field(
-        default=None,
-        description="Enable write access. Uses session value if set by start(). Default: False (dry-run)."
-    )
-    timeout_seconds: int = Field(
-        default=120,
-        ge=10,
-        le=3600,
-        description="Maximum execution time in seconds"
-    )
-    show_code: bool = Field(
-        default=True,
-        description="Include executed code in response for learning"
-    )
-    confirmed: bool = Field(
-        default=False,
-        description="Required for CUD operations. Confirm understanding of risks."
-    )
-
-
 class RunModuleInput(BaseModel):
-    """Execute a FlexTools module against a FieldWorks project."""
-    module_code: str = Field(
-        description="The complete FlexTools module Python code to execute"
+    """Execute code (snippet or full module) against a FieldWorks project.
+
+    Accepts:
+    - Minimal snippets: entries = project.LexEntry.GetAll()
+    - Full modules: def Main(project, report, modifyAllowed): ...
+    - Anything in between
+
+    If code defines Main(), it will be called. Otherwise, code runs as-is.
+    """
+    code: str = Field(
+        description="Python code to execute. Can be a snippet or full module with Main() function. "
+                    "Has access to: project (FLExProject), report (SimpleReporter), write_enabled (bool). "
+                    "All flexlibs2 Operations classes are pre-imported."
     )
     project_name: Optional[str] = Field(
         default=None,
@@ -308,7 +288,7 @@ class RunModuleInput(BaseModel):
     )
     show_code: bool = Field(
         default=True,
-        description="Include full module code in response for learning"
+        description="Include executed code in response for learning"
     )
     confirmed: bool = Field(
         default=False,

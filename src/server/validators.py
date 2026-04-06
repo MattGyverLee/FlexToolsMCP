@@ -16,6 +16,11 @@ import ast
 import textwrap
 from typing import Dict, List, Set, Optional, Any
 
+try:
+    from .constants import KNOWN_OPERATIONS
+except ImportError:
+    from server.constants import KNOWN_OPERATIONS
+
 
 def detect_cud_operations(code: str) -> dict:
     """Detect Create, Update, Delete operations in code that modify the FLEx database.
@@ -300,32 +305,7 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     Returns:
         dict with 'missing_imports', 'has_missing', and 'suggestion'
     """
-    # Known Operations classes in flexlibs2
-    KNOWN_OPERATIONS = {
-        # Grammar
-        "POSOperations", "PhonemeOperations", "NaturalClassOperations",
-        "EnvironmentOperations", "MorphRuleOperations", "InflectionFeatureOperations",
-        "GramCatOperations", "PhonologicalRuleOperations",
-        # Lexicon
-        "LexEntryOperations", "LexSenseOperations", "ExampleOperations",
-        "LexReferenceOperations", "VariantOperations", "PronunciationOperations",
-        "SemanticDomainOperations", "ReversalOperations", "EtymologyOperations",
-        "AllomorphOperations",
-        # TextsWords
-        "TextOperations", "WordformOperations", "WfiAnalysisOperations",
-        "ParagraphOperations", "SegmentOperations", "WfiGlossOperations",
-        "WfiMorphBundleOperations", "MediaOperations", "FilterOperations",
-        "DiscourseOperations",
-        # Notebook
-        "NoteOperations", "PersonOperations", "LocationOperations",
-        "AnthropologyOperations", "DataNotebookOperations",
-        # Lists
-        "PublicationOperations", "AgentOperations", "ConfidenceOperations",
-        "OverlayOperations", "TranslationTypeOperations", "PossibilityListOperations",
-        # System
-        "WritingSystemOperations", "ProjectSettingsOperations",
-        "AnnotationDefOperations", "CheckOperations", "CustomFieldOperations",
-    }
+    # KNOWN_OPERATIONS is imported at module level from constants
 
     result = {
         "missing_imports": [],
@@ -966,4 +946,134 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
             "4. Add else block to preview what would be changed",
             "5. Re-run with the updated code"
         ]
+    }
+
+
+def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dict:
+    """Detect property access patterns that likely need casting for all 3 API flavors.
+
+    Uses the casting_index (if available) to identify properties that:
+    - Don't exist on base interface types (like ICmObject)
+    - Require casting to concrete types (like ILexEntry)
+    - Are part of polymorphic collections
+
+    Args:
+        code: Python code to analyze
+        casting_index: Optional pre-built casting index with property metadata
+
+    Returns:
+        {
+            "has_casting_issues": bool,
+            "casting_issues": [...],
+            "helpers_needed": set,  # Which specific helpers are needed (for injection)
+            "injection_tier": "none" | "minimal" | "full",  # For three-tier injection strategy
+            "known_polymorphic_patterns": [...],
+            "severity": "error" | "warning"
+        }
+    """
+    issues = []
+    helpers_needed = set()  # Track which helpers are actually used
+
+    # Known polymorphic patterns that ALWAYS need casting across all flavors
+    # These are based on C# data model structure, not wrapper-specific
+    # Maps pattern → (helper_name, helper_function_to_use)
+    KNOWN_CASTING_PATTERNS = {
+        "HeadWord": {
+            "helper": "get_headword",  # ← Which helper to inject if needed
+            "missing_on": ["ICmObject"],
+            "available_on": ["ILexEntry"],
+            "pattern_sources": [r"\.Owner\s*\.\s*HeadWord", r"entry\s*\.\s*HeadWord"],
+            "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nheadword = entry.HeadWord.Text",
+            "flexlibs2_helper": "Use cast_to_concrete(obj) from flexlibs2.code.lcm_casting"
+        },
+        "LexemeForm": {
+            "helper": "get_lexeme_form",  # ← Which helper to inject if needed
+            "missing_on": ["ICmObject"],
+            "available_on": ["ILexEntry"],
+            "pattern_sources": [r"\.LexemeForm", r"entry\s*\.\s*LexemeForm"],
+            "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nform = entry.LexemeForm",
+            "flexlibs2_helper": "Use cast_to_concrete(obj) to get ILexEntry"
+        },
+        "ReversalEntriesRC": {
+            "helper": "safe_get_property",  # ← Use safe access helper for this
+            "missing_on": ["ILexSense (flexlibs2 wrapped)"],
+            "available_on": ["ILexSense (raw LCM)"],
+            "pattern_sources": [r"sense\s*\.\s*ReversalEntriesRC", r"\.ReversalEntriesRC"],
+            "fix": "# Access collection on raw sense object, not flexlibs2-wrapped\nreversals = list(sense.ReversalEntriesRC)",
+            "flexlibs2_helper": "Unwrap flexlibs2 object first, or use ReversalOperations"
+        },
+    }
+
+    # Scan code line by line for property access patterns
+    for line_num, line in enumerate(code.split('\n'), 1):
+        # Skip comments and empty lines
+        line_content = re.sub(r'#.*$', '', line).strip()
+        if not line_content:
+            continue
+
+        # Check each known casting pattern
+        for property_name, pattern_info in KNOWN_CASTING_PATTERNS.items():
+            for pattern in pattern_info["pattern_sources"]:
+                if re.search(pattern, line_content):
+                    # Found a potential casting issue
+                    issues.append({
+                        "property": property_name,
+                        "line": line_num,
+                        "pattern": line_content[:80],
+                        "missing_on": pattern_info["missing_on"],
+                        "available_on": pattern_info["available_on"],
+                        "fix": pattern_info["fix"],
+                        "flexlibs2_helper": pattern_info["flexlibs2_helper"],
+                        "severity": "error"
+                    })
+                    # Track which helper would be needed if this code runs
+                    helpers_needed.add(pattern_info.get("helper", "safe_get_property"))
+                    break  # Only report once per property per line
+
+    # If casting_index is provided, do advanced lookup for other properties
+    if casting_index and isinstance(casting_index, dict):
+        casting_props = casting_index.get("properties", {})
+        polymorphic_colls = casting_index.get("polymorphic_collections", {})
+
+        # Look for property access that might need casting
+        # Pattern: obj.PropertyName or obj.PropertyName()
+        property_access_pattern = r'(\w+)\s*\.\s*([A-Z]\w+)\s*(?:\(|$|\.|\[)'
+        for line_num, line in enumerate(code.split('\n'), 1):
+            line_content = re.sub(r'#.*$', '', line)
+            for match in re.finditer(property_access_pattern, line_content):
+                obj_var, prop_name = match.groups()
+
+                # Check if this property is in the casting index and requires cast
+                if prop_name in casting_props:
+                    casting_info = casting_props[prop_name]
+                    requires_cast = casting_info.get("requires_cast_from", [])
+                    if requires_cast and prop_name not in [i["property"] for i in issues]:
+                        # New issue not caught by known patterns
+                        issues.append({
+                            "property": prop_name,
+                            "line": line_num,
+                            "pattern": line_content[:80],
+                            "missing_on": requires_cast,
+                            "available_on": casting_info.get("defined_on", []),
+                            "fix": f"Cast {obj_var} to {casting_info.get('defined_on', ['concrete type'])[0]}",
+                            "flexlibs2_helper": "Use resolve_property() tool to find exact casting requirements",
+                            "severity": "warning"
+                        })
+
+    # Determine injection tier based on what was found
+    # Tier 1 (none): No casting issues detected → Don't inject helpers
+    # Tier 2 (minimal): Issues found → Inject only helpers that are needed
+    # Tier 3 (full): Unusual situation → Inject full suite for safety
+    if len(issues) == 0:
+        injection_tier = "none"
+    else:
+        injection_tier = "minimal"  # Can switch to "full" for defensive mode
+
+    return {
+        "has_casting_issues": len(issues) > 0,
+        "casting_issues": issues,
+        "helpers_needed": helpers_needed,  # Which specific helpers to inject
+        "injection_tier": injection_tier,  # Strategy: none | minimal | full
+        "known_polymorphic_patterns": list(KNOWN_CASTING_PATTERNS.keys()),
+        "severity": "error" if issues else "none"
     }

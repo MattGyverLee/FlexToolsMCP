@@ -27,7 +27,6 @@ from .models import (
     ResolvePropertyInput,
     StartModuleInput,
     GetOperationLogsInput,
-    RunOperationInput,
     RunModuleInput,
 )
 
@@ -56,7 +55,6 @@ try:
     from .handlers.execution import (
         handle_start_module,
         handle_run_module,
-        handle_run_operation,
         handle_get_operation_logs,
     )
 except ImportError:
@@ -84,7 +82,6 @@ except ImportError:
     from server.handlers.execution import (
         handle_start_module,
         handle_run_module,
-        handle_run_operation,
         handle_get_operation_logs,
     )
 
@@ -119,7 +116,6 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     "flextools_get_operation_logs": (handle_get_operation_logs, GetOperationLogsInput),
 
     # Execution tools
-    "flextools_run_operation": (handle_run_operation, RunOperationInput),
     "flextools_run_module": (handle_run_module, RunModuleInput),
 
     # Property resolution tool

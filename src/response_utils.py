@@ -12,7 +12,13 @@ Provides:
 import json
 import functools
 import traceback
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+# Import MCP types for type hints
+try:
+    from mcp.types import TextContent
+except ImportError:
+    TextContent = None  # Fallback if MCP not available
 
 
 def make_error(code: str, message: str, **extra) -> Dict[str, Any]:
@@ -141,3 +147,33 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
         }
 
     return data
+
+
+def error_response(error_code: str, message: str, **extra) -> List[Any]:
+    """
+    Format error as MCP TextContent response.
+
+    Consolidates repeated pattern of building error JSON response for tool handlers.
+    Ensures consistent error formatting across all handlers.
+
+    Args:
+        error_code: Machine-readable error code (e.g., 'project_name_required')
+        message: Human-readable error message
+        **extra: Additional fields to include in JSON response
+
+    Returns:
+        List with single TextContent object suitable for MCP tool return
+
+    Example:
+        >>> return error_response('invalid_code', 'Code parsing failed', hint='Check syntax')
+        [TextContent(type='text', text='{"error": "invalid_code", "message": "...", "hint": "..."}')]
+    """
+    if TextContent is None:
+        # Fallback if MCP not available (e.g., unit tests)
+        data = {"error": error_code, "message": message}
+        data.update(extra)
+        return [{"type": "text", "text": format_result(data)}]
+
+    data = {"error": error_code, "message": message}
+    data.update(extra)
+    return [TextContent(type="text", text=format_result(data))]

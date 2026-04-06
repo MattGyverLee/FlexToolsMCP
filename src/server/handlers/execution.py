@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 import os
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from mcp.types import TextContent
 
 # Import async subprocess helper
@@ -40,36 +40,40 @@ except ImportError:
 try:
     from ..validators import (
         detect_cud_operations,
-        detect_module_structure,
         detect_polymorphic_error,
         detect_undefined_variables,
         detect_missing_operations_imports,
         detect_wrong_library_imports,
-        check_output_mechanism,
         format_cud_warning,
         certify_script_readonly,
-        get_unprotected_write_guidance
+        get_unprotected_write_guidance,
+        detect_casting_needs
     )
 except ImportError:
     from server.validators import (
         detect_cud_operations,
-        detect_module_structure,
         detect_polymorphic_error,
         detect_undefined_variables,
         detect_missing_operations_imports,
         detect_wrong_library_imports,
-        check_output_mechanism,
         format_cud_warning,
         certify_script_readonly,
-        get_unprotected_write_guidance
+        get_unprotected_write_guidance,
+        detect_casting_needs
     )
 
 # Import response utilities
 try:
-    from ...response_utils import build_response_with_context
+    from ...response_utils import build_response_with_context, error_response
 except (ImportError, ValueError):
     # Fallback for different import contexts
-    from response_utils import build_response_with_context
+    from response_utils import build_response_with_context, error_response
+
+# Import HeadlessReport for transparent reporting
+try:
+    from ..headless_report import HeadlessReport
+except ImportError:
+    from server.headless_report import HeadlessReport
 
 
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
@@ -105,11 +109,59 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     return False, f"Unknown API mode: {api_mode}"
 
 
-def _get_api_mode_imports(api_mode: str) -> Tuple[str, dict]:
+def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Optional[set] = None) -> str:
+    """Generate casting helpers code based on injection tier.
+
+    Uses HELPER_FUNCTION_DEFS from constants to avoid duplication.
+
+    Args:
+        injection_tier: 'none' | 'minimal' | 'full'
+        helpers_needed: Set of helper names for 'minimal' tier
+
+    Returns:
+        Python code string with helper definitions (or empty if tier='none')
+    """
+    try:
+        from ..casting_helpers import HELPER_FUNCTION_DEFS
+    except ImportError:
+        from server.casting_helpers import HELPER_FUNCTION_DEFS
+
+    if injection_tier == "none":
+        return ""
+
+    if injection_tier == "minimal" and helpers_needed:
+        # Only import what's needed
+        helper_names = ", ".join(sorted(helpers_needed))
+        return f"""
+# Auto-injected: Minimal casting helpers for polymorphic types (three-tier strategy, tier 2)
+try:
+    from casting_helpers import {helper_names}
+except ImportError:
+    # Fallback: Define only needed helpers if module not available
+{HELPER_FUNCTION_DEFS}
+"""
+
+    # Full injection (tier='full' or defensive fallback)
+    return f"""
+# Auto-injected: Safe casting helpers for polymorphic types (three-tier strategy, tier 3 - full)
+try:
+    from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
+except ImportError:
+    # Fallback: Define all helpers if module not available
+{HELPER_FUNCTION_DEFS}
+"""
+
+
+def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> Tuple[str, dict]:
     """Generate imports and namespace dict for a given API mode.
 
     Args:
         api_mode: One of 'flexlibs_stable', 'flexlibs2', 'liblcm'
+        helpers_needed: Optional set of specific helper names to inject (e.g., {'get_headword'})
+        injection_tier: 'none' | 'minimal' | 'full'
+            - none: Don't inject casting helpers (code pre-flighted, safe)
+            - minimal: Only inject helpers in helpers_needed set
+            - full: Inject full suite of helpers (defensive mode)
 
     Returns:
         (imports_code, namespace_dict_entries)
@@ -117,20 +169,19 @@ def _get_api_mode_imports(api_mode: str) -> Tuple[str, dict]:
     Raises:
         ValueError: If API mode is invalid or required libraries are not installed
     """
+    if helpers_needed is None:
+        helpers_needed = set()
+
     # Gate #1: Validate API mode is valid
     is_valid, error_msg = _validate_api_mode(api_mode)
     if not is_valid:
         raise ValueError(f"API mode validation failed: {error_msg}")
-    if api_mode == "flexlibs_stable":
-        imports = """from flexlibs import FLExInitialize, FLExCleanup, FLExProject"""
-        namespace_entries = {}
 
-    elif api_mode == "flexlibs2":
-        imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject"""
-        namespace_entries = {}
-
-    elif api_mode == "liblcm":
-        imports = """import clr
+    # Base imports per API mode
+    BASE_IMPORTS = {
+        "flexlibs_stable": "from flexlibs import FLExInitialize, FLExCleanup, FLExProject",
+        "flexlibs2": "from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject",
+        "liblcm": """import clr
 clr.AddReference('SIL.LCModel')
 from SIL.LCModel import *
 from SIL.LCModel.Core.WritingSystems import *
@@ -169,13 +220,18 @@ class FLExProject:
         if self._backend:
             return getattr(self._backend, name)
         raise AttributeError(f"Project not initialized: {name}")
-"""
-        namespace_entries = {}
+""",
+    }
 
-    else:
+    if api_mode not in BASE_IMPORTS:
         raise ValueError(f"Unknown API mode: {api_mode}")
 
-    return imports, namespace_entries
+    # Get base imports and append casting helpers (single shared logic)
+    imports = BASE_IMPORTS[api_mode]
+    casting_helpers = _get_casting_helpers_code(injection_tier, helpers_needed)
+    imports += casting_helpers
+
+    return imports, {}
 
 
 async def handle_start_module(args: dict) -> list[TextContent]:
@@ -483,8 +539,21 @@ if __name__ == '__main__':
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:
-    """Execute a FlexTools module against a FieldWorks project."""
-    module_code = args["module_code"]
+    """Execute code (snippet or full module) against a FieldWorks project.
+
+    Accepts:
+    - Minimal snippets: entries = project.LexEntry.GetAll()
+    - Full modules: def Main(project, report, modifyAllowed): ...
+    - Anything in between
+
+    If code defines Main(), it will be called. Otherwise, code runs as-is.
+    """
+    # Get code from parameter (unified interface)
+    code = args.get("code")
+    if not code:
+        # Fallback for backwards compatibility (shouldn't happen)
+        code = args.get("module_code") or args.get("operations", "")
+
     # Use session state as fallback for project and write settings
     project_name = args.get("project_name", session_state.get_project())
     write_enabled = args.get("write_enabled", session_state.is_write_enabled())
@@ -492,92 +561,116 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Validate project_name is available
     if not project_name:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "project_name required",
-            "message": "No project specified. Either set project_name in start() or provide it directly.",
-            "session": session_state.summary()
-        }, indent=2))]
+        return error_response(
+            "project_name_required",
+            "No project specified. Either set project_name in start() or provide it directly.",
+            session=session_state.summary()
+        )
 
     # Check for unprotected mutations - HARD BLOCK if found
-    cud_info = detect_cud_operations(module_code)
-    cert = certify_script_readonly(module_code, api_index)
+    cud_info = detect_cud_operations(code)
+    cert = certify_script_readonly(code, api_index)
 
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
         guidance = get_unprotected_write_guidance(cert)
         return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
 
-    # Validate module structure - must be proper FlexTools module format
-    structure_check = detect_module_structure(module_code)
-    if not structure_check["is_valid_module"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "invalid_module_format",
-            "message": "Code is not in FlexTools module format. Call get_module_template first to get the correct boilerplate.",
-            "missing_elements": structure_check["missing_elements"],
-            "next_step": "Call get_module_template with module_name and synopsis to get the proper template, then fill in your logic inside the Main() function."
-        }, indent=2))]
+    # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
+    # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
+    casting_index = api_index.get("casting_index") if api_index else None
+    casting_check = detect_casting_needs(code, casting_index)
+    if casting_check["has_casting_issues"]:
+        # Format issues with clear fixes for all 3 API flavors
+        issues = casting_check["casting_issues"]
+        return error_response(
+            "casting_issues_detected",
+            f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
+            severity=casting_check["severity"],
+            issues=issues,
+            general_guidance={
+                "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
+                "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
+                "how_to_fix": [
+                    "1. Import the concrete interface: from SIL.LCModel import ILexEntry",
+                    "2. Cast the object: entry = ILexEntry(obj)",
+                    "3. Access the property: headword = entry.HeadWord.Text",
+                    "For flexlibs2: Use cast_to_concrete(obj) from flexlibs2.code.lcm_casting",
+                    "For flexlibs_stable: Manual casting as shown above",
+                    "For liblcm: Manual pythonnet casting required"
+                ]
+            },
+            next_steps="Update your code with the suggested fixes above, then re-run"
+        )
 
-    # Require API discovery before executing module code
+    # Require API discovery before executing code
     skip_api_check = args.get("skip_api_check", False)
     if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "API discovery required",
-            "message": "No APIs have been discovered yet. Before running modules, you MUST use one of these tools first:\n"
-                      "1. start(task='...') - discovers relevant APIs automatically\n"
-                      "2. get_object_api(object_type='...') - get API for specific object\n"
-                      "3. search_by_capability(query='...') - search for APIs by description\n\n"
-                      "This prevents using incorrect/hallucinated method names like 'project.Wordforms' or 'report.add()'.",
-            "hint": "Call get_object_api() for each object/operation you use in your module (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
-            "session": session_state.summary()
-        }, indent=2))]
+        return error_response(
+            "api_discovery_required",
+            "No APIs have been discovered yet. Before running code, you MUST use one of these tools first:\n"
+            "1. start(task='...') - discovers relevant APIs automatically\n"
+            "2. get_object_api(object_type='...') - get API for specific object\n"
+            "3. search_by_capability(query='...') - search for APIs by description\n\n"
+            "This prevents using incorrect/hallucinated method names.",
+            hint="Call get_object_api() for each object/operation you use (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
+            session=session_state.summary()
+        )
 
-    # Check output mechanism - modules must use report.Info(), not print()
-    output_check = check_output_mechanism(module_code, "module")
-    if not output_check["uses_correct_mechanism"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "invalid_output_mechanism",
-            "message": output_check["message"],
-            "has_output": output_check["has_output"],
-            "detected_mechanism": output_check["mechanism_type"],
-            "guidance": "In FlexTools modules, use report.Info(message) to output results. The report object is provided to Main() for this purpose."
-        }, indent=2))]
+    # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
+    # The SimpleReporter provides both mechanisms transparently
+
+    # === Consolidated validation pass ===
+    # Run remaining validators in sequence
+    # Note: Each validator does its own code analysis (AST/regex)
+    # TODO: Pass cached AST to validators to reduce redundant parsing
 
     # Check for undefined variables that indicate hallucinated/internal names
-    undefined_check = detect_undefined_variables(module_code)
+    undefined_check = detect_undefined_variables(code)
     if undefined_check["has_undefined"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "undefined_variables",
-            "message": undefined_check["suggestion"],
-            "undefined_vars": undefined_check["undefined_vars"],
-            "guidance": "All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
-        }, indent=2))]
+        return error_response(
+            "undefined_variables",
+            undefined_check["suggestion"],
+            undefined_vars=undefined_check["undefined_vars"],
+            guidance="All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
+        )
 
     # Check for missing Operations class imports
-    missing_ops_check = detect_missing_operations_imports(module_code, api_mode)
+    missing_ops_check = detect_missing_operations_imports(code, api_mode)
     if missing_ops_check["has_missing"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "missing_imports",
-            "message": missing_ops_check["suggestion"],
-            "missing_imports": missing_ops_check["missing_imports"],
-            "api_mode": api_mode,
-            "guidance": "Add the import statement shown above to the top of your code."
-        }, indent=2))]
+        return error_response(
+            "missing_imports",
+            missing_ops_check["suggestion"],
+            missing_imports=missing_ops_check["missing_imports"],
+            api_mode=api_mode,
+            guidance="Add the import statement shown above to the top of your code."
+        )
 
     # Check for wrong library imports
-    wrong_imports_check = detect_wrong_library_imports(module_code, api_mode)
+    wrong_imports_check = detect_wrong_library_imports(code, api_mode)
     if wrong_imports_check["has_wrong_imports"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "wrong_library_imports",
-            "message": wrong_imports_check["suggestion"],
-            "wrong_imports": wrong_imports_check["wrong_imports"],
-            "api_mode": api_mode,
-            "guidance": f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
-        }, indent=2))]
+        return error_response(
+            "wrong_library_imports",
+            wrong_imports_check["suggestion"],
+            wrong_imports=wrong_imports_check["wrong_imports"],
+            api_mode=api_mode,
+            guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
+        )
 
     timeout_seconds = args.get("timeout_seconds", 300)
 
-    # Get API mode-specific imports
-    api_imports, _ = _get_api_mode_imports(api_mode)
+    # Determine three-tier injection strategy based on pre-flight results
+    # Tier 1 (none): No casting issues → Skip helper injection (lightweight)
+    # Tier 2 (minimal): Issues found but handled → Inject only needed helpers (balanced)
+    # Tier 3 (full): Defensive mode → Inject full suite (heavy but safest)
+    injection_tier = casting_check.get("injection_tier", "full")  # Default to full for safety
+    helpers_needed = casting_check.get("helpers_needed", set())  # Set of specific helpers
+
+    # Telemetry: Track injection strategy
+    operations_logger.debug(f"Three-tier injection: tier={injection_tier}, helpers_needed={helpers_needed}")
+
+    # Get API mode-specific imports with appropriate injection tier
+    api_imports, _ = _get_api_mode_imports(api_mode, helpers_needed=helpers_needed, injection_tier=injection_tier)
     # Add indentation for embedding in runner_script (uses .replace(), not .format())
     import textwrap
     api_imports_indented = textwrap.indent(api_imports, '        ')
@@ -587,7 +680,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     operations_logger.info(f"Project: {project_name}")
     operations_logger.info(f"Write enabled: {write_enabled}")
     operations_logger.info(f"API mode: {api_mode}")
-    operations_logger.debug(f"Module code length: {len(module_code)} bytes")
+    operations_logger.debug(f"Code length: {len(code)} bytes")
 
     # Build warnings
     warnings = []
@@ -644,27 +737,58 @@ class FlexToolsModuleClass:
 flextoolslib.FlexToolsModuleClass = FlexToolsModuleClass
 sys.modules['flextoolslib'] = flextoolslib
 
-# Simple Reporter Class
+# Simple Reporter Class - mimics FLExTools FTReporter
+# Outputs to console AND collects messages for structured response
 class SimpleReporter:
     INFO = 0
     WARNING = 1
     ERROR = 2
     BLANK = 3
     TYPE_NAMES = ["INFO", "WARNING", "ERROR", "BLANK"]
+    MAX_MESSAGES = 10000  # Prevent unbounded memory growth from verbose operations
 
-    def __init__(self):
+    def __init__(self, max_messages=None):
         self.messages = []
         self.messageCounts = [0, 0, 0, 0]
+        self.max_messages = max_messages or self.MAX_MESSAGES
+        self.dropped_message_count = 0
 
     def _report(self, msg_type, msg, ref=None):
         if msg is not None and not isinstance(msg, str):
             msg = repr(msg)
-        self.messages.append({
-            "type": self.TYPE_NAMES[msg_type],
-            "message": msg,
-            "ref": ref
-        })
+
+        # Enforce message buffer limit (keep most recent messages)
+        if len(self.messages) < self.max_messages:
+            self.messages.append({
+                "type": self.TYPE_NAMES[msg_type],
+                "message": msg,
+                "ref": ref
+            })
+        else:
+            # Buffer full - drop oldest message and track it
+            self.messages.pop(0)
+            self.messages.append({
+                "type": self.TYPE_NAMES[msg_type],
+                "message": msg,
+                "ref": ref
+            })
+            self.dropped_message_count += 1
+
         self.messageCounts[msg_type] += 1
+
+        # Print to console for immediate feedback (transparent reporting)
+        if msg_type == self.INFO:
+            print("[INFO] {}".format(msg))
+        elif msg_type == self.WARNING:
+            print("[WARN] {}".format(msg))
+        elif msg_type == self.ERROR:
+            print("[ERROR] {}".format(msg))
+        elif msg_type == self.BLANK:
+            print()
+
+        # Print reference if provided
+        if ref:
+            print("       {}".format(ref))
 
     def Info(self, msg, ref=None):
         self._report(self.INFO, msg, ref)
@@ -677,6 +801,34 @@ class SimpleReporter:
 
     def Blank(self):
         self._report(self.BLANK, "", None)
+
+    def Debug(self, msg, ref=None):
+        """Debug messages (only printed if DEBUG env var set)"""
+        if msg is not None and not isinstance(msg, str):
+            msg = repr(msg)
+
+        # Enforce message buffer limit for debug messages too
+        if len(self.messages) < self.max_messages:
+            self.messages.append({
+                "type": "DEBUG",
+                "message": msg,
+                "ref": ref
+            })
+        else:
+            # Buffer full - drop oldest message
+            self.messages.pop(0)
+            self.messages.append({
+                "type": "DEBUG",
+                "message": msg,
+                "ref": ref
+            })
+            self.dropped_message_count += 1
+
+        import os
+        if os.getenv("DEBUG"):
+            print("[DEBUG] {}".format(msg))
+            if ref:
+                print("        {}".format(ref))
 
     def ProgressStart(self, max_val, msg=None):
         pass
@@ -761,6 +913,10 @@ def run_module():
             "error_count": report.messageCounts[SimpleReporter.ERROR],
             "total_messages": len(report.messages)
         }
+        # Include buffer overflow warning if messages were dropped
+        if report.dropped_message_count > 0:
+            result["summary"]["dropped_messages"] = report.dropped_message_count
+            result["summary"]["note"] = "Output exceeded maximum buffer size. Most recent {} messages retained.".format(report.max_messages)
 
     except Exception as e:
         error_msg = str(e)
@@ -790,8 +946,8 @@ if __name__ == "__main__":
     print(json.dumps(result, indent=2, ensure_ascii=False))
 '''
 
-    # Escape the module code for embedding in the script
-    escaped_module_code = repr(module_code)
+    # Escape the code for embedding in the script
+    escaped_code = repr(code)
 
     # Replace API mode imports in the runner script
     runner_script = runner_script.replace('{{API_MODE_IMPORTS}}', api_imports_indented)
@@ -800,13 +956,13 @@ if __name__ == "__main__":
     full_script = '''# Configuration
 PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
-MODULE_CODE = {module_code}
+MODULE_CODE = {code}
 
 {runner_script}
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
-        module_code=escaped_module_code,
+        code=escaped_code,
         runner_script=runner_script
     )
 
@@ -881,7 +1037,7 @@ MODULE_CODE = {module_code}
         if stderr and not execution_result.get("error"):
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
-            execution_result["module_code"] = module_code
+            execution_result["code"] = code
 
         # Include write certification result
         execution_result["write_certification"] = {
@@ -913,502 +1069,6 @@ MODULE_CODE = {module_code}
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": "Subprocess execution error: {}".format(str(e)),
-            "warnings": warnings
-        }, indent=2))]
-
-    finally:
-        # Clean up temporary file
-        try:
-            os.unlink(temp_script_path)
-        except:
-            pass
-
-
-async def handle_run_operation(args: dict) -> list[TextContent]:
-    """Execute FlexLibs2 operations directly without module boilerplate."""
-    operations = args["operations"]
-    # Use session state as fallback for project and write settings
-    project_name = args.get("project_name", session_state.get_project())
-    write_enabled = args.get("write_enabled", session_state.is_write_enabled())
-
-    # Validate project_name is available
-    if not project_name:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "project_name required",
-            "message": "No project specified. Either set project_name in start() or provide it directly.",
-            "session": session_state.summary()
-        }, indent=2))]
-
-    # Check if API discovery was performed
-    skip_api_check = args.get("skip_api_check", False)
-    if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "API discovery required",
-            "message": "No APIs have been discovered yet. Before running operations, you MUST use one of these tools first:\n"
-                      "1. start(task='...') - discovers relevant APIs automatically\n"
-                      "2. get_object_api(object_type='...') - get API for specific object\n"
-                      "3. search_by_capability(query='...') - search for APIs by description\n\n"
-                      "This prevents using incorrect/hallucinated method names.",
-            "hint": "Call start() or search_by_capability() first, then use the discovered methods in your code.",
-            "session": session_state.summary()
-        }, indent=2))]
-
-    # Check for unprotected mutations - HARD BLOCK if found
-    cud_info = detect_cud_operations(operations)
-    cert = certify_script_readonly(operations, api_index)
-
-    # CRITICAL: Refuse unprotected code unconditionally
-    if not cert["is_certified_readonly"]:
-        guidance = get_unprotected_write_guidance(cert)
-        return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
-
-    # Get API mode early for validation
-    api_mode = session_state.get_mode()
-
-    # Check output mechanism - operations must use print(), not report.Info()
-    output_check = check_output_mechanism(operations, "operation")
-    if not output_check["uses_correct_mechanism"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "invalid_output_mechanism",
-            "message": output_check["message"],
-            "has_output": output_check["has_output"],
-            "detected_mechanism": output_check["mechanism_type"],
-            "guidance": "In operations code, use print(message) to output results. The report object is only available in FlexTools modules."
-        }, indent=2))]
-
-    # Check for undefined variables that indicate hallucinated/internal names
-    undefined_check = detect_undefined_variables(operations)
-    if undefined_check["has_undefined"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "undefined_variables",
-            "message": undefined_check["suggestion"],
-            "undefined_vars": undefined_check["undefined_vars"],
-            "guidance": "All classes/modules must be imported first. Use 'from flexlibs2 import ClassName' or 'import module'. Do not use internal MCP variable names like API_MODE_IMPORTS."
-        }, indent=2))]
-
-    # Check for missing Operations class imports
-    missing_ops_check = detect_missing_operations_imports(operations, api_mode)
-    if missing_ops_check["has_missing"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "missing_imports",
-            "message": missing_ops_check["suggestion"],
-            "missing_imports": missing_ops_check["missing_imports"],
-            "api_mode": api_mode,
-            "guidance": "Add the import statement shown above to the top of your code."
-        }, indent=2))]
-
-    # Check for wrong library imports
-    wrong_imports_check = detect_wrong_library_imports(operations, api_mode)
-    if wrong_imports_check["has_wrong_imports"]:
-        return [TextContent(type="text", text=json.dumps({
-            "error": "wrong_library_imports",
-            "message": wrong_imports_check["suggestion"],
-            "wrong_imports": wrong_imports_check["wrong_imports"],
-            "api_mode": api_mode,
-            "guidance": f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
-        }, indent=2))]
-
-    timeout_seconds = args.get("timeout_seconds", 120)
-
-    # Log operation start
-    operations_logger.info(f"=== Operation Start ===")
-    operations_logger.info(f"Project: {project_name}")
-    operations_logger.info(f"Write enabled: {write_enabled}")
-    operations_logger.info(f"API mode: {api_mode}")
-    operations_logger.debug(f"Code:\n{operations}")
-
-    # Build warnings
-    warnings = []
-    if write_enabled:
-        warnings.extend([
-            "*** WRITE MODE ENABLED ***",
-            "Changes WILL be made to the database!",
-            ""
-        ])
-    else:
-        warnings.extend([
-            "Running in READ-ONLY mode (dry-run)",
-            "No changes will be made to the database.",
-            ""
-        ])
-
-    # Get API mode-specific imports
-    api_imports, api_namespace = _get_api_mode_imports(api_mode)
-
-    # Create the runner script template
-    runner_script = '''# -*- coding: utf-8 -*-
-"""FlexTools Operation Runner - Generated by FlexToolsMCP"""
-import sys
-import json
-import traceback
-import io
-
-# Force UTF-8 stdout on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
-
-def safe_str(obj):
-    """Safely convert .NET or Python object to UTF-8 string."""
-    if obj is None:
-        return ""
-    try:
-        s = str(obj)
-        return s.encode('utf-8', errors='replace').decode('utf-8')
-    except Exception:
-        try:
-            return repr(obj)
-        except Exception:
-            return "(encoding error)"
-
-
-# FLEx uses '***' as placeholder for empty/unset multilingual string values
-FLEX_EMPTY_PLACEHOLDER = "***"
-
-
-def is_empty_multistring(text):
-    """Check if a FLEx multilingual string value is empty."""
-    if text is None:
-        return True
-    if not isinstance(text, str):
-        text = str(text)
-    text = text.strip()
-    return text == "" or text == FLEX_EMPTY_PLACEHOLDER
-
-# Configuration
-PROJECT_NAME = {project_name}
-WRITE_ENABLED = {write_enabled}
-OPERATIONS = {operations}
-
-# Simple Reporter Class
-class SimpleReporter:
-    INFO = 0
-    WARNING = 1
-    ERROR = 2
-    BLANK = 3
-    TYPE_NAMES = ["INFO", "WARNING", "ERROR", "BLANK"]
-
-    def __init__(self):
-        self.messages = []
-        self.messageCounts = [0, 0, 0, 0]
-
-    def _report(self, msg_type, msg, ref=None):
-        if msg is not None and not isinstance(msg, str):
-            msg = repr(msg)
-        self.messages.append({{
-            "type": self.TYPE_NAMES[msg_type],
-            "message": msg,
-            "ref": ref
-        }})
-        self.messageCounts[msg_type] += 1
-
-    def Info(self, msg, ref=None):
-        self._report(self.INFO, msg, ref)
-
-    def Warning(self, msg, ref=None):
-        self._report(self.WARNING, msg, ref)
-
-    def Error(self, msg, ref=None):
-        self._report(self.ERROR, msg, ref)
-
-    def Blank(self):
-        self._report(self.BLANK, "", None)
-
-
-# API Mode-specific imports
-{API_MODE_IMPORTS}
-
-
-def run_operation():
-    result = {{
-        "success": False,
-        "project": PROJECT_NAME,
-        "write_enabled": WRITE_ENABLED,
-        "messages": [],
-        "summary": {{}},
-        "error": None
-    }}
-
-    project = None
-    report = SimpleReporter()
-
-    try:
-        FLExInitialize()
-
-        # Open project
-        project = FLExProject()
-        try:
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED)
-        except Exception as e:
-            result["error"] = "Failed to open project '{{}}': {{}}".format(PROJECT_NAME, str(e))
-            return result
-
-        # Make variables available to the operations code
-        write_enabled = WRITE_ENABLED
-
-        # Build execution namespace
-        exec_namespace = {{
-            "project": project,
-            "report": report,
-            "write_enabled": write_enabled,
-            "safe_str": safe_str,
-            "is_empty_multistring": is_empty_multistring,
-            "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
-        }}
-
-        # Add API-specific classes if available (FlexLibs2 mode)
-        try:
-            exec_namespace.update({{
-                "FP_FileLockedError": FP_FileLockedError,
-                "FP_FileNotFoundError": FP_FileNotFoundError,
-                "FP_MigrationRequired": FP_MigrationRequired,
-                "FP_NullParameterError": FP_NullParameterError,
-                "FP_ParameterError": FP_ParameterError,
-                "FP_ProjectError": FP_ProjectError,
-                "FP_ReadOnlyError": FP_ReadOnlyError,
-                "FP_RuntimeError": FP_RuntimeError,
-                "FP_WritingSystemError": FP_WritingSystemError,
-                "FP_AccessViolationException": FP_AccessViolationException,
-                "FP_ArgumentException": FP_ArgumentException,
-                "FP_IndexOutOfRangeException": FP_IndexOutOfRangeException,
-                "FP_InvalidOperationException": FP_InvalidOperationException,
-                "FP_InvalidCastException": FP_InvalidCastException,
-                "FP_KeyNotFoundException": FP_KeyNotFoundException,
-                "FP_NullReferenceException": FP_NullReferenceException,
-                "FP_OperationCanceledException": FP_OperationCanceledException,
-                "FP_TimeoutException": FP_TimeoutException,
-                "POSOperations": POSOperations,
-                "PhonemeOperations": PhonemeOperations,
-                "NaturalClassOperations": NaturalClassOperations,
-                "EnvironmentOperations": EnvironmentOperations,
-                "MorphRuleOperations": MorphRuleOperations,
-                "InflectionFeatureOperations": InflectionFeatureOperations,
-                "GramCatOperations": GramCatOperations,
-                "PhonologicalRuleOperations": PhonologicalRuleOperations,
-                "LexEntryOperations": LexEntryOperations,
-                "LexSenseOperations": LexSenseOperations,
-                "ExampleOperations": ExampleOperations,
-                "LexReferenceOperations": LexReferenceOperations,
-                "VariantOperations": VariantOperations,
-                "PronunciationOperations": PronunciationOperations,
-                "SemanticDomainOperations": SemanticDomainOperations,
-                "ReversalOperations": ReversalOperations,
-                "EtymologyOperations": EtymologyOperations,
-                "AllomorphOperations": AllomorphOperations,
-                "TextOperations": TextOperations,
-                "WordformOperations": WordformOperations,
-                "WfiAnalysisOperations": WfiAnalysisOperations,
-                "ParagraphOperations": ParagraphOperations,
-                "SegmentOperations": SegmentOperations,
-                "WfiGlossOperations": WfiGlossOperations,
-                "WfiMorphBundleOperations": WfiMorphBundleOperations,
-                "MediaOperations": MediaOperations,
-                "FilterOperations": FilterOperations,
-                "DiscourseOperations": DiscourseOperations,
-                "NoteOperations": NoteOperations,
-                "PersonOperations": PersonOperations,
-                "LocationOperations": LocationOperations,
-                "AnthropologyOperations": AnthropologyOperations,
-                "DataNotebookOperations": DataNotebookOperations,
-                "PublicationOperations": PublicationOperations,
-                "AgentOperations": AgentOperations,
-                "ConfidenceOperations": ConfidenceOperations,
-                "OverlayOperations": OverlayOperations,
-                "TranslationTypeOperations": TranslationTypeOperations,
-                "PossibilityListOperations": PossibilityListOperations,
-                "WritingSystemOperations": WritingSystemOperations,
-                "ProjectSettingsOperations": ProjectSettingsOperations,
-                "AnnotationDefOperations": AnnotationDefOperations,
-                "CheckOperations": CheckOperations,
-                "CustomFieldOperations": CustomFieldOperations,
-            }})
-        except NameError:
-            pass
-
-        # Execute the operations
-        exec(OPERATIONS, exec_namespace)
-
-        # Collect results
-        result["success"] = True
-        result["messages"] = report.messages
-        result["summary"] = {{
-            "info_count": report.messageCounts[SimpleReporter.INFO],
-            "warning_count": report.messageCounts[SimpleReporter.WARNING],
-            "error_count": report.messageCounts[SimpleReporter.ERROR],
-            "total_messages": len(report.messages)
-        }}
-
-    except Exception as e:
-        result["error"] = "Execution error: {{}}\\n{{}}".format(str(e), traceback.format_exc())
-        result["messages"] = report.messages
-
-    finally:
-        if project:
-            try:
-                project.CloseProject()
-            except:
-                pass
-        try:
-            FLExCleanup()
-        except:
-            pass
-
-    return result
-
-
-if __name__ == "__main__":
-    result = run_operation()
-    print("===FLEXTOOLS_RESULT_JSON===")
-    print(json.dumps(result, indent=2, ensure_ascii=False))
-'''.format(
-        project_name=repr(project_name),
-        write_enabled=repr(write_enabled),
-        operations=repr(operations),
-        API_MODE_IMPORTS=api_imports
-    )
-
-    # Write to temporary file
-    try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
-            f.write(runner_script)
-            temp_script_path = f.name
-    except Exception as e:
-        return [TextContent(type="text", text=json.dumps({
-            "success": False,
-            "error": "Failed to create temporary script: {}".format(str(e)),
-            "warnings": warnings
-        }, indent=2))]
-
-    try:
-        # Create environment with UTF-8 encoding for Windows compatibility
-        env = os.environ.copy()
-        env['PYTHONIOENCODING'] = 'utf-8'
-        env['PYTHONUTF8'] = '1'
-
-        # Determine if we need the write lock
-        # Use index-based certification as primary, regex-based as fallback
-        # Only lock if: write_enabled=True AND script is NOT certified readonly
-        is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
-        needs_lock = write_enabled and is_mutating_script
-
-        if needs_lock:
-            # Serialize CUD operations on same project to prevent database corruption
-            write_lock = get_project_write_lock(project_name)
-            async with write_lock:
-                result = await run_script_async(
-                    temp_script_path,
-                    timeout_seconds=timeout_seconds,
-                    env=env
-                )
-        else:
-            # No lock needed: read-only or metadata-only operations
-            result = await run_script_async(
-                temp_script_path,
-                timeout_seconds=timeout_seconds,
-                env=env
-            )
-
-        stdout = result["stdout"]
-        stderr = result["stderr"]
-
-        # Handle timeout case
-        if result["timeout"]:
-            return [TextContent(type="text", text=json.dumps({
-                "success": False,
-                "error": f"Execution timeout: script exceeded {timeout_seconds} seconds",
-                "warnings": warnings
-            }, indent=2))]
-
-        # Parse the JSON result from stdout
-        if "===FLEXTOOLS_RESULT_JSON===" in stdout:
-            json_start = stdout.index("===FLEXTOOLS_RESULT_JSON===") + len("===FLEXTOOLS_RESULT_JSON===")
-            json_str = stdout[json_start:].strip()
-            try:
-                execution_result = json.loads(json_str)
-            except json.JSONDecodeError as e:
-                execution_result = {
-                    "success": False,
-                    "error": "Failed to parse result JSON: {}".format(str(e)),
-                    "raw_output": stdout
-                }
-        else:
-            execution_result = {
-                "success": False,
-                "error": "No result marker found in output",
-                "stdout": stdout,
-                "stderr": stderr
-            }
-
-        # Add warnings, return code, and optionally the executed code for learning
-        execution_result["warnings"] = warnings
-        execution_result["exit_code"] = result["returncode"]
-        if args.get("show_code", True):
-            execution_result["code_executed"] = operations
-
-        # Include write certification result
-        execution_result["write_certification"] = {
-            "is_certified_readonly": cert["is_certified_readonly"],
-            "confidence": cert["confidence"],
-            "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
-        }
-
-        # Detect polymorphic attribute errors and suggest resolve_property
-        if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
-            polymorphic_info = detect_polymorphic_error(execution_result["error"])
-            if polymorphic_info["is_polymorphic_error"]:
-                execution_result["polymorphic_error_detected"] = True
-                execution_result["error_type"] = "PolymorphicAttributeError"
-                execution_result["object_type"] = polymorphic_info["object_type"]
-                execution_result["property_name"] = polymorphic_info["property_name"]
-                execution_result["help"] = polymorphic_info["suggestion"]
-
-        # Log operation result
-        if execution_result.get("success"):
-            operations_logger.info(f"[OK] Operation completed successfully")
-            summary = execution_result.get("summary", {})
-            operations_logger.info(f"Messages: {summary.get('info_count', 0)} info, {summary.get('warning_count', 0)} warnings, {summary.get('error_count', 0)} errors")
-            pattern_tracker.record_operation(operations, success=True)
-        else:
-            error_msg = execution_result.get("error", "Unknown error")
-            operations_logger.error(f"[FAIL] Operation failed: {error_msg}")
-            pattern_tracker.record_operation(operations, success=False, error_msg=error_msg)
-
-        operations_logger.info(f"=== Operation End ===\n")
-
-        # Include pattern recommendations
-        recommendations = pattern_tracker.get_recommendations()
-        if recommendations.get("patterns_to_avoid"):
-            execution_result["pattern_warnings"] = [
-                p for p in recommendations["patterns_to_avoid"]
-                if any(api in operations for api in [p["pattern"].split(".")[-1]])
-            ][:2]
-
-        # Add session context
-        execution_result = build_response_with_context(execution_result, include_session=True)
-
-        return [TextContent(type="text", text=json.dumps(execution_result, indent=2, default=str))]
-
-    except subprocess.TimeoutExpired:
-        operations_logger.error(f"[FAIL] Operation timed out after {timeout_seconds} seconds")
-        pattern_tracker.record_operation(operations, success=False, error_msg="Timeout")
-        operations_logger.info(f"=== Operation End ===\n")
-        timeout_result = {
-            "success": False,
-            "error": "Execution timed out after {} seconds".format(timeout_seconds),
-            "warnings": warnings
-        }
-        timeout_result = build_response_with_context(timeout_result, include_session=True)
-        return [TextContent(type="text", text=json.dumps(timeout_result, indent=2))]
-
-    except Exception as e:
-        error_msg = str(e)
-        operations_logger.error(f"[FAIL] Subprocess error: {error_msg}")
-        pattern_tracker.record_operation(operations, success=False, error_msg=error_msg)
-        operations_logger.info(f"=== Operation End ===\n")
-        return [TextContent(type="text", text=json.dumps({
-            "success": False,
-            "error": "Subprocess execution error: {}".format(error_msg),
             "warnings": warnings
         }, indent=2))]
 

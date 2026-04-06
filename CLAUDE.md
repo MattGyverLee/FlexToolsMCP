@@ -186,7 +186,15 @@ When users encounter `AttributeError` or "has no attribute" errors:
 
 ## Writing FLExTools Modules
 
-When generating FLExTools scripts for users, **always use this template**:
+### Preferred: FlexLibs 2.0
+
+When generating FLExTools scripts for users, **always use flexlibs2** template:
+- Better documented (99% descriptions, 82% examples)
+- 90% API coverage (stable flexlibs only ~40 functions)
+- Handles edge cases (multistring normalization, descriptor protocol)
+- Actively maintained
+
+**Always use this template**:
 
 ```python
 """

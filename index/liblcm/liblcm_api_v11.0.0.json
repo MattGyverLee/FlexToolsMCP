@@ -50760,17 +50760,8 @@
           {
             "class": "AgentOperations",
             "methods": [
-              "Create",
-              "CreateHumanAgent",
-              "CreateParserAgent",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
               "GetEvaluations",
-              "GetGuid",
               "GetName",
-              "GetSyncableProperties",
               "GetVersion",
               "SetName",
               "SetVersion"
@@ -50779,6 +50770,33 @@
           {
             "class": "ApprovalStatusTypes",
             "methods": []
+          },
+          {
+            "class": "WfiAnalysisOperations",
+            "methods": [
+              "AddGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
+            ]
           }
         ],
         "flexlibs_stable": null
@@ -50888,17 +50906,8 @@
           {
             "class": "AgentOperations",
             "methods": [
-              "Create",
-              "CreateHumanAgent",
-              "CreateParserAgent",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
               "GetEvaluations",
-              "GetGuid",
               "GetName",
-              "GetSyncableProperties",
               "GetVersion",
               "SetName",
               "SetVersion"
@@ -50907,6 +50916,33 @@
           {
             "class": "ApprovalStatusTypes",
             "methods": []
+          },
+          {
+            "class": "WfiAnalysisOperations",
+            "methods": [
+              "AddGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
+            ]
           }
         ],
         "flexlibs_stable": null
@@ -50958,10 +50994,39 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "ApprovalStatusTypes",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "ApprovalStatusTypes",
+            "methods": []
+          },
+          {
+            "class": "WfiAnalysisOperations",
+            "methods": [
+              "AddGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
+            ]
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -51010,17 +51075,8 @@
         "flexlibs_2": {
           "class": "AgentOperations",
           "methods": [
-            "Create",
-            "CreateHumanAgent",
-            "CreateParserAgent",
-            "Delete",
-            "Duplicate",
-            "Find",
-            "GetAll",
             "GetEvaluations",
-            "GetGuid",
             "GetName",
-            "GetSyncableProperties",
             "GetVersion",
             "SetName",
             "SetVersion"
@@ -51122,28 +51178,6 @@
       "name": "ICmAgentRepository",
       "namespace": "SIL.LCModel",
       "properties": [],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "AgentOperations",
-          "methods": [
-            "Create",
-            "CreateHumanAgent",
-            "CreateParserAgent",
-            "Delete",
-            "Duplicate",
-            "Find",
-            "GetAll",
-            "GetEvaluations",
-            "GetGuid",
-            "GetName",
-            "GetSyncableProperties",
-            "GetVersion",
-            "SetName",
-            "SetVersion"
-          ]
-        },
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for CmAgentRepository operations",
       "tags": [
@@ -60467,17 +60501,8 @@
           {
             "class": "AgentOperations",
             "methods": [
-              "Create",
-              "CreateHumanAgent",
-              "CreateParserAgent",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
               "GetEvaluations",
-              "GetGuid",
               "GetName",
-              "GetSyncableProperties",
               "GetVersion",
               "SetName",
               "SetVersion"
@@ -62648,24 +62673,6 @@
             ]
           },
           {
-            "class": "ConfidenceOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAnalysesWithConfidence",
-              "GetDescription",
-              "GetGlossesWithConfidence",
-              "GetGuid",
-              "GetName",
-              "GetSyncableProperties",
-              "SetDescription",
-              "SetName"
-            ]
-          },
-          {
             "class": "ConstChartOperations",
             "methods": [
               "Create",
@@ -62790,23 +62797,13 @@
             "class": "OverlayOperations",
             "methods": [
               "AddElement",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
+              "FindByChart",
               "GetChart",
-              "GetDescription",
-              "GetDisplayOrder",
               "GetElements",
-              "GetGuid",
-              "GetName",
               "GetPossItems",
-              "GetSyncableProperties",
+              "IsVisible",
               "RemoveElement",
-              "SetDescription",
-              "SetDisplayOrder",
-              "SetName"
+              "SetVisible"
             ]
           },
           {
@@ -62874,24 +62871,14 @@
             "class": "PublicationOperations",
             "methods": [
               "AddDivision",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
               "GetAll",
-              "GetDescription",
               "GetDivisions",
-              "GetGuid",
               "GetHeaderFooter",
               "GetIsDefault",
-              "GetName",
               "GetPageLayout",
               "GetParent",
               "GetSubPublications",
-              "GetSyncableProperties",
-              "SetDescription",
               "SetIsDefault",
-              "SetName",
               "SetPageLayout"
             ]
           },
@@ -62913,29 +62900,6 @@
               "GetParagraphs",
               "GetSyncableProperties",
               "SetGenre",
-              "SetName"
-            ]
-          },
-          {
-            "class": "TranslationTypeOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAbbreviation",
-              "GetAll",
-              "GetBackTranslationType",
-              "GetFreeTranslationType",
-              "GetGuid",
-              "GetLiteralTranslationType",
-              "GetName",
-              "GetSegmentsWithType",
-              "GetSyncableProperties",
-              "GetTextsWithType",
-              "IsDefault",
-              "SetAbbreviation",
-              "SetAnalysisWS",
               "SetName"
             ]
           }
@@ -63140,24 +63104,6 @@
             ]
           },
           {
-            "class": "ConfidenceOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAnalysesWithConfidence",
-              "GetDescription",
-              "GetGlossesWithConfidence",
-              "GetGuid",
-              "GetName",
-              "GetSyncableProperties",
-              "SetDescription",
-              "SetName"
-            ]
-          },
-          {
             "class": "ConstChartTagOperations",
             "methods": [
               "Create",
@@ -63188,22 +63134,29 @@
             "class": "OverlayOperations",
             "methods": [
               "AddElement",
+              "FindByChart",
+              "GetChart",
+              "GetElements",
+              "GetPossItems",
+              "IsVisible",
+              "RemoveElement",
+              "SetVisible"
+            ]
+          },
+          {
+            "class": "PossibilityItemOperations",
+            "methods": [
+              "CompareTo",
               "Create",
               "Delete",
               "Duplicate",
               "Find",
               "GetAll",
-              "GetChart",
               "GetDescription",
-              "GetDisplayOrder",
-              "GetElements",
               "GetGuid",
               "GetName",
-              "GetPossItems",
               "GetSyncableProperties",
-              "RemoveElement",
               "SetDescription",
-              "SetDisplayOrder",
               "SetName"
             ]
           },
@@ -63240,48 +63193,15 @@
             "class": "PublicationOperations",
             "methods": [
               "AddDivision",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
               "GetAll",
-              "GetDescription",
               "GetDivisions",
-              "GetGuid",
               "GetHeaderFooter",
               "GetIsDefault",
-              "GetName",
               "GetPageLayout",
               "GetParent",
               "GetSubPublications",
-              "GetSyncableProperties",
-              "SetDescription",
               "SetIsDefault",
-              "SetName",
               "SetPageLayout"
-            ]
-          },
-          {
-            "class": "TranslationTypeOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAbbreviation",
-              "GetAll",
-              "GetBackTranslationType",
-              "GetFreeTranslationType",
-              "GetGuid",
-              "GetLiteralTranslationType",
-              "GetName",
-              "GetSegmentsWithType",
-              "GetSyncableProperties",
-              "GetTextsWithType",
-              "IsDefault",
-              "SetAbbreviation",
-              "SetAnalysisWS",
-              "SetName"
             ]
           }
         ],
@@ -64717,29 +64637,6 @@
               "SetItemName",
               "SetListName"
             ]
-          },
-          {
-            "class": "TranslationTypeOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAbbreviation",
-              "GetAll",
-              "GetBackTranslationType",
-              "GetFreeTranslationType",
-              "GetGuid",
-              "GetLiteralTranslationType",
-              "GetName",
-              "GetSegmentsWithType",
-              "GetSyncableProperties",
-              "GetTextsWithType",
-              "IsDefault",
-              "SetAbbreviation",
-              "SetAnalysisWS",
-              "SetName"
-            ]
           }
         ],
         "flexlibs_stable": null
@@ -65018,24 +64915,14 @@
             "class": "PublicationOperations",
             "methods": [
               "AddDivision",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
               "GetAll",
-              "GetDescription",
               "GetDivisions",
-              "GetGuid",
               "GetHeaderFooter",
               "GetIsDefault",
-              "GetName",
               "GetPageLayout",
               "GetParent",
               "GetSubPublications",
-              "GetSyncableProperties",
-              "SetDescription",
               "SetIsDefault",
-              "SetName",
               "SetPageLayout"
             ]
           }
@@ -70594,23 +70481,13 @@
             "class": "OverlayOperations",
             "methods": [
               "AddElement",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
+              "FindByChart",
               "GetChart",
-              "GetDescription",
-              "GetDisplayOrder",
               "GetElements",
-              "GetGuid",
-              "GetName",
               "GetPossItems",
-              "GetSyncableProperties",
+              "IsVisible",
               "RemoveElement",
-              "SetDescription",
-              "SetDisplayOrder",
-              "SetName"
+              "SetVisible"
             ]
           }
         ],
@@ -70743,23 +70620,13 @@
             "class": "OverlayOperations",
             "methods": [
               "AddElement",
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
+              "FindByChart",
               "GetChart",
-              "GetDescription",
-              "GetDisplayOrder",
               "GetElements",
-              "GetGuid",
-              "GetName",
               "GetPossItems",
-              "GetSyncableProperties",
+              "IsVisible",
               "RemoveElement",
-              "SetDescription",
-              "SetDisplayOrder",
-              "SetName"
+              "SetVisible"
             ]
           }
         ],
@@ -78438,25 +78305,6 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
-          {
-            "class": "AgentOperations",
-            "methods": [
-              "Create",
-              "CreateHumanAgent",
-              "CreateParserAgent",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetEvaluations",
-              "GetGuid",
-              "GetName",
-              "GetSyncableProperties",
-              "GetVersion",
-              "SetName",
-              "SetVersion"
-            ]
-          },
           {
             "class": "PersonOperations",
             "methods": [
@@ -90125,40 +89973,29 @@
             ]
           },
           {
-            "class": "ReversalOperations",
-            "methods": [
-              "AddSense",
-              "Create",
-              "CreateSubentry",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAllIndexes",
-              "GetForm",
-              "GetIndex",
-              "GetParentEntry",
-              "GetPartsOfSpeech",
-              "GetSenseCount",
-              "GetSenses",
-              "GetSubentries",
-              "GetSyncableProperties",
-              "RemoveSense",
-              "SetForm"
-            ]
-          },
-          {
             "class": "WfiMorphBundleOperations",
             "methods": [
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
               "GetAll",
               "GetForm",
-              "GetMorphemeType",
+              "GetGloss",
+              "GetGuid",
+              "GetInflType",
+              "GetInflectionClass",
+              "GetMSA",
+              "GetMorphType",
+              "GetOwningAnalysis",
               "GetSense",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm",
-              "SetMorphemeType",
+              "SetGloss",
+              "SetInflType",
+              "SetInflectionClass",
+              "SetMSA",
+              "SetMorphType",
               "SetSense"
             ]
           }
@@ -96151,27 +95988,56 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "InflectionFeatureOperations",
-          "methods": [
-            "FeatureCreate",
-            "FeatureDelete",
-            "FeatureGetAll",
-            "FeatureGetValues",
-            "FeatureStructureCreate",
-            "FeatureStructureDelete",
-            "FeatureStructureGetAll",
-            "GetFeatureConstraints",
-            "GetFeatures",
-            "GetSyncableProperties",
-            "GetTypes",
-            "InflectionClassCreate",
-            "InflectionClassDelete",
-            "InflectionClassGetAll",
-            "InflectionClassGetName",
-            "InflectionClassSetName"
-          ]
-        },
+        "flexlibs_2": [
+          {
+            "class": "InflectionFeatureOperations",
+            "methods": [
+              "FeatureCreate",
+              "FeatureDelete",
+              "FeatureGetAll",
+              "FeatureGetValues",
+              "FeatureStructureCreate",
+              "FeatureStructureDelete",
+              "FeatureStructureGetAll",
+              "GetFeatureConstraints",
+              "GetFeatures",
+              "GetSyncableProperties",
+              "GetTypes",
+              "InflectionClassCreate",
+              "InflectionClassDelete",
+              "InflectionClassGetAll",
+              "InflectionClassGetName",
+              "InflectionClassSetName"
+            ]
+          },
+          {
+            "class": "WfiMorphBundleOperations",
+            "methods": [
+              "Create",
+              "Delete",
+              "Duplicate",
+              "GetAll",
+              "GetForm",
+              "GetGloss",
+              "GetGuid",
+              "GetInflType",
+              "GetInflectionClass",
+              "GetMSA",
+              "GetMorphType",
+              "GetOwningAnalysis",
+              "GetSense",
+              "GetSyncableProperties",
+              "Reorder",
+              "SetForm",
+              "SetGloss",
+              "SetInflType",
+              "SetInflectionClass",
+              "SetMSA",
+              "SetMorphType",
+              "SetSense"
+            ]
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -98037,6 +97903,36 @@
           "type": "IEnumerable"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "WfiMorphBundleOperations",
+          "methods": [
+            "Create",
+            "Delete",
+            "Duplicate",
+            "GetAll",
+            "GetForm",
+            "GetGloss",
+            "GetGuid",
+            "GetInflType",
+            "GetInflectionClass",
+            "GetMSA",
+            "GetMorphType",
+            "GetOwningAnalysis",
+            "GetSense",
+            "GetSyncableProperties",
+            "Reorder",
+            "SetForm",
+            "SetGloss",
+            "SetInflType",
+            "SetInflectionClass",
+            "SetMSA",
+            "SetMorphType",
+            "SetSense"
+          ]
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -98446,13 +98342,25 @@
             "methods": [
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
               "GetAll",
               "GetForm",
-              "GetMorphemeType",
+              "GetGloss",
+              "GetGuid",
+              "GetInflType",
+              "GetInflectionClass",
+              "GetMSA",
+              "GetMorphType",
+              "GetOwningAnalysis",
               "GetSense",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm",
-              "SetMorphemeType",
+              "SetGloss",
+              "SetInflType",
+              "SetInflectionClass",
+              "SetMSA",
+              "SetMorphType",
               "SetSense"
             ]
           }
@@ -103561,15 +103469,27 @@
           {
             "class": "WfiAnalysisOperations",
             "methods": [
-              "Approve",
+              "AddGloss",
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
               "GetAll",
+              "GetApprovalStatus",
               "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
               "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
               "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
               "IsHumanApproved",
+              "SetApprovalStatus",
               "SetCategory"
             ]
           }
@@ -112208,29 +112128,6 @@
               "GetName",
               "SetName"
             ]
-          },
-          {
-            "class": "ReversalOperations",
-            "methods": [
-              "AddSense",
-              "Create",
-              "CreateSubentry",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAllIndexes",
-              "GetForm",
-              "GetIndex",
-              "GetParentEntry",
-              "GetPartsOfSpeech",
-              "GetSenseCount",
-              "GetSenses",
-              "GetSubentries",
-              "GetSyncableProperties",
-              "RemoveSense",
-              "SetForm"
-            ]
           }
         ],
         "flexlibs_stable": {
@@ -112751,29 +112648,6 @@
               "RemoveSense",
               "SetForm"
             ]
-          },
-          {
-            "class": "ReversalOperations",
-            "methods": [
-              "AddSense",
-              "Create",
-              "CreateSubentry",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAllIndexes",
-              "GetForm",
-              "GetIndex",
-              "GetParentEntry",
-              "GetPartsOfSpeech",
-              "GetSenseCount",
-              "GetSenses",
-              "GetSubentries",
-              "GetSyncableProperties",
-              "RemoveSense",
-              "SetForm"
-            ]
           }
         ],
         "flexlibs_stable": {
@@ -112925,46 +112799,21 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "ReversalIndexEntryOperations",
-            "methods": [
-              "AddSense",
-              "Create",
-              "Delete",
-              "Find",
-              "GetAll",
-              "GetForm",
-              "GetSenses",
-              "GetSubentries",
-              "RemoveSense",
-              "SetForm"
-            ]
-          },
-          {
-            "class": "ReversalOperations",
-            "methods": [
-              "AddSense",
-              "Create",
-              "CreateSubentry",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
-              "GetAllIndexes",
-              "GetForm",
-              "GetIndex",
-              "GetParentEntry",
-              "GetPartsOfSpeech",
-              "GetSenseCount",
-              "GetSenses",
-              "GetSubentries",
-              "GetSyncableProperties",
-              "RemoveSense",
-              "SetForm"
-            ]
-          }
-        ],
+        "flexlibs_2": {
+          "class": "ReversalIndexEntryOperations",
+          "methods": [
+            "AddSense",
+            "Create",
+            "Delete",
+            "Find",
+            "GetAll",
+            "GetForm",
+            "GetSenses",
+            "GetSubentries",
+            "RemoveSense",
+            "SetForm"
+          ]
+        },
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -130950,24 +130799,15 @@
         "flexlibs_2": {
           "class": "TranslationTypeOperations",
           "methods": [
-            "Create",
-            "Delete",
-            "Duplicate",
-            "Find",
             "GetAbbreviation",
-            "GetAll",
             "GetBackTranslationType",
             "GetFreeTranslationType",
-            "GetGuid",
             "GetLiteralTranslationType",
-            "GetName",
             "GetSegmentsWithType",
-            "GetSyncableProperties",
             "GetTextsWithType",
             "IsDefault",
             "SetAbbreviation",
-            "SetAnalysisWS",
-            "SetName"
+            "SetAnalysisWS"
           ]
         },
         "flexlibs_stable": null
@@ -131885,24 +131725,15 @@
           {
             "class": "TranslationTypeOperations",
             "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
               "GetAbbreviation",
-              "GetAll",
               "GetBackTranslationType",
               "GetFreeTranslationType",
-              "GetGuid",
               "GetLiteralTranslationType",
-              "GetName",
               "GetSegmentsWithType",
-              "GetSyncableProperties",
               "GetTextsWithType",
               "IsDefault",
               "SetAbbreviation",
-              "SetAnalysisWS",
-              "SetName"
+              "SetAnalysisWS"
             ]
           }
         ],
@@ -135512,28 +135343,47 @@
           {
             "class": "WfiAnalysisOperations",
             "methods": [
-              "Approve",
+              "AddGloss",
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
               "GetAll",
+              "GetApprovalStatus",
               "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
               "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
               "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
               "IsHumanApproved",
+              "SetApprovalStatus",
               "SetCategory"
             ]
           },
           {
             "class": "WfiGlossOperations",
             "methods": [
-              "Approve",
+              "CopyGloss",
               "Create",
               "Delete",
+              "Duplicate",
               "Find",
               "GetAll",
+              "GetAllForms",
+              "GetBestForm",
+              "GetCount",
               "GetForm",
-              "IsHumanApproved",
+              "GetGuid",
+              "GetOwningAnalysis",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm"
             ]
           },
@@ -135542,28 +135392,26 @@
             "methods": [
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
               "GetAll",
               "GetForm",
-              "GetMorphemeType",
+              "GetGloss",
+              "GetGuid",
+              "GetInflType",
+              "GetInflectionClass",
+              "GetMSA",
+              "GetMorphType",
+              "GetOwningAnalysis",
               "GetSense",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm",
-              "SetMorphemeType",
+              "SetGloss",
+              "SetInflType",
+              "SetInflectionClass",
+              "SetMSA",
+              "SetMorphType",
               "SetSense"
-            ]
-          },
-          {
-            "class": "WfiWordformOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Find",
-              "FindOrCreate",
-              "GetAll",
-              "GetAnalyses",
-              "GetApprovedAnalysis",
-              "GetForm",
-              "SetApprovedAnalysis"
             ]
           }
         ],
@@ -135800,15 +135648,27 @@
           {
             "class": "WfiAnalysisOperations",
             "methods": [
-              "Approve",
+              "AddGloss",
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
               "GetAll",
+              "GetApprovalStatus",
               "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
               "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
               "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
               "IsHumanApproved",
+              "SetApprovalStatus",
               "SetCategory"
             ]
           },
@@ -135859,19 +135719,8 @@
           {
             "class": "ConfidenceOperations",
             "methods": [
-              "Create",
-              "Delete",
-              "Duplicate",
-              "Find",
-              "GetAll",
               "GetAnalysesWithConfidence",
-              "GetDescription",
-              "GetGlossesWithConfidence",
-              "GetGuid",
-              "GetName",
-              "GetSyncableProperties",
-              "SetDescription",
-              "SetName"
+              "GetGlossesWithConfidence"
             ]
           },
           {
@@ -135902,6 +135751,33 @@
               "SetAudioPath",
               "TextsGetAll",
               "UnpackNestedPossibilityList"
+            ]
+          },
+          {
+            "class": "WfiAnalysisOperations",
+            "methods": [
+              "AddGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
             ]
           }
         ],
@@ -136104,13 +135980,20 @@
         "flexlibs_2": {
           "class": "WfiGlossOperations",
           "methods": [
-            "Approve",
+            "CopyGloss",
             "Create",
             "Delete",
+            "Duplicate",
             "Find",
             "GetAll",
+            "GetAllForms",
+            "GetBestForm",
+            "GetCount",
             "GetForm",
-            "IsHumanApproved",
+            "GetGuid",
+            "GetOwningAnalysis",
+            "GetSyncableProperties",
+            "Reorder",
             "SetForm"
           ]
         },
@@ -136163,15 +136046,49 @@
             "methods": []
           },
           {
-            "class": "WfiGlossOperations",
+            "class": "WfiAnalysisOperations",
             "methods": [
-              "Approve",
+              "AddGloss",
               "Create",
               "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
+            ]
+          },
+          {
+            "class": "WfiGlossOperations",
+            "methods": [
+              "CopyGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
               "Find",
               "GetAll",
+              "GetAllForms",
+              "GetBestForm",
+              "GetCount",
               "GetForm",
-              "IsHumanApproved",
+              "GetGuid",
+              "GetOwningAnalysis",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm"
             ]
           },
@@ -136217,19 +136134,8 @@
         "flexlibs_2": {
           "class": "ConfidenceOperations",
           "methods": [
-            "Create",
-            "Delete",
-            "Duplicate",
-            "Find",
-            "GetAll",
             "GetAnalysesWithConfidence",
-            "GetDescription",
-            "GetGlossesWithConfidence",
-            "GetGuid",
-            "GetName",
-            "GetSyncableProperties",
-            "SetDescription",
-            "SetName"
+            "GetGlossesWithConfidence"
           ]
         },
         "flexlibs_stable": null
@@ -136421,38 +136327,33 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "WfiAnalysisOperations",
-            "methods": [
-              "Approve",
-              "Create",
-              "Delete",
-              "Find",
-              "GetAll",
-              "GetCategory",
-              "GetGlosses",
-              "GetMorphBundles",
-              "IsHumanApproved",
-              "SetCategory"
-            ]
-          },
-          {
-            "class": "WfiMorphBundleOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Find",
-              "GetAll",
-              "GetForm",
-              "GetMorphemeType",
-              "GetSense",
-              "SetForm",
-              "SetMorphemeType",
-              "SetSense"
-            ]
-          }
-        ],
+        "flexlibs_2": {
+          "class": "WfiMorphBundleOperations",
+          "methods": [
+            "Create",
+            "Delete",
+            "Duplicate",
+            "GetAll",
+            "GetForm",
+            "GetGloss",
+            "GetGuid",
+            "GetInflType",
+            "GetInflectionClass",
+            "GetMSA",
+            "GetMorphType",
+            "GetOwningAnalysis",
+            "GetSense",
+            "GetSyncableProperties",
+            "Reorder",
+            "SetForm",
+            "SetGloss",
+            "SetInflType",
+            "SetInflectionClass",
+            "SetMSA",
+            "SetMorphType",
+            "SetSense"
+          ]
+        },
         "flexlibs_stable": null
       },
       "relationships": {
@@ -136531,17 +136432,56 @@
             "methods": []
           },
           {
+            "class": "WfiAnalysisOperations",
+            "methods": [
+              "AddGloss",
+              "Create",
+              "Delete",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
+              "GetAll",
+              "GetApprovalStatus",
+              "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
+              "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
+              "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
+              "IsHumanApproved",
+              "SetApprovalStatus",
+              "SetCategory"
+            ]
+          },
+          {
             "class": "WfiMorphBundleOperations",
             "methods": [
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
               "GetAll",
               "GetForm",
-              "GetMorphemeType",
+              "GetGloss",
+              "GetGuid",
+              "GetInflType",
+              "GetInflectionClass",
+              "GetMSA",
+              "GetMorphType",
+              "GetOwningAnalysis",
               "GetSense",
+              "GetSyncableProperties",
+              "Reorder",
               "SetForm",
-              "SetMorphemeType",
+              "SetGloss",
+              "SetInflType",
+              "SetInflectionClass",
+              "SetMSA",
+              "SetMorphType",
               "SetSense"
             ]
           },
@@ -137307,30 +137247,28 @@
           {
             "class": "WfiAnalysisOperations",
             "methods": [
-              "Approve",
+              "AddGloss",
               "Create",
               "Delete",
-              "Find",
+              "Duplicate",
+              "Exists",
+              "GetAgentEvaluation",
               "GetAll",
+              "GetApprovalStatus",
               "GetCategory",
+              "GetEvaluations",
+              "GetGlossCount",
               "GetGlosses",
+              "GetGuid",
+              "GetHumanEvaluation",
+              "GetMorphBundleCount",
               "GetMorphBundles",
+              "GetOwningWordform",
+              "GetSyncableProperties",
+              "IsComputerApproved",
               "IsHumanApproved",
+              "SetApprovalStatus",
               "SetCategory"
-            ]
-          },
-          {
-            "class": "WfiWordformOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Find",
-              "FindOrCreate",
-              "GetAll",
-              "GetAnalyses",
-              "GetApprovedAnalysis",
-              "GetForm",
-              "SetApprovedAnalysis"
             ]
           },
           {
@@ -137421,20 +137359,6 @@
           {
             "class": "SpellingStatusStates",
             "methods": []
-          },
-          {
-            "class": "WfiWordformOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Find",
-              "FindOrCreate",
-              "GetAll",
-              "GetAnalyses",
-              "GetApprovedAnalysis",
-              "GetForm",
-              "SetApprovedAnalysis"
-            ]
           },
           {
             "class": "WordformOperations",
@@ -137620,20 +137544,6 @@
           {
             "class": "SpellingStatusStates",
             "methods": []
-          },
-          {
-            "class": "WfiWordformOperations",
-            "methods": [
-              "Create",
-              "Delete",
-              "Find",
-              "FindOrCreate",
-              "GetAll",
-              "GetAnalyses",
-              "GetApprovedAnalysis",
-              "GetForm",
-              "SetApprovedAnalysis"
-            ]
           },
           {
             "class": "WordformOperations",

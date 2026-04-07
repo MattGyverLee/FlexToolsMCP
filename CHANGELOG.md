@@ -2,6 +2,32 @@
 
 All notable changes to FLExTools MCP are documented in this file.
 
+## [2.0.0] - 2026-04-07
+
+**Status**: RELEASED (ready to tag and merge to main)
+
+This release completes the async-first refactoring and integrates FlexLibs2 v3.0.0.
+
+### Completion Highlights
+
+- ✅ All 83 tests passing (up from 35+)
+- ✅ Code quality pass complete (Waves 1-7, 25+ files reviewed)
+- ✅ 200+ LOC of duplication eliminated
+- ✅ FlexLibs2 v3.0.0 API indexed (3,686 LOC reduction in FlexLibs2)
+- ✅ Response field constants centralized
+- ✅ Import path architecture stabilized
+- ✅ Async test configuration fixed (pytest asyncio_mode=auto)
+
+### New in This Session
+
+- **Test Infrastructure**: Improved pytest fixtures (conftest.py consolidation)
+- **Response Constants**: Created response_keys.py with 40+ centralized constants
+- **FlexLibs2 v3.0.0**: Indexed new API removing deprecated ReversalOperations
+- **Code Quality**: Applied /simplify pass across all handler modules
+- **Import Stability**: Fixed dual-mode import guards to use reliable absolute paths
+
+### Previous Release Notes
+
 ## [2.0.0] - 2026-03-22
 
 ### Major Breaking Changes

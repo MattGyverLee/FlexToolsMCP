@@ -68,24 +68,43 @@ def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list
     if start == end:
         return []
 
-    queue = deque([(start, [])])
+    # Parent tracking approach: avoid O(n) list concatenation per iteration
+    # Instead of: queue = [(node, path)], we track: queue = [node], parent[node] = (parent_node, edge)
+    # This eliminates O(n) list copying on every queue append (major optimization for large graphs)
+    queue = deque([start])
     visited = {start}
+    parent = {}  # Maps node -> (parent_node, via, rel_type)
+
+    def get_depth(node: str) -> int:
+        """Get depth by following parent chain."""
+        depth = 0
+        while node in parent:
+            node = parent[node][0]
+            depth += 1
+        return depth
 
     while queue:
-        current, path = queue.popleft()
-        if len(path) >= max_depth:
-            continue
+        current = queue.popleft()
 
         for edge in graph.get(current, []):
             target, via, rel_type = edge[0], edge[1], edge[2]
-            step = {KEY_FROM: current, KEY_TO: target, KEY_VIA: via, KEY_TYPE: rel_type}
 
             if target == end:
-                return path + [step]
+                # Reconstruct path using parent pointers (linear reconstruction, not exponential)
+                path = []
+                node = target
+                while node in parent:
+                    parent_node, via_prop, rel_t = parent[node]
+                    path.append({KEY_FROM: parent_node, KEY_TO: node, KEY_VIA: via_prop, KEY_TYPE: rel_t})
+                    node = parent_node
+                return list(reversed(path))
 
             if target not in visited:
                 visited.add(target)
-                queue.append((target, path + [step]))
+                parent[target] = (current, via, rel_type)
+                # Only enqueue if we haven't hit max depth
+                if get_depth(target) < max_depth:
+                    queue.append(target)
 
     return []
 

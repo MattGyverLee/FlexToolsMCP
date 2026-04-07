@@ -5,8 +5,9 @@ import sys
 import json
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add src to path (for standalone execution outside pytest)
+if str(Path(__file__).parent / "src") not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from server.validators import detect_casting_needs
 

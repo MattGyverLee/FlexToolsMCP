@@ -10,15 +10,10 @@ These tests exercise list_tools() and call_tool() directly without requiring
 the full API indexes -- they mock the index to keep tests self-contained.
 """
 
-import sys
 import json
 import asyncio
 from pathlib import Path
 from unittest import TestCase, main
-from unittest.mock import patch, MagicMock
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 # ---------------------------------------------------------------------------

@@ -15,11 +15,10 @@ Author: Claude Code
 Date: 2026-02-21
 """
 
-import sys
 import json
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 import traceback
 

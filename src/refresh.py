@@ -136,102 +136,93 @@ def run_command(cmd: list, description: str) -> bool:
         return False
 
 
-def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:
-    """Refresh FlexLibs stable index from installed package (live version)."""
-    # Priority: installed package > explicit path > .env FLEXLIBS_PATH > fail
-    try:
-        import flexlibs
-        if flexlibs.__file__:
-            flexlibs_path = str(Path(flexlibs.__file__).parent.parent)
-            print(f"[INFO] Using installed FlexLibs from: {flexlibs_path}")
-        else:
-            raise ImportError("flexlibs.__file__ is None")
-    except ImportError:
-        if flexlibs_path is None:
-            flexlibs_path = os.environ.get("FLEXLIBS_PATH")
+def _refresh_library(
+    library_name: str,
+    import_name: str,
+    env_var_name: str,
+    library_path: str | None,
+    cmd_flag: str,
+    output_prefix: str,
+) -> bool:
+    """Generic library refresh function.
 
-        if flexlibs_path:
-            print(f"[INFO] FlexLibs not installed; using repo path from .env: {flexlibs_path}")
-        else:
-            print("[ERROR] FlexLibs not installed and FLEXLIBS_PATH not set in .env")
-            print("        Install FlexLibs with: pip install flexlibs")
-            print("        Or uncomment FLEXLIBS_PATH in .env")
-            return False
+    Args:
+        library_name: Display name (e.g., 'FlexLibs', 'FlexLibs 2.0')
+        import_name: Python module to import (e.g., 'flexlibs', 'flexlibs2')
+        env_var_name: Environment variable key (e.g., 'FLEXLIBS_PATH')
+        library_path: Explicit path (None to try import first)
+        cmd_flag: Command-line flag (e.g., '--flexlibs-path')
+        output_prefix: Output prefix (e.g., 'flexlibs_api' for flexlibs_api_temp.json)
+    """
+    # Priority: installed package > explicit path > .env > fail
+    if library_path is None:
+        try:
+            module = __import__(import_name)
+            if module.__file__:
+                library_path = str(Path(module.__file__).parent.parent)
+                print(f"[INFO] Using installed {library_name} from: {library_path}")
+            else:
+                raise ImportError(f"{import_name}.__file__ is None")
+        except ImportError:
+            library_path = os.environ.get(env_var_name)
+            if library_path:
+                print(f"[INFO] {library_name} not installed; using repo path from .env: {library_path}")
+            else:
+                install_cmd = "pip install flexlibs" if "stable" in output_prefix else "pip install ./flexlibs2"
+                print(f"[ERROR] {library_name} not installed and {env_var_name} not set in .env")
+                print(f"        Install with: {install_cmd}")
+                print(f"        Or uncomment {env_var_name} in .env")
+                return False
 
     index_dir = get_project_root() / "index" / "flexlibs"
     index_dir.mkdir(parents=True, exist_ok=True)
-    temp_output = index_dir / "flexlibs_api_temp.json"
+    temp_output = index_dir / f"{output_prefix}_temp.json"
 
     cmd = [
         sys.executable,
         "src/flexlibs2_analyzer.py",
-        "--flexlibs-path", flexlibs_path,
+        cmd_flag, library_path,
         "--output", str(temp_output)
     ]
 
-    if not run_command(cmd, "Refreshing FlexLibs stable index"):
+    if not run_command(cmd, f"Refreshing {library_name} index"):
         return False
 
-    # Extract version from temp file and rename to versioned file
+    # Extract version and rename to versioned file
     version = extract_version_from_json(temp_output)
-    versioned_path = get_versioned_output_path(index_dir / "flexlibs_api.json", version)
+    versioned_path = get_versioned_output_path(index_dir / f"{output_prefix}.json", version)
 
     try:
         os.replace(temp_output, versioned_path)
-        print(f"[INFO] Saved FlexLibs stable v{version} to {versioned_path.name}")
+        print(f"[INFO] Saved {library_name} v{version} to {versioned_path.name}")
         return True
     except Exception as e:
         print(f"[ERROR] Failed to move file: {e}")
         return False
+
+
+def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:
+    """Refresh FlexLibs stable index from installed package (live version)."""
+    return _refresh_library(
+        library_name="FlexLibs",
+        import_name="flexlibs",
+        env_var_name="FLEXLIBS_PATH",
+        library_path=flexlibs_path,
+        cmd_flag="--flexlibs-path",
+        output_prefix="flexlibs_api",
+    )
 
 
 def refresh_flexlibs2(flexlibs2_path: str | None = None) -> bool:
     """Refresh FlexLibs 2.0 index from installed package (live version)."""
-    # Priority: installed package > explicit path > .env FLEXLIBS2_PATH > fail
-    try:
-        import flexlibs2
-        if flexlibs2.__file__:
-            flexlibs2_path = str(Path(flexlibs2.__file__).parent.parent)
-            print(f"[INFO] Using installed FlexLibs 2.0 from: {flexlibs2_path}")
-        else:
-            raise ImportError("flexlibs2.__file__ is None")
-    except ImportError:
-        if flexlibs2_path is None:
-            flexlibs2_path = os.environ.get("FLEXLIBS2_PATH")
-
-        if flexlibs2_path:
-            print(f"[INFO] FlexLibs 2.0 not installed; using repo path from .env: {flexlibs2_path}")
-        else:
-            print("[ERROR] FlexLibs 2.0 not installed and FLEXLIBS2_PATH not set in .env")
-            print("        Install FlexLibs 2.0 with: pip install ./flexlibs2")
-            print("        Or uncomment FLEXLIBS2_PATH in .env")
-            return False
-
-    index_dir = get_project_root() / "index" / "flexlibs"
-    index_dir.mkdir(parents=True, exist_ok=True)
-    temp_output = index_dir / "flexlibs2_api_temp.json"
-
-    cmd = [
-        sys.executable,
-        "src/flexlibs2_analyzer.py",
-        "--flexlibs2-path", flexlibs2_path,
-        "--output", str(temp_output)
-    ]
-
-    if not run_command(cmd, "Refreshing FlexLibs 2.0 index"):
-        return False
-
-    # Extract version from temp file and rename to versioned file
-    version = extract_version_from_json(temp_output)
-    versioned_path = get_versioned_output_path(index_dir / "flexlibs2_api.json", version)
-
-    try:
-        os.replace(temp_output, versioned_path)
-        print(f"[INFO] Saved FlexLibs 2.0 v{version} to {versioned_path.name}")
-        return True
-    except Exception as e:
-        print(f"[ERROR] Failed to move file: {e}")
-        return False
+    return _refresh_library(
+        library_name="FlexLibs 2.0",
+        import_name="flexlibs2",
+        env_var_name="FLEXLIBS2_PATH",
+        library_path=flexlibs2_path,
+        cmd_flag="--flexlibs2-path",
+        output_prefix="flexlibs2_api",
+    )
 
 
 def refresh_liblcm(dll_path: str | None = None) -> bool:
@@ -277,7 +268,6 @@ def apply_categorization() -> bool:
     print("\n[INFO] Applying semantic categorization to LibLCM...")
 
     try:
-        import json
         from collections import Counter
 
         index_dir = get_project_root() / "index" / "liblcm"
@@ -298,7 +288,7 @@ def apply_categorization() -> bool:
             lcm = json.load(f)
 
         # Namespace-based categorization rules
-        namespace_rules = {
+        NAMESPACE_RULES = {
             'SIL.LCModel.Core.Text': 'texts',
             'SIL.LCModel.Core.WritingSystems': 'writing_system',
             'SIL.LCModel.Core.SpellChecking': 'system',
@@ -312,51 +302,48 @@ def apply_categorization() -> bool:
             'SIL.LCModel.Tools': 'system',
         }
 
+        # Prefix-based rules: map (prefix_i, prefix_interface) -> category
+        PREFIX_RULES = {
+            ('Mo', 'IMo'): 'grammar',
+            ('Ph', 'IPh'): 'grammar',
+            ('Fs', 'IFs'): 'grammar',
+            ('Wfi', 'IWfi'): 'wordform',
+            ('Ds', 'IDs'): 'discourse',
+            ('Rn', 'IRn'): 'notebook',
+            ('Scr', 'IScr'): 'scripture',
+            ('St', 'ISt'): 'texts',
+            ('Text', 'IText'): 'texts',
+            ('Lex', 'ILex'): 'lexicon',
+            ('Reversal', 'IReversal'): 'reversal',
+        }
+
+        # Keyword patterns
+        KEYWORD_RULES = {
+            ('sense', 'entry', 'lexeme', 'headword'): 'lexicon',
+            ('paragraph', 'footnote'): 'texts',
+            ('wordform', 'concordance'): 'wordform',
+            ('interlin', 'baseline'): 'texts',
+        }
+
         def categorize_entity(name, entity):
             current = entity.get('category', 'general')
             ns = entity.get('namespace', '')
 
             # Apply namespace rules
-            for ns_pattern, cat in namespace_rules.items():
+            for ns_pattern, cat in NAMESPACE_RULES.items():
                 if ns.startswith(ns_pattern):
                     return cat
 
-            # Name-based rules
-            name_lower = name.lower()
-
             # Prefix patterns
-            if name.startswith('IMo') or name.startswith('Mo'):
-                return 'grammar'
-            if name.startswith('IPh') or name.startswith('Ph'):
-                return 'grammar'
-            if name.startswith('IFs') or name.startswith('Fs'):
-                return 'grammar'
-            if name.startswith('IWfi') or name.startswith('Wfi'):
-                return 'wordform'
-            if name.startswith('IDs') or name.startswith('Ds'):
-                return 'discourse'
-            if name.startswith('IRn') or name.startswith('Rn'):
-                return 'notebook'
-            if name.startswith('IScr') or name.startswith('Scr'):
-                return 'scripture'
-            if name.startswith('ISt') or name.startswith('St'):
-                return 'texts'
-            if name.startswith('IText') or name.startswith('Text'):
-                return 'texts'
-            if name.startswith('ILex') or name.startswith('Lex'):
-                return 'lexicon'
-            if name.startswith('IReversal') or name.startswith('Reversal'):
-                return 'reversal'
+            for prefixes, category in PREFIX_RULES.items():
+                if any(name.startswith(p) for p in prefixes):
+                    return category
 
-            # Semantic name patterns
-            if any(x in name_lower for x in ['sense', 'entry', 'lexeme', 'headword']):
-                return 'lexicon'
-            if any(x in name_lower for x in ['paragraph', 'footnote']):
-                return 'texts'
-            if any(x in name_lower for x in ['wordform', 'concordance']):
-                return 'wordform'
-            if any(x in name_lower for x in ['interlin', 'baseline']):
-                return 'texts'
+            # Keyword patterns
+            name_lower = name.lower()
+            for keywords, category in KEYWORD_RULES.items():
+                if any(kw in name_lower for kw in keywords):
+                    return category
 
             # Compiler-generated
             if '<>c__' in name or name.startswith('Class_'):

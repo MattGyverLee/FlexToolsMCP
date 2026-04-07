@@ -44,6 +44,7 @@ MULTISTRING_OPERATIONS = {
 PATTERN_ARGUMENT_SPEC = re.compile(r'^(\w+)(?:\s*\(([^)]+)\))?:\s*(.*)$')
 PATTERN_RETURN_TYPE = re.compile(r'^([A-Za-z_][\w\[\], ]*?):\s+')
 PATTERN_EXCEPTION_SPEC = re.compile(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$')
+PATTERN_CAMEL_CASE_SPLIT = re.compile(r'([A-Z])')  # Split camelCase to words
 
 
 # ---- Version Detection -------------------------------------------------------
@@ -672,24 +673,24 @@ def generate_method_description(method_name: str, params: List[str], return_type
             suffix = name.replace(pattern, "").strip()
             if suffix:
                 # CamelCase to words
-                words = re.sub('([A-Z])', r' \1', suffix).strip().lower()
+                words = PATTERN_CAMEL_CASE_SPLIT.sub(r' \1', suffix).strip().lower()
                 return f"{desc} {words}".rstrip()
             return desc
 
     # Fall back to generic patterns based on prefix
     if name.startswith("Get"):
         target = name[3:]  # Remove "Get"
-        words = re.sub('([A-Z])', r' \1', target).strip().lower()
+        words = PATTERN_CAMEL_CASE_SPLIT.sub(r' \1', target).strip().lower()
         return f"Returns the {words}"
 
     if name.startswith("Set"):
         target = name[3:]  # Remove "Set"
-        words = re.sub('([A-Z])', r' \1', target).strip().lower()
+        words = PATTERN_CAMEL_CASE_SPLIT.sub(r' \1', target).strip().lower()
         return f"Sets the {words}"
 
     if name.startswith("Is") or name.startswith("Has") or name.startswith("Can"):
         target = name[2:] if name.startswith("Is") else name[3:]
-        words = re.sub('([A-Z])', r' \1', target).strip().lower()
+        words = PATTERN_CAMEL_CASE_SPLIT.sub(r' \1', target).strip().lower()
         return f"Checks if {words}"
 
     # If we have parameters, try to describe based on them
@@ -698,7 +699,7 @@ def generate_method_description(method_name: str, params: List[str], return_type
         return f"Performs {method_name} operation with {param_str}"
 
     # Last resort - just describe it generically
-    words = re.sub('([A-Z])', r' \1', name).strip()
+    words = PATTERN_CAMEL_CASE_SPLIT.sub(r' \1', name).strip()
     return f"{words} operation"
 
 

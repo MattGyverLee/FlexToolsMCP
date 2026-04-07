@@ -68,11 +68,10 @@ load_env()
 def extract_version_from_json(json_path: Path) -> str:
     """Extract version from a generated API JSON file."""
     try:
-        if json_path.exists():
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('_source', {}).get('version', '0.0.0')
-    except Exception:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data.get('_source', {}).get('version', '0.0.0')
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
     return '0.0.0'
 

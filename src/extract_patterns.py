@@ -113,6 +113,11 @@ def extract_object_type(class_name: str, example: str) -> str:
 
 def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
     """Extract patterns from FlexLibs2 docstrings."""
+    # Configuration limits
+    MIN_EXAMPLE_LENGTH = 20  # Minimum example text length to include
+    MIN_CLEANED_EXAMPLE_LENGTH = 10  # Minimum length after cleanup
+    MAX_PATTERNS_PER_OBJECT = 20  # Maximum patterns to keep per object type
+    MAX_PATTERNS_PER_OPERATION = 30  # Maximum patterns per operation type
 
     flexlibs2 = load_json(flexlibs2_path)
 
@@ -126,11 +131,11 @@ def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
         for method in entity.get("methods", []):
             example = method.get("example", "").strip()
 
-            if not example or len(example) < 20:
+            if not example or len(example) < MIN_EXAMPLE_LENGTH:
                 continue
 
             cleaned = clean_example(example)
-            if len(cleaned) < 10:
+            if len(cleaned) < MIN_CLEANED_EXAMPLE_LENGTH:
                 continue
 
             operation = classify_operation(method["name"], example)
@@ -162,13 +167,13 @@ def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
             if code_key not in seen_codes:
                 seen_codes.add(code_key)
                 unique.append(p)
-        unique_patterns_by_object[obj_type] = unique[:20]  # Limit per object
+        unique_patterns_by_object[obj_type] = unique[:MAX_PATTERNS_PER_OBJECT]
 
     result = {
         "_schema": "common-patterns/1.0",
         "by_object": unique_patterns_by_object,
         "by_operation": {
-            op: patterns[:30] for op, patterns in patterns_by_operation.items()
+            op: patterns[:MAX_PATTERNS_PER_OPERATION] for op, patterns in patterns_by_operation.items()
         },
         "statistics": {
             "total_patterns": len(all_patterns),

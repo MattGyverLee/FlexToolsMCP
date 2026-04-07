@@ -250,56 +250,6 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
 
-    # Include API statistics when project is defined
-    if project_name:
-        api_index = get_api_index()
-        api_stats = {
-            "flexlibs2": {
-                "version": api_index.flexlibs2_version or "not loaded",
-                "entities": 0,
-                "categories": 0
-            },
-            "liblcm": {
-                "version": api_index.liblcm_version or "not loaded",
-                "entities": 0,
-                "categories": 0
-            },
-            "flexlibs_stable": {
-                "version": api_index.flexlibs_stable_version or "not loaded",
-                "entities": 0,
-                "categories": 0
-            }
-        }
-
-        # Count FlexLibs2 entities and categories
-        if api_index.flexlibs2:
-            fl2_entities = api_index.flexlibs2.get(KEY_ENTITIES, {})
-            api_stats["flexlibs2"]["entities"] = len(fl2_entities)
-            fl2_categories = api_index.flexlibs2.get(KEY_CATEGORIES, {})
-            api_stats["flexlibs2"]["categories"] = len(fl2_categories)
-
-        # Count LibLCM entities and categories
-        if api_index.liblcm:
-            lcm_entities = api_index.liblcm.get(KEY_ENTITIES, {})
-            api_stats["liblcm"]["entities"] = len(lcm_entities)
-            lcm_categories = set()
-            for entity in lcm_entities.values():
-                cat = entity.get(KEY_CATEGORY, "uncategorized")
-                lcm_categories.add(cat)
-            api_stats["liblcm"]["categories"] = len(lcm_categories)
-
-        # Count FlexLibs stable entities
-        if api_index.flexlibs_stable:
-            stable_entities = api_index.flexlibs_stable.get(KEY_ENTITIES, {})
-            api_stats["flexlibs_stable"]["entities"] = len(stable_entities)
-            stable_categories = set()
-            for entity in stable_entities.values():
-                cat = entity.get(KEY_CATEGORY, "uncategorized")
-                stable_categories.add(cat)
-            api_stats["flexlibs_stable"]["categories"] = len(stable_categories)
-
-        result["api_statistics"] = api_stats
-
     # Warnings
     warnings = []
     if not project_name:
@@ -540,7 +490,13 @@ async def handle_get_statistics(args: dict) -> list[TextContent]:
     - Number of entities in each API
     - Session configuration
     - Server capabilities
+
+    REQUIRED: Must be called after start() and before discovery tools
+    (search_by_capability, get_object_api, etc.).
     """
+    # Mark that statistics have been retrieved (required before discovery)
+    session_state.statistics_called = True
+
     api_index = get_api_index()
 
     result = {

@@ -15,7 +15,8 @@ from mcp.types import TextContent
 
 # Import shared state and response constants
 try:
-    from ..kernel import get_api_index
+    from ...response_utils import json_response
+    from ..kernel import get_api_index, session_state
     from ..models import GetNavigationPathInput
     from ..response_keys import (
         KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
@@ -28,7 +29,8 @@ try:
     )
     from .utils import normalize_object_name
 except ImportError:
-    from server.kernel import get_api_index
+    from response_utils import json_response
+    from server.kernel import get_api_index, session_state
     from server.models import GetNavigationPathInput
     from server.response_keys import (
         KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
@@ -185,7 +187,17 @@ async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextC
 
     Tries precomputed common paths first, then falls back to BFS search.
     Includes polymorphic collection warnings for paths that require casting.
+
+    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
     """
+    # Enforce workflow: get_statistics must be called before discovery
+    if not session_state.statistics_called:
+        return json_response({
+            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
+            "error": "statistics_required",
+            "next_step": "flextools_get_statistics()"
+        })
+
     from_obj = args.from_object
     to_obj = args.to_object
 

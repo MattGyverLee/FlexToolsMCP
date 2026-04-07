@@ -294,6 +294,41 @@ def _load_library_api_index(
             operations_logger.error(f"Failed to load {library_name}: {e}")
 
 
+def _load_json_with_fallback(index_dir: Path, versioned_prefix: str, unversioned_name: str) -> dict | None:
+    """Load JSON file with versioned name fallback to unversioned name (DRY consolidation).
+
+    Tries to load {versioned_prefix}_vX.Y.Z.json, falls back to {unversioned_name}.json.
+    This pattern was duplicated for navigation_graph and casting_index (DRY violation).
+
+    Args:
+        index_dir: Parent index directory
+        versioned_prefix: Prefix for versioned file search (e.g., 'navigation_graph_liblcm')
+        unversioned_name: Unversioned fallback filename (e.g., 'navigation_graph.json')
+
+    Returns:
+        Loaded JSON dict or None if not found
+    """
+    # Try versioned first
+    versioned_path = find_latest_versioned_api_file(index_dir, versioned_prefix)
+    if versioned_path and versioned_path.exists():
+        try:
+            with open(versioned_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    # Fall back to unversioned
+    unversioned_path = index_dir / unversioned_name
+    if unversioned_path.exists():
+        try:
+            with open(unversioned_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    return None
+
+
 @dataclass
 class APIIndex:
     """Holds the loaded API documentation indexes."""
@@ -349,29 +384,19 @@ class APIIndex:
             "flexlibs_stable_version",
         )
 
-        # Load navigation graph (find latest liblcm version)
-        nav_graph_path = find_latest_versioned_api_file(index_dir, "navigation_graph_liblcm")
-        if nav_graph_path and nav_graph_path.exists():
-            with open(nav_graph_path, "r", encoding="utf-8") as f:
-                index.navigation_graph = json.load(f)
-        else:
-            # Fall back to unversioned for compatibility
-            nav_graph_path = index_dir / "navigation_graph.json"
-            if nav_graph_path.exists():
-                with open(nav_graph_path, "r", encoding="utf-8") as f:
-                    index.navigation_graph = json.load(f)
+        # Load navigation graph using consolidated helper (eliminates duplicated load pattern)
+        index.navigation_graph = _load_json_with_fallback(
+            index_dir,
+            "navigation_graph_liblcm",
+            "navigation_graph.json"
+        )
 
-        # Load casting index (pythonnet interface casting requirements)
-        casting_path = find_latest_versioned_api_file(index_dir, "casting_index_liblcm")
-        if casting_path and casting_path.exists():
-            with open(casting_path, "r", encoding="utf-8") as f:
-                index.casting_index = json.load(f)
-        else:
-            # Fall back to unversioned for compatibility
-            casting_path = index_dir / "casting_index.json"
-            if casting_path.exists():
-                with open(casting_path, "r", encoding="utf-8") as f:
-                    index.casting_index = json.load(f)
+        # Load casting index using consolidated helper (eliminates duplicated load pattern)
+        index.casting_index = _load_json_with_fallback(
+            index_dir,
+            "casting_index_liblcm",
+            "casting_index.json"
+        )
 
         # Load semantic search (optional)
         index.semantic_search = SemanticSearch.load(index_dir)

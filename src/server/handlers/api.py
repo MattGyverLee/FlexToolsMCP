@@ -13,27 +13,16 @@ import heapq
 from mcp.types import TextContent
 from typing import List, Dict, Any, cast
 
-# Import kernel and config with dual-mode support
-try:
-    from ..kernel import api_index, session_state
-    from ..response_utils import json_response
-    from ..server.response_keys import (
-        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
-        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
-        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
-        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
-    )
-except ImportError:
-    from server.kernel import api_index, session_state
-    from response_utils import json_response
-    from server.response_keys import (
-        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
-        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
-        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
-        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
-    )
+# Import kernel and config (absolute imports work in all modes)
+from server.kernel import api_index, session_state
+from response_utils import json_response
+from server.response_keys import (
+    KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
+    KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
+    KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
+    KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+    KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
+)
 
 # Type note: api_index is initialized by server.py before any handlers are called
 KEY_SOURCES_SEARCHED = "sources_searched"

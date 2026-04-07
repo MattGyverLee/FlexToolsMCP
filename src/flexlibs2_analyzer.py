@@ -40,6 +40,11 @@ MULTISTRING_OPERATIONS = {
     "BestVernacularAlternative", "CopyAlternatives"
 }
 
+# Pre-compiled regex patterns for performance (avoid re-compilation in hot paths)
+PATTERN_ARGUMENT_SPEC = re.compile(r'^(\w+)(?:\s*\(([^)]+)\))?:\s*(.*)$')
+PATTERN_RETURN_TYPE = re.compile(r'^([A-Za-z_][\w\[\], ]*?):\s+')
+PATTERN_EXCEPTION_SPEC = re.compile(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$')
+
 
 # ---- Version Detection -------------------------------------------------------
 
@@ -237,7 +242,7 @@ def parse_docstring(docstring: str) -> Dict[str, Any]:
                 result["description"] = stripped
         elif current_section == "args":
             # Parse argument: "arg_name (type): description" or "arg_name: description"
-            arg_match = re.match(r'^(\w+)(?:\s*\(([^)]+)\))?:\s*(.*)$', stripped)
+            arg_match = PATTERN_ARGUMENT_SPEC.match(stripped)
             if arg_match:
                 arg_name = arg_match.group(1)
                 arg_type = arg_match.group(2) or ""
@@ -254,7 +259,7 @@ def parse_docstring(docstring: str) -> Dict[str, Any]:
                 result["returns"] = stripped
                 # Extract return type from "TypeName: description" pattern
                 # Handles: "ILexEntry: description", "bool: description", "List[str]: desc"
-                type_match = re.match(r'^([A-Za-z_][\w\[\], ]*?):\s+', stripped)
+                type_match = PATTERN_RETURN_TYPE.match(stripped)
                 if type_match:
                     result["return_type"] = type_match.group(1).strip()
         elif current_section == "raises":
@@ -406,7 +411,7 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
                 continue
             # Valid exception entries typically start with an exception class name
             # Pattern: "ExceptionName" or "ExceptionName: description"
-            exc_match = re.match(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$', exc_stripped)
+            exc_match = PATTERN_EXCEPTION_SPEC.match(exc_stripped)
             if exc_match:
                 exc_name = exc_match.group(1)
                 exc_desc = exc_match.group(2)
@@ -575,7 +580,7 @@ def infer_unified_output_behavior(method_or_property_name: str,
                exc_stripped.startswith("Example") or exc_stripped.startswith("#"):
                 continue
             # Match exception names (CamelCase pattern)
-            exc_match = re.match(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$', exc_stripped)
+            exc_match = PATTERN_EXCEPTION_SPEC.match(exc_stripped)
             if exc_match:
                 exc_name = exc_match.group(1)
                 exc_desc = exc_match.group(2)

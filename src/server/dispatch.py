@@ -30,6 +30,55 @@ from .models import (
     RunModuleInput,
 )
 
+# ============================================================
+# Tool name constants (replace stringly-typed code)
+# ============================================================
+# Admin tools
+TOOL_FLEXTOOLS_START = "flextools_start"
+TOOL_MANAGE_CONFIG = "flextools_manage_config"
+TOOL_GET_SESSION_HISTORY = "flextools_get_session_history"
+TOOL_UNDO_LAST_OPERATION = "flextools_undo_last_operation"
+TOOL_GET_MODULE_TEMPLATE = "flextools_get_module_template"
+
+# Discovery tools
+TOOL_SEARCH_BY_CAPABILITY = "flextools_search_by_capability"
+TOOL_GET_OBJECT_API = "flextools_get_object_api"
+TOOL_GET_NAVIGATION_PATH = "flextools_get_navigation_path"
+TOOL_FIND_EXAMPLES = "flextools_find_examples"
+
+# Catalog tools
+TOOL_LIST_CATEGORIES = "flextools_list_categories"
+TOOL_LIST_ENTITIES_IN_CATEGORY = "flextools_list_entities_in_category"
+
+# Module management tools
+TOOL_START_MODULE = "flextools_start_module"
+TOOL_GET_OPERATION_LOGS = "flextools_get_operation_logs"
+
+# Execution tools
+TOOL_RUN_MODULE = "flextools_run_module"
+
+# Property resolution tool
+TOOL_RESOLVE_PROPERTY = "flextools_resolve_property"
+
+# All tool names for validation
+ALL_TOOL_NAMES = frozenset([
+    TOOL_FLEXTOOLS_START,
+    TOOL_MANAGE_CONFIG,
+    TOOL_GET_SESSION_HISTORY,
+    TOOL_UNDO_LAST_OPERATION,
+    TOOL_GET_MODULE_TEMPLATE,
+    TOOL_SEARCH_BY_CAPABILITY,
+    TOOL_GET_OBJECT_API,
+    TOOL_GET_NAVIGATION_PATH,
+    TOOL_FIND_EXAMPLES,
+    TOOL_LIST_CATEGORIES,
+    TOOL_LIST_ENTITIES_IN_CATEGORY,
+    TOOL_START_MODULE,
+    TOOL_GET_OPERATION_LOGS,
+    TOOL_RUN_MODULE,
+    TOOL_RESOLVE_PROPERTY,
+])
+
 # Import all handler functions
 try:
     from .handlers.admin import (
@@ -95,39 +144,42 @@ ToolHandler = Callable[[BaseModel], list[TextContent]]
 
 DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Admin tools
-    "flextools_start": (handle_start, FlexToolsStartInput),
-    "flextools_manage_config": (handle_manage_config, ManageConfigInput),
-    "flextools_get_session_history": (handle_get_session_history, GetSessionHistoryInput),
-    "flextools_undo_last_operation": (handle_undo_last_operation, UndoLastOperationInput),
-    "flextools_get_module_template": (handle_get_module_template, GetModuleTemplateInput),
+    TOOL_FLEXTOOLS_START: (handle_start, FlexToolsStartInput),
+    TOOL_MANAGE_CONFIG: (handle_manage_config, ManageConfigInput),
+    TOOL_GET_SESSION_HISTORY: (handle_get_session_history, GetSessionHistoryInput),
+    TOOL_UNDO_LAST_OPERATION: (handle_undo_last_operation, UndoLastOperationInput),
+    TOOL_GET_MODULE_TEMPLATE: (handle_get_module_template, GetModuleTemplateInput),
 
     # Discovery tools
-    "flextools_search_by_capability": (handle_search_by_capability, SearchCapabilityInput),
-    "flextools_get_object_api": (handle_get_object_api, GetObjectApiInput),
-    "flextools_get_navigation_path": (handle_get_navigation_path, GetNavigationPathInput),
-    "flextools_find_examples": (handle_find_examples, FindExamplesInput),
+    TOOL_SEARCH_BY_CAPABILITY: (handle_search_by_capability, SearchCapabilityInput),
+    TOOL_GET_OBJECT_API: (handle_get_object_api, GetObjectApiInput),
+    TOOL_GET_NAVIGATION_PATH: (handle_get_navigation_path, GetNavigationPathInput),
+    TOOL_FIND_EXAMPLES: (handle_find_examples, FindExamplesInput),
 
     # Catalog tools
-    "flextools_list_categories": (handle_list_categories, ListCategoriesInput),
-    "flextools_list_entities_in_category": (handle_list_entities_in_category, ListEntitiesInCategoryInput),
+    TOOL_LIST_CATEGORIES: (handle_list_categories, ListCategoriesInput),
+    TOOL_LIST_ENTITIES_IN_CATEGORY: (handle_list_entities_in_category, ListEntitiesInCategoryInput),
 
     # Module management tools
-    "flextools_start_module": (handle_start_module, StartModuleInput),
-    "flextools_get_operation_logs": (handle_get_operation_logs, GetOperationLogsInput),
+    TOOL_START_MODULE: (handle_start_module, StartModuleInput),
+    TOOL_GET_OPERATION_LOGS: (handle_get_operation_logs, GetOperationLogsInput),
 
     # Execution tools
-    "flextools_run_module": (handle_run_module, RunModuleInput),
+    TOOL_RUN_MODULE: (handle_run_module, RunModuleInput),
 
     # Property resolution tool
-    "flextools_resolve_property": (handle_resolve_property, ResolvePropertyInput),
+    TOOL_RESOLVE_PROPERTY: (handle_resolve_property, ResolvePropertyInput),
 }
+
+# Cache tool names (avoid O(n) list rebuild on every call)
+_CACHED_TOOL_NAMES: list[str] = sorted(DISPATCH_ROUTES.keys())
 
 
 def get_tool_handler(tool_name: str) -> Tuple[Callable, Type[BaseModel]] | None:
     """Get handler and input model for a tool.
 
     Args:
-        tool_name: Name of the tool (e.g., 'flextools_search_by_capability')
+        tool_name: Name of the tool (e.g., TOOL_SEARCH_BY_CAPABILITY or 'flextools_search_by_capability')
 
     Returns:
         Tuple of (handler_func, input_model_class) or None if not found
@@ -136,5 +188,5 @@ def get_tool_handler(tool_name: str) -> Tuple[Callable, Type[BaseModel]] | None:
 
 
 def get_all_tool_names() -> list[str]:
-    """Get list of all registered tool names."""
-    return list(DISPATCH_ROUTES.keys())
+    """Get list of all registered tool names (cached)."""
+    return _CACHED_TOOL_NAMES

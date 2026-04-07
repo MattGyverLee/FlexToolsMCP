@@ -357,24 +357,22 @@ def apply_categorization() -> bool:
 
             return current
 
-        # Apply recategorization
+        # Apply recategorization and count categories in single pass
         changes = 0
+        categories = Counter()
         for name, entity in lcm.get('entities', {}).items():
             old_cat = entity.get('category', 'general')
             new_cat = categorize_entity(name, entity)
             if new_cat != old_cat:
                 entity['category'] = new_cat
                 changes += 1
+            # Count categories (always, to reflect current state)
+            categories[entity.get('category', 'NONE')] += 1
 
         # Save updated file
         lcm = sort_json_arrays(lcm)
         with open(liblcm_path, 'w', encoding='utf-8') as f:
             json.dump(lcm, f, indent=2, ensure_ascii=False, sort_keys=True)
-
-        # Count categories
-        categories = Counter()
-        for entity in lcm.get('entities', {}).values():
-            categories[entity.get('category', 'NONE')] += 1
 
         print(f"[OK] Recategorized {changes} entities")
         print("     Category counts:")

@@ -485,6 +485,9 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
 async def handle_get_statistics(args: dict) -> list[TextContent]:
     """Get lexicon statistics: entries, writing systems, and data inventory.
 
+    Special case tool: Can be called at ANY time (no prerequisites, not blocked by gates).
+    Sets flag to unlock discovery tools (search_by_capability, get_object_api, etc.).
+
     Uses code execution to query project (avoids registry access issues in handler context).
 
     Returns:
@@ -492,9 +495,12 @@ async def handle_get_statistics(args: dict) -> list[TextContent]:
     - Writing systems (vernacular and analysis types)
     - Reversal indexes and their translation counts
 
-    REQUIRED: Must be called after start() and before discovery tools.
+    Typical workflow:
+      1. flextools_start(project_name="...")
+      2. flextools_get_statistics() <- ALWAYS callable, unblocks discovery
+      3. flextools_search_by_capability(query="...")
     """
-    # Mark that statistics have been retrieved (required before discovery)
+    # Mark that statistics have been retrieved (unlocks discovery tools)
     session_state.statistics_called = True
 
     result = {

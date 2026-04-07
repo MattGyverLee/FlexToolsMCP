@@ -339,11 +339,18 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
 
-    # Add project metadata if available
-    if project_metadata:
-        result["project_metadata"] = project_metadata
-    elif project_metadata_error:
+    # Add project metadata or error to response
+    if project_metadata_error:
         result["project_metadata_error"] = project_metadata_error
+    elif project_metadata:
+        result["project_metadata"] = project_metadata
+    elif project_name:
+        # project_name was set but no metadata and no error - return empty metadata
+        result["project_metadata"] = {
+            "writing_systems": {"vernacular": [], "analysis": []},
+            "entry_count": 0,
+            "note": "Failed to retrieve metadata but no error was captured"
+        }
 
     # Warnings
     warnings = []

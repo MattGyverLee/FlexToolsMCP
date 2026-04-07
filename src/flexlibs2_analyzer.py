@@ -947,6 +947,14 @@ def _detect_code_transformations(node) -> List[Dict[str, str]]:
     return transformations
 
 
+def _add_unique_to_list(collection: list, item: Any) -> bool:
+    """Add item to list if not already present. Returns True if added, False if duplicate."""
+    if item not in collection:
+        collection.append(item)
+        return True
+    return False
+
+
 def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]:
     """
     Extract LibLCM method calls and property accesses from a method body.
@@ -1011,18 +1019,15 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
                 for arg in child.args:
                     if isinstance(arg, ast.Name):
                         if LCM_FACTORY_PATTERN.match(arg.id):
-                            if arg.id not in result["factories_used"]:
-                                result["factories_used"].append(arg.id)
+                            _add_unique_to_list(result["factories_used"], arg.id)
                         elif LCM_REPOSITORY_PATTERN.match(arg.id):
-                            if arg.id not in result["repositories_used"]:
-                                result["repositories_used"].append(arg.id)
+                            _add_unique_to_list(result["repositories_used"], arg.id)
 
             # Check for ObjectsIn(Repository) pattern
             if "ObjectsIn" in call_str:
                 for arg in child.args:
                     if isinstance(arg, ast.Name) and LCM_REPOSITORY_PATTERN.match(arg.id):
-                        if arg.id not in result["repositories_used"]:
-                            result["repositories_used"].append(arg.id)
+                        _add_unique_to_list(result["repositories_used"], arg.id)
 
             # Check for utility class calls (TsStringUtils.MakeString, etc.)
             if isinstance(child.func, ast.Attribute):
@@ -1031,8 +1036,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
                     method_name = child.func.attr
                     if class_name in LCM_UTILITIES:
                         util_str = f"{class_name}.{method_name}"
-                        if util_str not in result["utilities_used"]:
-                            result["utilities_used"].append(util_str)
+                        _add_unique_to_list(result["utilities_used"], util_str)
 
             # Check for .Create(), .Add(), .Delete() calls on LCM objects
             if isinstance(child.func, ast.Attribute):

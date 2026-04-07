@@ -679,7 +679,9 @@ async def main():
         versions.append(f"FlexLibs {api_index.flexlibs_stable_version}")
 
     if versions:
-        print(f"[INFO] Loaded APIs: {', '.join(versions)}", flush=True)
+        # Note: Can't use stdout during init (breaks MCP protocol parser)
+        # So we use stderr, which shows as [warning] but displays the data
+        print(f"Loaded APIs: {', '.join(versions)}", file=sys.stderr, flush=True)
 
     _log_info( "Starting MCP server...")
 

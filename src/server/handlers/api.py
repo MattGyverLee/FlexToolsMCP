@@ -376,6 +376,10 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     limit = args.get(KEY_LIMIT, 50)
     offset = args.get(KEY_OFFSET, 0)
 
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    if include_liblcm:
+        api_index.ensure_liblcm_loaded()
+
     result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False}
 
     # Pre-lowercase object_type once for fuzzy matching (eliminates repeated .lower() calls)
@@ -510,6 +514,12 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     max_results = args.get("max_results", 10)
     api_mode = args.get(KEY_API_MODE, session_state.get_mode())
     use_semantic = args.get("semantic", True)
+
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    if api_mode in ["all", "liblcm"]:
+        api_index.ensure_liblcm_loaded()
+    if api_mode in ["all", "flexlibs_stable"]:
+        api_index.ensure_flexlibs_stable_loaded()
 
     query_lower = query.lower()
     expanded_query = query
@@ -689,6 +699,13 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     object_type = args.get(KEY_OBJECT_TYPE)
     max_results = args.get("max_results", 5)
 
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    mode = session_state.get_mode()
+    if mode in ["all", "liblcm"]:
+        api_index.ensure_liblcm_loaded()
+    if mode in ["all", "flexlibs_stable"]:
+        api_index.ensure_flexlibs_stable_loaded()
+
     examples = []
 
     if api_index.flexlibs2:
@@ -737,6 +754,11 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     property_name = args[KEY_PROPERTY_NAME]
     context_entity = args.get(KEY_CONTEXT_ENTITY)
     include_casting_info = args.get(KEY_INCLUDE_CASTING_INFO, True)
+
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    api_index.ensure_liblcm_loaded()
+    if include_casting_info:
+        api_index.ensure_casting_index_loaded()
 
     matches = resolve_pythonic_property(property_name, context_entity)
 

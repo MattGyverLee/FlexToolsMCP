@@ -54,6 +54,9 @@ def _get_entity_summary(entity: dict) -> str:
 
 async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]:
     """List all available API categories."""
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    api_index.ensure_liblcm_loaded()
+
     categories = defaultdict(_init_category_dict)
 
     # From FlexLibs 2.0
@@ -76,6 +79,9 @@ async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]
 
 async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) -> list[TextContent]:
     """List all entities in a specific category."""
+    # Lazy-load APIs if needed (they're deferred from startup for speed)
+    api_index.ensure_liblcm_loaded()
+
     category = args.category.lower()
 
     entities = {"flexlibs2": [], "liblcm": []}

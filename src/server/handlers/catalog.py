@@ -82,8 +82,11 @@ async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) ->
 
     # From FlexLibs 2.0
     if api_index.flexlibs2:
-        for entity_name, entity in api_index.flexlibs2.get(KEY_ENTITIES, {}).items():
-            if entity.get(KEY_CATEGORY, "").lower() == category:
+        fl2_entities = api_index.flexlibs2.get(KEY_ENTITIES, {})
+        for entity_name, entity in fl2_entities.items():
+            # Pre-lowercase category once and cache to avoid repeated .lower() calls per entity
+            entity_category_lower = entity.get(KEY_CATEGORY, "").lower()
+            if entity_category_lower == category:
                 entities["flexlibs2"].append({
                     KEY_NAME: entity_name,
                     KEY_METHODS_COUNT: len(entity.get("methods", [])),
@@ -92,8 +95,11 @@ async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) ->
 
     # From LibLCM
     if api_index.liblcm:
-        for entity_name, entity in api_index.liblcm.get(KEY_ENTITIES, {}).items():
-            if entity.get(KEY_CATEGORY, "").lower() == category:
+        liblcm_entities = api_index.liblcm.get(KEY_ENTITIES, {})
+        for entity_name, entity in liblcm_entities.items():
+            # Pre-lowercase category once and cache to avoid repeated .lower() calls per entity
+            entity_category_lower = entity.get(KEY_CATEGORY, "").lower()
+            if entity_category_lower == category:
                 entities["liblcm"].append({
                     KEY_NAME: entity_name,
                     KEY_TYPE: entity.get(KEY_TYPE),

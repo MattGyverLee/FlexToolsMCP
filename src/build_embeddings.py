@@ -31,6 +31,16 @@ except ImportError:
 # Default model - small and fast, good for semantic search
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
+# ============================================================
+# Constants (avoid stringly-typed code)
+# ============================================================
+SOURCE_FLEXLIBS_STABLE = "flexlibs_stable"
+SOURCE_FLEXLIBS2 = "flexlibs2"
+SOURCE_LIBLCM = "liblcm"
+
+TYPE_METHOD = "method"
+TYPE_ENTITY = "entity"
+
 
 def get_index_dir() -> Path:
     """Get the index directory path."""
@@ -73,6 +83,33 @@ def find_latest_versioned_file(directory: Path, pattern: str) -> Optional[Path]:
 
     latest = max(files_with_versions.keys())
     return files_with_versions[latest]
+
+
+def _create_item_dict(
+    item_id: str,
+    source: str,
+    entity_name: str,
+    name: str,
+    item_type: str,
+    text: str,
+    description: str,
+    category: str,
+    signature: str = "",
+) -> Dict[str, Any]:
+    """Factory function for creating searchable item dicts (DRY principle)."""
+    item = {
+        "id": item_id,
+        "source": source,
+        "entity": entity_name,
+        "name": name,
+        "type": item_type,
+        "text": text,
+        "description": description,
+        "category": category,
+    }
+    if signature:
+        item["signature"] = signature
+    return item
 
 
 def load_flexlibs_data() -> Tuple[Dict, Dict]:
@@ -173,62 +210,62 @@ def extract_searchable_items(flexlibs_stable: Dict, flexlibs2: Dict, liblcm: Dic
     # FlexLibs stable methods
     for entity_name, entity in flexlibs_stable.get("entities", {}).items():
         for method in entity.get("methods", []):
-            text = create_method_text(entity_name, method, "flexlibs_stable")
-            items.append({
-                "id": f"flexlibs_stable:{entity_name}.{method['name']}",
-                "source": "flexlibs_stable",
-                "entity": entity_name,
-                "name": method["name"],
-                "type": "method",
-                "text": text,
-                "signature": method.get("signature", ""),
-                "description": method.get("description", ""),
-                "category": entity.get("category", "general"),
-            })
+            text = create_method_text(entity_name, method, SOURCE_FLEXLIBS_STABLE)
+            items.append(_create_item_dict(
+                item_id=f"{SOURCE_FLEXLIBS_STABLE}:{entity_name}.{method['name']}",
+                source=SOURCE_FLEXLIBS_STABLE,
+                entity_name=entity_name,
+                name=method["name"],
+                item_type=TYPE_METHOD,
+                text=text,
+                signature=method.get("signature", ""),
+                description=method.get("description", ""),
+                category=entity.get("category", "general"),
+            ))
 
     # FlexLibs 2.0 methods
     for entity_name, entity in flexlibs2.get("entities", {}).items():
         # Entity itself
-        entity_text = create_entity_text(entity_name, entity, "flexlibs2")
-        items.append({
-            "id": f"flexlibs2:{entity_name}",
-            "source": "flexlibs2",
-            "entity": entity_name,
-            "name": entity_name,
-            "type": "entity",
-            "text": entity_text,
-            "description": entity.get("description", ""),
-            "category": entity.get("category", "general"),
-        })
+        entity_text = create_entity_text(entity_name, entity, SOURCE_FLEXLIBS2)
+        items.append(_create_item_dict(
+            item_id=f"{SOURCE_FLEXLIBS2}:{entity_name}",
+            source=SOURCE_FLEXLIBS2,
+            entity_name=entity_name,
+            name=entity_name,
+            item_type=TYPE_ENTITY,
+            text=entity_text,
+            description=entity.get("description", ""),
+            category=entity.get("category", "general"),
+        ))
 
         # Methods
         for method in entity.get("methods", []):
-            text = create_method_text(entity_name, method, "flexlibs2")
-            items.append({
-                "id": f"flexlibs2:{entity_name}.{method['name']}",
-                "source": "flexlibs2",
-                "entity": entity_name,
-                "name": method["name"],
-                "type": "method",
-                "text": text,
-                "signature": method.get("signature", ""),
-                "description": method.get("description", ""),
-                "category": entity.get("category", "general"),
-            })
+            text = create_method_text(entity_name, method, SOURCE_FLEXLIBS2)
+            items.append(_create_item_dict(
+                item_id=f"{SOURCE_FLEXLIBS2}:{entity_name}.{method['name']}",
+                source=SOURCE_FLEXLIBS2,
+                entity_name=entity_name,
+                name=method["name"],
+                item_type=TYPE_METHOD,
+                text=text,
+                signature=method.get("signature", ""),
+                description=method.get("description", ""),
+                category=entity.get("category", "general"),
+            ))
 
     # LibLCM entities (top-level only, not all methods)
     for entity_name, entity in liblcm.get("entities", {}).items():
-        entity_text = create_entity_text(entity_name, entity, "liblcm")
-        items.append({
-            "id": f"liblcm:{entity_name}",
-            "source": "liblcm",
-            "entity": entity_name,
-            "name": entity_name,
-            "type": "entity",
-            "text": entity_text,
-            "description": entity.get("description", ""),
-            "category": entity.get("category", "general"),
-        })
+        entity_text = create_entity_text(entity_name, entity, SOURCE_LIBLCM)
+        items.append(_create_item_dict(
+            item_id=f"{SOURCE_LIBLCM}:{entity_name}",
+            source=SOURCE_LIBLCM,
+            entity_name=entity_name,
+            name=entity_name,
+            item_type=TYPE_ENTITY,
+            text=entity_text,
+            description=entity.get("description", ""),
+            category=entity.get("category", "general"),
+        ))
 
     return items
 

@@ -149,6 +149,40 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     return data
 
 
+def json_response(data: Dict[str, Any], indent: int = 2, **kwargs) -> List[Any]:
+    """
+    Format data as JSON response wrapped in MCP TextContent.
+
+    Consolidates the repeated pattern across all handler modules of:
+    1. Converting dict to JSON string
+    2. Wrapping in TextContent
+    3. Returning as list
+
+    This is the preferred way to return successful JSON responses from tool handlers.
+
+    Args:
+        data: The dict to serialize as JSON
+        indent: JSON indentation level (default: 2)
+        **kwargs: Additional arguments passed to json.dumps (sort_keys, etc.)
+
+    Returns:
+        List with single TextContent object suitable for MCP tool return
+
+    Example:
+        >>> result = {'status': 'ok', 'items': [1, 2, 3]}
+        >>> return json_response(result)
+        [TextContent(type='text', text='{"status": "ok", "items": [1, 2, 3]}')]
+    """
+    kwargs['indent'] = indent
+    json_str = format_result(data, **kwargs)
+
+    if TextContent is None:
+        # Fallback if MCP not available (e.g., unit tests)
+        return [{"type": "text", "text": json_str}]
+
+    return [TextContent(type="text", text=json_str)]
+
+
 def error_response(error_code: str, message: str, **extra) -> List[Any]:
     """
     Format error as MCP TextContent response.

@@ -521,14 +521,12 @@ async def handle_get_statistics(args: dict) -> list[TextContent]:
     # Query project via code execution (works around registry initialization issues)
     import json as json_module
     helper_code = """
-from flexlibs2 import FLExProject, WritingSystemOperations, ReversalOperations, LexEntryOperations
 import json
 
 def Main(project, report, modifyAllowed):
-    # Get entry count using flexlibs2 Operations
+    # Get entry count
     entries = project.LexEntry.GetAll()
     entry_count = len(entries) if entries else 0
-    report.Info(f"Entries: {entry_count}")
 
     stats = {
         "entries": entry_count,
@@ -536,24 +534,19 @@ def Main(project, report, modifyAllowed):
         "reversal_indexes": []
     }
 
-    # Get writing systems
+    # Get writing systems using WritingSystems helper methods
     try:
-        all_ws = project.WritingSystem.GetAll()
-        vern_ws = project.WritingSystem.GetVernacular() if all_ws else None
+        all_ws = list(project.WritingSystems.GetAll())
 
-        for ws in (all_ws or []):
-            ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
-            ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
+        for ws in all_ws:
+            ws_tag = project.WritingSystems.GetLanguageTag(ws)
+            ws_name = project.WritingSystems.GetDisplayName(ws)
             ws_info = {"name": ws_name, "tag": ws_tag}
+            stats["writing_systems"]["analysis"].append(ws_info)
 
-            if vern_ws and ws == vern_ws:
-                stats["writing_systems"]["vernacular"].append(ws_info)
-            else:
-                stats["writing_systems"]["analysis"].append(ws_info)
-
-        report.Info(f"WS: {len(stats['writing_systems']['vernacular'])} vern, {len(stats['writing_systems']['analysis'])} anal")
+        report.Info("Found {} writing systems".format(len(all_ws)))
     except Exception as ws_err:
-        report.Error(f"WS error: {ws_err}")
+        report.Error("WS error: {}".format(ws_err))
 
     # Get reversal indexes
     try:
@@ -563,9 +556,9 @@ def Main(project, report, modifyAllowed):
             forms = project.ReversalForm.GetAllForIndex(idx)
             form_count = len(forms) if forms else 0
             stats["reversal_indexes"].append({"name": idx_name, "form_count": form_count})
-            report.Info(f"Reversal '{idx_name}': {form_count}")
+            report.Info("Reversal '{}': {}".format(idx_name, form_count))
     except Exception as rev_err:
-        report.Error(f"Reversal error: {rev_err}")
+        report.Error("Reversal error: {}".format(rev_err))
 
     report.Info("[LEXICON_STATS]" + json.dumps(stats))
 

@@ -605,9 +605,12 @@ async def main():
     global api_index
     import time
 
+    print("DEBUG: main() started", file=sys.stderr, flush=True)
+
     # Pre-load indexes (only FlexLibs2 at startup, others load on-demand)
     _log_info("Loading API indexes...")
     start = time.time()
+    print(f"DEBUG: About to load indexes at {start}", file=sys.stderr, flush=True)
     api_index = APIIndex.load(get_index_dir())
     elapsed = time.time() - start
     print(f"API indexes loaded in {elapsed:.2f}s", file=sys.stderr, flush=True)

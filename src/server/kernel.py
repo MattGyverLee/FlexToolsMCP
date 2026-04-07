@@ -413,3 +413,69 @@ def get_session_state() -> SessionState:
     if session_state is None:
         session_state = SessionState()
     return session_state
+
+
+def set_api_index(index: "APIIndex") -> None:
+    """Set the global API index (called by server.py after loading).
+
+    Args:
+        index: The APIIndex instance loaded by server.py
+    """
+    global api_index
+    api_index = index
+
+
+def get_api_index() -> Optional["APIIndex"]:
+    """Get the current API index.
+
+    Returns the APIIndex instance, or None if not yet loaded.
+    Use this function instead of importing api_index directly to ensure
+    you always get the most recent version (especially important after
+    set_api_index() is called during server startup).
+
+    Returns:
+        The current APIIndex instance, or None
+    """
+    global api_index
+    return api_index
+
+
+def init_operations_logger() -> logging.Logger:
+    """Initialize and return the operations logger.
+
+    Called by server.py at startup to set up logging before handlers are used.
+
+    Returns:
+        The initialized logger instance
+    """
+    global operations_logger
+    operations_logger = setup_logging()
+    return operations_logger
+
+
+def get_operations_logger() -> Optional[logging.Logger]:
+    """Get the current operations logger.
+
+    Returns the logger instance, or None if not yet initialized.
+    Use this function instead of importing operations_logger directly.
+
+    Returns:
+        The operations logger instance, or None
+    """
+    global operations_logger
+    return operations_logger
+
+
+def get_pattern_tracker() -> Optional[PatternTracker]:
+    """Get the current pattern tracker.
+
+    Returns the pattern tracker instance, or None if not yet initialized.
+    Use this function instead of importing pattern_tracker directly to ensure
+    you always get the most recent version (especially important after
+    initialize_kernel() is called during server startup).
+
+    Returns:
+        The current PatternTracker instance, or None
+    """
+    global pattern_tracker
+    return pattern_tracker

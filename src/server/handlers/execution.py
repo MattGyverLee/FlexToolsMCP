@@ -29,12 +29,12 @@ except ImportError:
 
 # Import shared state from kernel
 try:
-    from ..kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
+    from ..kernel import session_state, get_log_dir, get_api_index, get_operations_logger, get_pattern_tracker, get_project_write_lock
     from ..session import SessionState
     if not isinstance(session_state, SessionState):
         session_state = SessionState()
 except ImportError:
-    from server.kernel import session_state, get_log_dir, api_index, operations_logger, pattern_tracker, get_project_write_lock
+    from server.kernel import session_state, get_log_dir, get_api_index, get_operations_logger, get_pattern_tracker, get_project_write_lock
     from server.session import SessionState
 
 # Import helper functions from validators module
@@ -48,7 +48,8 @@ try:
         format_cud_warning,
         certify_script_readonly,
         get_unprotected_write_guidance,
-        detect_casting_needs
+        detect_casting_needs,
+        validate_server_state
     )
 except ImportError:
     from server.validators import (
@@ -60,7 +61,8 @@ except ImportError:
         format_cud_warning,
         certify_script_readonly,
         get_unprotected_write_guidance,
-        detect_casting_needs
+        detect_casting_needs,
+        validate_server_state
     )
 
 # Import response utilities
@@ -127,8 +129,8 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     if api_mode == "flexlibs2":
         try:
             import flexlibs2  # type: ignore
-            # Check version is reasonable
-            if not hasattr(flexlibs2, '__version__'):
+            # Check version is available (flexlibs2 uses 'version' not '__version__')
+            if not hasattr(flexlibs2, 'version') and not hasattr(flexlibs2, '__version__'):
                 return False, "flexlibs2 missing version info"
             return True, ""
         except ImportError as e:
@@ -160,7 +162,10 @@ def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Opti
     Returns:
         Python code string with helper definitions (or empty if tier='none')
     """
-    from ..casting_helpers import HELPER_FUNCTION_DEFS
+    try:
+        from ...casting_helpers import HELPER_FUNCTION_DEFS
+    except ImportError:
+        from casting_helpers import HELPER_FUNCTION_DEFS
 
     if injection_tier == "none":
         return ""
@@ -628,9 +633,23 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             session=session_state.summary()
         )
 
+    # === PREFLIGHT: Validate server state before attempting execution ===
+    server_health = validate_server_state()
+    if not server_health["is_healthy"]:
+        error_details = []
+        for severity, message in server_health["issues"]:
+            if severity == "error":
+                error_details.append(f"[{severity.upper()}] {message}")
+        return error_response(
+            "server_state_error",
+            "Server initialization incomplete. Cannot execute code:\n" + "\n".join(error_details),
+            server_state=server_health,
+            hint="The server may not have started correctly. Check the server logs and try restarting."
+        )
+
     # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(code)
-    cert = certify_script_readonly(code, api_index)
+    cert = certify_script_readonly(code, get_api_index())
 
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
@@ -639,7 +658,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
-    casting_index = api_index.get("casting_index") if api_index else None
+    api_idx = get_api_index()
+    casting_index = api_idx.casting_index if api_idx else None
     casting_check = detect_casting_needs(code, casting_index)
     if casting_check["has_casting_issues"]:
         # Format issues with clear fixes for all 3 API flavors
@@ -653,15 +673,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
                 "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
                 "how_to_fix": [
-                    "1. Import the concrete interface: from SIL.LCModel import ILexEntry",
-                    "2. Cast the object: entry = ILexEntry(obj)",
-                    "3. Access the property: headword = entry.HeadWord.Text",
-                    "For flexlibs2: Use cast_to_concrete(obj) from flexlibs2.code.lcm_casting",
-                    "For flexlibs_stable: Manual casting as shown above",
-                    "For liblcm: Manual pythonnet casting required"
+                    "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                        issues[0]["property"],
+                        issues[0].get("context_entity", "ICmObject")
+                    ),
+                    "2. Apply the suggested cast from the tool response",
+                    "3. Re-run your code"
                 ]
             },
-            next_steps="Update your code with the suggested fixes above, then re-run"
+            tool_to_call="flextools_resolve_property",
+            next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code"
         )
 
     # Require API discovery before executing code
@@ -735,19 +756,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     helpers_needed = casting_check.get("helpers_needed", set())  # Set of specific helpers
 
     # Telemetry: Track injection strategy
-    operations_logger.debug(f"Three-tier injection: tier={injection_tier}, helpers_needed={helpers_needed}")
+    get_operations_logger().debug(f"Three-tier injection: tier={injection_tier}, helpers_needed={helpers_needed}")
 
-    # Get API mode-specific imports with appropriate injection tier
-    api_imports = _get_api_mode_imports(api_mode, helpers_needed=helpers_needed, injection_tier=injection_tier)
-    import textwrap
-    api_imports_indented = textwrap.indent(api_imports, '        ')
-
-    # Log module start
-    operations_logger.info(f"=== Module Start ===")
-    operations_logger.info(f"Project: {project_name}")
-    operations_logger.info(f"Write enabled: {write_enabled}")
-    operations_logger.info(f"API mode: {api_mode}")
-    operations_logger.debug(f"Code length: {len(code)} bytes")
+    # Log module start with rich formatting
+    get_operations_logger().info(f"=== Operation Start ===")
+    get_operations_logger().info(f"Project: {project_name}")
+    get_operations_logger().info(f"Write enabled: {write_enabled}")
+    get_operations_logger().debug(f"Code:")
+    # Log the full code, each line with proper indentation
+    for code_line in code.split('\n'):
+        get_operations_logger().debug(code_line)
 
     # Build warnings
     warnings = []
@@ -767,7 +785,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         ])
 
     # Create the runner script that will be executed in a subprocess
-    # (Large script template - see original server.py lines 3766-3966 for full details)
+    # (Large script template - hardcoded imports to avoid placeholder/indentation issues)
     runner_script = '''# -*- coding: utf-8 -*-
 """FlexTools Module Runner - Generated by FlexToolsMCP"""
 import sys
@@ -925,7 +943,7 @@ def run_module():
 
     try:
         # API Mode-specific imports
-        {{API_MODE_IMPORTS}}
+        from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
 
         FLExInitialize()
 
@@ -957,19 +975,20 @@ def run_module():
             "__file__": "module.py",
             "is_empty_multistring": is_empty_multistring,
             "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
+            # Add project and report so bare code can use them directly
+            "project": project,
+            "report": report,
         }
 
-        # Execute the module code to define Main and FlexToolsModule
+        # Execute the module code to define Main and FlexToolsModule, or run bare code
         exec(MODULE_CODE, module_namespace)
 
-        # Find and call Main function
+        # Find and call Main function, or accept bare code
         if "Main" in module_namespace:
             module_namespace["Main"](project, report, WRITE_ENABLED)
         elif "FlexToolsModule" in module_namespace:
             module_namespace["FlexToolsModule"].Run(project, report, WRITE_ENABLED)
-        else:
-            result["error"] = "Module code must define either 'Main' function or 'FlexToolsModule'"
-            return result
+        # else: bare code already executed at line 978 during exec(MODULE_CODE, module_namespace)
 
         # Collect results
         result["success"] = True
@@ -1016,8 +1035,7 @@ if __name__ == "__main__":
     # Escape the code for embedding in the script
     escaped_code = repr(code)
 
-    # Replace API mode imports in the runner script
-    runner_script = runner_script.replace('{{API_MODE_IMPORTS}}', api_imports_indented)
+    # Note: API mode imports are now hardcoded in the template (flexlibs2)
 
     # Create the complete script with configuration
     full_script = '''# Configuration
@@ -1039,6 +1057,9 @@ MODULE_CODE = {code}
             f.write(full_script)
             temp_script_path = f.name
     except Exception as e:
+        get_operations_logger().info("[FAIL] Operation failed")
+        get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
+        get_operations_logger().info("=== Operation End ===")
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": "Failed to create temporary script: {}".format(str(e)),
@@ -1072,6 +1093,9 @@ MODULE_CODE = {code}
 
         # Handle timeout case
         if result["timeout"]:
+            get_operations_logger().info("[FAIL] Operation failed")
+            get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
+            get_operations_logger().info("=== Operation End ===")
             return [TextContent(type="text", text=json.dumps({
                 "success": False,
                 "error": f"Execution timeout: script exceeded {timeout_seconds} seconds",
@@ -1085,12 +1109,18 @@ MODULE_CODE = {code}
             try:
                 execution_result = json.loads(json_str)
             except json.JSONDecodeError as e:
+                get_operations_logger().info("[FAIL] Operation failed")
+                get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
+                get_operations_logger().info("=== Operation End ===")
                 execution_result = {
                     "success": False,
                     "error": "Failed to parse result JSON: {}".format(str(e)),
                     "raw_output": stdout
                 }
         else:
+            get_operations_logger().info("[FAIL] Operation failed")
+            get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
+            get_operations_logger().info("=== Operation End ===")
             execution_result = {
                 "success": False,
                 "error": "No result marker found in output",
@@ -1123,9 +1153,26 @@ MODULE_CODE = {code}
                 execution_result["property_name"] = polymorphic_info["property_name"]
                 execution_result["help"] = polymorphic_info["suggestion"]
 
+        # Log operation completion with rich formatting
+        if execution_result.get("success"):
+            get_operations_logger().info("[OK] Operation completed successfully")
+        else:
+            get_operations_logger().info("[FAIL] Operation failed")
+
+        # Extract message counts from execution result
+        summary = execution_result.get("summary", {})
+        info_count = summary.get("info_count", 0)
+        warning_count = summary.get("warning_count", 0)
+        error_count = summary.get("error_count", 0)
+        get_operations_logger().info(f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors")
+        get_operations_logger().info(f"=== Operation End ===")
+
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
 
     except subprocess.TimeoutExpired:
+        get_operations_logger().info("[FAIL] Operation failed")
+        get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
+        get_operations_logger().info("=== Operation End ===")
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": "Execution timed out after {} seconds".format(timeout_seconds),
@@ -1182,31 +1229,36 @@ async def handle_get_operation_logs(args: dict) -> list[TextContent]:
 
     # Include pattern analysis
     if include_patterns:
-        pattern_tracker.load()
-        recommendations = pattern_tracker.get_recommendations()
+        tracker = get_pattern_tracker()
+        if tracker:
+            tracker.load()
+            recommendations = tracker.get_recommendations()
 
-        result["recommendations"] = {
-            "preferred_patterns": recommendations.get("preferred_patterns", [])[:10],
-            "patterns_to_avoid": recommendations.get("patterns_to_avoid", [])[:10],
-            "common_errors_needing_fix": recommendations.get("common_errors_needing_fix", [])[:10]
-        }
+            result["recommendations"] = {
+                "preferred_patterns": recommendations.get("preferred_patterns", [])[:10],
+                "patterns_to_avoid": recommendations.get("patterns_to_avoid", [])[:10],
+                "common_errors_needing_fix": recommendations.get("common_errors_needing_fix", [])[:10]
+            }
 
-        # Add summary statistics
-        api_patterns = pattern_tracker.patterns.get("api_patterns", {})
-        total_operations = sum(
-            p["success_count"] + p["failure_count"]
-            for p in api_patterns.values()
-        )
-        total_successes = sum(p["success_count"] for p in api_patterns.values())
-        total_failures = sum(p["failure_count"] for p in api_patterns.values())
+            # Add summary statistics
+            api_patterns = tracker.patterns.get("api_patterns", {})
+            total_operations = sum(
+                p["success_count"] + p["failure_count"]
+                for p in api_patterns.values()
+            )
+            total_successes = sum(p["success_count"] for p in api_patterns.values())
+            total_failures = sum(p["failure_count"] for p in api_patterns.values())
 
-        result["statistics"] = {
-            "total_operations": total_operations,
-            "total_successes": total_successes,
-            "total_failures": total_failures,
-            "success_rate": round(total_successes / total_operations * 100, 1) if total_operations > 0 else 0,
-            "unique_api_patterns": len(api_patterns),
-            "unique_error_patterns": len(pattern_tracker.patterns.get("error_patterns", {}))
-        }
+            result["statistics"] = {
+                "total_operations": total_operations,
+                "total_successes": total_successes,
+                "total_failures": total_failures,
+                "success_rate": round(total_successes / total_operations * 100, 1) if total_operations > 0 else 0,
+                "unique_api_patterns": len(api_patterns),
+                "unique_error_patterns": len(tracker.patterns.get("error_patterns", {}))
+            }
+        else:
+            result["recommendations"] = {}
+            result["statistics"] = {}
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]

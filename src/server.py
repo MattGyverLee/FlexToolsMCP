@@ -70,7 +70,6 @@ if __package__:
         setup_logging,
         operations_logger,
         session_state,
-        pattern_tracker,
     )
     from .server.utils import model_to_tool_schema
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
@@ -88,7 +87,6 @@ else:
         setup_logging,
         operations_logger,
         session_state,
-        pattern_tracker,
     )
     from server.utils import model_to_tool_schema
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
@@ -654,9 +652,17 @@ async def list_tools() -> list[Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
+    # Log tool invocation (with safety check for early init)
+    if operations_logger:
+        operations_logger.info(f"[TOOL CALL] {name}")
+        operations_logger.debug(f"[TOOL ARGS] {name}: {json.dumps(arguments, default=str)[:500]}")
+
     # api_index is pre-loaded in main() at startup, no lazy loading needed
     # Session initialization gate: flextools_start is the only tool that doesn't require it
     if name != "flextools_start" and not session_state.initialized:
+        err_msg = "Session not initialized. Call flextools_start() first."
+        if operations_logger:
+            operations_logger.warning(f"[BLOCKED] {name}: {err_msg}")
         return [TextContent(type="text", text=json.dumps({
             "error": "Session not initialized",
             "message": "You must call flextools_start() first to initialize the session and set the API mode.",
@@ -672,6 +678,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # Look up handler and input model from dispatch router
     route = get_tool_handler(name)
     if route is None:
+        if operations_logger:
+            operations_logger.error(f"[ERROR] Unknown tool: {name}")
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     handler, input_model = route
@@ -680,6 +688,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     try:
         validated_args = input_model(**arguments)
     except Exception as e:
+        if operations_logger:
+            operations_logger.error(f"[VALIDATION ERROR] {name}: {str(e)}")
         return [TextContent(type="text", text=json.dumps({
             "error": "Input validation failed",
             "message": str(e),
@@ -688,7 +698,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         }, indent=2))]
 
     # Dispatch to handler with validated input (convert to dict for backward compatibility)
-    return await handler(validated_args.model_dump())
+    if operations_logger:
+        operations_logger.debug(f"[DISPATCHING] {name}")
+    result = await handler(validated_args.model_dump())
+    if operations_logger:
+        operations_logger.debug(f"[COMPLETED] {name}")
+    return result
 
 async def main():
     """Run the MCP server."""
@@ -705,6 +720,14 @@ async def main():
     _api_load_done = _time_module.time()
     _api_load_elapsed = _api_load_done - _api_load_start
     _log_info(f"API indexes loaded in {_api_load_elapsed:.2f}s")
+
+    # Share api_index with kernel module (used by handlers)
+    if __package__:
+        from .server.kernel import set_api_index, init_operations_logger
+    else:
+        from server.kernel import set_api_index, init_operations_logger
+    set_api_index(api_index)
+    init_operations_logger()
 
     _log_start = _time_module.time()
     if api_index.liblcm:

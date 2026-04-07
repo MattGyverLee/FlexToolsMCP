@@ -14,7 +14,7 @@ from mcp.types import TextContent
 
 # Import shared state and response constants
 try:
-    from ..kernel import api_index
+    from ..kernel import get_api_index
     from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
     from ..response_keys import (
         KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
@@ -23,7 +23,7 @@ try:
     )
 except ImportError:
     # Fallback for when module isn't fully modularized yet
-    from server.kernel import api_index
+    from server.kernel import get_api_index
     from server.models import ListCategoriesInput, ListEntitiesInCategoryInput
     from server.response_keys import (
         KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
@@ -55,19 +55,19 @@ def _get_entity_summary(entity: dict) -> str:
 async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]:
     """List all available API categories."""
     # Lazy-load APIs if needed (they're deferred from startup for speed)
-    api_index.ensure_liblcm_loaded()
+    get_api_index().ensure_liblcm_loaded()
 
     categories = defaultdict(_init_category_dict)
 
     # From FlexLibs 2.0
-    if api_index.flexlibs2:
-        fl2_cats = api_index.flexlibs2.get(KEY_CATEGORIES, {})
+    if get_api_index().flexlibs2:
+        fl2_cats = get_api_index().flexlibs2.get(KEY_CATEGORIES, {})
         for cat_name, cat_data in fl2_cats.items():
             categories[cat_name][KEY_FLEXLIBS2_COUNT] = len(cat_data.get(KEY_ENTITIES, []))
 
     # From LibLCM
-    if api_index.liblcm:
-        for entity in api_index.liblcm.get(KEY_ENTITIES, {}).values():
+    if get_api_index().liblcm:
+        for entity in get_api_index().liblcm.get(KEY_ENTITIES, {}).values():
             cat = entity.get(KEY_CATEGORY, "uncategorized")
             categories[cat][KEY_LIBLCM_COUNT] += 1
 
@@ -77,18 +77,18 @@ async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]
     }, indent=2))]
 
 
-async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) -> list[TextContent]:
+async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
     """List all entities in a specific category."""
     # Lazy-load APIs if needed (they're deferred from startup for speed)
-    api_index.ensure_liblcm_loaded()
+    get_api_index().ensure_liblcm_loaded()
 
-    category = args.category.lower()
+    category = args.get("category", "").lower()
 
     entities = {"flexlibs2": [], "liblcm": []}
 
     # From FlexLibs 2.0
-    if api_index.flexlibs2:
-        fl2_entities = api_index.flexlibs2.get(KEY_ENTITIES, {})
+    if get_api_index().flexlibs2:
+        fl2_entities = get_api_index().flexlibs2.get(KEY_ENTITIES, {})
         for entity_name, entity in fl2_entities.items():
             # Pre-lowercase category once and cache to avoid repeated .lower() calls per entity
             entity_category_lower = entity.get(KEY_CATEGORY, "").lower()
@@ -100,8 +100,8 @@ async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) ->
                 })
 
     # From LibLCM
-    if api_index.liblcm:
-        liblcm_entities = api_index.liblcm.get(KEY_ENTITIES, {})
+    if get_api_index().liblcm:
+        liblcm_entities = get_api_index().liblcm.get(KEY_ENTITIES, {})
         for entity_name, entity in liblcm_entities.items():
             # Pre-lowercase category once and cache to avoid repeated .lower() calls per entity
             entity_category_lower = entity.get(KEY_CATEGORY, "").lower()

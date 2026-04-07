@@ -360,6 +360,19 @@ def check_flexlibs2_contract(operations_classes, exception_classes):
         print("flexlibs2 not installed — skipping runtime contract checks.")
         return [], []
 
+    # Import the non-enumerable operations list from server constants
+    try:
+        from src.server.constants import NON_ENUMERABLE_OPERATIONS
+    except (ImportError, AttributeError):
+        NON_ENUMERABLE_OPERATIONS = {
+            "CheckOperations",
+            "CustomFieldOperations",
+            "DiscourseOperations",
+            "InflectionFeatureOperations",
+            "PossibilityListOperations",
+            "ProjectSettingsOperations",
+        }
+
     version = getattr(flexlibs2, "__version__", None)
     if version is None:
         try:
@@ -384,13 +397,15 @@ def check_flexlibs2_contract(operations_classes, exception_classes):
             errors.append(f"Operations class {cls_name}: {err}")
         else:
             ops_passed += 1
-            if not hasattr(obj, "GetAll") and not any(
-                name == "GetAll" for name, _ in inspect.getmembers(obj)
-            ):
-                errors.append(
-                    f"{cls_name} has no GetAll() method "
-                    f"(server.py generates code calling ops.GetAll())"
-                )
+            # Skip GetAll() check for non-enumerable operations (they use domain-specific methods)
+            if cls_name not in NON_ENUMERABLE_OPERATIONS:
+                if not hasattr(obj, "GetAll") and not any(
+                    name == "GetAll" for name, _ in inspect.getmembers(obj)
+                ):
+                    errors.append(
+                        f"{cls_name} has no GetAll() method "
+                        f"(server.py generates code calling ops.GetAll())"
+                    )
 
     exc_passed = 0
     for cls_name in sorted(exception_classes):

@@ -12,6 +12,7 @@ the full API indexes -- they mock the index to keep tests self-contained.
 
 import json
 import asyncio
+from functools import lru_cache
 from pathlib import Path
 from unittest import TestCase, main
 
@@ -29,8 +30,9 @@ def run_async(coro):
         loop.close()
 
 
-def _load_server_module():
-    """Load server.py as a module (not the server/ package).
+@lru_cache(maxsize=1)
+def _get_srv():
+    """Load and cache server.py module (avoiding reloading on every call).
 
     The decorated list_tools() and call_tool() functions live in server.py,
     not in server/__init__.py. We load it directly via importlib.
@@ -43,16 +45,6 @@ def _load_server_module():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
-
-
-# Cache the module to avoid reloading on every call
-_srv_module = None
-
-def _get_srv():
-    global _srv_module
-    if _srv_module is None:
-        _srv_module = _load_server_module()
-    return _srv_module
 
 
 def get_tools():
@@ -71,8 +63,6 @@ def call_tool(name, arguments=None):
 # Tool Registration Tests
 # ---------------------------------------------------------------------------
 
-EXPECTED_TOOL_COUNT = 15
-
 EXPECTED_TOOL_NAMES = [
     "flextools_start",
     "flextools_get_object_api",
@@ -90,6 +80,8 @@ EXPECTED_TOOL_NAMES = [
     "flextools_get_session_history",
     "flextools_undo_last_operation",
 ]
+# Dynamically derive count instead of magic number (eliminates out-of-sync issues)
+EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
 
 # Tools that should be marked readOnlyHint=True
 READ_ONLY_TOOLS = [

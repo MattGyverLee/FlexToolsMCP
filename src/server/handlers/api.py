@@ -187,14 +187,9 @@ SEARCH_SYNONYMS = {
 # Imports for helpers (after constants)
 # ============================================================
 try:
-    from .discovery import normalize_object_name
+    from .utils import normalize_object_name
 except ImportError:
-    # Fallback if imports change
-    def normalize_object_name(name: str) -> str:
-        name = name.replace("Operations", "")
-        if not name.startswith("I"):
-            name = f"I{name}"
-        return name
+    from utils import normalize_object_name
 
 
 # ============================================================

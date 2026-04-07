@@ -195,6 +195,9 @@ TARGET_NAMESPACES = [
     "SIL.LCModel.Application"
 ]
 
+# Pre-compile regex for namespace matching (eliminates O(m) list iteration per type)
+_TARGET_NS_PATTERN = re.compile(r"^(" + "|".join(re.escape(ns) for ns in TARGET_NAMESPACES) + ")")
+
 # ---- Known MultiString Property Names ----------------------------------------
 MULTISTRING_PROPERTY_NAMES = {
     "CitationForm", "Gloss", "Definition", "Abbreviation",
@@ -771,10 +774,10 @@ def reflect_types(assemblies) -> List:
             for t in assembly_types:
                 ns = t.Namespace or ""
 
-                # Check if namespace matches our targets
-                if any(ns.startswith(target) for target in TARGET_NAMESPACES):
+                # Check if namespace matches our targets (using pre-compiled regex)
+                if _TARGET_NS_PATTERN.match(ns):
                     # Skip compiler-generated and internal types
-                    if not t.Name.startswith("<") and not t.Name.startswith("__"):
+                    if t.Name[0] not in "<_":
                         types.append(t)
 
         except Exception as e:

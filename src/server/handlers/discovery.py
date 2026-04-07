@@ -26,6 +26,7 @@ try:
         KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
         KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
     )
+    from .utils import normalize_object_name
 except ImportError:
     from server.kernel import api_index
     from server.models import GetNavigationPathInput
@@ -38,6 +39,7 @@ except ImportError:
         KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
         KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
     )
+    from utils import normalize_object_name
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -47,21 +49,8 @@ except ImportError:
 # Collection property suffixes (OS=Sequence, OC=Collection, RC=References, RS=ReferencesSeq)
 COLLECTION_SUFFIXES = ("OS", "OC", "RC", "RS")
 
-# Navigation path step keys
-
 # Constants for fallbacks
 MAX_SUGGESTED_ENTITIES = 5
-
-
-def normalize_object_name(name: str) -> str:
-    """Normalize object name to interface format (ILexEntry).
-
-    Removes 'Operations' suffix if present, then ensures 'I' prefix.
-    """
-    name = name.replace("Operations", "")
-    if not name.startswith("I"):
-        name = f"I{name}"
-    return name
 
 
 def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list:

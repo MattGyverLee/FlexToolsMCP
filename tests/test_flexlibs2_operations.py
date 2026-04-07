@@ -23,18 +23,18 @@ from enum import Enum
 import traceback
 
 # Test status tracking
-class TestStatus(Enum):
+class ResultStatus(Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     SKIP = "SKIP"
     ERROR = "ERROR"
 
 @dataclass
-class TestResult:
+class OperationResult:
     """Result of a single test"""
     test_name: str
     category: str
-    status: TestStatus
+    status: ResultStatus
     message: str = ""
     error_type: Optional[str] = None
     error_trace: Optional[str] = None
@@ -63,7 +63,7 @@ class FlexLibs2TestRunner:
         self.project = None
         self.project_name = project_name
         self.dry_run = dry_run
-        self.results: List[TestResult] = []
+        self.results: List[OperationResult] = []
         self.loaded = False
 
     def setup(self) -> bool:
@@ -89,16 +89,16 @@ class FlexLibs2TestRunner:
             return True
 
         except Exception as e:
-            self.add_result("Setup", "System", TestStatus.ERROR,
+            self.add_result("Setup", "System", ResultStatus.ERROR,
                            f"Failed to initialize: {str(e)}",
                            type(e).__name__, traceback.format_exc())
             return False
 
-    def add_result(self, test_name: str, category: str, status: TestStatus,
+    def add_result(self, test_name: str, category: str, status: ResultStatus,
                    message: str = "", error_type: Optional[str] = None,
                    error_trace: Optional[str] = None) -> None:
         """Record a test result"""
-        result = TestResult(
+        result = OperationResult(
             test_name=test_name,
             category=category,
             status=status,
@@ -110,10 +110,10 @@ class FlexLibs2TestRunner:
 
         # Print summary
         status_icon = {
-            TestStatus.PASS: "[PASS]",
-            TestStatus.FAIL: "[FAIL]",
-            TestStatus.SKIP: "[SKIP]",
-            TestStatus.ERROR: "[ERROR]"
+            ResultStatus.PASS: "[PASS]",
+            ResultStatus.FAIL: "[FAIL]",
+            ResultStatus.SKIP: "[SKIP]",
+            ResultStatus.ERROR: "[ERROR]"
         }[status]
 
         print(f"{status_icon} {category}: {test_name}")
@@ -141,10 +141,10 @@ assert entry is not None
 entry_id = ops.GetId(entry)
 assert isinstance(entry_id, str) and len(entry_id) > 0
             """
-            self.add_result("Create LexEntry", test_category, TestStatus.PASS,
+            self.add_result("Create LexEntry", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Create LexEntry", test_category, TestStatus.ERROR,
+            self.add_result("Create LexEntry", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__, traceback.format_exc())
 
         # READ
@@ -157,10 +157,10 @@ for entry in all_entries[:5]:  # Test first 5
     headword = ops.GetHeadword(entry)
     # Headword can be None or string
             """
-            self.add_result("Read LexEntry", test_category, TestStatus.PASS,
+            self.add_result("Read LexEntry", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Read LexEntry", test_category, TestStatus.ERROR,
+            self.add_result("Read LexEntry", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__, traceback.format_exc())
 
         # UPDATE
@@ -173,10 +173,10 @@ if entry:
     updated = ops.GetHeadword(entry)
     assert updated == "updated_headword"
             """
-            self.add_result("Update LexEntry", test_category, TestStatus.PASS,
+            self.add_result("Update LexEntry", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Update LexEntry", test_category, TestStatus.ERROR,
+            self.add_result("Update LexEntry", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__, traceback.format_exc())
 
         # DELETE
@@ -190,13 +190,13 @@ if entry:
     assert deleted is None
             """
             if not self.dry_run:
-                self.add_result("Delete LexEntry", test_category, TestStatus.PASS,
+                self.add_result("Delete LexEntry", test_category, ResultStatus.PASS,
                                "Test structure valid - DRY_RUN=False required")
             else:
-                self.add_result("Delete LexEntry", test_category, TestStatus.SKIP,
+                self.add_result("Delete LexEntry", test_category, ResultStatus.SKIP,
                                "Skipped in dry-run mode (DRY_RUN=True)")
         except Exception as e:
-            self.add_result("Delete LexEntry", test_category, TestStatus.ERROR,
+            self.add_result("Delete LexEntry", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__, traceback.format_exc())
 
     def test_lexsense_crud(self) -> None:
@@ -213,22 +213,22 @@ if entry:
     sense = sense_ops.Create(entry, "test sense definition")
     assert sense is not None
             """
-            self.add_result("Create LexSense", test_category, TestStatus.PASS,
+            self.add_result("Create LexSense", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Create LexSense", test_category, TestStatus.ERROR,
+            self.add_result("Create LexSense", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__, traceback.format_exc())
 
         # READ/UPDATE/DELETE follow same pattern
-        self.add_result("Read LexSense", test_category, TestStatus.PASS,
+        self.add_result("Read LexSense", test_category, ResultStatus.PASS,
                        "Test structure valid - requires live project execution")
-        self.add_result("Update LexSense", test_category, TestStatus.PASS,
+        self.add_result("Update LexSense", test_category, ResultStatus.PASS,
                        "Test structure valid - requires live project execution")
         if not self.dry_run:
-            self.add_result("Delete LexSense", test_category, TestStatus.PASS,
+            self.add_result("Delete LexSense", test_category, ResultStatus.PASS,
                            "Test structure valid - DRY_RUN=False required")
         else:
-            self.add_result("Delete LexSense", test_category, TestStatus.SKIP,
+            self.add_result("Delete LexSense", test_category, ResultStatus.SKIP,
                            "Skipped in dry-run mode")
 
     # =====================================================================
@@ -256,10 +256,10 @@ assert is_empty_multistring('') == False  # Empty string != '***'
 # Test 3: Whitespace-only strings
 assert is_empty_multistring('   ') == False
             """
-            self.add_result("Recognize '***' placeholder", test_category, TestStatus.PASS,
+            self.add_result("Recognize '***' placeholder", test_category, ResultStatus.PASS,
                            "Helper functions available in server.py")
         except Exception as e:
-            self.add_result("Recognize '***' placeholder", test_category, TestStatus.ERROR,
+            self.add_result("Recognize '***' placeholder", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -274,10 +274,10 @@ if sense:
     else:
         print(f"Definition: {definition}")
             """
-            self.add_result("Detect empty Definition field", test_category, TestStatus.PASS,
+            self.add_result("Detect empty Definition field", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Detect empty Definition field", test_category, TestStatus.ERROR,
+            self.add_result("Detect empty Definition field", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -293,10 +293,10 @@ if sense:
         # Already has a value
         pass
             """
-            self.add_result("Handle empty Gloss field", test_category, TestStatus.PASS,
+            self.add_result("Handle empty Gloss field", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Handle empty Gloss field", test_category, TestStatus.ERROR,
+            self.add_result("Handle empty Gloss field", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
     # =====================================================================
@@ -324,10 +324,10 @@ assert entry is not None
 headword = entry_ops.GetHeadword(entry)
 assert "中文" in headword
             """
-            self.add_result("Unicode in headword", test_category, TestStatus.PASS,
+            self.add_result("Unicode in headword", test_category, ResultStatus.PASS,
                            "Test structure valid - tested with: Chinese, Arabic, Greek, Cyrillic")
         except Exception as e:
-            self.add_result("Unicode in headword", test_category, TestStatus.ERROR,
+            self.add_result("Unicode in headword", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -337,10 +337,10 @@ sense = sense_ops.Create(entry, "Ορισμός στα ελληνικά")
 definition = sense_ops.GetDefinition(sense, ws_handle)
 assert "Ορισμός" in definition
             """
-            self.add_result("Unicode in sense definition", test_category, TestStatus.PASS,
+            self.add_result("Unicode in sense definition", test_category, ResultStatus.PASS,
                            "Test structure valid - tested with Greek text")
         except Exception as e:
-            self.add_result("Unicode in sense definition", test_category, TestStatus.ERROR,
+            self.add_result("Unicode in sense definition", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -349,10 +349,10 @@ assert "Ορισμός" in definition
 long_string = "a" * 5000 + "日本語" + "b" * 5000
 entry = entry_ops.Create(long_string[:100], ws_handle)  # Truncate if needed
             """
-            self.add_result("Long unicode text", test_category, TestStatus.PASS,
+            self.add_result("Long unicode text", test_category, ResultStatus.PASS,
                            "Test structure valid - tested with 10K+ character strings")
         except Exception as e:
-            self.add_result("Long unicode text", test_category, TestStatus.ERROR,
+            self.add_result("Long unicode text", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
     # =====================================================================
@@ -378,10 +378,10 @@ try:
 except (AttributeError, TypeError, ValueError):
     pass  # Expected
             """
-            self.add_result("Find non-existent entry", test_category, TestStatus.PASS,
+            self.add_result("Find non-existent entry", test_category, ResultStatus.PASS,
                            "Non-existent entries return None safely")
         except Exception as e:
-            self.add_result("Find non-existent entry", test_category, TestStatus.ERROR,
+            self.add_result("Find non-existent entry", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -394,10 +394,10 @@ senses = sense_ops.GetAll() if entry else []
 # Should return empty list, not None
 assert isinstance(senses, (list, tuple))
             """
-            self.add_result("Entry with empty senses list", test_category, TestStatus.PASS,
+            self.add_result("Entry with empty senses list", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Entry with empty senses list", test_category, TestStatus.ERROR,
+            self.add_result("Entry with empty senses list", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
         try:
@@ -409,10 +409,10 @@ if etymology is None:
 else:
     print(f"Etymology: {etymology}")
             """
-            self.add_result("Optional None fields", test_category, TestStatus.PASS,
+            self.add_result("Optional None fields", test_category, ResultStatus.PASS,
                            "Test structure valid - requires live project execution")
         except Exception as e:
-            self.add_result("Optional None fields", test_category, TestStatus.ERROR,
+            self.add_result("Optional None fields", test_category, ResultStatus.ERROR,
                            str(e), type(e).__name__)
 
     # =====================================================================
@@ -424,14 +424,14 @@ else:
         test_category = "KnownIssues"
 
         # From README.md: "FlexLibs 2.0 may contain bugs - further testing needed"
-        self.add_result("FlexLibs 2.0 stability", test_category, TestStatus.SKIP,
+        self.add_result("FlexLibs 2.0 stability", test_category, ResultStatus.SKIP,
                        "Systematic testing in progress - monitor for crashes or unexpected behavior")
 
         # Issue tracking placeholder
-        self.add_result("Parameter validation", test_category, TestStatus.PASS,
+        self.add_result("Parameter validation", test_category, ResultStatus.PASS,
                        "Core parameter validation functions available in validators.py")
 
-        self.add_result("Error message clarity", test_category, TestStatus.PASS,
+        self.add_result("Error message clarity", test_category, ResultStatus.PASS,
                        "Custom exception classes provide detailed error context")
 
     # =====================================================================

@@ -30,9 +30,81 @@ from typing import Dict, List, Any, Optional, Tuple
 if __package__:
     from .json_utils import sort_json_arrays
     from .flexlibs2_analyzer import infer_unified_output_behavior
+    from .constants import (
+        PROPERTY_KIND_OWNING_SEQUENCE,
+        PROPERTY_KIND_OWNING_COLLECTION,
+        PROPERTY_KIND_REFERENCE_SEQUENCE,
+        PROPERTY_KIND_REFERENCE_COLLECTION,
+        PROPERTY_KIND_OWNING_ATOMIC,
+        PROPERTY_KIND_REFERENCE_ATOMIC,
+        PROPERTY_KIND_TO_RELATIONSHIP,
+        PROPERTY_KIND_DESCRIPTIONS,
+        METHOD_CATEGORY_RETRIEVAL,
+        METHOD_CATEGORY_MODIFICATION,
+        METHOD_CATEGORY_CREATION,
+        METHOD_CATEGORY_DELETION,
+        METHOD_CATEGORY_PREDICATE,
+        METHOD_CATEGORY_MANIPULATION,
+        METHOD_CATEGORY_VALIDATION,
+        METHOD_CATEGORY_OPERATION,
+        METHOD_CATEGORY_DESCRIPTIONS,
+        ENTITY_CATEGORY_LEXICON,
+        ENTITY_CATEGORY_MORPHOLOGY,
+        ENTITY_CATEGORY_WORDFORM,
+        ENTITY_CATEGORY_SCRIPTURE,
+        ENTITY_CATEGORY_NOTEBOOK,
+        ENTITY_CATEGORY_TEXT,
+        ENTITY_CATEGORY_FEATURE_STRUCTURE,
+        ENTITY_CATEGORY_PHONOLOGY,
+        ENTITY_CATEGORY_CORE,
+        ENTITY_CATEGORY_DISCOURSE,
+        ENTITY_CATEGORY_REVERSAL,
+        ENTITY_CATEGORY_GENERAL,
+        ENTITY_CATEGORY_REPOSITORY,
+        ENTITY_CATEGORY_FACTORY,
+        ENTITY_CATEGORY_SERVICE,
+        ENTITY_CATEGORY_INFRASTRUCTURE,
+        ENTITY_PREFIX_TO_CATEGORY,
+    )
 else:
     from json_utils import sort_json_arrays
     from flexlibs2_analyzer import infer_unified_output_behavior
+    from constants import (
+        PROPERTY_KIND_OWNING_SEQUENCE,
+        PROPERTY_KIND_OWNING_COLLECTION,
+        PROPERTY_KIND_REFERENCE_SEQUENCE,
+        PROPERTY_KIND_REFERENCE_COLLECTION,
+        PROPERTY_KIND_OWNING_ATOMIC,
+        PROPERTY_KIND_REFERENCE_ATOMIC,
+        PROPERTY_KIND_TO_RELATIONSHIP,
+        PROPERTY_KIND_DESCRIPTIONS,
+        METHOD_CATEGORY_RETRIEVAL,
+        METHOD_CATEGORY_MODIFICATION,
+        METHOD_CATEGORY_CREATION,
+        METHOD_CATEGORY_DELETION,
+        METHOD_CATEGORY_PREDICATE,
+        METHOD_CATEGORY_MANIPULATION,
+        METHOD_CATEGORY_VALIDATION,
+        METHOD_CATEGORY_OPERATION,
+        METHOD_CATEGORY_DESCRIPTIONS,
+        ENTITY_CATEGORY_LEXICON,
+        ENTITY_CATEGORY_MORPHOLOGY,
+        ENTITY_CATEGORY_WORDFORM,
+        ENTITY_CATEGORY_SCRIPTURE,
+        ENTITY_CATEGORY_NOTEBOOK,
+        ENTITY_CATEGORY_TEXT,
+        ENTITY_CATEGORY_FEATURE_STRUCTURE,
+        ENTITY_CATEGORY_PHONOLOGY,
+        ENTITY_CATEGORY_CORE,
+        ENTITY_CATEGORY_DISCOURSE,
+        ENTITY_CATEGORY_REVERSAL,
+        ENTITY_CATEGORY_GENERAL,
+        ENTITY_CATEGORY_REPOSITORY,
+        ENTITY_CATEGORY_FACTORY,
+        ENTITY_CATEGORY_SERVICE,
+        ENTITY_CATEGORY_INFRASTRUCTURE,
+        ENTITY_PREFIX_TO_CATEGORY,
+    )
 
 # ---- Logging -----------------------------------------------------------------
 logging.basicConfig(
@@ -308,45 +380,29 @@ def is_multistring_type(t) -> bool:
 
 def determine_property_kind(prop_name: str) -> str:
     """Determine FieldWorks property relationship kind from naming convention."""
-    if prop_name.endswith("OS"):
-        return "OS"  # Owning Sequence
-    if prop_name.endswith("OC"):
-        return "OC"  # Owning Collection
-    if prop_name.endswith("RS"):
-        return "RS"  # Reference Sequence
-    if prop_name.endswith("RC"):
-        return "RC"  # Reference Collection
-    if prop_name.endswith("OA"):
-        return "OA"  # Owning Atomic
-    if prop_name.endswith("RA"):
-        return "RA"  # Reference Atomic
+    if prop_name.endswith(PROPERTY_KIND_OWNING_SEQUENCE):
+        return PROPERTY_KIND_OWNING_SEQUENCE
+    if prop_name.endswith(PROPERTY_KIND_OWNING_COLLECTION):
+        return PROPERTY_KIND_OWNING_COLLECTION
+    if prop_name.endswith(PROPERTY_KIND_REFERENCE_SEQUENCE):
+        return PROPERTY_KIND_REFERENCE_SEQUENCE
+    if prop_name.endswith(PROPERTY_KIND_REFERENCE_COLLECTION):
+        return PROPERTY_KIND_REFERENCE_COLLECTION
+    if prop_name.endswith(PROPERTY_KIND_OWNING_ATOMIC):
+        return PROPERTY_KIND_OWNING_ATOMIC
+    if prop_name.endswith(PROPERTY_KIND_REFERENCE_ATOMIC):
+        return PROPERTY_KIND_REFERENCE_ATOMIC
     return ""
 
 
 def get_relationship_type(kind: str) -> str:
     """Map property kind to relationship type."""
-    mapping = {
-        "OS": "owns_sequence",
-        "OC": "owns_collection",
-        "RS": "references_sequence",
-        "RC": "references_collection",
-        "OA": "owns_atomic",
-        "RA": "references_atomic"
-    }
-    return mapping.get(kind, "property")
+    return PROPERTY_KIND_TO_RELATIONSHIP.get(kind, "property")
 
 
 def get_relationship_description(kind: str) -> str:
     """Get human-readable description for relationship type."""
-    descriptions = {
-        "OS": "Ordered collection of owned objects (children)",
-        "OC": "Unordered collection of owned objects (children)",
-        "RS": "Ordered collection of referenced objects",
-        "RC": "Unordered collection of referenced objects",
-        "OA": "Single owned object reference (child)",
-        "RA": "Single referenced object"
-    }
-    return descriptions.get(kind, "Object property")
+    return PROPERTY_KIND_DESCRIPTIONS.get(kind, "Object property")
 
 
 # ---- Property Extraction -----------------------------------------------------
@@ -499,36 +555,27 @@ def extract_method(minfo) -> Optional[Dict[str, Any]]:
 def categorize_method(name: str) -> str:
     """Categorize method by naming pattern."""
     if name.startswith(("Get", "Find", "Search", "Retrieve", "Load", "Fetch")):
-        return "retrieval"
+        return METHOD_CATEGORY_RETRIEVAL
     elif name.startswith(("Set", "Update", "Modify", "Change", "Apply")):
-        return "modification"
+        return METHOD_CATEGORY_MODIFICATION
     elif name.startswith(("Create", "New", "Add", "Insert", "Make")):
-        return "creation"
+        return METHOD_CATEGORY_CREATION
     elif name.startswith(("Delete", "Remove", "Clear", "Dispose")):
-        return "deletion"
+        return METHOD_CATEGORY_DELETION
     elif name.startswith(("Is", "Has", "Can", "Should", "Check")):
-        return "predicate"
+        return METHOD_CATEGORY_PREDICATE
     elif name.startswith(("Merge", "Copy", "Clone", "Move")):
-        return "manipulation"
+        return METHOD_CATEGORY_MANIPULATION
     elif name.startswith(("Validate", "Verify")):
-        return "validation"
+        return METHOD_CATEGORY_VALIDATION
     else:
-        return "operation"
+        return METHOD_CATEGORY_OPERATION
 
 
 def generate_method_description(name: str, category: str) -> str:
     """Generate a basic description for a method based on its name."""
-    category_descriptions = {
-        "retrieval": f"Retrieves data using {name}",
-        "modification": f"Modifies data using {name}",
-        "creation": f"Creates new objects using {name}",
-        "deletion": f"Removes or deletes using {name}",
-        "predicate": f"Checks condition using {name}",
-        "manipulation": f"Manipulates data using {name}",
-        "validation": f"Validates using {name}",
-        "operation": f"Performs operation {name}"
-    }
-    return category_descriptions.get(category, f"Method: {name}")
+    template = METHOD_CATEGORY_DESCRIPTIONS.get(category, f"Method: {name}")
+    return template.format(name=name) if "{name}" in template else template
 
 
 # ---- Type Extraction ---------------------------------------------------------
@@ -537,42 +584,29 @@ def categorize_type(name: str, namespace: str) -> str:
     """Categorize a type based on name and namespace."""
     # Repository pattern
     if "Repository" in name:
-        return "repository"
+        return ENTITY_CATEGORY_REPOSITORY
     if "Factory" in name:
-        return "factory"
+        return ENTITY_CATEGORY_FACTORY
 
     # By namespace
     ns_lower = namespace.lower()
     if "domainservices" in ns_lower:
-        return "service"
+        return ENTITY_CATEGORY_SERVICE
     if "infrastructure" in ns_lower:
-        return "infrastructure"
+        return ENTITY_CATEGORY_INFRASTRUCTURE
 
-    # By name patterns
-    if name.startswith("ILex"):
-        return "lexicon"
-    if name.startswith("IMo"):
-        return "morphology"
-    if name.startswith("IWfi"):
-        return "wordform"
+    # By name patterns (check long prefixes first)
     if name.startswith("IScrip") or name.startswith("IScr"):
-        return "scripture"
-    if name.startswith("IRn"):
-        return "notebook"
-    if name.startswith("IText") or name.startswith("IStText"):
-        return "text"
-    if name.startswith("IFs"):
-        return "feature_structure"
-    if name.startswith("IPh"):
-        return "phonology"
-    if name.startswith("ICm"):
-        return "core"
-    if name.startswith("IDs"):
-        return "discourse"
-    if name.startswith("IReversal"):
-        return "reversal"
+        return ENTITY_CATEGORY_SCRIPTURE
+    if name.startswith("IStText"):
+        return ENTITY_CATEGORY_TEXT
 
-    return "general"
+    # Check single prefix matches using mapping
+    for prefix, category in ENTITY_PREFIX_TO_CATEGORY.items():
+        if name.startswith(prefix):
+            return category
+
+    return ENTITY_CATEGORY_GENERAL
 
 
 def generate_type_tags(name: str, namespace: str, category: str) -> List[str]:

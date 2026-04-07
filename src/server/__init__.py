@@ -64,6 +64,7 @@ from .kernel import (
     initialize_kernel,
     reset_session,
     get_session_state,
+    PatternTracker,
 )
 
 # Lazy import of server.py handlers (Feature 5 - modularization)
@@ -89,45 +90,17 @@ def __getattr__(name: str):
     import importlib.util
 
     # List of all handler functions and classes that should be lazy-loaded from server.py
+    # NOTE: Handler functions have been refactored into modularized handlers/
+    # Only keep items that actually exist in server.py for backward compatibility
     LAZY_IMPORTS = {
-        # Handler functions (16 tools)
-        'handle_start',
-        'handle_get_object_api',
-        'handle_search_by_capability',
-        'handle_get_navigation_path',
-        'handle_find_examples',
-        'handle_list_categories',
-        'handle_list_entities_in_category',
-        'handle_get_module_template',
-        'handle_manage_config',
-        'handle_get_session_history',
-        'handle_undo_last_operation',
-        'handle_start_module',
-        'handle_run_module',
-        'handle_run_operation',
-        'handle_get_operation_logs',
-        'handle_resolve_property',
-
         # Classes
         'APIIndex',
-        'PatternTracker',
         'SemanticSearch',
         'Server',
 
         # Helper functions
         'build_response_with_context',
-        'format_cud_warning',
-        'format_merge_operation_warning',
-        'detect_best_api_mode',
         'rank_object_matches',
-        'detect_module_domain',
-        'get_installed_liblcm_version',
-        'get_installed_flexlibs2_version',
-        'get_installed_flexlibs_version',
-        'find_versioned_api_file',
-        'find_latest_versioned_api_file',
-        'auto_refresh_missing_api_file',
-        'get_installed_project_versions',
         'main',
     }
 
@@ -157,7 +130,7 @@ def __getattr__(name: str):
 
 
 # For direct re-exports of commonly used items
-# Note: Lazy-loaded items (handle_*, APIIndex, etc.) are not in __all__ because
+# Note: Lazy-loaded items (APIIndex, etc.) are not in __all__ because
 # they're dynamically loaded via __getattr__ and don't exist at import time.
 # They can still be imported and used at runtime, but Pylance won't see them here.
 __all__ = [
@@ -185,4 +158,5 @@ __all__ = [
     'initialize_kernel',
     'reset_session',
     'get_session_state',
+    'PatternTracker',
 ]

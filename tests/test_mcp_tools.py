@@ -71,7 +71,7 @@ def call_tool(name, arguments=None):
 # Tool Registration Tests
 # ---------------------------------------------------------------------------
 
-EXPECTED_TOOL_COUNT = 16
+EXPECTED_TOOL_COUNT = 15
 
 EXPECTED_TOOL_NAMES = [
     "flextools_start",
@@ -84,7 +84,6 @@ EXPECTED_TOOL_NAMES = [
     "flextools_get_module_template",
     "flextools_start_module",
     "flextools_run_module",
-    "flextools_run_operation",
     "flextools_get_operation_logs",
     "flextools_resolve_property",
     "flextools_manage_config",

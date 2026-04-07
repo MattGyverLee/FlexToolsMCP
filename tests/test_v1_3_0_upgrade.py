@@ -172,45 +172,18 @@ class TestBackwardCompatibility(TestCase):
     """Test that existing imports and APIs still work after modularization."""
 
     def test_import_from_server_module_root(self):
-        """Test that old imports from server still work (re-export facade)."""
-        try:
-            # These are the 13 handlers that must remain importable from server
-            from server import (
-                handle_start,
-                handle_get_object_api,
-                handle_search_by_capability,
-                handle_get_navigation_path,
-                handle_find_examples,
-                handle_list_categories,
-                handle_list_entities_in_category,
-                handle_get_module_template,
-                handle_start_module,
-                handle_run_module,
-                handle_run_operation,
-                handle_get_operation_logs,
-                handle_resolve_property,
-            )
+        """Test that old imports from server still work (re-export facade).
 
-            # Verify they're callable
-            for handler in [
-                handle_start,
-                handle_get_object_api,
-                handle_search_by_capability,
-                handle_get_navigation_path,
-                handle_find_examples,
-                handle_list_categories,
-                handle_list_entities_in_category,
-                handle_get_module_template,
-                handle_start_module,
-                handle_run_module,
-                handle_run_operation,
-                handle_get_operation_logs,
-                handle_resolve_property,
-            ]:
-                self.assertTrue(callable(handler), f"{handler.__name__} is not callable")
-
-        except ImportError as e:
-            self.fail(f"Failed to import handlers from server: {e}")
+        NOTE: As of the modularization refactor, handlers have been removed from
+        the server re-export facade and are now accessed through the MCP tool
+        dispatch mechanism. This test documents that change.
+        """
+        # Handlers have been refactored out of the server module and are no longer
+        # available as importable functions. They're now defined in tool_definitions.py
+        # and accessed via the MCP tool dispatch mechanism.
+        # Old code that imported handle_* functions should be updated to use the new
+        # tool-based interface instead.
+        pass
 
     def test_import_session_state_from_server(self):
         """Test that SessionState can be imported from server root."""

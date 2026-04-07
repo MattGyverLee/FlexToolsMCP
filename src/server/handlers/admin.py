@@ -25,43 +25,47 @@ except ImportError:
 try:
     from ..kernel import session_state, get_log_dir, api_index
     from ..session import SessionState
-    from ..response_keys import KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE
+    from ..response_keys import (
+        KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
+        KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
+        KEY_TEMPLATE, KEY_WARNINGS
+    )
     if not isinstance(session_state, SessionState):
         session_state = SessionState()
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from server.kernel import session_state, get_log_dir, api_index
     from server.session import SessionState
-    from server.response_keys import KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE
+    from server.response_keys import (
+        KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
+        KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
+        KEY_TEMPLATE, KEY_WARNINGS
+    )
 
 
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================
-# Shared constants imported from response_keys
-# - KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR (above)
+# Shared constants imported from response_keys:
+# - KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE
+# - KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY
+# - KEY_TEMPLATE, KEY_WARNINGS (above)
 
 # Admin-specific constants
 KEY_ACTION = "action"
-KEY_SUCCESS = "success"
 KEY_KEY = "key"
 KEY_VALUE = "value"
 KEY_CONFIG = "config"
-KEY_PROJECT = "project"
 KEY_INITIALIZED = "session_initialized"
 KEY_API_MODE = "api_mode"
-KEY_WRITE_ENABLED = "write_enabled"
-KEY_HISTORY = "history"
 KEY_OPERATIONS = "operations"
 KEY_INCLUDE_OPERATIONS = "include_operations"
 KEY_UNDO_AVAILABLE = "undo_available"
 KEY_REDO_AVAILABLE = "redo_available"
 KEY_NEXT_STEPS = "next_steps"
 KEY_CAN_UNDO = "can_undo"
-KEY_WARNINGS = "warnings"
 KEY_MODE_INFO = "mode_info"
 KEY_FLAVOR = "flavor"
-KEY_TEMPLATE = "template"
 KEY_GUIDANCE = "guidance"
 KEY_STYLE_GUIDE = "style_guide"
 KEY_UNDONE_OPERATION = "undone_operation"

@@ -115,14 +115,23 @@ DESTRUCTIVE_TOOLS = [
 ]
 
 
-class TestToolRegistration(TestCase):
-    """Test that all tools are registered correctly."""
+# ---------------------------------------------------------------------------
+# Base Classes for Test Consolidation
+# ---------------------------------------------------------------------------
+
+class ToolsTestBase(TestCase):
+    """Base class that consolidates common tool setup patterns."""
 
     @classmethod
     def setUpClass(cls):
+        """Load tools and build lookup tables for all subclasses."""
         cls.tools = get_tools()
         cls.tool_names = [t.name for t in cls.tools]
         cls.tools_by_name = {t.name: t for t in cls.tools}
+
+
+class TestToolRegistration(ToolsTestBase):
+    """Test that all tools are registered correctly."""
 
     def test_tool_count(self):
         """All 16 tools should be registered."""
@@ -166,13 +175,8 @@ class TestToolRegistration(TestCase):
 # Tool Annotation Tests
 # ---------------------------------------------------------------------------
 
-class TestToolAnnotations(TestCase):
+class TestToolAnnotations(ToolsTestBase):
     """Test that all tools have correct MCP annotations."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.tools = get_tools()
-        cls.tools_by_name = {t.name: t for t in cls.tools}
 
     def test_all_tools_have_annotations(self):
         """Every tool should have an annotations dict."""
@@ -328,12 +332,8 @@ class TestErrorHandling(TestCase):
 # Description Cross-Reference Tests
 # ---------------------------------------------------------------------------
 
-class TestDescriptionReferences(TestCase):
+class TestDescriptionReferences(ToolsTestBase):
     """Test that tool descriptions reference prefixed tool names, not old names."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.tools = get_tools()
 
     # Old unprefixed names that should NOT appear in descriptions
     OLD_NAMES_TO_CHECK = [

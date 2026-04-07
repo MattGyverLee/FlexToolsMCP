@@ -50,6 +50,15 @@ class ToolDef:
         self.description = description
         self.input_model = input_model
         self.annotations = annotations
+        self._cached_schema = None  # Cache for pre-generated schema
+
+    def get_schema(self):
+        """Get cached schema, or generate and cache it on first call."""
+        if self._cached_schema is None:
+            # Defer import to avoid circular dependencies
+            from .utils import model_to_tool_schema
+            self._cached_schema = model_to_tool_schema(self.input_model)
+        return self._cached_schema
 
 
 # Default annotations for read-only, safe operations (13 of 16 tools use this)

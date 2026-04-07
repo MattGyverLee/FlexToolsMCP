@@ -175,22 +175,15 @@ from mcp.types import (
     ToolAnnotations,
 )
 
-# Optional imports for semantic search
+# Optional imports for semantic search - DEFERRED to on-demand loading
+# These imports are intentionally NOT done at module level to avoid 14+ second
+# startup penalty. They are imported lazily when semantic search is actually used.
 if TYPE_CHECKING:
     import numpy as np
     import faiss
     from sentence_transformers import SentenceTransformer
 
-_optional_imports_begin = _time_module.time()
-try:
-    import numpy as np
-    import faiss
-    from sentence_transformers import SentenceTransformer
-    SEMANTIC_SEARCH_AVAILABLE = True
-except ImportError:
-    SEMANTIC_SEARCH_AVAILABLE = False
-_optional_imports_done = _time_module.time()
-print(f"[TIMING] Optional imports (numpy/faiss): {_optional_imports_done - _optional_imports_begin:.3f}s", file=sys.stderr, flush=True)
+SEMANTIC_SEARCH_AVAILABLE = False  # Will be determined at runtime
 
 
 @dataclass
@@ -207,9 +200,6 @@ class SemanticSearch:
         """Load semantic search index from disk."""
         search = cls()
 
-        if not SEMANTIC_SEARCH_AVAILABLE:
-            return search
-
         embeddings_dir = index_dir / "embeddings"
         embeddings_path = embeddings_dir / "embeddings.npy"
         metadata_path = embeddings_dir / "metadata.json"
@@ -219,6 +209,9 @@ class SemanticSearch:
             return search
 
         try:
+            # Lazy-import faiss only if embeddings exist (avoids 14+ second startup cost)
+            import faiss
+
             # Load metadata
             with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata = json.load(f)
@@ -232,6 +225,8 @@ class SemanticSearch:
             search.model_name = metadata.get("_model", "all-MiniLM-L6-v2")
             search.enabled = True
             _log_info("Semantic search ready (model loads on first search)")
+        except ImportError:
+            _log_warning("faiss not installed, semantic search disabled")
         except Exception as e:
             _log_warning(f"Failed to load semantic search: {e}")
 
@@ -245,6 +240,9 @@ class SemanticSearch:
         # Lazy-load model on first search
         if not self.model:
             try:
+                # Import SentenceTransformer only on first search (not at startup)
+                from sentence_transformers import SentenceTransformer
+
                 cache_dir = Path.home() / '.cache' / 'flextoolsmcp' / 'hf'
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 model_cache = cache_dir / 'hub' / f'models--sentence-transformers--{self.model_name.replace("/", "--")}'
@@ -264,6 +262,12 @@ class SemanticSearch:
                 return []
 
         # Encode query
+        try:
+            import faiss
+        except ImportError:
+            _log_error("faiss not available for semantic search")
+            return []
+
         query_embedding = self.model.encode([query], convert_to_numpy=True)
         faiss.normalize_L2(query_embedding)
 

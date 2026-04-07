@@ -636,10 +636,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 async def main():
     """Run the MCP server."""
     global api_index
+    import time
 
     # Pre-load indexes
     _log_info("Loading API indexes...")
+    start = time.time()
     api_index = APIIndex.load(get_index_dir())
+    elapsed = time.time() - start
+    _log_info(f"API indexes loaded in {elapsed:.2f}s")
 
     if api_index.liblcm:
         version = api_index.liblcm_version or "unknown"

@@ -483,103 +483,97 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
 
 
 async def handle_get_statistics(args: dict) -> list[TextContent]:
-    """Get server statistics including loaded APIs and entity counts.
+    """Get lexicon statistics: entries, writing systems, and data inventory.
 
-    Provides metrics about the FlexToolsMCP server state:
-    - API versions currently loaded
-    - Number of entities in each API
-    - Session configuration
-    - Server capabilities
+    Returns:
+    - Entry count in the lexicon
+    - Writing systems (vernacular and analysis types)
+    - Reversal indexes and their translation counts
+    - Text/corpus statistics if available
 
-    REQUIRED: Must be called after start() and before discovery tools
-    (search_by_capability, get_object_api, etc.).
+    REQUIRED: Must be called after start() and before discovery tools.
     """
     # Mark that statistics have been retrieved (required before discovery)
     session_state.statistics_called = True
 
-    api_index = get_api_index()
-
     result = {
         KEY_STATUS: "success",
-        KEY_MESSAGE: "Server statistics retrieved"
+        KEY_MESSAGE: "Lexicon statistics retrieved",
+        "project": session_state.project_name or "(not set)",
     }
 
-    # API versions and entity counts
-    api_stats = {
-        "flexlibs2": {
-            "version": api_index.flexlibs2_version or "not loaded",
-            "entities": 0,
-            "categories": 0
-        },
-        "liblcm": {
-            "version": api_index.liblcm_version or "not loaded",
-            "entities": 0,
-            "categories": 0
-        },
-        "flexlibs_stable": {
-            "version": api_index.flexlibs_stable_version or "not loaded",
-            "entities": 0,
-            "categories": 0
+    # If no project is set, return empty statistics
+    if not session_state.project_name:
+        result["lexicon_stats"] = {
+            "entries": 0,
+            "writing_systems": {"vernacular": [], "analysis": []},
+            "reversal_indexes": []
         }
-    }
+        return json_response(result)
 
-    # Count FlexLibs2 entities and categories
-    if api_index.flexlibs2:
-        fl2_entities = api_index.flexlibs2.get(KEY_ENTITIES, {})
-        api_stats["flexlibs2"]["entities"] = len(fl2_entities)
+    # Query project for lexicon statistics
+    try:
+        from flexlibs2 import FLExProject
 
-        fl2_categories = api_index.flexlibs2.get(KEY_CATEGORIES, {})
-        api_stats["flexlibs2"]["categories"] = len(fl2_categories)
+        project = FLExProject()
+        project.OpenProject(session_state.project_name, writeEnabled=False)
 
-    # Count LibLCM entities and categories
-    if api_index.liblcm:
-        lcm_entities = api_index.liblcm.get(KEY_ENTITIES, {})
-        api_stats["liblcm"]["entities"] = len(lcm_entities)
+        # Get entry count
+        entries = project.LexEntry.GetAll()
+        entry_count = len(entries) if entries else 0
 
-        lcm_categories = set()
-        for entity in lcm_entities.values():
-            cat = entity.get(KEY_CATEGORY, "uncategorized")
-            lcm_categories.add(cat)
-        api_stats["liblcm"]["categories"] = len(lcm_categories)
+        # Get writing systems
+        writing_systems = {"vernacular": [], "analysis": []}
+        try:
+            all_ws = project.WritingSystem.GetAll()
+            vern_ws = None
+            try:
+                vern_ws = project.WritingSystem.GetVernacular()
+            except:
+                pass
 
-    # Count FlexLibs stable entities (structure may differ)
-    if api_index.flexlibs_stable:
-        stable_entities = api_index.flexlibs_stable.get(KEY_ENTITIES, {})
-        api_stats["flexlibs_stable"]["entities"] = len(stable_entities)
+            for ws in all_ws:
+                ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
+                ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
 
-        stable_categories = set()
-        for entity in stable_entities.values():
-            cat = entity.get(KEY_CATEGORY, "uncategorized")
-            stable_categories.add(cat)
-        api_stats["flexlibs_stable"]["categories"] = len(stable_categories)
+                ws_info = {"name": ws_name, "tag": ws_tag}
+                if vern_ws and ws == vern_ws:
+                    writing_systems["vernacular"].append(ws_info)
+                else:
+                    writing_systems["analysis"].append(ws_info)
+        except Exception as ws_err:
+            result["writing_systems_error"] = str(ws_err)
 
-    result["api_statistics"] = api_stats
+        # Get reversal indexes and counts
+        reversal_indexes = []
+        try:
+            rev_indexes = project.ReversalIndex.GetAll()
+            for idx in rev_indexes:
+                idx_name = idx.DisplayLabel if hasattr(idx, 'DisplayLabel') else str(idx)
+                forms = project.ReversalForm.GetAllForIndex(idx)
+                form_count = len(forms) if forms else 0
 
-    # Session statistics
-    result["session"] = {
-        "initialized": session_state.initialized,
-        "api_mode": session_state.api_mode,
-        "project_name": session_state.project_name or "(not set)",
-        "write_enabled": session_state.write_enabled,
-        "operation_count": len(session_state.history),
-        "undoable_operations": sum(1 for op in session_state.history if op.tool in ["run_operation", "run_module"])
-    }
+                reversal_indexes.append({
+                    "name": idx_name,
+                    "form_count": form_count
+                })
+        except Exception as rev_err:
+            result["reversal_indexes_error"] = str(rev_err)
 
-    # Total statistics
-    total_entities = (
-        api_stats["flexlibs2"]["entities"] +
-        api_stats["liblcm"]["entities"] +
-        api_stats["flexlibs_stable"]["entities"]
-    )
+        result["lexicon_stats"] = {
+            "entries": entry_count,
+            "writing_systems": writing_systems,
+            "reversal_indexes": reversal_indexes
+        }
 
-    result["totals"] = {
-        "total_entities": total_entities,
-        "total_categories": (
-            api_stats["flexlibs2"]["categories"] +
-            api_stats["liblcm"]["categories"] +
-            api_stats["flexlibs_stable"]["categories"]
-        ),
-        "total_operations_performed": len(session_state.history)
-    }
+        project.CloseProject()
+
+    except Exception as project_err:
+        result["project_error"] = str(project_err)
+        result["lexicon_stats"] = {
+            "entries": 0,
+            "writing_systems": {"vernacular": [], "analysis": []},
+            "reversal_indexes": []
+        }
 
     return json_response(result)

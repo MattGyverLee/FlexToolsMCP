@@ -109,6 +109,87 @@ def _is_line_protected(line_num: int, protected_ranges: List[tuple]) -> bool:
     return any(start <= line_num <= end for start, end in protected_ranges)
 
 
+def validate_server_state() -> dict:
+    """Validate that the server's own modules and state are properly initialized.
+
+    This preflight check ensures the server itself is ready before attempting to
+    execute user code. Catches import errors and uninitialized state that would
+    otherwise cause confusing runtime errors.
+
+    Returns:
+        {
+            "is_healthy": bool,
+            "issues": list,  # List of (severity, message) tuples
+            "missing_modules": list,  # Modules that failed to import
+            "uninitialized_state": list,  # State variables that are None
+        }
+    """
+    issues = []
+    missing_modules = []
+    uninitialized_state = []
+
+    # Check that critical server modules can be imported
+    critical_modules = [
+        ("casting_helpers", "Casting helpers for polymorphic type handling"),
+        ("subprocess_helpers", "Subprocess execution wrapper"),
+    ]
+
+    for module_name, description in critical_modules:
+        try:
+            # Try absolute import first
+            __import__(f"server.{module_name}")
+        except ImportError:
+            try:
+                # Try relative import from current package
+                __import__(module_name)
+            except ImportError:
+                missing_modules.append(module_name)
+                issues.append((
+                    "error",
+                    f"Missing critical module: {module_name} ({description})"
+                ))
+
+    # Check that kernel state is initialized
+    try:
+        from .kernel import get_api_index, get_operations_logger, get_pattern_tracker
+    except ImportError:
+        from server.kernel import get_api_index, get_operations_logger, get_pattern_tracker
+
+    # Check API index
+    api_index = get_api_index()
+    if api_index is None:
+        uninitialized_state.append("api_index")
+        issues.append((
+            "warning",
+            "API index not yet loaded (will be loaded on first API discovery)"
+        ))
+
+    # Check operations logger
+    operations_logger = get_operations_logger()
+    if operations_logger is None:
+        uninitialized_state.append("operations_logger")
+        issues.append((
+            "error",
+            "Operations logger not initialized (required for logging)"
+        ))
+
+    # Check pattern tracker
+    pattern_tracker = get_pattern_tracker()
+    if pattern_tracker is None:
+        uninitialized_state.append("pattern_tracker")
+        issues.append((
+            "warning",
+            "Pattern tracker not initialized (pattern analysis will be unavailable)"
+        ))
+
+    return {
+        "is_healthy": len([i for i in issues if i[0] == "error"]) == 0,
+        "issues": issues,
+        "missing_modules": missing_modules,
+        "uninitialized_state": uninitialized_state,
+    }
+
+
 def detect_cud_operations(code: str) -> dict:
     """Detect Create, Update, Delete operations in code that modify the FLEx database.
 
@@ -811,8 +892,8 @@ def certify_script_readonly(code: str, api_index) -> dict:
         operations_calls_with_lines.append((class_name, method_name, line_num))
 
     # Step 2: Look up each call in the API index and check if protected
-    if api_index and api_index.get("flexlibs2"):
-        entities = api_index["flexlibs2"].get("entities", {})
+    if api_index and api_index.flexlibs2:
+        entities = api_index.flexlibs2.get("entities", {})
 
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard

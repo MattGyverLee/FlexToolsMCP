@@ -13,16 +13,27 @@ import heapq
 from mcp.types import TextContent
 from typing import List, Dict, Any, cast
 
-# Import kernel and config (absolute imports work in all modes)
-from server.kernel import api_index, session_state
-from response_utils import json_response
-from server.response_keys import (
-    KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
-    KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-    KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
-    KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
-    KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
-)
+# Import kernel and config (with fallback for both package and script modes)
+try:
+    from ..kernel import get_api_index, session_state
+    from ...response_utils import json_response
+    from ..response_keys import (
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
+        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
+    )
+except ImportError:
+    from server.kernel import get_api_index, session_state
+    from response_utils import json_response
+    from server.response_keys import (
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
+        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
+    )
 
 # Type note: api_index is initialized by server.py before any handlers are called
 KEY_SOURCES_SEARCHED = "sources_searched"
@@ -317,10 +328,10 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
 
 def resolve_pythonic_property(name: str, context_entity: str | None = None) -> List[Dict[str, Any]]:
     """Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s)."""
-    if not api_index or not api_index.liblcm:
+    if not get_api_index() or not get_api_index().liblcm:
         return []
 
-    suffix_index = api_index.liblcm.get("suffix_index", {})
+    suffix_index = get_api_index().liblcm.get("suffix_index", {})
     if not suffix_index:
         return []
 
@@ -378,7 +389,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
 
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     if include_liblcm:
-        api_index.ensure_liblcm_loaded()
+        get_api_index().ensure_liblcm_loaded()
 
     result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False}
 
@@ -386,8 +397,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     object_type_lower = object_type.lower()
 
     # Search in FlexLibs 2.0
-    if include_flexlibs2 and api_index.flexlibs2:
-        entities = api_index.flexlibs2.get("entities", {})
+    if include_flexlibs2 and get_api_index().flexlibs2:
+        entities = get_api_index().flexlibs2.get("entities", {})
         if object_type in entities:
             entity = entities[object_type]
             result[KEY_FLEXLIBS2] = paginate_entity(
@@ -412,8 +423,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                         break
 
     # Search in LibLCM
-    if include_liblcm and api_index.liblcm:
-        entities = api_index.liblcm.get("entities", {})
+    if include_liblcm and get_api_index().liblcm:
+        entities = get_api_index().liblcm.get("entities", {})
         if object_type in entities:
             result[KEY_LIBLCM] = paginate_entity(
                 entities[object_type], summary_only, method_filter, limit, offset,
@@ -517,9 +528,9 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     if api_mode in ["all", "liblcm"]:
-        api_index.ensure_liblcm_loaded()
+        get_api_index().ensure_liblcm_loaded()
     if api_mode in ["all", "flexlibs_stable"]:
-        api_index.ensure_flexlibs_stable_loaded()
+        get_api_index().ensure_flexlibs_stable_loaded()
 
     query_lower = query.lower()
     expanded_query = query
@@ -535,9 +546,9 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     config = API_MODE_CONFIG.get(api_mode, API_MODE_CONFIG["all"])
 
-    if use_semantic and api_index.semantic_search and api_index.semantic_search.enabled:
+    if use_semantic and get_api_index().semantic_search and get_api_index().semantic_search.enabled:
         semantic_source = api_mode if api_mode in ["flexlibs2", "liblcm"] else "all"
-        semantic_results = api_index.semantic_search.search(expanded_query, max_results, semantic_source)
+        semantic_results = get_api_index().semantic_search.search(expanded_query, max_results, semantic_source)
         if semantic_results:
             results = semantic_results
             search_method = "semantic"
@@ -551,7 +562,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 expanded_terms.update(SEARCH_SYNONYMS[term])
 
         # Pre-build pythonic name lookup (efficiency: O(N) instead of O(N*M))
-        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
+        suffix_index = get_api_index().liblcm.get("suffix_index", {}) if get_api_index().liblcm else {}
         by_pythonic = suffix_index.get("by_pythonic_name", {})
         pythonic_lower = {k.lower(): k for k in by_pythonic.keys()}
 
@@ -647,20 +658,20 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
             return source_results
 
         for source in config["primary"]:
-            if source == "flexlibs2" and api_index.flexlibs2:
-                results.extend(search_source("flexlibs2", api_index.flexlibs2, boost=5))
+            if source == "flexlibs2" and get_api_index().flexlibs2:
+                results.extend(search_source("flexlibs2", get_api_index().flexlibs2, boost=5))
                 sources_searched.append("flexlibs2")
-            elif source == "flexlibs_stable" and api_index.flexlibs_stable:
-                results.extend(search_source("flexlibs_stable", api_index.flexlibs_stable, boost=3))
+            elif source == "flexlibs_stable" and get_api_index().flexlibs_stable:
+                results.extend(search_source("flexlibs_stable", get_api_index().flexlibs_stable, boost=3))
                 sources_searched.append("flexlibs_stable")
-            elif source == "liblcm" and api_index.liblcm:
-                results.extend(search_source("liblcm", api_index.liblcm, boost=0))
+            elif source == "liblcm" and get_api_index().liblcm:
+                results.extend(search_source("liblcm", get_api_index().liblcm, boost=0))
                 sources_searched.append("liblcm")
 
         if len(results) < max_results and config["fallback"]:
             for source in config["fallback"]:
-                if source == "liblcm" and api_index.liblcm and "liblcm" not in sources_searched:
-                    fallback_results = search_source("liblcm", api_index.liblcm, boost=0)
+                if source == "liblcm" and get_api_index().liblcm and "liblcm" not in sources_searched:
+                    fallback_results = search_source("liblcm", get_api_index().liblcm, boost=0)
                     results.extend(fallback_results)
                     if fallback_results:
                         sources_searched.append("liblcm (fallback)")
@@ -682,7 +693,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         KEY_SEARCH_METHOD: search_method,
         KEY_SOURCES_SEARCHED: sources_searched,
         KEY_FALLBACK_USED: fallback_used,
-        KEY_SEMANTIC_AVAILABLE: api_index.semantic_search.enabled if api_index.semantic_search else False,
+        KEY_SEMANTIC_AVAILABLE: get_api_index().semantic_search.enabled if get_api_index().semantic_search else False,
         KEY_RESULTS_COUNT: len(results),
         "results": results
     }
@@ -702,14 +713,14 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     mode = session_state.get_mode()
     if mode in ["all", "liblcm"]:
-        api_index.ensure_liblcm_loaded()
+        get_api_index().ensure_liblcm_loaded()
     if mode in ["all", "flexlibs_stable"]:
-        api_index.ensure_flexlibs_stable_loaded()
+        get_api_index().ensure_flexlibs_stable_loaded()
 
     examples = []
 
-    if api_index.flexlibs2:
-        for entity_name, entity in api_index.flexlibs2.get("entities", {}).items():
+    if get_api_index().flexlibs2:
+        for entity_name, entity in get_api_index().flexlibs2.get("entities", {}).items():
             if object_type and object_type.lower() not in entity_name.lower():
                 continue
 
@@ -756,9 +767,9 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     include_casting_info = args.get(KEY_INCLUDE_CASTING_INFO, True)
 
     # Lazy-load APIs if needed (they're deferred from startup for speed)
-    api_index.ensure_liblcm_loaded()
+    get_api_index().ensure_liblcm_loaded()
     if include_casting_info:
-        api_index.ensure_casting_index_loaded()
+        get_api_index().ensure_casting_index_loaded()
 
     matches = resolve_pythonic_property(property_name, context_entity)
 
@@ -771,7 +782,7 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
             "suggestions": []
         }
 
-        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
+        suffix_index = get_api_index().liblcm.get("suffix_index", {}) if get_api_index().liblcm else {}
         by_pythonic = suffix_index.get("by_pythonic_name", {})
 
         property_lower = property_name.lower()
@@ -784,8 +795,8 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
 
         result["suggestions"] = list(set(result["suggestions"]))[:10]
 
-        if include_casting_info and api_index.casting_index:
-            casting_props = api_index.casting_index.get("properties", {})
+        if include_casting_info and get_api_index().casting_index:
+            casting_props = get_api_index().casting_index.get("properties", {})
             if property_name in casting_props:
                 result[KEY_FOUND] = True
                 result[KEY_MESSAGE] = f"Property '{property_name}' found in casting index"
@@ -814,10 +825,10 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                         f"ref = obj.{full_name}  # Get single {kind} reference"
                     )
 
-    if include_casting_info and api_index.casting_index:
-        casting_props = api_index.casting_index.get("properties", {})
-        poly_collections = api_index.casting_index.get("polymorphic_collections", {})
-        prop_to_concrete = api_index.casting_index.get("property_to_concrete_mapping", {})
+    if include_casting_info and get_api_index().casting_index:
+        casting_props = get_api_index().casting_index.get("properties", {})
+        poly_collections = get_api_index().casting_index.get("polymorphic_collections", {})
+        prop_to_concrete = get_api_index().casting_index.get("property_to_concrete_mapping", {})
 
         if property_name in casting_props:
             casting_info = casting_props[property_name]

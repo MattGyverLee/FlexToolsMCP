@@ -202,7 +202,8 @@ async def handle_start(args: dict) -> list[TextContent]:
     - Number of entries in the project
     """
     api_mode = args.get(KEY_API_MODE, "flexlibs2")
-    project_name = args.get(KEY_PROJECT, "")
+    # Note: Pydantic model uses 'project_name', not 'project'
+    project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
     write_enabled = args.get(KEY_WRITE_ENABLED, False)
 
     # Clear any previously discovered APIs for fresh session

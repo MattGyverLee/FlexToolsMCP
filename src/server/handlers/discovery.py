@@ -15,7 +15,7 @@ from mcp.types import TextContent
 
 # Import shared state and response constants
 try:
-    from ..kernel import api_index
+    from ..kernel import get_api_index
     from ..models import GetNavigationPathInput
     from ..response_keys import (
         KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
@@ -28,7 +28,7 @@ try:
     )
     from .utils import normalize_object_name
 except ImportError:
-    from server.kernel import api_index
+    from server.kernel import get_api_index
     from server.models import GetNavigationPathInput
     from server.response_keys import (
         KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
@@ -151,10 +151,10 @@ def _add_polymorphic_warnings(result: dict, steps: list) -> None:
     Checks each step property against casting index to identify collections
     that require explicit casting to access type-specific properties.
     """
-    if not api_index or not api_index.casting_index or not steps:
+    if not get_api_index() or not get_api_index().casting_index or not steps:
         return
 
-    casting_index = api_index.casting_index
+    casting_index = get_api_index().casting_index
     poly_collections = casting_index.get(KEY_POLYMORPHIC_COLLECTIONS, {})
     warnings = []
 
@@ -201,11 +201,11 @@ async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextC
     }
 
     # Check if navigation graph is loaded
-    if not api_index or not api_index.navigation_graph:
+    if not get_api_index() or not get_api_index().navigation_graph:
         result[KEY_MESSAGE] = "Navigation graph not loaded. Run refresh.py to generate it."
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-    nav_graph = api_index.navigation_graph
+    nav_graph = get_api_index().navigation_graph
     common_paths = nav_graph.get(KEY_COMMON_PATHS, {})
     graph = nav_graph.get(KEY_GRAPH, {})
 

@@ -12,15 +12,16 @@ import json
 from collections import defaultdict
 from mcp.types import TextContent
 
-# Import shared state from kernel
-# During Phase 5 integration, the re-export facade will handle these imports
+# Import shared state and response constants
 try:
     from ..kernel import api_index
     from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
+    from ..response_keys import KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from server.kernel import api_index
     from server.models import ListCategoriesInput, ListEntitiesInCategoryInput
+    from server.response_keys import KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -30,16 +31,15 @@ except ImportError:
 SUMMARY_MAX_LENGTH = 100
 
 # Response field names
+# Shared constants imported from response_keys:
+# - KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY (above)
+
+# Catalog-specific constants
 KEY_FLEXLIBS2_COUNT = "flexlibs2_count"
 KEY_LIBLCM_COUNT = "liblcm_count"
 KEY_METHODS_COUNT = "methods_count"
 KEY_CATEGORIES = "categories"
 KEY_ENTITIES = "entities"
-KEY_CATEGORY = "category"
-KEY_NAME = "name"
-KEY_TYPE = "type"
-KEY_SUMMARY = "summary"
-KEY_DESCRIPTION = "description"
 KEY_COUNTS = "counts"
 KEY_TOTAL_CATEGORIES = "total_categories"
 

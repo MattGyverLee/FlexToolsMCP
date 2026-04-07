@@ -13,13 +13,15 @@ from collections import deque
 from typing import List, Dict
 from mcp.types import TextContent
 
-# Import shared state from kernel
+# Import shared state and response constants
 try:
     from ..kernel import api_index
     from ..models import GetNavigationPathInput
+    from ..response_keys import KEY_MESSAGE, KEY_DESCRIPTION
 except ImportError:
     from server.kernel import api_index
     from server.models import GetNavigationPathInput
+    from server.response_keys import KEY_MESSAGE, KEY_DESCRIPTION
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -37,12 +39,13 @@ KEY_TYPE = "type"
 KEY_PROPERTY = "property"
 
 # Navigation result keys
+# Shared constants imported from response_keys:
+# - KEY_MESSAGE, KEY_DESCRIPTION (above)
+
 KEY_FOUND = "found"
 KEY_SOURCE = "source"
 KEY_STEPS = "steps"
 KEY_CODE = "code"
-KEY_DESCRIPTION = "description"
-KEY_MESSAGE = "message"
 KEY_HINT = "hint"
 
 # Navigation graph structure keys

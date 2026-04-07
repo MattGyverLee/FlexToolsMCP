@@ -15,30 +15,38 @@ import json
 from pathlib import Path
 from mcp.types import TextContent
 
-# Import shared state from kernel
+# Import response utilities
+try:
+    from ...response_utils import json_response
+except ImportError:
+    from response_utils import json_response
+
+# Import shared state and response constants
 try:
     from ..kernel import session_state, get_log_dir, api_index
     from ..session import SessionState
+    from ..response_keys import KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE
     if not isinstance(session_state, SessionState):
         session_state = SessionState()
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from server.kernel import session_state, get_log_dir, api_index
     from server.session import SessionState
+    from server.response_keys import KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE
 
 
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================
-# Config action types
+# Shared constants imported from response_keys
+# - KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR (above)
+
+# Admin-specific constants
 KEY_ACTION = "action"
 KEY_SUCCESS = "success"
-KEY_MESSAGE = "message"
 KEY_KEY = "key"
 KEY_VALUE = "value"
 KEY_CONFIG = "config"
-KEY_STATUS = "status"
-KEY_SESSION = "session"
 KEY_PROJECT = "project"
 KEY_INITIALIZED = "session_initialized"
 KEY_API_MODE = "api_mode"
@@ -54,10 +62,8 @@ KEY_WARNINGS = "warnings"
 KEY_MODE_INFO = "mode_info"
 KEY_FLAVOR = "flavor"
 KEY_TEMPLATE = "template"
-KEY_SOURCE = "source"
 KEY_GUIDANCE = "guidance"
 KEY_STYLE_GUIDE = "style_guide"
-KEY_ERROR = "error"
 KEY_UNDONE_OPERATION = "undone_operation"
 KEY_TIMESTAMP = "timestamp"
 KEY_TOOL = "tool"
@@ -134,14 +140,6 @@ PROJECT_ROOT = Path(__file__).parents[3]
 # ============================================================
 # Helpers
 # ============================================================
-def _json_response(data: dict, use_default_str: bool = False) -> list[TextContent]:
-    """Wrap dict response as JSON TextContent for MCP."""
-    kwargs = {"indent": 2}
-    if use_default_str:
-        kwargs["default"] = str
-    return [TextContent(type="text", text=json.dumps(data, **kwargs))]
-
-
 def _get_flavor_guidance(flavor: str) -> dict:
     """Get guidance for a flavor, handling aliases."""
     # Handle aliases
@@ -211,7 +209,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     if warnings:
         result[KEY_WARNINGS] = warnings
 
-    return _json_response(result, use_default_str=True)
+    return json_response(result, use_default_str=True)
 
 
 async def handle_manage_config(args: dict) -> list[TextContent]:
@@ -242,7 +240,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
         if action == "get":
             if not key:
                 result[KEY_MESSAGE] = "key parameter required for 'get' action"
-                return _json_response(result)
+                return json_response(result)
 
             value = config_get(key)
             result[KEY_SUCCESS] = True
@@ -253,7 +251,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
         elif action == "set":
             if not key:
                 result[KEY_MESSAGE] = "key parameter required for 'set' action"
-                return _json_response(result)
+                return json_response(result)
 
             config_set(key, value)
             result[KEY_SUCCESS] = True
@@ -264,7 +262,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
         elif action == "delete":
             if not key:
                 result[KEY_MESSAGE] = "key parameter required for 'delete' action"
-                return _json_response(result)
+                return json_response(result)
 
             deleted = config_delete(key)
             result[KEY_SUCCESS] = deleted
@@ -284,7 +282,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
         result[KEY_SUCCESS] = False
         result[KEY_MESSAGE] = f"Error: {str(e)}"
 
-    return _json_response(result, use_default_str=True)
+    return json_response(result, use_default_str=True)
 
 
 async def handle_get_session_history(args: dict) -> list[TextContent]:
@@ -320,7 +318,7 @@ async def handle_get_session_history(args: dict) -> list[TextContent]:
     else:
         result[KEY_NEXT_STEPS] = ["Run operations to build history"]
 
-    return _json_response(result, use_default_str=True)
+    return json_response(result, use_default_str=True)
 
 
 async def handle_undo_last_operation(args: dict) -> list[TextContent]:
@@ -339,18 +337,18 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
     # Check if undo is available
     if not can_undo:
         result[KEY_MESSAGE] = "No undoable operations available in this session"
-        return _json_response(result)
+        return json_response(result)
 
     # Check if write was enabled (only makes sense for write operations)
     if not session_state.write_enabled:
         result[KEY_MESSAGE] = "Write mode was not enabled - no database modifications to undo"
-        return _json_response(result)
+        return json_response(result)
 
     # Get the operation to undo
     operation = session_state.pop_undo()
     if not operation:
         result[KEY_MESSAGE] = "Error retrieving operation from undo stack"
-        return _json_response(result)
+        return json_response(result)
 
     result[KEY_SUCCESS] = True
     result[KEY_MESSAGE] = "Undo operation queued"
@@ -369,7 +367,7 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
         KEY_REDO_AVAILABLE: session_state.can_redo(),
     }
 
-    return _json_response(result, use_default_str=True)
+    return json_response(result, use_default_str=True)
 
 
 async def handle_get_module_template(args: dict) -> list[TextContent]:
@@ -382,7 +380,7 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     flavor = args.get(KEY_FLAVOR, "flexlibs2")
 
     if flavor not in TEMPLATE_MAP:
-        return _json_response({
+        return json_response({
             KEY_ERROR: "invalid_flavor",
             KEY_MESSAGE: f"Unknown flavor '{flavor}'",
             "available_flavors": list(TEMPLATE_MAP.keys()),
@@ -394,7 +392,7 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     template_file = templates_dir / TEMPLATE_MAP[flavor]
 
     if not template_file.exists():
-        return _json_response({
+        return json_response({
             KEY_ERROR: "template_not_found",
             KEY_MESSAGE: f"Template file not found: {template_file}",
             "hint": "Templates should be in the root/templates/ directory"
@@ -404,7 +402,7 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
         with open(template_file, "r", encoding="utf-8") as f:
             template_content = f.read()
     except Exception as e:
-        return _json_response({
+        return json_response({
             KEY_ERROR: "template_read_error",
             KEY_MESSAGE: f"Failed to read template: {str(e)}"
         })
@@ -436,4 +434,4 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
         ]
     }
 
-    return _json_response(result)
+    return json_response(result)

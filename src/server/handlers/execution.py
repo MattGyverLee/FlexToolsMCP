@@ -64,10 +64,10 @@ except ImportError:
 
 # Import response utilities
 try:
-    from ...response_utils import build_response_with_context, error_response
+    from ...response_utils import build_response_with_context, error_response, json_response
 except (ImportError, ValueError):
     # Fallback for different import contexts
-    from response_utils import build_response_with_context, error_response
+    from response_utils import build_response_with_context, error_response, json_response
 
 # Import HeadlessReport for transparent reporting
 try:
@@ -132,11 +132,6 @@ KEY_APPLIES_TO = "applies_to"
 KEY_HOW_TO_FIX = "how_to_fix"
 KEY_NEXT_STEPS = "next_steps"
 KEY_SUGGESTIONS = "suggestions"
-
-
-def _json_response(data: dict, indent: int = 2, **kwargs) -> list[TextContent]:
-    """Wrap dict response as JSON TextContent for MCP."""
-    return [TextContent(type="text", text=json.dumps(data, indent=indent, **kwargs))]
 
 
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
@@ -424,7 +419,7 @@ async def handle_start_module(args: dict) -> list[TextContent]:
     # If we have required questions, return them along with optional ones
     if required_questions:
         questions = required_questions + optional_questions
-        return _json_response({
+        return json_response({
             KEY_STATUS: KEY_NEEDS_INPUT,
             "environment": env_info,
             KEY_PROVIDED: provided,
@@ -607,7 +602,7 @@ if __name__ == '__main__':
 
     api_info = api_notes.get(api_target, {})
 
-    return _json_response({
+    return json_response({
         KEY_STATUS: KEY_COMPLETE,
         "environment": env_info,
         "configuration": config,

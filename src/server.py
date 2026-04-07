@@ -75,6 +75,25 @@ else:
     )
 
 
+# Safe logging helper that works even before initialization
+def _log_info(msg: str) -> None:
+    """Log info message, safely handling None logger during early init."""
+    if operations_logger:
+        operations_logger.info(msg)
+
+
+def _log_error(msg: str) -> None:
+    """Log error message, safely handling None logger during early init."""
+    if operations_logger:
+        operations_logger.error(msg)
+
+
+def _log_warning(msg: str) -> None:
+    """Log warning message, safely handling None logger during early init."""
+    if operations_logger:
+        operations_logger.warning(msg)
+
+
 # ============================================================
 # FlexLibs2 Operations Contract
 # ============================================================
@@ -258,18 +277,18 @@ def _load_library_api_index(
     # Try exact version match
     api_path = None
     if installed_version:
-        operations_logger.info(f"Detected installed {library_name}: {installed_version}")
+        _log_info(f"Detected installed {library_name}: {installed_version}")
         api_path = find_versioned_api_file(lib_dir, api_prefix, installed_version)
 
     # Fall back to latest if exact match not found
     if not api_path:
         if installed_version:
-            operations_logger.info(f"No API file for {library_name} {installed_version}, falling back to latest")
+            _log_info(f"No API file for {library_name} {installed_version}, falling back to latest")
         api_path = find_latest_versioned_api_file(lib_dir, api_prefix)
 
     # Auto-refresh if still not found
     if not api_path:
-        operations_logger.info(f"No {library_name} API file found, attempting auto-refresh...")
+        _log_info(f"No {library_name} API file found, attempting auto-refresh...")
         library_key = "liblcm" if api_prefix == "liblcm_api" else ("flexlibs2" if api_prefix == "flexlibs2_api" else "flexlibs")
         if auto_refresh_missing_api_file(library_key, api_prefix, lib_dir):
             if installed_version:
@@ -287,11 +306,11 @@ def _load_library_api_index(
             extracted_version = parts[-1] if len(parts) >= 2 else None
             setattr(index, version_attr, extracted_version)
             if installed_version:
-                operations_logger.info(f"Loaded {library_name} {installed_version} from {api_path.name}")
+                _log_info(f"Loaded {library_name} {installed_version} from {api_path.name}")
             else:
-                operations_logger.info(f"Loaded {library_name} from {api_path.name}")
+                _log_info(f"Loaded {library_name} from {api_path.name}")
         except Exception as e:
-            operations_logger.error(f"Failed to load {library_name}: {e}")
+            _log_error(f"Failed to load {library_name}: {e}")
 
 
 def _load_json_with_fallback(index_dir: Path, versioned_prefix: str, unversioned_name: str) -> dict | None:
@@ -476,7 +495,7 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
 
         refresh_script = Path(__file__).parent / "refresh.py"
         if not refresh_script.exists():
-            operations_logger.error(f"Refresh script not found: {refresh_script}")
+            _log_error(f"Refresh script not found: {refresh_script}")
             return False
 
         import subprocess
@@ -493,7 +512,7 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         else:
             return False
 
-        operations_logger.info(f"Auto-refreshing {library_name} API index...")
+        _log_info(f"Auto-refreshing {library_name} API index...")
         result = subprocess.run(
             cmd,
             cwd=project_root,
@@ -503,14 +522,14 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         )
 
         if result.returncode == 0:
-            operations_logger.info(f"Successfully refreshed {library_name} API index")
+            _log_info(f"Successfully refreshed {library_name} API index")
             return True
         else:
-            operations_logger.warning(f"Failed to refresh {library_name}: {result.stderr[:500]}")
+            _log_warning(f"Failed to refresh {library_name}: {result.stderr[:500]}")
             return False
 
     except Exception as e:
-        operations_logger.warning(f"Could not auto-refresh {library_name}: {e}")
+        _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
 

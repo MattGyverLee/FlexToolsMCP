@@ -23,6 +23,19 @@ except ImportError:
 _file_discovery_cache: Dict[Tuple[str, str], Optional[Path]] = {}
 
 
+# Safe logging helper for operations_logger (may be None during early init)
+def _log_ops_info(msg: str) -> None:
+    """Log info message, safely handling None logger during early init."""
+    if operations_logger:
+        operations_logger.info(msg)
+
+
+def _log_ops_debug(msg: str) -> None:
+    """Log debug message, safely handling None logger during early init."""
+    if operations_logger:
+        operations_logger.debug(msg)
+
+
 def extract_version(filename: str) -> Tuple[int, int, int]:
     """Extract semantic version (major, minor, patch) from filename.
 
@@ -58,12 +71,17 @@ def detect_installed_library_version(
         import_path: Module name for Python imports (e.g., 'flexlibs2')
         package_name: Package name for importlib.metadata (e.g., 'flexlibs2')
         assembly_name: C# assembly name (e.g., 'SIL.LCModel')
-        logger: Logger instance (defaults to operations_logger)
+        logger: Logger instance (defaults to operations_logger if available)
 
     Returns:
         Version string (e.g., '11.0.0') or None if not detected
     """
     logger = logger or operations_logger
+
+    # Helper to safely log (logger may be None during early initialization)
+    def log_debug(msg: str) -> None:
+        if logger:
+            logger.debug(msg)
 
     # Try C# assembly reflection first (LibLCM)
     if assembly_name:
@@ -75,12 +93,12 @@ def detect_installed_library_version(
                 asm = System.Reflection.Assembly.Load(assembly_name)
                 version_attr = asm.GetName().Version
                 version = f"{version_attr.Major}.{version_attr.Minor}.{version_attr.Build}"
-                logger.debug(f"Detected {library_name} version from assembly: {version}")
+                log_debug(f"Detected {library_name} version from assembly: {version}")
                 return version
             except Exception as ex:
-                logger.debug(f"Could not extract {library_name} version from assembly: {ex}")
+                log_debug(f"Could not extract {library_name} version from assembly: {ex}")
         except Exception as e:
-            logger.debug(f"Could not detect {library_name} (C# assembly): {e}")
+            log_debug(f"Could not detect {library_name} (C# assembly): {e}")
 
     # Try Python package detection (FlexLibs, FlexLibs2)
     if import_path:
@@ -88,7 +106,7 @@ def detect_installed_library_version(
             module = __import__(import_path)
             if hasattr(module, '__version__'):
                 version = module.__version__  # type: ignore
-                logger.debug(f"Detected {library_name} version from __version__: {version}")
+                log_debug(f"Detected {library_name} version from __version__: {version}")
                 return version
         except Exception:
             pass
@@ -97,12 +115,12 @@ def detect_installed_library_version(
         try:
             from importlib.metadata import version
             pkg_version = version(package_name or import_path)
-            logger.debug(f"Detected {library_name} version from metadata: {pkg_version}")
+            log_debug(f"Detected {library_name} version from metadata: {pkg_version}")
             return pkg_version
         except Exception:
             pass
 
-    logger.debug(f"Could not detect {library_name} version")
+    log_debug(f"Could not detect {library_name} version")
     return None
 
 
@@ -213,7 +231,7 @@ def find_versioned_api_file(
     for pattern in [f"{prefix}_v{target_version}.json", f"{prefix}-v{target_version}.json"]:
         main_path = index_dir / pattern
         if main_path.exists():
-            operations_logger.info(f"Found exact version match: {pattern}")
+            _log_ops_info(f"Found exact version match: {pattern}")
             _file_discovery_cache[cache_key] = main_path
             return main_path
 
@@ -223,11 +241,11 @@ def find_versioned_api_file(
         for pattern in [f"{prefix}_v{target_version}.json", f"{prefix}-v{target_version}.json"]:
             archive_path = archive_dir / pattern
             if archive_path.exists():
-                operations_logger.info(f"Found exact version match in archive: {pattern}")
+                _log_ops_info(f"Found exact version match in archive: {pattern}")
                 _file_discovery_cache[cache_key] = archive_path
                 return archive_path
 
-    operations_logger.debug(f"No exact match found for {prefix} v{target_version}")
+    _log_ops_debug(f"No exact match found for {prefix} v{target_version}")
     _file_discovery_cache[cache_key] = None
     return None
 

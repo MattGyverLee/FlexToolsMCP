@@ -523,52 +523,52 @@ async def handle_get_statistics(args: dict) -> list[TextContent]:
     helper_code = """
 import json
 
-def Main(project, report, modifyAllowed):
-    stats = {
-        "entries": 0,
-        "writing_systems": {"vernacular": [], "analysis": []},
-        "reversal_indexes": []
-    }
+# Get entry count
+entries = project.LexEntry.GetAll()
+entry_count = len(entries) if entries else 0
+report.Info(f"Entries: {entry_count}")
 
+# Get writing systems
+stats = {
+    "entries": entry_count,
+    "writing_systems": {"vernacular": [], "analysis": []},
+    "reversal_indexes": []
+}
+
+try:
+    all_ws = project.WritingSystem.GetAll()
+    vern_ws = None
     try:
-        # Get entry count
-        entries = project.LexEntry.GetAll()
-        stats["entries"] = len(entries) if entries else 0
-        report.Info(f"Entries: {stats['entries']}")
+        vern_ws = project.WritingSystem.GetVernacular()
+    except:
+        pass
 
-        # Get writing systems
-        all_ws = project.WritingSystem.GetAll()
-        vern_ws = project.WritingSystem.GetVernacular() if all_ws else None
+    for ws in (all_ws or []):
+        ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
+        ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
+        ws_info = {"name": ws_name, "tag": ws_tag}
 
-        for ws in (all_ws or []):
-            ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
-            ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
-            ws_info = {"name": ws_name, "tag": ws_tag}
+        if vern_ws and ws == vern_ws:
+            stats["writing_systems"]["vernacular"].append(ws_info)
+        else:
+            stats["writing_systems"]["analysis"].append(ws_info)
 
-            if vern_ws and ws == vern_ws:
-                stats["writing_systems"]["vernacular"].append(ws_info)
-            else:
-                stats["writing_systems"]["analysis"].append(ws_info)
+    report.Info(f"Writing systems: {len(stats['writing_systems']['vernacular'])} vernacular, {len(stats['writing_systems']['analysis'])} analysis")
+except Exception as ws_err:
+    report.Error(f"Error getting writing systems: {ws_err}")
 
-        report.Info(f"Writing systems: {len(stats['writing_systems']['vernacular'])} vernacular, {len(stats['writing_systems']['analysis'])} analysis")
+try:
+    rev_indexes = project.ReversalIndex.GetAll()
+    for idx in (rev_indexes or []):
+        idx_name = idx.DisplayLabel if hasattr(idx, 'DisplayLabel') else str(idx)
+        forms = project.ReversalForm.GetAllForIndex(idx)
+        form_count = len(forms) if forms else 0
+        stats["reversal_indexes"].append({"name": idx_name, "form_count": form_count})
+        report.Info(f"Reversal index '{idx_name}': {form_count} forms")
+except Exception as rev_err:
+    report.Error(f"Error getting reversal indexes: {rev_err}")
 
-        # Get reversal indexes
-        rev_indexes = project.ReversalIndex.GetAll()
-        for idx in (rev_indexes or []):
-            idx_name = idx.DisplayLabel if hasattr(idx, 'DisplayLabel') else str(idx)
-            forms = project.ReversalForm.GetAllForIndex(idx)
-            form_count = len(forms) if forms else 0
-            stats["reversal_indexes"].append({"name": idx_name, "form_count": form_count})
-            report.Info(f"Reversal index '{idx_name}': {form_count} forms")
-
-    except Exception as e:
-        report.Error(f"Error querying project: {e}")
-        import traceback
-        report.Error(traceback.format_exc())
-
-    report.Info("[STATS_JSON]" + json.dumps(stats) + "[/STATS_JSON]")
-
-Main(project, report, modifyAllowed)
+report.Info("[LEXICON_STATS]" + json.dumps(stats))
 """
 
     # Execute helper to get stats
@@ -593,20 +593,34 @@ Main(project, report, modifyAllowed)
         if response and len(response) > 0:
             response_text = response[0].text if hasattr(response[0], 'text') else str(response[0])
 
-            # Find JSON in response
+            # Find JSON in response (look for [LEXICON_STATS]{...} marker)
             import re
-            match = re.search(r'\[STATS_JSON\](.+?)\[/STATS_JSON\]', response_text, re.DOTALL)
+            match = re.search(r'\[LEXICON_STATS\](\{.+\})', response_text, re.DOTALL)
             if match:
                 stats_json = match.group(1)
-                stats = json_module.loads(stats_json)
-                result["lexicon_stats"] = stats
+                try:
+                    stats = json_module.loads(stats_json)
+                    result["lexicon_stats"] = stats
+                except json_module.JSONDecodeError as json_err:
+                    result["lexicon_stats"] = {
+                        "entries": 0,
+                        "writing_systems": {"vernacular": [], "analysis": []},
+                        "reversal_indexes": []
+                    }
+                    result["parse_error"] = str(json_err)
             else:
-                result["lexicon_stats"] = {
-                    "entries": 0,
-                    "writing_systems": {"vernacular": [], "analysis": []},
-                    "reversal_indexes": []
-                }
-                result["note"] = "Could not parse statistics from execution response"
+                # Try to find any JSON object in the response
+                match = re.search(r'(\{.*?"entries".*?\})', response_text, re.DOTALL)
+                if match:
+                    try:
+                        stats = json_module.loads(match.group(1))
+                        result["lexicon_stats"] = stats
+                    except:
+                        result["note"] = "Found JSON but couldn't parse it"
+                        result["debug_response"] = response_text[:500]
+                else:
+                    result["note"] = "Could not find statistics JSON in execution response"
+                    result["debug_response"] = response_text[:500]
 
     except Exception as exec_err:
         result["execution_error"] = str(exec_err)

@@ -598,32 +598,32 @@ async def main():
     global api_index
 
     # Pre-load indexes
-    print("[INFO] Loading API indexes...", file=sys.stderr)
+    _log_info("Loading API indexes...")
     api_index = APIIndex.load(get_index_dir())
 
     if api_index.liblcm:
-        print(f"[OK] LibLCM: {len(api_index.liblcm.get('entities', {}))} entities", file=__import__("sys").stderr)
+        _log_info(f"LibLCM: {len(api_index.liblcm.get('entities', {}))} entities")
     else:
-        print("[WARN] LibLCM index not found", file=__import__("sys").stderr)
+        _log_warning("LibLCM index not found")
 
     if api_index.flexlibs2:
-        print(f"[OK] FlexLibs 2.0: {len(api_index.flexlibs2.get('entities', {}))} entities", file=__import__("sys").stderr)
+        _log_info(f"FlexLibs 2.0: {len(api_index.flexlibs2.get('entities', {}))} entities")
     else:
-        print("[WARN] FlexLibs 2.0 index not found", file=__import__("sys").stderr)
+        _log_warning("FlexLibs 2.0 index not found")
 
     if api_index.casting_index:
         props = len(api_index.casting_index.get("properties", {}))
         colls = len(api_index.casting_index.get("polymorphic_collections", {}))
-        print(f"[OK] Casting index: {props} properties, {colls} polymorphic collections", file=__import__("sys").stderr)
+        _log_info(f"Casting index: {props} properties, {colls} polymorphic collections")
     else:
-        print("[WARN] Casting index not found", file=__import__("sys").stderr)
+        _log_warning("Casting index not found")
 
     if api_index.flexlibs_stable:
-        print(f"[OK] FlexLibs Stable: {len(api_index.flexlibs_stable.get('entities', {}))} entities", file=__import__("sys").stderr)
+        _log_info(f"FlexLibs Stable: {len(api_index.flexlibs_stable.get('entities', {}))} entities")
     else:
-        print("[WARN] FlexLibs Stable index not found", file=__import__("sys").stderr)
+        _log_warning("FlexLibs Stable index not found")
 
-    print("[INFO] Starting MCP server...", file=__import__("sys").stderr)
+    _log_info("Starting MCP server...")
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())

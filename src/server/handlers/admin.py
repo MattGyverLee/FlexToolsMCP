@@ -232,11 +232,26 @@ async def handle_start(args: dict) -> list[TextContent]:
     project_metadata = {}
     project_metadata_error = None
     if project_name:
-        try:
-            from flexlibs2 import FLExProject
+        import time
+        project = None
 
-            project = FLExProject()
-            project.OpenProject(project_name, writeEnabled=False)
+        # Retry opening project - LibLCM may need a moment to fully initialize
+        for attempt in range(3):
+            try:
+                from flexlibs2 import FLExProject
+
+                project = FLExProject()
+                project.OpenProject(project_name, writeEnabled=False)
+                break  # Success, exit retry loop
+            except Exception as e:
+                if attempt < 2:
+                    # Not the last attempt, wait a moment and retry
+                    time.sleep(0.5)
+                else:
+                    # Last attempt failed, raise the exception
+                    raise
+
+        try:
 
             # Classify writing systems by type
             vernacular_ws = []

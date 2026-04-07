@@ -16,12 +16,20 @@ from mcp.types import TextContent
 try:
     from ..kernel import api_index
     from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
-    from ..response_keys import KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY
+    from ..response_keys import (
+        KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
+        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_METHODS_COUNT,
+        KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES
+    )
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from server.kernel import api_index
     from server.models import ListCategoriesInput, ListEntitiesInCategoryInput
-    from server.response_keys import KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY
+    from server.response_keys import (
+        KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
+        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_METHODS_COUNT,
+        KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES
+    )
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -30,18 +38,7 @@ except ImportError:
 # ============================================================
 SUMMARY_MAX_LENGTH = 100
 
-# Response field names
-# Shared constants imported from response_keys:
-# - KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY (above)
-
-# Catalog-specific constants
-KEY_FLEXLIBS2_COUNT = "flexlibs2_count"
-KEY_LIBLCM_COUNT = "liblcm_count"
-KEY_METHODS_COUNT = "methods_count"
-KEY_CATEGORIES = "categories"
-KEY_ENTITIES = "entities"
-KEY_COUNTS = "counts"
-KEY_TOTAL_CATEGORIES = "total_categories"
+# Response field names imported from response_keys module (see imports above)
 
 
 def _init_category_dict() -> dict:

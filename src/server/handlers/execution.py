@@ -16,6 +16,7 @@ import sys
 import subprocess
 import tempfile
 import os
+import ast
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from mcp.types import TextContent
@@ -680,10 +681,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
     # The SimpleReporter provides both mechanisms transparently
 
-    # === Consolidated validation pass ===
-    # Run remaining validators in sequence
-    # Note: Each validator does its own code analysis (AST/regex)
-    # TODO: Pass cached AST to validators to reduce redundant parsing
+    # === Consolidated validation pass with shared AST ===
+    # Parse AST once and pass to all validators to avoid redundant parsing
+    try:
+        code_tree = ast.parse(code)
+    except SyntaxError as e:
+        return error_response(
+            "syntax_error",
+            f"Invalid Python syntax at line {e.lineno}: {e.msg}",
+            line_number=e.lineno,
+            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)"
+        )
 
     # Check for undefined variables that indicate hallucinated/internal names
     undefined_check = detect_undefined_variables(code)

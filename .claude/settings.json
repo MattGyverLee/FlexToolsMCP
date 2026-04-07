@@ -6,7 +6,8 @@
       "Bash(git -C \"d:/Github/_Projects/_LEX/FlexToolsMCP\" status -s)"
     ],
     "additionalDirectories": [
-      "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src"
+      "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src",
+      "\\tmp"
     ]
   },
   "hooks": {

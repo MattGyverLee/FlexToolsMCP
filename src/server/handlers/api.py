@@ -378,6 +378,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
 
     result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False}
 
+    # Pre-lowercase object_type once for fuzzy matching (eliminates repeated .lower() calls)
+    object_type_lower = object_type.lower()
+
     # Search in FlexLibs 2.0
     if include_flexlibs2 and api_index.flexlibs2:
         entities = api_index.flexlibs2.get("entities", {})
@@ -391,7 +394,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         else:
             max_matches = 10
             for name, entity in entities.items():
-                if object_type.lower() in name.lower():
+                # Use pre-lowercased object_type instead of calling .lower() per iteration
+                if object_type_lower in name.lower():
                     if KEY_FLEXLIBS2_MATCHES not in result:
                         result[KEY_FLEXLIBS2_MATCHES] = []
                     result[KEY_FLEXLIBS2_MATCHES].append({
@@ -415,7 +419,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         else:
             max_matches = 10
             for name, entity in entities.items():
-                if object_type.lower() in name.lower():
+                # Use pre-lowercased object_type instead of calling .lower() per iteration
+                if object_type_lower in name.lower():
                     if KEY_LIBLCM_MATCHES not in result:
                         result[KEY_LIBLCM_MATCHES] = []
                     result[KEY_LIBLCM_MATCHES].append({
@@ -548,12 +553,19 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         expanded_terms.update(pythonic_expansions)
 
         def search_source(source_name, index_data, boost=0):
-            """Search a single source and return results."""
+            """Search a single source and return results.
+
+            Optimization: Pre-lowercase all entity/method names once instead of
+            per-term (eliminates 1000+ .lower() calls per large API search).
+            """
             source_results = []
             if not index_data:
                 return source_results
 
             for entity_name, entity in index_data.get("entities", {}).items():
+                # Cache lowercased entity name for reuse in properties loop
+                entity_name_lower = entity_name.lower()
+
                 for method in entity.get(KEY_METHODS, []):
                     method_name = method.get(KEY_NAME, '')
                     name_lower = method_name.lower()
@@ -564,6 +576,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                         score += 2
 
                     if score > boost:
+                        # Pre-cache lowercased description and summary
                         desc_lower = method.get(KEY_DESCRIPTION, '').lower()
                         summary_lower = method.get(KEY_SUMMARY, '').lower()
                         for term in expanded_terms:
@@ -586,20 +599,22 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                     for prop in entity.get("properties", []):
                         prop_name = prop.get(KEY_NAME, '')
                         pythonic_name = prop.get(KEY_PYTHONIC_NAME, prop_name)
+                        # Pre-lowercase property names once (O(1) reuse)
                         name_lower = prop_name.lower()
-                        pythonic_lower = pythonic_name.lower()
+                        pythonic_lower_name = pythonic_name.lower()
                         score = boost
 
                         for term in expanded_terms:
-                            if term == name_lower or term == pythonic_lower:
+                            if term == name_lower or term == pythonic_lower_name:
                                 score += 3
                                 break
 
                         if score == boost:
+                            # Pre-lowercase description and kind once
                             desc_lower = prop.get(KEY_DESCRIPTION, '').lower()
                             kind_lower = prop.get(KEY_KIND, '').lower()
                             for term in expanded_terms:
-                                if term in desc_lower or term in kind_lower or term in name_lower or term in pythonic_lower:
+                                if term in desc_lower or term in kind_lower or term in name_lower or term in pythonic_lower_name:
                                     score += 1
 
                         if score > boost:

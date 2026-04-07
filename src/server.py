@@ -7,6 +7,9 @@ An MCP server that provides AI assistants with searchable documentation
 of the LibLCM and FlexLibs APIs for generating FLExTools scripts.
 """
 
+import time as _time_module
+_startup_begin = _time_module.time()
+
 import json
 import asyncio
 import sys
@@ -22,6 +25,9 @@ from typing import Any, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 import io
 from contextlib import redirect_stdout, redirect_stderr
+
+_imports_std_done = _time_module.time()
+print(f"[TIMING] Stdlib imports: {_imports_std_done - _startup_begin:.3f}s", file=sys.stderr, flush=True)
 
 # Suppress noisy third-party warnings and output
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
@@ -53,8 +59,12 @@ if __package__ is None:
     if _src_path not in sys.path:
         sys.path.insert(0, _src_path)
 
+_mcp_import_begin = _time_module.time()
 from mcp.server import Server
+_mcp_import_done = _time_module.time()
+print(f"[TIMING] MCP imports: {_mcp_import_done - _mcp_import_begin:.3f}s", file=sys.stderr, flush=True)
 
+_local_imports_begin = _time_module.time()
 if __package__:
     from .json_utils import sort_json_arrays
     from .server.kernel import (
@@ -91,6 +101,8 @@ else:
         find_versioned_api_file,
         find_latest_versioned_api_file,
     )
+_local_imports_done = _time_module.time()
+print(f"[TIMING] Local module imports: {_local_imports_done - _local_imports_begin:.3f}s", file=sys.stderr, flush=True)
 
 
 # Safe logging helper that works even before initialization
@@ -169,6 +181,7 @@ if TYPE_CHECKING:
     import faiss
     from sentence_transformers import SentenceTransformer
 
+_optional_imports_begin = _time_module.time()
 try:
     import numpy as np
     import faiss
@@ -176,6 +189,8 @@ try:
     SEMANTIC_SEARCH_AVAILABLE = True
 except ImportError:
     SEMANTIC_SEARCH_AVAILABLE = False
+_optional_imports_done = _time_module.time()
+print(f"[TIMING] Optional imports (numpy/faiss): {_optional_imports_done - _optional_imports_begin:.3f}s", file=sys.stderr, flush=True)
 
 
 @dataclass
@@ -413,6 +428,7 @@ class APIIndex:
         index = cls()
 
         # Load each library using consolidated helper function
+        _lib_start = _time_module.time()
         _load_library_api_index(
             index,
             index_dir,
@@ -422,7 +438,10 @@ class APIIndex:
             "liblcm",
             "liblcm_version",
         )
+        _lib_done = _time_module.time()
+        print(f"[TIMING] LibLCM load: {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
+        _lib_start = _time_module.time()
         _load_library_api_index(
             index,
             index_dir,
@@ -432,7 +451,10 @@ class APIIndex:
             "flexlibs2",
             "flexlibs2_version",
         )
+        _lib_done = _time_module.time()
+        print(f"[TIMING] FlexLibs 2.0 load: {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
+        _lib_start = _time_module.time()
         _load_library_api_index(
             index,
             index_dir,
@@ -442,29 +464,43 @@ class APIIndex:
             "flexlibs_stable",
             "flexlibs_stable_version",
         )
+        _lib_done = _time_module.time()
+        print(f"[TIMING] FlexLibs stable load: {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
         # Load navigation graph using consolidated helper (eliminates duplicated load pattern)
+        _nav_start = _time_module.time()
         index.navigation_graph = _load_json_with_fallback(
             index_dir,
             "navigation_graph_liblcm",
             "navigation_graph.json"
         )
+        _nav_done = _time_module.time()
+        print(f"[TIMING] Navigation graph load: {_nav_done - _nav_start:.3f}s", file=sys.stderr, flush=True)
 
         # Load casting index using consolidated helper (eliminates duplicated load pattern)
+        _cast_start = _time_module.time()
         index.casting_index = _load_json_with_fallback(
             index_dir,
             "casting_index_liblcm",
             "casting_index.json"
         )
+        _cast_done = _time_module.time()
+        print(f"[TIMING] Casting index load: {_cast_done - _cast_start:.3f}s", file=sys.stderr, flush=True)
 
         # Load semantic search (optional)
+        _search_start = _time_module.time()
         index.semantic_search = SemanticSearch.load(index_dir)
+        _search_done = _time_module.time()
+        print(f"[TIMING] Semantic search load: {_search_done - _search_start:.3f}s", file=sys.stderr, flush=True)
 
         return index
 
 
 # Initialize the MCP server
+_server_init_begin = _time_module.time()
 server = Server("flextools-mcp")
+_server_init_done = _time_module.time()
+print(f"[TIMING] MCP Server instantiation: {_server_init_done - _server_init_begin:.3f}s", file=sys.stderr, flush=True)
 
 # Global index (loaded on startup)
 api_index: Optional[APIIndex] = None
@@ -638,13 +674,22 @@ async def main():
     global api_index
     import time
 
+    _main_start = _time_module.time()
+    _module_init_elapsed = _main_start - _startup_begin
+    print(f"[TIMING] Module initialization complete: {_module_init_elapsed:.3f}s total", file=sys.stderr, flush=True)
+    print(f"[TIMING] main() started at {_module_init_elapsed:.3f}s", file=sys.stderr, flush=True)
+
     # Pre-load indexes
     _log_info("Loading API indexes...")
-    start = time.time()
+    _api_load_start = _time_module.time()
+    print(f"[TIMING] API load started at {_api_load_start - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
     api_index = APIIndex.load(get_index_dir())
-    elapsed = time.time() - start
-    _log_info(f"API indexes loaded in {elapsed:.2f}s")
+    _api_load_done = _time_module.time()
+    _api_load_elapsed = _api_load_done - _api_load_start
+    print(f"[TIMING] API load completed in {_api_load_elapsed:.3f}s", file=sys.stderr, flush=True)
+    _log_info(f"API indexes loaded in {_api_load_elapsed:.2f}s")
 
+    _log_start = _time_module.time()
     if api_index.liblcm:
         version = api_index.liblcm_version or "unknown"
         entities = len(api_index.liblcm.get('entities', {}))
@@ -672,8 +717,11 @@ async def main():
         _log_info( f"FlexLibs Stable v{version}: {entities} entities")
     else:
         _log_warning( "FlexLibs Stable index not found")
+    _log_done = _time_module.time()
+    print(f"[TIMING] API logging: {_log_done - _log_start:.3f}s", file=sys.stderr, flush=True)
 
     # Print version and entity summary to console so user knows what APIs are loaded
+    _versions_start = _time_module.time()
     versions = []
     if api_index.liblcm and api_index.liblcm_version:
         entities = len(api_index.liblcm.get('entities', {}))
@@ -684,6 +732,8 @@ async def main():
     if api_index.flexlibs_stable and api_index.flexlibs_stable_version:
         entities = len(api_index.flexlibs_stable.get('entities', {}))
         versions.append(f"FlexLibs {api_index.flexlibs_stable_version} ({entities} entities)")
+    _versions_done = _time_module.time()
+    print(f"[TIMING] Version string building: {_versions_done - _versions_start:.3f}s", file=sys.stderr, flush=True)
 
     if versions:
         # Note: Can't use stdout during init (breaks MCP protocol parser)
@@ -692,9 +742,25 @@ async def main():
 
     _log_info( "Starting MCP server...")
 
+    _stdio_server_begin = _time_module.time()
+    print(f"[TIMING] Entering stdio_server context at {_stdio_server_begin - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        _stdio_server_done = _time_module.time()
+        print(f"[TIMING] stdio_server context setup: {_stdio_server_done - _stdio_server_begin:.3f}s", file=sys.stderr, flush=True)
+
+        _server_run_begin = _time_module.time()
+        print(f"[TIMING] About to call server.run() at {_server_run_begin - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
+        try:
+            await server.run(read_stream, write_stream, server.create_initialization_options())
+        except Exception as e:
+            print(f"[ERROR] server.run() raised exception: {e}", file=sys.stderr, flush=True)
+            raise
+        finally:
+            _server_run_done = _time_module.time()
+            print(f"[TIMING] server.run() exited after {_server_run_done - _server_run_begin:.3f}s", file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":
+    _asyncio_begin = _time_module.time()
+    print(f"[TIMING] Starting asyncio.run(main()) at {_asyncio_begin - _startup_begin:.3f}s", file=sys.stderr, flush=True)
     asyncio.run(main())

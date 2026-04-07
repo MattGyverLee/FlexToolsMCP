@@ -149,7 +149,8 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     return data
 
 
-def json_response(data: Dict[str, Any], indent: int = 2, **kwargs) -> List[Any]:
+def json_response(data: Dict[str, Any], indent: int = 2, sort_keys: bool = False,
+                   ensure_ascii: bool = False) -> List[Any]:
     """
     Format data as JSON response wrapped in MCP TextContent.
 
@@ -163,7 +164,8 @@ def json_response(data: Dict[str, Any], indent: int = 2, **kwargs) -> List[Any]:
     Args:
         data: The dict to serialize as JSON
         indent: JSON indentation level (default: 2)
-        **kwargs: Additional arguments passed to json.dumps (sort_keys, etc.)
+        sort_keys: Sort dictionary keys in output (default: False)
+        ensure_ascii: Escape non-ASCII characters (default: False)
 
     Returns:
         List with single TextContent object suitable for MCP tool return
@@ -173,8 +175,8 @@ def json_response(data: Dict[str, Any], indent: int = 2, **kwargs) -> List[Any]:
         >>> return json_response(result)
         [TextContent(type='text', text='{"status": "ok", "items": [1, 2, 3]}')]
     """
-    kwargs['indent'] = indent
-    json_str = format_result(data, **kwargs)
+    json_str = format_result(data, indent=indent, sort_keys=sort_keys,
+                            ensure_ascii=ensure_ascii)
 
     if TextContent is None:
         # Fallback if MCP not available (e.g., unit tests)

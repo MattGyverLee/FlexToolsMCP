@@ -8,6 +8,30 @@ a single source of truth for response field names. This eliminates duplication
 and makes it easy to rename fields consistently across the entire API.
 """
 
+__all__ = [
+    # Basic response fields
+    'KEY_NAME', 'KEY_TYPE', 'KEY_MESSAGE', 'KEY_DESCRIPTION', 'KEY_SUMMARY',
+    'KEY_ERROR', 'KEY_STATUS', 'KEY_SOURCE', 'KEY_CATEGORY',
+    # API-specific response fields
+    'KEY_OBJECTS', 'KEY_METHODS', 'KEY_PROPERTIES', 'KEY_RETURN_TYPE',
+    'KEY_PARAMETERS', 'KEY_SIGNATURE', 'KEY_EXAMPLE', 'KEY_EXAMPLES',
+    'KEY_ENTITY', 'KEY_FOUND', 'KEY_SCORE', 'KEY_MATCHES',
+    'KEY_FLEXLIBS2', 'KEY_LIBLCM', 'KEY_FLEXLIBS2_MATCHES', 'KEY_LIBLCM_MATCHES',
+    'KEY_DISAMBIGUATION', 'KEY_QUERY', 'KEY_RESULTS_COUNT', 'KEY_METHODS_COUNT',
+    # Catalog-specific response fields
+    'KEY_FLEXLIBS2_COUNT', 'KEY_LIBLCM_COUNT', 'KEY_TOTAL_COUNT',
+    'KEY_CATEGORIES', 'KEY_ENTITIES',
+    # Discovery response fields
+    'KEY_AVAILABLE', 'KEY_VERSION', 'KEY_VERSIONS', 'KEY_PATH', 'KEY_LOCATION',
+    # Execution response fields
+    'KEY_SCRIPT', 'KEY_ISSUES', 'KEY_WARNINGS', 'KEY_CONTEXT', 'KEY_OUTPUT',
+    'KEY_OPERATION', 'KEY_OBJECT_TYPE',
+    # Error response fields
+    'KEY_CODE', 'KEY_DETAILS', 'KEY_SUGGESTION', 'KEY_HINT',
+    # Admin/session fields
+    'KEY_SESSION', 'KEY_STATE', 'KEY_HISTORY', 'KEY_SETTINGS', 'KEY_CONFIGURATION',
+]
+
 # ---- Response Field Names ---------------------------------------------------
 
 # Basic response fields

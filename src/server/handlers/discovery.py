@@ -15,7 +15,7 @@ from mcp.types import TextContent
 
 # Import shared state and response constants
 try:
-    from ...response_utils import json_response
+    from ..response_utils import json_response
     from ..kernel import get_api_index, session_state
     from ..models import GetNavigationPathInput
     from ..response_keys import (
@@ -29,7 +29,7 @@ try:
     )
     from .utils import normalize_object_name
 except ImportError:
-    from response_utils import json_response
+    from server.response_utils import json_response
     from server.kernel import get_api_index, session_state
     from server.models import GetNavigationPathInput
     from server.response_keys import (
@@ -41,7 +41,7 @@ except ImportError:
         KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
         KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
     )
-    from utils import normalize_object_name
+    from server.handlers.utils import normalize_object_name
 
 # Type note: api_index is initialized by server.py before any handlers are called
 

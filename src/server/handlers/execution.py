@@ -969,12 +969,94 @@ def run_module():
             text = text.strip()
             return text == "" or text == FLEX_EMPTY_PLACEHOLDER
 
+        def find_writing_system(project, query):
+            """
+            Find a writing system by name, tag, or partial match.
+
+            Args:
+                project: FLExProject instance
+                query: String to search for (e.g., "pyn", "Pinyin", "zh-CN")
+
+            Returns:
+                Writing system handle if found, None otherwise
+                Also searches display names and language tags
+
+            Usage:
+                ws_handle = find_writing_system(project, "pyn")
+                if ws_handle:
+                    text = project.WritingSystems.GetDisplayName(ws_handle)
+                    print(f"Found: {text}")
+            """
+            try:
+                query_lower = query.lower()
+                all_ws = list(project.WritingSystems.GetAll())
+
+                # Search for exact match first
+                for ws in all_ws:
+                    try:
+                        display_name = project.WritingSystems.GetDisplayName(ws)
+                        language_tag = project.WritingSystems.GetLanguageTag(ws)
+
+                        if (query_lower == display_name.lower() or
+                            query_lower == language_tag.lower()):
+                            return ws
+                    except:
+                        pass
+
+                # Then search for substring match
+                for ws in all_ws:
+                    try:
+                        display_name = project.WritingSystems.GetDisplayName(ws)
+                        language_tag = project.WritingSystems.GetLanguageTag(ws)
+
+                        if (query_lower in display_name.lower() or
+                            query_lower in language_tag.lower()):
+                            return ws
+                    except:
+                        pass
+
+                return None
+            except Exception as e:
+                return None
+
+        def list_writing_systems(project):
+            """
+            List all available writing systems with their names and tags.
+
+            Returns:
+                List of dicts with 'name' and 'tag' keys
+
+            Usage:
+                for ws_info in list_writing_systems(project):
+                    print(f"{ws_info['name']} ({ws_info['tag']})")
+            """
+            try:
+                all_ws = list(project.WritingSystems.GetAll())
+                result = []
+
+                for ws in all_ws:
+                    try:
+                        display_name = project.WritingSystems.GetDisplayName(ws)
+                        language_tag = project.WritingSystems.GetLanguageTag(ws)
+                        result.append({
+                            'name': display_name,
+                            'tag': language_tag
+                        })
+                    except:
+                        pass
+
+                return result
+            except Exception as e:
+                return []
+
         # Execute the module code in a namespace
         module_namespace = {
             "__name__": "__flextools_module__",
             "__file__": "module.py",
             "is_empty_multistring": is_empty_multistring,
             "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
+            "find_writing_system": find_writing_system,
+            "list_writing_systems": list_writing_systems,
             # Add project and report so bare code can use them directly
             "project": project,
             "report": report,

@@ -27,7 +27,23 @@ from contextlib import redirect_stdout, redirect_stderr
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
 os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
 warnings.filterwarnings('ignore', message='.*position_ids.*')
-warnings.filterwarnings('ignore', message='.*unauthenticated requests.*')
+
+# Capture HF Hub unauthenticated warning to log it properly
+import warnings as _warnings_module
+_hf_warned = False
+
+def _warning_handler(message, category, filename, lineno, file=None, line=None):
+    """Custom warning handler to capture and log HF Hub warnings."""
+    global _hf_warned
+    msg_str = str(message)
+    if 'unauthenticated' in msg_str.lower() and not _hf_warned:
+        _hf_warned = True
+        _log_warning(f"HuggingFace Hub: {msg_str}")
+    elif 'unauthenticated' not in msg_str.lower():
+        # Show other warnings normally
+        _warnings_module.showwarning(message, category, filename, lineno, file, line)
+
+_warnings_module.showwarning = _warning_handler
 
 # Ensure src is in sys.path when running as a script
 if __package__ is None:
@@ -189,17 +205,21 @@ class SemanticSearch:
             search.items = metadata.get("items", [])
 
             # Load FAISS index
+            _log_info("Loading semantic search index...")
             search.index = faiss.read_index(str(faiss_path))
 
-            # Load model (lazy - only when needed)
+            # Load model (may download from HuggingFace on first load)
             model_name = metadata.get("_model", "all-MiniLM-L6-v2")
+            _log_info(f"Loading embedding model '{model_name}' (may download ~50MB on first load)...")
+
             with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 warnings.filterwarnings('ignore')
                 search.model = SentenceTransformer(model_name)
 
+            _log_info("Semantic search ready")
             search.enabled = True
         except Exception as e:
-            print(f"[WARN] Failed to load semantic search: {e}")
+            _log_warning(f"Failed to load semantic search: {e}")
 
         return search
 

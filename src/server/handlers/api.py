@@ -16,38 +16,26 @@ from typing import List, Dict, Any, cast
 # Import kernel and config with dual-mode support
 try:
     from ..kernel import api_index, session_state
+    from ..response_utils import json_response
+    from ..server.response_keys import (
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
+        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
+    )
 except ImportError:
     from server.kernel import api_index, session_state
+    from response_utils import json_response
+    from server.response_keys import (
+        KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
+        KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT
+    )
 
 # Type note: api_index is initialized by server.py before any handlers are called
-
-# ============================================================
-# Constants (avoid stringly-typed code)
-# ============================================================
-# Response field names
-KEY_OBJECT_TYPE = "object_type"
-KEY_FOUND = "found"
-KEY_METHODS = "methods"
-KEY_ENTITY = "entity"
-KEY_NAME = "name"
-KEY_TYPE = "type"
-KEY_SOURCE = "source"
-KEY_SIGNATURE = "signature"
-KEY_DESCRIPTION = "description"
-KEY_CATEGORY = "category"
-KEY_SCORE = "score"
-KEY_MATCHES = "matches"
-KEY_FLEXLIBS2 = "flexlibs2"
-KEY_LIBLCM = "liblcm"
-KEY_FLEXLIBS2_MATCHES = "flexlibs2_matches"
-KEY_LIBLCM_MATCHES = "liblcm_matches"
-KEY_DISAMBIGUATION = "disambiguation"
-KEY_QUERY = "query"
-KEY_RESULTS_COUNT = "results_count"
-KEY_EXAMPLES = "examples"
-KEY_MESSAGE = "message"
-KEY_SUMMARY = "summary"
-KEY_METHODS_COUNT = "methods_count"
 KEY_SOURCES_SEARCHED = "sources_searched"
 KEY_FALLBACK_USED = "fallback_used"
 KEY_API_MODE = "api_mode"
@@ -231,9 +219,6 @@ def _matches_operation(name_lower: str, operation_type: str) -> bool:
     return any(x in name_lower for x in OPERATION_PATTERNS[operation_type])
 
 
-def _json_response(data: dict) -> list[TextContent]:
-    """Wrap dict response as JSON TextContent for MCP."""
-    return [TextContent(type="text", text=json.dumps(data, indent=2, default=str))]
 
 
 def rank_object_matches(partial_name: str, matches: list, api_mode: str) -> dict:
@@ -527,7 +512,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     if result.get(KEY_FOUND):
         session_state.record_validated_api(object_type)
 
-    return _json_response(result)
+    return json_response(result)
 
 
 async def handle_search_by_capability(args: dict) -> list[TextContent]:
@@ -695,7 +680,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     result = build_response_with_context(result, include_session=True)
 
-    return _json_response(result)
+    return json_response(result)
 
 
 async def handle_find_examples(args: dict) -> list[TextContent]:
@@ -737,7 +722,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             if len(examples) >= max_results:
                 break
 
-    return _json_response({
+    return json_response({
         KEY_QUERY: {
             KEY_METHOD_NAME: method_name,
             KEY_OPERATION_TYPE: operation_type,
@@ -857,4 +842,4 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
 
     result = build_response_with_context(result, include_session=True)
 
-    return _json_response(result)
+    return json_response(result)

@@ -635,11 +635,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 async def main():
     """Run the MCP server."""
-    global api_index, operations_logger
-
-    # Initialize logging early so startup messages appear in IDE
-    if not operations_logger:
-        operations_logger = setup_logging()
+    global api_index
 
     # Pre-load indexes
     _log_info("Loading API indexes...")

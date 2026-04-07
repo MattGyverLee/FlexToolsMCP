@@ -25,6 +25,21 @@ else:
     from json_utils import sort_json_arrays
 
 
+# ============================================================
+# Constants
+# ============================================================
+# Relationship type names (avoid stringly-typed code)
+REL_OWNS = "owns"
+REL_OWNED_BY = "owned_by"
+REL_REFERENCES = "references"
+REL_REFERENCED_BY = "referenced_by"
+
+
+def entity_var_name(entity_id: str) -> str:
+    """Convert entity ID to variable name (e.g., ILexEntry -> lexEntry)."""
+    return entity_id.lower().replace('i', '', 1)
+
+
 def get_project_root() -> Path:
     """Get the project root directory."""
     return Path(__file__).parent.parent
@@ -87,8 +102,8 @@ def extract_relationships(liblcm: Dict) -> Dict[str, Any]:
 
             rel_info = REL_TYPES[rel_type]
 
-            # Build access pattern
-            access_pattern = f"{entity_id.lower().replace('i', '', 1)}.{prop_name}"
+            # Build access pattern using entity_var_name helper
+            access_pattern = f"{entity_var_name(entity_id)}.{prop_name}"
 
             relationship = {
                 "target": target_type,
@@ -102,14 +117,14 @@ def extract_relationships(liblcm: Dict) -> Dict[str, Any]:
 
             if rel_info["direction"] == "child":
                 relationships["children"].append(relationship)
-                # Add to graph
-                graph[entity_id].append((target_type, prop_name, "owns"))
+                # Add to graph using constants
+                graph[entity_id].append((target_type, prop_name, REL_OWNS))
                 # Build reverse relationship
-                reverse_graph[target_type].append((entity_id, prop_name, "owned_by"))
+                reverse_graph[target_type].append((entity_id, prop_name, REL_OWNED_BY))
             else:
                 relationships["references"].append(relationship)
-                graph[entity_id].append((target_type, prop_name, "references"))
-                reverse_graph[target_type].append((entity_id, prop_name, "referenced_by"))
+                graph[entity_id].append((target_type, prop_name, REL_REFERENCES))
+                reverse_graph[target_type].append((entity_id, prop_name, REL_REFERENCED_BY))
 
         entities[entity_id] = relationships
 
@@ -117,17 +132,17 @@ def extract_relationships(liblcm: Dict) -> Dict[str, Any]:
     for entity_id in entities:
         if entity_id in reverse_graph:
             for parent_id, via, rel_type in reverse_graph[entity_id]:
-                if rel_type == "owned_by":
+                if rel_type == REL_OWNED_BY:
                     entities[entity_id]["parents"].append({
                         "target": parent_id,
                         "via": via,
-                        "relationship": "owned_by"
+                        "relationship": REL_OWNED_BY
                     })
                 else:
                     entities[entity_id]["referenced_by"].append({
                         "target": parent_id,
                         "via": via,
-                        "relationship": "referenced_by"
+                        "relationship": REL_REFERENCED_BY
                     })
 
     return {

@@ -26,13 +26,13 @@ This guide helps AI assistants and users generate **correct, maintainable FLExTo
 ✓ **DO:**
 - Write one module file with Main()
 - Run it via FLExTools GUI
-- Run it via `run_module()` in FlexToolsMCP
-- Use `run_operation()` only for quick tests/prototyping
+- Run it via `flextools_run_module()` in FlexToolsMCP
+- Use the same code everywhere (FLExTools, MCP, command line)
 
 ✗ **DON'T:**
 - Maintain separate `my_operation.py` and `my_module.py` files with similar logic
-- Copy-paste operation snippets into a separate module file
-- Let module and operation versions drift apart
+- Copy-paste snippets into different execution paths
+- Let versions drift apart across different tools
 
 ### Why This Matters
 
@@ -43,20 +43,21 @@ This guide helps AI assistants and users generate **correct, maintainable FLExTo
 
 The `Main()` function allows **one codebase to work in both contexts**. Use it.
 
-### run_operation() is for Quick Snippets ONLY
+### Single Module-Based Approach
 
-Use `run_operation()` for:
-- One-off queries: `entries = project.LexEntry.GetAll(); report.Info(len(entries))`
-- Prototyping before writing a full module
-- Testing APIs before committing to a module
+FlexToolsMCP now uses a unified `flextools_run_module()` tool. Always write a proper module with `Main(project, report, modifyAllowed)`:
 
-Don't use `run_operation()` for anything you'll reuse. **Write a module instead.**
+- Quick one-off queries: Still use module form
+- Prototyping: Still use module form
+- Testing APIs: Still use module form
+
+**All code goes through the same Main() pattern** - this ensures consistency and prevents code divergence.
 
 ---
 
 ## For AI Assistants (Claude, Copilot, etc.)
 
-When generating FLExTools scripts using the MCP:
+When generating FLExTools scripts, **always generate a complete module** with the `Main(project, report, modifyAllowed)` signature. The MCP tool `flextools_run_module()` executes this directly. No need to distinguish between different execution paths - one module works everywhere.
 
 ### 1. Choose the Right Flavor
 
@@ -262,6 +263,7 @@ def multistring_safe(project, sense, field_name):
 - ✓ Report progress frequently
 - ✓ Test on actual FieldWorks projects (read-only first)
 - ✓ Document why you chose a specific flavor
+- ✓ Use the unified module approach with Main() for all code
 
 ### DON'T ✗
 
@@ -276,43 +278,37 @@ def multistring_safe(project, sense, field_name):
 - ✗ Swallow exceptions silently (always report)
 - ✗ Generate code without using templates
 - ✗ Use parameter name `modify` - it's `modifyAllowed`
+- ✗ Maintain separate operation vs module versions (causes divergence)
 
 ---
 
-## When to Use run_operation vs run_module
+## The Unified Module Approach
 
-### Use run_module() for Everything Except Quick Tests
+FlexToolsMCP uses **only** `flextools_run_module()` - a single, unified execution path:
 
 ```python
-# ✓ USE run_module() for:
-# - Anything you'll run more than once
-# - Scripts that will be shared or reused
-# - Production automation
-# - Multi-step workflows
-
+# ALWAYS use this pattern, even for quick tests
 def Main(project, report, modifyAllowed):
+    """Standard FLExTools entry point."""
     entries = project.LexEntry.GetAll()
     report.Info(f"Found {len(entries)} entries")
+
+    if modifyAllowed:
+        # Make changes here
+        pass
+    else:
+        report.Info("(Preview mode - no changes)")
 ```
 
-### Use run_operation() ONLY for Ad-Hoc Snippets
+### Benefits of Single-Tool Design
 
-```python
-# ✓ USE run_operation() for:
-# - Quick one-off queries
-# - API testing/exploration
-# - Prototyping before writing a module
+- **No code divergence**: One module works everywhere
+- **Consistent testing**: Test once, run everywhere
+- **Easier maintenance**: No separate operation/module versions to sync
+- **Better safety**: Write protection always applies
+- **Cleaner MCP interface**: One tool instead of two
 
-# Example (no Main function):
-entries = project.LexEntry.GetAll()
-report.Info(f"Total: {len(entries)}")
-```
-
-### Important
-
-**If you write a module, always use `run_module()`.**
-
-Don't copy it into `run_operation()` and maintain two versions. The single Main() function design means one codebase works everywhere.
+This design emerged from lessons learned about code divergence - using two separate tools led to bugs.
 
 ---
 

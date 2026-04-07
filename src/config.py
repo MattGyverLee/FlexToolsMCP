@@ -21,7 +21,6 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 # In-memory cache (loaded on first call, cleared on flush)
 _config_cache: Optional[Dict[str, Any]] = None
-_cache_loaded = False
 
 
 def _ensure_dir() -> None:
@@ -70,13 +69,11 @@ def _get_cache() -> Dict[str, Any]:
     Returns:
         The cached config dict
     """
-    global _config_cache, _cache_loaded
+    global _config_cache
 
-    if not _cache_loaded:
+    if _config_cache is None:
         _config_cache = _load_config()
-        _cache_loaded = True
 
-    assert _config_cache is not None
     return _config_cache
 
 
@@ -219,9 +216,8 @@ def config_flush() -> None:
     Useful for testing or when the config file might have been modified
     externally.
     """
-    global _config_cache, _cache_loaded
+    global _config_cache
     _config_cache = None
-    _cache_loaded = False
 
 
 def config_path() -> str:

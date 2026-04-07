@@ -26,6 +26,8 @@ Usage:
 """
 
 from typing import Any, Optional, List, Type
+import inspect
+import textwrap
 
 
 def safe_get_property(obj: Any, property_name: str, default: Any = None) -> Any:
@@ -200,26 +202,35 @@ POLYMORPHIC_HELPERS = {
     "cast_or_default": cast_or_default,
 }
 
-# Helper function definitions as a single source of truth for code injection
-# Used for three-tier helper injection strategy in module execution
-HELPER_FUNCTION_DEFS = """
-def safe_get_property(obj, prop, default=None):
-    try: return getattr(obj, prop, default)
-    except: return default
 
-def smart_cast(obj, target_type):
-    try: return target_type(obj)
-    except: return None
+def _generate_helper_function_defs() -> str:
+    """Generate helper function definitions from actual function sources.
 
-def cast_or_default(obj, target_type, prop=None, default=None):
-    casted = smart_cast(obj, target_type)
-    return default if casted is None else (safe_get_property(casted, prop, default) if prop else casted)
+    Dynamically extracts source code from the helper functions defined above.
+    This eliminates manual duplication and ensures code-injection definitions
+    always match the actual implementations.
 
-def get_headword(entry, default="Unknown"):
-    try: return entry.HeadWord.Text
-    except: return default
+    Returns:
+        Multi-function string suitable for exec() injection into FLExTools scripts.
+    """
+    functions_to_inject = [
+        safe_get_property,
+        smart_cast,
+        cast_or_default,
+        get_headword,
+        get_lexeme_form,
+    ]
 
-def get_lexeme_form(entry, default=""):
-    try: return entry.LexemeForm.Form.Text
-    except: return default
-"""
+    sources = []
+    for func in functions_to_inject:
+        # Get the source, strip leading/trailing whitespace, dedent
+        source = inspect.getsource(func)
+        dedented = textwrap.dedent(source)
+        sources.append(dedented)
+
+    return "\n".join(sources)
+
+
+# Helper function definitions for code injection
+# Generated from actual function sources above - never manually edited
+HELPER_FUNCTION_DEFS = _generate_helper_function_defs()

@@ -27,6 +27,13 @@ class HeadlessReport:
         """Initialize reporter with empty message list."""
         self.messages = []
 
+    @staticmethod
+    def _normalize_message(msg):
+        """Ensure message is a string (convert non-string types via repr)."""
+        if not isinstance(msg, (str, type(None))):
+            return repr(msg)
+        return msg
+
     def Info(self, msg, ref=None):
         """
         Report informational message.
@@ -35,9 +42,7 @@ class HeadlessReport:
             msg: Message text (str or convertible to str)
             ref: Optional reference (e.g., FLEx URL or additional context)
         """
-        if not isinstance(msg, (str, type(None))):
-            msg = repr(msg)
-
+        msg = self._normalize_message(msg)
         self.messages.append(("INFO", msg, ref))
         print(f"[INFO] {msg}")
         if ref:
@@ -51,9 +56,7 @@ class HeadlessReport:
             msg: Message text
             ref: Optional reference
         """
-        if not isinstance(msg, (str, type(None))):
-            msg = repr(msg)
-
+        msg = self._normalize_message(msg)
         self.messages.append(("WARNING", msg, ref))
         print(f"[WARN] {msg}")
         if ref:
@@ -67,9 +70,7 @@ class HeadlessReport:
             msg: Message text
             ref: Optional reference
         """
-        if not isinstance(msg, (str, type(None))):
-            msg = repr(msg)
-
+        msg = self._normalize_message(msg)
         self.messages.append(("ERROR", msg, ref))
         print(f"[ERROR] {msg}")
         if ref:
@@ -90,9 +91,7 @@ class HeadlessReport:
         """
         import os
 
-        if not isinstance(msg, (str, type(None))):
-            msg = repr(msg)
-
+        msg = self._normalize_message(msg)
         self.messages.append(("DEBUG", msg, ref))
         if os.getenv("DEBUG"):
             print(f"[DEBUG] {msg}")

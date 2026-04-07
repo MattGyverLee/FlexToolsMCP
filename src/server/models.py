@@ -10,6 +10,13 @@ and IDE autocomplete support.
 
 from typing import Optional, Literal, Any
 from pydantic import BaseModel, Field
+from .constants import API_MODES, API_MODES_DEFAULT
+
+# Ensure API mode constants match Literal types
+assert API_MODES == ("flexlibs2", "flexlibs_stable", "liblcm"), \
+    "API_MODES constant must match Literal types in models"
+assert API_MODES_DEFAULT == "flexlibs2", \
+    "API_MODES_DEFAULT must match FlexToolsStartInput.api_mode default"
 
 
 # ============================================================
@@ -19,7 +26,7 @@ from pydantic import BaseModel, Field
 class FlexToolsStartInput(BaseModel):
     """Initialize a FlexTools MCP session."""
     api_mode: Literal["flexlibs2", "flexlibs_stable", "liblcm"] = Field(
-        default="flexlibs2",
+        default=API_MODES_DEFAULT,
         description="API mode - REQUIRED: 'flexlibs2' (recommended, ~1400 methods), "
                     "'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)."
     )

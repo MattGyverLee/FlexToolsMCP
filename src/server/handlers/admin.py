@@ -15,32 +15,29 @@ import json
 from pathlib import Path
 from mcp.types import TextContent
 
-# Import response utilities
+# Import response utilities and shared state (with fallback for both modes)
 try:
     from ...response_utils import json_response
-except ImportError:
-    from response_utils import json_response
-
-# Import shared state and response constants
-try:
-    from ..kernel import session_state, get_log_dir, api_index
+    from ..kernel import session_state, get_log_dir, get_api_index
     from ..session import SessionState
     from ..response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
         KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
         KEY_TEMPLATE, KEY_WARNINGS
     )
-    if not isinstance(session_state, SessionState):
-        session_state = SessionState()
 except ImportError:
     # Fallback for when module isn't fully modularized yet
-    from server.kernel import session_state, get_log_dir, api_index
+    from response_utils import json_response
+    from server.kernel import session_state, get_log_dir, get_api_index
     from server.session import SessionState
     from server.response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
         KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
         KEY_TEMPLATE, KEY_WARNINGS
     )
+
+if not isinstance(session_state, SessionState):
+    session_state = SessionState()
 
 
 # ============================================================
@@ -199,6 +196,10 @@ async def handle_start(args: dict) -> list[TextContent]:
     This sets up the session for subsequent API discovery and operations.
     After calling start(), discuss the goal with the user, then use
     search_by_capability() or get_object_api() to discover the correct APIs.
+
+    If project_name is provided, queries the project to list:
+    - Available writing systems and their language tags
+    - Number of entries in the project
     """
     api_mode = args.get(KEY_API_MODE, "flexlibs2")
     project_name = args.get(KEY_PROJECT, "")
@@ -209,13 +210,13 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     # Build API versions dict from current APIIndex (more Pythonic)
     api_versions = {}
-    if api_index:
-        if api_index.liblcm_version:
-            api_versions["liblcm"] = api_index.liblcm_version
-        if api_index.flexlibs2_version:
-            api_versions["flexlibs2"] = api_index.flexlibs2_version
-        if api_index.flexlibs_stable_version:
-            api_versions["flexlibs_stable"] = api_index.flexlibs_stable_version
+    if get_api_index():
+        if get_api_index().liblcm_version:
+            api_versions["liblcm"] = get_api_index().liblcm_version
+        if get_api_index().flexlibs2_version:
+            api_versions["flexlibs2"] = get_api_index().flexlibs2_version
+        if get_api_index().flexlibs_stable_version:
+            api_versions["flexlibs_stable"] = get_api_index().flexlibs_stable_version
 
     # Set session-wide settings
     session_state.configure(
@@ -225,6 +226,51 @@ async def handle_start(args: dict) -> list[TextContent]:
         write_enabled=write_enabled,
         api_versions=api_versions
     )
+
+    # Query project metadata if project_name provided
+    project_metadata = {}
+    if project_name:
+        try:
+            from flexlibs2 import FLExProject
+            project = FLExProject()
+            project.OpenProject(project_name, writeEnabled=False)
+
+            # Get writing systems
+            writing_systems = []
+            try:
+                for ws in project.WritingSystems.GetAll():
+                    try:
+                        display_name = project.WritingSystems.GetDisplayName(ws)
+                        language_tag = project.WritingSystems.GetLanguageTag(ws)
+                        writing_systems.append({
+                            "name": display_name,
+                            "tag": language_tag
+                        })
+                    except:
+                        pass
+            except:
+                pass
+
+            # Get entry count
+            entry_count = 0
+            try:
+                entry_count = len(list(project.LexEntry.GetAll()))
+            except:
+                pass
+
+            # Close project
+            try:
+                project.CloseProject()
+            except:
+                pass
+
+            project_metadata = {
+                "writing_systems": writing_systems,
+                "entry_count": entry_count
+            }
+        except Exception as e:
+            # Project couldn't be queried, continue without metadata
+            pass
 
     # Build response
     result = {
@@ -242,6 +288,10 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
 
+    # Add project metadata if available
+    if project_metadata:
+        result["project_metadata"] = project_metadata
+
     # Warnings
     warnings = []
     if not project_name:
@@ -252,7 +302,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     if warnings:
         result[KEY_WARNINGS] = warnings
 
-    return json_response(result, use_default_str=True)
+    return json_response(result)
 
 
 async def handle_manage_config(args: dict) -> list[TextContent]:
@@ -325,7 +375,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
         result[KEY_SUCCESS] = False
         result[KEY_MESSAGE] = f"Error: {str(e)}"
 
-    return json_response(result, use_default_str=True)
+    return json_response(result)
 
 
 async def handle_get_session_history(args: dict) -> list[TextContent]:
@@ -361,7 +411,7 @@ async def handle_get_session_history(args: dict) -> list[TextContent]:
     else:
         result[KEY_NEXT_STEPS] = ["Run operations to build history"]
 
-    return json_response(result, use_default_str=True)
+    return json_response(result)
 
 
 async def handle_undo_last_operation(args: dict) -> list[TextContent]:
@@ -410,7 +460,7 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
         KEY_REDO_AVAILABLE: session_state.can_redo(),
     }
 
-    return json_response(result, use_default_str=True)
+    return json_response(result)
 
 
 async def handle_get_module_template(args: dict) -> list[TextContent]:

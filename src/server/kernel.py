@@ -97,7 +97,7 @@ def get_log_dir() -> Path:
 
 
 def setup_logging():
-    """Configure file logging for operations."""
+    """Configure file and console logging for operations."""
     log_dir = get_log_dir()
     log_file = log_dir / "operations.log"
 
@@ -124,6 +124,13 @@ def setup_logging():
         )
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+
+        # Console handler for stdout (so MCP IDE can capture it)
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        console_formatter = logging.Formatter('[%(levelname)s] %(message)s')
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     return logger
 

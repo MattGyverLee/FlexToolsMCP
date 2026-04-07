@@ -233,8 +233,15 @@ async def handle_start(args: dict) -> list[TextContent]:
     if project_name:
         try:
             from flexlibs2 import FLExProject
+            from ..server.kernel import get_operations_logger
+            logger = get_operations_logger()
+            if logger:
+                logger.info(f"Querying project metadata for: {project_name}")
+
             project = FLExProject()
             project.OpenProject(project_name, writeEnabled=False)
+            if logger:
+                logger.info(f"Project opened successfully: {project_name}")
 
             # Classify writing systems by type
             vernacular_ws = []
@@ -296,8 +303,9 @@ async def handle_start(args: dict) -> list[TextContent]:
             entry_count = 0
             try:
                 entry_count = len(list(project.LexEntry.GetAll()))
-            except:
-                pass
+            except Exception as e:
+                if logger:
+                    logger.warning(f"Failed to get entry count: {e}")
 
             # Close project
             try:
@@ -312,9 +320,20 @@ async def handle_start(args: dict) -> list[TextContent]:
                 },
                 "entry_count": entry_count
             }
+
+            if logger:
+                logger.info(f"Project metadata retrieved - "
+                           f"Vernacular WS: {len(vernacular_ws)}, "
+                           f"Analysis WS: {len(analysis_ws)}, "
+                           f"Entries: {entry_count}")
         except Exception as e:
             # Project couldn't be queried, continue without metadata
-            pass
+            from ..server.kernel import get_operations_logger
+            logger = get_operations_logger()
+            if logger:
+                logger.error(f"Failed to query project metadata: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
 
     # Build response
     result = {

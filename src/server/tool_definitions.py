@@ -70,7 +70,7 @@ READ_ONLY_SAFE = ToolAnnotations(
 )
 
 # ============================================================
-# All Tools (16 total)
+# All Tools (15 total)
 # ============================================================
 
 TOOLS: dict[str, ToolDef] = {

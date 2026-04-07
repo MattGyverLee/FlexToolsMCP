@@ -33,7 +33,7 @@ from .models import (
 
 
 # ============================================================
-# Tool Metadata
+# Tool Metadata & Shared Annotations
 # ============================================================
 
 class ToolDef:
@@ -51,6 +51,14 @@ class ToolDef:
         self.input_model = input_model
         self.annotations = annotations
 
+
+# Default annotations for read-only, safe operations (13 of 16 tools use this)
+READ_ONLY_SAFE = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
 
 # ============================================================
 # All 16 Tools
@@ -71,12 +79,7 @@ After calling flextools_start():
 
 Task and project_name can be set now or updated/provided later as needed.""",
         input_model=FlexToolsStartInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_get_object_api": ToolDef(
@@ -89,12 +92,7 @@ IMPORTANT: Each API result includes 'import_statement' showing exactly what to a
 
 Tip: Use summary_only=true first to explore large objects, then drill down into specific methods.""",
         input_model=GetObjectApiInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_search_by_capability": ToolDef(
@@ -112,12 +110,7 @@ The search engine uses semantic understanding to find relevant APIs, including:
 - Direct LibLCM interfaces for advanced use
 - Navigation methods to move between related objects""",
         input_model=SearchCapabilityInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_get_navigation_path": ToolDef(
@@ -130,12 +123,7 @@ Example:
 
 Useful for understanding object relationships and writing traversal code.""",
         input_model=GetNavigationPathInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_find_examples": ToolDef(
@@ -147,12 +135,7 @@ Search by:
 - operation_type: Find examples for 'create', 'read', 'update', 'delete', 'iterate', 'search'
 - object_type: Filter examples by entity type ('Entry', 'Sense', 'Example', etc.)""",
         input_model=FindExamplesInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_list_categories": ToolDef(
@@ -162,12 +145,7 @@ Search by:
 Returns: Category names like 'lexicon', 'grammar', 'texts', 'media', 'notebook', 'lists', 'system'
 with entity counts for each.""",
         input_model=ListCategoriesInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_list_entities_in_category": ToolDef(
@@ -176,12 +154,7 @@ with entity counts for each.""",
 
 Example categories: 'lexicon', 'grammar', 'texts', 'media'""",
         input_model=ListEntitiesInCategoryInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_get_module_template": ToolDef(
@@ -190,12 +163,7 @@ Example categories: 'lexicon', 'grammar', 'texts', 'media'""",
 
 Call this before running flextools_run_module() to get the proper boilerplate.""",
         input_model=GetModuleTemplateInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_start_module": ToolDef(
@@ -209,12 +177,7 @@ Guides you through:
 4. Primary domain (lexicon, grammar, texts, etc.)
 5. Optional dry-run mode setup""",
         input_model=StartModuleInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_run_module": ToolDef(
@@ -250,12 +213,7 @@ All flexlibs2 Operations classes are pre-imported.""",
 
 Returns: Recent log entries, errors, and AI-generated recommendations for fixing patterns.""",
         input_model=GetOperationLogsInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_resolve_property": ToolDef(
@@ -265,12 +223,7 @@ Returns: Recent log entries, errors, and AI-generated recommendations for fixing
 When you encounter "has no attribute" errors or need to know if a property requires casting,
 use this tool to get the full resolution path and casting instructions.""",
         input_model=ResolvePropertyInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_manage_config": ToolDef(
@@ -297,12 +250,7 @@ Actions:
 
 Returns: List of operations performed, current undo stack, and next operation to undo.""",
         input_model=GetSessionHistoryInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=True,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=False,
-        ),
+        annotations=READ_ONLY_SAFE,
     ),
 
     "flextools_undo_last_operation": ToolDef(

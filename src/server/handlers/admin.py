@@ -250,7 +250,53 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
 
-    # Include server statistics if project is defined
+    # Query project metadata if project is defined
+    if project_name:
+        try:
+            from flexlibs2 import FLExProject
+            project = FLExProject()
+            project.OpenProject(project_name, writeEnabled=False)
+
+            # Get entry count
+            entries = project.LexEntry.GetAll()
+            entry_count = len(entries) if entries else 0
+
+            # Get writing systems with classification
+            writing_systems = {"vernacular": [], "analysis": []}
+            try:
+                all_ws = project.WritingSystem.GetAll()
+                for ws in all_ws:
+                    ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
+                    ws_id = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
+
+                    # Try to classify as vernacular or analysis
+                    is_vernacular = False
+                    try:
+                        # Check if it's the vernacular writing system
+                        vern_ws = project.WritingSystem.GetVernacular()
+                        is_vernacular = (ws == vern_ws)
+                    except:
+                        pass
+
+                    ws_info = {"name": ws_name, "tag": ws_id}
+                    if is_vernacular:
+                        writing_systems["vernacular"].append(ws_info)
+                    else:
+                        writing_systems["analysis"].append(ws_info)
+            except Exception as ws_err:
+                writing_systems["error"] = f"Failed to load writing systems: {str(ws_err)}"
+
+            result["project_metadata"] = {
+                "entry_count": entry_count,
+                "writing_systems": writing_systems
+            }
+            project.CloseProject()
+
+        except Exception as project_err:
+            # Don't fail the whole start, just skip metadata
+            result["project_metadata_error"] = f"Could not retrieve project metadata: {str(project_err)}"
+
+    # Include API statistics for reference
     if project_name:
         api_index = get_api_index()
         api_stats = {

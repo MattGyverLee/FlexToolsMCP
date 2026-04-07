@@ -186,18 +186,7 @@ async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextC
     """Find navigation path between two object types using precomputed graph.
 
     Tries precomputed common paths first, then falls back to BFS search.
-    Includes polymorphic collection warnings for paths that require casting.
-
-    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
-    """
-    # Enforce workflow: get_statistics must be called before discovery
-    if not session_state.statistics_called:
-        return json_response({
-            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
-            "error": "statistics_required",
-            "next_step": "flextools_get_statistics()"
-        })
-
+    Includes polymorphic collection warnings for paths that require casting."""
     from_obj = args.from_object
     to_obj = args.to_object
 

@@ -48,7 +48,6 @@ class SessionState:
     project_name: str = ""                 # FLEx project name (empty = prompt user)
     write_enabled: bool = False            # Write access: False = read-only/dry-run
     initialized: bool = False
-    statistics_called: bool = False        # Track if get_statistics has been called (required before discovery)
     discovered_apis: set = field(default_factory=set)        # APIs discovered via search_by_capability
     validated_apis: set = field(default_factory=set)         # APIs validated via get_object_api
     api_versions: dict = field(default_factory=dict)         # Track active API versions: {api_name: version}

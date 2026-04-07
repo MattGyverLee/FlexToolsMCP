@@ -19,7 +19,6 @@ from .models import (
     GetSessionHistoryInput,
     UndoLastOperationInput,
     GetModuleTemplateInput,
-    GetStatisticsInput,
     SearchCapabilityInput,
     GetObjectApiInput,
     GetNavigationPathInput,
@@ -71,7 +70,7 @@ READ_ONLY_SAFE = ToolAnnotations(
 )
 
 # ============================================================
-# All Tools (17 total)
+# All Tools (16 total)
 # ============================================================
 
 TOOLS: dict[str, ToolDef] = {
@@ -173,21 +172,6 @@ Example categories: 'lexicon', 'grammar', 'texts', 'media'""",
 
 Call this before running flextools_run_module() to get the proper boilerplate.""",
         input_model=GetModuleTemplateInput,
-        annotations=READ_ONLY_SAFE,
-    ),
-
-    "flextools_get_statistics": ToolDef(
-        name="flextools_get_statistics",
-        description="""Get server statistics including loaded APIs and entity counts.
-
-Provides diagnostic information about the FlexToolsMCP server:
-- API versions currently loaded (flexlibs2, liblcm, flexlibs_stable)
-- Number of entities and categories in each API
-- Session configuration
-- Operation history
-
-Call this after flextools_start() to see what APIs are available.""",
-        input_model=GetStatisticsInput,
         annotations=READ_ONLY_SAFE,
     ),
 

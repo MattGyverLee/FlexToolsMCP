@@ -375,18 +375,7 @@ def resolve_pythonic_property(name: str, context_entity: str | None = None) -> L
 # ============================================================
 
 async def handle_get_object_api(args: dict) -> list[TextContent]:
-    """Get API documentation for a specific object type.
-
-    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
-    """
-    # Enforce workflow: get_statistics must be called before discovery
-    if not session_state.statistics_called:
-        return json_response({
-            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
-            "error": "statistics_required",
-            "next_step": "flextools_get_statistics()"
-        })
-
+    """Get API documentation for a specific object type."""
     object_type = args[KEY_OBJECT_TYPE]
     mode = session_state.get_mode()
     default_flexlibs2 = mode in ("flexlibs2", "all")
@@ -531,18 +520,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
 
 
 async def handle_search_by_capability(args: dict) -> list[TextContent]:
-    """Search for methods by capability description with API mode support.
-
-    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
-    """
-    # Enforce workflow: get_statistics must be called before discovery
-    if not session_state.statistics_called:
-        return json_response({
-            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
-            "error": "statistics_required",
-            "next_step": "flextools_get_statistics()"
-        })
-
+    """Search for methods by capability description with API mode support."""
     query = args[KEY_QUERY]
     max_results = args.get("max_results", 10)
     api_mode = args.get(KEY_API_MODE, session_state.get_mode())
@@ -726,18 +704,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
 
 async def handle_find_examples(args: dict) -> list[TextContent]:
-    """Find code examples for methods or operations.
-
-    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
-    """
-    # Enforce workflow: get_statistics must be called before discovery
-    if not session_state.statistics_called:
-        return json_response({
-            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
-            "error": "statistics_required",
-            "next_step": "flextools_get_statistics()"
-        })
-
+    """Find code examples for methods or operations."""
     method_name = args.get(KEY_METHOD_NAME)
     operation_type = args.get(KEY_OPERATION_TYPE)
     object_type = args.get(KEY_OBJECT_TYPE)
@@ -794,18 +761,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
 
 
 async def handle_resolve_property(args: dict) -> list[TextContent]:
-    """Resolve pythonic property names to LibLCM equivalents with casting info.
-
-    REQUIRED: Call flextools_get_statistics() first to verify API initialization.
-    """
-    # Enforce workflow: get_statistics must be called before discovery
-    if not session_state.statistics_called:
-        return json_response({
-            KEY_MESSAGE: "Call flextools_get_statistics() first to verify API initialization",
-            "error": "statistics_required",
-            "next_step": "flextools_get_statistics()"
-        })
-
+    """Resolve pythonic property names to LibLCM equivalents with casting info."""
     property_name = args[KEY_PROPERTY_NAME]
     context_entity = args.get(KEY_CONTEXT_ENTITY)
     include_casting_info = args.get(KEY_INCLUDE_CASTING_INFO, True)

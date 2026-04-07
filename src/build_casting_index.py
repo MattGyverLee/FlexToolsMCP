@@ -24,6 +24,30 @@ else:
     from json_utils import sort_json_arrays
 
 
+# ============================================================
+# Constants
+# ============================================================
+# Threshold for properties too common to index (noise reduction)
+COMMON_PROPERTY_THRESHOLD = 50
+
+# Threshold for common base interfaces to avoid noise
+COMMON_BASE_INTERFACE_THRESHOLD = 20
+
+# Casting index schema field names (avoid stringly-typed dicts)
+KEY_SCHEMA = "_schema"
+KEY_DESCRIPTION = "_description"
+KEY_PROPERTIES = "properties"
+KEY_PROPERTY_MAPPING = "property_to_concrete_mapping"
+KEY_CLASS_MAPPING = "class_name_mapping"
+KEY_POLYMORPHIC = "polymorphic_collections"
+KEY_HIERARCHY = "interface_hierarchy"
+
+# Casting property field names
+KEY_DEFINED_ON = "defined_on"
+KEY_REQUIRES_CAST = "requires_cast_from"
+KEY_PYTHONNET_WARNING = "pythonnet_warning"
+
+
 def build_casting_index(liblcm_path: Path) -> dict:
     """
     Build a casting index from the LibLCM API data.
@@ -83,13 +107,13 @@ def build_casting_index(liblcm_path: Path) -> dict:
 
     # Build the casting index
     casting_index = {
-        "_schema": "casting-index/1.0",
-        "_description": "Maps properties to interfaces, identifying pythonnet casting requirements",
-        "properties": {},
-        "property_to_concrete_mapping": {},
-        "class_name_mapping": {},
-        "polymorphic_collections": {},
-        "interface_hierarchy": {},
+        KEY_SCHEMA: "casting-index/1.0",
+        KEY_DESCRIPTION: "Maps properties to interfaces, identifying pythonnet casting requirements",
+        KEY_PROPERTIES: {},
+        KEY_PROPERTY_MAPPING: {},
+        KEY_CLASS_MAPPING: {},
+        KEY_POLYMORPHIC: {},
+        KEY_HIERARCHY: {},
     }
 
     # Build class name -> interface mapping
@@ -99,12 +123,12 @@ def build_casting_index(liblcm_path: Path) -> dict:
             # Convert interface name to ClassName (IMoStemMsa -> MoStemMsa)
             if entity_name.startswith("I"):
                 class_name = entity_name[1:]
-                casting_index["class_name_mapping"][class_name] = entity_name
+                casting_index[KEY_CLASS_MAPPING][class_name] = entity_name
 
     # For each property, determine if it requires casting
     for prop_name, defining_interfaces in property_to_interfaces.items():
-        # Skip very common properties that are on base interfaces
-        if len(defining_interfaces) > 50:
+        # Skip very common properties (noise reduction)
+        if len(defining_interfaces) > COMMON_PROPERTY_THRESHOLD:
             continue
 
         # Find common base interfaces that DON'T have this property
@@ -119,10 +143,10 @@ def build_casting_index(liblcm_path: Path) -> dict:
                     base_interfaces_without.add(parent)
 
         if base_interfaces_without:
-            casting_index["properties"][prop_name] = {
-                "defined_on": sorted(defining_interfaces),
-                "requires_cast_from": sorted(base_interfaces_without),
-                "pythonnet_warning": True,
+            casting_index[KEY_PROPERTIES][prop_name] = {
+                KEY_DEFINED_ON: sorted(defining_interfaces),
+                KEY_REQUIRES_CAST: sorted(base_interfaces_without),
+                KEY_PYTHONNET_WARNING: True,
             }
 
     # Build reverse mapping: property -> concrete types that have it
@@ -143,9 +167,9 @@ def build_casting_index(liblcm_path: Path) -> dict:
                 return descendants
             concrete_types_with_prop.update(get_all_descendants(interface))
 
-        if concrete_types_with_prop and len(concrete_types_with_prop) <= 20:
+        if concrete_types_with_prop and len(concrete_types_with_prop) <= COMMON_BASE_INTERFACE_THRESHOLD:
             # Only include if not too many (avoid noise)
-            casting_index["property_to_concrete_mapping"][prop_name] = {
+            casting_index[KEY_PROPERTY_MAPPING][prop_name] = {
                 "available_on": sorted(concrete_types_with_prop),
                 "note": "Property is available on these concrete types and their descendants"
             }
@@ -165,7 +189,7 @@ def build_casting_index(liblcm_path: Path) -> dict:
                 child_unique_props[child] = sorted(unique)
 
         if child_unique_props:
-            casting_index["polymorphic_collections"][collection_name] = {
+            casting_index[KEY_POLYMORPHIC][collection_name] = {
                 "base_type": base_type,
                 "concrete_types": children,
                 "unique_properties_by_type": child_unique_props,
@@ -180,7 +204,7 @@ def build_casting_index(liblcm_path: Path) -> dict:
 
     for base_type in key_base_types:
         if base_type in interface_children:
-            casting_index["interface_hierarchy"][base_type] = {
+            casting_index[KEY_HIERARCHY][base_type] = {
                 "derived_interfaces": sorted(interface_children[base_type]),
                 "common_pattern": f"Check obj.ClassName then cast: Interface(obj)",
             }

@@ -48,7 +48,8 @@
       "Bash(git push:*)",
       "Read(//d/Github/_Projects/_LEX/flexlibs2/flexlibs2/code/**)",
       "Read(//d/Github/_Projects/_LEX/**)",
-      "Read(//c/Users/thoua/.claude/projects/d--Github--Projects--LEX-FlexToolsMCP/**)"
+      "Read(//c/Users/thoua/.claude/projects/d--Github--Projects--LEX-FlexToolsMCP/**)",
+      "Bash(sort -k2 -nr)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\flexlibs2\\flexlibs2\\code",

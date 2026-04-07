@@ -416,8 +416,8 @@ class APIIndex:
         """
         index = cls()
 
-        # Load ONLY FlexLibs 2.0 at startup (0.049s fast, covers 80% of use cases)
-        _lib_start = _time_module.time()
+        # Load all three main APIs at startup (~0.9s combined, much better UX)
+        # Previous lazy-loading saved 0.8s but caused delays on first API calls
         _load_library_api_index(
             index,
             index_dir,
@@ -427,10 +427,26 @@ class APIIndex:
             "flexlibs2",
             "flexlibs2_version",
         )
-        _lib_done = _time_module.time()
 
-        # Note: LibLCM and FlexLibs stable are deferred to lazy-loading.
-        # This saves 0.808s at startup. They load on first tool call that needs them.
+        _load_library_api_index(
+            index,
+            index_dir,
+            "LibLCM",
+            "liblcm_api",
+            get_installed_liblcm_version,
+            "liblcm",
+            "liblcm_version",
+        )
+
+        _load_library_api_index(
+            index,
+            index_dir,
+            "FlexLibs stable",
+            "flexlibs_api",
+            get_installed_flexlibs_version,
+            "flexlibs_stable",
+            "flexlibs_stable_version",
+        )
 
         # Navigation, casting, and semantic search are optional and loaded on-demand
         return index

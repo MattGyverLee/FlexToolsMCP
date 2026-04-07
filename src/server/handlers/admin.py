@@ -231,10 +231,16 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Query project metadata if project_name provided
     project_metadata = {}
     if project_name:
+        # Get logger for debug output
         try:
-            from flexlibs2 import FLExProject
             from ..server.kernel import get_operations_logger
             logger = get_operations_logger()
+        except:
+            logger = None
+
+        try:
+            from flexlibs2 import FLExProject
+
             if logger:
                 logger.info(f"Querying project metadata for: {project_name}")
 
@@ -328,8 +334,6 @@ async def handle_start(args: dict) -> list[TextContent]:
                            f"Entries: {entry_count}")
         except Exception as e:
             # Project couldn't be queried, continue without metadata
-            from ..server.kernel import get_operations_logger
-            logger = get_operations_logger()
             if logger:
                 logger.error(f"Failed to query project metadata: {e}")
                 import traceback

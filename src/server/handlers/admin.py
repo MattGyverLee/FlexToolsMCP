@@ -235,19 +235,59 @@ async def handle_start(args: dict) -> list[TextContent]:
             project = FLExProject()
             project.OpenProject(project_name, writeEnabled=False)
 
-            # Get writing systems
-            writing_systems = []
+            # Classify writing systems by type
+            vernacular_ws = []
+            analysis_ws = []
+            default_vernacular = None
+            default_analysis = None
+
             try:
-                for ws in project.WritingSystems.GetAll():
-                    try:
-                        display_name = project.WritingSystems.GetDisplayName(ws)
-                        language_tag = project.WritingSystems.GetLanguageTag(ws)
-                        writing_systems.append({
-                            "name": display_name,
-                            "tag": language_tag
-                        })
-                    except:
-                        pass
+                # Get default writing systems
+                try:
+                    default_vernacular = project.WritingSystems.GetDefaultVernacular()
+                except:
+                    pass
+
+                try:
+                    default_analysis = project.WritingSystems.GetDefaultAnalysis()
+                except:
+                    pass
+
+                # Get vernacular writing systems
+                try:
+                    for ws in project.WritingSystems.GetVernacular():
+                        try:
+                            display_name = project.WritingSystems.GetDisplayName(ws)
+                            language_tag = project.WritingSystems.GetLanguageTag(ws)
+                            ws_info = {
+                                "name": display_name,
+                                "tag": language_tag
+                            }
+                            if ws == default_vernacular:
+                                ws_info["default"] = True
+                            vernacular_ws.append(ws_info)
+                        except:
+                            pass
+                except:
+                    pass
+
+                # Get analysis writing systems
+                try:
+                    for ws in project.WritingSystems.GetAnalysis():
+                        try:
+                            display_name = project.WritingSystems.GetDisplayName(ws)
+                            language_tag = project.WritingSystems.GetLanguageTag(ws)
+                            ws_info = {
+                                "name": display_name,
+                                "tag": language_tag
+                            }
+                            if ws == default_analysis:
+                                ws_info["default"] = True
+                            analysis_ws.append(ws_info)
+                        except:
+                            pass
+                except:
+                    pass
             except:
                 pass
 
@@ -265,7 +305,10 @@ async def handle_start(args: dict) -> list[TextContent]:
                 pass
 
             project_metadata = {
-                "writing_systems": writing_systems,
+                "writing_systems": {
+                    "vernacular": vernacular_ws,
+                    "analysis": analysis_ws
+                },
                 "entry_count": entry_count
             }
         except Exception as e:

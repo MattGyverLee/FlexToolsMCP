@@ -149,6 +149,24 @@ def build_casting_index(liblcm_path: Path) -> dict:
                 KEY_PYTHONNET_WARNING: True,
             }
 
+    # Pre-compute all descendants for all interfaces (memoization for efficiency)
+    # This avoids O(n^2) recursive recomputation in the property loop below
+    descendants_cache = {}
+    def compute_all_descendants(iface, cache=descendants_cache):
+        """Compute descendants with memoization to avoid recomputation."""
+        if iface in cache:
+            return cache[iface]
+        descendants = set()
+        for child in interface_children.get(iface, []):
+            descendants.add(child)
+            descendants.update(compute_all_descendants(child, cache))
+        cache[iface] = descendants
+        return descendants
+
+    # Pre-populate cache for all interfaces (single DFS pass)
+    for interface in interface_parents:
+        compute_all_descendants(interface)
+
     # Build reverse mapping: property -> concrete types that have it
     # This is built from polymorphic collections and interface hierarchies
     for prop_name, defining_interfaces in property_to_interfaces.items():
@@ -158,14 +176,8 @@ def build_casting_index(liblcm_path: Path) -> dict:
         for interface in defining_interfaces:
             # Add the interface itself (concrete type)
             concrete_types_with_prop.add(interface)
-            # Add all descendants (they inherit the property)
-            def get_all_descendants(iface):
-                descendants = set()
-                for child in interface_children.get(iface, []):
-                    descendants.add(child)
-                    descendants.update(get_all_descendants(child))
-                return descendants
-            concrete_types_with_prop.update(get_all_descendants(interface))
+            # Add all descendants (they inherit the property) - O(1) lookup from cache
+            concrete_types_with_prop.update(descendants_cache.get(interface, set()))
 
         if concrete_types_with_prop and len(concrete_types_with_prop) <= COMMON_BASE_INTERFACE_THRESHOLD:
             # Only include if not too many (avoid noise)

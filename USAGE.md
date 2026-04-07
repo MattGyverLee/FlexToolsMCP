@@ -6,22 +6,42 @@ This guide covers how to use FLExTools MCP to generate and run FLExTools modules
 
 ## MCP Tools Reference
 
-The server exposes 12 tools:
+The server exposes 16 tools organized by category:
+
+### Admin & Configuration
 
 | Tool | Description |
 |------|-------------|
-| `start` | **BEGIN HERE** - Unified entry point that orchestrates the discovery workflow |
-| `get_object_api` | Get methods/properties for objects like ILexEntry, LexSenseOperations |
-| `search_by_capability` | Natural language search with synonym expansion |
-| `get_navigation_path` | Find paths between object types (ILexEntry -> ILexSense) |
-| `find_examples` | Get code examples by operation type (create, read, update, delete) |
-| `list_categories` | List API categories (lexicon, grammar, texts, etc.) |
-| `list_entities_in_category` | List entities in a category |
-| `get_module_template` | Get the official FLExTools module template |
-| `start_module` | Interactive wizard to create a new FLExTools module |
-| `run_module` | Execute a FLExTools module against a FieldWorks project |
-| `run_operation` | Execute FlexLibs2 operations directly without module boilerplate |
-| `resolve_property` | Resolve property names and get pythonnet casting requirements |
+| `flextools_start` | **BEGIN HERE** - Initialize session, set project name and API mode |
+| `flextools_manage_config` | Get/set/delete persistent configuration (dotted keys like `paths.flexlibs2`) |
+| `flextools_get_session_history` | View operation history and undo/redo stack depth |
+| `flextools_undo_last_operation` | Undo the most recent database write operation |
+| `flextools_get_module_template` | Get the official FLExTools module template |
+
+### Discovery & Analysis
+
+| Tool | Description |
+|------|-------------|
+| `flextools_search_by_capability` | Natural language search with synonym expansion; surfaces matching skeletons from prior successful runs |
+| `flextools_get_object_api` | Get full methods/properties for objects like ILexEntry, LexSenseOperations |
+| `flextools_get_navigation_path` | Find traversal paths between object types (ILexEntry -> ILexSense -> ILexExampleSentence) |
+| `flextools_find_examples` | Get code examples by operation type (create, read, update, delete, iterate) |
+| `flextools_resolve_property` | Resolve property names and detect pythonnet casting requirements |
+
+### Catalog & Browsing
+
+| Tool | Description |
+|------|-------------|
+| `flextools_list_categories` | List semantic domains (lexicon, grammar, texts, wordform, reversal, etc.) |
+| `flextools_list_entities_in_category` | List all entities in a category with summaries |
+
+### Module Creation & Execution
+
+| Tool | Description |
+|------|-------------|
+| `flextools_start_module` | Interactive wizard to scaffold a new FLExTools module |
+| `flextools_get_operation_logs` | View recent operation logs + pattern-based recommendations for common errors |
+| `flextools_run_module` | Execute code against a FieldWorks project (dry-run by default, write_enabled=true for mutations) |
 
 ## API Modes
 
@@ -35,7 +55,7 @@ The server supports three API modes for different use cases:
 
 ## Recommended Workflow
 
-**IMPORTANT:** Follow this workflow to avoid common pitfalls. Skipping directly to `run_operation` or `run_module` often leads to errors, incorrect code, or data corruption.
+**IMPORTANT:** Follow this workflow to avoid common pitfalls. Skipping discovery and going straight to `run_module` often leads to errors, incorrect code, or data corruption.
 
 ### Quick Start: Use `start`
 
@@ -46,9 +66,9 @@ User Query: "I want to delete senses with 'test' in the gloss"
                     |
                     v
     +---------------------------+
-    |         start             |  task="delete senses with test in gloss"
-    |   - Analyzes your task    |  output_type="operation" or "module"
-    |   - Finds relevant APIs   |  flavor="flexlibs2"
+    |     flextools_start       |  task="delete senses with test in gloss"
+    |   - Analyzes your task    |  api_mode="flexlibs2"
+    |   - Finds relevant APIs   |
     |   - Checks casting needs  |
     |   - Gets code examples    |  -> Complete plan with code skeleton
     |   - Returns action plan   |
@@ -56,14 +76,14 @@ User Query: "I want to delete senses with 'test' in the gloss"
                     |
                     v
     +---------------------------+
-    |   run_operation/module    |  write_enabled=FALSE (dry run)
+    |   flextools_run_module    |  write_enabled=FALSE (dry run)
     +---------------------------+
                     |
             Review output
                     |
                     v
     +---------------------------+
-    |   run with write access   |  write_enabled=TRUE
+    |   flextools_run_module    |  write_enabled=TRUE
     |       BACKUP FIRST!       |
     +---------------------------+
 ```
@@ -135,7 +155,7 @@ User Query: "I want to delete senses with 'test' in the gloss"
 
 ```
     +---------------------------+
-    | 9. run_operation/module   |  write_enabled=FALSE (default)
+    | 9. flextools_run_module   |  write_enabled=FALSE (default)
     |    - DRY RUN FIRST        |  -> See what WOULD happen
     +---------------------------+
                     |

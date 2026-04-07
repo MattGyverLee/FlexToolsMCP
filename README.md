@@ -72,14 +72,30 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ## What's Included
 
-### MCP Tools (12)
-- `start` - Unified workflow orchestrator
-- `search_by_capability` - Find APIs by what you want to do
-- `get_object_api` - Get methods/properties for LibLCM objects
-- `get_navigation_path` - Traverse between object types
-- `find_examples` - Find code examples by operation type
-- `run_module` / `run_operation` - Execute code with dry-run and write modes
-- Plus 6 more discovery and templating tools
+### MCP Tools (16)
+
+**Admin & Config:**
+- `flextools_start` - Initialize session, set project and API mode
+- `flextools_manage_config` - Get/set/delete persistent configuration
+- `flextools_get_session_history` - View operation history and undo stack
+- `flextools_undo_last_operation` - Undo the most recent write
+- `flextools_get_module_template` - Get FLExTools module boilerplate
+
+**Discovery:**
+- `flextools_search_by_capability` - Find APIs by natural language intent
+- `flextools_get_object_api` - Get full API for an object/operations class
+- `flextools_get_navigation_path` - Find traversal between object types
+- `flextools_find_examples` - Get code examples by operation type
+- `flextools_resolve_property` - Check casting requirements for properties
+
+**Catalog:**
+- `flextools_list_categories` - List semantic domains (lexicon, grammar, etc.)
+- `flextools_list_entities_in_category` - List entities in a domain
+
+**Module & Execution:**
+- `flextools_start_module` - Interactive wizard for new module
+- `flextools_get_operation_logs` - View logs and pattern recommendations
+- `flextools_run_module` - Execute code with dry-run and write modes
 
 ### API Coverage
 - **LibLCM**: 2,295 C# entities

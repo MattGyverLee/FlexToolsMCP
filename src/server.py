@@ -412,8 +412,17 @@ class APIIndex:
         """
         index = cls()
 
-        # Load only FlexLibs 2.0 at startup (most commonly used)
-        # LibLCM and FlexLibs stable are lazy-loaded on first use if needed
+        # Load each library using consolidated helper function
+        _load_library_api_index(
+            index,
+            index_dir,
+            "LibLCM",
+            "liblcm_api",
+            get_installed_liblcm_version,
+            "liblcm",
+            "liblcm_version",
+        )
+
         _load_library_api_index(
             index,
             index_dir,
@@ -424,8 +433,32 @@ class APIIndex:
             "flexlibs2_version",
         )
 
-        # Note: LibLCM and FlexLibs stable omitted from startup for speed
-        # They will be lazy-loaded if accessed via tools
+        _load_library_api_index(
+            index,
+            index_dir,
+            "FlexLibs stable",
+            "flexlibs_api",
+            get_installed_flexlibs_version,
+            "flexlibs_stable",
+            "flexlibs_stable_version",
+        )
+
+        # Load navigation graph using consolidated helper (eliminates duplicated load pattern)
+        index.navigation_graph = _load_json_with_fallback(
+            index_dir,
+            "navigation_graph_liblcm",
+            "navigation_graph.json"
+        )
+
+        # Load casting index using consolidated helper (eliminates duplicated load pattern)
+        index.casting_index = _load_json_with_fallback(
+            index_dir,
+            "casting_index_liblcm",
+            "casting_index.json"
+        )
+
+        # Load semantic search (optional)
+        index.semantic_search = SemanticSearch.load(index_dir)
 
         return index
 
@@ -605,15 +638,19 @@ async def main():
     global api_index
     import time
 
-    print("DEBUG: main() started", file=sys.stderr, flush=True)
-
-    # Pre-load indexes (only FlexLibs2 at startup, others load on-demand)
+    # Pre-load indexes
     _log_info("Loading API indexes...")
     start = time.time()
-    print(f"DEBUG: About to load indexes at {start}", file=sys.stderr, flush=True)
     api_index = APIIndex.load(get_index_dir())
     elapsed = time.time() - start
-    print(f"API indexes loaded in {elapsed:.2f}s", file=sys.stderr, flush=True)
+    _log_info(f"API indexes loaded in {elapsed:.2f}s")
+
+    if api_index.liblcm:
+        version = api_index.liblcm_version or "unknown"
+        entities = len(api_index.liblcm.get('entities', {}))
+        _log_info(f"LibLCM v{version}: {entities} entities")
+    else:
+        _log_warning( "LibLCM index not found")
 
     if api_index.flexlibs2:
         version = api_index.flexlibs2_version or "unknown"
@@ -622,11 +659,31 @@ async def main():
     else:
         _log_warning( "FlexLibs 2.0 index not found")
 
+    if api_index.casting_index:
+        props = len(api_index.casting_index.get("properties", {}))
+        colls = len(api_index.casting_index.get("polymorphic_collections", {}))
+        _log_info( f"Casting index: {props} properties, {colls} polymorphic collections")
+    else:
+        _log_warning( "Casting index not found")
+
+    if api_index.flexlibs_stable:
+        version = api_index.flexlibs_stable_version or "unknown"
+        entities = len(api_index.flexlibs_stable.get('entities', {}))
+        _log_info( f"FlexLibs Stable v{version}: {entities} entities")
+    else:
+        _log_warning( "FlexLibs Stable index not found")
+
     # Print version and entity summary to console so user knows what APIs are loaded
     versions = []
+    if api_index.liblcm and api_index.liblcm_version:
+        entities = len(api_index.liblcm.get('entities', {}))
+        versions.append(f"LibLCM {api_index.liblcm_version} ({entities} entities)")
     if api_index.flexlibs2 and api_index.flexlibs2_version:
         entities = len(api_index.flexlibs2.get('entities', {}))
         versions.append(f"FlexLibs2 {api_index.flexlibs2_version} ({entities} entities)")
+    if api_index.flexlibs_stable and api_index.flexlibs_stable_version:
+        entities = len(api_index.flexlibs_stable.get('entities', {}))
+        versions.append(f"FlexLibs {api_index.flexlibs_stable_version} ({entities} entities)")
 
     if versions:
         # Note: Can't use stdout during init (breaks MCP protocol parser)

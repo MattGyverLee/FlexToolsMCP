@@ -128,11 +128,17 @@ def setup_logging():
     return logger
 
 
-# Initialize the operations logger
-operations_logger = setup_logging()
+# Lazy-initialized: operations logger is set up in initialize_kernel()
+operations_logger: Optional[logging.Logger] = None
 
 
 # ===== Pattern Tracking =====
+
+# Pattern dict schema constants (avoid stringly-typed keys)
+_PATTERN_KEY_API = "api_patterns"
+_PATTERN_KEY_ERROR = "error_patterns"
+_PATTERN_KEY_SUCCESS = "success_count"
+_PATTERN_KEY_FAILURE = "failure_count"
 
 @dataclass
 class PatternTracker:
@@ -143,7 +149,9 @@ class PatternTracker:
     def __post_init__(self):
         if self.patterns_file is None:
             self.patterns_file = get_log_dir() / "patterns.json"
-        self.load()
+        # Only load if patterns dict is empty (avoid reinitializing)
+        if not self.patterns:
+            self.load()
 
     def load(self):
         """Load patterns from disk."""
@@ -152,10 +160,11 @@ class PatternTracker:
                 with open(self.patterns_file, 'r', encoding='utf-8') as f:
                     self.patterns = json.load(f)
             except Exception as e:
-                operations_logger.warning(f"Failed to load patterns: {e}")
-                self.patterns = {"api_patterns": {}, "error_patterns": {}}
+                if operations_logger:
+                    operations_logger.warning(f"Failed to load patterns: {e}")
+                self.patterns = {_PATTERN_KEY_API: {}, _PATTERN_KEY_ERROR: {}}
         else:
-            self.patterns = {"api_patterns": {}, "error_patterns": {}}
+            self.patterns = {_PATTERN_KEY_API: {}, _PATTERN_KEY_ERROR: {}}
 
     def save(self):
         """Save patterns to disk."""
@@ -193,21 +202,21 @@ class PatternTracker:
         api_calls = self.extract_api_calls(code)
 
         for api_call in api_calls:
-            if api_call not in self.patterns["api_patterns"]:
-                self.patterns["api_patterns"][api_call] = {
-                    "success_count": 0,
-                    "failure_count": 0,
+            if api_call not in self.patterns[_PATTERN_KEY_API]:
+                self.patterns[_PATTERN_KEY_API][api_call] = {
+                    _PATTERN_KEY_SUCCESS: 0,
+                    _PATTERN_KEY_FAILURE: 0,
                     "last_used": None,
                     "common_errors": {}
                 }
 
-            pattern_data = self.patterns["api_patterns"][api_call]
+            pattern_data = self.patterns[_PATTERN_KEY_API][api_call]
             pattern_data["last_used"] = datetime.now().isoformat()
 
             if success:
-                pattern_data["success_count"] += 1
+                pattern_data[_PATTERN_KEY_SUCCESS] += 1
             else:
-                pattern_data["failure_count"] += 1
+                pattern_data[_PATTERN_KEY_FAILURE] += 1
                 if error_type:
                     if error_type not in pattern_data["common_errors"]:
                         pattern_data["common_errors"][error_type] = {"count": 0, "example": ""}
@@ -218,8 +227,8 @@ class PatternTracker:
         # Track error patterns for FlexLibs bug identification
         if not success and error_msg:
             error_key = self._normalize_error(error_msg)
-            if error_key not in self.patterns["error_patterns"]:
-                self.patterns["error_patterns"][error_key] = {
+            if error_key not in self.patterns[_PATTERN_KEY_ERROR]:
+                self.patterns[_PATTERN_KEY_ERROR][error_key] = {
                     "count": 0,
                     "examples": [],
                     "api_calls": [],
@@ -227,7 +236,7 @@ class PatternTracker:
                     "potential_fix": None
                 }
 
-            err_pattern = self.patterns["error_patterns"][error_key]
+            err_pattern = self.patterns[_PATTERN_KEY_ERROR][error_key]
             err_pattern["count"] += 1
             if len(err_pattern["examples"]) < 3:
                 err_pattern["examples"].append({
@@ -307,8 +316,8 @@ session_state: SessionState = SessionState()
 # Global API index (loaded during server startup)
 api_index: Optional["APIIndex"] = None
 
-# Global pattern tracker (initialized here, used by handlers)
-pattern_tracker: PatternTracker = PatternTracker()
+# Global pattern tracker (lazy-initialized in initialize_kernel() to avoid disk I/O on import)
+pattern_tracker: Optional[PatternTracker] = None
 
 # MCP Server instance (lazy loaded in main())
 mcp_server: Optional[object] = None
@@ -354,7 +363,13 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
     Returns:
         Tuple of (success, error_message)
     """
-    global api_index, mcp_server
+    global api_index, mcp_server, operations_logger, pattern_tracker
+
+    # Initialize logging (moved from module-level to avoid blocking I/O on import)
+    operations_logger = setup_logging()
+
+    # Lazy-initialize pattern tracker (moved from module-level to avoid disk I/O on import)
+    pattern_tracker = PatternTracker()
 
     # Check MCP availability
     mcp_available, mcp_error = check_mcp_available()
@@ -388,7 +403,8 @@ def reset_session() -> None:
     """
     global session_state
     session_state = SessionState()
-    operations_logger.info("Session state reset")
+    if operations_logger:
+        operations_logger.info("Session state reset")
 
 
 def get_session_state() -> SessionState:

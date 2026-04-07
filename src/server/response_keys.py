@@ -44,9 +44,12 @@ __all__ = [
     'KEY_APPLIES_TO',
     # Questions/suggestions
     'KEY_QUESTIONS', 'KEY_QUESTION', 'KEY_SUGGESTIONS', 'KEY_STEPS',
-    'KEY_WHY', 'KEY_NEEDS_INPUT', 'KEY_PROVIDED',
+    'KEY_WHY', 'KEY_NEEDS_INPUT', 'KEY_PROVIDED', 'KEY_NEXT_STEPS',
     # Module/script
     'KEY_MODULE_NAME', 'KEY_COMPLETE', 'KEY_PROPERTY', 'KEY_CHILDREN',
+    # Execution-specific
+    'KEY_SUCCESS', 'KEY_PROJECT', 'KEY_WRITE_ENABLED', 'KEY_MESSAGES',
+    'KEY_TEMPLATE', 'KEY_CONFIDENCE',
 ]
 
 # ---- Response Field Names ---------------------------------------------------
@@ -165,9 +168,18 @@ KEY_STEPS = "steps"
 KEY_WHY = "why"
 KEY_NEEDS_INPUT = "needs_input"
 KEY_PROVIDED = "provided"
+KEY_NEXT_STEPS = "next_steps"
 
 # Module/script fields
 KEY_MODULE_NAME = "module_name"
 KEY_COMPLETE = "complete"
 KEY_PROPERTY = "property"
 KEY_CHILDREN = "children"
+
+# Execution-specific fields
+KEY_SUCCESS = "success"
+KEY_PROJECT = "project"
+KEY_WRITE_ENABLED = "write_enabled"
+KEY_MESSAGES = "messages"
+KEY_TEMPLATE = "template"
+KEY_CONFIDENCE = "confidence"

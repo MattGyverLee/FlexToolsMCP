@@ -71,11 +71,14 @@ def archive_versions_in_directory(
     # Move old files to archive
     archived = []
     for old_file in archive_files:
-        if old_file.exists():
+        try:
             archive_path = archive_dir / old_file.name
             shutil.move(str(old_file), str(archive_path))
             archived.append(old_file.name)
             print(f"  [ARCHIVE] {old_file.name} -> archive/")
+        except FileNotFoundError:
+            # File already gone - skip it
+            pass
 
     return {
         "archived": archived,
@@ -108,6 +111,7 @@ def main():
     print(f"  Keeping {args.keep} latest version(s)")
 
     # Archive patterns by directory
+    # Note: patterns are defined only in their canonical locations to avoid duplication
     patterns = {
         index_dir / "liblcm": [
             ("liblcm_api_v*.json", "LibLCM"),
@@ -119,12 +123,6 @@ def main():
             ("flexlibs_api_v*.json", "FlexLibs"),
             ("flexlibs2_api_v*.json", "FlexLibs 2.0"),
             ("common_patterns_flexlibs2-v*.json", "Common Patterns"),
-        ],
-        index_dir: [
-            ("casting_index_liblcm-v*.json", "Casting Index (root)"),
-            ("navigation_graph_liblcm-v*.json", "Navigation Graph (root)"),
-            ("reverse_mapping_liblcm-v*.json", "Reverse Mapping (root)"),
-            ("common_patterns_flexlibs2-v*.json", "Common Patterns (root)"),
         ],
     }
 

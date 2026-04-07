@@ -17,11 +17,27 @@ from mcp.types import TextContent
 try:
     from ..kernel import api_index
     from ..models import GetNavigationPathInput
-    from ..response_keys import KEY_MESSAGE, KEY_DESCRIPTION
+    from ..response_keys import (
+        KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
+        KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
+        KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
+        KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
+        KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
+        KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
+        KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
+    )
 except ImportError:
     from server.kernel import api_index
     from server.models import GetNavigationPathInput
-    from server.response_keys import KEY_MESSAGE, KEY_DESCRIPTION
+    from server.response_keys import (
+        KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
+        KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
+        KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
+        KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
+        KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
+        KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
+        KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
+    )
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
@@ -32,34 +48,6 @@ except ImportError:
 COLLECTION_SUFFIXES = ("OS", "OC", "RC", "RS")
 
 # Navigation path step keys
-KEY_FROM = "from"
-KEY_TO = "to"
-KEY_VIA = "via"
-KEY_TYPE = "type"
-KEY_PROPERTY = "property"
-
-# Navigation result keys
-# Shared constants imported from response_keys:
-# - KEY_MESSAGE, KEY_DESCRIPTION (above)
-
-KEY_FOUND = "found"
-KEY_SOURCE = "source"
-KEY_STEPS = "steps"
-KEY_CODE = "code"
-KEY_HINT = "hint"
-
-# Navigation graph structure keys
-KEY_COMMON_PATHS = "common_paths"
-KEY_GRAPH = "graph"
-KEY_ENTITIES = "entities"
-KEY_CHILDREN = "children"
-KEY_TARGET = "target"
-KEY_POLYMORPHIC_COLLECTIONS = "polymorphic_collections"
-KEY_BASE_TYPE = "base_type"
-KEY_CONCRETE_TYPES = "concrete_types"
-KEY_CASTING_WARNINGS = "casting_warnings"
-KEY_CASTING_HINT = "casting_hint"
-KEY_REACHABLE_FROM_SOURCE = "reachable_from_source"
 
 # Constants for fallbacks
 MAX_SUGGESTED_ENTITIES = 5

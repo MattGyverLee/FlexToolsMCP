@@ -75,46 +75,36 @@ try:
 except ImportError:
     from server.headless_report import HeadlessReport
 
+# Import response field constants
+try:
+    from ..response_keys import (
+        KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
+        KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
+        KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
+        KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
+        KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
+        KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
+        KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
+        KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
+        KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
+    )
+except ImportError:
+    from response_keys import (
+        KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
+        KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
+        KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
+        KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
+        KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
+        KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
+        KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
+        KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
+        KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
+    )
 
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================
-# Response status keys
-KEY_STATUS = "status"
-KEY_SUCCESS = "success"
-KEY_ERROR = "error"
-KEY_MESSAGE = "message"
-KEY_NEEDS_INPUT = "needs_input"
-KEY_COMPLETE = "complete"
-
-# Module/execution keys
-KEY_MODULE_NAME = "module_name"
-KEY_SYNOPSIS = "synopsis"
-KEY_API_TARGET = "api_target"
-KEY_INCLUDE_DRY_RUN = "include_dry_run"
-KEY_MODIFIES_DB = "modifies_db"
-KEY_QUESTIONS = "questions"
-KEY_QUESTION = "question"
-KEY_EXAMPLE = "example"
-KEY_PROVIDED = "provided"
-KEY_TEMPLATE = "template"
-KEY_SESSION = "session"
-KEY_PROJECT = "project"
-KEY_WRITE_ENABLED = "write_enabled"
-
-# Execution result keys
-KEY_MESSAGES = "messages"
-KEY_SUMMARY = "summary"
-KEY_WARNINGS = "warnings"
-KEY_RAW_OUTPUT = "raw_output"
-KEY_STDERR = "stderr"
-KEY_EXIT_CODE = "exit_code"
-KEY_WRITE_CERTIFICATION = "write_certification"
-KEY_IS_CERTIFIED_READONLY = "is_certified_readonly"
-KEY_CONFIDENCE = "confidence"
-KEY_MUTATING_CALLS_DETECTED = "mutating_calls_detected"
-
-# Error codes
+# Error codes (execution-specific)
 ERROR_PROJECT_NAME_REQUIRED = "project_name_required"
 ERROR_CASTING_ISSUES = "casting_issues_detected"
 ERROR_API_DISCOVERY_REQUIRED = "api_discovery_required"
@@ -122,16 +112,6 @@ ERROR_UNDEFINED_VARIABLES = "undefined_variables"
 ERROR_MISSING_IMPORTS = "missing_imports"
 ERROR_WRONG_LIBRARY = "wrong_library_imports"
 ERROR_UNPROTECTED_CODE = "unprotected_code"
-
-# Validation result keys
-KEY_CASTING_ISSUES = "casting_issues"
-KEY_SEVERITY = "severity"
-KEY_HAS_CASTING_ISSUES = "has_casting_issues"
-KEY_WHY = "why"
-KEY_APPLIES_TO = "applies_to"
-KEY_HOW_TO_FIX = "how_to_fix"
-KEY_NEXT_STEPS = "next_steps"
-KEY_SUGGESTIONS = "suggestions"
 
 
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:

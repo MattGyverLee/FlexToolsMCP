@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Read(//d/Github/_Projects/_LEX/flexlibs2/**)",
-      "Read(//d/Github/_Projects/_LEX/FlexToolsMCP/**)"
+      "Read(//d/Github/_Projects/_LEX/FlexToolsMCP/**)",
+      "Bash(git -C \"d:/Github/_Projects/_LEX/FlexToolsMCP\" status -s)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src"

@@ -125,8 +125,8 @@ def setup_logging():
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-        # Console handler for stdout (so MCP IDE can capture it)
-        console_handler = logging.StreamHandler(sys.stdout)
+        # Console handler for stderr (MCP uses stdout for protocol, stderr for logs)
+        console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(logging.INFO)
         console_formatter = logging.Formatter('[%(levelname)s] %(message)s')
         console_handler.setFormatter(console_formatter)

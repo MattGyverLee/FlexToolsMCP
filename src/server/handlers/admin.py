@@ -230,24 +230,13 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     # Query project metadata if project_name provided
     project_metadata = {}
+    project_metadata_error = None
     if project_name:
-        # Get logger for debug output
-        try:
-            from ..server.kernel import get_operations_logger
-            logger = get_operations_logger()
-        except:
-            logger = None
-
         try:
             from flexlibs2 import FLExProject
 
-            if logger:
-                logger.info(f"Querying project metadata for: {project_name}")
-
             project = FLExProject()
             project.OpenProject(project_name, writeEnabled=False)
-            if logger:
-                logger.info(f"Project opened successfully: {project_name}")
 
             # Classify writing systems by type
             vernacular_ws = []
@@ -310,8 +299,7 @@ async def handle_start(args: dict) -> list[TextContent]:
             try:
                 entry_count = len(list(project.LexEntry.GetAll()))
             except Exception as e:
-                if logger:
-                    logger.warning(f"Failed to get entry count: {e}")
+                pass
 
             # Close project
             try:
@@ -326,18 +314,14 @@ async def handle_start(args: dict) -> list[TextContent]:
                 },
                 "entry_count": entry_count
             }
-
-            if logger:
-                logger.info(f"Project metadata retrieved - "
-                           f"Vernacular WS: {len(vernacular_ws)}, "
-                           f"Analysis WS: {len(analysis_ws)}, "
-                           f"Entries: {entry_count}")
         except Exception as e:
-            # Project couldn't be queried, continue without metadata
-            if logger:
-                logger.error(f"Failed to query project metadata: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
+            # Project couldn't be queried, store error for response
+            import traceback
+            project_metadata_error = {
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
 
     # Build response
     result = {
@@ -358,6 +342,8 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Add project metadata if available
     if project_metadata:
         result["project_metadata"] = project_metadata
+    elif project_metadata_error:
+        result["project_metadata_error"] = project_metadata_error
 
     # Warnings
     warnings = []

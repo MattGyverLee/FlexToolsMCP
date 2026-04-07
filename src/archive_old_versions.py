@@ -18,10 +18,10 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-
-def get_project_root() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent
+if __package__:
+    from .file_utils import get_project_root
+else:
+    from file_utils import get_project_root
 
 
 def parse_version(filename: str) -> Tuple[int, int, int]:

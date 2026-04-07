@@ -9,75 +9,104 @@ These handlers provide listing and discovery of available APIs:
 """
 
 import json
+from collections import defaultdict
 from mcp.types import TextContent
 
 # Import shared state from kernel
 # During Phase 5 integration, the re-export facade will handle these imports
 try:
     from ..kernel import api_index
+    from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from server.kernel import api_index
+    from server.models import ListCategoriesInput, ListEntitiesInCategoryInput
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
+# ============================================================
+# Constants (avoid stringly-typed code)
+# ============================================================
+SUMMARY_MAX_LENGTH = 100
 
-async def handle_list_categories(args: dict) -> list[TextContent]:
+# Response field names
+KEY_FLEXLIBS2_COUNT = "flexlibs2_count"
+KEY_LIBLCM_COUNT = "liblcm_count"
+KEY_METHODS_COUNT = "methods_count"
+KEY_CATEGORIES = "categories"
+KEY_ENTITIES = "entities"
+KEY_CATEGORY = "category"
+KEY_NAME = "name"
+KEY_TYPE = "type"
+KEY_SUMMARY = "summary"
+KEY_DESCRIPTION = "description"
+KEY_COUNTS = "counts"
+KEY_TOTAL_CATEGORIES = "total_categories"
+
+
+def _init_category_dict() -> dict:
+    """Initialize empty category with zero counts."""
+    return {KEY_FLEXLIBS2_COUNT: 0, KEY_LIBLCM_COUNT: 0}
+
+
+def _get_entity_summary(entity: dict) -> str:
+    """Extract and normalize entity summary with fallback to description."""
+    summary = entity.get(KEY_SUMMARY) or entity.get(KEY_DESCRIPTION) or ""
+    return summary[:SUMMARY_MAX_LENGTH]
+
+
+async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]:
     """List all available API categories."""
-    categories = {}
+    categories = defaultdict(_init_category_dict)
 
     # From FlexLibs 2.0
     if api_index.flexlibs2:
-        fl2_cats = api_index.flexlibs2.get("categories", {})
+        fl2_cats = api_index.flexlibs2.get(KEY_CATEGORIES, {})
         for cat_name, cat_data in fl2_cats.items():
-            if cat_name not in categories:
-                categories[cat_name] = {"flexlibs2_count": 0, "liblcm_count": 0}
-            categories[cat_name]["flexlibs2_count"] = len(cat_data.get("entities", []))
+            categories[cat_name][KEY_FLEXLIBS2_COUNT] = len(cat_data.get(KEY_ENTITIES, []))
 
     # From LibLCM
     if api_index.liblcm:
-        for entity in api_index.liblcm.get("entities", {}).values():
-            cat = entity.get("category", "uncategorized")
-            if cat not in categories:
-                categories[cat] = {"flexlibs2_count": 0, "liblcm_count": 0}
-            categories[cat]["liblcm_count"] += 1
+        for entity in api_index.liblcm.get(KEY_ENTITIES, {}).values():
+            cat = entity.get(KEY_CATEGORY, "uncategorized")
+            categories[cat][KEY_LIBLCM_COUNT] += 1
 
     return [TextContent(type="text", text=json.dumps({
-        "categories": categories,
-        "total_categories": len(categories)
+        KEY_CATEGORIES: dict(categories),
+        KEY_TOTAL_CATEGORIES: len(categories)
     }, indent=2))]
 
 
-async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
+async def handle_list_entities_in_category(args: ListEntitiesInCategoryInput) -> list[TextContent]:
     """List all entities in a specific category."""
-    category = args["category"].lower()
+    category = args.category.lower()
 
     entities = {"flexlibs2": [], "liblcm": []}
 
     # From FlexLibs 2.0
     if api_index.flexlibs2:
-        for entity_name, entity in api_index.flexlibs2.get("entities", {}).items():
-            if entity.get("category", "").lower() == category:
+        for entity_name, entity in api_index.flexlibs2.get(KEY_ENTITIES, {}).items():
+            if entity.get(KEY_CATEGORY, "").lower() == category:
                 entities["flexlibs2"].append({
-                    "name": entity_name,
-                    "methods_count": len(entity.get("methods", [])),
-                    "summary": entity.get("summary", "")[:100]
+                    KEY_NAME: entity_name,
+                    KEY_METHODS_COUNT: len(entity.get("methods", [])),
+                    KEY_SUMMARY: _get_entity_summary(entity)
                 })
 
     # From LibLCM
     if api_index.liblcm:
-        for entity_name, entity in api_index.liblcm.get("entities", {}).items():
-            if entity.get("category", "").lower() == category:
+        for entity_name, entity in api_index.liblcm.get(KEY_ENTITIES, {}).items():
+            if entity.get(KEY_CATEGORY, "").lower() == category:
                 entities["liblcm"].append({
-                    "name": entity_name,
-                    "type": entity.get("type"),
-                    "summary": entity.get("summary", entity.get("description", ""))[:100]
+                    KEY_NAME: entity_name,
+                    KEY_TYPE: entity.get(KEY_TYPE),
+                    KEY_SUMMARY: _get_entity_summary(entity)
                 })
 
     return [TextContent(type="text", text=json.dumps({
-        "category": category,
-        "entities": entities,
-        "counts": {
+        KEY_CATEGORY: category,
+        KEY_ENTITIES: entities,
+        KEY_COUNTS: {
             "flexlibs2": len(entities["flexlibs2"]),
             "liblcm": len(entities["liblcm"])
         }

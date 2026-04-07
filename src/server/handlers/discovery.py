@@ -16,14 +16,57 @@ from mcp.types import TextContent
 # Import shared state from kernel
 try:
     from ..kernel import api_index
+    from ..models import GetNavigationPathInput
 except ImportError:
     from server.kernel import api_index
+    from server.models import GetNavigationPathInput
 
 # Type note: api_index is initialized by server.py before any handlers are called
 
+# ============================================================
+# Constants (avoid stringly-typed code)
+# ============================================================
+# Collection property suffixes (OS=Sequence, OC=Collection, RC=References, RS=ReferencesSeq)
+COLLECTION_SUFFIXES = ("OS", "OC", "RC", "RS")
+
+# Navigation path step keys
+KEY_FROM = "from"
+KEY_TO = "to"
+KEY_VIA = "via"
+KEY_TYPE = "type"
+KEY_PROPERTY = "property"
+
+# Navigation result keys
+KEY_FOUND = "found"
+KEY_SOURCE = "source"
+KEY_STEPS = "steps"
+KEY_CODE = "code"
+KEY_DESCRIPTION = "description"
+KEY_MESSAGE = "message"
+KEY_HINT = "hint"
+
+# Navigation graph structure keys
+KEY_COMMON_PATHS = "common_paths"
+KEY_GRAPH = "graph"
+KEY_ENTITIES = "entities"
+KEY_CHILDREN = "children"
+KEY_TARGET = "target"
+KEY_POLYMORPHIC_COLLECTIONS = "polymorphic_collections"
+KEY_BASE_TYPE = "base_type"
+KEY_CONCRETE_TYPES = "concrete_types"
+KEY_CASTING_WARNINGS = "casting_warnings"
+KEY_CASTING_HINT = "casting_hint"
+KEY_REACHABLE_FROM_SOURCE = "reachable_from_source"
+
+# Constants for fallbacks
+MAX_SUGGESTED_ENTITIES = 5
+
 
 def normalize_object_name(name: str) -> str:
-    """Normalize object name to interface format (ILexEntry)."""
+    """Normalize object name to interface format (ILexEntry).
+
+    Removes 'Operations' suffix if present, then ensures 'I' prefix.
+    """
     name = name.replace("Operations", "")
     if not name.startswith("I"):
         name = f"I{name}"
@@ -31,7 +74,17 @@ def normalize_object_name(name: str) -> str:
 
 
 def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list:
-    """Find path between two entities using BFS."""
+    """Find path between two entities using BFS.
+
+    Args:
+        graph: Adjacency list where graph[entity] = [(target, via, rel_type), ...]
+        start: Starting entity name
+        end: Target entity name
+        max_depth: Maximum path depth to search
+
+    Returns:
+        List of steps [{from, to, via, type}, ...] or empty list if no path found
+    """
     if start == end:
         return []
 
@@ -45,37 +98,47 @@ def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list
 
         for edge in graph.get(current, []):
             target, via, rel_type = edge[0], edge[1], edge[2]
+            step = {KEY_FROM: current, KEY_TO: target, KEY_VIA: via, KEY_TYPE: rel_type}
 
             if target == end:
-                return path + [{"from": current, "to": target, "via": via, "type": rel_type}]
+                return path + [step]
 
             if target not in visited:
                 visited.add(target)
-                queue.append((target, path + [{"from": current, "to": target, "via": via, "type": rel_type}]))
+                queue.append((target, path + [step]))
 
     return []
 
 
 def generate_code_from_path(steps: list) -> str:
-    """Generate Python code pattern from navigation steps."""
+    """Generate Python code pattern from navigation steps.
+
+    Converts path steps into executable Python code skeleton showing:
+    - Direct property access (single navigation)
+    - Collection iteration (accessing sequences/collections)
+    """
     if not steps:
         return ""
 
+    def entity_to_var(entity_name: str) -> str:
+        """Convert entity name (ILexEntry) to variable name (lexEntry)."""
+        return entity_name[1:].lower() if entity_name.startswith("I") else entity_name.lower()
+
     lines = []
     indent = ""
-    current_var = steps[0]["from"].lower().replace("i", "", 1)
+    current_var = entity_to_var(steps[0][KEY_FROM])
 
     for step in steps:
-        prop = step["via"]
-        is_collection = prop.endswith("OS") or prop.endswith("OC") or prop.endswith("RC") or prop.endswith("RS")
+        prop = step[KEY_VIA]
+        is_collection = prop.endswith(COLLECTION_SUFFIXES)
 
         if is_collection:
-            item_var = step["to"].lower().replace("i", "", 1)
+            item_var = entity_to_var(step[KEY_TO])
             lines.append(f"{indent}for {item_var} in {current_var}.{prop}:")
             indent += "    "
             current_var = item_var
         else:
-            new_var = step["to"].lower().replace("i", "", 1)
+            new_var = entity_to_var(step[KEY_TO])
             lines.append(f"{indent}{new_var} = {current_var}.{prop}")
             current_var = new_var
 
@@ -84,37 +147,48 @@ def generate_code_from_path(steps: list) -> str:
 
 
 def _add_polymorphic_warnings(result: dict, steps: list) -> None:
-    """Add casting warnings for polymorphic collections in the navigation path."""
+    """Add casting warnings for polymorphic collections in the navigation path.
+
+    Checks each step property against casting index to identify collections
+    that require explicit casting to access type-specific properties.
+    """
     if not api_index or not api_index.casting_index or not steps:
         return
 
-    poly_collections = api_index.casting_index.get("polymorphic_collections", {})
+    casting_index = api_index.casting_index
+    poly_collections = casting_index.get(KEY_POLYMORPHIC_COLLECTIONS, {})
     warnings = []
 
     for step in steps:
-        # Check if this step is a polymorphic collection
-        property_name = step.get("property") or step.get("via", "").split(".")[-1]
+        # Extract property name from step (try 'property' key, fallback to 'via' field)
+        property_name = step.get(KEY_PROPERTY) or step.get(KEY_VIA, "").split(".")[-1]
         if property_name in poly_collections:
             poly_info = poly_collections[property_name]
+            base_type = poly_info.get(KEY_BASE_TYPE, "a base type")
+            concrete_types = poly_info.get(KEY_CONCRETE_TYPES, [])
             warning = {
-                "property": property_name,
-                "base_type": poly_info.get("base_type", ""),
-                "concrete_types": poly_info.get("concrete_types", []),
-                "message": f"The {property_name} property returns {poly_info.get('base_type', 'a base type')}. "
-                           f"You may need to cast to a concrete type: {', '.join(poly_info.get('concrete_types', []))}",
-                "suggestion": f"Use CastingOperations.cast_to_concrete(obj) to cast to the concrete type."
+                KEY_PROPERTY: property_name,
+                KEY_BASE_TYPE: base_type,
+                KEY_CONCRETE_TYPES: concrete_types,
+                KEY_MESSAGE: f"The {property_name} property returns {base_type}. "
+                             f"You may need to cast to a concrete type: {', '.join(concrete_types)}",
+                "suggestion": "Use CastingOperations.cast_to_concrete(obj) to cast to the concrete type."
             }
             warnings.append(warning)
 
     if warnings:
-        result["casting_warnings"] = warnings
-        result["casting_hint"] = "This path accesses polymorphic collections. Use CastingOperations from FlexLibs2 to access type-specific properties."
+        result[KEY_CASTING_WARNINGS] = warnings
+        result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use CastingOperations from FlexLibs2 to access type-specific properties."
 
 
-async def handle_get_navigation_path(args: dict) -> list[TextContent]:
-    """Find navigation path between two object types using precomputed graph."""
-    from_obj = args["from_object"]
-    to_obj = args["to_object"]
+async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextContent]:
+    """Find navigation path between two object types using precomputed graph.
+
+    Tries precomputed common paths first, then falls back to BFS search.
+    Includes polymorphic collection warnings for paths that require casting.
+    """
+    from_obj = args.from_object
+    to_obj = args.to_object
 
     from_normalized = normalize_object_name(from_obj)
     to_normalized = normalize_object_name(to_obj)
@@ -124,50 +198,51 @@ async def handle_get_navigation_path(args: dict) -> list[TextContent]:
         "to": to_obj,
         "from_normalized": from_normalized,
         "to_normalized": to_normalized,
-        "found": False
+        KEY_FOUND: False
     }
 
     # Check if navigation graph is loaded
     if not api_index or not api_index.navigation_graph:
-        result["message"] = "Navigation graph not loaded. Run refresh.py to generate it."
+        result[KEY_MESSAGE] = "Navigation graph not loaded. Run refresh.py to generate it."
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     nav_graph = api_index.navigation_graph
-    common_paths = nav_graph.get("common_paths", {})
-    graph = nav_graph.get("graph", {})
+    common_paths = nav_graph.get(KEY_COMMON_PATHS, {})
+    graph = nav_graph.get(KEY_GRAPH, {})
 
     # Try precomputed common paths first
     path_key = f"{from_normalized} -> {to_normalized}"
     if path_key in common_paths:
         path_info = common_paths[path_key]
-        result["found"] = True
-        result["source"] = "precomputed"
-        result["steps"] = path_info["steps"]
-        result["code"] = path_info.get("code_pattern", "")
-        result["description"] = f"Navigate from {from_normalized} to {to_normalized}"
-        _add_polymorphic_warnings(result, path_info["steps"])
+        result[KEY_FOUND] = True
+        result[KEY_SOURCE] = "precomputed"
+        result[KEY_STEPS] = path_info[KEY_STEPS]
+        result[KEY_CODE] = path_info.get("code_pattern", "")
+        result[KEY_DESCRIPTION] = f"Navigate from {from_normalized} to {to_normalized}"
+        _add_polymorphic_warnings(result, path_info[KEY_STEPS])
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     # Fall back to BFS pathfinding
     steps = find_path_bfs(graph, from_normalized, to_normalized)
     if steps:
-        result["found"] = True
-        result["source"] = "computed"
-        result["steps"] = steps
-        result["code"] = generate_code_from_path(steps)
-        result["description"] = f"Path found via BFS ({len(steps)} step{'s' if len(steps) != 1 else ''})"
+        result[KEY_FOUND] = True
+        result[KEY_SOURCE] = "computed"
+        result[KEY_STEPS] = steps
+        result[KEY_CODE] = generate_code_from_path(steps)
+        result[KEY_DESCRIPTION] = f"Path found via BFS ({len(steps)} step{'s' if len(steps) != 1 else ''})"
         _add_polymorphic_warnings(result, steps)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     # No path found
-    result["message"] = f"No navigation path found from {from_normalized} to {to_normalized}."
-    result["hint"] = "Try using get_object_api to explore the properties and relationships of these objects."
+    result[KEY_MESSAGE] = f"No navigation path found from {from_normalized} to {to_normalized}."
+    result[KEY_HINT] = "Try using get_object_api to explore the properties and relationships of these objects."
 
     # Suggest nearby objects if available
-    if api_index.navigation_graph and from_normalized in nav_graph.get("entities", {}):
-        entity_rels = nav_graph["entities"][from_normalized]
-        children = [c["target"] for c in entity_rels.get("children", [])[:5]]
+    entities = nav_graph.get(KEY_ENTITIES, {})
+    if entities and from_normalized in entities:
+        entity_rels = entities[from_normalized]
+        children = [c[KEY_TARGET] for c in entity_rels.get(KEY_CHILDREN, [])[:MAX_SUGGESTED_ENTITIES]]
         if children:
-            result["reachable_from_source"] = children
+            result[KEY_REACHABLE_FROM_SOURCE] = children
 
     return [TextContent(type="text", text=json.dumps(result, indent=2))]

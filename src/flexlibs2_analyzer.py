@@ -25,47 +25,76 @@ else:
     from json_utils import sort_json_arrays
 
 
+# ---- Module-Level Constants (for efficient membership testing) ---------------
+
+# LibLCM property names commonly accessed in FlexLibs2 code
+COMMON_LCM_PROPERTIES = {
+    "Form", "Gloss", "Definition", "Comment", "CitationForm",
+    "LexemeFormOA", "MorphTypeRA", "PartOfSpeechRA", "Guid", "Hvo",
+    "Owner", "OwningFlid", "ClassID", "ClassName"
+}
+
+# MultiString operations on IMultiUnicode/IMultiString objects
+MULTISTRING_OPERATIONS = {
+    "get_String", "set_String", "BestAnalysisAlternative",
+    "BestVernacularAlternative", "CopyAlternatives"
+}
+
+
 # ---- Version Detection -------------------------------------------------------
+
+def _detect_version_from_files(base_path: Path,
+                               filenames: List[str],
+                               patterns: Dict[str, str]) -> str:
+    """
+    Detect version from files in base_path using provided patterns.
+
+    Generic version detection helper that tries multiple files and regex patterns.
+    Used by library-specific version detection functions.
+
+    Args:
+        base_path: Path to search (e.g., Path to flexlibs2/)
+        filenames: Ordered list of filenames to try (e.g., ["__init__.py", "setup.py", "pyproject.toml"])
+        patterns: Dict mapping filename -> regex pattern string to extract version
+                  Pattern should have one capture group: (X.Y.Z)
+
+    Returns:
+        Version string (e.g., "2.1.5") or "0.0.0" if not found
+    """
+    for filename in filenames:
+        filepath = base_path / filename
+        if filepath.exists():
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    pattern = patterns.get(filename)
+                    if pattern:
+                        match = re.search(pattern, content)
+                        if match:
+                            return match.group(1)
+            except Exception:
+                pass
+
+    return "0.0.0"
+
 
 def detect_flexlibs_version(flexlibs_path: str) -> str:
     """Detect FlexLibs stable version from source code or installed package."""
-    base_path = Path(flexlibs_path)
+    base_path = Path(flexlibs_path) / "flexlibs"
+    version_pattern = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
 
-    # Try flexlibs/__init__.py first (most reliable)
-    init_py = base_path / "flexlibs" / "__init__.py"
-    if init_py.exists():
-        try:
-            with open(init_py, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
-
-    # Try setup.py
-    setup_py = base_path / "setup.py"
-    if setup_py.exists():
-        try:
-            with open(setup_py, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
-
-    # Try pyproject.toml
-    pyproject = base_path / "pyproject.toml"
-    if pyproject.exists():
-        try:
-            with open(pyproject, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
+    # Try to detect from files
+    version = _detect_version_from_files(
+        base_path,
+        ["__init__.py", "setup.py", "pyproject.toml"],
+        {
+            "__init__.py": version_pattern,
+            "setup.py": version_pattern,
+            "pyproject.toml": version_pattern
+        }
+    )
+    if version != "0.0.0":
+        return version
 
     # Fallback: try to import installed flexlibs package
     try:
@@ -75,49 +104,26 @@ def detect_flexlibs_version(flexlibs_path: str) -> str:
     except ImportError:
         pass
 
-    # Default fallback
     return "0.0.0"
 
 
 def detect_flexlibs2_version(flexlibs2_path: str) -> str:
     """Detect FlexLibs 2.0 version from source code or installed package."""
-    base_path = Path(flexlibs2_path)
+    base_path = Path(flexlibs2_path) / "flexlibs2"
+    version_pattern = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
 
-    # Try flexlibs2/__init__.py first (most reliable)
-    init_py = base_path / "flexlibs2" / "__init__.py"
-    if init_py.exists():
-        try:
-            with open(init_py, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
-
-    # Try setup.py
-    setup_py = base_path / "setup.py"
-    if setup_py.exists():
-        try:
-            with open(setup_py, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
-
-    # Try pyproject.toml
-    pyproject = base_path / "pyproject.toml"
-    if pyproject.exists():
-        try:
-            with open(pyproject, 'r', encoding='utf-8') as f:
-                content = f.read()
-                match = re.search(r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']', content)
-                if match:
-                    return match.group(1)
-        except Exception:
-            pass
+    # Try to detect from files
+    version = _detect_version_from_files(
+        base_path,
+        ["__init__.py", "setup.py", "pyproject.toml"],
+        {
+            "__init__.py": version_pattern,
+            "setup.py": version_pattern,
+            "pyproject.toml": version_pattern
+        }
+    )
+    if version != "0.0.0":
+        return version
 
     # Fallback: try to import installed flexlibs2 package
     try:
@@ -127,7 +133,6 @@ def detect_flexlibs2_version(flexlibs2_path: str) -> str:
     except ImportError:
         pass
 
-    # Default fallback
     return "0.0.0"
 
 
@@ -417,6 +422,180 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
                 "exception": "FP_ParameterError",
                 "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
             })
+
+    return output
+
+
+def infer_unified_output_behavior(method_or_property_name: str,
+                                  return_type: str,
+                                  library: str = "flexlibs2",
+                                  property_kind: Optional[str] = None,
+                                  returns_doc: str = "",
+                                  raises: List[str] = None,
+                                  is_method: bool = True) -> Dict[str, Any]:
+    """
+    Unified output behavior inference for FlexLibs, FlexLibs2, and LibLCM.
+
+    Consolidates behavior inference logic to avoid duplication across analyzers.
+    Automatically adapts behavior based on library type and property characteristics.
+
+    Args:
+        method_or_property_name: Name of method or property (e.g., "GetGloss", "Definition")
+        return_type: Return type string (e.g., "str", "bool", "List[ILexSense]", "string")
+        library: "flexlibs2" (default), "flexlibs", or "liblcm"
+        property_kind: LibLCM property kind suffix (OS/OC/RS/RC/OA/RA) if applicable
+        returns_doc: Documentation of return value (optional)
+        raises: List of exception names that can be raised (optional)
+        is_method: True if this is a method, False if property (affects inference)
+
+    Returns:
+        Dict with keys: {"success", "empty", "failure", "notes"}
+    """
+    if raises is None:
+        raises = []
+
+    output = {
+        "success": {},
+        "empty": None,
+        "failure": [],
+        "notes": []
+    }
+
+    name_lower = method_or_property_name.lower()
+    rt_lower = return_type.lower() if return_type else ""
+    is_liblcm = library == "liblcm"
+
+    # Success type information
+    if return_type:
+        output["success"]["type"] = return_type
+        if returns_doc:
+            output["success"]["description"] = returns_doc.strip()
+
+    # === LibLCM-specific: property kind handling ===
+    if is_liblcm and property_kind:
+        if property_kind in ("OS", "OC", "RS", "RC"):
+            # Collection/Sequence properties
+            output["empty"] = {
+                "value": "empty IEnumerable",
+                "description": "Empty collection when no items (never null)"
+            }
+            return output
+        elif property_kind in ("OA", "RA"):
+            # Atomic reference properties
+            output["empty"] = {
+                "value": "null",
+                "description": "Null when reference is not set"
+            }
+            return output
+
+    # === Multistring handling (LibLCM vs FlexLibs) ===
+    if rt_lower == "str" or rt_lower == "string":
+        if is_liblcm:
+            # LibLCM returns '***' for empty multistring fields
+            output["empty"] = {
+                "value": '"***" or null',
+                "description": "May return '***' for empty multilingual fields"
+            }
+            output["notes"].append("Check for '***' placeholder in multilingual text fields")
+        else:
+            # FlexLibs2 handles '***' automatically
+            if library == "flexlibs2":
+                output["empty"] = {
+                    "value": '""',
+                    "description": "Empty string when field is not set"
+                }
+                output["notes"].append("FlexLibs2 handles '***' placeholder automatically, returns ''")
+            else:
+                # Stable FlexLibs may return '***'
+                output["empty"] = {
+                    "value": '"***" or ""',
+                    "description": "May return '***' for empty multilingual fields"
+                }
+        return output
+
+    # === Type-based inference ===
+    if rt_lower in ("none", "optional") or "optional[" in rt_lower:
+        output["empty"] = {
+            "value": "None" if not is_liblcm else "null",
+            "description": "None/null when not found"
+        }
+    elif rt_lower in ("list", "iterator", "iterable") or rt_lower.startswith("list[") or rt_lower.startswith("iterator["):
+        output["empty"] = {
+            "value": "[]",
+            "description": "Empty list/iterator when no items"
+        }
+    elif rt_lower in ("bool", "boolean"):
+        output["empty"] = None  # Booleans don't have "empty" concept
+    elif rt_lower in ("int", "int32", "int64"):
+        # Check method name for clues
+        if "count" in name_lower:
+            output["empty"] = {
+                "value": "0",
+                "description": "Zero when no items"
+            }
+    elif rt_lower == "void":
+        output["success"] = {"type": "void", "description": "No return value"}
+        output["empty"] = None
+    elif is_liblcm and rt_lower.startswith("i") and rt_lower != "int":
+        # LibLCM interface type (e.g., ILexEntry, ILexSense)
+        output["empty"] = {
+            "value": "null",
+            "description": "Null when object not found"
+        }
+
+    # === Method name pattern inference ===
+    if is_method:
+        if method_or_property_name.startswith("Find"):
+            if not output["empty"]:
+                output["empty"] = {
+                    "value": "None" if not is_liblcm else "null",
+                    "description": "None/null when not found"
+                }
+        elif method_or_property_name.startswith("Get"):
+            if "all" in name_lower or "list" in name_lower:
+                if not output["empty"]:
+                    output["empty"] = {
+                        "value": "[]",
+                        "description": "Empty list when no items"
+                    }
+        elif method_or_property_name.startswith("Create") or method_or_property_name.startswith("Make") or method_or_property_name.startswith("Add"):
+            output["notes"].append("Creates new object - may require write access")
+            if is_liblcm:
+                output["notes"].append("May throw InvalidOperationException on failure")
+        elif method_or_property_name.startswith("Delete") or method_or_property_name.startswith("Remove"):
+            output["notes"].append("Destructive operation")
+        elif method_or_property_name.startswith("Set") or method_or_property_name.startswith("Update"):
+            output["notes"].append("Modifies existing data")
+
+    # === Failure/exception information ===
+    if raises:
+        for exc in raises:
+            exc_stripped = exc.strip()
+            if not exc_stripped or exc_stripped.startswith(">>>") or exc_stripped.startswith("...") or \
+               exc_stripped.startswith("Example") or exc_stripped.startswith("#"):
+                continue
+            # Match exception names (CamelCase pattern)
+            exc_match = re.match(r'^([A-Z][A-Za-z]*(?:Error|Exception|Warning)?)\s*[:\-]?\s*(.*)$', exc_stripped)
+            if exc_match:
+                exc_name = exc_match.group(1)
+                exc_desc = exc_match.group(2)
+                if exc_desc:
+                    output["failure"].append({"exception": exc_name, "when": exc_desc})
+                else:
+                    output["failure"].append({"exception": exc_name})
+    else:
+        # Infer common failure modes
+        if is_method and (method_or_property_name.startswith("Get") or method_or_property_name.startswith("Find")):
+            if is_liblcm:
+                output["failure"].append({
+                    "exception": "InvalidOperationException",
+                    "when": "Object not found or inaccessible"
+                })
+            else:
+                output["failure"].append({
+                    "exception": "FP_ParameterError",
+                    "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+                })
 
     return output
 
@@ -869,15 +1048,12 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
                     break
 
             # Check for common LCM property patterns
-            if attr_name in ["Form", "Gloss", "Definition", "Comment", "CitationForm",
-                            "LexemeFormOA", "MorphTypeRA", "PartOfSpeechRA", "Guid", "Hvo",
-                            "Owner", "OwningFlid", "ClassID", "ClassName"]:
+            if attr_name in COMMON_LCM_PROPERTIES:
                 if attr_name not in result["properties_accessed"]:
                     result["properties_accessed"].append(attr_name)
 
             # Check for MultiString operations
-            if attr_name in ["get_String", "set_String", "BestAnalysisAlternative",
-                            "BestVernacularAlternative", "CopyAlternatives"]:
+            if attr_name in MULTISTRING_OPERATIONS:
                 method_str = f".{attr_name}()"
                 if method_str not in result["methods_called"]:
                     result["methods_called"].append(method_str)

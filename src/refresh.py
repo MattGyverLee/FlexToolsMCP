@@ -35,8 +35,10 @@ from datetime import datetime
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .file_utils import get_project_root
 else:
     from json_utils import sort_json_arrays
+    from file_utils import get_project_root
 
 
 def load_env():
@@ -61,11 +63,6 @@ def load_env():
 
 # Load .env on import
 load_env()
-
-
-def get_project_root() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent
 
 
 def extract_version_from_json(json_path: Path) -> str:

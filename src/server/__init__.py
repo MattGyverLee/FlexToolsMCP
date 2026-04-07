@@ -69,6 +69,10 @@ from .kernel import (
 # Lazy import of server.py handlers (Feature 5 - modularization)
 # These will be available but only loaded when actually accessed
 # This allows backward compatibility while we gradually modularize the codebase
+
+# Cache the loaded server.py module to avoid reloading on every __getattr__ call (efficiency fix)
+_server_module_cache = None
+
 def __getattr__(name: str):
     """Lazy load handler functions and classes from the main server.py module.
 
@@ -76,7 +80,10 @@ def __getattr__(name: str):
       from server import handle_run_operation, APIIndex, main
 
     To still work even after modularization.
+
+    The server.py module is loaded once and cached to avoid reload overhead.
     """
+    global _server_module_cache
     import sys
     from pathlib import Path
     import importlib.util
@@ -125,24 +132,26 @@ def __getattr__(name: str):
     }
 
     if name in LAZY_IMPORTS:
-        # Load server.py as a module
-        src_path = str(Path(__file__).parent.parent)
-        server_path = str(Path(__file__).parent.parent / "server.py")
+        # Load server.py as a module once and cache it
+        if _server_module_cache is None:
+            src_path = str(Path(__file__).parent.parent)
+            server_path = str(Path(__file__).parent.parent / "server.py")
 
-        # Ensure src/ is in sys.path for imports to work
-        if src_path not in sys.path:
-            sys.path.insert(0, src_path)
+            # Ensure src/ is in sys.path for imports to work
+            if src_path not in sys.path:
+                sys.path.insert(0, src_path)
 
-        spec = importlib.util.spec_from_file_location("_server_module", server_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Could not load server module from {server_path}")
+            spec = importlib.util.spec_from_file_location("_server_module", server_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load server module from {server_path}")
 
-        _server_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(_server_module)
+            _server_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(_server_module)
+            _server_module_cache = _server_module
 
-        # Get the attribute from the loaded module
-        if hasattr(_server_module, name):
-            return getattr(_server_module, name)
+        # Get the attribute from the cached module
+        if hasattr(_server_module_cache, name):
+            return getattr(_server_module_cache, name)
 
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 

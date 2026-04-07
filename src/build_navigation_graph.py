@@ -21,8 +21,10 @@ from typing import Dict, List, Any, Set, Tuple, Optional
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .file_utils import get_project_root, load_json, save_json
 else:
     from json_utils import sort_json_arrays
+    from file_utils import get_project_root, load_json, save_json
 
 
 # ============================================================
@@ -38,25 +40,6 @@ REL_REFERENCED_BY = "referenced_by"
 def entity_var_name(entity_id: str) -> str:
     """Convert entity ID to variable name (e.g., ILexEntry -> lexEntry)."""
     return entity_id.lower().replace('i', '', 1)
-
-
-def get_project_root() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent
-
-
-def load_json(path: Path) -> Dict:
-    """Load a JSON file with UTF-8 encoding."""
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def save_json(data: Dict, path: Path):
-    """Save a JSON file with UTF-8 encoding and sorted keys."""
-    data = sort_json_arrays(data)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
-    print(f"[INFO] Saved: {path}")
 
 
 def extract_relationships(liblcm: Dict) -> Dict[str, Any]:

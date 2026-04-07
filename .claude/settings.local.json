@@ -49,12 +49,21 @@
       "Read(//d/Github/_Projects/_LEX/flexlibs2/flexlibs2/code/**)",
       "Read(//d/Github/_Projects/_LEX/**)",
       "Read(//c/Users/thoua/.claude/projects/d--Github--Projects--LEX-FlexToolsMCP/**)",
-      "Bash(sort -k2 -nr)"
+      "Bash(sort -k2 -nr)",
+      "Read(//d/Github/_Projects/_LEX/FlexToolsMCP/**)",
+      "Bash(git -C d:Github_Projects_LEXFlexToolsMCP diff --stat HEAD)",
+      "Read(//tmp/**)",
+      "Read(//d/tmp/**)",
+      "Skill(ralph-loop:ralph-loop)",
+      "Skill(ralph-loop:ralph-loop:*)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\flexlibs2\\flexlibs2\\code",
       "C:\\Users\\thoua\\.claude\\projects\\d--Github--Projects--LEX-FlexToolsMCP",
-      "C:\\Users\\thoua\\.claude\\plans"
+      "C:\\Users\\thoua\\.claude\\plans",
+      "\\tmp",
+      "d:\\tmp",
+      "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src"
     ]
   }
 }

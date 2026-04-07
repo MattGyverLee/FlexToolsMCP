@@ -29,8 +29,10 @@ from typing import Dict, List, Any, Optional, Tuple
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .flexlibs2_analyzer import infer_unified_output_behavior
 else:
     from json_utils import sort_json_arrays
+    from flexlibs2_analyzer import infer_unified_output_behavior
 
 # ---- Logging -----------------------------------------------------------------
 logging.basicConfig(
@@ -481,10 +483,10 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
         }
 
         # Add structured output behavior
-        result["output_behavior"] = infer_output_behavior_lcm(
-            name=name,
+        result["output_behavior"] = infer_unified_output_behavior(
+            method_or_property_name=name,
             return_type=type_name,
-            is_multistring=is_ms,
+            library="liblcm",
             property_kind=kind,
             is_method=False
         )
@@ -554,10 +556,10 @@ def extract_method(minfo) -> Optional[Dict[str, Any]]:
         category = categorize_method(name)
 
         # Infer output behavior
-        output_behavior = infer_output_behavior_lcm(
-            name=name,
+        output_behavior = infer_unified_output_behavior(
+            method_or_property_name=name,
             return_type=return_type,
-            is_multistring=False,  # Methods don't directly return multistrings
+            library="liblcm",
             property_kind="",
             is_method=True
         )

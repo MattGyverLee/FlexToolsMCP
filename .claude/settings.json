@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(//d/Github/_Projects/_LEX/flexlibs2/**)",
+      "Read(//d/Github/_Projects/_LEX/FlexToolsMCP/**)"
+    ],
+    "additionalDirectories": [
+      "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -7,9 +16,9 @@
           {
             "type": "command",
             "command": "cd d:\\Github\\_Projects\\_LEX\\FlexToolsMCP && \"D:\\Apps\\anaconda3\\python.exe\" -m pyright --outputjson src/ > .vscode/diagnostics.json 2>&1 || true",
+            "timeout": 30,
             "statusMessage": "Exporting Pylance diagnostics...",
-            "async": true,
-            "timeout": 30
+            "async": true
           }
         ]
       }

@@ -24,75 +24,36 @@ from typing import Dict, List, Any, Set, Tuple, Optional
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .server.versioning import find_latest_versioned_api_file
+    from .file_utils import get_project_root, load_json, save_json
 else:
     from json_utils import sort_json_arrays
+    from server.versioning import find_latest_versioned_api_file
+    from file_utils import get_project_root, load_json, save_json
 
 
-def get_project_root() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent
+# ============================================================
+# Constants (avoid stringly-typed code)
+# ============================================================
+# LibLCM mapping field names
+KEY_MAPPING_TYPE = "mapping_type"
+KEY_LCM_DEPENDENCIES = "lcm_dependencies"
+KEY_METHODS_CALLED = "methods_called"
+KEY_PROPERTIES_ACCESSED = "properties_accessed"
+KEY_FACTORIES_USED = "factories_used"
+KEY_REPOSITORIES_USED = "repositories_used"
 
+# Result structure keys
+KEY_PROPERTIES = "properties"
+KEY_METHODS = "methods"
+KEY_FACTORIES = "factories"
+KEY_REPOSITORIES = "repositories"
+KEY_BY_FLEXLIBS_CLASS = "by_flexlibs_class"
+KEY_BY_LIBLCM_ENTITY = "by_liblcm_entity"
+KEY_STATISTICS = "statistics"
 
-def find_latest_versioned_file(directory: Path, pattern: str) -> Optional[Path]:
-    """Find the latest versioned API file matching pattern.
-
-    Searches in both the main directory and archive subdirectory.
-
-    Args:
-        directory: Directory to search in
-        pattern: Glob pattern like "flexlibs2_api_v*.json"
-
-    Returns:
-        Path to latest file, or None if not found
-    """
-    import re as regex
-
-    if not directory.exists():
-        return None
-
-    # Extract version pattern (e.g., "v(\d+\.\d+\.\d+)" from pattern)
-    version_pattern = regex.compile(r"v(\d+)\.(\d+)\.(\d+)")
-    files_with_versions = {}
-
-    # Search main directory
-    for file in directory.glob(pattern):
-        match = version_pattern.search(file.name)
-        if match:
-            major, minor, patch = map(int, match.groups())
-            version_tuple = (major, minor, patch)
-            files_with_versions[version_tuple] = file
-
-    # Also search archive subdirectory
-    archive_dir = directory / "archive"
-    if archive_dir.exists():
-        for file in archive_dir.glob(pattern):
-            match = version_pattern.search(file.name)
-            if match:
-                major, minor, patch = map(int, match.groups())
-                version_tuple = (major, minor, patch)
-                # Main directory takes precedence if both exist
-                if version_tuple not in files_with_versions:
-                    files_with_versions[version_tuple] = file
-
-    if not files_with_versions:
-        return None
-
-    latest = max(files_with_versions.keys())
-    return files_with_versions[latest]
-
-
-def load_json(path: Path) -> Dict:
-    """Load a JSON file with UTF-8 encoding."""
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def save_json(data: Dict, path: Path):
-    """Save a JSON file with UTF-8 encoding and sorted keys."""
-    data = sort_json_arrays(data)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
-    print(f"[INFO] Saved: {path}")
+# Mapping type constant
+MAPPING_TYPE_PURE_PYTHON = "pure_python"
 
 
 def extract_interface_from_property(prop_str: str) -> str:
@@ -145,6 +106,62 @@ def is_exception_class(name: str) -> bool:
     )
 
 
+def _index_wrapper_mapping(
+    result_dict: Dict,
+    items: List[str],
+    wrapper_info: Dict,
+    extractor_fn,
+    stats_key: str,
+    statistics: Dict
+):
+    """Index wrapper info by extracted item names and update statistics.
+
+    DRY helper to eliminate repeated pattern in build_reverse_mapping():
+    for each item, extract name, append wrapper_info, increment stats.
+
+    Args:
+        result_dict: The result["properties/methods/factories/repositories"] dict
+        items: List of items to process
+        wrapper_info: The wrapper info dict to append (will be copied per item)
+        extractor_fn: Function to extract name from item (e.g., extract_interface_from_property)
+        stats_key: Statistics key to increment (e.g., "properties_mapped")
+        statistics: The statistics dict to update
+    """
+    for item in items:
+        name = extractor_fn(item)
+        result_dict[name].append(wrapper_info.copy())
+        statistics[stats_key] += 1
+
+
+def _add_liblcm_mapping(
+    by_liblcm_entity: Dict,
+    dep: str,
+    wrapper_dict: Dict,
+    key: str
+):
+    """Add or merge FlexLibs wrapper info to LibLCM entity mapping.
+
+    Handles collision when multiple FlexLibs classes wrap the same interface.
+
+    Args:
+        by_liblcm_entity: Result["by_liblcm_entity"] dict
+        dep: LibLCM entity name
+        wrapper_dict: {"class": class_name, "methods": [method_list]}
+        key: "flexlibs_2" or "flexlibs_stable"
+    """
+    if dep not in by_liblcm_entity:
+        by_liblcm_entity[dep] = {"flexlibs_stable": None, "flexlibs_2": None}
+
+    existing = by_liblcm_entity[dep][key]
+    if existing is None:
+        by_liblcm_entity[dep][key] = wrapper_dict
+    else:
+        # Multiple wrappers: convert to list if needed
+        if isinstance(existing, dict):
+            by_liblcm_entity[dep][key] = [existing]
+        by_liblcm_entity[dep][key].append(wrapper_dict)
+
+
 def build_reverse_mapping(
     flexlibs2_path: Path,
     flexlibs_path: Path | None = None,
@@ -180,13 +197,13 @@ def build_reverse_mapping(
     # Initialize result structure
     result = {
         "_schema": "reverse-mapping/1.0",
-        "properties": defaultdict(list),  # property_name -> [FlexLibs wrappers]
-        "methods": defaultdict(list),      # method_name -> [FlexLibs wrappers]
-        "factories": defaultdict(list),    # factory_name -> [FlexLibs wrappers]
-        "repositories": defaultdict(list), # repo_name -> [FlexLibs wrappers]
-        "by_flexlibs_class": {},           # FlexLibs class -> what it wraps
-        "by_liblcm_entity": defaultdict(lambda: {"flexlibs_stable": None, "flexlibs_2": None}),
-        "statistics": {
+        KEY_PROPERTIES: defaultdict(list),  # property_name -> [FlexLibs wrappers]
+        KEY_METHODS: defaultdict(list),      # method_name -> [FlexLibs wrappers]
+        KEY_FACTORIES: defaultdict(list),    # factory_name -> [FlexLibs wrappers]
+        KEY_REPOSITORIES: defaultdict(list), # repo_name -> [FlexLibs wrappers]
+        KEY_BY_FLEXLIBS_CLASS: {},           # FlexLibs class -> what it wraps
+        KEY_BY_LIBLCM_ENTITY: defaultdict(lambda: {"flexlibs_stable": None, "flexlibs_2": None}),
+        KEY_STATISTICS: {
             "total_mappings": 0,
             "properties_mapped": 0,
             "methods_mapped": 0,
@@ -203,8 +220,8 @@ def build_reverse_mapping(
             continue
 
         # Filter and deduplicate LCM dependencies - keep only interface-like names
-        raw_deps = entity.get("lcm_dependencies", [])
-        lcm_deps = list(set(d for d in raw_deps if is_interface(d)))
+        raw_deps = entity.get(KEY_LCM_DEPENDENCIES, [])
+        lcm_deps = [d for d in set(raw_deps) if is_interface(d)]  # Deduplicate via set, filter, then list
 
         # Track what LibLCM interfaces this class wraps
         class_info = {
@@ -217,97 +234,93 @@ def build_reverse_mapping(
         for method in entity.get("methods", []):
             method_name = method.get("name", "")
             lcm_mapping = method.get("lcm_mapping", {})
-            mapping_type = lcm_mapping.get("mapping_type", "pure_python")
+            mapping_type = lcm_mapping.get(KEY_MAPPING_TYPE, MAPPING_TYPE_PURE_PYTHON)
 
-            if mapping_type == "pure_python":
+            if mapping_type == MAPPING_TYPE_PURE_PYTHON:
                 continue  # Skip pure Python methods - no LibLCM mapping
 
             wrapper_info = {
                 "class": class_name,
                 "method": method_name,
-                "mapping_type": mapping_type,
+                KEY_MAPPING_TYPE: mapping_type,
                 "signature": method.get("signature", ""),
                 "description": method.get("summary", "") or method.get("description", "")[:100]
             }
 
             # Index by properties accessed
-            for prop in lcm_mapping.get("properties_accessed", []):
-                prop_name = extract_interface_from_property(prop)
-                result["properties"][prop_name].append(wrapper_info.copy())
-                result["statistics"]["properties_mapped"] += 1
+            if KEY_PROPERTIES_ACCESSED in lcm_mapping:
+                _index_wrapper_mapping(
+                    result[KEY_PROPERTIES],
+                    lcm_mapping[KEY_PROPERTIES_ACCESSED],
+                    wrapper_info,
+                    extract_interface_from_property,
+                    "properties_mapped",
+                    result[KEY_STATISTICS]
+                )
 
             # Index by methods called
-            for meth in lcm_mapping.get("methods_called", []):
-                meth_name = extract_interface_from_method(meth)
-                result["methods"][meth_name].append(wrapper_info.copy())
-                result["statistics"]["methods_mapped"] += 1
+            if KEY_METHODS_CALLED in lcm_mapping:
+                _index_wrapper_mapping(
+                    result[KEY_METHODS],
+                    lcm_mapping[KEY_METHODS_CALLED],
+                    wrapper_info,
+                    extract_interface_from_method,
+                    "methods_mapped",
+                    result[KEY_STATISTICS]
+                )
 
             # Index by factories used
-            for factory in lcm_mapping.get("factories_used", []):
-                result["factories"][factory].append(wrapper_info.copy())
-                result["statistics"]["factories_mapped"] += 1
+            if KEY_FACTORIES_USED in lcm_mapping:
+                for factory in lcm_mapping[KEY_FACTORIES_USED]:
+                    result[KEY_FACTORIES][factory].append(wrapper_info.copy())
+                    result[KEY_STATISTICS]["factories_mapped"] += 1
 
             # Index by repositories used
-            for repo in lcm_mapping.get("repositories_used", []):
-                result["repositories"][repo].append(wrapper_info.copy())
-                result["statistics"]["repositories_mapped"] += 1
+            if KEY_REPOSITORIES_USED in lcm_mapping:
+                for repo in lcm_mapping[KEY_REPOSITORIES_USED]:
+                    result[KEY_REPOSITORIES][repo].append(wrapper_info.copy())
+                    result[KEY_STATISTICS]["repositories_mapped"] += 1
 
             # Add to class info
             class_info["methods"][method_name] = {
-                "mapping_type": mapping_type,
+                KEY_MAPPING_TYPE: mapping_type,
                 "lcm_calls": (
-                    lcm_mapping.get("properties_accessed", []) +
-                    lcm_mapping.get("methods_called", [])
+                    lcm_mapping.get(KEY_PROPERTIES_ACCESSED, []) +
+                    lcm_mapping.get(KEY_METHODS_CALLED, [])
                 )
             }
 
-            result["statistics"]["total_mappings"] += 1
+            result[KEY_STATISTICS]["total_mappings"] += 1
 
-        result["by_flexlibs_class"][class_name] = class_info
+        result[KEY_BY_FLEXLIBS_CLASS][class_name] = class_info
 
         # Link LibLCM entities to this FlexLibs class
         for dep in lcm_deps:
-            if dep not in result["by_liblcm_entity"]:
-                result["by_liblcm_entity"][dep] = {"flexlibs_stable": None, "flexlibs_2": None}
-
-            if result["by_liblcm_entity"][dep]["flexlibs_2"] is None:
-                result["by_liblcm_entity"][dep]["flexlibs_2"] = {
-                    "class": class_name,
-                    "methods": list(class_info["methods"].keys())
-                }
-            else:
-                # Multiple FlexLibs classes wrap the same interface
-                existing = result["by_liblcm_entity"][dep]["flexlibs_2"]
-                if isinstance(existing, dict):
-                    # Convert to list
-                    result["by_liblcm_entity"][dep]["flexlibs_2"] = [existing]
-                result["by_liblcm_entity"][dep]["flexlibs_2"].append({
-                    "class": class_name,
-                    "methods": list(class_info["methods"].keys())
-                })
+            wrapper_dict = {
+                "class": class_name,
+                "methods": list(class_info["methods"].keys())
+            }
+            _add_liblcm_mapping(result[KEY_BY_LIBLCM_ENTITY], dep, wrapper_dict, "flexlibs_2")
 
     # Process FlexLibs stable if available
     if flexlibs:
         print("[INFO] Processing FlexLibs stable mappings...")
         for class_name, entity in flexlibs.get("entities", {}).items():
-            lcm_deps = entity.get("lcm_dependencies", [])
+            lcm_deps = entity.get(KEY_LCM_DEPENDENCIES, [])
 
             for dep in lcm_deps:
-                if dep not in result["by_liblcm_entity"]:
-                    result["by_liblcm_entity"][dep] = {"flexlibs_stable": None, "flexlibs_2": None}
-
-                if result["by_liblcm_entity"][dep]["flexlibs_stable"] is None:
-                    result["by_liblcm_entity"][dep]["flexlibs_stable"] = {
-                        "class": class_name,
-                        "methods": [m["name"] for m in entity.get("methods", [])]
-                    }
+                wrapper_dict = {
+                    "class": class_name,
+                    "methods": [m["name"] for m in entity.get("methods", [])]
+                }
+                _add_liblcm_mapping(result[KEY_BY_LIBLCM_ENTITY], dep, wrapper_dict, "flexlibs_stable")
 
     # Convert defaultdicts to regular dicts for JSON serialization
-    result["properties"] = dict(result["properties"])
-    result["methods"] = dict(result["methods"])
-    result["factories"] = dict(result["factories"])
-    result["repositories"] = dict(result["repositories"])
-    result["by_liblcm_entity"] = dict(result["by_liblcm_entity"])
+    result[KEY_PROPERTIES] = dict(result[KEY_PROPERTIES])
+    result[KEY_METHODS] = dict(result[KEY_METHODS])
+    result[KEY_FACTORIES] = dict(result[KEY_FACTORIES])
+    result[KEY_REPOSITORIES] = dict(result[KEY_REPOSITORIES])
+    result[KEY_BY_LIBLCM_ENTITY] = dict(result[KEY_BY_LIBLCM_ENTITY])
 
     return result
 
@@ -325,8 +338,8 @@ def add_python_wrappers_to_liblcm(
 
     wrappers_added = 0
     for entity_id, entity in liblcm.get("entities", {}).items():
-        if entity_id in reverse_mapping["by_liblcm_entity"]:
-            wrapper_info = reverse_mapping["by_liblcm_entity"][entity_id]
+        if entity_id in reverse_mapping[KEY_BY_LIBLCM_ENTITY]:
+            wrapper_info = reverse_mapping[KEY_BY_LIBLCM_ENTITY][entity_id]
             entity["python_wrappers"] = wrapper_info
             wrappers_added += 1
 
@@ -341,7 +354,7 @@ def add_python_wrappers_to_liblcm(
 
 def print_summary(result: Dict):
     """Print summary statistics."""
-    stats = result["statistics"]
+    stats = result[KEY_STATISTICS]
 
     print("\n" + "=" * 50)
     print("Reverse Mapping Summary")
@@ -351,12 +364,12 @@ def print_summary(result: Dict):
     print(f"  Methods mapped: {stats['methods_mapped']}")
     print(f"  Factories mapped: {stats['factories_mapped']}")
     print(f"  Repositories mapped: {stats['repositories_mapped']}")
-    print(f"  FlexLibs classes: {len(result['by_flexlibs_class'])}")
-    print(f"  LibLCM entities with wrappers: {len(result['by_liblcm_entity'])}")
+    print(f"  FlexLibs classes: {len(result[KEY_BY_FLEXLIBS_CLASS])}")
+    print(f"  LibLCM entities with wrappers: {len(result[KEY_BY_LIBLCM_ENTITY])}")
 
     # Top wrapped properties
     print("\nTop 10 wrapped properties:")
-    sorted_props = sorted(result["properties"].items(), key=lambda x: len(x[1]), reverse=True)[:10]
+    sorted_props = sorted(result[KEY_PROPERTIES].items(), key=lambda x: len(x[1]), reverse=True)[:10]
     for prop, wrappers in sorted_props:
         print(f"  {prop}: {len(wrappers)} wrappers")
 
@@ -383,9 +396,9 @@ def main():
     liblcm_dir = root / "index" / "liblcm"
 
     # Find latest versioned API files
-    flexlibs2_path = find_latest_versioned_file(flexlibs_dir, "flexlibs2_api_v*.json")
-    flexlibs_path = find_latest_versioned_file(flexlibs_dir, "flexlibs_api_v*.json")
-    liblcm_path = find_latest_versioned_file(liblcm_dir, "liblcm_api_v*.json")
+    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+    flexlibs_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+    liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 
     if not flexlibs2_path:
         print("[ERROR] FlexLibs 2.0 API file not found")

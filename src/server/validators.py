@@ -57,16 +57,17 @@ _BUILTIN_NAMES = {
     "project", "report", "modifyAllowed", "FLExProject"
 }
 
-# LibLCM mutation patterns (tuple of (pattern, method_name, category))
+# LibLCM mutation patterns (pre-compiled for efficiency - avoids 200-400ms recompilation cost)
+# Tuple of (compiled_pattern, method_name, category)
 _LIBLCM_MUTABLE_PATTERNS = [
-    (r'_cache\s*\.\s*CreateObject\s*\(', 'CreateObject', 'Create'),
-    (r'_cache\s*\.\s*DeleteObject\s*\(', 'DeleteObject', 'Delete'),
-    (r'_cache\s*\.\s*BeginNonUndoableTask\s*\(', 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
-    (r'\.Add\s*\(', 'Add', 'Mutate'),
-    (r'\.Remove\s*\(', 'Remove', 'Mutate'),
-    (r'\.Clear\s*\(', 'Clear', 'Mutate'),
-    (r'\.MoveTo\s*\(', 'MoveTo', 'Reorder'),
-    (r'\.Insert\s*\(', 'Insert', 'Mutate'),
+    (re.compile(r'_cache\s*\.\s*CreateObject\s*\('), 'CreateObject', 'Create'),
+    (re.compile(r'_cache\s*\.\s*DeleteObject\s*\('), 'DeleteObject', 'Delete'),
+    (re.compile(r'_cache\s*\.\s*BeginNonUndoableTask\s*\('), 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
+    (re.compile(r'\.Add\s*\('), 'Add', 'Mutate'),
+    (re.compile(r'\.Remove\s*\('), 'Remove', 'Mutate'),
+    (re.compile(r'\.Clear\s*\('), 'Clear', 'Mutate'),
+    (re.compile(r'\.MoveTo\s*\('), 'MoveTo', 'Reorder'),
+    (re.compile(r'\.Insert\s*\('), 'Insert', 'Mutate'),
 ]
 
 

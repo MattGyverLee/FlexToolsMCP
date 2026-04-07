@@ -21,72 +21,12 @@ from typing import Dict, List, Any, Set, Optional
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .server.versioning import find_latest_versioned_api_file
+    from .file_utils import get_project_root, load_json, save_json
 else:
     from json_utils import sort_json_arrays
-
-
-def get_project_root() -> Path:
-    """Get the project root directory."""
-    return Path(__file__).parent.parent
-
-
-def find_latest_versioned_file(directory: Path, pattern: str) -> Optional[Path]:
-    """Find the latest versioned API file matching pattern.
-
-    Searches in both the main directory and archive subdirectory.
-
-    Args:
-        directory: Directory to search in
-        pattern: Glob pattern like "flexlibs2_api_v*.json"
-
-    Returns:
-        Path to latest file, or None if not found
-    """
-    version_pattern = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
-    files_with_versions = {}
-
-    if not directory.exists():
-        return None
-
-    # Search main directory
-    for file in directory.glob(pattern):
-        match = version_pattern.search(file.name)
-        if match:
-            major, minor, patch = map(int, match.groups())
-            version_tuple = (major, minor, patch)
-            files_with_versions[version_tuple] = file
-
-    # Also search archive subdirectory
-    archive_dir = directory / "archive"
-    if archive_dir.exists():
-        for file in archive_dir.glob(pattern):
-            match = version_pattern.search(file.name)
-            if match:
-                major, minor, patch = map(int, match.groups())
-                version_tuple = (major, minor, patch)
-                # Main directory takes precedence if both exist
-                if version_tuple not in files_with_versions:
-                    files_with_versions[version_tuple] = file
-
-    if not files_with_versions:
-        return None
-
-    latest = max(files_with_versions.keys())
-    return files_with_versions[latest]
-
-
-def load_json(path: Path) -> Dict:
-    """Load a JSON file with UTF-8 encoding."""
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def save_json(data: Dict, path: Path):
-    """Save a JSON file with UTF-8 encoding and sorted keys."""
-    data = sort_json_arrays(data)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
-    print(f"[INFO] Saved: {path}")
+    from server.versioning import find_latest_versioned_api_file
+    from file_utils import get_project_root, load_json, save_json
 
 
 def classify_operation(method_name: str, example: str) -> str:
@@ -324,7 +264,7 @@ def main():
     flexlibs_dir = root / "index" / "flexlibs"
 
     # Find latest FlexLibs 2.0 API file
-    flexlibs2_path = find_latest_versioned_file(flexlibs_dir, "flexlibs2_api_v*.json")
+    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
     if not flexlibs2_path:
         print("[ERROR] FlexLibs 2.0 API file not found")
         return 1

@@ -76,6 +76,69 @@ except ImportError:
     from server.headless_report import HeadlessReport
 
 
+# ============================================================
+# Constants (avoid stringly-typed code)
+# ============================================================
+# Response status keys
+KEY_STATUS = "status"
+KEY_SUCCESS = "success"
+KEY_ERROR = "error"
+KEY_MESSAGE = "message"
+KEY_NEEDS_INPUT = "needs_input"
+KEY_COMPLETE = "complete"
+
+# Module/execution keys
+KEY_MODULE_NAME = "module_name"
+KEY_SYNOPSIS = "synopsis"
+KEY_API_TARGET = "api_target"
+KEY_INCLUDE_DRY_RUN = "include_dry_run"
+KEY_MODIFIES_DB = "modifies_db"
+KEY_QUESTIONS = "questions"
+KEY_QUESTION = "question"
+KEY_EXAMPLE = "example"
+KEY_PROVIDED = "provided"
+KEY_TEMPLATE = "template"
+KEY_SESSION = "session"
+KEY_PROJECT = "project"
+KEY_WRITE_ENABLED = "write_enabled"
+
+# Execution result keys
+KEY_MESSAGES = "messages"
+KEY_SUMMARY = "summary"
+KEY_WARNINGS = "warnings"
+KEY_RAW_OUTPUT = "raw_output"
+KEY_STDERR = "stderr"
+KEY_EXIT_CODE = "exit_code"
+KEY_WRITE_CERTIFICATION = "write_certification"
+KEY_IS_CERTIFIED_READONLY = "is_certified_readonly"
+KEY_CONFIDENCE = "confidence"
+KEY_MUTATING_CALLS_DETECTED = "mutating_calls_detected"
+
+# Error codes
+ERROR_PROJECT_NAME_REQUIRED = "project_name_required"
+ERROR_CASTING_ISSUES = "casting_issues_detected"
+ERROR_API_DISCOVERY_REQUIRED = "api_discovery_required"
+ERROR_UNDEFINED_VARIABLES = "undefined_variables"
+ERROR_MISSING_IMPORTS = "missing_imports"
+ERROR_WRONG_LIBRARY = "wrong_library_imports"
+ERROR_UNPROTECTED_CODE = "unprotected_code"
+
+# Validation result keys
+KEY_CASTING_ISSUES = "casting_issues"
+KEY_SEVERITY = "severity"
+KEY_HAS_CASTING_ISSUES = "has_casting_issues"
+KEY_WHY = "why"
+KEY_APPLIES_TO = "applies_to"
+KEY_HOW_TO_FIX = "how_to_fix"
+KEY_NEXT_STEPS = "next_steps"
+KEY_SUGGESTIONS = "suggestions"
+
+
+def _json_response(data: dict, indent: int = 2, **kwargs) -> list[TextContent]:
+    """Wrap dict response as JSON TextContent for MCP."""
+    return [TextContent(type="text", text=json.dumps(data, indent=indent, **kwargs))]
+
+
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
@@ -149,7 +212,7 @@ except ImportError:
 """
 
 
-def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> Tuple[str, dict]:
+def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> str:
     """Generate imports and namespace dict for a given API mode.
 
     Args:
@@ -161,7 +224,7 @@ def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, i
             - full: Inject full suite of helpers (defensive mode)
 
     Returns:
-        (imports_code, namespace_dict_entries)
+        imports_code: Python code string with imports and helpers
 
     Raises:
         ValueError: If API mode is invalid or required libraries are not installed
@@ -228,7 +291,32 @@ class FLExProject:
     casting_helpers = _get_casting_helpers_code(injection_tier, helpers_needed)
     imports += casting_helpers
 
-    return imports, {}
+    return imports
+
+
+def _run_validator(validator_func, code: str, check_key: str, error_code: str, **validator_kwargs) -> Optional[list[TextContent]]:
+    """Run a single validator and return error response if validation fails.
+
+    Reduces code duplication in handle_run_module by centralizing validator pattern.
+
+    Args:
+        validator_func: The validator function to call (e.g., detect_cud_operations)
+        code: The code to validate
+        check_key: The key in validator result to check (e.g., 'has_cud_operations')
+        error_code: The error code to return if validation fails
+        **validator_kwargs: Additional keyword args to pass to validator_func
+
+    Returns:
+        Error response list if validation fails, None if validation passes
+    """
+    check_result = validator_func(code, **validator_kwargs)
+    if check_result.get(check_key):
+        return error_response(
+            error_code,
+            check_result.get("suggestion", "Validation failed"),
+            **check_result.get("extras", {})
+        )
+    return None
 
 
 async def handle_start_module(args: dict) -> list[TextContent]:
@@ -336,15 +424,15 @@ async def handle_start_module(args: dict) -> list[TextContent]:
     # If we have required questions, return them along with optional ones
     if required_questions:
         questions = required_questions + optional_questions
-        return [TextContent(type="text", text=json.dumps({
-            "status": "needs_input",
+        return _json_response({
+            KEY_STATUS: KEY_NEEDS_INPUT,
             "environment": env_info,
-            "provided": provided,
+            KEY_PROVIDED: provided,
             "required_questions": required_questions,
             "optional_questions": optional_questions,
-            "questions": questions,  # Combined for convenience
+            KEY_QUESTIONS: questions,
             "instructions": "Please ask the user these questions and call start_module again with the answers. Optional questions can be skipped."
-        }, indent=2))]
+        })
 
     # All questions answered - generate the template
     module_name = args["module_name"]
@@ -519,20 +607,20 @@ if __name__ == '__main__':
 
     api_info = api_notes.get(api_target, {})
 
-    return [TextContent(type="text", text=json.dumps({
-        "status": "complete",
+    return _json_response({
+        KEY_STATUS: KEY_COMPLETE,
         "environment": env_info,
         "configuration": config,
-        "template": template,
+        KEY_TEMPLATE: template,
         "api_guidance": {
             "mode": api_target,
             "search_mode": api_info.get("search_mode", api_target),
             "search_reminder": api_info.get("search_reminder", ""),
             "tips": api_info.get("tips", [])
         },
-        "next_steps": next_steps,
+        KEY_NEXT_STEPS: next_steps,
         "testing_reminder": "Always test FlexTools modules on a backup or sample project first!" if not test_project else None
-    }, indent=2))]
+    })
 
 
 async def handle_run_module(args: dict) -> list[TextContent]:
@@ -667,8 +755,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     operations_logger.debug(f"Three-tier injection: tier={injection_tier}, helpers_needed={helpers_needed}")
 
     # Get API mode-specific imports with appropriate injection tier
-    api_imports, _ = _get_api_mode_imports(api_mode, helpers_needed=helpers_needed, injection_tier=injection_tier)
-    # Add indentation for embedding in runner_script (uses .replace(), not .format())
+    api_imports = _get_api_mode_imports(api_mode, helpers_needed=helpers_needed, injection_tier=injection_tier)
     import textwrap
     api_imports_indented = textwrap.indent(api_imports, '        ')
 

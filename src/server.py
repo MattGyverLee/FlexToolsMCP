@@ -26,6 +26,8 @@ from contextlib import redirect_stdout, redirect_stderr
 # Suppress noisy third-party warnings and output
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
 os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+# Cache HuggingFace models to home directory (persistent across runs)
+os.environ['HF_HOME'] = str(Path.home() / '.cache' / 'flextoolsmcp' / 'hf')
 warnings.filterwarnings('ignore', message='.*position_ids.*')
 
 # Capture HF Hub unauthenticated warning to log it properly
@@ -181,6 +183,7 @@ class SemanticSearch:
     index: Any = None
     items: List[Dict] = field(default_factory=list)
     enabled: bool = False
+    model_name: str = "all-MiniLM-L6-v2"  # Lazy-loaded on first search
 
     @classmethod
     def load(cls, index_dir: Path) -> "SemanticSearch":
@@ -208,16 +211,10 @@ class SemanticSearch:
             _log_info("Loading semantic search index...")
             search.index = faiss.read_index(str(faiss_path))
 
-            # Load model (may download from HuggingFace on first load)
-            model_name = metadata.get("_model", "all-MiniLM-L6-v2")
-            _log_info(f"Loading embedding model '{model_name}' (may download ~50MB on first load)...")
-
-            with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                warnings.filterwarnings('ignore')
-                search.model = SentenceTransformer(model_name)
-
-            _log_info("Semantic search ready")
+            # Store model name for lazy loading (model loads on first search, not at startup)
+            search.model_name = metadata.get("_model", "all-MiniLM-L6-v2")
             search.enabled = True
+            _log_info("Semantic search ready (model loads on first search)")
         except Exception as e:
             _log_warning(f"Failed to load semantic search: {e}")
 
@@ -225,8 +222,29 @@ class SemanticSearch:
 
     def search(self, query: str, max_results: int = 10, source_filter: str = "all") -> List[Dict]:
         """Perform semantic search on the query."""
-        if not self.enabled or not self.model or not self.index:
+        if not self.enabled or not self.index:
             return []
+
+        # Lazy-load model on first search
+        if not self.model:
+            try:
+                cache_dir = Path.home() / '.cache' / 'flextoolsmcp' / 'hf'
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                model_cache = cache_dir / 'hub' / f'models--sentence-transformers--{self.model_name.replace("/", "--")}'
+
+                if model_cache.exists():
+                    _log_info(f"Loading embedding model '{self.model_name}' from cache...")
+                else:
+                    _log_info(f"Downloading embedding model '{self.model_name}' (~50MB, cached for future runs)...")
+
+                with warnings.catch_warnings(), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                    warnings.filterwarnings('ignore')
+                    self.model = SentenceTransformer(self.model_name)
+
+                _log_info("Model ready, search in progress...")
+            except Exception as e:
+                _log_error(f"Failed to load embedding model: {e}")
+                return []
 
         # Encode query
         query_embedding = self.model.encode([query], convert_to_numpy=True)

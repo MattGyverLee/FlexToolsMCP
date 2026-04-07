@@ -669,14 +669,17 @@ async def main():
     else:
         _log_warning( "FlexLibs Stable index not found")
 
-    # Print version summary to console so user knows what APIs are loaded
+    # Print version and entity summary to console so user knows what APIs are loaded
     versions = []
-    if api_index.liblcm_version:
-        versions.append(f"LibLCM {api_index.liblcm_version}")
-    if api_index.flexlibs2_version:
-        versions.append(f"FlexLibs2 {api_index.flexlibs2_version}")
-    if api_index.flexlibs_stable_version:
-        versions.append(f"FlexLibs {api_index.flexlibs_stable_version}")
+    if api_index.liblcm and api_index.liblcm_version:
+        entities = len(api_index.liblcm.get('entities', {}))
+        versions.append(f"LibLCM {api_index.liblcm_version} ({entities} entities)")
+    if api_index.flexlibs2 and api_index.flexlibs2_version:
+        entities = len(api_index.flexlibs2.get('entities', {}))
+        versions.append(f"FlexLibs2 {api_index.flexlibs2_version} ({entities} entities)")
+    if api_index.flexlibs_stable and api_index.flexlibs_stable_version:
+        entities = len(api_index.flexlibs_stable.get('entities', {}))
+        versions.append(f"FlexLibs {api_index.flexlibs_stable_version} ({entities} entities)")
 
     if versions:
         # Note: Can't use stdout during init (breaks MCP protocol parser)

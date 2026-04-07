@@ -27,7 +27,6 @@ import io
 from contextlib import redirect_stdout, redirect_stderr
 
 _imports_std_done = _time_module.time()
-print(f"[TIMING] Stdlib imports: {_imports_std_done - _startup_begin:.3f}s", file=sys.stderr, flush=True)
 
 # Suppress noisy third-party warnings and output
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
@@ -62,7 +61,6 @@ if __package__ is None:
 _mcp_import_begin = _time_module.time()
 from mcp.server import Server
 _mcp_import_done = _time_module.time()
-print(f"[TIMING] MCP imports: {_mcp_import_done - _mcp_import_begin:.3f}s", file=sys.stderr, flush=True)
 
 _local_imports_begin = _time_module.time()
 if __package__:
@@ -102,8 +100,6 @@ else:
         find_latest_versioned_api_file,
     )
 _local_imports_done = _time_module.time()
-print(f"[TIMING] Local module imports: {_local_imports_done - _local_imports_begin:.3f}s", file=sys.stderr, flush=True)
-
 
 # Safe logging helper that works even before initialization
 def _log_info(msg: str) -> None:
@@ -111,20 +107,15 @@ def _log_info(msg: str) -> None:
     if operations_logger:
         operations_logger.info(msg)
 
-
 def _log_error(msg: str) -> None:
     """Log error message, safely handling None logger during early init."""
     if operations_logger:
         operations_logger.error(msg)
 
-
 def _log_warning(msg: str) -> None:
     """Log warning message, safely handling None logger during early init."""
     if operations_logger:
         operations_logger.warning(msg)
-
-
-
 
 # ============================================================
 # FlexLibs2 Operations Contract
@@ -156,14 +147,11 @@ KNOWN_EXCEPTIONS = {
     "FP_WritingSystemError",
 }
 
-
 # Logging and kernel state are now imported from server.kernel
 # See imports at top (from .server.kernel import ...)
 
-
 # Session state is now imported from server.kernel (initialized there)
 # See imports at top (from .server.kernel import session_state)
-
 
 # Helper validation functions were extracted to validators module
 # Import them at the top if needed for use in server.py
@@ -184,7 +172,6 @@ if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
 SEMANTIC_SEARCH_AVAILABLE = False  # Will be determined at runtime
-
 
 @dataclass
 class SemanticSearch:
@@ -302,7 +289,6 @@ class SemanticSearch:
 
         return results
 
-
 def _load_library_api_index(
     index: "APIIndex",
     index_dir: Path,
@@ -371,7 +357,6 @@ def _load_library_api_index(
         except Exception as e:
             _log_error(f"Failed to load {library_name}: {e}")
 
-
 def _load_json_with_fallback(index_dir: Path, versioned_prefix: str, unversioned_name: str) -> dict | None:
     """Load JSON file with versioned name fallback to unversioned name (DRY consolidation).
 
@@ -405,7 +390,6 @@ def _load_json_with_fallback(index_dir: Path, versioned_prefix: str, unversioned
             pass
 
     return None
-
 
 @dataclass
 class APIIndex:
@@ -444,7 +428,6 @@ class APIIndex:
             "flexlibs2_version",
         )
         _lib_done = _time_module.time()
-        print(f"[TIMING] FlexLibs 2.0 load (startup): {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
         # Note: LibLCM and FlexLibs stable are deferred to lazy-loading.
         # This saves 0.808s at startup. They load on first tool call that needs them.
@@ -468,7 +451,6 @@ class APIIndex:
             "liblcm_version",
         )
         _lib_done = _time_module.time()
-        print(f"[TIMING] LibLCM load (lazy): {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
     def ensure_flexlibs_stable_loaded(self) -> None:
         """Lazy-load FlexLibs stable if not already loaded. Called by tools that need it."""
@@ -486,7 +468,6 @@ class APIIndex:
             "flexlibs_stable_version",
         )
         _lib_done = _time_module.time()
-        print(f"[TIMING] FlexLibs stable load (lazy): {_lib_done - _lib_start:.3f}s", file=sys.stderr, flush=True)
 
     def ensure_navigation_graph_loaded(self) -> None:
         """Lazy-load navigation graph if not already loaded."""
@@ -500,7 +481,6 @@ class APIIndex:
             "navigation_graph.json"
         )
         _nav_done = _time_module.time()
-        print(f"[TIMING] Navigation graph load (lazy): {_nav_done - _nav_start:.3f}s", file=sys.stderr, flush=True)
 
     def ensure_casting_index_loaded(self) -> None:
         """Lazy-load casting index if not already loaded."""
@@ -514,7 +494,6 @@ class APIIndex:
             "casting_index.json"
         )
         _cast_done = _time_module.time()
-        print(f"[TIMING] Casting index load (lazy): {_cast_done - _cast_start:.3f}s", file=sys.stderr, flush=True)
 
     def ensure_semantic_search_loaded(self) -> None:
         """Lazy-load semantic search if not already loaded."""
@@ -524,23 +503,18 @@ class APIIndex:
         _search_start = _time_module.time()
         self.semantic_search = SemanticSearch.load(get_index_dir())
         _search_done = _time_module.time()
-        print(f"[TIMING] Semantic search load (lazy): {_search_done - _search_start:.3f}s", file=sys.stderr, flush=True)
-
 
 # Initialize the MCP server
 _server_init_begin = _time_module.time()
 server = Server("flextools-mcp")
 _server_init_done = _time_module.time()
-print(f"[TIMING] MCP Server instantiation: {_server_init_done - _server_init_begin:.3f}s", file=sys.stderr, flush=True)
 
 # Global index (loaded on startup)
 api_index: Optional[APIIndex] = None
 
-
 def get_index_dir() -> Path:
     """Get the index directory path."""
     return Path(__file__).parent.parent / "index"
-
 
 def get_installed_liblcm_version() -> Optional[str]:
     """Detect the version of LibLCM currently installed.
@@ -552,7 +526,6 @@ def get_installed_liblcm_version() -> Optional[str]:
         "LibLCM",
         assembly_name="SIL.LCModel"
     )
-
 
 def get_installed_flexlibs2_version() -> Optional[str]:
     """Detect the version of FlexLibs 2.0 currently installed.
@@ -566,7 +539,6 @@ def get_installed_flexlibs2_version() -> Optional[str]:
         package_name="flexlibs2"
     )
 
-
 def get_installed_flexlibs_version() -> Optional[str]:
     """Detect the version of stable FlexLibs currently installed.
 
@@ -579,10 +551,8 @@ def get_installed_flexlibs_version() -> Optional[str]:
         package_name="flexlibs"
     )
 
-
 # find_latest_versioned_api_file and find_versioned_api_file are now imported from .server.versioning
 # (See imports at top of file)
-
 
 def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Path) -> bool:
     """Auto-refresh a missing API file by running the analyzer.
@@ -639,7 +609,6 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         _log_warning(f"Could not auto-refresh {library_name}: {e}")
         return False
 
-
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     """List all MCP tools, generated from Pydantic models in tool_definitions.py.
@@ -648,17 +617,9 @@ async def list_tools() -> list[Tool]:
     which provides automatic validation and type coercion.
     Schemas are cached to avoid regeneration on each list_tools() call.
     """
-    _list_tools_start = _time_module.time()
-    print(f"[TIMING] list_tools() called at {_list_tools_start - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
-
     tools: list[Tool] = []
     for tool_def in TOOL_DEFINITIONS.values():
-        _schema_start = _time_module.time()
         schema = tool_def.get_schema()  # Uses cached schema if available
-        _schema_done = _time_module.time()
-        if _schema_done - _schema_start > 0.01:  # Only log slow operations
-            print(f"[TIMING] Schema retrieval for {tool_def.name}: {_schema_done - _schema_start:.3f}s", file=sys.stderr, flush=True)
-
         tools.append(
             Tool(
                 name=tool_def.name,
@@ -668,10 +629,7 @@ async def list_tools() -> list[Tool]:
             )
         )
 
-    _list_tools_done = _time_module.time()
-    print(f"[TIMING] list_tools() returning {len(tools)} tools, took {_list_tools_done - _list_tools_start:.3f}s", file=sys.stderr, flush=True)
     return tools
-
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -712,7 +670,6 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # Dispatch to handler with validated input (convert to dict for backward compatibility)
     return await handler(validated_args.model_dump())
 
-
 async def main():
     """Run the MCP server."""
     global api_index
@@ -720,17 +677,13 @@ async def main():
 
     _main_start = _time_module.time()
     _module_init_elapsed = _main_start - _startup_begin
-    print(f"[TIMING] Module initialization complete: {_module_init_elapsed:.3f}s total", file=sys.stderr, flush=True)
-    print(f"[TIMING] main() started at {_module_init_elapsed:.3f}s", file=sys.stderr, flush=True)
 
     # Pre-load indexes
     _log_info("Loading API indexes...")
     _api_load_start = _time_module.time()
-    print(f"[TIMING] API load started at {_api_load_start - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
     api_index = APIIndex.load(get_index_dir())
     _api_load_done = _time_module.time()
     _api_load_elapsed = _api_load_done - _api_load_start
-    print(f"[TIMING] API load completed in {_api_load_elapsed:.3f}s", file=sys.stderr, flush=True)
     _log_info(f"API indexes loaded in {_api_load_elapsed:.2f}s")
 
     _log_start = _time_module.time()
@@ -762,7 +715,6 @@ async def main():
     else:
         _log_warning( "FlexLibs Stable index not found")
     _log_done = _time_module.time()
-    print(f"[TIMING] API logging: {_log_done - _log_start:.3f}s", file=sys.stderr, flush=True)
 
     # Print version and entity summary to console so user knows what APIs are loaded
     _versions_start = _time_module.time()
@@ -777,7 +729,6 @@ async def main():
         entities = len(api_index.flexlibs_stable.get('entities', {}))
         versions.append(f"FlexLibs {api_index.flexlibs_stable_version} ({entities} entities)")
     _versions_done = _time_module.time()
-    print(f"[TIMING] Version string building: {_versions_done - _versions_start:.3f}s", file=sys.stderr, flush=True)
 
     if versions:
         # Note: Can't use stdout during init (breaks MCP protocol parser)
@@ -787,13 +738,10 @@ async def main():
     _log_info( "Starting MCP server...")
 
     _stdio_server_begin = _time_module.time()
-    print(f"[TIMING] Entering stdio_server context at {_stdio_server_begin - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
     async with stdio_server() as (read_stream, write_stream):
         _stdio_server_done = _time_module.time()
-        print(f"[TIMING] stdio_server context setup: {_stdio_server_done - _stdio_server_begin:.3f}s", file=sys.stderr, flush=True)
 
         _server_run_begin = _time_module.time()
-        print(f"[TIMING] About to call server.run() at {_server_run_begin - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
         try:
             await server.run(read_stream, write_stream, server.create_initialization_options())
         except Exception as e:
@@ -801,10 +749,7 @@ async def main():
             raise
         finally:
             _server_run_done = _time_module.time()
-            print(f"[TIMING] server.run() exited after {_server_run_done - _server_run_begin:.3f}s", file=sys.stderr, flush=True)
-
 
 if __name__ == "__main__":
     _asyncio_begin = _time_module.time()
-    print(f"[TIMING] Starting asyncio.run(main()) at {_asyncio_begin - _startup_begin:.3f}s", file=sys.stderr, flush=True)
     asyncio.run(main())

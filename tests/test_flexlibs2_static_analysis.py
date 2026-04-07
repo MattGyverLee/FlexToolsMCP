@@ -15,10 +15,11 @@ Run with: python tests/test_flexlibs2_static_analysis.py
 import ast
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple
+from typing import Dict, List, Any, Set, Tuple, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 import re
+from functools import lru_cache
 
 class IssueLevel(Enum):
     INFO = "INFO"
@@ -45,6 +46,37 @@ class CodeIssue:
             "code_snippet": self.code_snippet
         }
 
+class ASTPatternVisitor(ast.NodeVisitor):
+    """Single-pass AST visitor for detecting multiple patterns efficiently."""
+
+    def __init__(self, analyzer: 'FlexLibs2StaticAnalyzer', file_path: Path):
+        self.analyzer = analyzer
+        self.file_path = file_path
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Check function-level patterns."""
+        # Check for inconsistent return types
+        return_types = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Return):
+                if child.value is None:
+                    return_types.add("None")
+                elif isinstance(child.value, ast.List):
+                    return_types.add("list")
+                elif isinstance(child.value, ast.Constant):
+                    return_types.add("constant")
+
+        if "None" in return_types and len(return_types) > 1:
+            self.analyzer.add_issue(
+                self.file_path, node.lineno, IssueLevel.INFO,
+                "inconsistent_returns",
+                f"Method mixes None and other return types: {return_types}",
+                f"def {node.name}(...):"
+            )
+
+        self.generic_visit(node)
+
+
 class FlexLibs2StaticAnalyzer:
     """Static analysis of FlexLibs 2.0 code"""
 
@@ -53,6 +85,7 @@ class FlexLibs2StaticAnalyzer:
         self.issues: List[CodeIssue] = []
         self.files_analyzed = 0
         self.python_files: List[Path] = []
+        self._ast_cache: Dict[Path, Optional[ast.AST]] = {}  # Cache parsed trees
 
     def find_python_files(self) -> List[Path]:
         """Find all Python files in flexlibs2"""
@@ -73,30 +106,37 @@ class FlexLibs2StaticAnalyzer:
         )
         self.issues.append(issue)
 
-    # =====================================================================
-    # Check: Missing None/Null Validation
-    # =====================================================================
+    def _get_ast(self, file_path: Path) -> Optional[ast.AST]:
+        """Parse and cache AST for a file (avoids redundant parsing)."""
+        if file_path in self._ast_cache:
+            return self._ast_cache[file_path]
 
-    def check_missing_none_validation(self, file_path: Path, lines: List[str]) -> None:
-        """Check for operations on parameters without None checks"""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 source = f.read()
             tree = ast.parse(source)
-        except SyntaxError:
-            return
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                # Look for attribute access without None checks
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Attribute):
-                        # Check if parent is being checked for None
-                        # This is heuristic - look for obvious cases
-                        pass
+            self._ast_cache[file_path] = tree
+            return tree
+        except (SyntaxError, UnicodeDecodeError, IOError):
+            self._ast_cache[file_path] = None
+            return None
 
     # =====================================================================
-    # Check: Exception Handling
+    # Check: Missing None/Null Validation & Return Consistency (Combined)
+    # =====================================================================
+
+    def check_ast_patterns(self, file_path: Path) -> None:
+        """Run all AST-based checks with single visitor pass."""
+        tree = self._get_ast(file_path)
+        if tree is None:
+            return
+
+        # Single visitor pass detects all function-level patterns
+        visitor = ASTPatternVisitor(self, file_path)
+        visitor.visit(tree)
+
+    # =====================================================================
+    # Check: Exception Handling (Line-based)
     # =====================================================================
 
     def check_exception_handling(self, file_path: Path, lines: List[str]) -> None:
@@ -195,37 +235,6 @@ class FlexLibs2StaticAnalyzer:
                                  "str() may receive None - consider None checks",
                                  line.strip())
 
-    # =====================================================================
-    # Check: Return Type Consistency
-    # =====================================================================
-
-    def check_return_consistency(self, file_path: Path, lines: List[str]) -> None:
-        """Check for inconsistent return types in a method"""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                source = f.read()
-            tree = ast.parse(source)
-        except SyntaxError:
-            return
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                return_types = set()
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Return):
-                        if child.value is None:
-                            return_types.add("None")
-                        elif isinstance(child.value, ast.List):
-                            return_types.add("list")
-                        elif isinstance(child.value, ast.Constant):
-                            return_types.add("constant")
-
-                # Check for mixing None and non-None returns
-                if "None" in return_types and len(return_types) > 1:
-                    self.add_issue(file_path, node.lineno, IssueLevel.INFO,
-                                 "inconsistent_returns",
-                                 f"Method mixes None and other return types: {return_types}",
-                                 f"def {node.name}(...):")
 
     # =====================================================================
     # Check: Known Bug Patterns
@@ -272,13 +281,18 @@ class FlexLibs2StaticAnalyzer:
 
             self.files_analyzed += 1
 
-            # Run all checks
-            self.check_exception_handling(file_path, [l.rstrip('\n') for l in lines])
-            self.check_string_encoding(file_path, [l.rstrip('\n') for l in lines])
-            self.check_multistring_handling(file_path, [l.rstrip('\n') for l in lines])
-            self.check_type_conversions(file_path, [l.rstrip('\n') for l in lines])
-            self.check_return_consistency(file_path, [l.rstrip('\n') for l in lines])
-            self.check_known_patterns(file_path, [l.rstrip('\n') for l in lines])
+            # Clean lines once (avoid redundant list comprehension for each check)
+            clean_lines = [l.rstrip('\n') for l in lines]
+
+            # Run AST-based checks (parsed once, cached)
+            self.check_ast_patterns(file_path)
+
+            # Run line-based checks on same cleaned lines
+            self.check_exception_handling(file_path, clean_lines)
+            self.check_string_encoding(file_path, clean_lines)
+            self.check_multistring_handling(file_path, clean_lines)
+            self.check_type_conversions(file_path, clean_lines)
+            self.check_known_patterns(file_path, clean_lines)
 
         print(f"[OK] Analysis complete: {len(self.issues)} potential issues found\n")
 

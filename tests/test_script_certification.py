@@ -9,13 +9,18 @@ using the is_mutating field from the index.
 
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 from server.validators import certify_script_readonly
 
 
+@lru_cache(maxsize=1)
 def load_api_index():
-    """Load the FlexLibs2 API index (latest version available)."""
+    """Load the FlexLibs2 API index (latest version available).
+
+    Result is cached to avoid redundant file I/O across multiple tests.
+    """
     index_dir = Path(__file__).parent.parent / "index" / "flexlibs"
 
     # Find the latest flexlibs2 API file
@@ -42,7 +47,7 @@ def test_readonly_code():
     """
 
     cert = certify_script_readonly(code, api_index)
-    assert cert["is_certified_readonly"] == True, f"Should be certified readonly, got: {cert}"
+    assert cert["is_certified_readonly"], f"Should be certified readonly, got: {cert}"
     assert cert["confidence"] == "high", f"Should have high confidence, got: {cert['confidence']}"
     assert len(cert["mutating_calls"]) == 0, f"Should have no mutating calls, got: {cert['mutating_calls']}"
 
@@ -58,7 +63,7 @@ def test_create_operation():
     """
 
     cert = certify_script_readonly(code, api_index)
-    assert cert["is_certified_readonly"] == False, f"Should NOT be certified readonly, got: {cert}"
+    assert not cert["is_certified_readonly"], f"Should NOT be certified readonly, got: {cert}"
     assert len(cert["mutating_calls"]) > 0, f"Should detect mutating calls, got: {cert['mutating_calls']}"
 
     mutating_call = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
@@ -76,7 +81,7 @@ def test_delete_operation():
     """
 
     cert = certify_script_readonly(code, api_index)
-    assert cert["is_certified_readonly"] == False, f"Should NOT be certified readonly, got: {cert}"
+    assert not cert["is_certified_readonly"], f"Should NOT be certified readonly, got: {cert}"
     assert len(cert["mutating_calls"]) > 0, f"Should detect mutating calls"
 
     print("[OK] Delete operation detected correctly")
@@ -93,7 +98,7 @@ def test_mixed_operations():
     """
 
     cert = certify_script_readonly(code, api_index)
-    assert cert["is_certified_readonly"] == False, f"Should NOT be certified readonly"
+    assert not cert["is_certified_readonly"], f"Should NOT be certified readonly"
 
     # Should have readonly calls (GetAll) and mutating calls (Create)
     readonly = [m for m in cert["readonly_calls"] if not m.get("is_mutating")]

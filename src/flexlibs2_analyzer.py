@@ -1766,6 +1766,37 @@ def print_summary(api_data: Dict[str, Any], version: str):
         print(f"    {cat}: {count} classes")
 
 
+def _analyze_and_save(analyze_func, library_path: str, output_file: str, version_name: str, exit_on_error: bool = False) -> bool:
+    """Analyze a library and save results (DRY consolidation of main() code).
+
+    Args:
+        analyze_func: Function to call (analyze_flexlibs2 or analyze_flexlibs_stable)
+        library_path: Path to library source
+        output_file: Output JSON filename
+        version_name: Display name ("2.0" or "stable")
+        exit_on_error: If True, exit with error code; if False, continue
+
+    Returns:
+        True if successful, False if error
+    """
+    try:
+        api_data = analyze_func(library_path)
+        print(f"[INFO] Writing results to: {output_file}")
+        api_data = sort_json_arrays(api_data)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
+        print_summary(api_data, version_name)
+        return True
+    except Exception as e:
+        error_msg = f"[ERROR] FlexLibs {version_name}: {e}"
+        print(error_msg)
+        if exit_on_error:
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+        return False
+
+
 def main():
     import argparse
 
@@ -1784,42 +1815,24 @@ def main():
 
     # Determine which version to analyze
     if args.flexlibs_path:
-        # Analyze FlexLibs stable
-        try:
-            api_data = analyze_flexlibs_stable(args.flexlibs_path)
-            output_file = args.output or "flexlibs_api.json"
-
-            print(f"[INFO] Writing results to: {output_file}")
-            api_data = sort_json_arrays(api_data)
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
-
-            print_summary(api_data, "stable")
-
-        except Exception as e:
-            print(f"[ERROR] {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+        # Analyze FlexLibs stable (explicit path)
+        _analyze_and_save(
+            analyze_flexlibs_stable,
+            args.flexlibs_path,
+            args.output or "flexlibs_api.json",
+            "stable",
+            exit_on_error=True
+        )
 
     elif args.flexlibs2_path:
-        # Analyze FlexLibs 2.0
-        try:
-            api_data = analyze_flexlibs2(args.flexlibs2_path)
-            output_file = args.output or "flexlibs2_api.json"
-
-            print(f"[INFO] Writing results to: {output_file}")
-            api_data = sort_json_arrays(api_data)
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
-
-            print_summary(api_data, "2.0")
-
-        except Exception as e:
-            print(f"[ERROR] {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+        # Analyze FlexLibs 2.0 (explicit path)
+        _analyze_and_save(
+            analyze_flexlibs2,
+            args.flexlibs2_path,
+            args.output or "flexlibs2_api.json",
+            "2.0",
+            exit_on_error=True
+        )
 
     else:
         # Default: analyze both if paths exist from environment
@@ -1827,28 +1840,21 @@ def main():
         default_flexlibs = os.environ.get("FLEXLIBS_PATH", r"..\flexlibs")
 
         if Path(default_flexlibs2).exists():
-            try:
-                api_data = analyze_flexlibs2(default_flexlibs2)
-                output_file = args.output or "flexlibs2_api.json"
-                print(f"[INFO] Writing results to: {output_file}")
-                api_data = sort_json_arrays(api_data)
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
-                print_summary(api_data, "2.0")
-            except Exception as e:
-                print(f"[ERROR] FlexLibs 2.0: {e}")
+            _analyze_and_save(
+                analyze_flexlibs2,
+                default_flexlibs2,
+                args.output or "flexlibs2_api.json",
+                "2.0"
+            )
 
         if Path(default_flexlibs).exists():
-            try:
-                api_data = analyze_flexlibs_stable(default_flexlibs)
-                output_file = "flexlibs_api.json"
-                print(f"\n[INFO] Writing results to: {output_file}")
-                api_data = sort_json_arrays(api_data)
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
-                print_summary(api_data, "stable")
-            except Exception as e:
-                print(f"[ERROR] FlexLibs stable: {e}")
+            print()  # Add spacing between outputs
+            _analyze_and_save(
+                analyze_flexlibs_stable,
+                default_flexlibs,
+                "flexlibs_api.json",
+                "stable"
+            )
 
 
 if __name__ == "__main__":

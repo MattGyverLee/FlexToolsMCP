@@ -35,19 +35,43 @@ LCM_COLLECTION_NAMES = (
 
 # Compiled regex patterns for efficiency
 _PATTERN_COMMENT = re.compile(r'#.*$', re.MULTILINE)
+_PATTERN_CREATE = re.compile(r'\.Create\s*\(', re.IGNORECASE)
 _PATTERN_CREATE_COLLECTION = re.compile(
-    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\('
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\(', re.IGNORECASE
 )
-_PATTERN_DELETE_COLLECTION = re.compile(
-    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*(Remove|Clear)\s*\('
+_PATTERN_CREATE_GENERIC = re.compile(
+    r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
 )
+_PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\s*\(', re.IGNORECASE)
 _PATTERN_INSERT_COLLECTION = re.compile(
-    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Insert\s*\('
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Insert\s*\(', re.IGNORECASE
 )
+_PATTERN_DELETE = re.compile(r'\.Delete\s*\(', re.IGNORECASE)
+_PATTERN_DELETE_COLLECTION = re.compile(
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*(Remove|Clear)\s*\(', re.IGNORECASE
+)
+_PATTERN_DELETE_PROJECT = re.compile(r'project\.\w+\.Delete\s*\(', re.IGNORECASE)
+_PATTERN_SET_STRING = re.compile(r'\.set_String\s*\(', re.IGNORECASE)
+_PATTERN_SET_PROPERTY = re.compile(
+    r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', re.IGNORECASE
+)
+_PATTERN_COPY_ALTERNATIVES = re.compile(r'\.CopyAlternatives\s*\(', re.IGNORECASE)
+_PATTERN_PROPERTY_ASSIGNMENT = re.compile(
+    r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+    r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
+    r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
+    r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
+    r'Bibliography|Etymology|Comment|Note)\s*=', re.IGNORECASE
+)
+_PATTERN_UPDATE_PROJECT = re.compile(
+    r'project\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE
+)
+_PATTERN_APPROVAL = re.compile(r'\.(Approve|Reject|SetApprovalStatus)\s*\(', re.IGNORECASE)
 _PATTERN_REPORT_INFO = re.compile(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(')
 _PATTERN_REPORT_DIRECT = re.compile(r'report\s*\(')
 _PATTERN_KNOWN_OPS = re.compile(r'\b(' + '|'.join(KNOWN_OPERATIONS) + r')\b')
 _PATTERN_IMPORT_STMT = re.compile(r'from\s+\w+\s+import\s+([^#\n]+)')
+_PATTERN_OPERATIONS_CALL = re.compile(r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\.\s*(\w+)\s*\(')
 
 # Built-in variables (avoid recreating on every call)
 _BUILTIN_NAMES = {
@@ -107,51 +131,48 @@ def detect_cud_operations(code: str) -> dict:
     code_no_comments = _strip_comments(code)
 
     # === CREATE operations (actual database writes) ===
+    # All patterns are pre-compiled at module level for efficiency
     create_patterns = [
-        (r'\.Create\s*\(', 'Create()'),
+        (_PATTERN_CREATE, 'Create()'),
         (_PATTERN_CREATE_COLLECTION, 'collection.Add()'),
-        (r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', 'Add()'),
+        (_PATTERN_CREATE_GENERIC, 'Add()'),
         (_PATTERN_INSERT_COLLECTION, 'Insert()'),
-        (r'project\.\w+\.Create\s*\(', 'project.*.Create()'),
+        (_PATTERN_CREATE_PROJECT, 'project.*.Create()'),
     ]
 
     for pattern, label in create_patterns:
-        if (pattern.search(code_no_comments) if hasattr(pattern, 'search')
-                else re.search(pattern, code_no_comments, re.IGNORECASE)):
+        if pattern.search(code_no_comments):
             operations.append(f"CREATE ({label})")
             risks.append("New data will be added to the database")
             break
 
     # === UPDATE operations (actual database writes) ===
+    # All patterns are pre-compiled at module level for efficiency
     update_patterns = [
-        (r'\.set_String\s*\(', 'set_String()'),
-        (r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', 'Set*()'),
-        (r'\.CopyAlternatives\s*\(', 'CopyAlternatives()'),
-        (r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
-         r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
-         r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
-         r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
-         r'Bibliography|Etymology|Comment|Note)\s*=', 'property assignment'),
-        (r'project\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', 'project.*.Set/Update()'),
-        (r'\.(Approve|Reject|SetApprovalStatus)\s*\(', 'approval change'),
+        (_PATTERN_SET_STRING, 'set_String()'),
+        (_PATTERN_SET_PROPERTY, 'Set*()'),
+        (_PATTERN_COPY_ALTERNATIVES, 'CopyAlternatives()'),
+        (_PATTERN_PROPERTY_ASSIGNMENT, 'property assignment'),
+        (_PATTERN_UPDATE_PROJECT, 'project.*.Set/Update()'),
+        (_PATTERN_APPROVAL, 'approval change'),
     ]
 
     for pattern, label in update_patterns:
-        if re.search(pattern, code_no_comments, re.IGNORECASE):
+        if pattern.search(code_no_comments):
             operations.append(f"UPDATE ({label})")
             risks.append("Existing data will be modified")
             break
 
     # === DELETE operations (actual database writes) ===
+    # All patterns are pre-compiled at module level for efficiency
     delete_patterns = [
-        (r'\.Delete\s*\(', 'Delete()'),
+        (_PATTERN_DELETE, 'Delete()'),
         (_PATTERN_DELETE_COLLECTION, 'collection.Remove/Clear()'),
-        (r'project\.\w+\.Delete\s*\(', 'project.*.Delete()'),
+        (_PATTERN_DELETE_PROJECT, 'project.*.Delete()'),
     ]
 
     for pattern, label in delete_patterns:
-        if (pattern.search(code_no_comments) if hasattr(pattern, 'search')
-                else re.search(pattern, code_no_comments, re.IGNORECASE)):
+        if pattern.search(code_no_comments):
             operations.append(f"DELETE ({label})")
             risks.append("Data will be permanently removed")
             break
@@ -780,11 +801,10 @@ def certify_script_readonly(code: str, api_index) -> dict:
     protected_ranges = find_protected_ranges(code)
 
     # Step 1: Extract FlexLibs2 Operations method calls with line numbers
-    # Pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
-    operations_call_pattern = r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\.\s*(\w+)\s*\('
+    # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
     operations_calls_with_lines = []
 
-    for match in re.finditer(operations_call_pattern, code):
+    for match in _PATTERN_OPERATIONS_CALL.finditer(code):
         class_name, method_name = match.groups()
         # Calculate line number from character position
         line_num = code[:match.start()].count('\n') + 1

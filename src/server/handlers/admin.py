@@ -485,11 +485,12 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
 async def handle_get_statistics(args: dict) -> list[TextContent]:
     """Get lexicon statistics: entries, writing systems, and data inventory.
 
+    Uses code execution to query project (avoids registry access issues in handler context).
+
     Returns:
     - Entry count in the lexicon
     - Writing systems (vernacular and analysis types)
     - Reversal indexes and their translation counts
-    - Text/corpus statistics if available
 
     REQUIRED: Must be called after start() and before discovery tools.
     """
@@ -511,65 +512,98 @@ async def handle_get_statistics(args: dict) -> list[TextContent]:
         }
         return json_response(result)
 
-    # Query project for lexicon statistics
+    # Query project via code execution (works around registry initialization issues)
+    import json as json_module
+    helper_code = """
+import json
+
+def Main(project, report, modifyAllowed):
+    stats = {
+        "entries": 0,
+        "writing_systems": {"vernacular": [], "analysis": []},
+        "reversal_indexes": []
+    }
+
     try:
-        from flexlibs2 import FLExProject
-
-        project = FLExProject()
-        project.OpenProject(session_state.project_name, writeEnabled=False)
-
         # Get entry count
         entries = project.LexEntry.GetAll()
-        entry_count = len(entries) if entries else 0
+        stats["entries"] = len(entries) if entries else 0
+        report.Info(f"Entries: {stats['entries']}")
 
         # Get writing systems
-        writing_systems = {"vernacular": [], "analysis": []}
-        try:
-            all_ws = project.WritingSystem.GetAll()
-            vern_ws = None
-            try:
-                vern_ws = project.WritingSystem.GetVernacular()
-            except:
-                pass
+        all_ws = project.WritingSystem.GetAll()
+        vern_ws = project.WritingSystem.GetVernacular() if all_ws else None
 
-            for ws in all_ws:
-                ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
-                ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
+        for ws in (all_ws or []):
+            ws_name = ws.DisplayLabel if hasattr(ws, 'DisplayLabel') else str(ws)
+            ws_tag = ws.IcuLocale if hasattr(ws, 'IcuLocale') else ""
+            ws_info = {"name": ws_name, "tag": ws_tag}
 
-                ws_info = {"name": ws_name, "tag": ws_tag}
-                if vern_ws and ws == vern_ws:
-                    writing_systems["vernacular"].append(ws_info)
-                else:
-                    writing_systems["analysis"].append(ws_info)
-        except Exception as ws_err:
-            result["writing_systems_error"] = str(ws_err)
+            if vern_ws and ws == vern_ws:
+                stats["writing_systems"]["vernacular"].append(ws_info)
+            else:
+                stats["writing_systems"]["analysis"].append(ws_info)
 
-        # Get reversal indexes and counts
-        reversal_indexes = []
-        try:
-            rev_indexes = project.ReversalIndex.GetAll()
-            for idx in rev_indexes:
-                idx_name = idx.DisplayLabel if hasattr(idx, 'DisplayLabel') else str(idx)
-                forms = project.ReversalForm.GetAllForIndex(idx)
-                form_count = len(forms) if forms else 0
+        report.Info(f"Writing systems: {len(stats['writing_systems']['vernacular'])} vernacular, {len(stats['writing_systems']['analysis'])} analysis")
 
-                reversal_indexes.append({
-                    "name": idx_name,
-                    "form_count": form_count
-                })
-        except Exception as rev_err:
-            result["reversal_indexes_error"] = str(rev_err)
+        # Get reversal indexes
+        rev_indexes = project.ReversalIndex.GetAll()
+        for idx in (rev_indexes or []):
+            idx_name = idx.DisplayLabel if hasattr(idx, 'DisplayLabel') else str(idx)
+            forms = project.ReversalForm.GetAllForIndex(idx)
+            form_count = len(forms) if forms else 0
+            stats["reversal_indexes"].append({"name": idx_name, "form_count": form_count})
+            report.Info(f"Reversal index '{idx_name}': {form_count} forms")
 
-        result["lexicon_stats"] = {
-            "entries": entry_count,
-            "writing_systems": writing_systems,
-            "reversal_indexes": reversal_indexes
-        }
+    except Exception as e:
+        report.Error(f"Error querying project: {e}")
+        import traceback
+        report.Error(traceback.format_exc())
 
-        project.CloseProject()
+    report.Info("[STATS_JSON]" + json.dumps(stats) + "[/STATS_JSON]")
 
-    except Exception as project_err:
-        result["project_error"] = str(project_err)
+Main(project, report, modifyAllowed)
+"""
+
+    # Execute helper to get stats
+    try:
+        from .execution import handle_run_module
+        from ..models import RunModuleInput
+
+        # Create input for run_module
+        module_input = RunModuleInput(
+            code=helper_code,
+            project_name=session_state.project_name,
+            write_enabled=False,
+            timeout_seconds=30,
+            show_code=False,
+            confirmed=True
+        )
+
+        # Execute the helper code
+        response = await handle_run_module(module_input.__dict__)
+
+        # Parse the response to extract stats
+        if response and len(response) > 0:
+            response_text = response[0].text if hasattr(response[0], 'text') else str(response[0])
+
+            # Find JSON in response
+            import re
+            match = re.search(r'\[STATS_JSON\](.+?)\[/STATS_JSON\]', response_text, re.DOTALL)
+            if match:
+                stats_json = match.group(1)
+                stats = json_module.loads(stats_json)
+                result["lexicon_stats"] = stats
+            else:
+                result["lexicon_stats"] = {
+                    "entries": 0,
+                    "writing_systems": {"vernacular": [], "analysis": []},
+                    "reversal_indexes": []
+                }
+                result["note"] = "Could not parse statistics from execution response"
+
+    except Exception as exec_err:
+        result["execution_error"] = str(exec_err)
         result["lexicon_stats"] = {
             "entries": 0,
             "writing_systems": {"vernacular": [], "analysis": []},

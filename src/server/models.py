@@ -301,3 +301,12 @@ class RunModuleInput(BaseModel):
         default=False,
         description="Required for CUD operations. Confirm understanding of risks."
     )
+
+
+class GetStatisticsInput(BaseModel):
+    """Get server statistics including loaded APIs and entity counts.
+
+    Provides metrics about the FlexToolsMCP server state without requiring
+    project access, making it useful as a diagnostic tool after initialization.
+    """
+    pass  # No parameters required for statistics retrieval

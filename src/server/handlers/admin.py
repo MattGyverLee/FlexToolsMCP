@@ -23,7 +23,7 @@ try:
     from ..response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
         KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
-        KEY_TEMPLATE, KEY_WARNINGS
+        KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
     )
 except ImportError:
     # Fallback for when module isn't fully modularized yet
@@ -33,7 +33,7 @@ except ImportError:
     from server.response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
         KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
-        KEY_TEMPLATE, KEY_WARNINGS
+        KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
     )
 
 if not isinstance(session_state, SessionState):
@@ -477,6 +477,103 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
             "4. Test in read-only mode first (modifyAllowed=False)",
             "5. Run flextools_run_module() when ready"
         ]
+    }
+
+    return json_response(result)
+
+
+async def handle_get_statistics(args: dict) -> list[TextContent]:
+    """Get server statistics including loaded APIs and entity counts.
+
+    Provides metrics about the FlexToolsMCP server state:
+    - API versions currently loaded
+    - Number of entities in each API
+    - Session configuration
+    - Server capabilities
+    """
+    api_index = get_api_index()
+
+    result = {
+        KEY_STATUS: "success",
+        KEY_MESSAGE: "Server statistics retrieved"
+    }
+
+    # API versions and entity counts
+    api_stats = {
+        "flexlibs2": {
+            "version": api_index.flexlibs2_version or "not loaded",
+            "entities": 0,
+            "categories": 0
+        },
+        "liblcm": {
+            "version": api_index.liblcm_version or "not loaded",
+            "entities": 0,
+            "categories": 0
+        },
+        "flexlibs_stable": {
+            "version": api_index.flexlibs_stable_version or "not loaded",
+            "entities": 0,
+            "categories": 0
+        }
+    }
+
+    # Count FlexLibs2 entities and categories
+    if api_index.flexlibs2:
+        fl2_entities = api_index.flexlibs2.get(KEY_ENTITIES, {})
+        api_stats["flexlibs2"]["entities"] = len(fl2_entities)
+
+        fl2_categories = api_index.flexlibs2.get(KEY_CATEGORIES, {})
+        api_stats["flexlibs2"]["categories"] = len(fl2_categories)
+
+    # Count LibLCM entities and categories
+    if api_index.liblcm:
+        lcm_entities = api_index.liblcm.get(KEY_ENTITIES, {})
+        api_stats["liblcm"]["entities"] = len(lcm_entities)
+
+        lcm_categories = set()
+        for entity in lcm_entities.values():
+            cat = entity.get(KEY_CATEGORY, "uncategorized")
+            lcm_categories.add(cat)
+        api_stats["liblcm"]["categories"] = len(lcm_categories)
+
+    # Count FlexLibs stable entities (structure may differ)
+    if api_index.flexlibs_stable:
+        stable_entities = api_index.flexlibs_stable.get(KEY_ENTITIES, {})
+        api_stats["flexlibs_stable"]["entities"] = len(stable_entities)
+
+        stable_categories = set()
+        for entity in stable_entities.values():
+            cat = entity.get(KEY_CATEGORY, "uncategorized")
+            stable_categories.add(cat)
+        api_stats["flexlibs_stable"]["categories"] = len(stable_categories)
+
+    result["api_statistics"] = api_stats
+
+    # Session statistics
+    result["session"] = {
+        "initialized": session_state.initialized,
+        "api_mode": session_state.api_mode,
+        "project_name": session_state.project_name or "(not set)",
+        "write_enabled": session_state.write_enabled,
+        "operation_count": len(session_state.history),
+        "undoable_operations": sum(1 for op in session_state.history if op.tool in ["run_operation", "run_module"])
+    }
+
+    # Total statistics
+    total_entities = (
+        api_stats["flexlibs2"]["entities"] +
+        api_stats["liblcm"]["entities"] +
+        api_stats["flexlibs_stable"]["entities"]
+    )
+
+    result["totals"] = {
+        "total_entities": total_entities,
+        "total_categories": (
+            api_stats["flexlibs2"]["categories"] +
+            api_stats["liblcm"]["categories"] +
+            api_stats["flexlibs_stable"]["categories"]
+        ),
+        "total_operations_performed": len(session_state.history)
     }
 
     return json_response(result)

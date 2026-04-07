@@ -3,7 +3,7 @@
 """
 Tool definitions for FlexToolsMCP MCP server.
 
-Centralized definition of all 16 MCP tools with their Pydantic models,
+Centralized definition of all MCP tools with their Pydantic models,
 descriptions, and annotations. This replaces the massive list_tools()
 function with a data-driven approach.
 """
@@ -19,6 +19,7 @@ from .models import (
     GetSessionHistoryInput,
     UndoLastOperationInput,
     GetModuleTemplateInput,
+    GetStatisticsInput,
     SearchCapabilityInput,
     GetObjectApiInput,
     GetNavigationPathInput,
@@ -61,7 +62,7 @@ class ToolDef:
         return self._cached_schema
 
 
-# Default annotations for read-only, safe operations (13 of 16 tools use this)
+# Default annotations for read-only, safe operations (most tools use this)
 READ_ONLY_SAFE = ToolAnnotations(
     readOnlyHint=True,
     destructiveHint=False,
@@ -70,7 +71,7 @@ READ_ONLY_SAFE = ToolAnnotations(
 )
 
 # ============================================================
-# All 16 Tools
+# All Tools (17 total)
 # ============================================================
 
 TOOLS: dict[str, ToolDef] = {
@@ -172,6 +173,21 @@ Example categories: 'lexicon', 'grammar', 'texts', 'media'""",
 
 Call this before running flextools_run_module() to get the proper boilerplate.""",
         input_model=GetModuleTemplateInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_get_statistics": ToolDef(
+        name="flextools_get_statistics",
+        description="""Get server statistics including loaded APIs and entity counts.
+
+Provides diagnostic information about the FlexToolsMCP server:
+- API versions currently loaded (flexlibs2, liblcm, flexlibs_stable)
+- Number of entities and categories in each API
+- Session configuration
+- Operation history
+
+Call this after flextools_start() to see what APIs are available.""",
+        input_model=GetStatisticsInput,
         annotations=READ_ONLY_SAFE,
     ),
 

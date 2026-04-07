@@ -112,6 +112,19 @@ def _log_warning(msg: str) -> None:
         operations_logger.warning(msg)
 
 
+def _log_and_print(level: str, msg: str) -> None:
+    """Log message and print to stderr for IDE console visibility."""
+    if operations_logger:
+        if level == "info":
+            operations_logger.info(msg)
+        elif level == "warning":
+            operations_logger.warning(msg)
+        elif level == "error":
+            operations_logger.error(msg)
+    # Always print to stderr so it appears in IDE console
+    print(f"[{level.upper()}] {msg}", file=sys.stderr)
+
+
 # ============================================================
 # FlexLibs2 Operations Contract
 # ============================================================
@@ -636,32 +649,38 @@ async def main():
     global api_index
 
     # Pre-load indexes
-    _log_info("Loading API indexes...")
+    _log_and_print("info", "Loading API indexes...")
     api_index = APIIndex.load(get_index_dir())
 
     if api_index.liblcm:
-        _log_info(f"LibLCM: {len(api_index.liblcm.get('entities', {}))} entities")
+        version = api_index.liblcm_version or "unknown"
+        entities = len(api_index.liblcm.get('entities', {}))
+        _log_and_print("info", f"LibLCM v{version}: {entities} entities")
     else:
-        _log_warning("LibLCM index not found")
+        _log_and_print("warning", "LibLCM index not found")
 
     if api_index.flexlibs2:
-        _log_info(f"FlexLibs 2.0: {len(api_index.flexlibs2.get('entities', {}))} entities")
+        version = api_index.flexlibs2_version or "unknown"
+        entities = len(api_index.flexlibs2.get('entities', {}))
+        _log_and_print("info", f"FlexLibs 2.0 v{version}: {entities} entities")
     else:
-        _log_warning("FlexLibs 2.0 index not found")
+        _log_and_print("warning", "FlexLibs 2.0 index not found")
 
     if api_index.casting_index:
         props = len(api_index.casting_index.get("properties", {}))
         colls = len(api_index.casting_index.get("polymorphic_collections", {}))
-        _log_info(f"Casting index: {props} properties, {colls} polymorphic collections")
+        _log_and_print("info", f"Casting index: {props} properties, {colls} polymorphic collections")
     else:
-        _log_warning("Casting index not found")
+        _log_and_print("warning", "Casting index not found")
 
     if api_index.flexlibs_stable:
-        _log_info(f"FlexLibs Stable: {len(api_index.flexlibs_stable.get('entities', {}))} entities")
+        version = api_index.flexlibs_stable_version or "unknown"
+        entities = len(api_index.flexlibs_stable.get('entities', {}))
+        _log_and_print("info", f"FlexLibs Stable v{version}: {entities} entities")
     else:
-        _log_warning("FlexLibs Stable index not found")
+        _log_and_print("warning", "FlexLibs Stable index not found")
 
-    _log_info("Starting MCP server...")
+    _log_and_print("info", "Starting MCP server...")
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())

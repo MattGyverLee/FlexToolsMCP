@@ -448,7 +448,11 @@ class APIIndex:
             "flexlibs_stable_version",
         )
 
-        # Navigation, casting, and semantic search are optional and loaded on-demand
+        # Load navigation and casting at startup (small files, commonly needed)
+        index.ensure_navigation_graph_loaded()
+        index.ensure_casting_index_loaded()
+
+        # Semantic search remains lazy-loaded (expensive, rarely used)
         return index
 
     def ensure_liblcm_loaded(self) -> None:

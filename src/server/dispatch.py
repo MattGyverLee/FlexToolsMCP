@@ -80,59 +80,98 @@ ALL_TOOL_NAMES = frozenset([
 ])
 
 # Import all handler functions
-try:
-    from .handlers.admin import (
-        handle_start,
-        handle_manage_config,
-        handle_get_session_history,
-        handle_undo_last_operation,
-        handle_get_module_template,
-    )
-    from .handlers.api import (
-        handle_get_object_api,
-        handle_search_by_capability,
-        handle_find_examples,
-        handle_resolve_property,
-    )
-    from .handlers.catalog import (
-        handle_list_categories,
-        handle_list_entities_in_category,
-    )
-    from .handlers.discovery import (
-        handle_get_navigation_path,
-    )
-    from .handlers.execution import (
-        handle_start_module,
-        handle_run_module,
-        handle_get_operation_logs,
-    )
-except ImportError:
-    # Fallback imports for non-package mode
-    from server.handlers.admin import (
-        handle_start,
-        handle_manage_config,
-        handle_get_session_history,
-        handle_undo_last_operation,
-        handle_get_module_template,
-    )
-    from server.handlers.api import (
-        handle_get_object_api,
-        handle_search_by_capability,
-        handle_find_examples,
-        handle_resolve_property,
-    )
-    from server.handlers.catalog import (
-        handle_list_categories,
-        handle_list_entities_in_category,
-    )
-    from server.handlers.discovery import (
-        handle_get_navigation_path,
-    )
-    from server.handlers.execution import (
-        handle_start_module,
-        handle_run_module,
-        handle_get_operation_logs,
-    )
+def _import_handlers():
+    """Import all handlers with fallback to non-package mode."""
+    try:
+        # Try package imports first (relative imports)
+        from .handlers.admin import (
+            handle_start,
+            handle_manage_config,
+            handle_get_session_history,
+            handle_undo_last_operation,
+            handle_get_module_template,
+        )
+        from .handlers.api import (
+            handle_get_object_api,
+            handle_search_by_capability,
+            handle_find_examples,
+            handle_resolve_property,
+        )
+        from .handlers.catalog import (
+            handle_list_categories,
+            handle_list_entities_in_category,
+        )
+        from .handlers.discovery import (
+            handle_get_navigation_path,
+        )
+        from .handlers.execution import (
+            handle_start_module,
+            handle_run_module,
+            handle_get_operation_logs,
+        )
+    except ImportError:
+        # Fallback to non-package mode (absolute imports)
+        from server.handlers.admin import (
+            handle_start,
+            handle_manage_config,
+            handle_get_session_history,
+            handle_undo_last_operation,
+            handle_get_module_template,
+        )
+        from server.handlers.api import (
+            handle_get_object_api,
+            handle_search_by_capability,
+            handle_find_examples,
+            handle_resolve_property,
+        )
+        from server.handlers.catalog import (
+            handle_list_categories,
+            handle_list_entities_in_category,
+        )
+        from server.handlers.discovery import (
+            handle_get_navigation_path,
+        )
+        from server.handlers.execution import (
+            handle_start_module,
+            handle_run_module,
+            handle_get_operation_logs,
+        )
+
+    return {
+        "handle_start": handle_start,
+        "handle_manage_config": handle_manage_config,
+        "handle_get_session_history": handle_get_session_history,
+        "handle_undo_last_operation": handle_undo_last_operation,
+        "handle_get_module_template": handle_get_module_template,
+        "handle_get_object_api": handle_get_object_api,
+        "handle_search_by_capability": handle_search_by_capability,
+        "handle_find_examples": handle_find_examples,
+        "handle_resolve_property": handle_resolve_property,
+        "handle_list_categories": handle_list_categories,
+        "handle_list_entities_in_category": handle_list_entities_in_category,
+        "handle_get_navigation_path": handle_get_navigation_path,
+        "handle_start_module": handle_start_module,
+        "handle_run_module": handle_run_module,
+        "handle_get_operation_logs": handle_get_operation_logs,
+    }
+
+
+_handlers = _import_handlers()
+handle_start = _handlers["handle_start"]
+handle_manage_config = _handlers["handle_manage_config"]
+handle_get_session_history = _handlers["handle_get_session_history"]
+handle_undo_last_operation = _handlers["handle_undo_last_operation"]
+handle_get_module_template = _handlers["handle_get_module_template"]
+handle_get_object_api = _handlers["handle_get_object_api"]
+handle_search_by_capability = _handlers["handle_search_by_capability"]
+handle_find_examples = _handlers["handle_find_examples"]
+handle_resolve_property = _handlers["handle_resolve_property"]
+handle_list_categories = _handlers["handle_list_categories"]
+handle_list_entities_in_category = _handlers["handle_list_entities_in_category"]
+handle_get_navigation_path = _handlers["handle_get_navigation_path"]
+handle_start_module = _handlers["handle_start_module"]
+handle_run_module = _handlers["handle_run_module"]
+handle_get_operation_logs = _handlers["handle_get_operation_logs"]
 
 
 # Type alias for tool handlers

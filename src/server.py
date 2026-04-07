@@ -643,16 +643,28 @@ async def list_tools() -> list[Tool]:
     Each tool is auto-generated from its corresponding Pydantic input model,
     which provides automatic validation and type coercion.
     """
+    _list_tools_start = _time_module.time()
+    print(f"[TIMING] list_tools() called at {_list_tools_start - _startup_begin:.3f}s total", file=sys.stderr, flush=True)
+
     tools: list[Tool] = []
     for tool_def in TOOL_DEFINITIONS.values():
+        _schema_start = _time_module.time()
+        schema = model_to_tool_schema(tool_def.input_model)
+        _schema_done = _time_module.time()
+        if _schema_done - _schema_start > 0.1:  # Only log slow schemas
+            print(f"[TIMING] Schema generation for {tool_def.name}: {_schema_done - _schema_start:.3f}s", file=sys.stderr, flush=True)
+
         tools.append(
             Tool(
                 name=tool_def.name,
                 description=tool_def.description,
                 annotations=tool_def.annotations,
-                inputSchema=model_to_tool_schema(tool_def.input_model),
+                inputSchema=schema,
             )
         )
+
+    _list_tools_done = _time_module.time()
+    print(f"[TIMING] list_tools() returning {len(tools)} tools, took {_list_tools_done - _list_tools_start:.3f}s", file=sys.stderr, flush=True)
     return tools
 
 

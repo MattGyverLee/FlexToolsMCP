@@ -113,7 +113,7 @@ def _log_warning(msg: str) -> None:
 
 
 def _log_and_print(level: str, msg: str) -> None:
-    """Log message and print to stderr for IDE console visibility."""
+    """Log message and print to stdout for IDE console visibility."""
     if operations_logger:
         if level == "info":
             operations_logger.info(msg)
@@ -121,8 +121,8 @@ def _log_and_print(level: str, msg: str) -> None:
             operations_logger.warning(msg)
         elif level == "error":
             operations_logger.error(msg)
-    # Always print to stderr so it appears in IDE console
-    print(f"[{level.upper()}] {msg}", file=sys.stderr)
+    # Print to stdout so it appears as [info] in IDE console, not [warning]
+    print(f"[{level.upper()}] {msg}")
 
 
 # ============================================================

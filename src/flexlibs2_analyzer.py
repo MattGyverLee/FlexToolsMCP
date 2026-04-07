@@ -1318,8 +1318,8 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, 
     }
 
 
-def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, Any]]:
-    """Analyze a single Python file and extract its API structure."""
+def _parse_and_analyze_file(file_path: Path, base_path: Path) -> Optional[Tuple[Dict[str, Any], ast.AST]]:
+    """Parse a Python file and return both file analysis and parsed AST for reuse."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -1346,11 +1346,24 @@ def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, 
                 class_info = analyze_class(node, module_path, lcm_imports)
                 file_info["classes"].append(class_info)
 
-        return file_info
+        return (file_info, tree)
 
     except Exception as e:
         print(f"[WARN] Error analyzing {file_path}: {e}")
         return None
+
+
+def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, Any]]:
+    """Analyze a single Python file and extract its API structure.
+
+    For callers that need both the file info and parsed tree, use
+    _parse_and_analyze_file() instead to avoid parsing the file twice.
+    """
+    result = _parse_and_analyze_file(file_path, base_path)
+    if result is None:
+        return None
+    file_info, _ = result
+    return file_info
 
 
 def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
@@ -1537,18 +1550,17 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
         if py_file.name.startswith("__"):
             continue
 
-        file_info = analyze_python_file(py_file, code_path)
-        if not file_info:
+        # Parse file once and reuse tree for both class and function extraction
+        parse_result = _parse_and_analyze_file(py_file, code_path)
+        if not parse_result:
             continue
 
+        file_info, tree = parse_result
         result["metadata"]["files_analyzed"] += 1
 
-        # Extract top-level functions
+        # Extract top-level functions from already-parsed tree
         try:
-            with open(py_file, 'r', encoding='utf-8') as f:
-                tree = ast.parse(f.read())
-
-            lcm_imports = extract_lcm_imports(tree)
+            lcm_imports = file_info.get("lcm_imports", [])
 
             for node in tree.body:
                 if isinstance(node, ast.FunctionDef) and not node.name.startswith('_'):

@@ -15,7 +15,7 @@ from mcp.types import TextContent
 
 # Import shared state and response constants
 try:
-    from ..response_utils import json_response
+    from ...response_utils import json_response
     from ..kernel import get_api_index, session_state
     from ..models import GetNavigationPathInput
     from ..response_keys import (
@@ -29,7 +29,7 @@ try:
     )
     from .utils import normalize_object_name
 except ImportError:
-    from server.response_utils import json_response
+    from response_utils import json_response
     from server.kernel import get_api_index, session_state
     from server.models import GetNavigationPathInput
     from server.response_keys import (

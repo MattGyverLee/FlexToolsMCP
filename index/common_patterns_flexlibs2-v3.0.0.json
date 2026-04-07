@@ -2214,15 +2214,6 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\nname = project.Agent.GetName(agent)\nprint(name)\n            MyParser\n\n# Get in specific writing system\nname_fr = project.Agent.GetName(agent, project.WSHandle('fr'))",
-        "description": "Get the name of an agent.",
-        "method": "GetName",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "AgentOperations",
         "code": "parsers = project.Agent.GetParserAgents()\nprint(f\"Found {len(parsers)} parsers\")\n            Found 2 parsers\n\nfor parser in parsers:\n    name = project.Agent.GetName(parser)\n    version = project.Agent.GetVersion(parser)\n    count = project.Agent.GetEvaluationCount(parser)\n    print(f\"{name} v{version}: {count} evaluations\")\n            MyParser v1.0.0: 145 evaluations\n            AutoAnalyzer v2.1.3: 89 evaluations",
         "description": "Get all parser agents in the project.",
         "method": "GetParserAgents",
@@ -2427,6 +2418,15 @@
         "object_type": "general",
         "operation": "read",
         "source": "docstring"
+      },
+      {
+        "class": "AnthropologyOperations",
+        "code": "# Get a category from the categories list\ncategories = project.lp.AnthroListOA\nif categories and categories.PossibilitiesOS.Count > 0:\n    category = categories.PossibilitiesOS[0]\n    items = project.Anthropology.FindByCategory(category)\n    for item in items:\n        name = project.Anthropology.GetName(item)\n        print(f\"Item: {name}\")",
+        "description": "Find all anthropology items in a specific category.",
+        "method": "FindByCategory",
+        "object_type": "general",
+        "operation": "read",
+        "source": "docstring"
       }
     ],
     "reorder": [
@@ -2572,15 +2572,6 @@
         "code": "# Convert parser to human agent\nagent = project.Agent.Find(\"MyAgent\")\nperson = project.Person.Find(\"John Smith\")\nproject.Agent.SetHuman(agent, person)\n\n# Unlink person (convert to parser)\nproject.Agent.SetHuman(agent, None)",
         "description": "Set the linked person for an agent (making it a human agent).",
         "method": "SetHuman",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
-      },
-      {
-        "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\nproject.Agent.SetName(agent, \"MyParser Pro\")\nprint(project.Agent.GetName(agent))\n            MyParser Pro\n\n# Set in specific writing system\nproject.Agent.SetName(agent, \"Mon Analyseur\",\n                       project.WSHandle('fr'))",
-        "description": "Set the name of an agent.",
-        "method": "SetName",
         "object_type": "general",
         "operation": "update",
         "source": "docstring"
@@ -2836,6 +2827,15 @@
         "object_type": "general",
         "operation": "update",
         "source": "docstring"
+      },
+      {
+        "class": "CustomFieldOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\n# Set string field\nproject.CustomFields.SetValue(entry, \"Etymology Source\",\n                               \"Latin currere\")\n\n# Set multi-string field with specific WS\nproject.CustomFields.SetValue(entry, \"Dialect\", \"runnin'\", \"en\")\n\n# Set integer field\nproject.CustomFields.SetValue(entry, \"Frequency\", 42)\n\n# For list fields, use SetListFieldSingle/Multiple\n# or AddListValue/RemoveListValue",
+        "description": "Set the value of a custom field for an object.",
+        "method": "SetValue",
+        "object_type": "general",
+        "operation": "update",
+        "source": "docstring"
       }
     ]
   },
@@ -2851,7 +2851,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1154,
+    "total_patterns": 1152,
     "unique_patterns": 113
   }
 }

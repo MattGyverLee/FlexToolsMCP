@@ -50761,9 +50761,7 @@
             "class": "AgentOperations",
             "methods": [
               "GetEvaluations",
-              "GetName",
               "GetVersion",
-              "SetName",
               "SetVersion"
             ]
           },
@@ -50907,9 +50905,7 @@
             "class": "AgentOperations",
             "methods": [
               "GetEvaluations",
-              "GetName",
               "GetVersion",
-              "SetName",
               "SetVersion"
             ]
           },
@@ -51076,9 +51072,7 @@
           "class": "AgentOperations",
           "methods": [
             "GetEvaluations",
-            "GetName",
             "GetVersion",
-            "SetName",
             "SetVersion"
           ]
         },
@@ -60502,9 +60496,7 @@
             "class": "AgentOperations",
             "methods": [
               "GetEvaluations",
-              "GetName",
               "GetVersion",
-              "SetName",
               "SetVersion"
             ]
           },

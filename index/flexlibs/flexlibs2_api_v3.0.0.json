@@ -2542,104 +2542,6 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get the name of an agent.\n",
-          "example": "            >>> agent = project.Agent.Find(\"MyParser\")\n            >>> name = project.Agent.GetName(agent)\n            >>> print(name)\n            MyParser\n\n            >>> # Get in specific writing system\n            >>> name_fr = project.Agent.GetName(agent, project.WSHandle('fr'))\n",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "direct",
-            "methods_called": [
-              ".get_String()"
-            ],
-            "param_usage": {
-              "agent_or_hvo": [
-                "arg[0] of _ValidateParam()",
-                "arg[0] of _PossibilityItemOperations__ResolveObject()"
-              ],
-              "wsHandle": [
-                "arg[0] of _PossibilityItemOperations__WSHandle()",
-                "arg[0] of get_String()"
-              ]
-            },
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [
-              {
-                "default": "None",
-                "param": "wsHandle",
-                "type": "default_value"
-              },
-              {
-                "description": "Applies default writing system if not specified",
-                "pattern": "WSHandle",
-                "type": "ws_default"
-              },
-              {
-                "description": "Returns empty string instead of None",
-                "pattern": "or ''",
-                "type": "null_coalesce"
-              },
-              {
-                "description": "Converts to int",
-                "pattern": "int",
-                "type": "type_conversion"
-              },
-              {
-                "description": "Converts to ITsString",
-                "pattern": "ITsString",
-                "type": "type_conversion"
-              }
-            ],
-            "utilities_used": []
-          },
-          "name": "GetName",
-          "output_behavior": {
-            "empty": {
-              "description": "Empty string when field is not set",
-              "value": "\"\""
-            },
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If agent_or_hvo is None"
-              }
-            ],
-            "notes": [
-              "FlexLibs2 handles '***' placeholder automatically, returns ''"
-            ],
-            "success": {
-              "description": "str: The agent's name (empty string if not set)",
-              "type": "str"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "Either an ICmAgent object or its HVO",
-              "name": "agent_or_hvo",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
-              "name": "wsHandle",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_NullParameterError: If agent_or_hvo is None"
-          ],
-          "return_type": "str",
-          "returns": "str: The agent's name (empty string if not set) ",
-          "signature": "GetName(agent_or_hvo, wsHandle=None)",
-          "summary": "Get the name of an agent.",
-          "usage_hint": "retrieval"
-        },
-        {
           "description": "Get all parser agents in the project.\n",
           "example": "            >>> parsers = project.Agent.GetParserAgents()\n            >>> print(f\"Found {len(parsers)} parsers\")\n            Found 2 parsers\n\n            >>> for parser in parsers:\n            ...     name = project.Agent.GetName(parser)\n            ...     version = project.Agent.GetVersion(parser)\n            ...     count = project.Agent.GetEvaluationCount(parser)\n            ...     print(f\"{name} v{version}: {count} evaluations\")\n            MyParser v1.0.0: 145 evaluations\n            AutoAnalyzer v2.1.3: 89 evaluations\n",
           "is_classmethod": false,
@@ -2980,111 +2882,6 @@
           "returns": "",
           "signature": "SetHuman(agent_or_hvo, person)",
           "summary": "Set the linked person for an agent (making it a human agent).",
-          "usage_hint": "modification"
-        },
-        {
-          "description": "Set the name of an agent.\n",
-          "example": "            >>> agent = project.Agent.Find(\"MyParser\")\n            >>> project.Agent.SetName(agent, \"MyParser Pro\")\n            >>> print(project.Agent.GetName(agent))\n            MyParser Pro\n\n            >>> # Set in specific writing system\n            >>> project.Agent.SetName(agent, \"Mon Analyseur\",\n            ...                        project.WSHandle('fr'))\n",
-          "is_classmethod": false,
-          "is_mutating": true,
-          "is_property": false,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": true,
-            "factories_used": [],
-            "mapping_type": "convenience",
-            "methods_called": [
-              ".set_String()"
-            ],
-            "param_usage": {
-              "agent_or_hvo": [
-                "arg[0] of _ValidateParam()",
-                "arg[0] of _PossibilityItemOperations__ResolveObject()"
-              ],
-              "name": [
-                "arg[0] of _ValidateParam()",
-                "arg[0] of MakeString()"
-              ],
-              "wsHandle": [
-                "arg[0] of _PossibilityItemOperations__WSHandle()",
-                "arg[1] of MakeString()",
-                "arg[0] of set_String()"
-              ]
-            },
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [
-              {
-                "default": "None",
-                "param": "wsHandle",
-                "type": "default_value"
-              },
-              {
-                "description": "Applies default writing system if not specified",
-                "pattern": "WSHandle",
-                "type": "ws_default"
-              },
-              {
-                "description": "Converts to int",
-                "pattern": "int",
-                "type": "type_conversion"
-              }
-            ],
-            "utilities_used": [
-              "TsStringUtils.MakeString"
-            ]
-          },
-          "name": "SetName",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_ReadOnlyError: If project is not opened with write enabled"
-              },
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If agent_or_hvo or name is None"
-              },
-              {
-                "exception": "FP",
-                "when": "_ParameterError: If name is empty"
-              }
-            ],
-            "notes": [
-              "Modifies existing data - requires write access"
-            ],
-            "success": {}
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "Either an ICmAgent object or its HVO",
-              "name": "agent_or_hvo",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "The new name",
-              "name": "name",
-              "type": "str"
-            },
-            {
-              "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
-              "name": "wsHandle",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_ReadOnlyError: If project is not opened with write enabled",
-            "FP_NullParameterError: If agent_or_hvo or name is None",
-            "FP_ParameterError: If name is empty"
-          ],
-          "return_type": "",
-          "returns": "",
-          "signature": "SetName(agent_or_hvo, name, wsHandle=None)",
-          "summary": "Set the name of an agent.",
           "usage_hint": "modification"
         },
         {
@@ -114120,26 +113917,6 @@
       "repositories_used": [],
       "utilities_used": []
     },
-    "AgentOperations.GetName": {
-      "class": "AgentOperations",
-      "factories_used": [],
-      "lcm_deps": [
-        "ICmAgent",
-        "ICmAgentFactory",
-        "ICmPerson",
-        "ICmAgentEvaluation",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "direct",
-      "method": "GetName",
-      "methods_called": [
-        ".get_String()"
-      ],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": []
-    },
     "AgentOperations.GetParserAgents": {
       "class": "AgentOperations",
       "factories_used": [],
@@ -114231,28 +114008,6 @@
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
-    },
-    "AgentOperations.SetName": {
-      "class": "AgentOperations",
-      "factories_used": [],
-      "lcm_deps": [
-        "ICmAgent",
-        "ICmAgentFactory",
-        "ICmPerson",
-        "ICmAgentEvaluation",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "convenience",
-      "method": "SetName",
-      "methods_called": [
-        ".set_String()"
-      ],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
     },
     "AgentOperations.SetVersion": {
       "class": "AgentOperations",
@@ -149956,13 +149711,13 @@
     ],
     "mapping_types": {
       "composite": 112,
-      "convenience": 190,
-      "direct": 561,
+      "convenience": 189,
+      "direct": 560,
       "pure_python": 536
     },
-    "methods_with_return_type": 836,
+    "methods_with_return_type": 835,
     "total_classes": 101,
-    "total_methods": 1399,
+    "total_methods": 1397,
     "total_properties": 154
   }
 }

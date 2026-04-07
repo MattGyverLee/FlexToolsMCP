@@ -228,115 +228,11 @@ async def handle_start(args: dict) -> list[TextContent]:
         api_versions=api_versions
     )
 
-    # Query project metadata if project_name provided
-    project_metadata = {}
-    project_metadata_error = None
-    if project_name:
-        import time
-        project = None
-
-        # Retry opening project - LibLCM may need a moment to fully initialize
-        for attempt in range(3):
-            try:
-                from flexlibs2 import FLExProject
-
-                project = FLExProject()
-                project.OpenProject(project_name, writeEnabled=False)
-                break  # Success, exit retry loop
-            except Exception as e:
-                if attempt < 2:
-                    # Not the last attempt, wait a moment and retry
-                    time.sleep(0.5)
-                else:
-                    # Last attempt failed, raise the exception
-                    raise
-
-        try:
-
-            # Classify writing systems by type
-            vernacular_ws = []
-            analysis_ws = []
-            default_vernacular = None
-            default_analysis = None
-
-            try:
-                # Get default writing systems
-                try:
-                    default_vernacular = project.WritingSystems.GetDefaultVernacular()
-                except:
-                    pass
-
-                try:
-                    default_analysis = project.WritingSystems.GetDefaultAnalysis()
-                except:
-                    pass
-
-                # Get vernacular writing systems
-                try:
-                    for ws in project.WritingSystems.GetVernacular():
-                        try:
-                            display_name = project.WritingSystems.GetDisplayName(ws)
-                            language_tag = project.WritingSystems.GetLanguageTag(ws)
-                            ws_info = {
-                                "name": display_name,
-                                "tag": language_tag
-                            }
-                            if ws == default_vernacular:
-                                ws_info["default"] = True
-                            vernacular_ws.append(ws_info)
-                        except:
-                            pass
-                except:
-                    pass
-
-                # Get analysis writing systems
-                try:
-                    for ws in project.WritingSystems.GetAnalysis():
-                        try:
-                            display_name = project.WritingSystems.GetDisplayName(ws)
-                            language_tag = project.WritingSystems.GetLanguageTag(ws)
-                            ws_info = {
-                                "name": display_name,
-                                "tag": language_tag
-                            }
-                            if ws == default_analysis:
-                                ws_info["default"] = True
-                            analysis_ws.append(ws_info)
-                        except:
-                            pass
-                except:
-                    pass
-            except:
-                pass
-
-            # Get entry count
-            entry_count = 0
-            try:
-                entry_count = len(list(project.LexEntry.GetAll()))
-            except Exception as e:
-                pass
-
-            # Close project
-            try:
-                project.CloseProject()
-            except:
-                pass
-
-            project_metadata = {
-                "writing_systems": {
-                    "vernacular": vernacular_ws,
-                    "analysis": analysis_ws
-                },
-                "entry_count": entry_count
-            }
-        except Exception as e:
-            # Project couldn't be queried, store error for response
-            import traceback
-            project_metadata_error = {
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "traceback": traceback.format_exc()
-            }
+    # Note: Project metadata query removed from start handler
+    # The FieldWorks registry access causes issues in start context but works fine
+    # during execution. Users can discover project metadata by running:
+    #   for ws_info in list_writing_systems(project):
+    #       report.Info(f"{ws_info['name']} ({ws_info['tag']})")
 
     # Build response
     result = {
@@ -353,19 +249,6 @@ async def handle_start(args: dict) -> list[TextContent]:
     }
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
-
-    # Add project metadata or error to response
-    if project_metadata_error:
-        result["project_metadata_error"] = project_metadata_error
-    elif project_metadata:
-        result["project_metadata"] = project_metadata
-    elif project_name:
-        # project_name was set but no metadata and no error - return empty metadata
-        result["project_metadata"] = {
-            "writing_systems": {"vernacular": [], "analysis": []},
-            "entry_count": 0,
-            "note": "Failed to retrieve metadata but no error was captured"
-        }
 
     # Warnings
     warnings = []

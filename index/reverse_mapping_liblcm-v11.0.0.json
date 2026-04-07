@@ -23,17 +23,11 @@
     },
     "AgentOperations": {
       "category": "lists",
-      "method_count": 16,
+      "method_count": 14,
       "methods": {
         "GetEvaluations": {
           "lcm_calls": [
             "Owner"
-          ],
-          "mapping_type": "direct"
-        },
-        "GetName": {
-          "lcm_calls": [
-            ".get_String()"
           ],
           "mapping_type": "direct"
         },
@@ -42,12 +36,6 @@
             ".get_String()"
           ],
           "mapping_type": "direct"
-        },
-        "SetName": {
-          "lcm_calls": [
-            ".set_String()"
-          ],
-          "mapping_type": "convenience"
         },
         "SetVersion": {
           "lcm_calls": [
@@ -7452,9 +7440,7 @@
           "class": "AgentOperations",
           "methods": [
             "GetEvaluations",
-            "GetName",
             "GetVersion",
-            "SetName",
             "SetVersion"
           ]
         },
@@ -7498,9 +7484,7 @@
           "class": "AgentOperations",
           "methods": [
             "GetEvaluations",
-            "GetName",
             "GetVersion",
-            "SetName",
             "SetVersion"
           ]
         },
@@ -7579,9 +7563,7 @@
         "class": "AgentOperations",
         "methods": [
           "GetEvaluations",
-          "GetName",
           "GetVersion",
-          "SetName",
           "SetVersion"
         ]
       },
@@ -8454,9 +8436,7 @@
           "class": "AgentOperations",
           "methods": [
             "GetEvaluations",
-            "GetName",
             "GetVersion",
-            "SetName",
             "SetVersion"
           ]
         },
@@ -16341,9 +16321,7 @@
           "class": "AgentOperations",
           "methods": [
             "GetEvaluations",
-            "GetName",
             "GetVersion",
-            "SetName",
             "SetVersion"
           ]
         },
@@ -24244,13 +24222,6 @@
     "get_String": [
       {
         "class": "AgentOperations",
-        "description": "Get the name of an agent.",
-        "mapping_type": "direct",
-        "method": "GetName",
-        "signature": "GetName(agent_or_hvo, wsHandle=None)"
-      },
-      {
-        "class": "AgentOperations",
         "description": "Get the version string of an agent.",
         "mapping_type": "direct",
         "method": "GetVersion",
@@ -25490,13 +25461,6 @@
       }
     ],
     "set_String": [
-      {
-        "class": "AgentOperations",
-        "description": "Set the name of an agent.",
-        "mapping_type": "convenience",
-        "method": "SetName",
-        "signature": "SetName(agent_or_hvo, name, wsHandle=None)"
-      },
       {
         "class": "AgentOperations",
         "description": "Set the version string of an agent.",
@@ -34694,9 +34658,9 @@
   },
   "statistics": {
     "factories_mapped": 144,
-    "methods_mapped": 791,
+    "methods_mapped": 789,
     "properties_mapped": 1075,
     "repositories_mapped": 20,
-    "total_mappings": 863
+    "total_mappings": 861
   }
 }

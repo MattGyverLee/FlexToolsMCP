@@ -199,3 +199,27 @@ POLYMORPHIC_HELPERS = {
     "smart_cast": smart_cast,
     "cast_or_default": cast_or_default,
 }
+
+# Helper function definitions as a single source of truth for code injection
+# Used for three-tier helper injection strategy in module execution
+HELPER_FUNCTION_DEFS = """
+def safe_get_property(obj, prop, default=None):
+    try: return getattr(obj, prop, default)
+    except: return default
+
+def smart_cast(obj, target_type):
+    try: return target_type(obj)
+    except: return None
+
+def cast_or_default(obj, target_type, prop=None, default=None):
+    casted = smart_cast(obj, target_type)
+    return default if casted is None else (safe_get_property(casted, prop, default) if prop else casted)
+
+def get_headword(entry, default="Unknown"):
+    try: return entry.HeadWord.Text
+    except: return default
+
+def get_lexeme_form(entry, default=""):
+    try: return entry.LexemeForm.Form.Text
+    except: return default
+"""

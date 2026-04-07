@@ -22,6 +22,68 @@ except ImportError:
     from server.constants import KNOWN_OPERATIONS
 
 
+# ============================================================
+# Module-level compiled patterns (avoid recompilation)
+# ============================================================
+
+LCM_COLLECTION_NAMES = (
+    "AnalysesOC", "SensesOS", "MorphBundlesOS", "MeaningsOC", "EntriesOC",
+    "SubentriesOS", "AllomorphsOS", "ExamplesOS", "ReversalEntriesOC",
+    "EvaluationsRC", "PossibilitiesOS", "SubPossibilitiesOS",
+    "PronunciationsOS", "LexEntryRefsOS", "ComponentLexemesRS"
+)
+
+# Compiled regex patterns for efficiency
+_PATTERN_COMMENT = re.compile(r'#.*$', re.MULTILINE)
+_PATTERN_CREATE_COLLECTION = re.compile(
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Add\s*\('
+)
+_PATTERN_DELETE_COLLECTION = re.compile(
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*(Remove|Clear)\s*\('
+)
+_PATTERN_INSERT_COLLECTION = re.compile(
+    r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Insert\s*\('
+)
+_PATTERN_REPORT_INFO = re.compile(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(')
+_PATTERN_REPORT_DIRECT = re.compile(r'report\s*\(')
+_PATTERN_KNOWN_OPS = re.compile(r'\b(' + '|'.join(KNOWN_OPERATIONS) + r')\b')
+_PATTERN_IMPORT_STMT = re.compile(r'from\s+\w+\s+import\s+([^#\n]+)')
+
+# Built-in variables (avoid recreating on every call)
+_BUILTIN_NAMES = {
+    "print", "len", "range", "list", "dict", "str", "int", "float", "bool",
+    "True", "False", "None", "Exception", "ValueError", "TypeError",
+    "for", "if", "else", "elif", "while", "def", "class",
+    "project", "report", "modifyAllowed", "FLExProject"
+}
+
+# LibLCM mutation patterns (tuple of (pattern, method_name, category))
+_LIBLCM_MUTABLE_PATTERNS = [
+    (r'_cache\s*\.\s*CreateObject\s*\(', 'CreateObject', 'Create'),
+    (r'_cache\s*\.\s*DeleteObject\s*\(', 'DeleteObject', 'Delete'),
+    (r'_cache\s*\.\s*BeginNonUndoableTask\s*\(', 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
+    (r'\.Add\s*\(', 'Add', 'Mutate'),
+    (r'\.Remove\s*\(', 'Remove', 'Mutate'),
+    (r'\.Clear\s*\(', 'Clear', 'Mutate'),
+    (r'\.MoveTo\s*\(', 'MoveTo', 'Reorder'),
+    (r'\.Insert\s*\(', 'Insert', 'Mutate'),
+]
+
+
+# ============================================================
+# Utility functions (shared across validators)
+# ============================================================
+
+def _strip_comments(code: str) -> str:
+    """Remove Python comments from code to avoid false positives in pattern matching."""
+    return _PATTERN_COMMENT.sub('', code)
+
+
+def _is_line_protected(line_num: int, protected_ranges: List[tuple]) -> bool:
+    """Check if a line number falls within any protected range."""
+    return any(start <= line_num <= end for start, end in protected_ranges)
+
+
 def detect_cud_operations(code: str) -> dict:
     """Detect Create, Update, Delete operations in code that modify the FLEx database.
 
@@ -40,51 +102,36 @@ def detect_cud_operations(code: str) -> dict:
     risks = []
     affected = set()
 
-    # Remove comments to avoid false positives
-    code_no_comments = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
+    # Remove comments once for all pattern matching
+    code_no_comments = _strip_comments(code)
 
     # === CREATE operations (actual database writes) ===
     create_patterns = [
-        # FlexLibs2/LCM .Create() methods (factory or operations)
         (r'\.Create\s*\(', 'Create()'),
-        # .Add() on LCM collections (OC, OS, RC suffixes indicate LCM collections)
-        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC|'
-         r'SubentriesOS|AllomorphsOS|ExamplesOS|ReversalEntriesOC|'
-         r'EvaluationsRC|PossibilitiesOS|SubPossibilitiesOS|'
-         r'PronunciationsOS|LexEntryRefsOS|ComponentLexemesRS)\s*\.\s*Add\s*\(', 'collection.Add()'),
-        # Generic .Add() with LCM object context (be more conservative)
+        (_PATTERN_CREATE_COLLECTION, 'collection.Add()'),
         (r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', 'Add()'),
-        # .Insert() on LCM sequences
-        (r'\.(SensesOS|MorphBundlesOS|SubentriesOS|AllomorphsOS|ExamplesOS|'
-         r'PossibilitiesOS|SubPossibilitiesOS|PronunciationsOS)\s*\.\s*Insert\s*\(', 'Insert()'),
-        # project.*.Create (FlexLibs2 operations Create methods)
+        (_PATTERN_INSERT_COLLECTION, 'Insert()'),
         (r'project\.\w+\.Create\s*\(', 'project.*.Create()'),
     ]
 
     for pattern, label in create_patterns:
-        if re.search(pattern, code_no_comments, re.IGNORECASE):
+        if (pattern.search(code_no_comments) if hasattr(pattern, 'search')
+                else re.search(pattern, code_no_comments, re.IGNORECASE)):
             operations.append(f"CREATE ({label})")
             risks.append("New data will be added to the database")
             break
 
     # === UPDATE operations (actual database writes) ===
     update_patterns = [
-        # .set_String() - multistring value setting
         (r'\.set_String\s*\(', 'set_String()'),
-        # .SetOccurrences, .SetForm, etc.
         (r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', 'Set*()'),
-        # .CopyAlternatives() - copying multistring values
         (r'\.CopyAlternatives\s*\(', 'CopyAlternatives()'),
-        # Direct property assignment to LCM object properties
-        # Matches: entry.Foo = ..., sense.BarRA = ..., etc.
         (r'(entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
          r'(LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
          r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
          r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
          r'Bibliography|Etymology|Comment|Note)\s*=', 'property assignment'),
-        # project.*.Set* or project.*.Update* methods
         (r'project\.\w+\.(Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', 'project.*.Set/Update()'),
-        # Approve/Reject analysis (changes approval status)
         (r'\.(Approve|Reject|SetApprovalStatus)\s*\(', 'approval change'),
     ]
 
@@ -96,20 +143,14 @@ def detect_cud_operations(code: str) -> dict:
 
     # === DELETE operations (actual database writes) ===
     delete_patterns = [
-        # .Delete() methods
         (r'\.Delete\s*\(', 'Delete()'),
-        # .Remove() on LCM collections
-        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC|'
-         r'SubentriesOS|AllomorphsOS|ExamplesOS|ReversalEntriesOC|'
-         r'EvaluationsRC|PossibilitiesOS|SubPossibilitiesOS)\s*\.\s*Remove\s*\(', 'collection.Remove()'),
-        # .Clear() on LCM collections
-        (r'\.(AnalysesOC|SensesOS|MorphBundlesOS|MeaningsOC|EntriesOC)\s*\.\s*Clear\s*\(', 'collection.Clear()'),
-        # project.*.Delete methods
+        (_PATTERN_DELETE_COLLECTION, 'collection.Remove/Clear()'),
         (r'project\.\w+\.Delete\s*\(', 'project.*.Delete()'),
     ]
 
     for pattern, label in delete_patterns:
-        if re.search(pattern, code_no_comments, re.IGNORECASE):
+        if (pattern.search(code_no_comments) if hasattr(pattern, 'search')
+                else re.search(pattern, code_no_comments, re.IGNORECASE)):
             operations.append(f"DELETE ({label})")
             risks.append("Data will be permanently removed")
             break
@@ -194,11 +235,11 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
       - mechanism_type: str - detected mechanism (print, report, none)
       - message: str - guidance if incorrect
     """
-    code_no_comments = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
+    code_no_comments = _strip_comments(code)
 
     has_print = 'print(' in code_no_comments
-    has_report_info = re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
-    has_report_direct = re.search(r'report\s*\(', code_no_comments) and not re.search(r'report\.(Info|Warning|Error|Blank|FileURL)\s*\(', code_no_comments)
+    has_report_info = _PATTERN_REPORT_INFO.search(code_no_comments)
+    has_report_direct = _PATTERN_REPORT_DIRECT.search(code_no_comments) and not has_report_info
 
     if tool_type == "operation":
         # run_operation: if outputting, use print(); if not outputting, that's fine
@@ -305,24 +346,20 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     Returns:
         dict with 'missing_imports', 'has_missing', and 'suggestion'
     """
-    # KNOWN_OPERATIONS is imported at module level from constants
-
     result = {
         "missing_imports": [],
         "has_missing": False,
         "suggestion": ""
     }
 
-    # Find all words that match Operations class names
-    pattern = r'\b(' + '|'.join(KNOWN_OPERATIONS) + r')\b'
-    matches = re.findall(pattern, code)
+    # Find all words that match Operations class names using compiled pattern
+    matches = _PATTERN_KNOWN_OPS.findall(code)
 
     if not matches:
         return result
 
-    # Check which are imported
-    import_pattern = r'from\s+\w+\s+import\s+([^#\n]+)'
-    import_lines = re.findall(import_pattern, code)
+    # Check which are imported using compiled pattern
+    import_lines = _PATTERN_IMPORT_STMT.findall(code)
     imported = set()
     for line in import_lines:
         # Parse comma-separated imports
@@ -454,14 +491,8 @@ def detect_undefined_variables(code: str) -> dict:
         collector = NameCollector()
         collector.visit(tree)
 
-        # Add built-in names
-        builtins = {
-            "print", "len", "range", "list", "dict", "str", "int", "float", "bool",
-            "True", "False", "None", "Exception", "ValueError", "TypeError",
-            "for", "if", "else", "elif", "while", "def", "class",
-            "project", "report", "modifyAllowed", "FLExProject"  # FlexTools/module context
-        }
-        defined_names.update(builtins)
+        # Add built-in names (module-level constant, not recreated per call)
+        defined_names.update(_BUILTIN_NAMES)
 
         # Find undefined variables
         undefined = used_names - defined_names
@@ -597,22 +628,12 @@ def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
     Returns list of mutations with their line numbers for protection context checking.
     """
     mutations = []
-    liblcm_mutable_patterns = [
-        (r'_cache\s*\.\s*CreateObject\s*\(', 'CreateObject', 'Create'),
-        (r'_cache\s*\.\s*DeleteObject\s*\(', 'DeleteObject', 'Delete'),
-        (r'_cache\s*\.\s*BeginNonUndoableTask\s*\(', 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
-        (r'\.Add\s*\(', 'Add', 'Mutate'),
-        (r'\.Remove\s*\(', 'Remove', 'Mutate'),
-        (r'\.Clear\s*\(', 'Clear', 'Mutate'),
-        (r'\.MoveTo\s*\(', 'MoveTo', 'Reorder'),
-        (r'\.Insert\s*\(', 'Insert', 'Mutate'),
-    ]
 
     for line_num, line in enumerate(code.split('\n'), 1):
-        # Skip comments
-        line_content = re.sub(r'#.*$', '', line)
+        # Skip comments once per line
+        line_content = _strip_comments(line)
 
-        for pattern, method_name, category in liblcm_mutable_patterns:
+        for pattern, method_name, category in _LIBLCM_MUTABLE_PATTERNS:
             if re.search(pattern, line_content):
                 mutations.append({
                     'method': method_name,
@@ -774,10 +795,7 @@ def certify_script_readonly(code: str, api_index) -> dict:
 
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard
-            is_protected = any(
-                start <= line_num <= end
-                for start, end in protected_ranges
-            )
+            is_protected = _is_line_protected(line_num, protected_ranges)
 
             if class_name in entities:
                 class_entity = entities[class_name]
@@ -851,10 +869,7 @@ def certify_script_readonly(code: str, api_index) -> dict:
 
     for mutation in liblcm_mutations:
         line_num = mutation['line']
-        is_protected = any(
-            start <= line_num <= end
-            for start, end in protected_ranges
-        )
+        is_protected = _is_line_protected(line_num, protected_ranges)
 
         if is_protected:
             protected_liblcm_calls.append({

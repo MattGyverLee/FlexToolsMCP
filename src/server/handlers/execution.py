@@ -121,10 +121,7 @@ def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Opti
     Returns:
         Python code string with helper definitions (or empty if tier='none')
     """
-    try:
-        from ..casting_helpers import HELPER_FUNCTION_DEFS
-    except ImportError:
-        from server.casting_helpers import HELPER_FUNCTION_DEFS
+    from ..casting_helpers import HELPER_FUNCTION_DEFS
 
     if injection_tier == "none":
         return ""

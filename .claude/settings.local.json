@@ -45,7 +45,14 @@
       "Bash(git -C /d/Github/FlexToolsMCP diff index/liblcm/liblcm_api_v11.0.0.json)",
       "Bash(/d/Apps/anaconda3/python:*)",
       "Bash(git tag:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//d/Github/_Projects/_LEX/flexlibs2/flexlibs2/code/**)",
+      "Read(//d/Github/_Projects/_LEX/**)",
+      "Read(//c/Users/thoua/.claude/projects/d--Github--Projects--LEX-FlexToolsMCP/**)"
+    ],
+    "additionalDirectories": [
+      "D:\\Github\\_Projects\\_LEX\\flexlibs2\\flexlibs2\\code",
+      "C:\\Users\\thoua\\.claude\\projects\\d--Github--Projects--LEX-FlexToolsMCP"
     ]
   }
 }

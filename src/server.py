@@ -702,6 +702,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         operations_logger.debug(f"[DISPATCHING] {name}")
     result = await handler(validated_args.model_dump())
     if operations_logger:
+        # Log result summary for reproducibility (first 1000 chars)
+        if result:
+            result_text = result[0].text if result else ""
+            result_preview = result_text[:1000] if result_text else "(empty)"
+            operations_logger.debug(f"[OUT] {name}: {result_preview}")
         operations_logger.debug(f"[COMPLETED] {name}")
     return result
 

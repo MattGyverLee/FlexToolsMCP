@@ -13,6 +13,9 @@ Module code can use identical patterns in both contexts:
     report.Error("error")
 """
 
+import sys
+import codecs
+
 
 class HeadlessReport:
     """
@@ -24,8 +27,15 @@ class HeadlessReport:
     """
 
     def __init__(self):
-        """Initialize reporter with empty message list."""
+        """Initialize reporter with empty message list and UTF-8 console encoding."""
         self.messages = []
+
+        # Ensure UTF-8 console output for headless execution
+        # This is critical for multilingual data (IPA, tones, etc.)
+        if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+        if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
 
     @staticmethod
     def _normalize_message(msg):

@@ -1235,6 +1235,14 @@ MODULE_CODE = {code}
                 execution_result["property_name"] = polymorphic_info["property_name"]
                 execution_result["help"] = polymorphic_info["suggestion"]
 
+        # Record API usage patterns for learning
+        from ..kernel import get_pattern_tracker
+        tracker = get_pattern_tracker()
+        if tracker:
+            error_msg = execution_result.get("error")
+            error_type = execution_result.get("error_type")
+            tracker.record_operation(code, execution_result.get("success", False), error_msg, error_type)
+
         # Log operation completion with rich formatting
         if execution_result.get("success"):
             get_operations_logger().info("[OK] Operation completed successfully")

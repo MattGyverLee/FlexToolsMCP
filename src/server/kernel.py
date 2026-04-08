@@ -14,6 +14,7 @@ Manages:
 import sys
 import json
 import logging
+import logging.handlers
 import re
 import asyncio
 from pathlib import Path
@@ -96,10 +97,29 @@ def get_log_dir() -> Path:
     return log_dir
 
 
-def setup_logging():
-    """Configure file and console logging for operations."""
+def setup_logging(session_id: str = ""):
+    """Configure file and console logging for operations.
+
+    Args:
+        session_id: Optional session ID (format: YYYYMMDD-HHMMSS) for organizing logs by date/session
+                   If provided, logs are stored in logs/YYYY-MM-DD/session_ID.log
+                   If not provided, logs go to logs/operations.log for backward compatibility
+    """
     log_dir = get_log_dir()
-    log_file = log_dir / "operations.log"
+
+    # Determine log file path based on session_id
+    if session_id:
+        # Extract date from session_id (format: YYYYMMDD-HHMMSS)
+        date_part = session_id[:8]  # YYYYMMDD
+        year = date_part[:4]
+        month = date_part[4:6]
+        day = date_part[6:8]
+        dated_dir = log_dir / f"{year}-{month}-{day}"
+        dated_dir.mkdir(parents=True, exist_ok=True)
+        log_file = dated_dir / f"session_{session_id}.log"
+    else:
+        # Fallback to monolithic log for backward compatibility
+        log_file = log_dir / "operations.log"
 
     # Create a logger for operations
     logger = logging.getLogger("flextoolsmcp.operations")
@@ -126,6 +146,55 @@ def setup_logging():
         logger.addHandler(file_handler)
 
     return logger
+
+
+def rotate_logging_to_session(session_id: str) -> None:
+    """Rotate the logging handler to a new session-specific log file.
+
+    Called by the start handler to switch from the default operations.log
+    to a per-session log file organized by date.
+
+    Args:
+        session_id: Session ID (format: YYYYMMDD-HHMMSS)
+    """
+    global operations_logger
+
+    if not operations_logger:
+        return
+
+    # Remove existing file handlers
+    for handler in operations_logger.handlers[:]:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            operations_logger.removeHandler(handler)
+            handler.close()
+
+    # Create dated directory structure
+    log_dir = get_log_dir()
+    date_part = session_id[:8]  # YYYYMMDD
+    year = date_part[:4]
+    month = date_part[4:6]
+    day = date_part[6:8]
+    dated_dir = log_dir / f"{year}-{month}-{day}"
+    dated_dir.mkdir(parents=True, exist_ok=True)
+    log_file = dated_dir / f"session_{session_id}.log"
+
+    # Add new file handler for the session
+    from logging.handlers import RotatingFileHandler
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=5*1024*1024,  # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-7s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(formatter)
+    operations_logger.addHandler(file_handler)
+    operations_logger.info(f"Switched to session log: session_{session_id}.log")
 
 
 # Lazy-initialized: operations logger is set up in initialize_kernel()

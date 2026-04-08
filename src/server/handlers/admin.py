@@ -13,12 +13,13 @@ These handlers manage session configuration and provide admin tools:
 
 import json
 from pathlib import Path
+from datetime import datetime
 from mcp.types import TextContent
 
 # Import response utilities and shared state (with fallback for both modes)
 try:
     from ...response_utils import json_response
-    from ..kernel import session_state, get_log_dir, get_api_index
+    from ..kernel import session_state, get_log_dir, get_api_index, rotate_logging_to_session
     from ..session import SessionState
     from ..response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
@@ -28,7 +29,7 @@ try:
 except ImportError:
     # Fallback for when module isn't fully modularized yet
     from response_utils import json_response
-    from server.kernel import session_state, get_log_dir, get_api_index
+    from server.kernel import session_state, get_log_dir, get_api_index, rotate_logging_to_session
     from server.session import SessionState
     from server.response_keys import (
         KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
@@ -206,6 +207,9 @@ async def handle_start(args: dict) -> list[TextContent]:
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
     write_enabled = args.get(KEY_WRITE_ENABLED, False)
 
+    # Generate session ID (format: YYYYMMDD-HHMMSS)
+    session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+
     # Clear any previously discovered APIs for fresh session
     session_state.clear_discovered_apis()
 
@@ -219,7 +223,8 @@ async def handle_start(args: dict) -> list[TextContent]:
         if get_api_index().flexlibs_stable_version:
             api_versions["flexlibs_stable"] = get_api_index().flexlibs_stable_version
 
-    # Set session-wide settings
+    # Set session-wide settings (including session_id)
+    session_state.session_id = session_id
     session_state.configure(
         api_mode=api_mode,
         output_type="auto",
@@ -227,6 +232,9 @@ async def handle_start(args: dict) -> list[TextContent]:
         write_enabled=write_enabled,
         api_versions=api_versions
     )
+
+    # Rotate logging to session-specific log file
+    rotate_logging_to_session(session_id)
 
     # Note: Project metadata query removed from start handler
     # The FieldWorks registry access causes issues in start context but works fine

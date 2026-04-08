@@ -43,6 +43,7 @@ class SessionState:
     Set by the 'start' tool and respected by all other tools unless overridden.
     Also tracks operation history and undo/redo stacks (Feature 3).
     """
+    session_id: str = ""                   # Session ID (timestamp format: YYYYMMDD-HHMMSS)
     api_mode: str = "flexlibs2"            # API mode: flexlibs2, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)

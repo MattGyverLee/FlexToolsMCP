@@ -535,7 +535,7 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
     return result
 
 
-def detect_undefined_variables(code: str) -> dict:
+def detect_undefined_variables(code: str, tree: ast.AST | None = None) -> dict:
     """Detect likely undefined variables in code using static analysis.
 
     Looks for variable usage patterns that suggest undefined names:
@@ -543,14 +543,19 @@ def detect_undefined_variables(code: str) -> dict:
     - UPPERCASE_VAR - likely internal variable or constant
     - References to MCP internals
 
+    Args:
+        code: Python source code string
+        tree: Optional pre-parsed AST (if provided, code is not re-parsed)
+
     Returns dict with:
       - has_undefined: bool - whether undefined variables detected
       - undefined_vars: list - variable names that appear undefined
       - suggestion: str - guidance for fixing
     """
     try:
-        # Parse to AST to find actual undefined variables
-        tree = ast.parse(code)
+        # Use pre-parsed tree if provided, otherwise parse
+        if tree is None:
+            tree = ast.parse(code)
         defined_names = set()
         used_names = set()
 
@@ -748,7 +753,7 @@ def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
     return mutations
 
 
-def find_protected_ranges(code: str) -> List[tuple]:
+def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]:
     """Find line ranges protected by modifyAllowed or modifyEnabled/writeEnabled guards.
 
     Detects:
@@ -759,12 +764,18 @@ def find_protected_ranges(code: str) -> List[tuple]:
     - if self.project.writeEnabled: blocks
     - if project.writeEnabled == True: blocks
 
+    Args:
+        code: Python source code string
+        tree: Optional pre-parsed AST (if provided, code is not re-parsed)
+
     Returns list of (start_line, end_line) tuples for protected ranges.
     """
     protected = []
 
     try:
-        tree = ast.parse(code)
+        # Use pre-parsed tree if provided, otherwise parse
+        if tree is None:
+            tree = ast.parse(code)
     except SyntaxError:
         return protected  # Can't parse, assume no protection
 
@@ -837,7 +848,7 @@ def find_protected_ranges(code: str) -> List[tuple]:
     return protected
 
 
-def certify_script_readonly(code: str, api_index) -> dict:
+def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -> dict:
     """Certify whether a script makes any FlexLibs2 mutating calls using API index.
 
     Uses the is_mutating flag from the API index to identify write operations with
@@ -850,6 +861,7 @@ def certify_script_readonly(code: str, api_index) -> dict:
     Args:
         code: Python code to analyze
         api_index: Loaded API index with is_mutating field per method
+        tree: Optional pre-parsed AST (if provided, code is not re-parsed)
 
     Returns:
         {
@@ -879,7 +891,8 @@ def certify_script_readonly(code: str, api_index) -> dict:
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
     # Get protected ranges once for both FlexLibs2 and LibLCM checks
-    protected_ranges = find_protected_ranges(code)
+    # Pass pre-parsed tree if available to avoid re-parsing
+    protected_ranges = find_protected_ranges(code, tree)
 
     # Step 1: Extract FlexLibs2 Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)

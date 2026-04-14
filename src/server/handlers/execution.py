@@ -621,9 +621,20 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             hint="The server may not have started correctly. Check the server logs and try restarting."
         )
 
+    # Parse AST early for reuse across all validators (avoid redundant parsing)
+    try:
+        code_tree = ast.parse(code)
+    except SyntaxError as e:
+        return error_response(
+            "syntax_error",
+            f"Invalid Python syntax at line {e.lineno}: {e.msg}",
+            line_number=e.lineno,
+            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)"
+        )
+
     # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(code)
-    cert = certify_script_readonly(code, get_api_index())
+    cert = certify_script_readonly(code, get_api_index(), code_tree)
 
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
@@ -676,20 +687,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
     # The SimpleReporter provides both mechanisms transparently
 
-    # === Consolidated validation pass with shared AST ===
-    # Parse AST once and pass to all validators to avoid redundant parsing
-    try:
-        code_tree = ast.parse(code)
-    except SyntaxError as e:
-        return error_response(
-            "syntax_error",
-            f"Invalid Python syntax at line {e.lineno}: {e.msg}",
-            line_number=e.lineno,
-            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)"
-        )
-
     # Check for undefined variables that indicate hallucinated/internal names
-    undefined_check = detect_undefined_variables(code)
+    # Pass pre-parsed AST to avoid re-parsing
+    undefined_check = detect_undefined_variables(code, code_tree)
     if undefined_check["has_undefined"]:
         return error_response(
             "undefined_variables",

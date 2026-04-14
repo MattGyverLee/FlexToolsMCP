@@ -211,9 +211,15 @@ _PATTERN_KEY_FAILURE = "failure_count"
 
 @dataclass
 class PatternTracker:
-    """Tracks API patterns with success/failure counts for learning."""
+    """Tracks API patterns with success/failure counts for learning.
+
+    Maintains bounded cache (max 1000 API patterns, max 500 error patterns)
+    to prevent unbounded memory growth in long-running sessions.
+    """
     patterns_file: Optional[Path] = None
     patterns: Dict = field(default_factory=dict)
+    _MAX_API_PATTERNS = 1000
+    _MAX_ERROR_PATTERNS = 500
 
     def __post_init__(self):
         if self.patterns_file is None:
@@ -235,9 +241,33 @@ class PatternTracker:
         else:
             self.patterns = {_PATTERN_KEY_API: {}, _PATTERN_KEY_ERROR: {}}
 
+    def _evict_stale_patterns(self):
+        """Enforce bounded cache size by evicting least recently used patterns."""
+        api_patterns = self.patterns.get(_PATTERN_KEY_API, {})
+        if len(api_patterns) > self._MAX_API_PATTERNS:
+            # Sort by last_used, evict oldest 20%
+            sorted_patterns = sorted(
+                api_patterns.items(),
+                key=lambda x: x[1].get("last_used") or ""
+            )
+            num_to_remove = len(api_patterns) // 5
+            for api_call, _ in sorted_patterns[:num_to_remove]:
+                del api_patterns[api_call]
+
+        error_patterns = self.patterns.get(_PATTERN_KEY_ERROR, {})
+        if len(error_patterns) > self._MAX_ERROR_PATTERNS:
+            sorted_errors = sorted(
+                error_patterns.items(),
+                key=lambda x: x[1].get("first_seen") or ""
+            )
+            num_to_remove = len(error_patterns) // 5
+            for error_key, _ in sorted_errors[:num_to_remove]:
+                del error_patterns[error_key]
+
     def save(self):
         """Save patterns to disk."""
         try:
+            self._evict_stale_patterns()
             # Import here to avoid circular dependency
             from ..json_utils import sort_json_arrays
             patterns_to_save = sort_json_arrays(self.patterns)

@@ -50,6 +50,22 @@ __all__ = [
     # Execution-specific
     'KEY_SUCCESS', 'KEY_PROJECT', 'KEY_WRITE_ENABLED', 'KEY_MESSAGES',
     'KEY_TEMPLATE', 'KEY_CONFIDENCE',
+    # Handler-specific API discovery
+    'KEY_SOURCES_SEARCHED', 'KEY_FALLBACK_USED', 'KEY_API_MODE', 'KEY_API_MODE_DESCRIPTION',
+    'KEY_SEARCH_METHOD', 'KEY_SEMANTIC_AVAILABLE', 'KEY_IMPORT_STATEMENT', 'KEY_IMPORT_REQUIRED',
+    'KEY_TOTAL_METHODS', 'KEY_RETURNED_METHODS', 'KEY_HAS_MORE', 'KEY_NEXT_OFFSET',
+    'KEY_SOURCE_FILE', 'KEY_SESSION_CONTEXT', 'KEY_DETECTED', 'KEY_AUTO_RESOLVED',
+    'KEY_SELECTED', 'KEY_REASONING', 'KEY_ALTERNATIVES', 'KEY_METHOD_NAME',
+    'KEY_OPERATION_TYPE', 'KEY_PYTHONIC_NAME', 'KEY_KIND', 'KEY_TARGET_TYPE',
+    'KEY_IS_MULTISTRING', 'KEY_EMPTY_VALUE_WARNING', 'KEY_PROPERTY_NAME', 'KEY_CONTEXT_ENTITY',
+    'KEY_LIMIT', 'KEY_OFFSET', 'KEY_INCLUDE_CASTING_INFO', 'KEY_SUFFIX_GUIDE',
+    'KEY_USAGE_EXAMPLES', 'KEY_PYTHONNET_CASTING', 'KEY_REQUIRES_CAST', 'KEY_DEFINED_ON',
+    'KEY_NOT_AVAILABLE_ON', 'KEY_WARNING', 'KEY_PATTERN', 'KEY_FLEXLIBS2_HELPER',
+    'KEY_AVAILABLE_ON_CONCRETE_TYPES', 'KEY_POLYMORPHIC_COLLECTION_WARNING',
+    'KEY_UNIQUE_PROPERTIES_BY_TYPE', 'KEY_PROPERTY_AVAILABILITY_IN_CONTEXT',
+    'KEY_HAS_PROPERTY_ON', 'KEY_MISSING_FROM', 'KEY_GUIDANCE',
+    # Operation type constants
+    'OP_CREATE', 'OP_READ', 'OP_UPDATE', 'OP_DELETE', 'OP_ITERATE', 'OP_SEARCH',
 ]
 
 # ---- Response Field Names ---------------------------------------------------
@@ -183,3 +199,60 @@ KEY_WRITE_ENABLED = "write_enabled"
 KEY_MESSAGES = "messages"
 KEY_TEMPLATE = "template"
 KEY_CONFIDENCE = "confidence"
+
+# Handler-specific API discovery fields
+KEY_SOURCES_SEARCHED = "sources_searched"
+KEY_FALLBACK_USED = "fallback_used"
+KEY_API_MODE = "api_mode"
+KEY_API_MODE_DESCRIPTION = "api_mode_description"
+KEY_SEARCH_METHOD = "search_method"
+KEY_SEMANTIC_AVAILABLE = "semantic_available"
+KEY_IMPORT_STATEMENT = "import_statement"
+KEY_IMPORT_REQUIRED = "import_required"
+KEY_TOTAL_METHODS = "total_methods"
+KEY_RETURNED_METHODS = "returned_methods"
+KEY_HAS_MORE = "has_more"
+KEY_NEXT_OFFSET = "next_offset"
+KEY_SOURCE_FILE = "source_file"
+KEY_SESSION_CONTEXT = "session_context"
+KEY_DETECTED = "detected"
+KEY_AUTO_RESOLVED = "auto_resolved"
+KEY_SELECTED = "selected"
+KEY_REASONING = "reasoning"
+KEY_ALTERNATIVES = "alternatives"
+KEY_METHOD_NAME = "method_name"
+KEY_OPERATION_TYPE = "operation_type"
+KEY_PYTHONIC_NAME = "pythonic_name"
+KEY_KIND = "kind"
+KEY_TARGET_TYPE = "target_type"
+KEY_IS_MULTISTRING = "is_multistring"
+KEY_EMPTY_VALUE_WARNING = "empty_value_warning"
+KEY_PROPERTY_NAME = "property_name"
+KEY_CONTEXT_ENTITY = "context_entity"
+KEY_LIMIT = "limit"
+KEY_OFFSET = "offset"
+KEY_INCLUDE_CASTING_INFO = "include_casting_info"
+KEY_SUFFIX_GUIDE = "suffix_guide"
+KEY_USAGE_EXAMPLES = "usage_examples"
+KEY_PYTHONNET_CASTING = "pythonnet_casting"
+KEY_REQUIRES_CAST = "requires_cast"
+KEY_DEFINED_ON = "defined_on"
+KEY_NOT_AVAILABLE_ON = "not_available_on"
+KEY_WARNING = "warning"
+KEY_PATTERN = "pattern"
+KEY_FLEXLIBS2_HELPER = "flexlibs2_helper"
+KEY_AVAILABLE_ON_CONCRETE_TYPES = "available_on_concrete_types"
+KEY_POLYMORPHIC_COLLECTION_WARNING = "polymorphic_collection_warning"
+KEY_UNIQUE_PROPERTIES_BY_TYPE = "unique_properties_by_type"
+KEY_PROPERTY_AVAILABILITY_IN_CONTEXT = "property_availability_in_context"
+KEY_HAS_PROPERTY_ON = "has_property_on"
+KEY_MISSING_FROM = "missing_from"
+KEY_GUIDANCE = "guidance"
+
+# Operation type constants
+OP_CREATE = "create"
+OP_READ = "read"
+OP_UPDATE = "update"
+OP_DELETE = "delete"
+OP_ITERATE = "iterate"
+OP_SEARCH = "search"

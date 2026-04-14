@@ -499,11 +499,14 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     api_mode = args.get(KEY_API_MODE, session_state.get_mode())
     use_semantic = args.get("semantic", True)
 
+    # Cache API index to avoid redundant lookups in search loops
+    api_index = get_api_index()
+
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     if api_mode in ["all", "liblcm"]:
-        get_api_index().ensure_liblcm_loaded()
+        api_index.ensure_liblcm_loaded()
     if api_mode in ["all", "flexlibs_stable"]:
-        get_api_index().ensure_flexlibs_stable_loaded()
+        api_index.ensure_flexlibs_stable_loaded()
 
     query_lower = query.lower()
     expanded_query = query
@@ -519,9 +522,9 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     config = API_MODE_CONFIG.get(api_mode, API_MODE_CONFIG["all"])
 
-    if use_semantic and get_api_index().semantic_search and get_api_index().semantic_search.enabled:
+    if use_semantic and api_index.semantic_search and api_index.semantic_search.enabled:
         semantic_source = api_mode if api_mode in ["flexlibs2", "liblcm"] else "all"
-        semantic_results = get_api_index().semantic_search.search(expanded_query, max_results, semantic_source)
+        semantic_results = api_index.semantic_search.search(expanded_query, max_results, semantic_source)
         if semantic_results:
             results = semantic_results
             search_method = "semantic"
@@ -535,7 +538,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 expanded_terms.update(SEARCH_SYNONYMS[term])
 
         # Pre-build pythonic name lookup (efficiency: O(N) instead of O(N*M))
-        suffix_index = get_api_index().liblcm.get("suffix_index", {}) if get_api_index().liblcm else {}
+        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
         by_pythonic = suffix_index.get("by_pythonic_name", {})
         pythonic_lower = {k.lower(): k for k in by_pythonic.keys()}
 
@@ -631,20 +634,20 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
             return source_results
 
         for source in config["primary"]:
-            if source == "flexlibs2" and get_api_index().flexlibs2:
-                results.extend(search_source("flexlibs2", get_api_index().flexlibs2, boost=5))
+            if source == "flexlibs2" and api_index.flexlibs2:
+                results.extend(search_source("flexlibs2", api_index.flexlibs2, boost=5))
                 sources_searched.append("flexlibs2")
-            elif source == "flexlibs_stable" and get_api_index().flexlibs_stable:
-                results.extend(search_source("flexlibs_stable", get_api_index().flexlibs_stable, boost=3))
+            elif source == "flexlibs_stable" and api_index.flexlibs_stable:
+                results.extend(search_source("flexlibs_stable", api_index.flexlibs_stable, boost=3))
                 sources_searched.append("flexlibs_stable")
-            elif source == "liblcm" and get_api_index().liblcm:
-                results.extend(search_source("liblcm", get_api_index().liblcm, boost=0))
+            elif source == "liblcm" and api_index.liblcm:
+                results.extend(search_source("liblcm", api_index.liblcm, boost=0))
                 sources_searched.append("liblcm")
 
         if len(results) < max_results and config["fallback"]:
             for source in config["fallback"]:
-                if source == "liblcm" and get_api_index().liblcm and "liblcm" not in sources_searched:
-                    fallback_results = search_source("liblcm", get_api_index().liblcm, boost=0)
+                if source == "liblcm" and api_index.liblcm and "liblcm" not in sources_searched:
+                    fallback_results = search_source("liblcm", api_index.liblcm, boost=0)
                     results.extend(fallback_results)
                     if fallback_results:
                         sources_searched.append("liblcm (fallback)")
@@ -683,17 +686,20 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     object_type = args.get(KEY_OBJECT_TYPE)
     max_results = args.get("max_results", 5)
 
+    # Cache API index to avoid redundant lookups
+    api_index = get_api_index()
+
     # Lazy-load APIs if needed (they're deferred from startup for speed)
     mode = session_state.get_mode()
     if mode in ["all", "liblcm"]:
-        get_api_index().ensure_liblcm_loaded()
+        api_index.ensure_liblcm_loaded()
     if mode in ["all", "flexlibs_stable"]:
-        get_api_index().ensure_flexlibs_stable_loaded()
+        api_index.ensure_flexlibs_stable_loaded()
 
     examples = []
 
-    if get_api_index().flexlibs2:
-        for entity_name, entity in get_api_index().flexlibs2.get("entities", {}).items():
+    if api_index.flexlibs2:
+        for entity_name, entity in api_index.flexlibs2.get("entities", {}).items():
             if object_type and object_type.lower() not in entity_name.lower():
                 continue
 
@@ -739,10 +745,13 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     context_entity = args.get(KEY_CONTEXT_ENTITY)
     include_casting_info = args.get(KEY_INCLUDE_CASTING_INFO, True)
 
+    # Cache API index to avoid redundant lookups
+    api_index = get_api_index()
+
     # Lazy-load APIs if needed (they're deferred from startup for speed)
-    get_api_index().ensure_liblcm_loaded()
+    api_index.ensure_liblcm_loaded()
     if include_casting_info:
-        get_api_index().ensure_casting_index_loaded()
+        api_index.ensure_casting_index_loaded()
 
     matches = resolve_pythonic_property(property_name, context_entity)
 
@@ -755,7 +764,7 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
             "suggestions": []
         }
 
-        suffix_index = get_api_index().liblcm.get("suffix_index", {}) if get_api_index().liblcm else {}
+        suffix_index = api_index.liblcm.get("suffix_index", {}) if api_index.liblcm else {}
         by_pythonic = suffix_index.get("by_pythonic_name", {})
 
         property_lower = property_name.lower()

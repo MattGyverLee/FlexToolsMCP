@@ -16,26 +16,17 @@ from pathlib import Path
 from datetime import datetime
 from mcp.types import TextContent
 
-# Import response utilities and shared state (with fallback for both modes)
-try:
-    from ...response_utils import json_response
-    from ..kernel import session_state, get_log_dir, get_api_index, rotate_logging_to_session
-    from ..session import SessionState
-    from ..response_keys import (
-        KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
-        KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
-        KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
-    )
-except ImportError:
-    # Fallback for when module isn't fully modularized yet
-    from response_utils import json_response
-    from server.kernel import session_state, get_log_dir, get_api_index, rotate_logging_to_session
-    from server.session import SessionState
-    from server.response_keys import (
-        KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
-        KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
-        KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
-    )
+from ._import_helper import safe_import_kernel_deps, safe_import_session_state, safe_import_logging_helpers
+from ..response_keys import (
+    KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
+    KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
+    KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
+)
+
+# Import kernel dependencies with fallback support
+json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
+rotate_logging_to_session, _ = safe_import_logging_helpers()
+SessionState = safe_import_session_state()
 
 if not isinstance(session_state, SessionState):
     session_state = SessionState()

@@ -21,88 +21,62 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from mcp.types import TextContent
 
-# Import async subprocess helper
+from ._import_helper import (
+    safe_import_kernel_deps,
+    safe_import_session_state,
+    safe_import_logging_helpers,
+)
+
+# Import async subprocess helper with fallback
 try:
     from ..subprocess_helpers import run_script_async
 except ImportError:
     from server.subprocess_helpers import run_script_async
 
-# Import shared state from kernel
-try:
-    from ..kernel import session_state, get_log_dir, get_api_index, get_operations_logger, get_pattern_tracker, get_project_write_lock
-    from ..session import SessionState
-    if not isinstance(session_state, SessionState):
-        session_state = SessionState()
-except ImportError:
-    from server.kernel import session_state, get_log_dir, get_api_index, get_operations_logger, get_pattern_tracker, get_project_write_lock
-    from server.session import SessionState
+# Import kernel dependencies with fallback
+json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
+_, get_operations_logger = safe_import_logging_helpers()
+SessionState = safe_import_session_state()
 
-# Import helper functions from validators module
+try:
+    from ..kernel import get_pattern_tracker, get_project_write_lock
+except ImportError:
+    from server.kernel import get_pattern_tracker, get_project_write_lock
+
+# Import validators with fallback
 try:
     from ..validators import (
-        detect_cud_operations,
-        detect_polymorphic_error,
-        detect_undefined_variables,
-        detect_missing_operations_imports,
-        detect_wrong_library_imports,
-        format_cud_warning,
-        certify_script_readonly,
-        get_unprotected_write_guidance,
-        detect_casting_needs,
-        validate_server_state
+        detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
+        detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
+        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state
     )
 except ImportError:
     from server.validators import (
-        detect_cud_operations,
-        detect_polymorphic_error,
-        detect_undefined_variables,
-        detect_missing_operations_imports,
-        detect_wrong_library_imports,
-        format_cud_warning,
-        certify_script_readonly,
-        get_unprotected_write_guidance,
-        detect_casting_needs,
-        validate_server_state
+        detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
+        detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
+        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state
     )
 
-# Import response utilities
+# Import response utilities and HeadlessReport with fallback
 try:
-    from ...response_utils import build_response_with_context, error_response, json_response
-except (ImportError, ValueError):
-    # Fallback for different import contexts
-    from response_utils import build_response_with_context, error_response, json_response
-
-# Import HeadlessReport for transparent reporting
-try:
+    from ...response_utils import build_response_with_context, error_response
     from ..headless_report import HeadlessReport
-except ImportError:
+except (ImportError, ValueError):
+    from response_utils import build_response_with_context, error_response
     from server.headless_report import HeadlessReport
 
 # Import response field constants
-try:
-    from ..response_keys import (
-        KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
-        KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
-        KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
-        KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
-        KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
-        KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
-        KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
-        KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
-        KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
-    )
-except ImportError:
-    from response_keys import (
-        KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
-        KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
-        KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
-        KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
-        KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
-        KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
-        KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
-        KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
-        KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
-    )
+from ..response_keys import (
+    KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
+    KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
+    KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
+    KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
+    KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
+    KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
+    KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
+    KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
+    KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
+)
 
 # ============================================================
 # Constants (avoid stringly-typed code)

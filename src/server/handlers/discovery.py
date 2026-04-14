@@ -13,35 +13,21 @@ from collections import deque
 from typing import List, Dict
 from mcp.types import TextContent
 
-# Import shared state and response constants
-try:
-    from ...response_utils import json_response
-    from ..kernel import get_api_index, session_state
-    from ..models import GetNavigationPathInput
-    from ..response_keys import (
-        KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
-        KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
-        KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
-        KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
-        KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
-        KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
-        KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
-    )
-    from .utils import normalize_object_name
-except ImportError:
-    from response_utils import json_response
-    from server.kernel import get_api_index, session_state
-    from server.models import GetNavigationPathInput
-    from server.response_keys import (
-        KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
-        KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
-        KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
-        KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
-        KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
-        KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
-        KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
-    )
-    from server.handlers.utils import normalize_object_name
+from ._import_helper import safe_import_kernel_deps
+from ..models import GetNavigationPathInput
+from ..response_keys import (
+    KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
+    KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
+    KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
+    KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
+    KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
+    KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
+    KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
+)
+from .utils import normalize_object_name
+
+# Import with fallback support
+json_response, session_state, _, get_api_index = safe_import_kernel_deps()
 
 # Type note: api_index is initialized by server.py before any handlers are called
 

@@ -12,24 +12,16 @@ import json
 from collections import defaultdict
 from mcp.types import TextContent
 
-# Import shared state and response constants
-try:
-    from ..kernel import get_api_index
-    from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
-    from ..response_keys import (
-        KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
-        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_METHODS_COUNT,
-        KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES
-    )
-except ImportError:
-    # Fallback for when module isn't fully modularized yet
-    from server.kernel import get_api_index
-    from server.models import ListCategoriesInput, ListEntitiesInCategoryInput
-    from server.response_keys import (
-        KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
-        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_METHODS_COUNT,
-        KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES
-    )
+from ._import_helper import safe_import_api_index
+from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
+from ..response_keys import (
+    KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
+    KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_METHODS_COUNT,
+    KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES
+)
+
+# Import with fallback support
+get_api_index = safe_import_api_index()
 
 # Type note: api_index is initialized by server.py before any handlers are called
 

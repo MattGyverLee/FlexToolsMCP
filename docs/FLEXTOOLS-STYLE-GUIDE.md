@@ -187,6 +187,22 @@ def Main(project, report, modifyAllowed):
         report.Info(f"(Would update to: {new_form})")
 ```
 
+**Lightweight op form** (no `Main` function — bare snippet via `run_module`):
+
+`modifyAllowed` is exposed as a top-level namespace variable, so the same guard pattern works at script root:
+
+```python
+# Bare snippet - no Main, no docs, no FlexToolsModule binding.
+# modifyAllowed and write_enabled are pre-injected; use either name.
+for entry in project.LexEntry.GetAll():
+    if some_condition(entry):
+        if modifyAllowed:
+            project.LexEntry.SetLexemeForm(entry, new_form)
+            report.Info(f"Updated: {new_form}", project.BuildGotoURL(entry))
+        else:
+            report.Info(f"(Would update to: {new_form})", project.BuildGotoURL(entry))
+```
+
 **UNPROTECTED WRITES ARE A CRITICAL BUG**
 - Every write must be guarded with `if modifyAllowed:`
 - Writes without protection will silently corrupt data
@@ -223,7 +239,30 @@ Allow users to preview changes without write access enabled.
 
 ### 8. Helper Functions
 
-Include reusable helpers, especially for common patterns:
+**Pre-injected runtime helpers** (MCP runner only — do NOT redefine these):
+
+The MCP runner injects these into the execution namespace before running your code, in both lightweight ops and full modules. Importing them is unnecessary and reinventing them is a code smell.
+
+> ⚠️ **Scope warning:** these helpers exist only inside the MCP runner subprocess. If you save your code as a FlexTools module file (`.py` in the FlexTools modules folder), the helpers are NOT there when FlexTools loads the file — inline your own copies, or stick to standard flexlibs2 calls.
+
+```python
+# Empty-multistring detection (covers None, "", and "***")
+if is_empty_multistring(gloss):
+    report.Warning("Gloss is empty")
+
+# The literal "***" placeholder constant for direct comparisons
+if raw_text == FLEX_EMPTY_PLACEHOLDER:
+    raw_text = ""
+
+# Writing-system lookup by name or tag (substring match, case-insensitive)
+ws_handle = find_writing_system(project, "pyn")  # finds "Pinyin", "zh-Latn-pinyin", etc.
+
+# Enumerate writing systems with their display names and tags
+for ws_info in list_writing_systems(project):
+    report.Info(f"{ws_info['name']} ({ws_info['tag']})")
+```
+
+**User-defined helpers** — include reusable patterns specific to your script:
 
 ```python
 def report_with_link(project, report, obj, label):

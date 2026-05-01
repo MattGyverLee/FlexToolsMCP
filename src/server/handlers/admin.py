@@ -126,6 +126,67 @@ MODE_GUIDANCE = {
     }
 }
 
+# Runtime invariants - true for both lightweight ops (bare snippets) and full
+# FlexTools modules. Emitted in start()'s response so the assistant sees these
+# BEFORE writing any code. Saves a Dennis-style debugging arc where the AI
+# reinvents reporters, write guards, or '***' placeholder handling because it
+# never learned the runtime contract.
+RUNTIME_PRIMER = {
+    "output": {
+        "description": "Use report.* for all user-facing output. Both lightweight ops and modules use the same API.",
+        "methods": [
+            "report.Info(msg, ref=None)",
+            "report.Warning(msg, ref=None)",
+            "report.Error(msg, ref=None)",
+            "report.Blank()",
+        ],
+        "example": 'report.Info(f"Updated {entry_hw}", project.BuildGotoURL(sense))',
+        "note": "Plain print() also works but bypasses message counts and ref links. Prefer report.*",
+    },
+    "clickable_refs": {
+        "description": "Pass a goto URL as the second argument to make a message clickable in FlexTools UI.",
+        "pattern": "project.BuildGotoURL(obj) -> str",
+        "example": 'report.Info("Found match", project.BuildGotoURL(sense))',
+        "note": "obj must be a concrete LCM object (entry, sense, example, ...) - not an HVO or string.",
+    },
+    "write_protection": {
+        "description": "Every database mutation MUST be guarded by `if modifyAllowed:`. Unguarded mutations are refused at validation time before execution.",
+        "lightweight_op_form": (
+            "modifyAllowed is exposed as a top-level namespace variable. "
+            "Use:  if modifyAllowed:  sense.Gloss.set_String(ws, 'new gloss')"
+        ),
+        "module_form": (
+            "modifyAllowed is the third positional parameter of Main. "
+            "Use:  def Main(project, report, modifyAllowed):  if modifyAllowed:  sense.Gloss.set_String(ws, 'new gloss')"
+        ),
+        "note": "modifyAllowed reflects the write_enabled flag set in start(). False by default (dry-run safe).",
+    },
+    "multistring_placeholder": {
+        "description": "FLEx stores '***' as the placeholder for unset multilingual string fields (Gloss, Definition, Form, ...).",
+        "wrapper_behavior": (
+            "FlexLibs2 wrapper getters normalize '***' to '' so `if not gloss:` works. "
+            "Use:  gloss = LexSenseOperations(project).GetGloss(sense)  # '' if empty"
+        ),
+        "raw_csharp_behavior": (
+            "Direct C# property access still returns '***'. Check explicitly: "
+            "raw = sense.Gloss.BestAnalysisAlternative.Text; "
+            "if raw == '***': raw = ''"
+        ),
+        "note": "Prefer wrapper getters. Mixing the two styles in one script is the most common source of empty-string bugs.",
+    },
+    "namespace_helpers": {
+        "description": "These helpers are pre-injected into the execution namespace. No import required.",
+        "available": [
+            "is_empty_multistring(text) -> bool  # True for None, '', or '***'",
+            "FLEX_EMPTY_PLACEHOLDER  # the literal '***' constant",
+            "find_writing_system(project, query) -> ws_handle | None  # substring search by name/tag",
+            "list_writing_systems(project) -> [{'name', 'tag'}, ...]",
+        ],
+        "note": "Always available; do NOT redefine these at the top of your script.",
+        "scope_warning": "MCP-runner only. If this code is saved as a FlexTools module file, the helpers will NOT exist when FlexTools loads it - inline copies or do not use them.",
+    },
+}
+
 # Project root for template path resolution
 PROJECT_ROOT = Path(__file__).parents[3]
 
@@ -248,6 +309,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     }
 
     result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
+    result["runtime_primer"] = RUNTIME_PRIMER
 
     # Warnings
     warnings = []

@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <!-- Title row -->
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">Stages 3 &amp; 4 — API Discovery &amp; Code Authoring</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 3 of 6 · the AI cites real signatures here, then writes code that respects the runtime contract</text>
+
+  <!-- ============ STAGE 3 BANNER ============ -->
+  <rect x="40" y="90" width="1520" height="50" rx="10" fill="#4F46E5"/>
+  <circle cx="78" cy="115" r="16" fill="white"/>
+  <text x="78" y="121" text-anchor="middle" font-size="16" font-weight="700" fill="#4F46E5">3</text>
+  <text x="110" y="121" font-size="18" font-weight="700" fill="white">API Discovery — eight tools, one mandate: every method name must come from the index</text>
+
+  <!-- ============ STAGE 3 — 8 TOOLS GRID (2 rows × 4 cols) ============ -->
+  <!-- Pill: w=370 h=180 -->
+  <!-- Row 1 y=160 -->
+
+  <!-- Tool 1 -->
+  <rect x="40" y="160" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="55" y="184" font-size="13" font-weight="700" fill="#312E81">search_by_capability</text>
+  <text x="55" y="201" font-size="10" fill="#4338CA" font-style="italic">semantic NL search via embeddings</text>
+  <text x="55" y="222" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> query, optional api_mode</text>
+  <text x="55" y="240" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> ranked methods + similarity</text>
+  <text x="55" y="262" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#312E81">"how to add gloss to sense"</text>
+  <text x="65" y="278" font-size="10" fill="#64748B">→ LexSenseOperations.SetGloss</text>
+  <text x="65" y="292" font-size="10" fill="#64748B">→ LexSenseOperations.AddGloss</text>
+  <text x="55" y="320" font-size="10" font-style="italic" fill="#16A34A">registers as discovered_api on every hit</text>
+
+  <!-- Tool 2 -->
+  <rect x="425" y="160" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="440" y="184" font-size="13" font-weight="700" fill="#312E81">get_object_api  ★</text>
+  <text x="440" y="201" font-size="10" fill="#4338CA" font-style="italic">drill into entity-level API surface</text>
+  <text x="440" y="222" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> object_type, summary_only</text>
+  <text x="440" y="240" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> methods, properties, signatures,</text>
+  <text x="440" y="256" font-size="11" fill="#475569">examples, <tspan font-weight="700">import_statement</tspan></text>
+  <text x="440" y="278" font-size="10" fill="#64748B">summary_only=true to peek at large entities,</text>
+  <text x="440" y="293" font-size="10" fill="#64748B">then full call for specifics</text>
+  <text x="440" y="320" font-size="10" font-style="italic" fill="#DC2626">REQUIRED before using an API in run_module</text>
+
+  <!-- Tool 3 -->
+  <rect x="810" y="160" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="825" y="184" font-size="13" font-weight="700" fill="#312E81">get_navigation_path</text>
+  <text x="825" y="201" font-size="10" fill="#4338CA" font-style="italic">find paths between entity types</text>
+  <text x="825" y="222" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> from_object, to_object</text>
+  <text x="825" y="240" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> traversal path + code skeleton</text>
+  <text x="825" y="262" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#312E81">ILexEntry → ILexSense</text>
+  <text x="825" y="277" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#312E81">       → ILexExample</text>
+  <text x="825" y="292" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#312E81">       → ILexExampleSentence</text>
+  <text x="825" y="320" font-size="10" font-style="italic" fill="#16A34A">includes null-safety + cast operations in skeleton</text>
+
+  <!-- Tool 4 -->
+  <rect x="1195" y="160" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="1210" y="184" font-size="13" font-weight="700" fill="#312E81">find_examples</text>
+  <text x="1210" y="201" font-size="10" fill="#4338CA" font-style="italic">code samples by method/operation/object</text>
+  <text x="1210" y="222" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> method_name | operation_type</text>
+  <text x="1210" y="240" font-size="11" fill="#475569">       | object_type</text>
+  <text x="1210" y="258" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> snippet + surrounding context</text>
+  <text x="1210" y="280" font-size="10" fill="#64748B">operation_type ∈ {create, read, update,</text>
+  <text x="1210" y="294" font-size="10" fill="#64748B">  delete, iterate, search}</text>
+  <text x="1210" y="320" font-size="10" font-style="italic" fill="#16A34A">82% of flexlibs2 methods have at least one example</text>
+
+  <!-- Row 2 y=355 -->
+
+  <!-- Tool 5 -->
+  <rect x="40" y="355" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="55" y="379" font-size="13" font-weight="700" fill="#312E81">resolve_property</text>
+  <text x="55" y="396" font-size="10" fill="#4338CA" font-style="italic">casting / property resolution</text>
+  <text x="55" y="417" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> property_name, context_entity</text>
+  <text x="55" y="435" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> casting requirement, polymorphic</text>
+  <text x="55" y="451" font-size="11" fill="#475569">     warnings, fix snippets per flavor</text>
+  <text x="55" y="473" font-size="10" fill="#64748B">Used to fix "X has no attribute Y" errors</text>
+  <text x="55" y="487" font-size="10" fill="#64748B">e.g. ICmObject.HeadWord → ILexEntry(obj).HeadWord</text>
+  <text x="55" y="515" font-size="10" font-style="italic" fill="#DC2626">also called automatically when gate 5 trips</text>
+
+  <!-- Tool 6 -->
+  <rect x="425" y="355" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="440" y="379" font-size="13" font-weight="700" fill="#312E81">get_wrapper_dependencies</text>
+  <text x="440" y="396" font-size="10" fill="#4338CA" font-style="italic">wrapper method → LCM internals</text>
+  <text x="440" y="417" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> method (Class.Method), library</text>
+  <text x="440" y="435" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> lcm_deps, properties, methods,</text>
+  <text x="440" y="451" font-size="11" fill="#475569">     repositories, factories, mapping_type</text>
+  <text x="440" y="473" font-size="10" fill="#64748B">Use to see what a wrapper "really" does,</text>
+  <text x="440" y="487" font-size="10" fill="#64748B">or whether dropping to liblcm gets you more</text>
+  <text x="440" y="515" font-size="10" font-style="italic" fill="#16A34A">reads from flexlibs2_lcm_bridge_*.json</text>
+
+  <!-- Tool 7 -->
+  <rect x="810" y="355" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="825" y="379" font-size="13" font-weight="700" fill="#312E81">find_wrappers_for_lcm</text>
+  <text x="825" y="396" font-size="10" fill="#4338CA" font-style="italic">LCM symbol → wrapper coverage</text>
+  <text x="825" y="417" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">in:</tspan> lcm_name, kind, include[]</text>
+  <text x="825" y="435" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> coverage per library + gaps[]</text>
+  <text x="825" y="457" font-size="10" fill="#64748B">kind ∈ {entity, factory, repository,</text>
+  <text x="825" y="471" font-size="10" fill="#64748B">  method, property, auto}</text>
+  <text x="825" y="495" font-size="11" font-weight="700" fill="#16A34A">explicit gaps[] — never silently absent</text>
+  <text x="825" y="515" font-size="10" font-style="italic" fill="#3730A3">"if no wrapper covers it, drop to api_mode='liblcm'"</text>
+
+  <!-- Tool 8 -->
+  <rect x="1195" y="355" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="1210" y="379" font-size="13" font-weight="700" fill="#312E81">list_categories /</text>
+  <text x="1210" y="395" font-size="13" font-weight="700" fill="#312E81">list_entities_in_category</text>
+  <text x="1210" y="412" font-size="10" fill="#4338CA" font-style="italic">taxonomy navigation</text>
+  <text x="1210" y="432" font-size="11" fill="#475569">Categories: lexicon, grammar, texts,</text>
+  <text x="1210" y="446" font-size="11" fill="#475569">media, notebook, lists, system</text>
+  <text x="1210" y="468" font-size="10" fill="#64748B">Useful when the AI doesn't yet know which</text>
+  <text x="1210" y="482" font-size="10" fill="#64748B">entity it should be looking at</text>
+  <text x="1210" y="515" font-size="10" font-style="italic" fill="#16A34A">low-cost orientation; shouldn't dominate discovery</text>
+
+  <!-- ============ STAGE 4 BANNER ============ -->
+  <rect x="40" y="555" width="1520" height="50" rx="10" fill="#4F46E5"/>
+  <circle cx="78" cy="580" r="16" fill="white"/>
+  <text x="78" y="586" text-anchor="middle" font-size="16" font-weight="700" fill="#4F46E5">4</text>
+  <text x="110" y="586" font-size="18" font-weight="700" fill="white">Code Authoring — LLM-side, off-server, must respect the runtime primer</text>
+
+  <!-- Two columns: invariants (left) + anti-patterns (right) -->
+
+  <!-- Invariants -->
+  <rect x="40" y="625" width="755" height="320" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="60" y="650" font-size="14" font-weight="700" fill="#312E81">DO — invariants from the runtime primer</text>
+
+  <text x="60" y="678" font-size="12" font-weight="700" fill="#1E40AF">Output</text>
+  <text x="60" y="694" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">report.Info(msg)   report.Warning(msg)   report.Error(msg)</text>
+  <text x="60" y="708" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">report.Blank()</text>
+
+  <text x="60" y="734" font-size="12" font-weight="700" fill="#1E40AF">Clickable refs (FlexTools UI integration)</text>
+  <text x="60" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">report.Info(f"Updated {hw}", project.BuildGotoURL(sense))</text>
+  <text x="60" y="764" font-size="10" fill="#64748B" font-style="italic">2nd arg must be a concrete LCM object — not an HVO or string</text>
+
+  <text x="60" y="790" font-size="12" font-weight="700" fill="#1E40AF">Write protection — guard ALL mutations</text>
+  <text x="60" y="806" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">if modifyAllowed:</text>
+  <text x="60" y="820" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">    sense.Gloss.set_String(ws, "new gloss")</text>
+  <text x="60" y="834" font-size="10" fill="#DC2626" font-style="italic">Refused at gate 4 if missing — even in dry-run mode</text>
+
+  <text x="60" y="860" font-size="12" font-weight="700" fill="#1E40AF">Multistring '***' placeholder</text>
+  <text x="60" y="876" font-size="11" fill="#475569">Wrapper getters normalize '***' → ''. Use:</text>
+  <text x="60" y="892" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">if not LexSenseOperations(p).GetGloss(s):  ...</text>
+  <text x="60" y="908" font-size="10" fill="#64748B" font-style="italic">Direct C# access (sense.Gloss.BestAnalysisAlternative.Text) still returns '***'</text>
+
+  <text x="60" y="934" font-size="11" font-weight="700" fill="#16A34A">Pre-injected helpers — no import needed: is_empty_multistring, find_writing_system, list_writing_systems</text>
+
+  <!-- Anti-patterns -->
+  <rect x="805" y="625" width="755" height="320" rx="10" fill="white" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="825" y="650" font-size="14" font-weight="700" fill="#7F1D1D">DON'T — anti-patterns the gauntlet will reject</text>
+
+  <text x="825" y="678" font-size="12" font-weight="700" fill="#9F1239">✗ Use a method you didn't discover</text>
+  <text x="825" y="694" font-size="11" fill="#475569">Gate 6 refuses run_module if discovered_apis is empty.</text>
+  <text x="825" y="710" font-size="11" fill="#475569">Gate 10 catches typos like project.LexEntries (vs. .LexEntry).</text>
+
+  <text x="825" y="738" font-size="12" font-weight="700" fill="#9F1239">✗ Mutate without a guard</text>
+  <text x="825" y="754" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">sense.Gloss.set_String(ws, val)   <tspan fill="#9F1239">← refused (gate 4)</tspan></text>
+  <text x="825" y="772" font-size="11" fill="#475569">Even one unguarded mutation blocks the whole script.</text>
+
+  <text x="825" y="798" font-size="12" font-weight="700" fill="#9F1239">✗ Mix import flavors</text>
+  <text x="825" y="814" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">from flexlibs import FLExProject   <tspan fill="#9F1239"># in flexlibs2 mode</tspan></text>
+  <text x="825" y="830" font-size="11" fill="#475569">Gate 9 (wrong-library imports) catches this — the silent-fail risk.</text>
+
+  <text x="825" y="858" font-size="12" font-weight="700" fill="#9F1239">✗ Access polymorphic property without cast</text>
+  <text x="825" y="874" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">sense.Owner.HeadWord   <tspan fill="#9F1239"># ICmObject ≠ ILexEntry</tspan></text>
+  <text x="825" y="890" font-size="11" fill="#475569">Gate 5 detects + sends you to resolve_property.</text>
+
+  <text x="825" y="918" font-size="12" font-weight="700" fill="#9F1239">✗ Define a partial module</text>
+  <text x="825" y="934" font-size="11" fill="#475569">def Main(...) without docs dict + FlexToolsModule binding → gate 3 blocks.</text>
+
+  <!-- Discovered-APIs gate visualization -->
+  <rect x="40" y="965" width="1520" height="80" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <text x="800" y="990" text-anchor="middle" font-size="13" font-weight="700" fill="#78350F">→ Every Stage 3 tool call adds entries to session_state.discovered_apis ←</text>
+  <text x="800" y="1010" text-anchor="middle" font-size="11" fill="#92400E">Gate 6 in the pre-flight gauntlet refuses run_module if that set is empty.</text>
+  <text x="800" y="1028" text-anchor="middle" font-size="11" fill="#92400E" font-style="italic">This is the structural reason the AI cannot ship code without first citing real signatures from the index.</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-detail-2-foundation.svg for what these tools read from. Next page: Stages 5 &amp; 6 — Run Module &amp; Inspect/Undo.</text>
+</svg>

@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">Cross-Cutting Safeguards</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 6 of 6 · safeguards that span the workflow rather than living inside a single stage</text>
+
+  <!-- Top tagline -->
+  <rect x="40" y="90" width="1520" height="60" rx="10" fill="#14532D"/>
+  <text x="800" y="118" text-anchor="middle" font-size="14" font-weight="700" fill="white">Defense in depth — every gate has a fallback, every state change is recorded, every flavor mismatch is surfaced.</text>
+  <text x="800" y="138" text-anchor="middle" font-size="11" fill="#A7F3D0" font-style="italic">No single check is load-bearing; failure of any one is recoverable.</text>
+
+  <!-- Theme columns: 3 columns, each with theme header + 4 safeguards -->
+
+  <!-- ============ COLUMN 1: SAFETY DEFAULTS ============ -->
+  <rect x="40" y="170" width="495" height="870" rx="10" fill="white" stroke="#16A34A" stroke-width="2"/>
+  <text x="287" y="200" text-anchor="middle" font-size="15" font-weight="700" fill="#14532D">SAFETY DEFAULTS</text>
+  <line x1="80" y1="212" x2="495" y2="212" stroke="#86EFAC" stroke-width="1"/>
+
+  <!-- 1.1 -->
+  <rect x="60" y="225" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="80" y="250" font-size="13" font-weight="700" fill="#14532D">Read-only by default</text>
+  <text x="80" y="270" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> flextools_start, flextools_run_module</text>
+  <text x="80" y="288" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> write_enabled defaults to False everywhere</text>
+  <text x="80" y="304" font-size="11" fill="#166534">unless explicitly opted in by the user</text>
+  <text x="80" y="326" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> dry-run is the cheap path; mutations should be</text>
+  <text x="80" y="342" font-size="11" fill="#166534">a deliberate, named choice</text>
+  <text x="80" y="364" font-size="11" fill="#166534"><tspan font-weight="700">Cascade:</tspan> modifyAllowed=False inside Main, gate 11</text>
+  <text x="80" y="380" font-size="11" fill="#166534">(write lock) doesn't fire, undo stack stays empty</text>
+  <text x="80" y="402" font-size="10.5" font-style="italic" fill="#475569">A user must say "yes, write" twice — start() and run_module()</text>
+
+  <!-- 1.2 -->
+  <rect x="60" y="425" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="80" y="450" font-size="13" font-weight="700" fill="#14532D">Dry-run before write (5a → 5b)</text>
+  <text x="80" y="470" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> Stage 5 dual-pass pattern</text>
+  <text x="80" y="488" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> always run with write_enabled=False first,</text>
+  <text x="80" y="504" font-size="11" fill="#166534">verify report output, then promote to write</text>
+  <text x="80" y="526" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> read path exercises every code path that</text>
+  <text x="80" y="542" font-size="11" fill="#166534">isn't behind <tspan font-family="ui-monospace,Consolas,monospace">if modifyAllowed:</tspan> — typos, casts,</text>
+  <text x="80" y="558" font-size="11" fill="#166534">imports, output shape are all covered before risk</text>
+  <text x="80" y="582" font-size="11" fill="#166534"><tspan font-weight="700">Convention:</tspan> the AI must show 5a output to the user</text>
+  <text x="80" y="598" font-size="11" fill="#166534">before requesting write_enabled=True</text>
+
+  <!-- 1.3 -->
+  <rect x="60" y="625" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="80" y="650" font-size="13" font-weight="700" fill="#14532D">Mandatory API discovery</text>
+  <text x="80" y="670" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> gate 6 + Stage 3 tools</text>
+  <text x="80" y="688" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> run_module refuses with api_discovery_required</text>
+  <text x="80" y="704" font-size="11" fill="#166534">when session.discovered_apis is empty</text>
+  <text x="80" y="726" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> the AI cannot ship code from memory; every</text>
+  <text x="80" y="742" font-size="11" fill="#166534">method name must come from a Stage 3 lookup</text>
+  <text x="80" y="764" font-size="11" fill="#166534"><tspan font-weight="700">Cascade:</tspan> hallucination risk reduced because the foundation</text>
+  <text x="80" y="780" font-size="11" fill="#166534">is the source-of-truth for every cited signature</text>
+  <text x="80" y="800" font-size="10.5" font-style="italic" fill="#475569">Override: skip_api_check=true (intentional escape hatch)</text>
+
+  <!-- 1.4 -->
+  <rect x="60" y="825" width="455" height="200" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="80" y="850" font-size="13" font-weight="700" fill="#14532D">Auto-injected modifyAllowed guard</text>
+  <text x="80" y="870" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> flextools_start_module wizard</text>
+  <text x="80" y="888" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> when modifies_db=True, the scaffolded Main()</text>
+  <text x="80" y="904" font-size="11" fill="#166534">starts with <tspan font-family="ui-monospace,Consolas,monospace">if not modifyAllowed: return</tspan></text>
+  <text x="80" y="926" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> users (and AIs) often forget the guard;</text>
+  <text x="80" y="942" font-size="11" fill="#166534">baking it into the template removes the trap</text>
+  <text x="80" y="964" font-size="11" fill="#166534"><tspan font-weight="700">Cascade:</tspan> gate 4 (unprotected mutation) becomes a</text>
+  <text x="80" y="980" font-size="11" fill="#166534">backstop, not a primary line of defense</text>
+  <text x="80" y="1002" font-size="10.5" font-style="italic" fill="#475569">DRY_RUN flag also injected when include_dry_run=True</text>
+
+  <!-- ============ COLUMN 2: ISOLATION & RUNTIME ============ -->
+  <rect x="552.5" y="170" width="495" height="870" rx="10" fill="white" stroke="#16A34A" stroke-width="2"/>
+  <text x="800" y="200" text-anchor="middle" font-size="15" font-weight="700" fill="#14532D">ISOLATION &amp; RUNTIME</text>
+  <line x1="592.5" y1="212" x2="1007.5" y2="212" stroke="#86EFAC" stroke-width="1"/>
+
+  <!-- 2.1 -->
+  <rect x="572.5" y="225" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="592.5" y="250" font-size="13" font-weight="700" fill="#14532D">Per-project async write lock</text>
+  <text x="592.5" y="270" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> gate 11, get_project_write_lock(name)</text>
+  <text x="592.5" y="288" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> asyncio.Lock keyed by project name</text>
+  <text x="592.5" y="304" font-size="11" fill="#166534">acquired only when write_enabled=True AND mutating</text>
+  <text x="592.5" y="326" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> two concurrent CUD ops on the same project</text>
+  <text x="592.5" y="342" font-size="11" fill="#166534">can corrupt the database — locks serialize them</text>
+  <text x="592.5" y="364" font-size="11" fill="#166534"><tspan font-weight="700">Granularity:</tspan> by project name, not global —</text>
+  <text x="592.5" y="380" font-size="11" fill="#166534">read-only ops and ops on other projects don't queue</text>
+  <text x="592.5" y="402" font-size="10.5" font-style="italic" fill="#475569">Read-only ops never lock (parallelizable by design)</text>
+
+  <!-- 2.2 -->
+  <rect x="572.5" y="425" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="592.5" y="450" font-size="13" font-weight="700" fill="#14532D">Subprocess isolation + UTF-8 reconfig</text>
+  <text x="592.5" y="470" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> run_script_async, runner template</text>
+  <text x="592.5" y="488" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> module code runs in a child process,</text>
+  <text x="592.5" y="504" font-size="11" fill="#166534">stdout/stderr reconfigured to UTF-8 errors=replace</text>
+  <text x="592.5" y="526" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> module exception cannot crash the MCP server;</text>
+  <text x="592.5" y="542" font-size="11" fill="#166534">tones, IPA, Yi script never break the result marker</text>
+  <text x="592.5" y="564" font-size="11" fill="#166534"><tspan font-weight="700">Recovery:</tspan> on subprocess crash the runner returns</text>
+  <text x="592.5" y="580" font-size="11" fill="#166534">a structured error rather than raising on the server</text>
+  <text x="592.5" y="602" font-size="10.5" font-style="italic" fill="#475569">Default timeout 300s; temp .py cleaned up on exit</text>
+
+  <!-- 2.3 -->
+  <rect x="572.5" y="625" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="592.5" y="650" font-size="13" font-weight="700" fill="#14532D">Bounded reporter buffer (10k msgs)</text>
+  <text x="592.5" y="670" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> SimpleReporter inside the runner</text>
+  <text x="592.5" y="688" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> max_messages=10000, oldest dropped on overflow</text>
+  <text x="592.5" y="710" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> verbose loops (every entry, every sense) can</text>
+  <text x="592.5" y="726" font-size="11" fill="#166534">produce 100k+ messages — naive collection OOMs</text>
+  <text x="592.5" y="748" font-size="11" fill="#166534"><tspan font-weight="700">Surface:</tspan> dropped_message_count returned in summary;</text>
+  <text x="592.5" y="764" font-size="11" fill="#166534">"Output exceeded buffer" note added if &gt;0</text>
+  <text x="592.5" y="786" font-size="10.5" font-style="italic" fill="#475569">Most-recent retained — the tail of execution is what matters</text>
+
+  <!-- 2.4 -->
+  <rect x="572.5" y="825" width="455" height="200" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="592.5" y="850" font-size="13" font-weight="700" fill="#14532D">Three-tier casting helper injection</text>
+  <text x="592.5" y="870" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> _get_casting_helpers_code() before exec</text>
+  <text x="592.5" y="888" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> three injection levels:</text>
+  <text x="612.5" y="906" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#166534">none</text>
+  <text x="680" y="906" font-size="11" fill="#166534">→ no casting issues, skip helpers</text>
+  <text x="612.5" y="922" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#166534">minimal</text>
+  <text x="680" y="922" font-size="11" fill="#166534">→ inject only the names code touches</text>
+  <text x="612.5" y="938" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#166534">full</text>
+  <text x="680" y="938" font-size="11" fill="#166534">→ inject the whole suite (defensive default)</text>
+  <text x="592.5" y="962" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> lighter context cost when not needed,</text>
+  <text x="592.5" y="978" font-size="11" fill="#166534">full safety when ambiguity exists</text>
+  <text x="592.5" y="1000" font-size="10.5" font-style="italic" fill="#475569">Tier chosen by gate 5 pre-flight result</text>
+
+  <!-- ============ COLUMN 3: LEARNING & VISIBILITY ============ -->
+  <rect x="1065" y="170" width="495" height="870" rx="10" fill="white" stroke="#16A34A" stroke-width="2"/>
+  <text x="1312.5" y="200" text-anchor="middle" font-size="15" font-weight="700" fill="#14532D">LEARNING &amp; VISIBILITY</text>
+  <line x1="1105" y1="212" x2="1520" y2="212" stroke="#86EFAC" stroke-width="1"/>
+
+  <!-- 3.1 -->
+  <rect x="1085" y="225" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="1105" y="250" font-size="13" font-weight="700" fill="#14532D">Pattern learning loop</text>
+  <text x="1105" y="270" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> pattern_tracker · ~/.flextoolsmcp/logs/patterns.json</text>
+  <text x="1105" y="288" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> every run records (code, success, error, type);</text>
+  <text x="1105" y="304" font-size="11" fill="#166534">tracker classifies into preferred / to-avoid / errors</text>
+  <text x="1105" y="326" font-size="11" fill="#166534"><tspan font-weight="700">Loop:</tspan> Stage 5 records → Stage 6 reads →</text>
+  <text x="1105" y="342" font-size="11" fill="#166534">recommendations surfaced → Stage 3 considers them</text>
+  <text x="1105" y="364" font-size="11" fill="#166534"><tspan font-weight="700">Persistence:</tspan> survives sessions; corpus grows</text>
+  <text x="1105" y="380" font-size="11" fill="#166534">over time, recommendations get sharper</text>
+  <text x="1105" y="402" font-size="10.5" font-style="italic" fill="#475569">Self-tuning — no manual curation required</text>
+
+  <!-- 3.2 -->
+  <rect x="1085" y="425" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="1105" y="450" font-size="13" font-weight="700" fill="#14532D">Undo stack (ActionHandler.Undo)</text>
+  <text x="1105" y="470" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> session.undo_stack, undo_last_operation</text>
+  <text x="1105" y="488" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> every CUD op recorded as OperationRecord</text>
+  <text x="1105" y="504" font-size="11" fill="#166534">with timestamp, code, output, project</text>
+  <text x="1105" y="526" font-size="11" fill="#166534"><tspan font-weight="700">Review-first design:</tspan> tool returns the operation</text>
+  <text x="1105" y="542" font-size="11" fill="#166534">to undo but does NOT auto-call ActionHandler.Undo()</text>
+  <text x="1105" y="564" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> undo must be intentional — user reviews,</text>
+  <text x="1105" y="580" font-size="11" fill="#166534">then runs ActionHandler.Undo() via run_module</text>
+  <text x="1105" y="602" font-size="10.5" font-style="italic" fill="#475569">Three stacks: history (full), undo, redo</text>
+
+  <!-- 3.3 -->
+  <rect x="1085" y="625" width="455" height="190" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="1105" y="650" font-size="13" font-weight="700" fill="#14532D">Cross-flavor coverage gaps surfaced</text>
+  <text x="1105" y="670" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> bridge files, find_wrappers_for_lcm</text>
+  <text x="1105" y="688" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> response includes explicit gaps[] list naming</text>
+  <text x="1105" y="704" font-size="11" fill="#166534">libraries with no coverage for the requested symbol</text>
+  <text x="1105" y="726" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> silent absence is the worst-case — the AI</text>
+  <text x="1105" y="742" font-size="11" fill="#166534">tries to use a wrapper method that doesn't exist</text>
+  <text x="1105" y="764" font-size="11" fill="#166534"><tspan font-weight="700">Action:</tspan> when gaps[] is non-empty, advisory says</text>
+  <text x="1105" y="780" font-size="11" fill="#166534">"drop to api_mode='liblcm' for this operation"</text>
+  <text x="1105" y="800" font-size="10.5" font-style="italic" fill="#475569">Negative knowledge surfaced as positive guidance</text>
+
+  <!-- 3.4 -->
+  <rect x="1085" y="825" width="455" height="200" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1"/>
+  <text x="1105" y="850" font-size="13" font-weight="700" fill="#14532D">Runtime primer pushed at start</text>
+  <text x="1105" y="870" font-size="11" fill="#166534"><tspan font-weight="700">Where:</tspan> flextools_start response · RUNTIME_PRIMER</text>
+  <text x="1105" y="888" font-size="11" fill="#166534"><tspan font-weight="700">What:</tspan> 5-section payload pushed proactively</text>
+  <text x="1105" y="904" font-size="11" fill="#166534">(output, refs, write protection, '***', helpers)</text>
+  <text x="1105" y="926" font-size="11" fill="#166534"><tspan font-weight="700">Why:</tspan> the AI sees runtime invariants BEFORE</text>
+  <text x="1105" y="942" font-size="11" fill="#166534">writing any code — primes the conventions</text>
+  <text x="1105" y="964" font-size="11" fill="#166534"><tspan font-weight="700">Saves:</tspan> the Dennis-style debugging arc where the AI</text>
+  <text x="1105" y="980" font-size="11" fill="#166534">reinvents reporters, write guards, '***' handling</text>
+  <text x="1105" y="1002" font-size="10.5" font-style="italic" fill="#475569">Proactive teaching beats reactive correction</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ End of detail series. See workflow-map-with-foundation.svg for the integrated overview.</text>
+</svg>

@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Title row -->
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">Stages 1 &amp; 2 — Session Start &amp; Module Scaffold</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 1 of 6 · runtime contract is established here, before any code is written</text>
+
+  <!-- ============ STAGE 1 PANEL ============ -->
+  <rect x="40" y="100" width="740" height="950" rx="12" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+
+  <!-- Stage 1 header -->
+  <circle cx="78" cy="138" r="18" fill="#2563EB"/>
+  <text x="78" y="145" text-anchor="middle" font-size="18" font-weight="700" fill="white">1</text>
+  <text x="110" y="135" font-size="20" font-weight="700" fill="#1E3A8A">Session Start</text>
+  <text x="110" y="155" font-size="13" fill="#1E40AF" font-family="ui-monospace,SFMono-Regular,Consolas,monospace">flextools_start</text>
+
+  <!-- Inputs section -->
+  <rect x="60" y="180" width="700" height="160" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
+  <text x="75" y="202" font-size="13" font-weight="700" fill="#1E40AF">INPUTS</text>
+  <text x="75" y="226" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">api_mode</text>
+  <text x="200" y="226" font-size="11" fill="#475569">"flexlibs2" ★ recommended | "flexlibs_stable" | "liblcm"</text>
+  <text x="75" y="250" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">project_name</text>
+  <text x="200" y="250" font-size="11" fill="#475569">FieldWorks project name (optional, can be set later)</text>
+  <text x="75" y="274" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">write_enabled</text>
+  <text x="200" y="274" font-size="11" font-weight="600" fill="#DC2626">bool, default FALSE — dry-run by default</text>
+  <text x="75" y="298" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">task</text>
+  <text x="200" y="298" font-size="11" fill="#475569">optional natural-language task hint for early discovery</text>
+  <text x="75" y="324" font-size="10" font-style="italic" fill="#3730A3">All settings can be updated later; project_name and write_enabled also accepted on run_module.</text>
+
+  <!-- Internal actions section -->
+  <rect x="60" y="355" width="700" height="170" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
+  <text x="75" y="377" font-size="13" font-weight="700" fill="#1E40AF">INTERNAL ACTIONS (in order)</text>
+  <text x="75" y="402" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">1.</tspan> session_id = strftime("%Y%m%d-%H%M%S")</text>
+  <text x="75" y="421" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">2.</tspan> session_state.clear_discovered_apis()  <tspan fill="#64748B" font-size="10">— forces re-discovery</tspan></text>
+  <text x="75" y="440" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">3.</tspan> api_versions ← detected from APIIndex (liblcm, flexlibs2, flexlibs_stable)</text>
+  <text x="75" y="459" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">4.</tspan> session_state.configure(api_mode, output_type="auto", project, write, versions)</text>
+  <text x="75" y="478" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">5.</tspan> rotate_logging_to_session(session_id)  <tspan fill="#64748B" font-size="10">— per-session log file</tspan></text>
+  <text x="75" y="503" font-size="10" font-style="italic" fill="#3730A3">No subprocess. No DB connection. Cheap, idempotent, restart-friendly.</text>
+
+  <!-- Runtime primer section -->
+  <rect x="60" y="540" width="700" height="350" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
+  <text x="75" y="562" font-size="13" font-weight="700" fill="#1E40AF">RESPONSE — the runtime primer (5 sections)</text>
+  <text x="75" y="582" font-size="10" font-style="italic" fill="#475569">Pushed proactively so the AI sees runtime invariants BEFORE writing code.</text>
+
+  <text x="75" y="608" font-size="12" font-weight="700" fill="#7C2D12">• output</text>
+  <text x="200" y="608" font-size="11" fill="#475569">report.Info / report.Warning / report.Error / report.Blank</text>
+  <text x="200" y="622" font-size="10" fill="#64748B" font-style="italic">print() works but bypasses message counts and ref links</text>
+
+  <text x="75" y="648" font-size="12" font-weight="700" fill="#7C2D12">• clickable_refs</text>
+  <text x="200" y="648" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">project.BuildGotoURL(obj) → str</text>
+  <text x="200" y="662" font-size="10" fill="#64748B" font-style="italic">passed as 2nd arg to report.* makes the message clickable in FlexTools UI</text>
+
+  <text x="75" y="688" font-size="12" font-weight="700" fill="#7C2D12">• write_protection</text>
+  <text x="220" y="688" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">if modifyAllowed:  &lt;mutation&gt;</text>
+  <text x="220" y="702" font-size="10" fill="#64748B" font-style="italic">required for any DB mutation; refused at validation if missing (gate 4)</text>
+
+  <text x="75" y="728" font-size="12" font-weight="700" fill="#7C2D12">• multistring_placeholder</text>
+  <text x="245" y="728" font-size="11" fill="#475569">FLEx stores '***' for unset multilingual fields</text>
+  <text x="245" y="742" font-size="10" fill="#64748B" font-style="italic">flexlibs2 wrapper getters normalize to ''; raw C# access still returns '***'</text>
+
+  <text x="75" y="768" font-size="12" font-weight="700" fill="#7C2D12">• namespace_helpers</text>
+  <text x="220" y="768" font-size="11" fill="#475569">pre-injected, no import needed:</text>
+  <text x="95" y="784" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">is_empty_multistring(text), FLEX_EMPTY_PLACEHOLDER,</text>
+  <text x="95" y="800" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">find_writing_system(project, query), list_writing_systems(project)</text>
+  <text x="95" y="814" font-size="10" font-style="italic" fill="#9F1239">⚠ MCP-runner only — these helpers are NOT present when the module runs in FlexTools</text>
+
+  <text x="75" y="844" font-size="11" fill="#1E40AF">+ next_steps (5-step user guide), mode_info, session summary, warnings</text>
+  <text x="75" y="864" font-size="10" font-style="italic" fill="#475569">warnings include "WRITE MODE ENABLED" if write_enabled=True or "no project_name set"</text>
+
+  <!-- Safeguards section -->
+  <rect x="60" y="905" width="700" height="135" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.2"/>
+  <text x="75" y="927" font-size="13" font-weight="700" fill="#14532D">SAFEGUARDS</text>
+  <text x="75" y="950" font-size="11" fill="#14532D">✓ Read-only by default (write_enabled=False unless explicitly opted in)</text>
+  <text x="75" y="970" font-size="11" fill="#14532D">✓ Session ID generated for log isolation (per-session file)</text>
+  <text x="75" y="990" font-size="11" fill="#14532D">✓ Discovered-APIs set cleared — every session re-discovers (no stale state)</text>
+  <text x="75" y="1010" font-size="11" fill="#14532D">✓ Runtime primer pushed proactively, before authoring</text>
+  <text x="75" y="1030" font-size="11" fill="#14532D">✓ Warning emitted if write_enabled=True or project_name empty</text>
+
+  <!-- ============ STAGE 2 PANEL ============ -->
+  <rect x="820" y="100" width="740" height="950" rx="12" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+
+  <circle cx="858" cy="138" r="18" fill="#2563EB"/>
+  <text x="858" y="145" text-anchor="middle" font-size="18" font-weight="700" fill="white">2</text>
+  <text x="890" y="135" font-size="20" font-weight="700" fill="#1E3A8A">Module Scaffold</text>
+  <text x="890" y="155" font-size="13" fill="#1E40AF" font-family="ui-monospace,Consolas,monospace">flextools_start_module · flextools_get_module_template</text>
+
+  <!-- Wizard questions -->
+  <rect x="840" y="180" width="700" height="200" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
+  <text x="855" y="202" font-size="13" font-weight="700" fill="#1E40AF">flextools_start_module — interactive wizard</text>
+
+  <text x="855" y="226" font-size="11.5" font-weight="700" fill="#7F1D1D">REQUIRED</text>
+  <text x="855" y="245" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">module_name</text>
+  <text x="985" y="245" font-size="11" fill="#475569">"Export Custom Data"</text>
+  <text x="855" y="262" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">synopsis</text>
+  <text x="985" y="262" font-size="11" fill="#475569">1–2 sentence description</text>
+  <text x="855" y="279" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">api_target</text>
+  <text x="985" y="279" font-size="11" fill="#475569">flexlibs2 ★ | flexlibs_stable | liblcm</text>
+  <text x="855" y="296" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">modifies_db</text>
+  <text x="985" y="296" font-size="11" fill="#475569">bool — gates the write-guard auto-injection</text>
+  <text x="855" y="313" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">domain</text>
+  <text x="985" y="313" font-size="11" fill="#475569">lexicon | grammar | texts | media | general</text>
+
+  <text x="855" y="338" font-size="11.5" font-weight="700" fill="#D97706">CONDITIONAL <tspan font-weight="400" font-style="italic" fill="#475569">(asked when modifies_db=True)</tspan></text>
+  <text x="855" y="357" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">include_dry_run</text>
+  <text x="985" y="357" font-size="11" fill="#475569">bool — RECOMMENDED true (bakes DRY_RUN flag)</text>
+
+  <text x="855" y="374" font-size="11.5" font-weight="700" fill="#16A34A">OPTIONAL — <tspan font-weight="400" font-style="italic" fill="#475569">test_project encourages backup-first testing</tspan></text>
+
+  <!-- Template fetch -->
+  <rect x="840" y="395" width="700" height="100" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
+  <text x="855" y="417" font-size="13" font-weight="700" fill="#1E40AF">flextools_get_module_template — direct template fetch</text>
+  <text x="855" y="438" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">flavor:</text>
+  <text x="930" y="438" font-size="11" fill="#475569">flexlibs2 | flexlibs_stable | liblcm  (aliases: stable, advanced)</text>
+  <text x="855" y="458" font-size="11" fill="#475569">Returns template + flavor guidance + style-guide refs + 5-step next_steps</text>
+  <text x="855" y="478" font-size="10" font-style="italic" fill="#3730A3">Module-init cache · 50–100 ms saved per repeat request</text>
+
+  <!-- Generated template -->
+  <rect x="840" y="510" width="700" height="380" rx="8" fill="#0F172A" stroke="#1E40AF" stroke-width="1.2"/>
+  <text x="855" y="532" font-size="13" font-weight="700" fill="#93C5FD">GENERATED TEMPLATE STRUCTURE</text>
+  <g font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#E2E8F0">
+    <text x="855" y="554"><tspan fill="#94A3B8"># Module header (name, synopsis, api_target)</tspan></text>
+    <text x="855" y="572">from flextoolslib import *</text>
+    <text x="855" y="595"><tspan fill="#FBBF24">DRY_RUN = True</tspan>   <tspan fill="#94A3B8" font-size="10"># injected if include_dry_run</tspan></text>
+    <text x="855" y="618">docs = {FTM_Name, FTM_Version, FTM_ModifiesDB,</text>
+    <text x="855" y="634">        FTM_Synopsis, FTM_Description}</text>
+    <text x="855" y="657">def Main(project, report, modifyAllowed):</text>
+    <text x="875" y="673"><tspan fill="#FCA5A5">if not modifyAllowed:</tspan>     <tspan fill="#94A3B8" font-size="10"># auto-injected on writes</tspan></text>
+    <text x="895" y="689">report.Error("write access required")</text>
+    <text x="895" y="705">return</text>
+    <text x="875" y="725"><tspan fill="#FBBF24">if DRY_RUN:</tspan>            <tspan fill="#94A3B8" font-size="10"># if include_dry_run</tspan></text>
+    <text x="895" y="741">report.Warning("DRY RUN mode — no changes")</text>
+    <text x="875" y="761">report.Info("Starting...")</text>
+    <text x="875" y="777"><tspan fill="#94A3B8"># TODO: implementation</tspan></text>
+    <text x="875" y="793">report.Info("Done.")</text>
+    <text x="855" y="816">FlexToolsModule = FlexToolsModuleClass(Main, docs)</text>
+    <text x="855" y="839">if __name__ == '__main__':</text>
+    <text x="875" y="855">print(FlexToolsModule.Help())</text>
+  </g>
+  <text x="855" y="878" font-size="10" font-style="italic" fill="#94A3B8">Three required pieces: docs dict, Main(), FlexToolsModule binding. Gate 3 catches partials.</text>
+
+  <!-- Safeguards section -->
+  <rect x="840" y="905" width="700" height="135" rx="8" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.2"/>
+  <text x="855" y="927" font-size="13" font-weight="700" fill="#14532D">SAFEGUARDS</text>
+  <text x="855" y="950" font-size="11" fill="#14532D">✓ if modifyAllowed: guard auto-injected when modifies_db=True</text>
+  <text x="855" y="970" font-size="11" fill="#14532D">✓ DRY_RUN flag baked in (recommended for any write module)</text>
+  <text x="855" y="990" font-size="11" fill="#14532D">✓ FLEXTOOLS-STYLE-GUIDE.md references in response (key sections cited)</text>
+  <text x="855" y="1010" font-size="11" fill="#14532D">✓ test_project field encourages running on backup project first</text>
+  <text x="855" y="1030" font-size="11" fill="#14532D">✓ Three flavors with explicit aliases (no silent flavor mismatch)</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-map-with-foundation.svg for the full pipeline. Next page: Stage 3 &amp; 4 — API Discovery &amp; Code Authoring.</text>
+</svg>

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <defs>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D97706"/>
+    </marker>
+  </defs>
+
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">Stages 5 &amp; 6 — Run Module &amp; Inspect / Undo</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 4 of 6 · the only stage that touches the database — and the only stage that records, learns, and rolls back</text>
+
+  <!-- ============ STAGE 5 BANNER ============ -->
+  <rect x="40" y="90" width="1520" height="50" rx="10" fill="#DC2626"/>
+  <circle cx="78" cy="115" r="16" fill="white"/>
+  <text x="78" y="121" text-anchor="middle" font-size="16" font-weight="700" fill="#DC2626">5</text>
+  <text x="110" y="121" font-size="18" font-weight="700" fill="white">Run Module — flextools_run_module · 5a dry-run REQUIRED · 5b write-mode promotion</text>
+
+  <!-- 5a / 5b dual-pass diagram -->
+  <rect x="40" y="160" width="755" height="320" rx="10" fill="white" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="60" y="186" font-size="14" font-weight="700" fill="#7F1D1D">Dual-pass execution</text>
+
+  <!-- 5a sub-card -->
+  <rect x="60" y="205" width="715" height="115" rx="8" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.2"/>
+  <text x="80" y="227" font-size="13" font-weight="700" fill="#7F1D1D">5a · Dry-run pass</text>
+  <text x="755" y="227" text-anchor="end" font-size="11" font-weight="700" fill="#16A34A">REQUIRED FIRST</text>
+  <text x="80" y="248" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">write_enabled = False    →   modifyAllowed = False</text>
+  <text x="80" y="266" font-size="11" fill="#475569">Code runs end-to-end, but every <tspan font-family="ui-monospace,Consolas,monospace">if modifyAllowed:</tspan> branch is skipped.</text>
+  <text x="80" y="282" font-size="11" fill="#475569">Verifies: report output, message counts, clickable refs, no exceptions.</text>
+  <text x="80" y="304" font-size="11" font-weight="700" fill="#9F1239">Goal: prove the read path before risking the write path.</text>
+
+  <!-- Promote arrow -->
+  <line x1="417" y1="328" x2="417" y2="358" stroke="#DC2626" stroke-width="3" marker-end="url(#arrRed)"/>
+  <text x="427" y="350" font-size="11" font-style="italic" font-weight="700" fill="#7F1D1D">promote — only when 5a is clean</text>
+
+  <!-- 5b sub-card -->
+  <rect x="60" y="365" width="715" height="100" rx="8" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.2"/>
+  <text x="80" y="387" font-size="13" font-weight="700" fill="#7F1D1D">5b · Write-mode pass</text>
+  <text x="80" y="408" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">write_enabled = True    →   modifyAllowed = True</text>
+  <text x="80" y="426" font-size="11" fill="#475569">Per-project asyncio.Lock acquired. Mutations actually run. Undo entry recorded.</text>
+  <text x="80" y="446" font-size="11" font-style="italic" fill="#9F1239">Both passes traverse the 12-gate gauntlet — gate 11 (write lock) only fires on 5b.</text>
+
+  <!-- Subprocess execution flow -->
+  <rect x="805" y="160" width="755" height="320" rx="10" fill="white" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="825" y="186" font-size="14" font-weight="700" fill="#7F1D1D">Subprocess execution flow</text>
+
+  <g font-size="11" fill="#1E3A8A">
+    <text x="825" y="212"><tspan font-weight="700" fill="#DC2626">1.</tspan> 12-gate pre-flight (see page 5)</text>
+    <text x="825" y="232"><tspan font-weight="700" fill="#DC2626">2.</tspan> Build runner script with embedded MODULE_CODE</text>
+    <text x="825" y="252"><tspan font-weight="700" fill="#DC2626">3.</tspan> Reconfigure stdout/stderr to UTF-8 (errors=replace)</text>
+    <text x="825" y="272"><tspan font-weight="700" fill="#DC2626">4.</tspan> Inject fake flextoolslib (FlexToolsModuleClass, FTM_*)</text>
+    <text x="825" y="292"><tspan font-weight="700" fill="#DC2626">5.</tspan> Inject SimpleReporter + namespace helpers</text>
+    <text x="825" y="312"><tspan font-weight="700" fill="#DC2626">6.</tspan> Inject three-tier casting helpers (none/minimal/full)</text>
+    <text x="825" y="332"><tspan font-weight="700" fill="#DC2626">7.</tspan> Spawn subprocess via run_script_async (timeout=300s)</text>
+    <text x="825" y="352"><tspan font-weight="700" fill="#DC2626">8.</tspan> FLExInitialize() → OpenProject(name, write_enabled)</text>
+    <text x="825" y="372"><tspan font-weight="700" fill="#DC2626">9.</tspan> exec(MODULE_CODE) — prefer Main(p, r, write_enabled)</text>
+    <text x="825" y="392"><tspan font-weight="700" fill="#DC2626">10.</tspan> CloseProject() · FLExCleanup()</text>
+    <text x="825" y="412"><tspan font-weight="700" fill="#DC2626">11.</tspan> Print "===FLEXTOOLS_RESULT_JSON===" + result dict</text>
+    <text x="825" y="432"><tspan font-weight="700" fill="#DC2626">12.</tspan> Parent parses, attaches certification + did_you_mean hints</text>
+  </g>
+  <text x="825" y="462" font-size="10" font-style="italic" fill="#64748B">Subprocess isolation — module exception cannot crash the MCP server itself.</text>
+
+  <!-- SimpleReporter detail -->
+  <rect x="40" y="495" width="755" height="160" rx="10" fill="white" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="60" y="521" font-size="14" font-weight="700" fill="#7F1D1D">SimpleReporter (in subprocess)</text>
+  <text x="60" y="540" font-size="10" font-style="italic" fill="#64748B">mimics FLExTools FTReporter so modules behave identically inside MCP and inside FlexTools GUI</text>
+
+  <text x="60" y="565" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Methods:</tspan> Info, Warning, Error, Blank, Debug, ProgressStart/Update/Stop, FileURL</text>
+  <text x="60" y="583" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Each call:</tspan> appends to in-memory message list AND prints to console (transparent reporting)</text>
+  <text x="60" y="601" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Buffer cap:</tspan> 10000 messages — overflow drops oldest and increments dropped_message_count</text>
+  <text x="60" y="619" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Counts tracked:</tspan> info_count, warning_count, error_count, total_messages</text>
+  <text x="60" y="640" font-size="11" font-style="italic" fill="#16A34A">If buffer overflowed, summary surfaces "dropped_messages: N" so the AI can warn the user.</text>
+
+  <!-- Pattern tracker -->
+  <rect x="805" y="495" width="755" height="160" rx="10" fill="white" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="825" y="521" font-size="14" font-weight="700" fill="#7F1D1D">Pattern tracker — every run records, recommendations follow</text>
+  <text x="825" y="545" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Records:</tspan> code, success, error, error_type per operation</text>
+  <text x="825" y="563" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">Categorizes:</tspan> api_patterns (success/failure counts), error_patterns</text>
+  <text x="825" y="585" font-size="11" font-weight="700" fill="#1E40AF">Generates recommendations:</text>
+  <text x="825" y="601" font-size="11" fill="#475569">  • preferred_patterns — high success rate</text>
+  <text x="825" y="617" font-size="11" fill="#475569">  • patterns_to_avoid — high failure rate</text>
+  <text x="825" y="633" font-size="11" fill="#475569">  • common_errors_needing_fix</text>
+  <text x="825" y="650" font-size="10" font-style="italic" fill="#3730A3">Persisted to ~/.flextoolsmcp/logs/patterns.json — survives sessions.</text>
+
+  <!-- ============ STAGE 6 BANNER ============ -->
+  <rect x="40" y="675" width="1520" height="50" rx="10" fill="#D97706"/>
+  <circle cx="78" cy="700" r="16" fill="white"/>
+  <text x="78" y="706" text-anchor="middle" font-size="16" font-weight="700" fill="#D97706">6</text>
+  <text x="110" y="706" font-size="18" font-weight="700" fill="white">Inspect &amp; Undo — three tools for review, learning, and rollback</text>
+
+  <!-- get_operation_logs -->
+  <rect x="40" y="745" width="495" height="285" rx="10" fill="white" stroke="#D97706" stroke-width="1.5"/>
+  <text x="60" y="770" font-size="14" font-weight="700" fill="#78350F">flextools_get_operation_logs</text>
+  <text x="60" y="788" font-size="10" fill="#92400E" font-style="italic">logs + recommendations dashboard</text>
+  <text x="60" y="812" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Reads:</tspan> ~/.flextoolsmcp/logs/operations.log</text>
+  <text x="60" y="830" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Inputs:</tspan> log_lines, errors_only, include_patterns</text>
+  <text x="60" y="852" font-size="11" font-weight="700" fill="#7C2D12">Returns:</text>
+  <text x="60" y="870" font-size="11" fill="#475569">  • recent_logs (last N lines)</text>
+  <text x="60" y="886" font-size="11" fill="#475569">  • recommendations (preferred/avoid/errors)</text>
+  <text x="60" y="902" font-size="11" fill="#475569">  • statistics:</text>
+  <text x="60" y="918" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">    total_operations, total_successes,</text>
+  <text x="60" y="934" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">    total_failures, success_rate,</text>
+  <text x="60" y="950" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">    unique_api_patterns, unique_error_patterns</text>
+  <text x="60" y="975" font-size="10" font-style="italic" fill="#16A34A">errors_only=true to focus on failures across the session</text>
+  <text x="60" y="995" font-size="10" font-style="italic" fill="#3730A3">recommendations feed back into Stage 3 discovery</text>
+
+  <!-- get_session_history -->
+  <rect x="555" y="745" width="495" height="285" rx="10" fill="white" stroke="#D97706" stroke-width="1.5"/>
+  <text x="575" y="770" font-size="14" font-weight="700" fill="#78350F">flextools_get_session_history</text>
+  <text x="575" y="788" font-size="10" fill="#92400E" font-style="italic">audit trail + undo availability</text>
+  <text x="575" y="812" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Reads:</tspan> session_state.operations_history</text>
+  <text x="575" y="830" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Inputs:</tspan> include_operations (full code/output)</text>
+  <text x="575" y="852" font-size="11" font-weight="700" fill="#7C2D12">Returns:</text>
+  <text x="575" y="870" font-size="11" fill="#475569">  • initialized, api_mode, project, write_enabled</text>
+  <text x="575" y="886" font-size="11" fill="#475569">  • history summary (counts by tool/result)</text>
+  <text x="575" y="902" font-size="11" fill="#475569">  • undo_available, redo_available</text>
+  <text x="575" y="918" font-size="11" fill="#475569">  • next_steps (contextual)</text>
+  <text x="575" y="940" font-size="11" font-style="italic" fill="#3730A3">Each OperationRecord captures: timestamp,</text>
+  <text x="575" y="956" font-size="11" font-style="italic" fill="#3730A3">tool, args_summary, script_code, output,</text>
+  <text x="575" y="972" font-size="11" font-style="italic" fill="#3730A3">success, undoable, project, extracted_details</text>
+  <text x="575" y="1000" font-size="10" font-style="italic" fill="#16A34A">Three stacks: operations_history (full), undo_stack, redo_stack</text>
+
+  <!-- undo_last_operation -->
+  <rect x="1070" y="745" width="495" height="285" rx="10" fill="white" stroke="#D97706" stroke-width="1.5"/>
+  <text x="1090" y="770" font-size="14" font-weight="700" fill="#78350F">flextools_undo_last_operation</text>
+  <text x="1090" y="788" font-size="10" fill="#92400E" font-style="italic">queues a rollback, doesn't auto-execute</text>
+  <text x="1090" y="812" font-size="11" font-weight="700" fill="#7C2D12">Pre-conditions:</text>
+  <text x="1090" y="830" font-size="11" fill="#475569">  • can_undo() == True</text>
+  <text x="1090" y="846" font-size="11" fill="#475569">  • write_enabled was True (else: nothing to undo)</text>
+  <text x="1090" y="868" font-size="11" font-weight="700" fill="#7C2D12">Action:</text>
+  <text x="1090" y="886" font-size="11" fill="#475569">  • pop_undo() returns the OperationRecord</text>
+  <text x="1090" y="902" font-size="11" fill="#475569">  • Returns the operation summary</text>
+  <text x="1090" y="918" font-size="11" fill="#475569">  • Reports remaining_undoable, redo_available</text>
+  <text x="1090" y="940" font-size="11" font-weight="700" fill="#9F1239">Note:</text>
+  <text x="1090" y="956" font-size="11" fill="#9F1239">Tool does NOT auto-call ActionHandler.Undo().</text>
+  <text x="1090" y="972" font-size="11" fill="#9F1239">User reviews, then runs Undo() via run_module.</text>
+  <text x="1090" y="1000" font-size="10" font-style="italic" fill="#3730A3">Review-first design — undo is intentional, not automatic</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-detail-5-gauntlet.svg for the 12 gates feeding this stage. Next page: Pre-flight Gauntlet.</text>
+</svg>

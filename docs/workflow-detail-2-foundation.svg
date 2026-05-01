@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4F46E5"/>
+    </marker>
+  </defs>
+
+  <!-- Title row -->
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">API Index Foundation</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 2 of 6 · pre-computed indexes are the substrate every other stage stands on</text>
+
+  <!-- Top tagline panel -->
+  <rect x="40" y="90" width="1520" height="80" rx="10" fill="#312E81"/>
+  <text x="800" y="120" text-anchor="middle" font-size="16" font-weight="700" fill="white">Without these indexes the AI guesses. With them every signature is cited from source.</text>
+  <text x="800" y="148" text-anchor="middle" font-size="12" fill="#C7D2FE">Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per library. Loaded once at server startup.</text>
+
+  <!-- ============ TOP ROW: 3 source indexes ============ -->
+  <text x="800" y="200" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">SOURCE INDEXES — versioned per installed library</text>
+
+  <!-- liblcm -->
+  <rect x="40" y="220" width="490" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="60" y="246" font-size="14" font-weight="700" fill="#312E81">liblcm_api.json</text>
+  <text x="60" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: LibLCM C# assemblies (FieldWorks data layer)</text>
+  <text x="60" y="288" font-size="11" font-weight="700" fill="#1E40AF">Extraction: .NET reflection</text>
+  <text x="60" y="305" font-size="11" fill="#475569">via pythonnet · reads compiled DLLs · captures interfaces,</text>
+  <text x="60" y="319" font-size="11" fill="#475569">classes, properties, methods, generic args, attribute metadata</text>
+  <text x="60" y="343" font-size="11" font-weight="700" fill="#1E40AF">Coverage:</text>
+  <text x="160" y="343" font-size="11" fill="#475569">100% — every public symbol, every overload</text>
+  <text x="60" y="362" font-size="11" font-weight="700" fill="#1E40AF">Refresh:</text>
+  <text x="160" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">python src/refresh.py --liblcm-only</text>
+  <text x="60" y="385" font-size="10" font-style="italic" fill="#3730A3">requires pythonnet + FieldWorks DLLs at refresh time only</text>
+
+  <!-- flexlibs2 -->
+  <rect x="555" y="220" width="490" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="575" y="246" font-size="14" font-weight="700" fill="#312E81">flexlibs2_api.json  ★</text>
+  <text x="575" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: FlexLibs 2.0 Python wrapper (~90% LCM coverage)</text>
+  <text x="575" y="288" font-size="11" font-weight="700" fill="#1E40AF">Extraction: AST static analysis</text>
+  <text x="575" y="305" font-size="11" fill="#475569">parses .py files · captures Operations classes, decorators,</text>
+  <text x="575" y="319" font-size="11" fill="#475569">type hints, docstrings, inline examples</text>
+  <text x="575" y="343" font-size="11" font-weight="700" fill="#1E40AF">Coverage:</text>
+  <text x="675" y="343" font-size="11" font-weight="700" fill="#16A34A">~1400 methods · 99% docs · 82% examples</text>
+  <text x="575" y="362" font-size="11" font-weight="700" fill="#1E40AF">Refresh:</text>
+  <text x="675" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">python src/refresh.py --flexlibs2-only</text>
+  <text x="575" y="385" font-size="10" font-style="italic" fill="#3730A3">primary recommendation for new modules — best documentation</text>
+
+  <!-- flexlibs_stable -->
+  <rect x="1070" y="220" width="490" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="1090" y="246" font-size="14" font-weight="700" fill="#312E81">flexlibs_api.json</text>
+  <text x="1090" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: FlexLibs stable (legacy shallow wrapper)</text>
+  <text x="1090" y="288" font-size="11" font-weight="700" fill="#1E40AF">Extraction: AST static analysis</text>
+  <text x="1090" y="305" font-size="11" fill="#475569">same parser as flexlibs2 · smaller surface area</text>
+  <text x="1090" y="324" font-size="11" font-weight="700" fill="#1E40AF">Coverage:</text>
+  <text x="1190" y="324" font-size="11" fill="#475569">~40 functions · stable, FW-version-tolerant</text>
+  <text x="1090" y="343" font-size="11" font-weight="700" fill="#1E40AF">Use when:</text>
+  <text x="1200" y="343" font-size="11" fill="#475569">FieldWorks &lt; 9.0 or compatibility-bound scripts</text>
+  <text x="1090" y="362" font-size="11" font-weight="700" fill="#1E40AF">Refresh:</text>
+  <text x="1200" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">refresh.py --flexlibs-only</text>
+  <text x="1090" y="385" font-size="10" font-style="italic" fill="#3730A3">LibLCM fallback covers the gaps the stable wrapper doesn't reach</text>
+
+  <!-- ============ MIDDLE ROW: derived structures ============ -->
+  <text x="800" y="430" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">DERIVED STRUCTURES — built from the source indexes</text>
+
+  <!-- Semantic embeddings -->
+  <rect x="40" y="450" width="365" height="150" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="60" y="476" font-size="13" font-weight="700" fill="#312E81">Semantic embeddings</text>
+  <text x="60" y="496" font-size="11" fill="#4338CA" font-style="italic">consumer: search_by_capability</text>
+  <text x="60" y="518" font-size="11" fill="#475569">sentence-transformers vectors over method</text>
+  <text x="60" y="532" font-size="11" fill="#475569">summaries, names, parameter docs</text>
+  <text x="60" y="552" font-size="11" fill="#475569">Lazily loaded (deferred from startup)</text>
+  <text x="60" y="572" font-size="11" font-style="italic" fill="#312E81">Query: "add a gloss to a sense" →</text>
+  <text x="60" y="588" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">LexSenseOperations.SetGloss</text>
+
+  <!-- Casting index -->
+  <rect x="425" y="450" width="365" height="150" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="445" y="476" font-size="13" font-weight="700" fill="#312E81">Casting index</text>
+  <text x="445" y="496" font-size="11" fill="#4338CA" font-style="italic">consumer: gate 5 + helper-injection tier</text>
+  <text x="445" y="518" font-size="11" fill="#475569">map: (entity_type, property) → cast_target</text>
+  <text x="445" y="532" font-size="11" fill="#475569">e.g. ICmObject.HeadWord requires cast to</text>
+  <text x="445" y="546" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">ILexEntry(obj).HeadWord</text>
+  <text x="445" y="568" font-size="11" fill="#475569">Drives detect_casting_needs() pre-flight</text>
+  <text x="445" y="588" font-size="11" fill="#475569">+ helper injection (none/minimal/full)</text>
+
+  <!-- Navigation graph -->
+  <rect x="810" y="450" width="365" height="150" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="830" y="476" font-size="13" font-weight="700" fill="#312E81">Navigation graph</text>
+  <text x="830" y="496" font-size="11" fill="#4338CA" font-style="italic">consumer: get_navigation_path</text>
+  <text x="830" y="518" font-size="11" fill="#475569">directed graph of entity-to-entity paths</text>
+  <text x="830" y="538" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">ILexEntry → ILexSense → ILexExample</text>
+  <text x="830" y="552" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">  → ILexExampleSentence</text>
+  <text x="830" y="572" font-size="11" fill="#475569">Returns code skeleton with traversals,</text>
+  <text x="830" y="586" font-size="11" fill="#475569">cast operations, null-safety</text>
+
+  <!-- Examples corpus -->
+  <rect x="1195" y="450" width="365" height="150" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="1215" y="476" font-size="13" font-weight="700" fill="#312E81">Examples corpus</text>
+  <text x="1215" y="496" font-size="11" fill="#4338CA" font-style="italic">consumer: find_examples</text>
+  <text x="1215" y="518" font-size="11" fill="#475569">CRUD samples extracted from docstrings</text>
+  <text x="1215" y="532" font-size="11" fill="#475569">+ inline code blocks in flexlibs2 source</text>
+  <text x="1215" y="552" font-size="11" fill="#475569">Indexed by: method_name, operation_type</text>
+  <text x="1215" y="566" font-size="11" fill="#475569">(create/read/update/delete/iterate/search),</text>
+  <text x="1215" y="580" font-size="11" fill="#475569">object_type</text>
+
+  <!-- ============ THIRD ROW: cross-cutting artifacts ============ -->
+  <text x="800" y="630" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">CROSS-CUTTING ARTIFACTS — span libraries / versions</text>
+
+  <!-- Bridge files -->
+  <rect x="40" y="650" width="490" height="170" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="60" y="676" font-size="13" font-weight="700" fill="#312E81">Bridge files (cross-flavor coverage map)</text>
+  <text x="60" y="696" font-size="11" fill="#4338CA" font-style="italic">consumers: get_wrapper_dependencies, find_wrappers_for_lcm</text>
+  <text x="60" y="718" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_lcm_bridge_*.json</text>
+  <text x="60" y="734" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs_lcm_bridge_*.json</text>
+  <text x="60" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">reverse_mapping_liblcm-*.json</text>
+  <text x="60" y="773" font-size="11" fill="#475569">Forward: wrapper method → LCM internals it touches</text>
+  <text x="60" y="787" font-size="11" fill="#475569">Reverse: LCM symbol → wrappers that cover it</text>
+  <text x="60" y="803" font-size="11" font-weight="700" fill="#16A34A">Surfaces gaps explicitly — &lt;coverage gap&gt; rather than silent absence</text>
+
+  <!-- Version multiplexing -->
+  <rect x="555" y="650" width="490" height="170" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="575" y="676" font-size="13" font-weight="700" fill="#312E81">Version multiplexing</text>
+  <text x="575" y="696" font-size="11" fill="#4338CA" font-style="italic">consumer: server startup + per-session resolution</text>
+  <text x="575" y="718" font-size="11" fill="#475569">Multiple versions coexist in /index/ directory</text>
+  <text x="575" y="734" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_api_v2.1.5.json</text>
+  <text x="575" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_api_v2.2.0.json   ← active per session</text>
+  <text x="575" y="773" font-size="11" fill="#475569">Server detects installed library version,</text>
+  <text x="575" y="787" font-size="11" fill="#475569">loads matching index, auto-refreshes if missing</text>
+  <text x="575" y="803" font-size="10" font-style="italic" fill="#3730A3">See docs/VERSIONING.md for the full resolution algorithm</text>
+
+  <!-- Refresh process -->
+  <rect x="1070" y="650" width="490" height="170" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+  <text x="1090" y="676" font-size="13" font-weight="700" fill="#312E81">Refresh process — regeneration is offline</text>
+  <text x="1090" y="696" font-size="11" fill="#4338CA" font-style="italic">no network · no external API calls · auditable</text>
+  <text x="1090" y="720" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">python src/refresh.py</text>
+  <text x="1090" y="736" font-size="10" fill="#475569">  refresh all three indexes</text>
+  <text x="1090" y="754" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">  --flexlibs2-only   --flexlibs-only   --liblcm-only</text>
+  <text x="1090" y="780" font-size="11" fill="#475569">Run when: any source library updates,</text>
+  <text x="1090" y="794" font-size="11" fill="#475569">or first-time setup, or version change detected</text>
+  <text x="1090" y="810" font-size="10" font-style="italic" fill="#3730A3">see flexlibs2_analyzer.py · liblcm_extractor.py</text>
+
+  <!-- ============ CONSUMERS PANEL ============ -->
+  <rect x="40" y="850" width="1520" height="200" rx="10" fill="white" stroke="#4F46E5" stroke-width="2"/>
+  <text x="800" y="878" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">CONSUMERS — what reads from the foundation</text>
+
+  <!-- Consumer cells -->
+  <g font-size="11" fill="#312E81">
+    <!-- Stage 3 -->
+    <text x="80" y="908" font-weight="700" fill="#1E40AF">Stage 3 — every discovery tool</text>
+    <text x="80" y="926" fill="#475569">search_by_capability (embeddings) · get_object_api (entities)</text>
+    <text x="80" y="942" fill="#475569">get_navigation_path (graph) · find_examples (corpus)</text>
+    <text x="80" y="958" fill="#475569">resolve_property (casting index) · list_categories</text>
+    <text x="80" y="974" fill="#475569">get_wrapper_dependencies, find_wrappers_for_lcm (bridges)</text>
+
+    <!-- Pre-flight gates -->
+    <text x="540" y="908" font-weight="700" fill="#1E40AF">Pre-flight gates (Stage 5)</text>
+    <text x="540" y="926" fill="#475569">Gate 4 — mutation patterns from index drive certify_readonly</text>
+    <text x="540" y="942" fill="#475569">Gate 5 — casting_index drives detect_casting_needs</text>
+    <text x="540" y="958" fill="#475569">Gate 9 — known import patterns per api_mode</text>
+    <text x="540" y="974" fill="#475569">Gate 10 — entity-name typo difflib match against index</text>
+
+    <!-- Error hints -->
+    <text x="1000" y="908" font-weight="700" fill="#1E40AF">Error hints &amp; recommendations</text>
+    <text x="1000" y="926" fill="#475569">did_you_mean — looked up against entity/method names</text>
+    <text x="1000" y="942" fill="#475569">PolymorphicAttributeError — casting suggestions from index</text>
+    <text x="1000" y="958" fill="#475569">Pattern tracker — recommendations cite real method paths</text>
+    <text x="1000" y="974" fill="#475569">Cross-flavor advisories — bridge files name missing wrappers</text>
+  </g>
+
+  <text x="800" y="1015" text-anchor="middle" font-size="12" font-weight="700" fill="#7F1D1D">Without the foundation, none of the above can cite real signatures — and the AI is back to guessing.</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-map-with-foundation.svg for how this layer feeds the pipeline. Next page: Stages 3 &amp; 4 — API Discovery &amp; Code Authoring.</text>
+</svg>

@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="1100" fill="#FAFAFA"/>
+
+  <text x="800" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">Pre-flight Gauntlet — 12 gates before the subprocess launches</text>
+  <text x="800" y="66" text-anchor="middle" font-size="12" fill="#64748B">Detail page 5 of 6 · each gate returns a structured error · red gates HARD BLOCK execution · runs on every pass (5a and 5b)</text>
+
+  <!-- Top-line strategy -->
+  <rect x="40" y="90" width="1520" height="80" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <text x="60" y="115" font-size="13" font-weight="700" fill="#7F1D1D">Architectural notes</text>
+  <text x="60" y="135" font-size="11" fill="#9F1239">• AST parsed ONCE (gate 2) and reused across gates 3–10 — no redundant parsing.   • Gates short-circuit: first failure returns immediately with a structured error_code and remediation hint.</text>
+  <text x="60" y="153" font-size="11" fill="#9F1239">• Gate 5 also drives the three-tier helper-injection strategy (none/minimal/full) — lighter context cost when no casting issues are detected.   • Gate 11 acquires the per-project asyncio.Lock only when write_enabled=True AND code is mutating.</text>
+
+  <!-- 12 gates in 4 rows × 3 cols -->
+  <!-- Pill: w=495 h=180 · x: 40, 552.5, 1065 · y: 190, 410, 630, 850 -->
+
+  <!-- Gate 1 -->
+  <rect x="40" y="190" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="65" cy="215" r="14" fill="#D97706"/>
+  <text x="65" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="white">1</text>
+  <text x="90" y="220" font-size="14" font-weight="700" fill="#78350F">Server health</text>
+  <text x="90" y="240" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">validate_server_state()</text>
+  <text x="60" y="265" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> kernel state not initialized</text>
+  <text x="60" y="282" font-size="11" fill="#475569">api_index, pattern_tracker, log_dir all reachable</text>
+  <text x="60" y="304" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Why first:</tspan> no point validating user code</text>
+  <text x="60" y="320" font-size="11" fill="#475569">if the server itself can't honor the request</text>
+  <text x="60" y="350" font-size="10.5" font-style="italic" fill="#9F1239">→ error_code: server_state_error</text>
+
+  <!-- Gate 2 -->
+  <rect x="552.5" y="190" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="577.5" cy="215" r="14" fill="#D97706"/>
+  <text x="577.5" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="white">2</text>
+  <text x="602.5" y="220" font-size="14" font-weight="700" fill="#78350F">AST / syntax parse</text>
+  <text x="602.5" y="240" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">ast.parse(code)</text>
+  <text x="572.5" y="265" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> SyntaxError</text>
+  <text x="572.5" y="282" font-size="11" fill="#475569">missing colons, unclosed parens, bad indent</text>
+  <text x="572.5" y="304" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Reuse:</tspan> the parsed tree feeds gates 3–10</text>
+  <text x="572.5" y="320" font-size="11" fill="#475569">no validator re-parses the source</text>
+  <text x="572.5" y="350" font-size="10.5" font-style="italic" fill="#9F1239">→ syntax_error + line_number + msg</text>
+
+  <!-- Gate 3 -->
+  <rect x="1065" y="190" width="495" height="180" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <circle cx="1090" cy="215" r="14" fill="#DC2626"/>
+  <text x="1090" y="220" text-anchor="middle" font-size="13" font-weight="700" fill="white">3</text>
+  <text x="1115" y="220" font-size="14" font-weight="700" fill="#7F1D1D">Partial module</text>
+  <text x="1525" y="220" text-anchor="end" font-size="11" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+  <text x="1115" y="240" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#9F1239">detect_partial_module_structure()</text>
+  <text x="1085" y="265" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> def Main + missing docs/binding</text>
+  <text x="1085" y="282" font-size="11" fill="#475569">a half-scaffolded "module" works in MCP</text>
+  <text x="1085" y="299" font-size="11" fill="#475569">runner but fails when saved as a real .py</text>
+  <text x="1085" y="321" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Override:</tspan> skip_module_check=True</text>
+  <text x="1085" y="337" font-size="11" fill="#475569">to run as bare snippet</text>
+  <text x="1085" y="358" font-size="10.5" font-style="italic" fill="#9F1239">→ get_module_template + missing_elements</text>
+
+  <!-- Row 2 -->
+
+  <!-- Gate 4 -->
+  <rect x="40" y="410" width="495" height="180" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <circle cx="65" cy="435" r="14" fill="#DC2626"/>
+  <text x="65" y="440" text-anchor="middle" font-size="13" font-weight="700" fill="white">4</text>
+  <text x="90" y="440" font-size="14" font-weight="700" fill="#7F1D1D">Unprotected mutation</text>
+  <text x="525" y="440" text-anchor="end" font-size="11" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+  <text x="90" y="460" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#9F1239">certify_script_readonly()</text>
+  <text x="60" y="485" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> any mutation outside if modifyAllowed:</text>
+  <text x="60" y="502" font-size="11" fill="#475569">walks AST, classifies calls/assignments,</text>
+  <text x="60" y="518" font-size="11" fill="#475569">checks each is inside a recognized guard</text>
+  <text x="60" y="540" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Recognizes 3 guard forms:</tspan></text>
+  <text x="60" y="556" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#475569">if modifyAllowed: · project.writeEnabled · with project.modifyEnabled:</text>
+  <text x="60" y="578" font-size="10.5" font-style="italic" fill="#9F1239">→ unprotected_code + remediation guidance</text>
+
+  <!-- Gate 5 -->
+  <rect x="552.5" y="410" width="495" height="180" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <circle cx="577.5" cy="435" r="14" fill="#DC2626"/>
+  <text x="577.5" y="440" text-anchor="middle" font-size="13" font-weight="700" fill="white">5</text>
+  <text x="602.5" y="440" font-size="14" font-weight="700" fill="#7F1D1D">Polymorphic casting</text>
+  <text x="1037.5" y="440" text-anchor="end" font-size="11" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+  <text x="602.5" y="460" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#9F1239">detect_casting_needs()</text>
+  <text x="572.5" y="485" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> base interface property access</text>
+  <text x="572.5" y="502" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">sense.Owner.HeadWord  # ICmObject.HeadWord</text>
+  <text x="572.5" y="524" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Drives:</tspan> three-tier helper injection</text>
+  <text x="572.5" y="540" font-size="11" fill="#475569">none (clean) · minimal (specific) · full (defensive)</text>
+  <text x="572.5" y="562" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Reads:</tspan> casting_index from foundation</text>
+  <text x="572.5" y="582" font-size="10.5" font-style="italic" fill="#9F1239">→ casting_issues_detected + resolve_property hint</text>
+
+  <!-- Gate 6 -->
+  <rect x="1065" y="410" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="1090" cy="435" r="14" fill="#D97706"/>
+  <text x="1090" y="440" text-anchor="middle" font-size="13" font-weight="700" fill="white">6</text>
+  <text x="1115" y="440" font-size="14" font-weight="700" fill="#78350F">API discovery gate</text>
+  <text x="1115" y="460" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">len(session.discovered_apis) &gt; 0</text>
+  <text x="1085" y="485" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> "I'll just write code from memory"</text>
+  <text x="1085" y="502" font-size="11" fill="#475569">if no Stage 3 tool was called this session,</text>
+  <text x="1085" y="518" font-size="11" fill="#475569">run_module is structurally refused</text>
+  <text x="1085" y="540" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Why:</tspan> the foundation isn't being read</text>
+  <text x="1085" y="556" font-size="11" fill="#475569">→ method names are guesses, not citations</text>
+  <text x="1085" y="578" font-size="10.5" font-style="italic" fill="#9F1239">→ api_discovery_required (with tool list)</text>
+
+  <!-- Row 3 -->
+
+  <!-- Gate 7 -->
+  <rect x="40" y="630" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="65" cy="655" r="14" fill="#D97706"/>
+  <text x="65" y="660" text-anchor="middle" font-size="13" font-weight="700" fill="white">7</text>
+  <text x="90" y="660" font-size="14" font-weight="700" fill="#78350F">Undefined variables</text>
+  <text x="90" y="680" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">detect_undefined_variables()</text>
+  <text x="60" y="705" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> MCP-internal names that leaked</text>
+  <text x="60" y="722" font-size="11" fill="#475569">e.g. AI sees `cache` in our docs and uses it,</text>
+  <text x="60" y="738" font-size="11" fill="#475569">but `cache` was never imported or assigned</text>
+  <text x="60" y="760" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Allows:</tspan> imported names, defined locals,</text>
+  <text x="60" y="776" font-size="11" fill="#475569">FlexTools-provided (project, report, modifyAllowed)</text>
+  <text x="60" y="798" font-size="10.5" font-style="italic" fill="#9F1239">→ undefined_variables + name list</text>
+
+  <!-- Gate 8 -->
+  <rect x="552.5" y="630" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="577.5" cy="655" r="14" fill="#D97706"/>
+  <text x="577.5" y="660" text-anchor="middle" font-size="13" font-weight="700" fill="white">8</text>
+  <text x="602.5" y="660" font-size="14" font-weight="700" fill="#78350F">Missing Operations imports</text>
+  <text x="602.5" y="680" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">detect_missing_operations_imports()</text>
+  <text x="572.5" y="705" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> uses LexEntryOperations,</text>
+  <text x="572.5" y="722" font-size="11" fill="#475569">LexSenseOperations, etc. without importing</text>
+  <text x="572.5" y="744" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Why it matters:</tspan> the import_statement</text>
+  <text x="572.5" y="760" font-size="11" fill="#475569">field of get_object_api shows EXACTLY what to add</text>
+  <text x="572.5" y="780" font-size="11" fill="#475569">— gate 8 enforces that contract</text>
+  <text x="572.5" y="798" font-size="10.5" font-style="italic" fill="#9F1239">→ missing_imports + import statements to add</text>
+
+  <!-- Gate 9 -->
+  <rect x="1065" y="630" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="1090" cy="655" r="14" fill="#D97706"/>
+  <text x="1090" y="660" text-anchor="middle" font-size="13" font-weight="700" fill="white">9</text>
+  <text x="1115" y="660" font-size="14" font-weight="700" fill="#78350F">Wrong-library imports</text>
+  <text x="1115" y="680" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">detect_wrong_library_imports()</text>
+  <text x="1085" y="705" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> imports that don't match api_mode</text>
+  <text x="1085" y="724" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">from flexlibs import ...   # in flexlibs2 mode</text>
+  <text x="1085" y="746" font-size="11" font-weight="700" fill="#9F1239">The silent-fail risk:</text>
+  <text x="1085" y="762" font-size="11" fill="#475569">FlexTools imports stable flexlibs first; without</text>
+  <text x="1085" y="778" font-size="11" fill="#475569">explicit flexlibs2 imports, code "works" but uses</text>
+  <text x="1085" y="794" font-size="11" fill="#475569">the wrong implementation</text>
+  <text x="1085" y="817" font-size="10.5" font-style="italic" fill="#9F1239">→ wrong_library_imports + correction list</text>
+
+  <!-- Row 4 -->
+
+  <!-- Gate 10 -->
+  <rect x="40" y="850" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="65" cy="875" r="14" fill="#D97706"/>
+  <text x="65" y="880" text-anchor="middle" font-size="13" font-weight="700" fill="white">10</text>
+  <text x="90" y="880" font-size="14" font-weight="700" fill="#78350F">Invalid project chain</text>
+  <text x="90" y="900" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">detect_invalid_project_chains()</text>
+  <text x="60" y="925" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Catches:</tspan> project.&lt;name&gt; / .&lt;method&gt; typos</text>
+  <text x="60" y="944" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">project.LexEntries  →  did you mean .LexEntry?</text>
+  <text x="60" y="966" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Conservative:</tspan> only blocks when difflib</text>
+  <text x="60" y="982" font-size="11" fill="#475569">finds a high-confidence match (cutoff 0.7).</text>
+  <text x="60" y="998" font-size="11" fill="#475569">Unrecognized names with no close match pass through.</text>
+  <text x="60" y="1018" font-size="10.5" font-style="italic" fill="#9F1239">→ invalid_api_chain + suggested replacement</text>
+
+  <!-- Gate 11 -->
+  <rect x="552.5" y="850" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="577.5" cy="875" r="14" fill="#D97706"/>
+  <text x="577.5" y="880" text-anchor="middle" font-size="13" font-weight="700" fill="white">11</text>
+  <text x="602.5" y="880" font-size="14" font-weight="700" fill="#78350F">Per-project write lock</text>
+  <text x="602.5" y="900" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">get_project_write_lock(name)</text>
+  <text x="572.5" y="925" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Acquires:</tspan> asyncio.Lock keyed by project</text>
+  <text x="572.5" y="942" font-size="11" fill="#475569">Multiple sessions on different projects → no contention</text>
+  <text x="572.5" y="958" font-size="11" fill="#475569">Two sessions on the same project → serialized</text>
+  <text x="572.5" y="980" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Fires only when:</tspan> write_enabled=True AND</text>
+  <text x="572.5" y="996" font-size="11" fill="#475569">script is mutating (5b pass)</text>
+  <text x="572.5" y="1018" font-size="10.5" font-style="italic" fill="#16A34A">prevents database corruption from concurrent writes</text>
+
+  <!-- Gate 12 -->
+  <rect x="1065" y="850" width="495" height="180" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+  <circle cx="1090" cy="875" r="14" fill="#D97706"/>
+  <text x="1090" y="880" text-anchor="middle" font-size="13" font-weight="700" fill="white">12</text>
+  <text x="1115" y="880" font-size="14" font-weight="700" fill="#78350F">Subprocess timeout</text>
+  <text x="1115" y="900" font-size="10.5" font-family="ui-monospace,Consolas,monospace" fill="#92400E">run_script_async(timeout=300)</text>
+  <text x="1085" y="925" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Default:</tspan> 300 seconds</text>
+  <text x="1085" y="944" font-size="11" fill="#475569">Configurable via timeout_seconds arg on run_module</text>
+  <text x="1085" y="966" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Stdout/stderr:</tspan> reconfigured to UTF-8</text>
+  <text x="1085" y="982" font-size="11" fill="#475569">tones / IPA / Yi never crash the result-marker output</text>
+  <text x="1085" y="1000" font-size="11" fill="#475569"><tspan font-weight="700" fill="#7C2D12">Cleanup:</tspan> temp .py file deleted on exit</text>
+  <text x="1085" y="1018" font-size="10.5" font-style="italic" fill="#9F1239">→ Execution timeout (with timeout_seconds)</text>
+
+  <!-- Footer -->
+  <text x="800" y="1080" text-anchor="middle" font-size="11" fill="#64748B" font-style="italic">↗ See workflow-detail-2-foundation.svg for what gates 4/5/9/10 read from. Next page: Cross-Cutting Safeguards.</text>
+</svg>

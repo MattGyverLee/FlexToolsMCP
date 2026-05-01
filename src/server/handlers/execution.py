@@ -249,6 +249,35 @@ class FLExProject:
     return imports
 
 
+def _log_operation_failure(
+    error: Optional[str] = None,
+    error_type: Optional[str] = None,
+    stderr: Optional[str] = None,
+    info_count: int = 0,
+    warning_count: int = 0,
+    error_count: int = 0,
+) -> None:
+    """Emit the [FAIL] / Messages / Operation End log block with diagnostic detail.
+
+    Centralizes the failure-logging shape so the actual cause (error text,
+    error_type, stderr) reaches the log instead of just "0 errors".
+    """
+    logger = get_operations_logger()
+    logger.info("[FAIL] Operation failed")
+    if error_type:
+        logger.info(f"Error type: {error_type}")
+    if error:
+        first_line = error.strip().splitlines()[0] if error.strip() else ""
+        if len(first_line) > 500:
+            first_line = first_line[:500] + "..."
+        logger.info(f"Error: {first_line}")
+    if stderr:
+        for line in stderr.strip().splitlines()[:10]:
+            logger.debug(f"stderr: {line}")
+    logger.info(f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors")
+    logger.info("=== Operation End ===")
+
+
 def _run_validator(validator_func, code: str, check_key: str, error_code: str, **validator_kwargs) -> Optional[list[TextContent]]:
     """Run a single validator and return error response if validation fails.
 
@@ -1113,12 +1142,11 @@ MODULE_CODE = {code}
             f.write(full_script)
             temp_script_path = f.name
     except Exception as e:
-        get_operations_logger().info("[FAIL] Operation failed")
-        get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
-        get_operations_logger().info("=== Operation End ===")
+        err_msg = "Failed to create temporary script: {}".format(str(e))
+        _log_operation_failure(error=err_msg, error_type=type(e).__name__)
         return [TextContent(type="text", text=json.dumps({
             "success": False,
-            "error": "Failed to create temporary script: {}".format(str(e)),
+            "error": err_msg,
             "warnings": warnings
         }, indent=2))]
 
@@ -1149,12 +1177,11 @@ MODULE_CODE = {code}
 
         # Handle timeout case
         if result["timeout"]:
-            get_operations_logger().info("[FAIL] Operation failed")
-            get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
-            get_operations_logger().info("=== Operation End ===")
+            err_msg = f"Execution timeout: script exceeded {timeout_seconds} seconds"
+            _log_operation_failure(error=err_msg, error_type="Timeout", stderr=stderr)
             return [TextContent(type="text", text=json.dumps({
                 "success": False,
-                "error": f"Execution timeout: script exceeded {timeout_seconds} seconds",
+                "error": err_msg,
                 "warnings": warnings
             }, indent=2))]
 
@@ -1165,21 +1192,17 @@ MODULE_CODE = {code}
             try:
                 execution_result = json.loads(json_str)
             except json.JSONDecodeError as e:
-                get_operations_logger().info("[FAIL] Operation failed")
-                get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
-                get_operations_logger().info("=== Operation End ===")
                 execution_result = {
                     "success": False,
                     "error": "Failed to parse result JSON: {}".format(str(e)),
+                    "error_type": "JSONDecodeError",
                     "raw_output": stdout
                 }
         else:
-            get_operations_logger().info("[FAIL] Operation failed")
-            get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
-            get_operations_logger().info("=== Operation End ===")
             execution_result = {
                 "success": False,
                 "error": "No result marker found in output",
+                "error_type": "NoResultMarker",
                 "raw_output": stdout,
                 "stderr": stderr
             }
@@ -1217,36 +1240,46 @@ MODULE_CODE = {code}
             error_type = execution_result.get("error_type")
             tracker.record_operation(code, execution_result.get("success", False), error_msg, error_type)
 
-        # Log operation completion with rich formatting
-        if execution_result.get("success"):
-            get_operations_logger().info("[OK] Operation completed successfully")
-        else:
-            get_operations_logger().info("[FAIL] Operation failed")
-
         # Extract message counts from execution result
         summary = execution_result.get("summary", {})
         info_count = summary.get("info_count", 0)
         warning_count = summary.get("warning_count", 0)
         error_count = summary.get("error_count", 0)
-        get_operations_logger().info(f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors")
-        get_operations_logger().info(f"=== Operation End ===")
+
+        # Log operation completion with rich formatting
+        if execution_result.get("success"):
+            get_operations_logger().info("[OK] Operation completed successfully")
+            get_operations_logger().info(
+                f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors"
+            )
+            get_operations_logger().info("=== Operation End ===")
+        else:
+            _log_operation_failure(
+                error=execution_result.get("error"),
+                error_type=execution_result.get("error_type"),
+                stderr=execution_result.get("stderr") or stderr,
+                info_count=info_count,
+                warning_count=warning_count,
+                error_count=error_count,
+            )
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
 
     except subprocess.TimeoutExpired:
-        get_operations_logger().info("[FAIL] Operation failed")
-        get_operations_logger().info("Messages: 0 info, 0 warnings, 0 errors")
-        get_operations_logger().info("=== Operation End ===")
+        err_msg = "Execution timed out after {} seconds".format(timeout_seconds)
+        _log_operation_failure(error=err_msg, error_type="TimeoutExpired")
         return [TextContent(type="text", text=json.dumps({
             "success": False,
-            "error": "Execution timed out after {} seconds".format(timeout_seconds),
+            "error": err_msg,
             "warnings": warnings
         }, indent=2))]
 
     except Exception as e:
+        err_msg = "Subprocess execution error: {}".format(str(e))
+        _log_operation_failure(error=err_msg, error_type=type(e).__name__)
         return [TextContent(type="text", text=json.dumps({
             "success": False,
-            "error": "Subprocess execution error: {}".format(str(e)),
+            "error": err_msg,
             "warnings": warnings
         }, indent=2))]
 

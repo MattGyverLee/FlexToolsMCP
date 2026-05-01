@@ -65,6 +65,9 @@ __all__ = [
     'KEY_AVAILABLE_ON_CONCRETE_TYPES', 'KEY_POLYMORPHIC_COLLECTION_WARNING',
     'KEY_UNIQUE_PROPERTIES_BY_TYPE', 'KEY_PROPERTY_AVAILABILITY_IN_CONTEXT',
     'KEY_HAS_PROPERTY_ON', 'KEY_MISSING_FROM', 'KEY_GUIDANCE',
+    # Equivalence / bridge tools
+    'KEY_LIBRARY', 'KEY_METHOD', 'KEY_LCM_INTERNALS', 'KEY_ADVISORY',
+    'KEY_LCM_NAME', 'KEY_COVERAGE', 'KEY_GAPS',
     # Operation type constants
     'OP_CREATE', 'OP_READ', 'OP_UPDATE', 'OP_DELETE', 'OP_ITERATE', 'OP_SEARCH',
 ]
@@ -254,6 +257,15 @@ KEY_PROPERTY_AVAILABILITY_IN_CONTEXT = "property_availability_in_context"
 KEY_HAS_PROPERTY_ON = "has_property_on"
 KEY_MISSING_FROM = "missing_from"
 KEY_GUIDANCE = "guidance"
+
+# Equivalence / bridge tool fields
+KEY_LIBRARY = "library"
+KEY_METHOD = "method"
+KEY_LCM_INTERNALS = "lcm_internals"
+KEY_ADVISORY = "advisory"
+KEY_LCM_NAME = "lcm_name"
+KEY_COVERAGE = "coverage"
+KEY_GAPS = "gaps"
 
 # Operation type constants
 OP_CREATE = "create"

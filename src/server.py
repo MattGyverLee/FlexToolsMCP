@@ -400,6 +400,7 @@ class APIIndex:
     semantic_search: SemanticSearch | None = None
     flexlibs2_lcm_bridge: dict | None = None
     flexlibs_stable_lcm_bridge: dict | None = None
+    reverse_mapping: dict | None = None
 
     # Track loaded API versions for session logging
     liblcm_version: str | None = None
@@ -568,6 +569,16 @@ class APIIndex:
             return
         self.flexlibs_stable_lcm_bridge = self._load_lcm_bridge(
             "FlexLibs stable", "flexlibs_lcm_bridge", self.flexlibs_stable_version
+        )
+
+    def ensure_reverse_mapping_loaded(self) -> None:
+        """Lazy-load LibLCM reverse mapping (LCM -> wrapper coverage) if not already loaded."""
+        if self.reverse_mapping is not None:
+            return
+        self.reverse_mapping = _load_json_with_fallback(
+            get_index_dir(),
+            "reverse_mapping_liblcm",
+            "reverse_mapping.json"
         )
 
 # Initialize the MCP server

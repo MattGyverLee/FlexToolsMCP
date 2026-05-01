@@ -37,7 +37,7 @@ class FlexToolsStartInput(BaseModel):
     )
     project_name: Optional[str] = Field(
         default=None,
-        description="Optional: FLEx project name for run_operation()/run_module(). "
+        description="Optional: FLEx project name for run_module(). "
                     "Can be set now or provided when executing."
     )
     output_type: Literal["auto", "operation", "module"] = Field(
@@ -210,6 +210,32 @@ class ResolvePropertyInput(BaseModel):
     )
 
 
+class GetWrapperDependenciesInput(BaseModel):
+    """Look up the LibLCM internals a flexlibs/flexlibs2 wrapper method uses."""
+    method: str = Field(
+        description="Fully-qualified wrapper method (e.g. 'LexEntryOperations.GetHeadword' or 'FLExProject.LexiconAllEntries')"
+    )
+    library: Literal["flexlibs2", "flexlibs_stable"] = Field(
+        default="flexlibs2",
+        description="Which wrapper library: 'flexlibs2' or 'flexlibs_stable'"
+    )
+
+
+class FindWrappersForLcmInput(BaseModel):
+    """Find which wrapper methods cover a given LibLCM symbol."""
+    lcm_name: str = Field(
+        description="LCM name to look up (e.g. 'ILexEntry', 'ILexEntry.HeadWord', 'ILexEntryRefFactory', 'ICmObjectRepository')"
+    )
+    kind: Literal["entity", "factory", "repository", "method", "property", "auto"] = Field(
+        default="auto",
+        description="What kind of LCM thing this is: 'entity' | 'factory' | 'repository' | 'method' | 'property' | 'auto'"
+    )
+    include: list[str] = Field(
+        default_factory=lambda: ["flexlibs2", "flexlibs_stable"],
+        description="Which wrapper libraries to check"
+    )
+
+
 # ============================================================
 # Module Management Tools
 # ============================================================
@@ -300,4 +326,11 @@ class RunModuleInput(BaseModel):
     confirmed: bool = Field(
         default=False,
         description="Required for CUD operations. Confirm understanding of risks."
+    )
+    skip_module_check: bool = Field(
+        default=False,
+        description="If True, skip the partial-module structural check. "
+                    "Use when intentionally running module-shaped code (with `def Main`) "
+                    "that lacks docs/FlexToolsModule scaffolding -- e.g. quick tests of a "
+                    "Main-shaped function without bothering to fetch the full template."
     )

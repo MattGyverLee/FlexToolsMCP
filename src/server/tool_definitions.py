@@ -29,6 +29,8 @@ from .models import (
     StartModuleInput,
     GetOperationLogsInput,
     RunModuleInput,
+    GetWrapperDependenciesInput,
+    FindWrappersForLcmInput,
 )
 
 
@@ -84,7 +86,7 @@ OPTIONAL: task description for initial API discovery, project_name for operation
 After calling flextools_start():
 - Use flextools_search_by_capability(query='...') for API discovery
 - Use flextools_get_object_api(object_type='...') for detailed API info
-- Use flextools_run_operation() or flextools_run_module() to execute code against a FieldWorks project
+- Use flextools_run_module() to execute code (accepts bare snippets and full Main-shaped modules)
 
 Task and project_name can be set now or updated/provided later as needed.""",
         input_model=FlexToolsStartInput,
@@ -95,7 +97,7 @@ Task and project_name can be set now or updated/provided later as needed.""",
         name="flextools_get_object_api",
         description="""[WORKFLOW STEP 3] Get detailed API documentation for an object. Use AFTER flextools_search_by_capability to validate and understand the APIs you want to use.
 
-WARNING: Calling flextools_get_object_api is required BEFORE using an API in flextools_run_operation/flextools_run_module. This ensures you have full context of the signature and behavior, reducing debugging.
+WARNING: Calling flextools_get_object_api is required BEFORE using an API in flextools_run_module. This ensures you have full context of the signature and behavior, reducing debugging.
 
 IMPORTANT: Each API result includes 'import_statement' showing exactly what to add at the top of your code. When you use LexEntryOperations, LexSenseOperations, or any Operations class in your code, you MUST include the import statement shown in the API response.
 
@@ -274,5 +276,41 @@ Calls ActionHandler.Undo() to roll back changes.""",
             idempotentHint=False,
             openWorldHint=False,
         ),
+    ),
+
+    "flextools_get_wrapper_dependencies": ToolDef(
+        name="flextools_get_wrapper_dependencies",
+        description="""Look up the LibLCM internals (factories, repositories, properties, methods, mapping_type) that a flexlibs/flexlibs2 wrapper method uses.
+
+Use this when you need to understand what a wrapper method does under the hood, or whether
+switching to api_mode='liblcm' would let you reach internals the wrapper doesn't expose.
+
+Input:
+- method: 'ClassName.MethodName' (e.g. 'LexEntryOperations.GetHeadword')
+- library: 'flexlibs2' (default) or 'flexlibs_stable'
+
+Returns the bridge entry: lcm_deps, properties_accessed, methods_called, repositories_used,
+factories_used, mapping_type, plus an advisory about which surface is callable in the active session.""",
+        input_model=GetWrapperDependenciesInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_find_wrappers_for_lcm": ToolDef(
+        name="flextools_find_wrappers_for_lcm",
+        description="""Find which wrapper methods cover a given LibLCM symbol (entity, factory, repository, method, or property).
+
+Use this when you have an LCM name (e.g. 'ILexEntry', 'ICmAgentEvaluationFactory',
+'ICmObjectRepository') and want to know whether flexlibs2 or flexlibs_stable wraps it -
+or whether you need to drop to api_mode='liblcm' because no wrapper exists.
+
+Input:
+- lcm_name: e.g. 'ILexEntry', 'ILexEntry.HeadWord', 'ICmAgentEvaluationFactory'
+- kind: 'entity' | 'factory' | 'repository' | 'method' | 'property' | 'auto' (default)
+- include: list of libraries to check (default ['flexlibs2', 'flexlibs_stable'])
+
+Returns coverage per library and an explicit `gaps` list naming libraries with no coverage,
+so missing wrappers are surfaced rather than silently absent.""",
+        input_model=FindWrappersForLcmInput,
+        annotations=READ_ONLY_SAFE,
     ),
 }

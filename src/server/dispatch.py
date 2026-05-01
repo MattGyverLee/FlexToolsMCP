@@ -28,6 +28,8 @@ from .models import (
     StartModuleInput,
     GetOperationLogsInput,
     RunModuleInput,
+    GetWrapperDependenciesInput,
+    FindWrappersForLcmInput,
 )
 
 # ============================================================
@@ -60,6 +62,10 @@ TOOL_RUN_MODULE = "flextools_run_module"
 # Property resolution tool
 TOOL_RESOLVE_PROPERTY = "flextools_resolve_property"
 
+# Equivalence / cross-flavor mapping tools
+TOOL_GET_WRAPPER_DEPENDENCIES = "flextools_get_wrapper_dependencies"
+TOOL_FIND_WRAPPERS_FOR_LCM = "flextools_find_wrappers_for_lcm"
+
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
@@ -77,6 +83,8 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_GET_OPERATION_LOGS,
     TOOL_RUN_MODULE,
     TOOL_RESOLVE_PROPERTY,
+    TOOL_GET_WRAPPER_DEPENDENCIES,
+    TOOL_FIND_WRAPPERS_FOR_LCM,
 ])
 
 # Import all handler functions
@@ -109,6 +117,10 @@ def _import_handlers():
             handle_run_module,
             handle_get_operation_logs,
         )
+        from .handlers.equivalence import (
+            handle_get_wrapper_dependencies,
+            handle_find_wrappers_for_lcm,
+        )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
         from server.handlers.admin import (
@@ -136,6 +148,10 @@ def _import_handlers():
             handle_run_module,
             handle_get_operation_logs,
         )
+        from server.handlers.equivalence import (
+            handle_get_wrapper_dependencies,
+            handle_find_wrappers_for_lcm,
+        )
 
     return {
         "handle_start": handle_start,
@@ -153,6 +169,8 @@ def _import_handlers():
         "handle_start_module": handle_start_module,
         "handle_run_module": handle_run_module,
         "handle_get_operation_logs": handle_get_operation_logs,
+        "handle_get_wrapper_dependencies": handle_get_wrapper_dependencies,
+        "handle_find_wrappers_for_lcm": handle_find_wrappers_for_lcm,
     }
 
 
@@ -172,6 +190,8 @@ handle_get_navigation_path = _handlers["handle_get_navigation_path"]
 handle_start_module = _handlers["handle_start_module"]
 handle_run_module = _handlers["handle_run_module"]
 handle_get_operation_logs = _handlers["handle_get_operation_logs"]
+handle_get_wrapper_dependencies = _handlers["handle_get_wrapper_dependencies"]
+handle_find_wrappers_for_lcm = _handlers["handle_find_wrappers_for_lcm"]
 
 
 # Type alias for tool handlers
@@ -208,6 +228,10 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
 
     # Property resolution tool
     TOOL_RESOLVE_PROPERTY: (handle_resolve_property, ResolvePropertyInput),
+
+    # Equivalence / cross-flavor mapping tools
+    TOOL_GET_WRAPPER_DEPENDENCIES: (handle_get_wrapper_dependencies, GetWrapperDependenciesInput),
+    TOOL_FIND_WRAPPERS_FOR_LCM: (handle_find_wrappers_for_lcm, FindWrappersForLcmInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

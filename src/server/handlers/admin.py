@@ -142,6 +142,12 @@ RUNTIME_PRIMER = {
         ],
         "example": 'report.Info(f"Updated {entry_hw}", project.BuildGotoURL(sense))',
         "note": "Plain print() also works but bypasses message counts and ref links. Prefer report.*",
+        "do_not_rebind": (
+            "Do NOT redefine `report` or `project` (e.g. `report = SafeReporter(report)`). "
+            "The runner already handles unicode-safe stdout; wrappers are unnecessary and "
+            "obscure the contract. The injected `report` and `project` are the canonical "
+            "objects - use them directly."
+        ),
     },
     "clickable_refs": {
         "description": "Pass a goto URL as the second argument to make a message clickable in FlexTools UI.",

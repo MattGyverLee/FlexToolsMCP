@@ -19,8 +19,15 @@ from server.validators import certify_script_readonly
 def load_api_index():
     """Load the FlexLibs2 API index (latest version available).
 
+    Returns an APIIndex instance matching the shape that production code
+    passes to certify_script_readonly (attribute access, not dict access).
+    The test previously returned a plain dict, which silently broke when
+    the validator switched to attribute access in commit 845927e.
+
     Result is cached to avoid redundant file I/O across multiple tests.
     """
+    from server import APIIndex  # imported here to avoid pulling server.py at module load
+
     index_dir = Path(__file__).parent.parent / "index" / "flexlibs"
 
     # Find the latest flexlibs2 API file
@@ -33,7 +40,9 @@ def load_api_index():
     with open(index_file, encoding='utf-8') as f:
         api = json.load(f)
 
-    return {"flexlibs2": api}
+    idx = APIIndex()
+    idx.flexlibs2 = api
+    return idx
 
 
 def test_readonly_code():

@@ -21,13 +21,13 @@ try:
         # Basic fields
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
-        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
         KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT, KEY_EXAMPLE,
         # Handler-specific discovery fields
         KEY_SOURCES_SEARCHED, KEY_FALLBACK_USED, KEY_API_MODE, KEY_API_MODE_DESCRIPTION,
         KEY_SEARCH_METHOD, KEY_SEMANTIC_AVAILABLE, KEY_IMPORT_STATEMENT, KEY_IMPORT_REQUIRED,
-        KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_HAS_MORE, KEY_NEXT_OFFSET,
+        KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_PROPERTIES, KEY_TOTAL_PROPERTIES, KEY_RETURNED_PROPERTIES, KEY_HAS_MORE, KEY_NEXT_OFFSET,
         KEY_SOURCE_FILE, KEY_SESSION_CONTEXT, KEY_DETECTED, KEY_AUTO_RESOLVED,
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
@@ -48,13 +48,13 @@ except ImportError:
         # Basic fields
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS2_MATCHES,
-        KEY_LIBLCM_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
+        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXLIBS2_MATCHES,
+        KEY_LIBLCM_MATCHES, KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
         KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT, KEY_EXAMPLE,
         # Handler-specific discovery fields
         KEY_SOURCES_SEARCHED, KEY_FALLBACK_USED, KEY_API_MODE, KEY_API_MODE_DESCRIPTION,
         KEY_SEARCH_METHOD, KEY_SEMANTIC_AVAILABLE, KEY_IMPORT_STATEMENT, KEY_IMPORT_REQUIRED,
-        KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_HAS_MORE, KEY_NEXT_OFFSET,
+        KEY_TOTAL_METHODS, KEY_RETURNED_METHODS, KEY_PROPERTIES, KEY_TOTAL_PROPERTIES, KEY_RETURNED_PROPERTIES, KEY_HAS_MORE, KEY_NEXT_OFFSET,
         KEY_SOURCE_FILE, KEY_SESSION_CONTEXT, KEY_DETECTED, KEY_AUTO_RESOLVED,
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
@@ -100,8 +100,8 @@ API_MODE_CONFIG = {
     },
     "flexlibs_stable": {
         "primary": ["flexlibs_stable"],
-        "fallback": ["liblcm"],
-        "description": "FlexLibs Stable with LibLCM fallback"
+        "fallback": [],
+        "description": "FlexLibs Stable (no auto-fallback; switch to api_mode='all' to also see LibLCM)"
     },
     "liblcm": {
         "primary": ["liblcm"],
@@ -114,6 +114,40 @@ API_MODE_CONFIG = {
         "description": "All sources"
     }
 }
+
+# Map of session-mode -> ordered list of (source_name, attr_name, response_key) tuples.
+# Used by every read-only handler so a single mode never bleeds another source's
+# entities/methods into the response. The "all" mode is the explicit opt-out.
+_MODE_SOURCES: Dict[str, list] = {
+    "flexlibs2": [("flexlibs2", "flexlibs2", KEY_FLEXLIBS2)],
+    "flexlibs_stable": [("flexlibs_stable", "flexlibs_stable", KEY_FLEXLIBS_STABLE)],
+    "liblcm": [("liblcm", "liblcm", KEY_LIBLCM)],
+    "all": [
+        ("flexlibs2", "flexlibs2", KEY_FLEXLIBS2),
+        ("flexlibs_stable", "flexlibs_stable", KEY_FLEXLIBS_STABLE),
+        ("liblcm", "liblcm", KEY_LIBLCM),
+    ],
+}
+
+
+def active_sources_for_mode(mode: str) -> list:
+    """Return the source tuples that should be visible for a given session mode.
+
+    Each tuple is (source_name, APIIndex attribute, response key). Single-mode
+    sessions return one tuple; "all" returns all three. Unknown modes default
+    to flexlibs2 to keep wrappers as the safe default surface.
+    """
+    return _MODE_SOURCES.get(mode, _MODE_SOURCES["flexlibs2"])
+
+
+def ensure_active_sources_loaded(api_index, mode: str) -> None:
+    """Lazy-load only the index files needed for the active mode."""
+    for source_name, _attr, _key in active_sources_for_mode(mode):
+        if source_name == "liblcm":
+            api_index.ensure_liblcm_loaded()
+        elif source_name == "flexlibs_stable":
+            api_index.ensure_flexlibs_stable_loaded()
+
 
 # Domain-specific synonyms for query expansion (linguistics terminology)
 DOMAIN_SYNONYMS = {
@@ -256,11 +290,11 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
 
 
 def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexlibs2") -> dict:
-    """Apply pagination and filtering to an entity's methods."""
+    """Apply pagination and filtering to an entity's methods and properties."""
     try:
-        from ..constants import OPERATIONS_CLASSES
+        from ..constants import OPERATIONS_CLASSES, KNOWN_OPERATIONS
     except ImportError:
-        from server.constants import OPERATIONS_CLASSES
+        from server.constants import OPERATIONS_CLASSES, KNOWN_OPERATIONS
 
     result = {
         KEY_CATEGORY: entity.get(KEY_CATEGORY),
@@ -295,6 +329,46 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     result[KEY_HAS_MORE] = (offset + limit) < total_methods
     if result[KEY_HAS_MORE]:
         result[KEY_NEXT_OFFSET] = offset + limit
+
+    properties = list(entity.get(KEY_PROPERTIES, []))
+
+    if object_type == "FLExProject":
+        existing = {p.get(KEY_NAME) for p in properties if p.get(KEY_NAME)}
+        for op in KNOWN_OPERATIONS:
+            if not op.endswith("Operations"):
+                continue
+            accessor = op[: -len("Operations")]
+            if accessor in existing:
+                continue
+            properties.append({
+                KEY_NAME: accessor,
+                KEY_DESCRIPTION: f"Access to {op} (legacy accessor; prefer real FLExProject property if one exists).",
+                KEY_TARGET_TYPE: op,
+                "is_property": True,
+            })
+            existing.add(accessor)
+
+    if method_filter:
+        filter_lower = method_filter.lower()
+        properties = [p for p in properties if filter_lower in p.get(KEY_NAME, "").lower()]
+
+    total_properties = len(properties)
+    result[KEY_TOTAL_PROPERTIES] = total_properties
+
+    properties = properties[offset:offset + limit]
+
+    if summary_only:
+        result[KEY_PROPERTIES] = [
+            {
+                KEY_NAME: p.get(KEY_NAME),
+                KEY_DESCRIPTION: (p.get(KEY_DESCRIPTION, "") or "")[:120],
+            }
+            for p in properties
+        ]
+    else:
+        result[KEY_PROPERTIES] = properties
+
+    result[KEY_RETURNED_PROPERTIES] = len(result[KEY_PROPERTIES])
 
     return result
 
@@ -348,77 +422,71 @@ def resolve_pythonic_property(name: str, context_entity: str | None = None) -> L
 # ============================================================
 
 async def handle_get_object_api(args: dict) -> list[TextContent]:
-    """Get API documentation for a specific object type."""
+    """Get API documentation for a specific object type.
+
+    Source isolation: only the source(s) for the session mode are surfaced.
+    flexlibs2 mode shows flexlibs2; flexlibs_stable shows flexlibs_stable;
+    liblcm shows liblcm; "all" shows all three. The legacy include_flexlibs2/
+    include_liblcm overrides still work but only widen the active source set.
+    """
     object_type = args[KEY_OBJECT_TYPE]
     mode = session_state.get_mode()
-    default_flexlibs2 = mode in ("flexlibs2", "all")
-    default_liblcm = mode in ("liblcm", "flexlibs_stable", "all")
-    include_flexlibs2 = args.get("include_flexlibs2", default_flexlibs2)
-    include_liblcm = args.get("include_liblcm", default_liblcm)
     summary_only = args.get(KEY_SUMMARY, False)
     method_filter = args.get("method_filter", "")
     limit = args.get(KEY_LIMIT, 50)
     offset = args.get(KEY_OFFSET, 0)
 
-    # Lazy-load APIs if needed (they're deferred from startup for speed)
-    if include_liblcm:
-        get_api_index().ensure_liblcm_loaded()
+    api_index = get_api_index()
+    ensure_active_sources_loaded(api_index, mode)
 
-    result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False}
+    sources = list(active_sources_for_mode(mode))
+    # Legacy explicit opt-ins widen the surface (back-compat) but never bleed
+    # other modes' content unless the caller asks for it.
+    if args.get("include_flexlibs2") and not any(s[0] == "flexlibs2" for s in sources):
+        api_index.ensure_liblcm_loaded()  # no-op for flexlibs2 but cheap
+        sources.append(("flexlibs2", "flexlibs2", KEY_FLEXLIBS2))
+    if args.get("include_liblcm") and not any(s[0] == "liblcm" for s in sources):
+        api_index.ensure_liblcm_loaded()
+        sources.append(("liblcm", "liblcm", KEY_LIBLCM))
 
-    # Pre-lowercase object_type once for fuzzy matching (eliminates repeated .lower() calls)
+    result = {KEY_OBJECT_TYPE: object_type, KEY_FOUND: False, KEY_API_MODE: mode}
     object_type_lower = object_type.lower()
 
-    # Search in FlexLibs 2.0
-    if include_flexlibs2 and get_api_index().flexlibs2:
-        entities = get_api_index().flexlibs2.get("entities", {})
-        if object_type in entities:
-            entity = entities[object_type]
-            result[KEY_FLEXLIBS2] = paginate_entity(
-                entity, summary_only, method_filter, limit, offset,
-                object_type=object_type, library="flexlibs2"
-            )
-            result[KEY_FOUND] = True
-        else:
-            max_matches = 10
-            for name, entity in entities.items():
-                # Use pre-lowercased object_type instead of calling .lower() per iteration
-                if object_type_lower in name.lower():
-                    if KEY_FLEXLIBS2_MATCHES not in result:
-                        result[KEY_FLEXLIBS2_MATCHES] = []
-                    result[KEY_FLEXLIBS2_MATCHES].append({
-                        KEY_NAME: name,
-                        KEY_CATEGORY: entity.get(KEY_CATEGORY),
-                        KEY_METHODS_COUNT: len(entity.get(KEY_METHODS, []))
-                    })
-                    result[KEY_FOUND] = True
-                    if len(result[KEY_FLEXLIBS2_MATCHES]) >= max_matches:
-                        break
+    matches_key_for = {
+        "flexlibs2": KEY_FLEXLIBS2_MATCHES,
+        "flexlibs_stable": KEY_FLEXLIBS_STABLE_MATCHES,
+        "liblcm": KEY_LIBLCM_MATCHES,
+    }
 
-    # Search in LibLCM
-    if include_liblcm and get_api_index().liblcm:
-        entities = get_api_index().liblcm.get("entities", {})
+    for source_name, attr, source_key in sources:
+        index_data = getattr(api_index, attr, None)
+        if not index_data:
+            continue
+        entities = index_data.get("entities", {})
         if object_type in entities:
-            result[KEY_LIBLCM] = paginate_entity(
+            result[source_key] = paginate_entity(
                 entities[object_type], summary_only, method_filter, limit, offset,
-                object_type=object_type, library="liblcm"
+                object_type=object_type, library=source_name,
             )
             result[KEY_FOUND] = True
-        else:
-            max_matches = 10
-            for name, entity in entities.items():
-                # Use pre-lowercased object_type instead of calling .lower() per iteration
-                if object_type_lower in name.lower():
-                    if KEY_LIBLCM_MATCHES not in result:
-                        result[KEY_LIBLCM_MATCHES] = []
-                    result[KEY_LIBLCM_MATCHES].append({
-                        KEY_NAME: name,
-                        KEY_TYPE: entity.get(KEY_TYPE),
-                        KEY_CATEGORY: entity.get(KEY_CATEGORY)
-                    })
-                    result[KEY_FOUND] = True
-                    if len(result[KEY_LIBLCM_MATCHES]) >= max_matches:
-                        break
+            continue
+        # Substring match fallback (capped at 10 per source)
+        max_matches = 10
+        matches_key = matches_key_for[source_name]
+        for name, entity in entities.items():
+            if object_type_lower not in name.lower():
+                continue
+            if matches_key not in result:
+                result[matches_key] = []
+            entry = {KEY_NAME: name, KEY_CATEGORY: entity.get(KEY_CATEGORY)}
+            if source_name == "liblcm":
+                entry[KEY_TYPE] = entity.get(KEY_TYPE)
+            else:
+                entry[KEY_METHODS_COUNT] = len(entity.get(KEY_METHODS, []))
+            result[matches_key].append(entry)
+            result[KEY_FOUND] = True
+            if len(result[matches_key]) >= max_matches:
+                break
 
     if not result[KEY_FOUND]:
         result[KEY_MESSAGE] = f"No API documentation found for '{object_type}'. Try searching with search_by_capability or list_categories to explore available APIs."
@@ -467,6 +535,24 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
 
+        if KEY_FLEXLIBS_STABLE_MATCHES in result:
+            matches_with_source = [
+                {**m, KEY_SOURCE: "flexlibs_stable"} for m in result[KEY_FLEXLIBS_STABLE_MATCHES]
+            ]
+            ranked = rank_object_matches(object_type, matches_with_source, mode)
+            if ranked.get(KEY_AUTO_RESOLVED) and KEY_DISAMBIGUATION not in result:
+                result[KEY_DISAMBIGUATION] = {
+                    KEY_DETECTED: True,
+                    KEY_AUTO_RESOLVED: True,
+                    KEY_SELECTED: ranked[KEY_SELECTED],
+                    KEY_CONFIDENCE: ranked[KEY_CONFIDENCE],
+                    KEY_REASONING: ranked[KEY_REASONING]
+                }
+            for match, ranked_match in zip(result[KEY_FLEXLIBS_STABLE_MATCHES], ranked.get(KEY_MATCHES, [])):
+                match[KEY_SCORE] = ranked_match.get(KEY_SCORE)
+                match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
+                match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
+
         if KEY_FLEXLIBS2 in result:
             entity_name = result[KEY_FLEXLIBS2].get(KEY_NAME, object_type)
             for method in result[KEY_FLEXLIBS2].get(KEY_METHODS, []):
@@ -480,6 +566,12 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 if prop_name:
                     session_state.record_discovered_api(entity_name, prop_name)
             for method in result[KEY_LIBLCM].get(KEY_METHODS, []):
+                method_name = method.get(KEY_NAME, "")
+                if method_name:
+                    session_state.record_discovered_api(entity_name, method_name)
+        if KEY_FLEXLIBS_STABLE in result:
+            entity_name = result[KEY_FLEXLIBS_STABLE].get(KEY_NAME, object_type)
+            for method in result[KEY_FLEXLIBS_STABLE].get(KEY_METHODS, []):
                 method_name = method.get(KEY_NAME, "")
                 if method_name:
                     session_state.record_discovered_api(entity_name, method_name)
@@ -686,31 +778,32 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
     object_type = args.get(KEY_OBJECT_TYPE)
     max_results = args.get("max_results", 5)
 
-    # Cache API index to avoid redundant lookups
     api_index = get_api_index()
-
-    # Lazy-load APIs if needed (they're deferred from startup for speed)
     mode = session_state.get_mode()
-    if mode in ["all", "liblcm"]:
-        api_index.ensure_liblcm_loaded()
-    if mode in ["all", "flexlibs_stable"]:
-        api_index.ensure_flexlibs_stable_loaded()
+    ensure_active_sources_loaded(api_index, mode)
 
     examples = []
+    object_type_lower = object_type.lower() if object_type else None
+    method_name_lower = method_name.lower() if method_name else None
 
-    if api_index.flexlibs2:
-        for entity_name, entity in api_index.flexlibs2.get("entities", {}).items():
-            if object_type and object_type.lower() not in entity_name.lower():
+    for source_name, attr, _key in active_sources_for_mode(mode):
+        if len(examples) >= max_results:
+            break
+        index_data = getattr(api_index, attr, None)
+        if not index_data:
+            continue
+
+        for entity_name, entity in index_data.get("entities", {}).items():
+            if object_type_lower and object_type_lower not in entity_name.lower():
                 continue
 
             for method in entity.get(KEY_METHODS, []):
                 method_name_str = method.get(KEY_NAME, "")
-                if method_name and method_name.lower() not in method_name_str.lower():
+                if method_name_lower and method_name_lower not in method_name_str.lower():
                     continue
 
                 if operation_type:
-                    name_lower = method_name_str.lower()
-                    if not _matches_operation(name_lower, operation_type):
+                    if not _matches_operation(method_name_str.lower(), operation_type):
                         continue
 
                 if method.get(KEY_EXAMPLE):
@@ -719,7 +812,8 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
                         KEY_METHOD_NAME: method_name_str,
                         KEY_SIGNATURE: method.get(KEY_SIGNATURE),
                         KEY_DESCRIPTION: method.get(KEY_SUMMARY, method.get(KEY_DESCRIPTION, ""))[:150],
-                        KEY_EXAMPLE: method.get(KEY_EXAMPLE)
+                        KEY_EXAMPLE: method.get(KEY_EXAMPLE),
+                        KEY_SOURCE: source_name,
                     })
 
                     if len(examples) >= max_results:
@@ -734,6 +828,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             KEY_OPERATION_TYPE: operation_type,
             KEY_OBJECT_TYPE: object_type
         },
+        KEY_API_MODE: mode,
         KEY_RESULTS_COUNT: len(examples),
         KEY_EXAMPLES: examples
     })

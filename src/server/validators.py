@@ -411,9 +411,31 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
     return {"has_output": False, "uses_correct_mechanism": True, "mechanism_type": "unknown"}
 
 
-def _project_accessors() -> List[str]:
-    """Valid project.<X> accessor names, derived from KNOWN_OPERATIONS."""
-    return [op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")]
+def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
+    """Valid project.<X> accessor names.
+
+    Reads the real FLExProject property list from the flexlibs2 index when
+    available, unioned with the legacy KNOWN_OPERATIONS-derived names so
+    accessors like LexSense (Operations-class shorthand) keep validating.
+    Falls back to the KNOWN_OPERATIONS-derived list alone if the index is
+    unavailable or has no FLExProject properties.
+    """
+    legacy = [op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")]
+    if api_index is None:
+        return legacy
+    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+    entities = flexlibs2.get("entities") or {}
+    flex_project = entities.get("FLExProject") or {}
+    real_props = [p.get("name") for p in flex_project.get("properties", []) if p.get("name")]
+    if not real_props:
+        return legacy
+    seen = set()
+    merged: List[str] = []
+    for name in list(real_props) + legacy:
+        if name and name not in seen:
+            seen.add(name)
+            merged.append(name)
+    return merged
 
 
 def _operation_method_names(api_index: Optional[Any], operations_class: str) -> List[str]:
@@ -474,7 +496,7 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     scope = ""
 
     if object_type in ("FLExProject", "FLExProjectImpl"):
-        candidates = _project_accessors()
+        candidates = _project_accessors(api_index)
         scope = "project"
     elif object_type in KNOWN_OPERATIONS:
         candidates = _operation_method_names(api_index, object_type)
@@ -517,7 +539,7 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     if code_tree is None:
         return {"has_invalid": False, "issues": []}
 
-    accessors = set(_project_accessors())
+    accessors = set(_project_accessors(api_index))
     # Direct project methods typically start with a verb prefix; treat names
     # with these prefixes as definitely-not-accessors (e.g., GetWritingSystems,
     # LexiconAllEntries) and skip them so we don't false-positive against the

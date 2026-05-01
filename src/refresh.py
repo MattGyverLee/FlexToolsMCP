@@ -194,10 +194,24 @@ def _refresh_library(
     try:
         os.replace(temp_output, versioned_path)
         print(f"[INFO] Saved {library_name} v{version} to {versioned_path.name}")
-        return True
     except Exception as e:
         print(f"[ERROR] Failed to move file: {e}")
         return False
+
+    # Rename sibling LCM bridge file (if analyzer produced one)
+    bridge_prefix = output_prefix.replace("_api", "_lcm_bridge", 1)
+    temp_bridge = index_dir / f"{bridge_prefix}_temp.json"
+    if temp_bridge.exists():
+        versioned_bridge = get_versioned_output_path(index_dir / f"{bridge_prefix}.json", version)
+        try:
+            os.replace(temp_bridge, versioned_bridge)
+            print(f"[INFO] Saved {library_name} LCM bridge v{version} to {versioned_bridge.name}")
+        except Exception as e:
+            print(f"[WARN] Failed to move LCM bridge file: {e}")
+    else:
+        print(f"[INFO] No LCM bridge temp file produced (older analyzer?), skipping")
+
+    return True
 
 
 def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:

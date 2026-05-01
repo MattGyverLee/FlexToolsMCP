@@ -625,9 +625,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         # Fallback for backwards compatibility (shouldn't happen)
         code = args.get("module_code") or args.get("operations", "")
 
-    # Use session state as fallback for project and write settings
-    project_name = args.get("project_name", session_state.get_project())
-    write_enabled = args.get("write_enabled", session_state.is_write_enabled())
+    # Use session state as fallback for project and write settings.
+    # An explicit None from args also falls back to session state, so the value
+    # passed to the subprocess is always a proper bool (not None).
+    project_name = args.get("project_name") or session_state.get_project()
+    write_enabled_arg = args.get("write_enabled")
+    write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
     api_mode = session_state.get_mode()
 
     # Validate project_name is available
@@ -811,6 +814,21 @@ import json
 import os
 import traceback
 import types
+
+# Reconfigure stdout/stderr to UTF-8 BEFORE any print() runs.
+# Without this, messages containing non-cp1252 characters (Yi, IPA, tones, ...)
+# raise UnicodeEncodeError mid-print, killing the result-marker output and
+# producing a silent failure. Must run before SimpleReporter prints anything.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    # reconfigure is Python 3.7+; fall back for older runtimes / detached streams.
+    import codecs
+    if getattr(sys.stdout, "buffer", None):
+        sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, errors="replace")
+    if getattr(sys.stderr, "buffer", None):
+        sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, errors="replace")
 
 # Create fake flextoolslib module
 flextoolslib = types.ModuleType('flextoolslib')
@@ -1068,6 +1086,10 @@ def run_module():
                 return []
 
         # Execute the module code in a namespace
+        # Expose both `write_enabled` and `modifyAllowed` so top-level code can
+        # call its own helper (e.g. `MyMain(project, report, write_enabled)`)
+        # without a NameError. The standard FLExTools entry point still receives
+        # WRITE_ENABLED as the third positional argument when `Main` is detected.
         module_namespace = {
             "__name__": "__flextools_module__",
             "__file__": "module.py",
@@ -1075,9 +1097,10 @@ def run_module():
             "FLEX_EMPTY_PLACEHOLDER": FLEX_EMPTY_PLACEHOLDER,
             "find_writing_system": find_writing_system,
             "list_writing_systems": list_writing_systems,
-            # Add project and report so bare code can use them directly
             "project": project,
             "report": report,
+            "write_enabled": WRITE_ENABLED,
+            "modifyAllowed": WRITE_ENABLED,
         }
 
         # Execute the module code to define Main and FlexToolsModule, or run bare code

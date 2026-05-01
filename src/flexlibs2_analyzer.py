@@ -1764,6 +1764,50 @@ def print_summary(api_data: Dict[str, Any], version: str):
         print(f"    {cat}: {count} classes")
 
 
+def _derive_bridge_path(output_file: str) -> str:
+    """Derive bridge file path from API output path.
+
+    Replaces '_api_' with '_lcm_bridge_' if present (matches refresh.py temp/versioned
+    filenames). Otherwise inserts '_lcm_bridge' before '.json' suffix.
+    """
+    if "_api_" in output_file:
+        return output_file.replace("_api_", "_lcm_bridge_", 1)
+    if output_file.endswith("_api.json"):
+        return output_file[: -len("_api.json")] + "_lcm_bridge.json"
+    if output_file.endswith(".json"):
+        return output_file[: -len(".json")] + "_lcm_bridge.json"
+    return output_file + "_lcm_bridge"
+
+
+def _split_lcm_bridge(api_data: dict) -> dict:
+    """Pop lcm_mapping data (top-level + per-method inline) into a separate bridge dict.
+
+    Bridge schema: {"_schema": "...", "_source": {...}, "by_method": {"Class.method": {...}}}
+    Top-level lcm_mapping entries become bridge["by_method"][key].
+    Per-method inline lcm_mapping is merged under bridge["by_method"][key]["inline"].
+
+    Mutates api_data in place (removes lcm_mapping fields).
+    """
+    bridge = {
+        "_schema": "flexlibs-lcm-bridge/1.0",
+        "_source": api_data.get("_source", {}).copy(),
+        "by_method": {},
+    }
+
+    top_level = api_data.pop("lcm_mapping", {}) or {}
+    for key, val in top_level.items():
+        bridge["by_method"][key] = dict(val)
+
+    for entity_name, entity in api_data.get("entities", {}).items():
+        for method in entity.get("methods", []):
+            inline = method.pop("lcm_mapping", None)
+            if inline:
+                method_key = f"{entity_name}.{method.get('name')}"
+                bridge["by_method"].setdefault(method_key, {})["inline"] = inline
+
+    return bridge
+
+
 def _analyze_and_save(analyze_func, library_path: str, output_file: str, version_name: str, exit_on_error: bool = False) -> bool:
     """Analyze a library and save results (DRY consolidation of main() code).
 
@@ -1779,10 +1823,20 @@ def _analyze_and_save(analyze_func, library_path: str, output_file: str, version
     """
     try:
         api_data = analyze_func(library_path)
+        # Split LCM bridge data out before writing (metadata.mapping_types already
+        # populated upstream, so popping is safe).
+        bridge_data = _split_lcm_bridge(api_data)
         print(f"[INFO] Writing results to: {output_file}")
         api_data = sort_json_arrays(api_data)
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(api_data, f, indent=2, ensure_ascii=False, sort_keys=True)
+
+        bridge_file = _derive_bridge_path(output_file)
+        bridge_data = sort_json_arrays(bridge_data)
+        print(f"[INFO] Writing LCM bridge to: {bridge_file}")
+        with open(bridge_file, 'w', encoding='utf-8') as f:
+            json.dump(bridge_data, f, indent=2, ensure_ascii=False, sort_keys=True)
+
         print_summary(api_data, version_name)
         return True
     except Exception as e:

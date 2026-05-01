@@ -398,6 +398,8 @@ class APIIndex:
     navigation_graph: dict | None = None
     casting_index: dict | None = None
     semantic_search: SemanticSearch | None = None
+    flexlibs2_lcm_bridge: dict | None = None
+    flexlibs_stable_lcm_bridge: dict | None = None
 
     # Track loaded API versions for session logging
     liblcm_version: str | None = None
@@ -528,6 +530,45 @@ class APIIndex:
         _search_start = _time_module.time()
         self.semantic_search = SemanticSearch.load(get_index_dir())
         _search_done = _time_module.time()
+
+    def _load_lcm_bridge(self, library_label: str, prefix: str, version: str | None) -> dict | None:
+        """Load an LCM bridge JSON file by library prefix, with version fallback."""
+        bridge_dir = get_index_dir() / "flexlibs"
+
+        bridge_path = None
+        if version:
+            bridge_path = find_versioned_api_file(bridge_dir, prefix, version)
+        if not bridge_path:
+            bridge_path = find_latest_versioned_api_file(bridge_dir, prefix)
+
+        if not bridge_path:
+            _log_warning(f"No {library_label} LCM bridge file found in {bridge_dir}")
+            return None
+
+        try:
+            with open(bridge_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            _log_info(f"Loaded {library_label} LCM bridge from {bridge_path.name}")
+            return data
+        except Exception as e:
+            _log_error(f"Failed to load {library_label} LCM bridge: {e}")
+            return None
+
+    def ensure_flexlibs2_bridge_loaded(self) -> None:
+        """Lazy-load FlexLibs 2.0 LCM bridge if not already loaded."""
+        if self.flexlibs2_lcm_bridge is not None:
+            return
+        self.flexlibs2_lcm_bridge = self._load_lcm_bridge(
+            "FlexLibs 2.0", "flexlibs2_lcm_bridge", self.flexlibs2_version
+        )
+
+    def ensure_flexlibs_stable_bridge_loaded(self) -> None:
+        """Lazy-load FlexLibs stable LCM bridge if not already loaded."""
+        if self.flexlibs_stable_lcm_bridge is not None:
+            return
+        self.flexlibs_stable_lcm_bridge = self._load_lcm_bridge(
+            "FlexLibs stable", "flexlibs_lcm_bridge", self.flexlibs_stable_version
+        )
 
 # Initialize the MCP server
 _server_init_begin = _time_module.time()

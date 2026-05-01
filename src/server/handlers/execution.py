@@ -48,13 +48,15 @@ try:
     from ..validators import (
         detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
-        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state
+        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
+        detect_unknown_attribute_error, detect_invalid_project_chains,
     )
 except ImportError:
     from server.validators import (
         detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
-        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state
+        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
+        detect_unknown_attribute_error, detect_invalid_project_chains,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -749,6 +751,19 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
         )
 
+    # Pre-flight: catch project.<accessor>/<method> typos before subprocess launch.
+    # Conservative: only rejects when difflib finds a high-confidence match
+    # (cutoff 0.7) -- unrecognized names with no close match are passed through
+    # to runtime so we don't block valid direct-project methods we don't index.
+    chain_check = detect_invalid_project_chains(code_tree, api_idx)
+    if chain_check["has_invalid"]:
+        return error_response(
+            "invalid_api_chain",
+            chain_check["suggestion"],
+            issues=chain_check["issues"],
+            guidance="Replace each flagged expression with the suggested correct name and re-run."
+        )
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Determine three-tier injection strategy based on pre-flight results
@@ -1231,6 +1246,13 @@ MODULE_CODE = {code}
                 execution_result["object_type"] = polymorphic_info["object_type"]
                 execution_result["property_name"] = polymorphic_info["property_name"]
                 execution_result["help"] = polymorphic_info["suggestion"]
+            else:
+                # Try wrapper-API name suggestions (project.LexEntries -> project.LexEntry,
+                # GetPOS -> GetPartOfSpeech, etc.)
+                hint = detect_unknown_attribute_error(execution_result["error"], get_api_index())
+                if hint.get("has_suggestion"):
+                    execution_result["did_you_mean"] = hint["did_you_mean"]
+                    execution_result["help"] = hint["suggestion"]
 
         # Record API usage patterns for learning
         from ..kernel import get_pattern_tracker

@@ -411,6 +411,183 @@ def check_output_mechanism(code: str, tool_type: str) -> dict:
     return {"has_output": False, "uses_correct_mechanism": True, "mechanism_type": "unknown"}
 
 
+def _project_accessors() -> List[str]:
+    """Valid project.<X> accessor names, derived from KNOWN_OPERATIONS."""
+    return [op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")]
+
+
+def _operation_method_names(api_index: Optional[Any], operations_class: str) -> List[str]:
+    """Methods on an Operations class, looked up in the flexlibs2 index."""
+    if api_index is None:
+        return []
+    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+    entity = (flexlibs2.get("entities") or {}).get(operations_class, {})
+    return [m.get("name", "") for m in entity.get("methods", []) if m.get("name")]
+
+
+def _suggest_attribute_matches(attr_name: str, candidates: List[str], cutoff: float = 0.5) -> List[str]:
+    """Find close-match candidates for a misspelled attribute name.
+
+    Combines difflib similarity with a camelcase-acronym fallback that catches
+    abbreviations like GetPOS -> GetPartOfSpeech.
+    """
+    import difflib
+
+    matches = difflib.get_close_matches(attr_name, candidates, n=3, cutoff=cutoff)
+    if matches:
+        return matches
+
+    # Acronym fallback: trailing uppercase letters of attr match candidate's
+    # camelcase initials (e.g., POS in GetPOS -> initials of GetPartOfSpeech).
+    upper_letters = "".join(c for c in attr_name if c.isupper())
+    if len(upper_letters) < 2:
+        return []
+    acronym_hits = []
+    for cand in candidates:
+        initials = "".join(re.findall(r"(?:^|[a-z])([A-Z])", cand)) + "".join(
+            c for c in cand if c.isupper()
+        )
+        if upper_letters in initials:
+            acronym_hits.append(cand)
+    return acronym_hits[:3]
+
+
+def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
+    """Detect AttributeErrors on FlexLibs2 wrapper accessors and suggest correct names.
+
+    Targets the common "namespace thrash" pattern where users guess at accessor or
+    method names (project.LexEntries -> project.LexEntry, GetPOS -> GetPartOfSpeech).
+
+    Returns dict with:
+      - has_suggestion: bool
+      - object_type, attribute_name: parsed from the error
+      - did_you_mean: list[str] of nearest valid names
+      - suggestion: human-readable hint
+    """
+    pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
+    match = re.search(pattern, error_msg)
+    if not match:
+        return {"has_suggestion": False}
+
+    object_type, attr_name = match.groups()
+    candidates: List[str] = []
+    scope = ""
+
+    if object_type in ("FLExProject", "FLExProjectImpl"):
+        candidates = _project_accessors()
+        scope = "project"
+    elif object_type in KNOWN_OPERATIONS:
+        candidates = _operation_method_names(api_index, object_type)
+        scope = object_type
+
+    if not candidates:
+        return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
+
+    matches = _suggest_attribute_matches(attr_name, candidates)
+    if not matches:
+        return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
+
+    if scope == "project":
+        suggestion = f"'{attr_name}' is not a project accessor. Did you mean: {', '.join('project.' + m for m in matches)}?"
+    else:
+        suggestion = f"'{scope}.{attr_name}' is not a method on {scope}. Did you mean: {', '.join(scope + '.' + m for m in matches)}?"
+
+    return {
+        "has_suggestion": True,
+        "object_type": object_type,
+        "attribute_name": attr_name,
+        "did_you_mean": matches,
+        "suggestion": suggestion,
+    }
+
+
+def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
+    """Pre-flight: scan AST for project.<X> / project.<X>.<Y> references and reject typos.
+
+    Conservative by design: only rejects when difflib finds a HIGH-confidence
+    (>=0.7) match against known accessor / method names. If a name is unknown
+    but has no close match, we let runtime handle it -- avoids false positives
+    on dynamic / direct project methods we don't have in the index.
+
+    Returns dict with:
+      - has_invalid: bool
+      - issues: list of dicts with kind/expr/did_you_mean/suggestion
+      - suggestion: combined human-readable hint
+    """
+    if code_tree is None:
+        return {"has_invalid": False, "issues": []}
+
+    accessors = set(_project_accessors())
+    # Direct project methods typically start with a verb prefix; treat names
+    # with these prefixes as definitely-not-accessors (e.g., GetWritingSystems,
+    # LexiconAllEntries) and skip them so we don't false-positive against the
+    # type-name accessors (WritingSystem, LexEntry).
+    method_prefixes = ("Get", "Set", "Has", "Is", "Add", "Remove", "Create",
+                       "Delete", "Update", "Find", "Make", "Build", "Lexicon", "To", "From")
+    issues: List[Dict[str, Any]] = []
+
+    for node in ast.walk(code_tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        # project.<X>: node.value is Name('project')
+        if isinstance(node.value, ast.Name) and node.value.id == "project":
+            x = node.attr
+            if x in accessors:
+                continue
+            if x.startswith(method_prefixes):
+                continue  # Looks like a direct project method, not an accessor typo
+            # Only reject if a *high-confidence* close match exists in the accessor set.
+            # Otherwise this might be a direct project method we don't enumerate.
+            close = _suggest_attribute_matches(x, list(accessors), cutoff=0.7)
+            if close:
+                issues.append({
+                    "kind": "accessor",
+                    "expr": f"project.{x}",
+                    "did_you_mean": close,
+                    "suggestion": f"'project.{x}' is not a valid accessor. Did you mean: {', '.join('project.' + c for c in close)}?",
+                })
+        # project.<X>.<Y>: node.value is Attribute(value=Name('project'), attr=X)
+        elif (
+            isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "project"
+        ):
+            x = node.value.attr
+            y = node.attr
+            if x not in accessors:
+                continue  # outer accessor will be flagged separately if invalid
+            ops_class = f"{x}Operations"
+            methods = _operation_method_names(api_index, ops_class)
+            if not methods or y in methods:
+                continue
+            close = _suggest_attribute_matches(y, methods, cutoff=0.7)
+            if close:
+                issues.append({
+                    "kind": "method",
+                    "expr": f"project.{x}.{y}",
+                    "did_you_mean": close,
+                    "suggestion": f"'{y}' is not a method on {ops_class}. Did you mean: {', '.join(f'project.{x}.{c}' for c in close)}?",
+                })
+
+    # Deduplicate by expression (same typo can appear many times)
+    seen = set()
+    unique_issues: List[Dict[str, Any]] = []
+    for issue in issues:
+        if issue["expr"] in seen:
+            continue
+        seen.add(issue["expr"])
+        unique_issues.append(issue)
+
+    if not unique_issues:
+        return {"has_invalid": False, "issues": []}
+
+    return {
+        "has_invalid": True,
+        "issues": unique_issues,
+        "suggestion": " ".join(i["suggestion"] for i in unique_issues),
+    }
+
+
 def detect_polymorphic_error(error_msg: str) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 

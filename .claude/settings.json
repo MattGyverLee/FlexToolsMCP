@@ -5,7 +5,12 @@
       "Read(//d/Github/_Projects/_LEX/FlexToolsMCP/**)",
       "Bash(git -C \"d:/Github/_Projects/_LEX/FlexToolsMCP\" status -s)",
       "WebSearch",
-      "Read(//c/Users/thoua/.flextoolsmcp/old logs/**)"
+      "Read(//c/Users/thoua/.flextoolsmcp/old logs/**)",
+      "mcp__neurolinked-brain__send_to_brain",
+      "mcp__neurolinked-brain__remember",
+      "mcp__neurolinked-brain__brain_knowledge_stats",
+      "Read(//c/Users/thoua/.claude/skills/build-index-mcp/**)",
+      "Read(//c/Users/thoua/.flextoolsmcp/logs/2026-04-19/**)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src",

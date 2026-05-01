@@ -1387,7 +1387,6 @@ def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
         "_source": {
             "type": "flexlibs2",
             "version": version,
-            "path": str(flexlibs2_path),
             "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)"
         },
         "metadata": {
@@ -1525,7 +1524,6 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
         "_source": {
             "type": "flexlibs",
             "version": version,
-            "path": str(flexlibs_path),
             "description": "FlexLibs stable - Shallow Python wrapper for LibLCM (~40 functions)"
         },
         "metadata": {

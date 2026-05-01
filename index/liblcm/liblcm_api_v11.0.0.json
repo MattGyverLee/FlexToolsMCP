@@ -2,7 +2,6 @@
   "_schema": "unified-api-doc/2.0",
   "_source": {
     "description": "LibLCM - FieldWorks Language and Culture Model (.NET assemblies)",
-    "path": "C:\\Program Files\\SIL\\FieldWorks 9",
     "type": "liblcm",
     "url": "https://github.com/sillsdev/liblcm",
     "version": "11.0.0"

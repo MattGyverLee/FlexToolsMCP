@@ -2,7 +2,6 @@
   "_schema": "unified-api-doc/2.0",
   "_source": {
     "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)",
-    "path": "D:/Github/_Projects/_LEX/flexlibs2",
     "type": "flexlibs2",
     "version": "3.0.0"
   },

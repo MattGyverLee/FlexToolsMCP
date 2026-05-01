@@ -968,7 +968,6 @@ def stamp_document(api_doc: Dict[str, Any], dll_dir: Path, version: str = "0.0.0
         "_source": {
             "type": "liblcm",
             "version": version,
-            "path": str(dll_dir.absolute()),
             "description": "LibLCM - FieldWorks Language and Culture Model (.NET assemblies)",
             "url": "https://github.com/sillsdev/liblcm"
         },

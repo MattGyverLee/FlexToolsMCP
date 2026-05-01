@@ -2,7 +2,6 @@
   "_schema": "unified-api-doc/2.0",
   "_source": {
     "description": "FlexLibs stable - Shallow Python wrapper for LibLCM (~40 functions)",
-    "path": "C:\\Users\\thoua\\AppData\\Roaming\\Python\\Python313\\site-packages",
     "type": "flexlibs",
     "version": "1.2.8"
   },

@@ -1,0 +1,390 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="1600" height="900" fill="#FAFAFA"/>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6366F1"/>
+    </marker>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#DC2626"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="40" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A">FlexToolsMCP — Workflow &amp; Safeguards</text>
+
+  <!-- Connector arrows between stage boxes -->
+  <line x1="255" y1="180" x2="272" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="470" y1="180" x2="487" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="685" y1="180" x2="702" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="900" y1="180" x2="917" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="1115" y1="180" x2="1132" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="1330" y1="180" x2="1347" y2="180" stroke="#94A3B8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- MCP / FlexTools boundary -->
+  <line x1="1337.5" y1="78" x2="1337.5" y2="310" stroke="#7C3AED" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1337.5" y="72" text-anchor="middle" font-size="10" fill="#7C3AED" font-weight="600">— MCP boundary —</text>
+
+  <!-- ============ STAGE 1: Session Start ============ -->
+  <g>
+    <rect x="55" y="80" width="200" height="200" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+    <circle cx="78" cy="103" r="13" fill="#2563EB"/>
+    <text x="78" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">1</text>
+    <text x="160" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#1E3A8A">Session Start</text>
+    <text x="65" y="138" font-size="11.5" font-weight="600" fill="#1E3A8A">flextools_start</text>
+    <text x="65" y="156" font-size="10.5" fill="#475569">• api_mode</text>
+    <text x="65" y="171" font-size="10.5" fill="#475569">• project_name</text>
+    <text x="65" y="186" font-size="10.5" fill="#475569">• write_enabled</text>
+    <line x1="65" y1="200" x2="245" y2="200" stroke="#93C5FD" stroke-width="1"/>
+    <text x="65" y="216" font-size="10" font-weight="700" fill="#1E40AF">SAFEGUARDS</text>
+    <text x="65" y="232" font-size="10" fill="#1E3A8A">• dry-run by default</text>
+    <text x="65" y="246" font-size="10" fill="#1E3A8A">• runtime primer pushed</text>
+    <text x="65" y="260" font-size="10" fill="#1E3A8A">• session log rotation</text>
+    <text x="65" y="274" font-size="10" fill="#1E3A8A">• discovered_apis cleared</text>
+  </g>
+
+  <!-- ============ STAGE 2: Module Scaffold ============ -->
+  <g>
+    <rect x="270" y="80" width="200" height="200" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/>
+    <circle cx="293" cy="103" r="13" fill="#2563EB"/>
+    <text x="293" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">2</text>
+    <text x="375" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#1E3A8A">Module Scaffold</text>
+    <text x="280" y="138" font-size="11.5" font-weight="600" fill="#1E3A8A">flextools_start_module</text>
+    <text x="280" y="153" font-size="10.5" fill="#475569">• wizard: name, synopsis,</text>
+    <text x="280" y="167" font-size="10.5" fill="#475569">  api_target, modifies_db,</text>
+    <text x="280" y="181" font-size="10.5" fill="#475569">  domain, dry_run, test_proj</text>
+    <text x="280" y="196" font-size="11.5" font-weight="600" fill="#1E3A8A">flextools_get_module_template</text>
+    <line x1="280" y1="208" x2="460" y2="208" stroke="#93C5FD" stroke-width="1"/>
+    <text x="280" y="223" font-size="10" font-weight="700" fill="#1E40AF">SAFEGUARDS</text>
+    <text x="280" y="238" font-size="10" fill="#1E3A8A">• if modifyAllowed: guard</text>
+    <text x="280" y="251" font-size="10" fill="#1E3A8A">  auto-injected on writes</text>
+    <text x="280" y="264" font-size="10" fill="#1E3A8A">• DRY_RUN flag option</text>
+    <text x="280" y="276" font-size="10" fill="#1E3A8A">• style-guide refs in resp</text>
+  </g>
+
+  <!-- ============ STAGE 3: API Discovery ============ -->
+  <g>
+    <rect x="485" y="80" width="200" height="200" rx="10" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
+    <circle cx="508" cy="103" r="13" fill="#4F46E5"/>
+    <text x="508" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">3</text>
+    <text x="590" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">API Discovery</text>
+    <text x="495" y="132" font-size="10.5" fill="#312E81">• search_by_capability</text>
+    <text x="495" y="146" font-size="10.5" fill="#312E81">• get_object_api</text>
+    <text x="495" y="160" font-size="10.5" fill="#312E81">• get_navigation_path</text>
+    <text x="495" y="174" font-size="10.5" fill="#312E81">• find_examples</text>
+    <text x="495" y="188" font-size="10.5" fill="#312E81">• resolve_property</text>
+    <text x="495" y="202" font-size="10.5" fill="#312E81">• get_wrapper_dependencies</text>
+    <text x="495" y="216" font-size="10.5" fill="#312E81">• find_wrappers_for_lcm</text>
+    <text x="495" y="230" font-size="10.5" fill="#312E81">• list_categories / entities</text>
+    <line x1="495" y1="240" x2="675" y2="240" stroke="#A5B4FC" stroke-width="1"/>
+    <text x="495" y="255" font-size="10" font-weight="700" fill="#3730A3">SAFEGUARDS</text>
+    <text x="495" y="270" font-size="10" fill="#312E81">• MANDATORY before exec</text>
+  </g>
+
+  <!-- ============ STAGE 4: Code Authoring ============ -->
+  <g>
+    <rect x="700" y="80" width="200" height="200" rx="10" fill="#E0E7FF" stroke="#4F46E5" stroke-width="2"/>
+    <circle cx="723" cy="103" r="13" fill="#4F46E5"/>
+    <text x="723" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">4</text>
+    <text x="805" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#312E81">Code Authoring</text>
+    <text x="710" y="138" font-size="11" fill="#312E81" font-style="italic">(LLM-side, off-server)</text>
+    <text x="710" y="160" font-size="11" font-weight="600" fill="#312E81">Write per runtime primer:</text>
+    <text x="710" y="176" font-size="10.5" fill="#475569">• report.* not print()</text>
+    <text x="710" y="190" font-size="10.5" fill="#475569">• if modifyAllowed: guards</text>
+    <text x="710" y="204" font-size="10.5" fill="#475569">• '***' multistring norm</text>
+    <text x="710" y="218" font-size="10.5" fill="#475569">• clickable refs via</text>
+    <text x="710" y="231" font-size="10.5" fill="#475569">  project.BuildGotoURL(obj)</text>
+    <line x1="710" y1="241" x2="890" y2="241" stroke="#A5B4FC" stroke-width="1"/>
+    <text x="710" y="256" font-size="10" font-weight="700" fill="#3730A3">SAFEGUARDS</text>
+    <text x="710" y="270" font-size="10" fill="#312E81">• namespace helpers pre-injected</text>
+  </g>
+
+  <!-- ============ STAGE 5: Run Module (split into 5a / 5b) ============ -->
+  <g>
+    <!-- Outer red box, taller than other stages to fit two passes -->
+    <rect x="915" y="80" width="200" height="240" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+    <circle cx="938" cy="103" r="13" fill="#DC2626"/>
+    <text x="938" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">5</text>
+    <text x="1020" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#7F1D1D">Run Module</text>
+    <text x="925" y="125" font-size="10.5" font-weight="600" fill="#7F1D1D">flextools_run_module — twice</text>
+
+    <!-- Sub-card 5a: Dry-run -->
+    <rect x="925" y="132" width="180" height="62" rx="6" fill="white" stroke="#F87171" stroke-width="1.5"/>
+    <text x="935" y="148" font-size="11" font-weight="700" fill="#7F1D1D">5a · Dry-run pass</text>
+    <text x="1095" y="148" text-anchor="end" font-size="9" font-weight="700" fill="#16A34A">REQUIRED</text>
+    <text x="935" y="163" font-size="10" fill="#475569">write_enabled = False</text>
+    <text x="935" y="177" font-size="10" fill="#475569">verify report output,</text>
+    <text x="935" y="190" font-size="10" fill="#475569">message counts, refs</text>
+
+    <!-- Promote arrow between sub-cards -->
+    <line x1="1015" y1="198" x2="1015" y2="218" stroke="#DC2626" stroke-width="2" marker-end="url(#arrRed)"/>
+    <text x="1025" y="213" font-size="10" font-style="italic" fill="#7F1D1D">promote</text>
+
+    <!-- Sub-card 5b: Write-mode -->
+    <rect x="925" y="222" width="180" height="62" rx="6" fill="white" stroke="#F87171" stroke-width="1.5"/>
+    <text x="935" y="238" font-size="11" font-weight="700" fill="#7F1D1D">5b · Write-mode pass</text>
+    <text x="935" y="253" font-size="10" fill="#475569">write_enabled = True</text>
+    <text x="935" y="267" font-size="10" fill="#475569">write lock engages,</text>
+    <text x="935" y="280" font-size="10" fill="#475569">undo entry recorded</text>
+
+    <!-- Footer -->
+    <text x="1015" y="302" text-anchor="middle" font-size="9.5" font-weight="600" fill="#7F1D1D">both passes traverse the 12-gate gauntlet ↓</text>
+    <text x="1015" y="314" text-anchor="middle" font-size="9" fill="#9F1239">(gate 11 write-lock fires only on 5b)</text>
+  </g>
+
+  <!-- ============ STAGE 6: Inspect &amp; Undo ============ -->
+  <g>
+    <rect x="1130" y="80" width="200" height="200" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+    <circle cx="1153" cy="103" r="13" fill="#D97706"/>
+    <text x="1153" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">6</text>
+    <text x="1235" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#78350F">Inspect &amp; Undo</text>
+    <text x="1140" y="136" font-size="11" font-weight="600" fill="#78350F">flextools_get_operation_logs</text>
+    <text x="1140" y="151" font-size="10.5" fill="#92400E">• logs + recommendations</text>
+    <text x="1140" y="170" font-size="11" font-weight="600" fill="#78350F">flextools_get_session_history</text>
+    <text x="1140" y="184" font-size="10.5" fill="#92400E">• audit trail / undo stack</text>
+    <text x="1140" y="203" font-size="11" font-weight="600" fill="#78350F">flextools_undo_last_operation</text>
+    <text x="1140" y="217" font-size="10.5" fill="#92400E">• ActionHandler.Undo()</text>
+    <line x1="1140" y1="227" x2="1320" y2="227" stroke="#FCD34D" stroke-width="1"/>
+    <text x="1140" y="243" font-size="10" font-weight="700" fill="#78350F">SAFEGUARDS</text>
+    <text x="1140" y="258" font-size="10" fill="#78350F">• pattern tracker → Stage 3</text>
+    <text x="1140" y="272" font-size="10" fill="#78350F">• full operation audit log</text>
+  </g>
+
+  <!-- ============ STAGE 7: Publish (manual) ============ -->
+  <g>
+    <rect x="1345" y="80" width="200" height="200" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+    <circle cx="1368" cy="103" r="13" fill="#16A34A"/>
+    <text x="1368" y="108" text-anchor="middle" font-size="13" font-weight="700" fill="white">7</text>
+    <text x="1450" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#14532D">Publish</text>
+    <text x="1355" y="138" font-size="11" font-style="italic" fill="#166534">(manual handoff)</text>
+    <text x="1355" y="160" font-size="10.5" fill="#14532D">• save .py to FlexTools</text>
+    <text x="1355" y="174" font-size="10.5" fill="#14532D">  Modules folder</text>
+    <text x="1355" y="194" font-size="10.5" fill="#14532D">• run inside FlexTools GUI</text>
+    <text x="1355" y="208" font-size="10.5" fill="#14532D">  on backup project first</text>
+    <text x="1355" y="228" font-size="10.5" fill="#14532D">• promote to production</text>
+    <line x1="1355" y1="240" x2="1535" y2="240" stroke="#86EFAC" stroke-width="1"/>
+    <text x="1355" y="256" font-size="10" font-weight="700" fill="#14532D">SAFEGUARDS</text>
+    <text x="1355" y="270" font-size="10" fill="#14532D">• explicit user step</text>
+  </g>
+
+  <!-- ============ Pattern feedback loop arrow ============ -->
+  <path d="M 1230 280 C 1230 338, 585 338, 585 280" fill="none" stroke="#6366F1" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+  <text x="900" y="354" text-anchor="middle" font-size="11" fill="#4F46E5" font-style="italic">pattern tracker feeds discovery (preferred patterns / patterns to avoid)</text>
+
+  <!-- ============ GAUNTLET PANEL ============ -->
+  <rect x="55" y="368" width="1490" height="262" rx="10" fill="white" stroke="#DC2626" stroke-width="2"/>
+  <text x="800" y="394" text-anchor="middle" font-size="15" font-weight="700" fill="#7F1D1D">Stage 5 — 12-Gate Pre-flight Gauntlet (run on every pass: 5a dry-run AND 5b write-mode)</text>
+  <text x="800" y="411" text-anchor="middle" font-size="11" fill="#9F1239">Each gate returns a structured error before subprocess launch. Red gates HARD BLOCK execution. Gate 11 only acquires the lock when write_enabled=True.</text>
+
+  <!-- Pill positions: row1 y=425, row2 y=525. Pill w=225 h=82. x: 90, 330, 570, 810, 1050, 1290 -->
+
+  <!-- Gate 1: Server health -->
+  <g>
+    <rect x="90" y="425" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="106" cy="441" r="10" fill="#D97706"/>
+    <text x="106" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">1</text>
+    <text x="125" y="445" font-size="11.5" font-weight="700" fill="#78350F">Server health</text>
+    <text x="100" y="464" font-size="10" fill="#92400E">validate_server_state()</text>
+    <text x="100" y="478" font-size="10" fill="#475569">checks kernel state</text>
+    <text x="100" y="491" font-size="10" fill="#475569">(api_index, tracker, …)</text>
+    <text x="100" y="503" font-size="9.5" font-style="italic" fill="#78350F">→ server_state_error</text>
+  </g>
+
+  <!-- Gate 2: AST parse -->
+  <g>
+    <rect x="330" y="425" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="346" cy="441" r="10" fill="#D97706"/>
+    <text x="346" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">2</text>
+    <text x="365" y="445" font-size="11.5" font-weight="700" fill="#78350F">AST / syntax parse</text>
+    <text x="340" y="464" font-size="10" fill="#92400E">ast.parse(code)</text>
+    <text x="340" y="478" font-size="10" fill="#475569">parsed once, reused</text>
+    <text x="340" y="491" font-size="10" fill="#475569">across all validators</text>
+    <text x="340" y="503" font-size="9.5" font-style="italic" fill="#78350F">→ syntax_error +line#</text>
+  </g>
+
+  <!-- Gate 3: Partial module -->
+  <g>
+    <rect x="570" y="425" width="225" height="82" rx="6" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+    <circle cx="586" cy="441" r="10" fill="#DC2626"/>
+    <text x="586" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">3</text>
+    <text x="605" y="445" font-size="11.5" font-weight="700" fill="#7F1D1D">Partial module</text>
+    <text x="685" y="445" font-size="9" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+    <text x="580" y="464" font-size="10" fill="#9F1239">def Main but no docs /</text>
+    <text x="580" y="478" font-size="10" fill="#9F1239">FlexToolsModule binding</text>
+    <text x="580" y="491" font-size="10" fill="#475569">prevents silent ship of</text>
+    <text x="580" y="503" font-size="9.5" font-style="italic" fill="#7F1D1D">→ get_module_template</text>
+  </g>
+
+  <!-- Gate 4: Unprotected mutation -->
+  <g>
+    <rect x="810" y="425" width="225" height="82" rx="6" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+    <circle cx="826" cy="441" r="10" fill="#DC2626"/>
+    <text x="826" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">4</text>
+    <text x="845" y="445" font-size="11.5" font-weight="700" fill="#7F1D1D">Unprotected mutation</text>
+    <text x="820" y="464" font-size="9" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+    <text x="820" y="478" font-size="10" fill="#9F1239">certify_script_readonly()</text>
+    <text x="820" y="491" font-size="10" fill="#475569">requires if modifyAllowed:</text>
+    <text x="820" y="503" font-size="9.5" font-style="italic" fill="#7F1D1D">→ unprotected_code</text>
+  </g>
+
+  <!-- Gate 5: Polymorphic casting -->
+  <g>
+    <rect x="1050" y="425" width="225" height="82" rx="6" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+    <circle cx="1066" cy="441" r="10" fill="#DC2626"/>
+    <text x="1066" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">5</text>
+    <text x="1085" y="445" font-size="11.5" font-weight="700" fill="#7F1D1D">Polymorphic casting</text>
+    <text x="1060" y="464" font-size="9" font-weight="700" fill="#DC2626">HARD BLOCK</text>
+    <text x="1060" y="478" font-size="10" fill="#9F1239">detect_casting_needs()</text>
+    <text x="1060" y="491" font-size="10" fill="#475569">drives helper-injection tier</text>
+    <text x="1060" y="503" font-size="9.5" font-style="italic" fill="#7F1D1D">→ resolve_property</text>
+  </g>
+
+  <!-- Gate 6: API discovery -->
+  <g>
+    <rect x="1290" y="425" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="1306" cy="441" r="10" fill="#D97706"/>
+    <text x="1306" y="445" text-anchor="middle" font-size="10" font-weight="700" fill="white">6</text>
+    <text x="1325" y="445" font-size="11.5" font-weight="700" fill="#78350F">API discovery gate</text>
+    <text x="1300" y="464" font-size="10" fill="#92400E">discovered_apis non-empty</text>
+    <text x="1300" y="478" font-size="10" fill="#475569">prevents hallucinated</text>
+    <text x="1300" y="491" font-size="10" fill="#475569">method names</text>
+    <text x="1300" y="503" font-size="9.5" font-style="italic" fill="#78350F">→ api_discovery_required</text>
+  </g>
+
+  <!-- Row 2 starts y=525 -->
+
+  <!-- Gate 7: Undefined vars -->
+  <g>
+    <rect x="90" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="106" cy="541" r="10" fill="#D97706"/>
+    <text x="106" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">7</text>
+    <text x="125" y="545" font-size="11.5" font-weight="700" fill="#78350F">Undefined variables</text>
+    <text x="100" y="564" font-size="10" fill="#92400E">detect_undefined_variables</text>
+    <text x="100" y="578" font-size="10" fill="#475569">catches MCP-internal</text>
+    <text x="100" y="591" font-size="10" fill="#475569">names that leaked into code</text>
+    <text x="100" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ undefined_variables</text>
+  </g>
+
+  <!-- Gate 8: Missing imports -->
+  <g>
+    <rect x="330" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="346" cy="541" r="10" fill="#D97706"/>
+    <text x="346" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">8</text>
+    <text x="365" y="545" font-size="11.5" font-weight="700" fill="#78350F">Missing Operations imports</text>
+    <text x="340" y="564" font-size="10" fill="#92400E">detect_missing_operations_imports</text>
+    <text x="340" y="578" font-size="10" fill="#475569">e.g. uses LexEntryOperations</text>
+    <text x="340" y="591" font-size="10" fill="#475569">but never imported it</text>
+    <text x="340" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ missing_imports</text>
+  </g>
+
+  <!-- Gate 9: Wrong-library imports -->
+  <g>
+    <rect x="570" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="586" cy="541" r="10" fill="#D97706"/>
+    <text x="586" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">9</text>
+    <text x="605" y="545" font-size="11.5" font-weight="700" fill="#78350F">Wrong-library imports</text>
+    <text x="580" y="564" font-size="10" fill="#92400E">detect_wrong_library_imports</text>
+    <text x="580" y="578" font-size="10" fill="#475569">imports must match active</text>
+    <text x="580" y="591" font-size="10" fill="#475569">api_mode (the silent-fail risk)</text>
+    <text x="580" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ wrong_library_imports</text>
+  </g>
+
+  <!-- Gate 10: Invalid project chain -->
+  <g>
+    <rect x="810" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="826" cy="541" r="10" fill="#D97706"/>
+    <text x="826" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">10</text>
+    <text x="845" y="545" font-size="11.5" font-weight="700" fill="#78350F">Invalid project chain</text>
+    <text x="820" y="564" font-size="10" fill="#92400E">detect_invalid_project_chains</text>
+    <text x="820" y="578" font-size="10" fill="#475569">difflib typo catch (≥0.7)</text>
+    <text x="820" y="591" font-size="10" fill="#475569">e.g. project.LexEntries → LexEntry</text>
+    <text x="820" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ invalid_api_chain</text>
+  </g>
+
+  <!-- Gate 11: Per-project write lock -->
+  <g>
+    <rect x="1050" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="1066" cy="541" r="10" fill="#D97706"/>
+    <text x="1066" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">11</text>
+    <text x="1085" y="545" font-size="11.5" font-weight="700" fill="#78350F">Per-project write lock</text>
+    <text x="1060" y="564" font-size="10" fill="#92400E">get_project_write_lock(name)</text>
+    <text x="1060" y="578" font-size="10" fill="#475569">5b only — asyncio.Lock</text>
+    <text x="1060" y="591" font-size="10" fill="#475569">serializes CUD per project</text>
+    <text x="1060" y="603" font-size="9.5" font-style="italic" fill="#78350F">prevents corruption</text>
+  </g>
+
+  <!-- Gate 12: Subprocess timeout -->
+  <g>
+    <rect x="1290" y="525" width="225" height="82" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+    <circle cx="1306" cy="541" r="10" fill="#D97706"/>
+    <text x="1306" y="545" text-anchor="middle" font-size="10" font-weight="700" fill="white">12</text>
+    <text x="1325" y="545" font-size="11.5" font-weight="700" fill="#78350F">Subprocess timeout</text>
+    <text x="1300" y="564" font-size="10" fill="#92400E">run_script_async(timeout)</text>
+    <text x="1300" y="578" font-size="10" fill="#475569">default 300 s</text>
+    <text x="1300" y="591" font-size="10" fill="#475569">UTF-8 reconfigured stdout/err</text>
+    <text x="1300" y="603" font-size="9.5" font-style="italic" fill="#78350F">→ Execution timeout</text>
+  </g>
+
+  <!-- ============ CROSS-CUTTING SAFEGUARDS BAND ============ -->
+  <rect x="55" y="650" width="1490" height="220" rx="10" fill="#F0FDF4" stroke="#16A34A" stroke-width="1.5"/>
+  <text x="800" y="678" text-anchor="middle" font-size="15" font-weight="700" fill="#14532D">Cross-Cutting Safeguards</text>
+  <text x="800" y="696" text-anchor="middle" font-size="11" fill="#166534" font-style="italic">apply continuously across the workflow, not tied to a single stage</text>
+
+  <g font-size="11" fill="#14532D">
+    <!-- Col 1 -->
+    <text x="100" y="725" font-weight="700">• Read-only by default</text>
+    <text x="120" y="739" fill="#166534" font-size="10">write_enabled=False unless opted in</text>
+
+    <text x="100" y="765" font-weight="700">• Mandatory API discovery</text>
+    <text x="120" y="779" fill="#166534" font-size="10">no run_module before search/get_object_api</text>
+
+    <text x="100" y="805" font-weight="700">• Per-project async write lock</text>
+    <text x="120" y="819" fill="#166534" font-size="10">no concurrent CUD on same project</text>
+
+    <text x="100" y="845" font-weight="700">• Subprocess isolation + UTF-8 reconfig</text>
+    <text x="120" y="859" fill="#166534" font-size="10">tones / IPA never crash result-marker</text>
+
+    <!-- Col 2 -->
+    <text x="600" y="725" font-weight="700">• Bounded reporter buffer (10k msgs)</text>
+    <text x="620" y="739" fill="#166534" font-size="10">overflow tracked, oldest dropped</text>
+
+    <text x="600" y="765" font-weight="700">• Three-tier casting helper injection</text>
+    <text x="620" y="779" fill="#166534" font-size="10">none / minimal / full driven by pre-flight</text>
+
+    <text x="600" y="805" font-weight="700">• Pattern learning loop</text>
+    <text x="620" y="819" fill="#166534" font-size="10">success/fail recorded → discovery hints</text>
+
+    <text x="600" y="845" font-weight="700">• Undo stack (ActionHandler.Undo)</text>
+    <text x="620" y="859" fill="#166534" font-size="10">CUD ops recorded for rollback review</text>
+
+    <!-- Col 3 -->
+    <text x="1100" y="725" font-weight="700">• Cross-flavor coverage gaps surfaced</text>
+    <text x="1120" y="739" fill="#166534" font-size="10">bridge files name missing wrappers</text>
+
+    <text x="1100" y="765" font-weight="700">• Runtime primer pushed at start</text>
+    <text x="1120" y="779" fill="#166534" font-size="10">invariants seen before any code written</text>
+
+    <text x="1100" y="805" font-weight="700">• Auto-injected modifyAllowed guard</text>
+    <text x="1120" y="819" fill="#166534" font-size="10">scaffold pre-wires the write check</text>
+
+    <text x="1100" y="845" font-weight="700">• Dry-run before write (5a → 5b)</text>
+    <text x="1120" y="859" fill="#166534" font-size="10">always exercise read path first</text>
+  </g>
+
+  <!-- Legend (bottom) -->
+  <g transform="translate(75, 880)">
+    <rect x="0" y="0" width="14" height="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1"/>
+    <text x="20" y="9" font-size="10" fill="#7F1D1D">HARD BLOCK gate</text>
+    <rect x="160" y="0" width="14" height="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1"/>
+    <text x="180" y="9" font-size="10" fill="#78350F">soft validation gate</text>
+    <line x1="320" y1="5" x2="345" y2="5" stroke="#DC2626" stroke-width="2"/>
+    <text x="350" y="9" font-size="10" fill="#7F1D1D">5a → 5b promote</text>
+    <line x1="470" y1="5" x2="495" y2="5" stroke="#6366F1" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="500" y="9" font-size="10" fill="#4F46E5">feedback loop</text>
+    <line x1="620" y1="5" x2="645" y2="5" stroke="#7C3AED" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="650" y="9" font-size="10" fill="#7C3AED">MCP / FlexTools boundary</text>
+  </g>
+</svg>

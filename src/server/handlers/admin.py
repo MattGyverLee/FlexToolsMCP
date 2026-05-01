@@ -304,7 +304,7 @@ async def handle_start(args: dict) -> list[TextContent]:
             "2. Use search_by_capability(query='...') to find relevant APIs",
             "3. Use get_object_api(object_type='...') to get detailed API info",
             "4. Write code using ONLY the discovered APIs",
-            "5. Use run_operation() or run_module() to execute"
+            "5. Use run_module() to execute (accepts bare snippets and full Main-shaped modules)"
         ]
     }
 
@@ -471,7 +471,7 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
         KEY_PROJECT: operation.project,
     }
     result[KEY_NOTE] = (
-        "To execute the undo, you would call FLEx ActionHandler.Undo() via run_operation. "
+        "To execute the undo, you would call FLEx ActionHandler.Undo() via run_module. "
         "Undo is available but not automatically executed to allow review first."
     )
     result[KEY_UNDO_STATUS] = {

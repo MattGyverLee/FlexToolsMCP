@@ -8,7 +8,7 @@ Handlers are gradually being extracted from server.py during v1.3.0 modularizati
 
 Planned structure:
   - api.py: Read-only operations (get_object_api, search, find_examples, resolve_property)
-  - execution.py: Write operations (run_operation, run_module, undo_last_operation)
+  - execution.py: Write operations (run_module, undo_last_operation)
   - admin.py: Admin tools (start, manage_config, get_session_history, get_module_template)
   - discovery.py: Navigation (get_navigation_path)
   - catalog.py: Listing (list_categories, list_entities_in_category)
@@ -18,10 +18,14 @@ The re-export facade in src/server/__init__.py ensures backward compatibility.
 
 BACKWARD COMPATIBILITY NOTE:
 All handler functions remain importable from the main server module:
-  OLD STYLE (v1.2.0): from server import handle_run_operation
-  NEW STYLE (v1.3.0): from server.handlers.execution import handle_run_operation
+  OLD STYLE (v1.2.0): from server import handle_run_module
+  NEW STYLE (v1.3.0): from server.handlers.execution import handle_run_module
 
 Both work thanks to the re-export facade.
+
+NOTE on run_operation: A separate run_operation tool existed in earlier
+versions but was consolidated into run_module, which now accepts both
+bare snippets and full Main-shaped modules.
 """
 
 # Placeholder for future handler module imports

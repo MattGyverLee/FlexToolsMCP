@@ -324,91 +324,87 @@ def detect_module_structure(code: str) -> dict:
     }
 
 
-def check_output_mechanism(code: str, tool_type: str) -> dict:
-    """Check that code uses correct output mechanism IF it produces output.
+def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = None) -> dict:
+    """Detect code that is module-shaped but missing scaffolding.
 
-    For run_operation (raw operations code): IF outputting, use print()
-    For run_module (FlexTools modules): IF outputting, use report.Info() (or report.*)
+    Fires when `def Main(...)` is present (the user is clearly authoring a
+    module) but the surrounding scaffolding (docs dict, FlexToolsModule
+    binding) is absent. Bare snippets without `Main` are not flagged --
+    they're a legitimate use of the unified runner.
 
-    Code with NO output is always valid.
+    The signal we want to catch is Dennis's case: a multi-function file with
+    `def Main` that runs in the MCP runner only because the runner is
+    permissive, but would NOT load if saved as a real FlexTools module file.
 
-    Returns dict with:
-      - has_output: bool - whether code produces output
-      - uses_correct_mechanism: bool - uses tool-appropriate output (if outputting)
-      - mechanism_type: str - detected mechanism (print, report, none)
-      - message: str - guidance if incorrect
+    The flextoolslib import is intentionally not checked: the MCP runner
+    injects a synthetic flextoolslib module so the import is unnecessary in
+    this context. We only flag the parts that matter for `FlexToolsModule
+    = FlexToolsModuleClass(Main, docs)` to actually exist.
+
+    Args:
+        code: Source code string.
+        code_tree: Optional pre-parsed AST (avoids redundant parsing when the
+            caller already parsed the code).
+
+    Returns:
+        dict with:
+          is_partial_module: bool - has Main but missing scaffolding
+          has_main: bool - whether `def Main(...)` is present
+          missing_elements: list - what's missing (empty if not partial)
+          suggestion: str - one-line guidance for the AI
     """
-    code_no_comments = _strip_comments(code)
-
-    has_print = 'print(' in code_no_comments
-    has_report_info = _PATTERN_REPORT_INFO.search(code_no_comments)
-    has_report_direct = _PATTERN_REPORT_DIRECT.search(code_no_comments) and not has_report_info
-
-    if tool_type == "operation":
-        # run_operation: if outputting, use print(); if not outputting, that's fine
-        if has_print:
+    has_main = False
+    if code_tree is None:
+        try:
+            code_tree = ast.parse(code)
+        except SyntaxError:
             return {
-                "has_output": True,
-                "uses_correct_mechanism": True,
-                "mechanism_type": "print",
-                "message": None
-            }
-        elif has_report_direct:
-            return {
-                "has_output": True,
-                "uses_correct_mechanism": False,
-                "mechanism_type": "report",
-                "message": "Operations code calls report() directly, but report is not available. Only modules have access to report. Use print() instead for output."
-            }
-        elif has_report_info:
-            return {
-                "has_output": True,
-                "uses_correct_mechanism": False,
-                "mechanism_type": "report",
-                "message": "Operations code uses report.Info(), but only modules have access to report. Use print() instead for output."
-            }
-        else:
-            # No output: this is valid
-            return {
-                "has_output": False,
-                "uses_correct_mechanism": True,
-                "mechanism_type": "none",
-                "message": None
+                "is_partial_module": False,
+                "has_main": False,
+                "missing_elements": [],
+                "suggestion": "",
             }
 
-    elif tool_type == "module":
-        # run_module: if outputting, use report.Info(); if not outputting, that's fine
-        if has_report_info:
-            return {
-                "has_output": True,
-                "uses_correct_mechanism": True,
-                "mechanism_type": "report",
-                "message": None
-            }
-        elif has_report_direct:
-            return {
-                "has_output": True,
-                "uses_correct_mechanism": False,
-                "mechanism_type": "report",
-                "message": "Module code calls report() directly, but the report object must be accessed with a method like report.Info(message). Use report.Info(), report.Warning(), or report.Error() instead."
-            }
-        elif has_print:
-            return {
-                "has_output": True,
-                "uses_correct_mechanism": False,
-                "mechanism_type": "print",
-                "message": "Module code uses print(), but output should use report.Info() to be captured in the FlexTools result format."
-            }
-        else:
-            # No output: this is valid
-            return {
-                "has_output": False,
-                "uses_correct_mechanism": True,
-                "mechanism_type": "none",
-                "message": None
-            }
+    for node in ast.walk(code_tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "Main":
+            has_main = True
+            break
 
-    return {"has_output": False, "uses_correct_mechanism": True, "mechanism_type": "unknown"}
+    if not has_main:
+        return {
+            "is_partial_module": False,
+            "has_main": False,
+            "missing_elements": [],
+            "suggestion": "",
+        }
+
+    missing = []
+    if not re.search(r'^\s*docs\s*=\s*\{', code, re.MULTILINE):
+        missing.append("docs = {FTM_Name: ..., FTM_Synopsis: ..., FTM_ModifiesDB: ..., FTM_Description: ...}")
+    if "FlexToolsModuleClass(" not in code:
+        missing.append("FlexToolsModule = FlexToolsModuleClass(Main, docs)")
+
+    if not missing:
+        return {
+            "is_partial_module": False,
+            "has_main": True,
+            "missing_elements": [],
+            "suggestion": "",
+        }
+
+    suggestion = (
+        "Code defines `Main(...)` but is missing FlexTools module scaffolding. "
+        "If this is meant to be a saved FlexTools module file, call "
+        "flextools_get_module_template first and copy in the missing pieces. "
+        "If this is just a quick test, drop the `def Main:` wrapper and run the "
+        "body as a bare snippet, or pass skip_module_check=True to run it as-is."
+    )
+    return {
+        "is_partial_module": True,
+        "has_main": True,
+        "missing_elements": missing,
+        "suggestion": suggestion,
+    }
 
 
 def _project_accessors(api_index: Optional[Any] = None) -> List[str]:

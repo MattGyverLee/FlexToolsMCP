@@ -188,6 +188,33 @@ When users encounter `AttributeError` or "has no attribute" errors:
 
 **READ FIRST:** See [`docs/FLEXTOOLS-STYLE-GUIDE.md`](docs/FLEXTOOLS-STYLE-GUIDE.md) for comprehensive best practices that should guide all script generation.
 
+### When to fetch the template (CRITICAL)
+
+`run_module` accepts both bare snippets and full FlexTools modules. The two shapes have different conformance requirements -- mixing them up is what produced Dennis's silent-failure debugging arc.
+
+**ALWAYS call `flextools_get_module_template(flavor='flexlibs2')` BEFORE:**
+- Saving any code to a `.py` file in the user's FlexTools Modules folder
+- Writing code containing `def Main(project, report, modifyAllowed)` that's intended for reuse
+- The user uses words like "save", "module", "to a file", "reusable", "deploy", or names the script
+
+A bare snippet (no `def Main`) for a one-shot probe does NOT need the template. The runner accepts it as-is. The template is required when the artifact is meant to survive the session.
+
+The MCP also runs a `partial_module_structure` check at run time: code that defines `Main` but lacks the `docs` dict / `FlexToolsModule` binding will be refused with a pointer back to `get_module_template`. Calling the template up front avoids that round-trip.
+
+### Lightweight op form (no `Main`)
+
+For exploratory probes that won't be saved, write bare code. The runner pre-injects `project`, `report`, `write_enabled`, and `modifyAllowed` into the namespace, so the same `if modifyAllowed:` guard pattern still applies:
+
+```python
+# Bare snippet - no Main, no docs, no FlexToolsModule.
+for entry in project.LexEntry.GetAll():
+    headword = project.LexEntry.GetLexemeForm(entry)
+    if modifyAllowed:
+        # mutation goes here, guarded
+        pass
+    report.Info(headword, project.BuildGotoURL(entry))
+```
+
 ### Preferred: FlexLibs 2.0
 
 When generating FLExTools scripts for users, **always use flexlibs2** template:

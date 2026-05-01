@@ -5,8 +5,11 @@ Execution handler functions for FlexToolsMCP.
 
 These handlers manage module and operation execution:
 - start_module: Interactive wizard to create FlexTools modules
-- run_module: Execute a complete FlexTools module
-- run_operation: Execute ad-hoc operations directly
+- run_module: Execute code against a FieldWorks project. Accepts both
+  lightweight ad-hoc snippets (bare code, no Main) and full FlexTools
+  modules (Main + docs + FlexToolsModule binding) in the same `code`
+  parameter. The earlier separate run_operation tool was consolidated
+  into this one.
 - get_operation_logs: View execution logs and pattern recommendations
 """
 
@@ -50,6 +53,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        detect_partial_module_structure,
     )
 except ImportError:
     from server.validators import (
@@ -57,6 +61,7 @@ except ImportError:
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
+        detect_partial_module_structure,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -665,6 +670,28 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             line_number=e.lineno,
             guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)"
         )
+
+    # Partial-module structural check: when code defines `Main` but lacks the
+    # `docs` dict and/or `FlexToolsModule = FlexToolsModuleClass(...)` binding,
+    # nudge the AI toward `get_module_template` instead of letting a half-
+    # scaffolded "module" silently work in the runner but fail when saved as a
+    # real FlexTools file. Bare snippets without `def Main` are unaffected.
+    # Escape hatch: pass skip_module_check=True to run as-is.
+    if not args.get("skip_module_check", False):
+        partial_check = detect_partial_module_structure(code, code_tree)
+        if partial_check["is_partial_module"]:
+            return error_response(
+                "partial_module_structure",
+                partial_check["suggestion"],
+                missing_elements=partial_check["missing_elements"],
+                next_steps=[
+                    "1. Call flextools_get_module_template(flavor='flexlibs2') to fetch the canonical scaffold",
+                    "2. Copy the missing pieces (docs dict, FlexToolsModule binding) into your code",
+                    "3. Re-run flextools_run_module()",
+                    "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
+                    "Override: pass skip_module_check=True to run the partial code as-is",
+                ],
+            )
 
     # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(code)

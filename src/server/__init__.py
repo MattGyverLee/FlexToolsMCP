@@ -10,10 +10,10 @@ All handler functions, classes, and utilities are re-exported here to ensure
 that both old and new import styles work seamlessly:
 
 OLD STYLE (still works via re-exports):
-  from server import handle_run_operation, SessionState, APIIndex
+  from server import handle_run_module, SessionState, APIIndex
 
 NEW STYLE (direct from modules):
-  from server.handlers.execution import handle_run_operation
+  from server.handlers.execution import handle_run_module
   from server.session import SessionState
   from server.kernel import api_index
 """
@@ -44,7 +44,6 @@ from .session import SessionState, OperationRecord
 from .validators import (
     detect_cud_operations,
     detect_module_structure,
-    check_output_mechanism,
     detect_polymorphic_error,
     detect_missing_operations_imports,
     detect_wrong_library_imports,
@@ -79,7 +78,7 @@ def __getattr__(name: str):
     """Lazy load handler functions and classes from the main server.py module.
 
     This enables backward compatibility by allowing imports like:
-      from server import handle_run_operation, APIIndex, main
+      from server import handle_run_module, APIIndex, main
 
     To still work even after modularization.
 
@@ -142,7 +141,6 @@ __all__ = [
     # Validators
     'detect_cud_operations',
     'detect_module_structure',
-    'check_output_mechanism',
     'detect_polymorphic_error',
     'detect_missing_operations_imports',
     'detect_wrong_library_imports',

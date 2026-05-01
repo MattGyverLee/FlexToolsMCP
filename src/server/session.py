@@ -26,7 +26,7 @@ _HVO_PATTERN = re.compile(r"hvo=(\d+)")
 class OperationRecord:
     """Records details of a single operation for history and undo."""
     timestamp: datetime
-    tool: str                    # 'run_operation' or 'run_module'
+    tool: str                    # tool name, currently always 'run_module'
     args_summary: str           # Human-readable summary of tool arguments
     script_code: str            # Full script code that was executed
     script_output: str          # Captured stdout/stderr from execution
@@ -149,10 +149,10 @@ class SessionState:
     ) -> None:
         """Record an operation in the session history and undo stack.
 
-        Called after successful execution of run_operation or run_module.
+        Called after successful execution of run_module.
 
         Args:
-            tool: Tool name ('run_operation' or 'run_module')
+            tool: Tool name (currently always 'run_module')
             args_summary: Human-readable summary of arguments
             script_code: Full script code that was executed
             script_output: Captured stdout from execution

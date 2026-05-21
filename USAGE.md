@@ -151,6 +151,17 @@ User Query: "I want to delete senses with 'test' in the gloss"
     +---------------------------+
 ```
 
+**Building blocks, not invention.** Step 8 is assembly, not creative writing. By the time you reach it, the previous phases have produced the concrete artifacts that drop directly into the module:
+
+- **From `start`** — runtime conventions: `report.*` calls, `project.BuildGotoURL`, the `if modifyAllowed:` guard, `'***'` empty-field normalization, pre-injected helpers.
+- **From `get_module_template`** — the skeleton: `docs` dict, `Main(project, report, modifyAllowed)`, `FlexToolsModule` binding, the auto-injected write-guard.
+- **From `get_object_api`** — the verbatim `import_statement` plus exact method signatures, parameter names, and return types.
+- **From `get_navigation_path`** — a code skeleton for entity-to-entity traversal with null-safety and casts already in place.
+- **From `find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loop structure).
+- **From `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexlibs2 or drop to liblcm.
+
+Every method name in the finished module traces back to a discovery step you can audit. If a needed call wasn't surfaced by Phases 1–2, return to discovery rather than guess — `run_module` refuses execution when no APIs were discovered (gate 6, `api_discovery_required`).
+
 #### Phase 4: Testing (Required before write)
 
 ```

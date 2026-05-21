@@ -267,6 +267,19 @@ Every method name must come from the index. Every Stage 3 tool call adds entries
 
 Must respect the runtime primer.
 
+#### Assembly from building blocks, not invention from memory
+
+Stage 4 is the moment the AI assembles a module from concrete artifacts handed forward by the previous stages — not an invention pass against training memory. Each prior stage produces a building block that drops directly into the source:
+
+- **From Stage 1 (runtime primer)** — calling conventions: `report.*` signatures, `project.BuildGotoURL`, the `if modifyAllowed:` guard, `'***'` normalization, the pre-injected namespace helpers.
+- **From Stage 2 (template)** — the module skeleton: `docs` dict, `Main(project, report, modifyAllowed)`, `FlexToolsModule` binding, the auto-injected write-guard and `DRY_RUN` flag.
+- **From Stage 3 — `get_object_api`** — the verbatim `import_statement` plus exact method signatures, parameter names, and return types for every entity touched.
+- **From Stage 3 — `get_navigation_path`** — a code skeleton for entity-to-entity traversal with null-safety and casts already in place.
+- **From Stage 3 — `find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loop structure).
+- **From Stage 3 — `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexlibs2 or drop to liblcm.
+
+Every method name in the finished module traces back to an audit trail of lookups. If a needed call wasn't discovered, the AI is expected to return to Stage 3 rather than guess; gate 6 enforces this structurally.
+
 #### DO — invariants from the runtime primer
 
 **Output**

@@ -151,6 +151,17 @@ Returns: Complete action plan with code skeleton
 
 This ensures users understand the APIs before writing code.
 
+**Building blocks, not invention.** The orchestrated discovery output is not just context — it's the raw material the AI assembles into the module:
+
+- **Runtime primer** (from `start`) — calling conventions: `report.*`, `BuildGotoURL`, the `if modifyAllowed:` guard, `'***'` normalization, pre-injected helpers.
+- **Module template** (from `start_module` / `get_module_template`) — `docs` dict, `Main()`, `FlexToolsModule` binding, auto-injected write-guard.
+- **`get_object_api`** — verbatim `import_statement`, exact signatures, parameter names, return types.
+- **`get_navigation_path`** — code skeleton for entity-to-entity traversal with null-safety and casts.
+- **`find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loops).
+- **`resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide flexlibs2-vs-liblcm.
+
+Every method name in the finished module traces back to an audited lookup. If a needed call wasn't discovered, the AI returns to discovery rather than guessing — gate 6 (`api_discovery_required`) enforces this structurally at run time.
+
 ### 9. Direct Execution with Safety Rails
 
 **Innovation:** Execute operations directly on FieldWorks databases with:

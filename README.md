@@ -113,6 +113,7 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ## Key Features
 
+- **Discovery-first workflow** - the AI assembles modules from indexed building blocks (signatures, navigation skeletons, examples, casting fixes) rather than inventing API calls from training memory. See [USAGE.md](USAGE.md#recommended-workflow).
 - **Automatic index refresh** when you update FieldWorks or libraries
 - **Dry-run mode** to test before writing data
 - **Semantic search** with synonym expansion

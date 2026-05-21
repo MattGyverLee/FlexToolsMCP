@@ -263,7 +263,32 @@ async def handle_start(args: dict) -> list[TextContent]:
     api_mode = args.get(KEY_API_MODE, "flexlibs2")
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
-    write_enabled = args.get(KEY_WRITE_ENABLED, False)
+
+    # write_enabled: if the user explicitly passed it, use that value. If they
+    # didn't pass it AND we already have a live session on the same project,
+    # inherit the prior write_enabled instead of resetting to False. Fixes #9
+    # (re-calling flextools_start silently dropped write_enabled).
+    user_provided = args.get("_user_provided_keys", set())
+    write_enabled_explicit = "write_enabled" in user_provided
+    prior_write_enabled = bool(getattr(session_state, "write_enabled", False))
+    same_project = (
+        bool(session_state.initialized)
+        and getattr(session_state, "project_name", "") == project_name
+        and project_name != ""
+    )
+    if write_enabled_explicit:
+        write_enabled = args.get(KEY_WRITE_ENABLED, False)
+    elif same_project:
+        write_enabled = prior_write_enabled
+    else:
+        write_enabled = args.get(KEY_WRITE_ENABLED, False)
+
+    write_enabled_inherited = (
+        same_project and not write_enabled_explicit and prior_write_enabled
+    )
+    write_enabled_downgraded = (
+        write_enabled_explicit and prior_write_enabled and not write_enabled
+    )
 
     # Generate session ID (format: YYYYMMDD-HHMMSS)
     session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -290,6 +315,21 @@ async def handle_start(args: dict) -> list[TextContent]:
         write_enabled=write_enabled,
         api_versions=api_versions
     )
+
+    # Diagnostic for #10: record identity of the configured session_state so
+    # the next "Session not initialized" log line can be compared against this.
+    try:
+        from ..kernel import get_operations_logger
+    except ImportError:
+        from server.kernel import get_operations_logger
+    _op_logger = get_operations_logger()
+    if _op_logger:
+        _op_logger.info(
+            f"[SESSION-CONFIGURED] session_state_id={id(session_state)} "
+            f"session_id={session_id} project={project_name!r} "
+            f"api_mode={api_mode} write_enabled={write_enabled} "
+            f"initialized={session_state.initialized}"
+        )
 
     # Rotate logging to session-specific log file
     rotate_logging_to_session(session_id)
@@ -323,6 +363,16 @@ async def handle_start(args: dict) -> list[TextContent]:
         warnings.append("No project_name set - will need to specify when running operations")
     if write_enabled:
         warnings.append("WRITE MODE ENABLED - operations will modify the database")
+    if write_enabled_inherited:
+        warnings.append(
+            "write_enabled=True inherited from prior session on this project "
+            "(no value was explicitly provided in this call)."
+        )
+    if write_enabled_downgraded:
+        warnings.append(
+            "write_enabled was downgraded True -> False on re-init. "
+            "Was this intentional?"
+        )
 
     if warnings:
         result[KEY_WARNINGS] = warnings

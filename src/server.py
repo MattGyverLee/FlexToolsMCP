@@ -719,13 +719,26 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # api_index is pre-loaded in main() at startup, no lazy loading needed
     # Session initialization gate: flextools_start is the only tool that doesn't require it
     if name != "flextools_start" and not session_state.initialized:
+        # Diagnostic context for #10 (Session-not-initialized between consecutive
+        # run_module calls). Static analysis found no code path that resets
+        # `initialized` to False, so we log identity info every time this gate
+        # fires to catch the live cause next time it happens.
+        diag = {
+            "session_state_id": id(session_state),
+            "session_id": getattr(session_state, "session_id", None),
+            "project_name": getattr(session_state, "project_name", None),
+            "api_mode": getattr(session_state, "api_mode", None),
+            "write_enabled": getattr(session_state, "write_enabled", None),
+        }
         err_msg = "Session not initialized. Call flextools_start() first."
         if operations_logger:
             operations_logger.warning(f"[BLOCKED] {name}: {err_msg}")
+            operations_logger.warning(f"[BLOCKED-DIAG] {name}: {json.dumps(diag, default=str)}")
         return [TextContent(type="text", text=json.dumps({
             "error": "Session not initialized",
             "message": "You must call flextools_start() first to initialize the session and set the API mode.",
             "hint": "Call flextools_start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
+            "_diagnostic": diag,  # See #10 -- helps trace stale-ref / restart cases
             "available_task_examples": [
                 "Add gloss to sense definitions",
                 "Delete senses with test in gloss",
@@ -759,7 +772,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # Dispatch to handler with validated input (convert to dict for backward compatibility)
     if operations_logger:
         operations_logger.debug(f"[DISPATCHING] {name}")
-    result = await handler(validated_args.model_dump())
+    dumped = validated_args.model_dump()
+    if name == "flextools_start":
+        # Let handle_start distinguish user-provided fields from defaults so it
+        # can inherit prior session state (e.g. write_enabled) on re-init.
+        dumped["_user_provided_keys"] = set(validated_args.model_dump(exclude_unset=True).keys())
+    result = await handler(dumped)
     if operations_logger:
         # Log result summary for reproducibility (first 1000 chars)
         if result:

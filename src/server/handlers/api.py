@@ -772,6 +772,18 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         if entity and method:
             session_state.record_discovered_api(entity, method)
 
+    # Augment with multi-step worked examples (Phase A of #12). These are
+    # patterns that span multiple methods, surfaced by tag/title match
+    # against the free-text query. The original #12 pain point: 9
+    # search_by_capability calls couldn't find MSA wiring / phonology
+    # patterns because no single method docstring contained the full recipe.
+    try:
+        from ..worked_examples import find_worked_examples
+    except ImportError:
+        from server.worked_examples import find_worked_examples
+
+    matched_patterns = find_worked_examples(query=query, max_results=3)
+
     result = {
         KEY_QUERY: query,
         KEY_API_MODE: api_mode,
@@ -781,7 +793,10 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         KEY_FALLBACK_USED: fallback_used,
         KEY_SEMANTIC_AVAILABLE: get_api_index().semantic_search.enabled if get_api_index().semantic_search else False,
         KEY_RESULTS_COUNT: len(results),
-        "results": results
+        "results": results,
+        # Multi-step worked-example recipes matching the same query.
+        "worked_examples": matched_patterns,
+        "worked_examples_count": len(matched_patterns),
     }
 
     result = build_response_with_context(result, include_session=True)
@@ -854,6 +869,20 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             if len(examples) >= max_results:
                 break
 
+    # Augment with multi-step worked examples (Phase A of #12 -- patterns
+    # that span multiple methods, not individual docstring snippets).
+    try:
+        from ..worked_examples import find_worked_examples
+    except ImportError:
+        from server.worked_examples import find_worked_examples
+
+    matched_patterns = find_worked_examples(
+        query="",  # find_examples doesn't take a free-text query yet
+        operation_type=operation_type or "",
+        object_type=object_type or "",
+        max_results=max_results,
+    )
+
     return json_response({
         KEY_QUERY: {
             KEY_METHOD_NAME: method_name,
@@ -862,7 +891,11 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         },
         KEY_API_MODE: mode,
         KEY_RESULTS_COUNT: len(examples),
-        KEY_EXAMPLES: examples
+        KEY_EXAMPLES: examples,
+        # Multi-step worked-example recipes that match the same query inputs.
+        # Distinct from per-method docstring examples above.
+        "worked_examples": matched_patterns,
+        "worked_examples_count": len(matched_patterns),
     })
 
 

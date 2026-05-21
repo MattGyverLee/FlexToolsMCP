@@ -195,6 +195,54 @@ def rotate_logging_to_session(session_id: str) -> None:
     file_handler.setFormatter(formatter)
     operations_logger.addHandler(file_handler)
     operations_logger.info(f"Switched to session log: session_{session_id}.log")
+    _emit_session_header(session_id)
+
+
+def _emit_session_header(session_id: str) -> None:
+    """Write a one-time environment block to the session log.
+
+    Captures versions / OS / python so a .log pasted into a bug report
+    is enough to identify the build that produced it -- without requiring
+    the user to dig up an MCP startup banner.
+    """
+    if not operations_logger:
+        return
+
+    import platform
+    try:
+        from .versioning import detect_installed_library_version
+    except ImportError:
+        from server.versioning import detect_installed_library_version  # type: ignore
+
+    def _safe(label: str, fn) -> str:
+        try:
+            return fn() or "(unknown)"
+        except Exception as exc:
+            return f"(error: {exc})"
+
+    flexlibs2_ver = _safe("flexlibs2", lambda: detect_installed_library_version(
+        "FlexLibs 2.0", import_path="flexlibs2", package_name="flexlibs2"
+    ))
+    liblcm_ver = _safe("liblcm", lambda: detect_installed_library_version(
+        "LibLCM", assembly_name="SIL.LCModel"
+    ))
+
+    server_ver = "(unknown)"
+    try:
+        from importlib.metadata import version as _pkg_version
+        server_ver = _pkg_version("flextoolsmcp")
+    except Exception:
+        pass
+
+    log = operations_logger
+    log.info("=== Session Environment ===")
+    log.info(f"Session ID:      {session_id}")
+    log.info(f"FlexToolsMCP:    {server_ver}")
+    log.info(f"FlexLibs 2.0:    {flexlibs2_ver}")
+    log.info(f"LibLCM:          {liblcm_ver}")
+    log.info(f"Python:          {platform.python_implementation()} {platform.python_version()}")
+    log.info(f"OS:              {platform.system()} {platform.release()} ({platform.machine()})")
+    log.info("=== End Session Environment ===")
 
 
 # Lazy-initialized: operations logger is set up in initialize_kernel()

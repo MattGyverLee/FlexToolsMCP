@@ -14,7 +14,7 @@ Provides checks for code structure, safety, and correctness:
 import re
 import ast
 import textwrap
-from typing import Dict, List, Set, Optional, Any
+from typing import Dict, List, Set, Optional, Any, Tuple
 
 try:
     from .constants import KNOWN_OPERATIONS
@@ -1063,6 +1063,134 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
     return {}
 
 
+def _resolve_operations_aliases(tree: ast.AST) -> Dict[str, str]:
+    """Build map of local variables aliased to Operations class instances.
+
+    Detects:
+        posOps = POSOperations(project)     -> {'posOps': 'POSOperations'}
+        ops = LexEntryOperations(project)
+        b = a  (chained alias)              -> {'b': aliases[a]}
+
+    Generic match: any function call to a Name ending in 'Operations' with a
+    single positional argument. Stays correct when flexlibs2 adds new
+    Operations classes in parallel without us updating a hardcoded list.
+
+    Note: deliberately does NOT clear aliases on reassignment to something
+    unrelated. False positives are safer than false negatives (#8); the
+    downstream API-index lookup still determines whether a method is
+    actually mutating.
+    """
+    aliases: Dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            continue
+        target_name = node.targets[0].id
+        rhs = node.value
+        if (
+            isinstance(rhs, ast.Call)
+            and isinstance(rhs.func, ast.Name)
+            and rhs.func.id.endswith("Operations")
+            and len(rhs.args) == 1
+        ):
+            aliases[target_name] = rhs.func.id
+        elif isinstance(rhs, ast.Name) and rhs.id in aliases:
+            aliases[target_name] = aliases[rhs.id]
+    return aliases
+
+
+def _find_aliased_operations_calls(
+    tree: ast.AST, aliases: Dict[str, str]
+) -> List[Tuple[str, str, int]]:
+    """Find `alias.method(...)` calls where `alias` is an Operations instance.
+
+    Returns (class_name, method_name, line_num) triples to be merged with the
+    regex-detected operations calls.
+    """
+    results: List[Tuple[str, str, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute):
+            continue
+        if not isinstance(node.func.value, ast.Name):
+            continue
+        alias_name = node.func.value.id
+        if alias_name not in aliases:
+            continue
+        results.append((aliases[alias_name], node.func.attr, node.lineno))
+    return results
+
+
+def _resolve_cast_aliases(tree: ast.AST) -> Dict[str, str]:
+    """Build map of local variables holding a cast LCM interface.
+
+    Detects:
+        s_typed = ILexSense(sense)   -> {'s_typed': 'ILexSense'}
+        entry  = ILexEntry(item)
+
+    Heuristic: function call where `func` is a Name starting with capital 'I'
+    immediately followed by another uppercase letter (matches LCM interface
+    convention 'I' + PascalCase). Avoids false positives on names like
+    'IndexCounter' where the second char is lowercase.
+    """
+    aliases: Dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            continue
+        target_name = node.targets[0].id
+        rhs = node.value
+        if (
+            isinstance(rhs, ast.Call)
+            and isinstance(rhs.func, ast.Name)
+            and len(rhs.func.id) >= 2
+            and rhs.func.id[0] == 'I'
+            and rhs.func.id[1].isupper()
+            and len(rhs.args) >= 1
+        ):
+            aliases[target_name] = rhs.func.id
+    return aliases
+
+
+def _find_cast_alias_property_writes(
+    tree: ast.AST, cast_aliases: Dict[str, str]
+) -> List[Dict[str, Any]]:
+    """Find property assignments rooted at a cast-alias variable.
+
+    Detects:
+        s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos
+        s_typed.Gloss = new_value
+
+    Returns mutation dicts compatible with find_liblcm_mutations() output.
+    """
+    mutations: List[Dict[str, Any]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            current = target
+            attr_chain: List[str] = []
+            while isinstance(current, ast.Attribute):
+                attr_chain.append(current.attr)
+                current = current.value
+            if not attr_chain or not isinstance(current, ast.Name):
+                continue
+            if current.id not in cast_aliases:
+                continue
+            interface = cast_aliases[current.id]
+            chain_str = '.'.join(reversed(attr_chain))
+            mutations.append({
+                'method': f'{interface}.{chain_str}=',
+                'line': node.lineno,
+                'category': 'Update',
+                'context': f'{current.id}.{chain_str} = ...',
+            })
+    return mutations
+
+
 def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
     """Find raw LibLCM calls that mutate state.
 
@@ -1234,6 +1362,15 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Pass pre-parsed tree if available to avoid re-parsing
     protected_ranges = find_protected_ranges(code, tree)
 
+    # Ensure tree is available for AST-based detection (#8 alias/cast tracking).
+    # If parsing fails we silently skip AST-based detection -- the regex pass
+    # below still runs.
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            tree = None
+
     # Step 1: Extract FlexLibs2 Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
     operations_calls_with_lines = []
@@ -1243,6 +1380,19 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         # Calculate line number from character position
         line_num = code[:match.start()].count('\n') + 1
         operations_calls_with_lines.append((class_name, method_name, line_num))
+
+    # Step 1b: AST-based alias detection (#8). Catches:
+    #     posOps = POSOperations(project)
+    #     posOps.Create(...)             # <- invisible to the regex above
+    # Generic to any *Operations class so flexlibs2 churn doesn't break it.
+    if tree is not None:
+        operations_aliases = _resolve_operations_aliases(tree)
+        if operations_aliases:
+            aliased_calls = _find_aliased_operations_calls(tree, operations_aliases)
+            existing = {(c, m, l) for c, m, l in operations_calls_with_lines}
+            for triple in aliased_calls:
+                if triple not in existing:
+                    operations_calls_with_lines.append(triple)
 
     # Step 2: Look up each call in the API index and check if protected
     if api_index and api_index.flexlibs2:
@@ -1325,6 +1475,17 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
 
     # Step 4: Detect raw LibLCM mutations and check if they're protected
     liblcm_mutations = find_liblcm_mutations(code)
+
+    # Step 4b: AST-based cast-alias property writes (#8). Catches:
+    #     s_typed = ILexSense(sense)
+    #     s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos    # <- invisible to regex
+    if tree is not None:
+        cast_aliases = _resolve_cast_aliases(tree)
+        if cast_aliases:
+            liblcm_mutations.extend(
+                _find_cast_alias_property_writes(tree, cast_aliases)
+            )
+
     # protected_ranges already calculated above in Step 2
 
     for mutation in liblcm_mutations:

@@ -356,6 +356,99 @@ def test_collection_mutations():
     print("[OK] Collection mutations detected correctly")
 
 
+def test_alias_create_unprotected():
+    """#8: Operations object aliased to local var must still be detected as mutating."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        posOps = POSOperations(project)
+        posOps.Create("Noun", "n")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], \
+        f"Aliased Create must NOT be certified readonly, got: {cert}"
+    mutating = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
+    assert len(mutating) > 0, f"Should detect aliased mutation, got: {cert}"
+
+    print("[OK] Aliased Operations.Create detected as mutation (#8)")
+
+
+def test_alias_create_protected():
+    """#8: Aliased mutation protected by modifyAllowed must be certified readonly."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        posOps = POSOperations(project)
+        if modifyAllowed:
+            posOps.Create("Noun", "n")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], \
+        f"Aliased+guarded Create must be certified readonly, got: {cert}"
+
+    print("[OK] Aliased Operations.Create with guard certified readonly (#8)")
+
+
+def test_cast_property_set_unprotected():
+    """#8: Property write on a cast alias (s = ILexSense(x); s.X.Y = z) must be detected."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        sense = project.LexSense.GetAll()[0]
+        s_typed = ILexSense(sense)
+        s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = None
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], \
+        f"Cast-alias property write must NOT be certified readonly, got: {cert}"
+    assert len(cert["unprotected_liblcm_calls"]) > 0, \
+        f"Should detect cast-alias property write as unprotected LibLCM mutation, got: {cert}"
+
+    print("[OK] Cast-alias property write detected as mutation (#8)")
+
+
+def test_chained_alias_unprotected():
+    """#8: Alias-of-alias must propagate (a = POSOperations(p); b = a; b.Create)."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        a = POSOperations(project)
+        b = a
+        b.Create("Noun", "n")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], \
+        f"Chained alias mutation must NOT be certified readonly, got: {cert}"
+
+    print("[OK] Chained alias propagates mutation detection (#8)")
+
+
+def test_readonly_alias_no_false_positive():
+    """#8: Read-only call on an alias must not be flagged as mutation."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        posOps = POSOperations(project)
+        for p in posOps.GetAll():
+            report.Info(str(p))
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], \
+        f"Read-only alias call must be certified readonly (no false positive), got: {cert}"
+
+    print("[OK] Read-only alias call not falsely flagged (#8)")
+
+
 if __name__ == "__main__":
     print("Running script certification tests...\n")
 
@@ -376,6 +469,11 @@ if __name__ == "__main__":
         test_project_accessor_create_unprotected()
         test_project_accessor_create_protected()
         test_collection_mutations()
+        test_alias_create_unprotected()
+        test_alias_create_protected()
+        test_cast_property_set_unprotected()
+        test_chained_alias_unprotected()
+        test_readonly_alias_no_false_positive()
 
         print("\n[DONE] All certification tests passed!")
     except AssertionError as e:

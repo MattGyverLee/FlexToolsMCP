@@ -221,6 +221,18 @@ class GetWrapperDependenciesInput(BaseModel):
     )
 
 
+class ResolveTypeInput(BaseModel):
+    """Resolve a type name to its canonical namespace and import statement."""
+    type_name: str = Field(
+        description="Type name to resolve (e.g. 'SandboxGenericMSA', 'IMultiAccessorBase', 'ILexEntry'). "
+                    "Single-purpose lookup -- cheaper than get_object_api when you only need the import path."
+    )
+    library: Literal["liblcm", "flexlibs2", "flexlibs_stable", "auto"] = Field(
+        default="auto",
+        description="Which index to search. 'auto' (default) searches liblcm first, then flexlibs."
+    )
+
+
 class FindWrappersForLcmInput(BaseModel):
     """Find which wrapper methods cover a given LibLCM symbol."""
     lcm_name: str = Field(

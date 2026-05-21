@@ -31,6 +31,7 @@ from .models import (
     RunModuleInput,
     GetWrapperDependenciesInput,
     FindWrappersForLcmInput,
+    ResolveTypeInput,
 )
 
 
@@ -299,6 +300,28 @@ Input:
 Returns the bridge entry: lcm_deps, properties_accessed, methods_called, repositories_used,
 factories_used, mapping_type, plus an advisory about which surface is callable in the active session.""",
         input_model=GetWrapperDependenciesInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_resolve_type": ToolDef(
+        name="flextools_resolve_type",
+        description="""Resolve a type name to its canonical namespace, assembly, and import statement.
+
+Single-purpose lookup -- much cheaper than flextools_get_object_api when you only need
+to know which `from <namespace> import <Type>` line to use.
+
+Use this when you have a bare type name (from search results, an error message, or context)
+and need the import path before you can use it in code. Searches liblcm first (most common
+case for raw LCM types), then flexlibs2 / flexlibs_stable.
+
+Example:
+  flextools_resolve_type(type_name='SandboxGenericMSA')
+  -> { namespace: 'SIL.LCModel.DomainServices',
+       import_statement: 'from SIL.LCModel.DomainServices import SandboxGenericMSA',
+       assembly: 'SIL.LCModel.dll', ... }
+
+Returns substring suggestions on a miss to help recover from typos.""",
+        input_model=ResolveTypeInput,
         annotations=READ_ONLY_SAFE,
     ),
 

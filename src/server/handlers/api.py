@@ -32,12 +32,13 @@ try:
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
-        KEY_LIMIT, KEY_OFFSET, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
+        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
         KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
+        KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -59,12 +60,13 @@ except ImportError:
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
-        KEY_LIMIT, KEY_OFFSET, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
+        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
         KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
+        KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
@@ -431,7 +433,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     """
     object_type = args[KEY_OBJECT_TYPE]
     mode = session_state.get_mode()
-    summary_only = args.get(KEY_SUMMARY, False)
+    summary_only = args.get(KEY_SUMMARY_ONLY, False)
     method_filter = args.get("method_filter", "")
     limit = args.get(KEY_LIMIT, 50)
     offset = args.get(KEY_OFFSET, 0)
@@ -952,3 +954,126 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     result = build_response_with_context(result, include_session=True)
 
     return json_response(result)
+
+
+# ============================================================
+# resolve_type (#12): single-purpose authoritative lookup for an LCM/wrapper type.
+# Cheaper than get_object_api when you only need the canonical import path.
+# ============================================================
+
+def _lcm_namespace_to_assembly(namespace: str) -> str:
+    """Map an LCM namespace to its DLL. Returns '' for unknown namespaces."""
+    if not namespace:
+        return ""
+    if namespace.startswith("SIL.LCModel.Utils"):
+        return "SIL.LCModel.Utils.dll"
+    if namespace.startswith("SIL.LCModel.Core"):
+        return "SIL.LCModel.Core.dll"
+    if namespace.startswith("SIL.LCModel"):
+        return "SIL.LCModel.dll"
+    return ""
+
+
+def _infer_lcm_kind(type_name: str) -> str:
+    """Heuristic: 'I' + uppercase => interface, else class."""
+    if len(type_name) >= 2 and type_name[0] == 'I' and type_name[1].isupper():
+        return "interface"
+    return "class"
+
+
+async def handle_resolve_type(args: dict) -> list[TextContent]:
+    """Resolve a type name to its canonical namespace and import statement.
+
+    Single-purpose lookup for #12 -- cheaper than get_object_api when you only
+    need the import path. Searches liblcm first by default (most common case),
+    then flexlibs2 / flexlibs_stable.
+    """
+    type_name = args["type_name"]
+    library_filter = args.get("library", "auto")
+
+    api_index = get_api_index()
+    if not api_index:
+        return json_response({KEY_ERROR: "API index not loaded"})
+
+    if library_filter == "auto":
+        search_order = ["liblcm", "flexlibs2", "flexlibs_stable"]
+    else:
+        search_order = [library_filter]
+
+    if "liblcm" in search_order:
+        api_index.ensure_liblcm_loaded()
+
+    found_in = []
+    canonical = None
+
+    for lib in search_order:
+        lib_data = getattr(api_index, lib, None)
+        if not lib_data:
+            continue
+        entities = lib_data.get("entities", {})
+        if type_name not in entities:
+            continue
+
+        found_in.append(lib)
+        if canonical is not None:
+            continue  # First hit is the canonical answer
+
+        entity = entities[type_name]
+        namespace = entity.get("namespace", "") or ""
+        kind = entity.get("kind") or _infer_lcm_kind(type_name)
+        category = entity.get("category")
+
+        if lib == "liblcm":
+            assembly = _lcm_namespace_to_assembly(namespace)
+            import_statement = (
+                f"from {namespace} import {type_name}" if namespace else ""
+            )
+        else:
+            assembly = None
+            import_statement = f"from {lib} import {type_name}"
+
+        canonical = {
+            KEY_NAME: type_name,
+            "kind": kind,
+            "namespace": namespace,
+            "assembly": assembly,
+            "import_statement": import_statement,
+            KEY_CATEGORY: category,
+        }
+
+    if canonical is not None:
+        return json_response({
+            KEY_FOUND: True,
+            "found_in": found_in,
+            **canonical,
+        })
+
+    # Not found - offer substring suggestions to help recover from typos.
+    suggestions = []
+    type_lower = type_name.lower()
+    seen = set()
+    for lib in search_order:
+        lib_data = getattr(api_index, lib, None)
+        if not lib_data:
+            continue
+        for ent_name in lib_data.get("entities", {}):
+            if ent_name in seen or ent_name == type_name:
+                continue
+            if type_lower in ent_name.lower():
+                suggestions.append({KEY_NAME: ent_name, "library": lib})
+                seen.add(ent_name)
+                if len(suggestions) >= 5:
+                    break
+        if len(suggestions) >= 5:
+            break
+
+    return json_response({
+        KEY_FOUND: False,
+        "type_name": type_name,
+        "suggestions": suggestions,
+        KEY_HINT: (
+            f"Type '{type_name}' not found in {search_order}. "
+            "Try a substring suggestion above, or use flextools_search_by_capability "
+            "for natural-language search."
+        ),
+    })

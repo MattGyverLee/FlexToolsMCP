@@ -30,6 +30,7 @@ from .models import (
     RunModuleInput,
     GetWrapperDependenciesInput,
     FindWrappersForLcmInput,
+    ResolveTypeInput,
 )
 
 # ============================================================
@@ -65,6 +66,7 @@ TOOL_RESOLVE_PROPERTY = "flextools_resolve_property"
 # Equivalence / cross-flavor mapping tools
 TOOL_GET_WRAPPER_DEPENDENCIES = "flextools_get_wrapper_dependencies"
 TOOL_FIND_WRAPPERS_FOR_LCM = "flextools_find_wrappers_for_lcm"
+TOOL_RESOLVE_TYPE = "flextools_resolve_type"
 
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
@@ -85,6 +87,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_RESOLVE_PROPERTY,
     TOOL_GET_WRAPPER_DEPENDENCIES,
     TOOL_FIND_WRAPPERS_FOR_LCM,
+    TOOL_RESOLVE_TYPE,
 ])
 
 # Import all handler functions
@@ -104,6 +107,7 @@ def _import_handlers():
             handle_search_by_capability,
             handle_find_examples,
             handle_resolve_property,
+            handle_resolve_type,
         )
         from .handlers.catalog import (
             handle_list_categories,
@@ -135,6 +139,7 @@ def _import_handlers():
             handle_search_by_capability,
             handle_find_examples,
             handle_resolve_property,
+            handle_resolve_type,
         )
         from server.handlers.catalog import (
             handle_list_categories,
@@ -171,6 +176,7 @@ def _import_handlers():
         "handle_get_operation_logs": handle_get_operation_logs,
         "handle_get_wrapper_dependencies": handle_get_wrapper_dependencies,
         "handle_find_wrappers_for_lcm": handle_find_wrappers_for_lcm,
+        "handle_resolve_type": handle_resolve_type,
     }
 
 
@@ -192,6 +198,7 @@ handle_run_module = _handlers["handle_run_module"]
 handle_get_operation_logs = _handlers["handle_get_operation_logs"]
 handle_get_wrapper_dependencies = _handlers["handle_get_wrapper_dependencies"]
 handle_find_wrappers_for_lcm = _handlers["handle_find_wrappers_for_lcm"]
+handle_resolve_type = _handlers["handle_resolve_type"]
 
 
 # Type alias for tool handlers
@@ -232,6 +239,7 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Equivalence / cross-flavor mapping tools
     TOOL_GET_WRAPPER_DEPENDENCIES: (handle_get_wrapper_dependencies, GetWrapperDependenciesInput),
     TOOL_FIND_WRAPPERS_FOR_LCM: (handle_find_wrappers_for_lcm, FindWrappersForLcmInput),
+    TOOL_RESOLVE_TYPE: (handle_resolve_type, ResolveTypeInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

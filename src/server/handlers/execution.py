@@ -20,6 +20,9 @@ import subprocess
 import tempfile
 import os
 import ast
+import hashlib
+import time
+import itertools
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from mcp.types import TextContent
@@ -53,7 +56,7 @@ try:
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure,
+        detect_partial_module_structure, detect_undiscovered_entities,
     )
 except ImportError:
     from server.validators import (
@@ -61,7 +64,7 @@ except ImportError:
         detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
-        detect_partial_module_structure,
+        detect_partial_module_structure, detect_undiscovered_entities,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -256,33 +259,266 @@ class FLExProject:
     return imports
 
 
+# ---------------------------------------------------------------------------
+# Operation logging: per-call traceable block in the .log file.
+# Each handle_run_module invocation produces a self-contained block bookended
+# by `=== Operation #N Start (op-id) ===` / `=== Operation #N End ===` so a
+# user pasting a slice of the log can be cross-referenced to the response
+# returned to the LLM (which carries the same op_id).
+# ---------------------------------------------------------------------------
+
+_op_counter = itertools.count(1)
+
+
+def _next_op_id() -> Tuple[int, str]:
+    """Return (sequence_number, short_id) for the next operation.
+
+    The short id is timestamp-based so it stays unique across server restarts,
+    which is important when correlating a .log block with a stale response in
+    a bug report. The sequence number is for human-skimmable ordering within
+    a single session.
+    """
+    seq = next(_op_counter)
+    # 9-char timestamp suffix (HHMMSS + ms) is short enough to grep, long enough
+    # to be unique across the rare same-second double-call.
+    ts = time.strftime("%H%M%S") + f"{int(time.time() * 1000) % 1000:03d}"
+    return seq, f"op-{ts}-{seq:03d}"
+
+
+def _code_fingerprint(code: str) -> Dict[str, Any]:
+    """Compute a short digest for change-detection between near-identical attempts.
+
+    Returns the first 12 hex chars of SHA256 plus byte/line counts -- enough to
+    eyeball "is this the same code with a one-line tweak" across consecutive
+    operations without diffing 50-line code blocks.
+    """
+    raw = code.encode("utf-8", errors="replace")
+    digest = hashlib.sha256(raw).hexdigest()[:12]
+    return {
+        "sha256_short": digest,
+        "bytes": len(raw),
+        "lines": code.count("\n") + (0 if code.endswith("\n") else 1),
+    }
+
+
+def _classify_code_source(code: str, code_tree: Optional[ast.AST]) -> str:
+    """Identify whether `code` is a bare snippet, partial module, or full module.
+
+    Item 8 in the logging plan: when the runner accepts both shapes, the .log
+    should record which one it just executed so a "module saves but snippet
+    doesn't" issue is visible without re-reading the code.
+    """
+    if code_tree is None:
+        return "unknown"
+    has_main = any(
+        isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "Main"
+        for n in code_tree.body
+    )
+    has_binding = any(
+        isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "FlexToolsModule" for t in n.targets)
+        for n in code_tree.body
+    )
+    if has_main and has_binding:
+        return "full_module"
+    if has_main:
+        return "partial_module"
+    return "bare_snippet"
+
+
+def _log_operation_start(
+    op_id: str,
+    seq: int,
+    project_name: str,
+    write_enabled: bool,
+    code: str,
+    source_kind: str,
+    casting_check: Optional[Dict[str, Any]] = None,
+    injection_tier: Optional[str] = None,
+    helpers_needed: Optional[set] = None,
+) -> None:
+    """Emit the opening block of a per-operation log entry.
+
+    Logged unconditionally as the *first* thing in handle_run_module so even
+    operations rejected by pre-flight validators still appear in the log --
+    the user explicitly wants every attempted call to be visible.
+    """
+    logger = get_operations_logger()
+    fp = _code_fingerprint(code)
+    logger.info(f"=== Operation #{seq} Start ({op_id}) ===")
+    logger.info(f"Project:         {project_name}")
+    logger.info(f"Write enabled:   {write_enabled}")
+    logger.info(f"Source kind:     {source_kind}")
+    logger.info(
+        f"Code fingerprint: sha256={fp['sha256_short']} bytes={fp['bytes']} lines={fp['lines']}"
+    )
+
+    if casting_check is not None:
+        issue_count = len(casting_check.get("casting_issues") or [])
+        tier = injection_tier or casting_check.get("injection_tier", "?")
+        helpers = sorted(helpers_needed) if helpers_needed else sorted(
+            casting_check.get("helpers_needed") or []
+        )
+        logger.info(
+            f"Preflight casting: issues={issue_count} tier={tier} helpers={helpers or '[]'}"
+        )
+        # Per-issue detail (DEBUG) so the .log captures WHY the helper was injected.
+        for issue in (casting_check.get("casting_issues") or [])[:10]:
+            logger.debug(
+                f"  casting: line={issue.get('line')} property={issue.get('property')} "
+                f"pattern={issue.get('pattern','')[:80]!r}"
+            )
+
+    logger.debug("Code:")
+    for code_line in code.split("\n"):
+        logger.debug(code_line)
+
+
+def _log_report_messages(messages: List[Dict[str, Any]], include_info: bool) -> None:
+    """Spill captured report.* messages into the log.
+
+    User wants: warnings/errors logged always, info logged only on failure
+    (to keep success-path .log noise low while preserving debugging context
+    when something breaks). The runner's SimpleReporter encodes the level as
+    the string "INFO" / "WARNING" / "ERROR" / "BLANK" / "DEBUG" in the `type`
+    field; older payloads may use the int "msgType" instead, so we accept both.
+    """
+    if not messages:
+        return
+    logger = get_operations_logger()
+    INT_TO_LABEL = {0: "INFO", 1: "WARNING", 2: "ERROR", 3: "BLANK"}
+
+    logged_any = False
+    for m in messages:
+        raw_type = m.get("type", m.get("msgType"))
+        if isinstance(raw_type, int):
+            label = INT_TO_LABEL.get(raw_type)
+        else:
+            label = (raw_type or "").upper() or None
+        if label not in ("INFO", "WARNING", "ERROR"):
+            continue
+        if label == "INFO" and not include_info:
+            continue
+        text = m.get("message", m.get("msg", m.get("text", ""))) or ""
+        ref = m.get("ref")
+        if not logged_any:
+            logger.debug("Report messages:")
+            logged_any = True
+        suffix = f"  ref={ref}" if ref else ""
+        # Route warnings/errors to their matching log levels so the existing
+        # errors_only filter in handle_get_operation_logs catches them; INFO
+        # replays on failure stay at DEBUG -- they're context, not a fault.
+        if label == "ERROR":
+            logger.error(f"  report.Error: {text}{suffix}")
+        elif label == "WARNING":
+            logger.warning(f"  report.Warning: {text}{suffix}")
+        else:
+            logger.debug(f"  report.Info: {text}{suffix}")
+
+
+def _log_operation_end_success(
+    op_id: str,
+    seq: int,
+    duration_s: float,
+    info_count: int,
+    warning_count: int,
+    error_count: int,
+    messages: Optional[List[Dict[str, Any]]] = None,
+) -> None:
+    """Close a successful operation block."""
+    logger = get_operations_logger()
+    # Always replay warnings/errors even when overall result was success --
+    # report.Warning() doesn't fail the run but the user wants visibility.
+    _log_report_messages(messages or [], include_info=False)
+    logger.info("[OK] Operation completed successfully")
+    logger.info(f"Messages:        {info_count} info, {warning_count} warnings, {error_count} errors")
+    logger.info(f"Duration:        {duration_s:.3f}s")
+    logger.info(f"=== Operation #{seq} End ({op_id}) ===")
+
+
 def _log_operation_failure(
+    op_id: Optional[str] = None,
+    seq: Optional[int] = None,
+    duration_s: Optional[float] = None,
     error: Optional[str] = None,
     error_type: Optional[str] = None,
     stderr: Optional[str] = None,
     info_count: int = 0,
     warning_count: int = 0,
     error_count: int = 0,
+    messages: Optional[List[Dict[str, Any]]] = None,
+    traceback_text: Optional[str] = None,
+    polymorphic_hint: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Emit the [FAIL] / Messages / Operation End log block with diagnostic detail.
+    """Emit the [FAIL] / Messages / Operation End block with diagnostic detail.
 
-    Centralizes the failure-logging shape so the actual cause (error text,
-    error_type, stderr) reaches the log instead of just "0 errors".
+    On failure we dump *everything* useful for reconstruction:
+    - error type + first line at INFO (visible in errors-only filter)
+    - full traceback at DEBUG (long but only present on failures)
+    - stderr tail at DEBUG (subprocess noise)
+    - all captured report.* messages including Info (context before the crash)
+    - polymorphic resolve_property suggestion when applicable
+
+    op_id/seq/duration are optional because some early-exception paths in the
+    handler don't have them yet -- losing the close marker is still better
+    than no log at all.
     """
     logger = get_operations_logger()
     logger.info("[FAIL] Operation failed")
     if error_type:
-        logger.info(f"Error type: {error_type}")
+        logger.info(f"Error type:      {error_type}")
     if error:
         first_line = error.strip().splitlines()[0] if error.strip() else ""
         if len(first_line) > 500:
             first_line = first_line[:500] + "..."
-        logger.info(f"Error: {first_line}")
+        logger.info(f"Error:           {first_line}")
+    if polymorphic_hint and polymorphic_hint.get("is_polymorphic_error"):
+        logger.info(
+            f"Polymorphic hint: object={polymorphic_hint.get('object_type')} "
+            f"property={polymorphic_hint.get('property_name')} "
+            f"-> call flextools_resolve_property to get the cast"
+        )
+    if traceback_text:
+        logger.debug("Traceback:")
+        for tb_line in traceback_text.rstrip().splitlines():
+            logger.debug(f"  {tb_line}")
     if stderr:
-        for line in stderr.strip().splitlines()[:10]:
+        for line in stderr.strip().splitlines()[:20]:
             logger.debug(f"stderr: {line}")
-    logger.info(f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors")
-    logger.info("=== Operation End ===")
+    # On failure, include the info messages too -- they're the context that
+    # ran before the break.
+    _log_report_messages(messages or [], include_info=True)
+    logger.info(f"Messages:        {info_count} info, {warning_count} warnings, {error_count} errors")
+    if duration_s is not None:
+        logger.info(f"Duration:        {duration_s:.3f}s")
+    if seq is not None and op_id is not None:
+        logger.info(f"=== Operation #{seq} End ({op_id}) ===")
+    else:
+        logger.info("=== Operation End ===")
+
+
+def _log_preflight_reject(
+    op_id: str,
+    seq: int,
+    duration_s: float,
+    reason_code: str,
+    detail: str,
+) -> None:
+    """Close an operation that was rejected by a pre-flight validator.
+
+    Pre-flight rejects never reach the subprocess so they have no traceback /
+    stderr / report messages -- just the validator reason. We still emit the
+    block so the user sees that the LLM tried something and was blocked.
+    """
+    logger = get_operations_logger()
+    logger.info("[REJECT] Pre-flight validation blocked execution")
+    logger.info(f"Reason code:     {reason_code}")
+    if detail:
+        # Detail can be a multi-line `suggestion` from validators -- keep it.
+        for line in detail.strip().splitlines()[:30]:
+            logger.info(f"  {line}")
+    logger.info(f"Duration:        {duration_s:.3f}s")
+    logger.info(f"=== Operation #{seq} End ({op_id}) ===")
 
 
 def _run_validator(validator_func, code: str, check_key: str, error_code: str, **validator_kwargs) -> Optional[list[TextContent]]:
@@ -638,13 +874,51 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
     api_mode = session_state.get_mode()
 
-    # Validate project_name is available
+    # Validate project_name is available BEFORE assigning an op_id -- without
+    # both code and project the call isn't really an "operation" worth logging.
     if not project_name:
         return error_response(
             "project_name_required",
             "No project specified. Either set project_name in start() or provide it directly.",
             session=session_state.summary()
         )
+
+    # === Operation logging begins here ===
+    # Every code-bearing call gets an op_id and a Start block, regardless of
+    # whether it later passes pre-flight. The user wants ALL attempted ops
+    # visible in the .log so a "what did the LLM try" reconstruction is possible.
+    seq, op_id = _next_op_id()
+    t_start = time.monotonic()
+
+    # Parse AST early; we need it to classify the source kind on the Start line.
+    code_tree: Optional[ast.AST]
+    try:
+        code_tree = ast.parse(code)
+        source_kind = _classify_code_source(code, code_tree)
+    except SyntaxError as syn_exc:
+        code_tree = None
+        source_kind = "parse_failed"
+        _log_operation_start(
+            op_id, seq, project_name, write_enabled, code, source_kind
+        )
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "syntax_error",
+            f"line {syn_exc.lineno}: {syn_exc.msg}",
+        )
+        return error_response(
+            "syntax_error",
+            f"Invalid Python syntax at line {syn_exc.lineno}: {syn_exc.msg}",
+            line_number=syn_exc.lineno,
+            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)",
+            op_id=op_id,
+        )
+
+    # Canonical Operation Start block (with source_kind). Casting details are
+    # appended as their own line after the casting validator runs.
+    _log_operation_start(
+        op_id, seq, project_name, write_enabled, code, source_kind
+    )
 
     # === PREFLIGHT: Validate server state before attempting execution ===
     server_health = validate_server_state()
@@ -653,22 +927,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         for severity, message in server_health["issues"]:
             if severity == "error":
                 error_details.append(f"[{severity.upper()}] {message}")
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "server_state_error",
+            "Server initialization incomplete:\n" + "\n".join(error_details),
+        )
         return error_response(
             "server_state_error",
             "Server initialization incomplete. Cannot execute code:\n" + "\n".join(error_details),
             server_state=server_health,
-            hint="The server may not have started correctly. Check the server logs and try restarting."
-        )
-
-    # Parse AST early for reuse across all validators (avoid redundant parsing)
-    try:
-        code_tree = ast.parse(code)
-    except SyntaxError as e:
-        return error_response(
-            "syntax_error",
-            f"Invalid Python syntax at line {e.lineno}: {e.msg}",
-            line_number=e.lineno,
-            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)"
+            hint="The server may not have started correctly. Check the server logs and try restarting.",
+            op_id=op_id,
         )
 
     # Partial-module structural check: when code defines `Main` but lacks the
@@ -680,6 +949,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if not args.get("skip_module_check", False):
         partial_check = detect_partial_module_structure(code, code_tree)
         if partial_check["is_partial_module"]:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "partial_module_structure",
+                f"missing_elements={partial_check.get('missing_elements')}",
+            )
             return error_response(
                 "partial_module_structure",
                 partial_check["suggestion"],
@@ -691,6 +965,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
                     "Override: pass skip_module_check=True to run the partial code as-is",
                 ],
+                op_id=op_id,
             )
 
     # Check for unprotected mutations - HARD BLOCK if found
@@ -700,6 +975,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
         guidance = get_unprotected_write_guidance(cert)
+        mutating = [m.get("method") for m in cert.get("mutating_calls", []) if m.get("is_mutating")]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "unprotected_writes",
+            f"mutating_calls={mutating[:5]}",
+        )
         return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
 
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
@@ -710,6 +991,20 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if casting_check["has_casting_issues"]:
         # Format issues with clear fixes for all 3 API flavors
         issues = casting_check["casting_issues"]
+        # Log the casting findings before rejecting so the .log captures the WHY.
+        get_operations_logger().info(
+            f"Preflight casting: issues={len(issues)} (rejected)"
+        )
+        for issue in issues[:10]:
+            get_operations_logger().debug(
+                f"  casting: line={issue.get('line')} property={issue.get('property')} "
+                f"pattern={issue.get('pattern','')[:80]!r}"
+            )
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "casting_issues_detected",
+            f"{len(issues)} polymorphic property access issue(s) require casting.",
+        )
         return error_response(
             "casting_issues_detected",
             f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
@@ -728,12 +1023,26 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 ]
             },
             tool_to_call="flextools_resolve_property",
-            next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code"
+            next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code",
+            op_id=op_id,
         )
 
     # Require API discovery before executing code
     skip_api_check = args.get("skip_api_check", False)
+    if skip_api_check:
+        # Audit the escape hatch so it shows up in operations logs.
+        # Bypassing discovery is a real foot-gun; make every use visible.
+        get_operations_logger().warning(
+            "skip_api_check=True passed -- bypassing api_discovery_required and "
+            "undiscovered_entity gates. This is an escape hatch; prefer calling "
+            "flextools_get_object_api for each entity used."
+        )
     if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "api_discovery_required",
+            "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+        )
         return error_response(
             "api_discovery_required",
             "No APIs have been discovered yet. Before running code, you MUST use one of these tools first:\n"
@@ -742,8 +1051,31 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "3. search_by_capability(query='...') - search for APIs by description\n\n"
             "This prevents using incorrect/hallucinated method names.",
             hint="Call get_object_api() for each object/operation you use (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
-            session=session_state.summary()
+            session=session_state.summary(),
+            op_id=op_id,
         )
+
+    # Per-entity gate: even after some discovery has happened, reject code that
+    # references Operations classes / project accessors the assistant never
+    # validated via get_object_api. This is what catches the post-Op-1 drift
+    # where the assistant pivots to POSOperations / project.Senses without
+    # discovering them.
+    if not skip_api_check:
+        undiscovered_check = detect_undiscovered_entities(code_tree, session_state, api_idx)
+        if undiscovered_check["has_undiscovered"]:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "undiscovered_entity",
+                f"undiscovered={undiscovered_check.get('undiscovered')}",
+            )
+            return error_response(
+                "undiscovered_entity",
+                undiscovered_check["suggestion"],
+                undiscovered=undiscovered_check["undiscovered"],
+                hint="Call flextools_get_object_api for each listed entity, then re-run.",
+                session=session_state.summary(),
+                op_id=op_id,
+            )
 
     # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
     # The SimpleReporter provides both mechanisms transparently
@@ -752,33 +1084,51 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Pass pre-parsed AST to avoid re-parsing
     undefined_check = detect_undefined_variables(code, code_tree)
     if undefined_check["has_undefined"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "undefined_variables",
+            f"undefined_vars={undefined_check.get('undefined_vars')}",
+        )
         return error_response(
             "undefined_variables",
             undefined_check["suggestion"],
             undefined_vars=undefined_check["undefined_vars"],
-            guidance="All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names."
+            guidance="All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names.",
+            op_id=op_id,
         )
 
     # Check for missing Operations class imports
     missing_ops_check = detect_missing_operations_imports(code, api_mode)
     if missing_ops_check["has_missing"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "missing_imports",
+            f"missing_imports={missing_ops_check.get('missing_imports')} api_mode={api_mode}",
+        )
         return error_response(
             "missing_imports",
             missing_ops_check["suggestion"],
             missing_imports=missing_ops_check["missing_imports"],
             api_mode=api_mode,
-            guidance="Add the import statement shown above to the top of your code."
+            guidance="Add the import statement shown above to the top of your code.",
+            op_id=op_id,
         )
 
     # Check for wrong library imports
     wrong_imports_check = detect_wrong_library_imports(code, api_mode)
     if wrong_imports_check["has_wrong_imports"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "wrong_library_imports",
+            f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
+        )
         return error_response(
             "wrong_library_imports",
             wrong_imports_check["suggestion"],
             wrong_imports=wrong_imports_check["wrong_imports"],
             api_mode=api_mode,
-            guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode."
+            guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode.",
+            op_id=op_id,
         )
 
     # Pre-flight: catch project.<accessor>/<method> typos before subprocess launch.
@@ -787,11 +1137,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # to runtime so we don't block valid direct-project methods we don't index.
     chain_check = detect_invalid_project_chains(code_tree, api_idx)
     if chain_check["has_invalid"]:
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "invalid_api_chain",
+            f"issues={chain_check.get('issues')}",
+        )
         return error_response(
             "invalid_api_chain",
             chain_check["suggestion"],
             issues=chain_check["issues"],
-            guidance="Replace each flagged expression with the suggested correct name and re-run."
+            guidance="Replace each flagged expression with the suggested correct name and re-run.",
+            op_id=op_id,
         )
 
     timeout_seconds = args.get("timeout_seconds", 300)
@@ -803,17 +1159,22 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     injection_tier = casting_check.get("injection_tier", "full")  # Default to full for safety
     helpers_needed = casting_check.get("helpers_needed", set())  # Set of specific helpers
 
-    # Telemetry: Track injection strategy
-    get_operations_logger().debug(f"Three-tier injection: tier={injection_tier}, helpers_needed={helpers_needed}")
-
-    # Log module start with rich formatting
-    get_operations_logger().info(f"=== Operation Start ===")
-    get_operations_logger().info(f"Project: {project_name}")
-    get_operations_logger().info(f"Write enabled: {write_enabled}")
-    get_operations_logger().debug(f"Code:")
-    # Log the full code, each line with proper indentation
-    for code_line in code.split('\n'):
-        get_operations_logger().debug(code_line)
+    # Operation Start was logged at the top of handle_run_module; now that
+    # pre-flight has passed, append the casting/injection telemetry and an
+    # explicit "preflight passed" marker so a failure later in the subprocess
+    # can be told apart from a failure that never made it past validation.
+    logger = get_operations_logger()
+    if (casting_check.get("casting_issues") or []) or injection_tier != "none" or helpers_needed:
+        logger.info(
+            f"Preflight casting: issues={len(casting_check.get('casting_issues') or [])} "
+            f"tier={injection_tier} helpers={sorted(helpers_needed) if helpers_needed else '[]'}"
+        )
+        for issue in (casting_check.get("casting_issues") or [])[:10]:
+            logger.debug(
+                f"  casting: line={issue.get('line')} property={issue.get('property')} "
+                f"pattern={issue.get('pattern','')[:80]!r}"
+            )
+    logger.info(f"Preflight:       passed (tier={injection_tier})")
 
     # Build warnings
     warnings = []
@@ -1208,11 +1569,15 @@ MODULE_CODE = {code}
             temp_script_path = f.name
     except Exception as e:
         err_msg = "Failed to create temporary script: {}".format(str(e))
-        _log_operation_failure(error=err_msg, error_type=type(e).__name__)
+        _log_operation_failure(
+            op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
+            error=err_msg, error_type=type(e).__name__,
+        )
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": err_msg,
-            "warnings": warnings
+            "warnings": warnings,
+            "op_id": op_id,
         }, indent=2))]
 
     try:
@@ -1243,11 +1608,15 @@ MODULE_CODE = {code}
         # Handle timeout case
         if result["timeout"]:
             err_msg = f"Execution timeout: script exceeded {timeout_seconds} seconds"
-            _log_operation_failure(error=err_msg, error_type="Timeout", stderr=stderr)
+            _log_operation_failure(
+                op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
+                error=err_msg, error_type="Timeout", stderr=stderr,
+            )
             return [TextContent(type="text", text=json.dumps({
                 "success": False,
                 "error": err_msg,
-                "warnings": warnings
+                "warnings": warnings,
+                "op_id": op_id,
             }, indent=2))]
 
         # Parse the JSON result from stdout
@@ -1318,41 +1687,84 @@ MODULE_CODE = {code}
         warning_count = summary.get("warning_count", 0)
         error_count = summary.get("error_count", 0)
 
+        # Attach op_id so the LLM can echo it back in a bug report; the
+        # matching block in the .log file is keyed off the same id.
+        execution_result["op_id"] = op_id
+
+        # Extract structured failure detail before logging so the .log block
+        # has full reconstruction info: traceback, report messages, hint.
+        report_messages = execution_result.get("messages") or []
+        # The runner stuffs `traceback.format_exc()` into the `error` field
+        # using a "Execution error: <msg>\n<traceback>" shape. Split it back
+        # out so the .log can show the traceback as DEBUG without polluting
+        # the single-line INFO summary.
+        raw_error = execution_result.get("error") or ""
+        traceback_text: Optional[str] = None
+        if isinstance(raw_error, str) and "\n" in raw_error:
+            first_nl = raw_error.find("\n")
+            traceback_text = raw_error[first_nl + 1 :].strip() or None
+
+        polymorphic_hint = None
+        if execution_result.get("polymorphic_error_detected"):
+            polymorphic_hint = {
+                "is_polymorphic_error": True,
+                "object_type": execution_result.get("object_type"),
+                "property_name": execution_result.get("property_name"),
+            }
+
+        duration_s = time.monotonic() - t_start
+
         # Log operation completion with rich formatting
         if execution_result.get("success"):
-            get_operations_logger().info("[OK] Operation completed successfully")
-            get_operations_logger().info(
-                f"Messages: {info_count} info, {warning_count} warnings, {error_count} errors"
+            _log_operation_end_success(
+                op_id=op_id, seq=seq, duration_s=duration_s,
+                info_count=info_count,
+                warning_count=warning_count,
+                error_count=error_count,
+                messages=report_messages,
             )
-            get_operations_logger().info("=== Operation End ===")
         else:
             _log_operation_failure(
+                op_id=op_id, seq=seq, duration_s=duration_s,
                 error=execution_result.get("error"),
                 error_type=execution_result.get("error_type"),
                 stderr=execution_result.get("stderr") or stderr,
                 info_count=info_count,
                 warning_count=warning_count,
                 error_count=error_count,
+                messages=report_messages,
+                traceback_text=traceback_text,
+                polymorphic_hint=polymorphic_hint,
             )
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
 
     except subprocess.TimeoutExpired:
         err_msg = "Execution timed out after {} seconds".format(timeout_seconds)
-        _log_operation_failure(error=err_msg, error_type="TimeoutExpired")
+        _log_operation_failure(
+            op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
+            error=err_msg, error_type="TimeoutExpired",
+        )
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": err_msg,
-            "warnings": warnings
+            "warnings": warnings,
+            "op_id": op_id,
         }, indent=2))]
 
     except Exception as e:
+        import traceback as _tb
         err_msg = "Subprocess execution error: {}".format(str(e))
-        _log_operation_failure(error=err_msg, error_type=type(e).__name__)
+        _log_operation_failure(
+            op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
+            error=err_msg, error_type=type(e).__name__,
+            traceback_text=_tb.format_exc(),
+        )
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": err_msg,
-            "warnings": warnings
+            "warnings": warnings,
+            "op_id": op_id,
         }, indent=2))]
 
     finally:

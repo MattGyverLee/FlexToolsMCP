@@ -81,17 +81,45 @@ _BUILTIN_NAMES = {
     "project", "report", "modifyAllowed", "FLExProject"
 }
 
-# LibLCM mutation patterns (pre-compiled for efficiency - avoids 200-400ms recompilation cost)
+# Line-aware mutation patterns (pre-compiled for efficiency).
+# Each entry produces a per-line hit that can be cross-checked against
+# protected ranges. Keep this set in sync with the line-blind patterns in
+# detect_cud_operations() -- anything that gates execution MUST be here so
+# `if modifyAllowed:` guards are honored.
 # Tuple of (compiled_pattern, method_name, category)
 _LIBLCM_MUTABLE_PATTERNS = [
+    # Raw LCM cache mutations
     (re.compile(r'_cache\s*\.\s*CreateObject\s*\('), 'CreateObject', 'Create'),
     (re.compile(r'_cache\s*\.\s*DeleteObject\s*\('), 'DeleteObject', 'Delete'),
     (re.compile(r'_cache\s*\.\s*BeginNonUndoableTask\s*\('), 'BeginNonUndoableTask', 'BeginNonUndoableTask'),
+    # Collection mutations (raw LCM)
     (re.compile(r'\.Add\s*\('), 'Add', 'Mutate'),
     (re.compile(r'\.Remove\s*\('), 'Remove', 'Mutate'),
     (re.compile(r'\.Clear\s*\('), 'Clear', 'Mutate'),
     (re.compile(r'\.MoveTo\s*\('), 'MoveTo', 'Reorder'),
     (re.compile(r'\.Insert\s*\('), 'Insert', 'Mutate'),
+    # FlexLibs2 project-accessor mutations: project.<X>.Create/Delete/Set*(...)
+    # These are wrapper calls but they still mutate the DB and must be guarded.
+    # Without these, project.LexEntry.Create(...) was caught only by the
+    # line-blind raw_lcm_patterns path and could not be certified-as-protected.
+    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Create\s*\(', re.IGNORECASE), 'project.*.Create', 'Create'),
+    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Delete\s*\(', re.IGNORECASE), 'project.*.Delete', 'Delete'),
+    (re.compile(r'project\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE), 'project.*.Set/Update', 'Update'),
+    # Raw LCM property setters / approval methods
+    (re.compile(r'\.set_String\s*\('), 'set_String', 'Update'),
+    (re.compile(r'\.CopyAlternatives\s*\('), 'CopyAlternatives', 'Update'),
+    (re.compile(r'\.(?:Approve|Reject|SetApprovalStatus)\s*\('), 'Approve/Reject', 'Update'),
+    # Raw LCM property setter methods (exact suffixes -- does not match Operations.SetLexemeForm)
+    (re.compile(r'\.Set(?:Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\('), 'Set*', 'Update'),
+    # Raw LCM property assignments (entry.LexemeFormOA = ..., sense.Gloss = ..., etc.)
+    (re.compile(
+        r'(?:entry|sense|wordform|analysis|bundle|morph|gloss|allomorph|pos)\w*\s*\.\s*'
+        r'(?:LexemeFormOA|MorphoSyntaxAnalysisRA|SenseRA|MsaRA|MorphRA|CategoryRA|'
+        r'InflectionClassRA|EntryRefsOS|ComponentLexemesRS|PrimaryLexemesRS|'
+        r'MorphTypeRA|Gloss|Definition|Form|LiteralMeaning|SummaryDefinition|'
+        r'Bibliography|Etymology|Comment|Note)\s*=(?!=)',
+        re.IGNORECASE
+    ), 'property=', 'Update'),
 ]
 
 
@@ -1283,8 +1311,13 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                 # Class not in index - fall through to regex
                 pass
 
-    # Step 3: Regex-based detection for patterns not in index
-    # Use existing detect_cud_operations() for raw LCM patterns
+    # Step 3: Regex-based detection for patterns not in index.
+    # detect_cud_operations() is line-blind, so we keep its output only as a
+    # diagnostic signal (surfaced in the return dict for inspection) but do
+    # NOT use it to gate execution -- otherwise a guarded `project.X.Create(...)`
+    # would still be blocked because `.Create(` matches globally. The line-aware
+    # patterns in _LIBLCM_MUTABLE_PATTERNS handle the gating with protection
+    # awareness; this regex pass only contributes to the confidence rating.
     cud_info = detect_cud_operations(code)
     if cud_info["is_cud"]:
         raw_lcm_patterns.extend(cud_info["operations"])
@@ -1325,15 +1358,18 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     else:
         confidence = "low"
 
-    # Step 7: Build certification result
+    # Step 7: Build certification result.
     # Script is read-only certified if:
-    # 1. No FlexLibs2 mutating calls
-    # 2. No unprotected raw LibLCM mutations
-    # 3. No raw LCM patterns detected
+    # 1. No FlexLibs2 mutating calls (index lookup, line-aware, protection-checked)
+    # 2. No unprotected raw LCM / project-accessor mutations (line-aware, protection-checked)
+    # raw_lcm_patterns is intentionally NOT a gate -- it is line-blind and would
+    # block guarded code like `if modifyAllowed: project.LexEntry.Create(...)`,
+    # producing the contradictory "Found 0 unprotected mutation(s)" + hard-block
+    # output users were hitting. The line-aware patterns above cover the same
+    # cases with correct protection awareness.
     is_certified_readonly = (
         not any(m.get("is_mutating") for m in mutating_calls)
         and not unprotected_liblcm_calls
-        and not raw_lcm_patterns
     )
 
     return {

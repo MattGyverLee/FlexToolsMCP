@@ -287,6 +287,58 @@ def test_mixed_protected_and_unprotected():
     print("[OK] Mixed protected/unprotected LibLCM calls detected correctly")
 
 
+def test_project_accessor_create_unprotected():
+    """project.<Accessor>.Create(...) outside a guard must be blocked."""
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        entry = project.LexEntry.Create(headword="water")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], (
+        f"Unguarded project.LexEntry.Create should NOT be certified, got: {cert}"
+    )
+    assert len(cert["unprotected_liblcm_calls"]) > 0, (
+        f"Should flag project.LexEntry.Create as unprotected, got: {cert['unprotected_liblcm_calls']}"
+    )
+
+    print("[OK] Unprotected project.<X>.Create() detected correctly")
+
+
+def test_project_accessor_create_protected():
+    """project.<Accessor>.Create(...) inside `if modifyAllowed:` must certify clean.
+
+    Regression for the validator bug where raw_lcm_patterns triggered a hard
+    block even when the mutation was correctly guarded, producing the
+    contradictory "Found 0 unprotected mutation(s)" + execution-blocked output.
+    """
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            entry = project.LexEntry.Create(headword="water")
+            report.Info("Created entry")
+        else:
+            report.Info("(Would create entry)")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], (
+        f"Guarded project.LexEntry.Create should be certified readonly, got: {cert}"
+    )
+    assert len(cert["unprotected_liblcm_calls"]) == 0, (
+        f"Should have no unprotected calls when guarded, got: {cert['unprotected_liblcm_calls']}"
+    )
+    assert len(cert["protected_liblcm_calls"]) > 0, (
+        f"Should record the guarded mutation in protected_liblcm_calls, got: {cert['protected_liblcm_calls']}"
+    )
+
+    print("[OK] Protected project.<X>.Create() certified clean")
+
+
 def test_collection_mutations():
     """Test detection of collection mutations (Add, Remove, Clear, Insert)."""
     api_index = load_api_index()
@@ -321,6 +373,8 @@ if __name__ == "__main__":
         test_protected_liblcm_with_modifyallowed()
         test_modifyallowed_comparison()
         test_mixed_protected_and_unprotected()
+        test_project_accessor_create_unprotected()
+        test_project_accessor_create_protected()
         test_collection_mutations()
 
         print("\n[DONE] All certification tests passed!")

@@ -76,9 +76,12 @@ EXPECTED_TOOL_NAMES = [
     "flextools_run_module",
     "flextools_get_operation_logs",
     "flextools_resolve_property",
+    "flextools_resolve_type",
     "flextools_manage_config",
     "flextools_get_session_history",
     "flextools_undo_last_operation",
+    "flextools_get_wrapper_dependencies",
+    "flextools_find_wrappers_for_lcm",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
@@ -95,14 +98,16 @@ READ_ONLY_TOOLS = [
     "flextools_get_module_template",
     "flextools_start_module",
     "flextools_resolve_property",
+    "flextools_resolve_type",
     "flextools_get_operation_logs",
     "flextools_get_session_history",
+    "flextools_get_wrapper_dependencies",
+    "flextools_find_wrappers_for_lcm",
 ]
 
 # Tools that should be marked destructiveHint=True
 DESTRUCTIVE_TOOLS = [
     "flextools_run_module",
-    "flextools_run_operation",
     "flextools_undo_last_operation",
 ]
 
@@ -126,7 +131,7 @@ class TestToolRegistration(ToolsTestBase):
     """Test that all tools are registered correctly."""
 
     def test_tool_count(self):
-        """All 16 tools should be registered."""
+        """All expected tools should be registered (count derived from EXPECTED_TOOL_NAMES)."""
         self.assertEqual(len(self.tools), EXPECTED_TOOL_COUNT,
                          f"Expected {EXPECTED_TOOL_COUNT} tools, got {len(self.tools)}: "
                          f"{self.tool_names}")

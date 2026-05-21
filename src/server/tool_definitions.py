@@ -207,8 +207,15 @@ SAFETY: write_enabled defaults to False (dry-run mode). Set to True only after t
 All code has access to:
 - project: FLExProject instance
 - report: Output mechanism (report.Info/Warning/Error)
-- write_enabled: Boolean flag for write operations
-All flexlibs2 Operations classes are pre-imported.""",
+- write_enabled / modifyAllowed: Boolean flag for write operations
+- Helpers: is_empty_multistring, FLEX_EMPTY_PLACEHOLDER, find_writing_system, list_writing_systems
+
+Operations classes (POSOperations, LexEntryOperations, etc.) are NOT auto-imported.
+You must include `from flexlibs2 import ...` in your code, or use the project
+accessors (project.POS, project.LexEntry, project.Senses, ...) which create the
+instances lazily. Every Operations class you reference must be discovered first
+via flextools_get_object_api -- the runner rejects code that uses an undiscovered
+entity (see api_discovery_required / undiscovered_entity errors).""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,

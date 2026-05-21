@@ -606,6 +606,123 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     }
 
 
+def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
+    """Map project.<accessor> name -> Operations class name from the API index.
+
+    Used to figure out what entity a `project.Senses.GetAll()` call actually needs
+    discovered (LexSenseOperations) -- a naive `f"{accessor}Operations"` is wrong
+    for most accessors because flexlibs2 names diverge (Senses->LexSense, Wordforms->
+    WfiWordform, PhonRules->PhonologicalRule, ...).
+    """
+    if api_index is None:
+        return {}
+    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+    fp = (flexlibs2.get("entities") or {}).get("FLExProject", {})
+    mapping: Dict[str, str] = {}
+    for prop in fp.get("properties", []) or []:
+        name = prop.get("name") or ""
+        ret = prop.get("return_type") or ""
+        if name and ret.endswith("Operations"):
+            mapping[name] = ret
+    return mapping
+
+
+def detect_undiscovered_entities(
+    code_tree: Optional[ast.AST],
+    session_state,
+    api_index: Optional[Any] = None,
+) -> dict:
+    """Per-entity discovery gate: reject code that uses Operations classes / project
+    accessors the assistant never validated via flextools_get_object_api.
+
+    Why: the broader api_discovery_required gate only checks "anything ever discovered
+    in this session." Once the assistant calls get_object_api for one entity, it can
+    use any other entity without discovery -- which led to hallucinated method names
+    and silent failures (e.g., project.POSOperations.GetAll() typo, or project.Senses
+    used after only LexEntry was discovered).
+
+    Detects:
+      - Operations class constructor / classmethod usage: POSOperations(project)
+      - Project accessor usage: project.POS, project.LexEntry, project.Senses, ...
+        (resolved through the API index, so project.Senses correctly demands
+        LexSenseOperations discovery rather than a fictional SensesOperations.)
+
+    A use is satisfied if either the canonical accessor name (POS, LexEntry, Senses)
+    OR the Operations-class form (POSOperations, LexSenseOperations) appears in the
+    session's validated_apis or as the entity-half of any discovered_apis key.
+
+    Returns dict with:
+      - has_undiscovered: bool
+      - undiscovered: list[str] -- entity names that need discovery
+      - suggestion: human-readable hint with exact tool calls to make
+    """
+    result = {"has_undiscovered": False, "undiscovered": [], "suggestion": ""}
+    if code_tree is None:
+        return result
+
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    # Reverse for "did the assistant call get_object_api(object_type='Senses')?" -> LexSenseOperations
+    ops_to_accessor: Dict[str, str] = {v: k for k, v in accessor_to_ops.items()}
+
+    # Build the set of "satisfied" entity names. Accept accessor form, ops-class form,
+    # and (when known) the cross-form via the api_index mapping.
+    validated = set(session_state.validated_apis)
+    discovered_entities = set()
+    for api_key in session_state.discovered_apis:
+        if "." in api_key:
+            discovered_entities.add(api_key.split(".", 1)[0])
+
+    satisfied: Set[str] = set()
+    for v in validated | discovered_entities:
+        satisfied.add(v)
+        # Cross-link accessor <-> ops class via the index when possible
+        if v in accessor_to_ops:
+            satisfied.add(accessor_to_ops[v])
+        if v in ops_to_accessor:
+            satisfied.add(ops_to_accessor[v])
+        # Naive bidirectional fallback (handles POS/POSOperations even if the index
+        # missed the property for some reason).
+        if v.endswith("Operations"):
+            satisfied.add(v[: -len("Operations")])
+        else:
+            satisfied.add(v + "Operations")
+
+    # Walk AST for entity references.
+    used_entities: Set[str] = set()
+    for node in ast.walk(code_tree):
+        # POSOperations(project), LexEntryOperations.GetAll(project), etc.
+        if isinstance(node, ast.Name) and node.id in KNOWN_OPERATIONS:
+            used_entities.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            # project.<Accessor>...
+            if isinstance(node.value, ast.Name) and node.value.id == "project":
+                accessor = node.attr
+                # Prefer the real index mapping; fall back to naive ops-class form
+                # so the gate still works if the index hasn't been loaded yet.
+                ops_class = accessor_to_ops.get(accessor) or f"{accessor}Operations"
+                if ops_class in KNOWN_OPERATIONS:
+                    used_entities.add(ops_class)
+
+    undiscovered = sorted(e for e in used_entities if e not in satisfied)
+    if not undiscovered:
+        return result
+
+    suggestions = "\n  - ".join(
+        f"flextools_get_object_api(object_type='{e}')" for e in undiscovered
+    )
+    result["has_undiscovered"] = True
+    result["undiscovered"] = undiscovered
+    result["suggestion"] = (
+        f"Code uses {len(undiscovered)} entity/entities that were not validated via "
+        f"flextools_get_object_api in this session: {', '.join(undiscovered)}.\n\n"
+        f"Call these first so you have the real signatures (this prevents hallucinated "
+        f"method names like project.POSOperations.GetAll(), which silently fail):\n\n"
+        f"  - {suggestions}\n\n"
+        f"Tip: get_object_api accepts either form -- 'POS' or 'POSOperations' both work."
+    )
+    return result
+
+
 def detect_polymorphic_error(error_msg: str) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 

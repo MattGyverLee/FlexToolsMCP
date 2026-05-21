@@ -656,6 +656,18 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
             for entity_name, entity in index_data.get("entities", {}).items():
                 # Cache lowercased entity name for reuse in properties loop
                 entity_name_lower = entity_name.lower()
+                # Cache namespace + import_statement so every hit on this entity
+                # carries them out -- without this, the assistant gets an entity
+                # name but no way to import it, which was the root cause of #12.
+                entity_namespace = entity.get("namespace", "") or ""
+                if source_name == "liblcm":
+                    entity_import = (
+                        f"from {entity_namespace} import {entity_name}"
+                        if entity_namespace
+                        else ""
+                    )
+                else:
+                    entity_import = f"from {source_name} import {entity_name}"
 
                 for method in entity.get(KEY_METHODS, []):
                     method_name = method.get(KEY_NAME, '')
@@ -679,6 +691,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 KEY_SCORE: score,
                                 KEY_SOURCE: source_name,
                                 KEY_ENTITY: entity_name,
+                                "namespace": entity_namespace,
+                                KEY_IMPORT_STATEMENT: entity_import,
                                 KEY_NAME: method_name,
                                 KEY_TYPE: "method",
                                 KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -713,6 +727,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 KEY_SCORE: score,
                                 KEY_SOURCE: source_name,
                                 KEY_ENTITY: entity_name,
+                                "namespace": entity_namespace,
+                                KEY_IMPORT_STATEMENT: entity_import,
                                 KEY_NAME: prop_name,
                                 KEY_PYTHONIC_NAME: pythonic_name if pythonic_name != prop_name else None,
                                 KEY_TYPE: "property",
@@ -799,6 +815,18 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             if object_type_lower and object_type_lower not in entity_name.lower():
                 continue
 
+            # Cache namespace + import_statement once per entity (same fix as
+            # search_by_capability for #12 -- examples must carry import path).
+            entity_namespace = entity.get("namespace", "") or ""
+            if source_name == "liblcm":
+                entity_import = (
+                    f"from {entity_namespace} import {entity_name}"
+                    if entity_namespace
+                    else ""
+                )
+            else:
+                entity_import = f"from {source_name} import {entity_name}"
+
             for method in entity.get(KEY_METHODS, []):
                 method_name_str = method.get(KEY_NAME, "")
                 if method_name_lower and method_name_lower not in method_name_str.lower():
@@ -811,6 +839,8 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
                 if method.get(KEY_EXAMPLE):
                     examples.append({
                         "class": entity_name,
+                        "namespace": entity_namespace,
+                        KEY_IMPORT_STATEMENT: entity_import,
                         KEY_METHOD_NAME: method_name_str,
                         KEY_SIGNATURE: method.get(KEY_SIGNATURE),
                         KEY_DESCRIPTION: method.get(KEY_SUMMARY, method.get(KEY_DESCRIPTION, ""))[:150],

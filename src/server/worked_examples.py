@@ -20,7 +20,7 @@ Each entry:
 """
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 
 # Common English stop-words we filter out of free-text queries before matching.
@@ -184,27 +184,38 @@ def Main(project, report, modifyAllowed):
 ]
 
 
-def _example_word_sets(example: Dict) -> tuple:
-    """Pre-extract (tag_words, text_words) for a worked example.
+def _tokenize_to_words(text: str) -> set:
+    """Lowercase + non-alphanumeric split, returning a word set."""
+    words = set(re.split(r"[^a-z0-9]+", text.lower()))
+    words.discard("")
+    return words
 
-    tag_words: tokens drawn from the example's tags list (high-signal).
-    text_words: tokens drawn from title + summary + see_also (lower-signal).
-    Returned as sets for O(1) lookup.
+
+def _build_example_index() -> List[Tuple[Dict, frozenset, frozenset]]:
+    """Precompute (example, tag_words, text_words) once at module load.
+
+    Without this, find_worked_examples re-tokenized every example's tags +
+    title + summary + see_also on every call -- harmless at N=3 but a
+    waste once the list grows.
     """
-    tag_words = set()
-    for t in example.get("tags", []):
-        tag_words.update(re.split(r"[^a-z0-9]+", t.lower()))
-    tag_words.discard("")
+    indexed: List[Tuple[Dict, frozenset, frozenset]] = []
+    for example in WORKED_EXAMPLES:
+        tag_words: set = set()
+        for t in example.get("tags", []):
+            tag_words |= _tokenize_to_words(t)
 
-    text_words = set()
-    for s in (example["title"], example["summary"]):
-        text_words.update(re.split(r"[^a-z0-9]+", s.lower()))
-    for s in example.get("see_also", []):
-        text_words.update(re.split(r"[^a-z0-9]+", s.lower()))
-    text_words.discard("")
-    text_words -= tag_words  # don't double-count
+        text_words: set = set()
+        text_words |= _tokenize_to_words(example["title"])
+        text_words |= _tokenize_to_words(example["summary"])
+        for s in example.get("see_also", []):
+            text_words |= _tokenize_to_words(s)
+        text_words -= tag_words  # don't double-count
 
-    return tag_words, text_words
+        indexed.append((example, frozenset(tag_words), frozenset(text_words)))
+    return indexed
+
+
+_EXAMPLE_INDEX: List[Tuple[Dict, frozenset, frozenset]] = _build_example_index()
 
 
 def find_worked_examples(
@@ -221,22 +232,20 @@ def find_worked_examples(
     Returns entries with score > 0, sorted highest-first, truncated to
     max_results. Tag matches outweigh title/summary matches so the
     high-signal "this snippet is about X" tags drive ranking.
+
+    Generic verbs (create, add, get, ...) are tokenized but contribute zero
+    score so noun terms drive ranking; this prevents queries like
+    "create a sense" from false-matching examples that just share the verb.
     """
     terms = _terms(query, operation_type, object_type)
-    if not terms:
+    scoring_terms = [t for t in terms if t not in _GENERIC_VERBS]
+    if not scoring_terms:
         return []
 
     scored = []
-    for example in WORKED_EXAMPLES:
-        tag_words, text_words = _example_word_sets(example)
-        tag_hits = sum(
-            1 for term in terms
-            if term in tag_words and term not in _GENERIC_VERBS
-        )
-        text_hits = sum(
-            1 for term in terms
-            if term in text_words and term not in _GENERIC_VERBS
-        )
+    for example, tag_words, text_words in _EXAMPLE_INDEX:
+        tag_hits = sum(1 for term in scoring_terms if term in tag_words)
+        text_hits = sum(1 for term in scoring_terms if term in text_words)
         score = tag_hits * 2 + text_hits
         if score > 0:
             scored.append((score, example))

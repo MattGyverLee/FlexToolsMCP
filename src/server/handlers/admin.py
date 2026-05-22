@@ -290,6 +290,21 @@ async def handle_start(args: dict) -> list[TextContent]:
         write_enabled_explicit and prior_write_enabled and not write_enabled
     )
 
+    # #14 Phase 1: undoable opt-in. Same inherit-on-restart logic as
+    # write_enabled, plus it's only meaningful when write_enabled is also True
+    # (flexlibs2 ignores undoable when writeEnabled is False).
+    undoable_explicit = "undoable" in user_provided
+    prior_undoable = bool(getattr(session_state, "undoable", False))
+    if undoable_explicit:
+        undoable = args.get("undoable", False)
+    elif same_project:
+        undoable = prior_undoable
+    else:
+        undoable = args.get("undoable", False)
+    # Coerce off when write is off -- flexlibs2 silently ignores undoable in
+    # that case, but surfacing the effective value avoids LLM confusion.
+    undoable = undoable and write_enabled
+
     # Generate session ID (format: YYYYMMDD-HHMMSS)
     session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -313,6 +328,7 @@ async def handle_start(args: dict) -> list[TextContent]:
         output_type="auto",
         project_name=project_name,
         write_enabled=write_enabled,
+        undoable=undoable,
         api_versions=api_versions
     )
 
@@ -328,7 +344,7 @@ async def handle_start(args: dict) -> list[TextContent]:
             f"[SESSION-CONFIGURED] session_state_id={id(session_state)} "
             f"session_id={session_id} project={project_name!r} "
             f"api_mode={api_mode} write_enabled={write_enabled} "
-            f"initialized={session_state.initialized}"
+            f"undoable={undoable} initialized={session_state.initialized}"
         )
 
     # Rotate logging to session-specific log file
@@ -372,6 +388,17 @@ async def handle_start(args: dict) -> list[TextContent]:
         warnings.append(
             "write_enabled was downgraded True -> False on re-init. "
             "Was this intentional?"
+        )
+    if undoable:
+        warnings.append(
+            "undoable=True (EXPERIMENTAL): writes go through LCM's persistent "
+            "undo stack. flextools_undo_last_operation can reverse them across "
+            "MCP sessions (matches FLEx UI Ctrl+Z)."
+        )
+    if undoable_explicit and args.get("undoable") and not write_enabled:
+        warnings.append(
+            "undoable=True was requested but coerced to False because "
+            "write_enabled=False (flexlibs2 ignores undoable in read-only mode)."
         )
 
     if warnings:
@@ -490,50 +517,110 @@ async def handle_get_session_history(args: dict) -> list[TextContent]:
 
 
 async def handle_undo_last_operation(args: dict) -> list[TextContent]:
-    """Undo the last database write operation (Feature 3).
+    """Undo the last database write operation (#14 Phase 2).
 
-    Uses FLEx ActionHandler.Undo() to reverse the last transaction.
-    Requires write access and an undoable operation to be available.
+    Executes project.Undo() in a subprocess against the configured project,
+    which reverses the most recent LCM UndoableOperation. Requires the
+    session to have been started with undoable=True; otherwise the LCM
+    project was opened without an undo stack and Undo() will raise.
+
+    Returns a structured result including how many Undo() calls succeeded
+    and (best-effort) the undo stack depth before and after.
     """
-    can_undo = session_state.can_undo()
-    result = {
-        KEY_SUCCESS: False,
-        KEY_CAN_UNDO: can_undo,
-        KEY_MESSAGE: ""
-    }
-
-    # Check if undo is available
-    if not can_undo:
-        result[KEY_MESSAGE] = "No undoable operations available in this session"
-        return json_response(result)
-
-    # Check if write was enabled (only makes sense for write operations)
-    if not session_state.write_enabled:
-        result[KEY_MESSAGE] = "Write mode was not enabled - no database modifications to undo"
-        return json_response(result)
-
-    # Get the operation to undo
-    operation = session_state.pop_undo()
-    if not operation:
-        result[KEY_MESSAGE] = "Error retrieving operation from undo stack"
-        return json_response(result)
-
-    result[KEY_SUCCESS] = True
-    result[KEY_MESSAGE] = "Undo operation queued"
-    result[KEY_UNDONE_OPERATION] = {
-        KEY_TIMESTAMP: operation.timestamp.isoformat(),
-        KEY_TOOL: operation.tool,
-        KEY_ARGS_SUMMARY: operation.args_summary,
-        KEY_PROJECT: operation.project,
-    }
-    result[KEY_NOTE] = (
-        "To execute the undo, you would call FLEx ActionHandler.Undo() via run_module. "
-        "Undo is available but not automatically executed to allow review first."
+    # Local session-side bookkeeping: peek the last checkpoint if any. This
+    # is informational -- the actual undo always runs against the LCM cache.
+    last_checkpoint = (
+        session_state.undo_checkpoints[-1] if session_state.undo_checkpoints else None
     )
-    result[KEY_UNDO_STATUS] = {
-        KEY_REMAINING_UNDOABLE: session_state.can_undo(),
-        KEY_REDO_AVAILABLE: session_state.can_redo(),
+
+    project_name = session_state.project_name or ""
+    if not project_name:
+        return json_response({
+            KEY_SUCCESS: False,
+            KEY_MESSAGE: "No project_name set in session. Call flextools_start(project_name=...) first.",
+        })
+
+    if not session_state.write_enabled:
+        return json_response({
+            KEY_SUCCESS: False,
+            KEY_MESSAGE: (
+                "Write mode is not enabled in this session. Re-init with "
+                "flextools_start(write_enabled=True, undoable=True) to enable undo."
+            ),
+        })
+
+    if not getattr(session_state, "undoable", False):
+        return json_response({
+            KEY_SUCCESS: False,
+            KEY_MESSAGE: (
+                "Session was started with undoable=False, so the project was "
+                "opened without LCM's persistent undo stack. project.Undo() "
+                "would raise. Re-init with flextools_start(undoable=True) "
+                "BEFORE making changes you want to be reversible."
+            ),
+            KEY_NOTE: (
+                "Per #14 design: undoable is opt-in while experimental. "
+                "Existing writes from this session that were made under "
+                "undoable=False cannot be reversed by this tool."
+            ),
+        })
+
+    # Optional override: callers can ask for multiple undo steps in one shot
+    # (default 1). Useful for rolling back a single run_module that wrapped
+    # multiple UndoableOperations internally.
+    count_arg = args.get("count", 1) if isinstance(args, dict) else 1
+    try:
+        undo_count = max(1, int(count_arg))
+    except (TypeError, ValueError):
+        undo_count = 1
+
+    try:
+        from ..undo_subprocess import execute_undo
+    except ImportError:
+        from server.undo_subprocess import execute_undo
+
+    sub_result = await execute_undo(
+        project_name=project_name,
+        undo_count=undo_count,
+        timeout_seconds=60,
+    )
+
+    success = bool(sub_result.get("success"))
+    undid = int(sub_result.get("undid", 0))
+    result = {
+        KEY_SUCCESS: success and undid > 0,
+        KEY_MESSAGE: (
+            f"Undid {undid} operation(s) via project.Undo()."
+            if success and undid > 0
+            else "Undo did not reverse anything -- see error fields."
+        ),
+        "undid": undid,
+        "stack_depth_before": sub_result.get("stack_depth_before"),
+        "stack_depth_after": sub_result.get("stack_depth_after"),
+        "requested_count": undo_count,
     }
+    if not success or undid == 0:
+        result[KEY_ERROR] = sub_result.get("error", "unknown")
+        if sub_result.get("error_message"):
+            result["error_message"] = sub_result["error_message"]
+        if sub_result.get("subprocess_stderr"):
+            result["subprocess_stderr"] = sub_result["subprocess_stderr"]
+        if sub_result.get("traceback"):
+            result["traceback"] = sub_result["traceback"]
+
+    # Pop matching checkpoints from our local log -- one per successful undo.
+    # If we undid more than we tracked, that's fine (we may have reached into
+    # a prior session's stack); the checkpoint log is informational only.
+    popped = []
+    for _ in range(undid):
+        if session_state.undo_checkpoints:
+            popped.append(session_state.undo_checkpoints.pop())
+    if popped:
+        result["local_checkpoints_popped"] = popped
+
+    if last_checkpoint is not None:
+        result["last_session_checkpoint"] = last_checkpoint
+    result["remaining_session_checkpoints"] = len(session_state.undo_checkpoints)
 
     return json_response(result)
 

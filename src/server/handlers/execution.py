@@ -872,6 +872,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     project_name = args.get("project_name") or session_state.get_project()
     write_enabled_arg = args.get("write_enabled")
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
+    # #14 Phase 1: undoable session variable, ignored by flexlibs2 when write=False.
+    undoable = bool(getattr(session_state, "undoable", False)) and write_enabled
     api_mode = session_state.get_mode()
 
     # Validate project_name is available BEFORE assigning an op_id -- without
@@ -1374,7 +1376,7 @@ def run_module():
         # Open project
         project = FLExProject()
         try:
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED)
+            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=UNDOABLE)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             return result
@@ -1552,12 +1554,14 @@ if __name__ == "__main__":
     full_script = '''# Configuration
 PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
+UNDOABLE = {undoable}
 MODULE_CODE = {code}
 
 {runner_script}
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
+        undoable=repr(undoable),
         code=escaped_code,
         runner_script=runner_script
     )
@@ -1723,6 +1727,21 @@ MODULE_CODE = {code}
                 error_count=error_count,
                 messages=report_messages,
             )
+            # #14 Phase 2: record a local checkpoint when this run actually
+            # mutated state under undoable=True. The actual Undo execution
+            # happens later in a subprocess, but the LLM-facing record of
+            # "what's reversible from this session" lives here.
+            if write_enabled and undoable:
+                from datetime import datetime as _dt
+                session_state.undo_checkpoints.append({
+                    "op_id": op_id,
+                    "seq": seq,
+                    "timestamp": _dt.now().isoformat(),
+                    "project_name": project_name,
+                    "info_count": info_count,
+                    "warning_count": warning_count,
+                    "error_count": error_count,
+                })
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

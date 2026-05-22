@@ -48,6 +48,7 @@ class SessionState:
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
     write_enabled: bool = False            # Write access: False = read-only/dry-run
+    undoable: bool = False                 # #14: open project with undoable=True (LCM persistent undo)
     initialized: bool = False
     discovered_apis: set = field(default_factory=set)        # APIs discovered via search_by_capability
     validated_apis: set = field(default_factory=set)         # APIs validated via get_object_api
@@ -57,6 +58,11 @@ class SessionState:
     operations_history: List[OperationRecord] = field(default_factory=list)  # Full audit trail
     undo_stack: List[OperationRecord] = field(default_factory=list)          # Undoable operations
     redo_stack: List[OperationRecord] = field(default_factory=list)          # Popped undo entries
+
+    # #14 Phase 2: LCM UndoStack checkpoint IDs recorded after each run_module.
+    # Local tracking; actual Undo execution happens in subprocess.
+    # Entries: {"op_id": str, "undo_text": str, "timestamp": str}
+    undo_checkpoints: List[Dict[str, Any]] = field(default_factory=list)
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool)."""
@@ -68,12 +74,14 @@ class SessionState:
             self.project_name = kwargs["project_name"]
         if "write_enabled" in kwargs:
             self.write_enabled = kwargs["write_enabled"]
+        if "undoable" in kwargs:
+            self.undoable = kwargs["undoable"]
         if "api_versions" in kwargs:
             self.api_versions = kwargs["api_versions"]
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
-        mode_info += f", write={self.write_enabled}"
+        mode_info += f", write={self.write_enabled}, undoable={self.undoable}"
         if self.api_versions:
             versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
             mode_info += f", versions={{{versions_str}}}"
@@ -130,6 +138,7 @@ class SessionState:
             "output_type": self.output_type,
             "project_name": self.project_name or "(not set)",
             "write_enabled": self.write_enabled,
+            "undoable": self.undoable,
             "initialized": self.initialized,
             "discovered_api_count": len(self.discovered_apis)
         }

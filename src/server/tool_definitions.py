@@ -89,7 +89,13 @@ After calling flextools_start():
 - Use flextools_get_object_api(object_type='...') for detailed API info
 - Use flextools_run_module() to execute code (accepts bare snippets and full Main-shaped modules)
 
-Task and project_name can be set now or updated/provided later as needed.""",
+Task and project_name can be set now or updated/provided later as needed.
+
+OPT-IN undoable mode (EXPERIMENTAL): pass undoable=True alongside write_enabled=True
+to open the project with LCM's persistent undo stack enabled (matches FLEx UI Ctrl+Z).
+Required if you want flextools_undo_last_operation to reverse a prior session's writes.
+Both write_enabled and undoable are inherited from the prior session on re-init when
+not explicitly provided (per #9 fix).""",
         input_model=FlexToolsStartInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -274,9 +280,20 @@ Returns: List of operations performed, current undo stack, and next operation to
 
     "flextools_undo_last_operation": ToolDef(
         name="flextools_undo_last_operation",
-        description="""Undo the most recent database write operation.
+        description="""Undo the most recent database write operation via LCM's persistent undo stack.
 
-Calls ActionHandler.Undo() to roll back changes.""",
+Executes project.Undo() in a subprocess, which reverses the most recent
+UndoableOperation -- the SAME stack FLEx UI Ctrl+Z uses. Survives MCP
+session boundaries: writes made by a prior session are reachable if
+they were made with undoable=True.
+
+REQUIRES the session to have been started with undoable=True (opt-in
+during the experimental phase -- pass to flextools_start). Will refuse
+with a clear error if the session is not undoable-mode, since
+project.Undo() would raise FP_TransactionError otherwise.
+
+Pass count=N to undo multiple steps in one call (useful for rolling
+back a single run_module that wrapped multiple UndoableOperations).""",
         input_model=UndoLastOperationInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,

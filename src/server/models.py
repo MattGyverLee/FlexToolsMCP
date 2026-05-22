@@ -50,6 +50,14 @@ class FlexToolsStartInput(BaseModel):
         description="Enable write access. Default False (dry-run/read-only). "
                     "Set True only after testing!"
     )
+    undoable: bool = Field(
+        default=False,
+        description="EXPERIMENTAL (opt-in): open project with undoable=True so "
+                    "writes go through LCM's persistent undo stack (matches "
+                    "FLEx UI Ctrl+Z behavior). Required for "
+                    "flextools_undo_last_operation to actually reverse a "
+                    "prior session's writes. Only meaningful when write_enabled=True."
+    )
 
 
 class ManageConfigInput(BaseModel):
@@ -77,7 +85,14 @@ class GetSessionHistoryInput(BaseModel):
 
 class UndoLastOperationInput(BaseModel):
     """Undo the most recent database write operation."""
-    pass
+    count: int = Field(
+        default=1,
+        ge=1,
+        description="How many undo steps to perform in one call (default 1). "
+                    "Useful when a single flextools_run_module call wrapped "
+                    "multiple UndoableOperations and you want to roll all of "
+                    "them back together."
+    )
 
 
 class GetModuleTemplateInput(BaseModel):

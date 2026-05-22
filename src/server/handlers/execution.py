@@ -18,6 +18,7 @@ import asyncio
 import sys
 import subprocess
 import tempfile
+from datetime import datetime
 import os
 import ast
 import hashlib
@@ -873,7 +874,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     write_enabled_arg = args.get("write_enabled")
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
     # #14 Phase 1: undoable session variable, ignored by flexlibs2 when write=False.
-    undoable = bool(getattr(session_state, "undoable", False)) and write_enabled
+    undoable = session_state.is_undoable() and write_enabled
     api_mode = session_state.get_mode()
 
     # Validate project_name is available BEFORE assigning an op_id -- without
@@ -1732,11 +1733,10 @@ MODULE_CODE = {code}
             # happens later in a subprocess, but the LLM-facing record of
             # "what's reversible from this session" lives here.
             if write_enabled and undoable:
-                from datetime import datetime as _dt
                 session_state.undo_checkpoints.append({
                     "op_id": op_id,
                     "seq": seq,
-                    "timestamp": _dt.now().isoformat(),
+                    "timestamp": datetime.now().isoformat(),
                     "project_name": project_name,
                     "info_count": info_count,
                     "warning_count": warning_count,

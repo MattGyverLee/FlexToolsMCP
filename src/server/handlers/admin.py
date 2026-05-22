@@ -555,7 +555,7 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
             ),
         })
 
-    if not getattr(session_state, "undoable", False):
+    if not session_state.is_undoable():
         return json_response({
             KEY_SUCCESS: False,
             KEY_MESSAGE: (
@@ -571,14 +571,9 @@ async def handle_undo_last_operation(args: dict) -> list[TextContent]:
             ),
         })
 
-    # Optional override: callers can ask for multiple undo steps in one shot
-    # (default 1). Useful for rolling back a single run_module that wrapped
-    # multiple UndoableOperations internally.
-    count_arg = args.get("count", 1) if isinstance(args, dict) else 1
-    try:
-        undo_count = max(1, int(count_arg))
-    except (TypeError, ValueError):
-        undo_count = 1
+    # Pydantic already validated count: int = Field(ge=1, default=1) on the
+    # input model, so no defensive re-coercion needed here.
+    undo_count = args.get("count", 1)
 
     try:
         from ..undo_subprocess import execute_undo

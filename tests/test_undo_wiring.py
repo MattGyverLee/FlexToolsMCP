@@ -167,12 +167,14 @@ def test_run_module_checkpoint_recorded_logic():
     """Session-side bookkeeping: when undoable & write_enabled, run_module
     should append to undo_checkpoints. We can't easily invoke the real
     handler without a FW project, so just verify the field exists and is
-    a list that can be appended to."""
+    appendable. (Concrete type is deque(maxlen=...) to bound memory; tests
+    treat it duck-typed.)"""
     _init_kernel()
     _start("Proj_chk", write_enabled=True, undoable=True)
     ss = get_session_state()
     assert hasattr(ss, "undo_checkpoints")
-    assert isinstance(ss.undo_checkpoints, list)
+    assert hasattr(ss.undo_checkpoints, "append")
+    assert hasattr(ss.undo_checkpoints, "pop")
     # The handler-side append uses these keys -- enforce them in a fake
     # checkpoint so a future shape change here forces test attention.
     ss.undo_checkpoints.append({

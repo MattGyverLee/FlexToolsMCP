@@ -9,9 +9,15 @@ with undo/redo stack support (Feature 3).
 
 import re
 import logging
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Deque
+
+
+# Cap on session-local undo checkpoint log. Long-running sessions still bound
+# memory; the actual undo state lives in LCM's persistent stack, not here.
+_UNDO_CHECKPOINT_CAP = 500
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -59,10 +65,13 @@ class SessionState:
     undo_stack: List[OperationRecord] = field(default_factory=list)          # Undoable operations
     redo_stack: List[OperationRecord] = field(default_factory=list)          # Popped undo entries
 
-    # #14 Phase 2: LCM UndoStack checkpoint IDs recorded after each run_module.
-    # Local tracking; actual Undo execution happens in subprocess.
-    # Entries: {"op_id": str, "undo_text": str, "timestamp": str}
-    undo_checkpoints: List[Dict[str, Any]] = field(default_factory=list)
+    # #14 Phase 2: LCM UndoStack checkpoint records appended after each
+    # successful run_module that wrote under undoable=True. Bounded so a
+    # long-running session doesn't grow this without limit -- the actual
+    # undo state lives in LCM's persistent stack, not here.
+    undo_checkpoints: Deque[Dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=_UNDO_CHECKPOINT_CAP)
+    )
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool)."""
@@ -130,6 +139,15 @@ class SessionState:
     def is_write_enabled(self) -> bool:
         """Get whether write access is enabled for the session."""
         return self.write_enabled
+
+    def is_undoable(self) -> bool:
+        """Get whether the session opened the project with undoable=True.
+
+        Used by handle_undo_last_operation as the precondition for routing
+        a real project.Undo() call; undoable mode is opt-in during #14's
+        experimental phase.
+        """
+        return self.undoable
 
     def summary(self) -> dict:
         """Return session state summary for tool responses."""

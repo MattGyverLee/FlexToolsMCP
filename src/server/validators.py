@@ -1063,45 +1063,66 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
     return {}
 
 
-def _resolve_operations_aliases(tree: ast.AST) -> Dict[str, str]:
-    """Build map of local variables aliased to Operations class instances.
+def _collect_assign_call_nodes(
+    tree: ast.AST,
+) -> Tuple[List[ast.Assign], List[ast.Call]]:
+    """One ast.walk pass producing both Assign and Call lists for the
+    alias/mutation helpers below to consume. Replaces the four separate
+    walks the helpers used to do."""
+    assigns: List[ast.Assign] = []
+    calls: List[ast.Call] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            assigns.append(node)
+        elif isinstance(node, ast.Call):
+            calls.append(node)
+    return assigns, calls
 
-    Detects:
-        posOps = POSOperations(project)     -> {'posOps': 'POSOperations'}
-        ops = LexEntryOperations(project)
-        b = a  (chained alias)              -> {'b': aliases[a]}
 
-    Generic match: any function call to a Name ending in 'Operations' with a
-    single positional argument. Stays correct when flexlibs2 adds new
-    Operations classes in parallel without us updating a hardcoded list.
+def _resolve_alias_maps(
+    assigns: List[ast.Assign],
+) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Build (operations_aliases, cast_aliases) in a single pass over Assigns.
+
+    Operations alias shape:   posOps = POSOperations(project)
+                              b = a   (chained -- b inherits a's class)
+    Cast alias shape:         s_typed = ILexSense(sense)
+
+    Generic operations match (Name ending in 'Operations', single positional
+    arg) survives flexlibs2 adding new Operations classes in parallel without
+    us touching a hardcoded list. Generic cast match ('I' + Uppercase) avoids
+    false positives like 'IndexCounter' (lowercase second char).
 
     Note: deliberately does NOT clear aliases on reassignment to something
     unrelated. False positives are safer than false negatives (#8); the
     downstream API-index lookup still determines whether a method is
     actually mutating.
     """
-    aliases: Dict[str, str] = {}
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
+    operations: Dict[str, str] = {}
+    casts: Dict[str, str] = {}
+    for node in assigns:
         if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
             continue
         target_name = node.targets[0].id
         rhs = node.value
-        if (
-            isinstance(rhs, ast.Call)
-            and isinstance(rhs.func, ast.Name)
-            and rhs.func.id.endswith("Operations")
-            and len(rhs.args) == 1
-        ):
-            aliases[target_name] = rhs.func.id
-        elif isinstance(rhs, ast.Name) and rhs.id in aliases:
-            aliases[target_name] = aliases[rhs.id]
-    return aliases
+        if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name):
+            func_id = rhs.func.id
+            if func_id.endswith("Operations") and len(rhs.args) == 1:
+                operations[target_name] = func_id
+            elif (
+                len(func_id) >= 2
+                and func_id[0] == "I"
+                and func_id[1].isupper()
+                and len(rhs.args) >= 1
+            ):
+                casts[target_name] = func_id
+        elif isinstance(rhs, ast.Name) and rhs.id in operations:
+            operations[target_name] = operations[rhs.id]
+    return operations, casts
 
 
 def _find_aliased_operations_calls(
-    tree: ast.AST, aliases: Dict[str, str]
+    calls: List[ast.Call], aliases: Dict[str, str]
 ) -> List[Tuple[str, str, int]]:
     """Find `alias.method(...)` calls where `alias` is an Operations instance.
 
@@ -1109,9 +1130,7 @@ def _find_aliased_operations_calls(
     regex-detected operations calls.
     """
     results: List[Tuple[str, str, int]] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
+    for node in calls:
         if not isinstance(node.func, ast.Attribute):
             continue
         if not isinstance(node.func.value, ast.Name):
@@ -1123,40 +1142,8 @@ def _find_aliased_operations_calls(
     return results
 
 
-def _resolve_cast_aliases(tree: ast.AST) -> Dict[str, str]:
-    """Build map of local variables holding a cast LCM interface.
-
-    Detects:
-        s_typed = ILexSense(sense)   -> {'s_typed': 'ILexSense'}
-        entry  = ILexEntry(item)
-
-    Heuristic: function call where `func` is a Name starting with capital 'I'
-    immediately followed by another uppercase letter (matches LCM interface
-    convention 'I' + PascalCase). Avoids false positives on names like
-    'IndexCounter' where the second char is lowercase.
-    """
-    aliases: Dict[str, str] = {}
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
-            continue
-        target_name = node.targets[0].id
-        rhs = node.value
-        if (
-            isinstance(rhs, ast.Call)
-            and isinstance(rhs.func, ast.Name)
-            and len(rhs.func.id) >= 2
-            and rhs.func.id[0] == 'I'
-            and rhs.func.id[1].isupper()
-            and len(rhs.args) >= 1
-        ):
-            aliases[target_name] = rhs.func.id
-    return aliases
-
-
 def _find_cast_alias_property_writes(
-    tree: ast.AST, cast_aliases: Dict[str, str]
+    assigns: List[ast.Assign], cast_aliases: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """Find property assignments rooted at a cast-alias variable.
 
@@ -1167,9 +1154,7 @@ def _find_cast_alias_property_writes(
     Returns mutation dicts compatible with find_liblcm_mutations() output.
     """
     mutations: List[Dict[str, Any]] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
+    for node in assigns:
         for target in node.targets:
             current = target
             attr_chain: List[str] = []
@@ -1385,10 +1370,16 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     #     posOps = POSOperations(project)
     #     posOps.Create(...)             # <- invisible to the regex above
     # Generic to any *Operations class so flexlibs2 churn doesn't break it.
+    # One ast.walk pass feeds both alias kinds + the property-writes helper
+    # at Step 4b, instead of four separate walks.
+    operations_aliases: Dict[str, str] = {}
+    cast_aliases: Dict[str, str] = {}
+    ast_assigns: List[ast.Assign] = []
     if tree is not None:
-        operations_aliases = _resolve_operations_aliases(tree)
+        ast_assigns, ast_calls = _collect_assign_call_nodes(tree)
+        operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
         if operations_aliases:
-            aliased_calls = _find_aliased_operations_calls(tree, operations_aliases)
+            aliased_calls = _find_aliased_operations_calls(ast_calls, operations_aliases)
             existing = {(c, m, l) for c, m, l in operations_calls_with_lines}
             for triple in aliased_calls:
                 if triple not in existing:
@@ -1479,12 +1470,11 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Step 4b: AST-based cast-alias property writes (#8). Catches:
     #     s_typed = ILexSense(sense)
     #     s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos    # <- invisible to regex
-    if tree is not None:
-        cast_aliases = _resolve_cast_aliases(tree)
-        if cast_aliases:
-            liblcm_mutations.extend(
-                _find_cast_alias_property_writes(tree, cast_aliases)
-            )
+    # Reuses cast_aliases + ast_assigns built once at Step 1b.
+    if cast_aliases:
+        liblcm_mutations.extend(
+            _find_cast_alias_property_writes(ast_assigns, cast_aliases)
+        )
 
     # protected_ranges already calculated above in Step 2
 

@@ -623,6 +623,7 @@
     "TextTagFactory": "ITextTagFactory",
     "TextTagRepository": "ITextTagRepository",
     "ThreadedProgress": "IThreadedProgress",
+    "TransactionLogger": "ITransactionLogger",
     "TssValue": "ITssValue",
     "UndoStackManager": "IUndoStackManager",
     "UnitOfWorkService": "IUnitOfWorkService",

@@ -2735,6 +2735,12 @@
       "referenced_by": [],
       "references": []
     },
+    "FileTransactionLogger": {
+      "children": [],
+      "parents": [],
+      "referenced_by": [],
+      "references": []
+    },
     "FileUtils": {
       "children": [],
       "parents": [],
@@ -14989,6 +14995,12 @@
       "references": []
     },
     "IThreadedProgress": {
+      "children": [],
+      "parents": [],
+      "referenced_by": [],
+      "references": []
+    },
+    "ITransactionLogger": {
       "children": [],
       "parents": [],
       "referenced_by": [],

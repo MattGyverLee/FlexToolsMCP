@@ -21,6 +21,10 @@
       "description": "Operations related to general",
       "entities": [
         "BaseOperations",
+        "Boundary",
+        "CatalogBackedMixin",
+        "CatalogEntry",
+        "CatalogImportResult",
         "CellarPropertyType",
         "EnumerableWrapper",
         "FLExProject",
@@ -39,13 +43,17 @@
         "LCMObjectWrapper",
         "MediaOperations",
         "MediaType",
+        "NC",
         "OperationsMethod",
         "PythonicWrapper",
+        "Seg",
+        "SegmentDefinition",
         "SmartCollection",
         "_ContextManagerBase",
         "_FLExTransaction",
         "_FLExUndoableOperation",
-        "_UndoRedoNotSupportedError"
+        "_UndoRedoNotSupportedError",
+        "wrap_enumerable"
       ]
     },
     "grammar": {
@@ -62,6 +70,7 @@
         "MorphRuleOperations",
         "NaturalClassOperations",
         "POSOperations",
+        "PhonFeatureOperations",
         "PhonemeOperations",
         "PhonologicalRule",
         "PhonologicalRuleOperations",
@@ -3074,68 +3083,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "allomorph = allomorphOps.GetAll(entry)[0]\n            wrapped = Allomorph(allomorph)",
-          "description": "Initialize Allomorph wrapper with an allomorph object.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "if allomorph_obj.as_affix_allomorph():\n                concrete = allomorph_obj.as_affix_allomorph()\n                # Can now access IMoAffixAllomorph-specific methods/properties\n                affix_type = concrete.AffixType\n                # Advanced operations...",
-          "description": "Cast to IMoAffixAllomorph if this is an affix allomorph.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "if allomorph_obj.as_stem_allomorph():\n                concrete = allomorph_obj.as_stem_allomorph()\n                # Can now access IMoStemAllomorph-specific methods/properties\n                stem_name = concrete.StemName\n                # Advanced operations...",
-          "description": "Cast to IMoStemAllomorph if this is a stem allomorph.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "collection = AllomorphCollection()\n            collection = AllomorphCollection([allomorph1, allomorph2, allomorph3])",
-          "description": "Initialize an AllomorphCollection.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "affixes = allomorphs.affix_allomorphs()\n            print(f\"Found {len(affixes)} affix allomorphs\")\n\n            # Chain with other filters\n            ing_affixes = allomorphs.affix_allomorphs().filter(form_contains='ing')",
-          "description": "Get only the affix allomorphs from the collection.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "# Filter by form\n            ing_allomorphs = allomorphs.filter(form_contains='ing')\n\n            # Filter by environment\n            env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\n            env_allomorphs = allomorphs.filter(environment=env)\n\n            # Custom filtering\n            long_forms = allomorphs.where(lambda a: len(a.form) > 3)\n\n            # Chain filters\n            ing_stems = allomorphs.filter(form_contains='ing').stem_allomorphs()",
-          "description": "Filter the collection by common allomorph properties.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "stems = allomorphs.stem_allomorphs()\n            print(f\"Found {len(stems)} stem allomorphs\")\n\n            # Chain with other filters\n            ing_stems = allomorphs.stem_allomorphs().filter(form_contains='ing')",
-          "description": "Get only the stem allomorphs from the collection.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "# Complex predicate: allomorphs with form length > 3\n            long_forms = allomorphs.where(lambda a: len(a.form) > 3)\n\n            # Combining conditions\n            stem_with_env = allomorphs.where(\n                lambda a: a.is_stem_allomorph and len(a.environment) > 0\n            )\n\n            # Type checking combined with other criteria\n            affix_only = allomorphs.where(lambda a: a.is_affix_allomorph)",
-          "description": "Filter using a custom predicate function.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
-          "description": "Add a phonological environment to an allomorph.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "allo1 = list(project1.Allomorphs.GetAll(entry1))[0]\nallo2 = list(project2.Allomorphs.GetAll(entry2))[0]\nis_diff, diffs = project1.Allomorphs.CompareTo(allo1, allo2,\n                                                 project1.Allomorphs,\n                                                 project2.Allomorphs)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-          "description": "Compare two allomorphs and return their differences.",
-          "operation": "iterate",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing allomorphs in a FieldWorks project.\n\nAllomorphs are variant forms of morphemes that appear in different phonological\nor morphological contexts. For example, the English plural morpheme has\nallomorphs \"-s\", \"-es\", and \"-en\" (ox/oxen).\n\nUsage::\n\nfrom flexlibs2 import FLExProject, AllomorphOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nallomorphOps = AllomorphOperations(project)\n\n# Get entry\nentry = project.LexiconAllEntries()[0]\n\n# Get all allomorphs for an entry\nfor allomorph in allomorphOps.GetAll(entry):\nform = allomorphOps.GetForm(allomorph)\nprint(f\"Allomorph: {form}\")\n\n# Create a new allomorph\nmorphType = project.lp.MorphTypesOA.PossibilitiesOS[0]\nallomorph = allomorphOps.Create(entry, \"walk\", morphType)\n\n# Set phonological environment\nenv = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorph, env)\n\nproject.CloseProject()",
       "example": "",
       "id": "AllomorphOperations",
@@ -6360,7 +6307,8 @@
         "ICmPossibilityListFactory",
         "IText",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "XmlList"
       ],
       "methods": [
         {
@@ -7646,6 +7594,63 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Import the full OCM anthropology catalog into this project.\n\nLoads SIL's standard Outline of Cultural Materials (OCM) hierarchy\nfrom ``<FWCodeDir>/Templates/OCM.xml`` via LCM's native\n``XmlList.ImportList``. The catalog supplies localized Name /\nAbbreviation / Description and the full nested SubPossibilities\nhierarchy of anthropology items.\n\n**Idempotency guard**: LCM's underlying ``XmlList.ImportList``\nAPPENDS items into ``AnthroListOA.PossibilitiesOS`` without\nchecking for canonical-GUID duplicates -- each call adds another\nfull set of top-level anthropology items. To prevent accidental\nduplication, this method refuses by default when the list is\nalready non-empty. Pass ``force=True`` to import anyway (e.g. to\nlayer a second-language localization on top of an existing\nimport). The caller then takes responsibility for any resulting\nduplicates.\n\n**Recovery from past duplication**: If a project already has\nduplicate top-level anthropology items from prior unguarded\nimports, this method does NOT clean them up automatically --\nthat would be destructive. Recovery requires either manual\ncleanup via the FieldWorks GUI, or deliberate ``bulk_delete``-\nstyle code the caller writes to remove duplicate GUID groups.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ImportCatalog",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not write-enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_FileNotFoundError: If OCM.xml cannot be located under"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``AnthroListOA`` already has anthro"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "int: Number of top-level anthropology items in ``LangProject.AnthroListOA.PossibilitiesOS`` after import. Useful as a sanity check for callers.",
+              "type": "int"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Optional ``SIL.LCModel.Utils.IProgress`` instance to report import progress. Pass ``None`` (the default) for silent import.",
+              "name": "progress",
+              "type": ""
+            },
+            {
+              "default": false,
+              "description": "If True, skip the non-empty list check and import anyway. Default False (refuse if list is non-empty).",
+              "name": "force",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not write-enabled.",
+            "FP_FileNotFoundError: If OCM.xml cannot be located under",
+            "the FieldWorks install.",
+            "FP_ParameterError: If ``AnthroListOA`` already has anthro",
+            "items and ``force`` is False."
+          ],
+          "return_type": "int",
+          "returns": "int: Number of top-level anthropology items in ``LangProject.AnthroListOA.PossibilitiesOS`` after import. Useful as a sanity check for callers. ",
+          "signature": "ImportCatalog(progress=None, force=False)",
+          "summary": "Import the full OCM anthropology catalog into this project.",
+          "usage_hint": null
+        },
+        {
           "description": "Remove a researcher link from an anthropology item.\n\nRemoves the link between the item and the person. The person object\nitself is not deleted, only the link.\n",
           "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> person = project.lp.PeopleOA.PossibilitiesOS[0]\n            >>>\n            >>> # Remove person link\n            >>> project.Anthropology.RemoveResearcher(item, person)\n            >>>\n            >>> # Verify removal\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> print(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 0 researcher(s)\n",
           "is_classmethod": false,
@@ -8623,6 +8628,237 @@
       ],
       "type": "class",
       "usage_hint": "Provides operations for working with general data in FieldWorks"
+    },
+    "Boundary": {
+      "base_classes": [],
+      "category": "general",
+      "description": "A boundary marker pattern element, identified by its FW-shipped name.\n",
+      "example": "",
+      "id": "Boundary",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "Boundary",
+      "namespace": "flexlibs2.code.Shared.rule_patterns",
+      "properties": [],
+      "source_file": "Shared/rule_patterns",
+      "summary": "A boundary marker pattern element, identified by its FW-shipped name.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "CatalogBackedMixin": {
+      "base_classes": [],
+      "category": "general",
+      "description": "Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.).\n\nSubclasses declare class-level constants:\n\nCATALOG_FILE\nFilename of the catalog XML, e.g. \"GOLDEtic.xml\" or\n\"PhonFeatsEticGlossList.xml\".\n\nCATALOG_SUBDIR\nRelative subdirectory under FWCodeDir. Defaults to \"Templates\"\nin this base; subclasses override for catalogs that live\nelsewhere (e.g. \"Language Explorer/MGA/GlossLists\").\n\nCATALOG_PARSER\nStaticmethod returning ``list[CatalogEntry]`` from a file path.\nEither ``parse_etic_catalog`` or ``parse_etic_gloss_list``.\n\nCATALOG_PREFIX_WRITE\nEither a string (e.g. ``\"GOLD\"``) or ``None``.\n* String: the mixin writes ``CatalogSourceId = \"{PREFIX}:{entry.id}\"``.\n* None: the mixin writes ``CatalogSourceId = entry.id`` (the bare\nFW convention used by PhonFeats).\n\nDOMAIN_LABEL\nShort human-readable label used in error messages, e.g.\n\"POS\" or \"feature\".\n\nSubclasses must also set the optional class flag:\n\n_supports_recursive_entries (bool, default False)\nTrue for catalogs whose CatalogEntry tree is hierarchical and\nshould produce a parallel hierarchy of LCM objects (POS:\ntop-level entries become top-level POSs, nested entries\nbecome SubPossibilitiesOS). When True, the mixin recurses on\nentry.children calling _create_from_entry(child,\nparent_obj=created_obj).\n\nFalse for catalogs whose top-level entries own a flat list of\nchildren that need bespoke per-domain handling (PhonFeats:\nvalue children of a feature). When False, the mixin invokes\n``_handle_entry_children(entry, created_obj, ...)`` once per\ntop-level entry; the subclass is responsible for the children.\n\nSubclasses implement these hook methods:\n\n_factory_create_attached(self, guid, parent)\nTry the LCM 2-arg factory overload ``Create(Guid, parent)``.\n``parent`` is whatever was passed to ``_create_from_entry`` -\neither the parent LCM object (subcategory case) or the\n\"root list\" returned by ``_get_root_list()`` (top-level case).\nMust return either the new LCM object (Path A success) or\n``None`` (Path A failed; mixin then runs Path B).\n\n_path_b_attach(self, new_obj, parent_obj)\nPath B fallback: attach ``new_obj`` (just created via\n``concrete_factory.Create(guid)``) to its owning collection.\n``parent_obj`` matches the ``parent`` arg passed to the\ntop-level _create_from_entry call; if it is None and the\ndomain supports subcategories, the subclass attaches to the\ntop-level collection on ``_get_root_list()``.\n* POS: ``parent_obj.SubPossibilitiesOS.Add(new_obj)`` if\nparent_obj is a POS, else\n``self.project.lp.PartsOfSpeechOA.PossibilitiesOS.Add(new_obj)``.\n* PhonFeats: ``self._get_root_list().FeaturesOC.Add(new_obj)``.\n\n_cast_to_domain(self, raw_lcm_obj)\nReturn the interface-cast view of the raw LCM object.\n* POS:        ``IPartOfSpeech(raw)``\n* PhonFeats:  ``IFsClosedFeature(raw)``\n\n_set_localized(self, obj, term, abbrev, def_, missing_ws_seen, warnings)\nPer-domain multistring writes. ``term``, ``abbrev`` and ``def_``\nare ``{ws_tag: text}`` dicts from the CatalogEntry. The\nsubclass writes ``obj.Name`` / ``obj.Abbreviation`` /\n``obj.Description`` (where present) using\n``_set_multistring`` which the mixin provides.\n\n_walk_existing(self)\nYield existing items for idempotency lookup. For domains\nwith subcategories (POS), this walks recursively. For flat\ndomains (PhonFeats), it yields top-level items.\n\n_get_root_list(self)\nReturn the top-level owner object. POS returns\n``self.project.lp.PartsOfSpeechOA``; PhonFeats returns\n``self.project.lp.PhFeatureSystemOA``.\n\n_handle_entry_children(self, entry, created_obj, missing_ws_seen, warnings, result)\nPer-domain handling of CatalogEntry.children.\n* POS: empty (use ``_supports_recursive_entries=True`` instead).\n* PhonFeats: walk ``entry.children`` (value entries) and\ncreate IFsSymFeatVal items under ``created_obj.ValuesOC``,\nrespecting per-feature value-GUID idempotency.\n``result`` is the CatalogImportResult (so per-value\ncreated/skipped counts and created_guids can be updated).\n``result`` is None when called from CreateFromCatalog or\nFixGuidsAgainstCatalog; subclasses must handle that.\n\nThe mixin provides three public methods (ImportCatalog,\nCreateFromCatalog, FixGuidsAgainstCatalog) plus private helpers\n(_create_from_entry, _get_all_guids, _find_by_guid,\n_set_multistring, _flattened_catalog_count). The public methods are\nplain ``def``s on the mixin; subclasses reach them through normal\ninstance dispatch (see the note below for the @OperationsMethod\nconvention).\n\nWhy a mixin and not inheritance? The shared behaviour cuts across\nOperations classes that have their own primary inheritance chain\n(BaseOperations); a mixin keeps the catalog-import surface composable\nwith that chain without disturbing it.",
+      "example": "",
+      "id": "CatalogBackedMixin",
+      "lcm_dependencies": [
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "methods": [
+        {
+          "description": "Create a single item from the configured catalog using the\ncanonical GUID and all localized data available for the WSes the\nproject has.\n\nIdempotent: if an item with the catalog's canonical GUID already\nexists in the project, that existing item is returned unchanged.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "CreateFromCatalog",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If source_id is not present in the catalog,"
+              },
+              {
+                "exception": "FileNotFoundError",
+                "when": "If the catalog is not found under FWCodeDir."
+              }
+            ],
+            "notes": [
+              "Creates new object - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Catalog id, with or without a known catalog prefix (``\"GOLD:\"``, ``\"PHON:\"``). e.g. ``\"GOLD:Adjective\"`` or ``\"Adjective\"``; ``\"PHON:fPAConsonantal\"`` or ``\"fPAConsonantal\"``.",
+              "name": "source_id",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional LCM object to attach the new item under. For hierarchical domains (POS), this becomes the parent POS. For flat domains (PhonFeats), this is ignored.",
+              "name": "parent",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_ParameterError: If source_id is not present in the catalog,",
+            "or for domain-specific preconditions.",
+            "FileNotFoundError: If the catalog is not found under FWCodeDir."
+          ],
+          "return_type": "",
+          "returns": "The created (or pre-existing) LCM object, cast via _cast_to_domain. ",
+          "signature": "CreateFromCatalog(source_id, parent=None)",
+          "summary": "Create a single item from the configured catalog using the\ncanonical GUID and all localized data available for the WSes the\nproject has.",
+          "usage_hint": "creation"
+        },
+        {
+          "description": "Scan items in this project; for any whose CatalogSourceId matches\na catalog entry but whose GUID differs from the catalog's\ncanonical GUID, create a replacement with the correct GUID,\ntransfer references via MergeObject, and remove the old item.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "FixGuidsAgainstCatalog",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If MergeObject fails for any candidate"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list[tuple]: One ``(old_name, old_guid, new_guid)`` tuple per item repaired. Empty list if everything is already canonical.",
+              "type": "list[tuple]"
+            }
+          },
+          "parameters": [],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_ParameterError: If MergeObject fails for any candidate",
+            "(silently removing the old item would orphan incoming",
+            "references, so we re-raise the LCM error)."
+          ],
+          "return_type": "list[tuple]",
+          "returns": "list[tuple]: One ``(old_name, old_guid, new_guid)`` tuple per item repaired. Empty list if everything is already canonical. ",
+          "signature": "FixGuidsAgainstCatalog()",
+          "summary": "Scan items in this project; for any whose CatalogSourceId matches\na catalog entry but whose GUID differs from the catalog's\ncanonical GUID, create a replacement with the correct GUID,\ntransfer references via MergeObject, and remove the old item.",
+          "usage_hint": null
+        },
+        {
+          "description": "Import the configured SIL catalog into this project. Idempotent.\n\nEach catalog entry is matched against existing items by its\ncanonical GUID. Entries whose GUID already exists are skipped.\nNew entries are created with the canonical GUID + per-WS\nlocalized name/abbreviation/description, and a CatalogSourceId\ntag for later FixGuidsAgainstCatalog() repair.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ImportCatalog",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FileNotFoundError",
+                "when": "If the catalog file is not found under FWCodeDir."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: For domain-specific preconditions (e.g. missing"
+              },
+              {
+                "exception": "PhFeatureSystemOA",
+                "when": "on the project)."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "CatalogImportResult: Created/skipped counts, list of created GUIDs, and any human-readable warnings raised during import.",
+              "type": "CatalogImportResult"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Optional callable accepting (count, total, name) for progress reporting. May be None.",
+              "name": "progress",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FileNotFoundError: If the catalog file is not found under FWCodeDir.",
+            "FP_ParameterError: For domain-specific preconditions (e.g. missing",
+            "PhFeatureSystemOA on the project)."
+          ],
+          "return_type": "CatalogImportResult",
+          "returns": "CatalogImportResult: Created/skipped counts, list of created GUIDs, and any human-readable warnings raised during import. ",
+          "signature": "ImportCatalog(progress=None)",
+          "summary": "Import the configured SIL catalog into this project.",
+          "usage_hint": null
+        }
+      ],
+      "name": "CatalogBackedMixin",
+      "namespace": "flexlibs2.code.Shared.catalog_backed",
+      "properties": [],
+      "source_file": "Shared/catalog_backed",
+      "summary": "Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "CatalogEntry": {
+      "base_classes": [],
+      "category": "general",
+      "description": "One <item type=\"category\"> from the GOLDEtic catalog.\n\nAttributes:\nid:       The catalog id, e.g. \"Adjective\". This is the suffix of\nthe canonical CatalogSourceId (\"GOLD:Adjective\").\nguid:     The canonical FW GUID for this category, as a string.\ne.g. \"30d07580-5052-4d91-bc24-469b8b2d7df9\".\nabbrev:   Map of writing-system tag -> abbreviation string,\ne.g. {\"en\": \"adj\", \"fr\": \"adj\", \"ko\": \"형\"}.\nterm:     Map of writing-system tag -> name/term string,\ne.g. {\"en\": \"Adjective\", \"fr\": \"Adjectif\"}.\ndef_:     Map of writing-system tag -> definition string. Note\nthe trailing underscore: \"def\" is a Python keyword.\nchildren: List of nested CatalogEntry items (sub-categories\nin the catalog hierarchy).",
+      "example": "",
+      "id": "CatalogEntry",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "CatalogEntry",
+      "namespace": "flexlibs2.code.Shared.catalog",
+      "properties": [],
+      "source_file": "Shared/catalog",
+      "summary": "One <item type=\"category\"> from the GOLDEtic catalog.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "CatalogImportResult": {
+      "base_classes": [],
+      "category": "general",
+      "description": "Summary of what happened during a catalog import.\n\nAttributes:\ncreated_count: Number of new POSs created.\nskipped_count: Number of catalog entries skipped because a POS\nwith the same canonical GUID already exists.\ncreated_guids: Canonical GUIDs (as strings) for the POSs that\nwere created. Useful for verification and tests.\nwarnings:      Human-readable warnings (e.g. WS tags present in\nthe catalog but missing from the project).",
+      "example": "",
+      "id": "CatalogImportResult",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "CatalogImportResult",
+      "namespace": "flexlibs2.code.Shared.catalog",
+      "properties": [],
+      "source_file": "Shared/catalog",
+      "summary": "Summary of what happened during a catalog import.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
     },
     "CellarPropertyType": {
       "base_classes": [],
@@ -19395,26 +19631,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "etymOps = EtymologyOperations(project)\nentry = project.LexEntry.Find(\"telephone\")\netym = etymOps.Create(\n    entry,\n    source=\"Greek\",\n    form=\"tele\",\n    gloss=\"far\"\n)\nprint(etymOps.GetForm(etym))\n            tele\n\n# Create minimal etymology (add details later)\netym2 = etymOps.Create(entry)\netymOps.SetSource(etym2, \"Greek\")\netymOps.SetForm(etym2, \"phone\")",
-          "description": "Create a new etymology for a lexical entry.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "etymOps = EtymologyOperations(project)\n# Get etymologies for specific entry\nentry = project.LexEntry.Find(\"telephone\")\nfor etym in etymOps.GetAll(entry):\n    source = etymOps.GetSource(etym)\n    form = etymOps.GetForm(etym)\n    gloss = etymOps.GetGloss(etym)\n    print(f\"Etymology: {source} '{form}' ({gloss})\")\n            Etymology: Greek 'tele' (far)\n            Etymology: Greek 'phone' (sound)\n\n# Get ALL etymologies in entire project\nfor etym in etymOps.GetAll():\n    source = etymOps.GetSource(etym)\n    print(f\"Etymology source: {source}\")",
-          "description": "Get all etymologies for a lexical entry, or all etymologies in the entire project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"loanword\")\netymologies = project.Etymology.GetAll(entry)\nif etymologies:\n    lang = project.Etymology.GetLanguage(etymologies[0])\n    if lang:\n        print(lang.Name.BestAnalysisAlternative.Text)",
-          "description": "Get the source language of an etymology.",
-          "operation": "read",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing etymological information in a\nFieldWorks project.\n\nEtymology tracking records the historical origin and development of lexical\nentries. Each etymology can specify the source language, etymological form,\ngloss, linguistic commentary, and bibliographic references.\n\nThis class supports historical linguistics workflows including etymology\ndocumentation, loan word tracking, and diachronic analysis.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Access via FLExProject.Etymology property (if configured)\n# Or create directly:\nfrom flexlibs2.code.EtymologyOperations import EtymologyOperations\netymOps = EtymologyOperations(project)\n\n# Get an entry\nentry = project.LexEntry.Find(\"computer\")\n\n# Create an etymology\netym = etymOps.Create(\nentry,\nsource=\"English\",\nform=\"compute\",\ngloss=\"to calculate\",\nws=\"en\"\n)\n\n# Set additional information\netymOps.SetComment(etym, \"Borrowed in the 1980s\", \"en\")\netymOps.SetBibliography(etym, \"Smith 2020:145\")\n\n# Get all etymologies\nfor etym in etymOps.GetAll(entry):\nsource = etymOps.GetSource(etym)\nform = etymOps.GetForm(etym)\nprint(f\"From {source}: {form}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "EtymologyOperations",
@@ -20489,26 +20705,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "exampleOps = ExampleOperations(project)\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nexample = exampleOps.Create(sense, \"The dog barked loudly.\")\n# Add audio recording\nmedia = exampleOps.AddMediaFile(\n    example,\n    \"/path/to/audio.wav\",\n    label=\"Native speaker pronunciation\"\n)\nprint(f\"Added media file\")\n            Added media file\n\n# Verify the media was added\ncount = exampleOps.GetMediaCount(example)\nprint(f\"Example now has {count} media file(s)\")\n            Example now has 1 media file(s)",
-          "description": "Add a media file (typically audio) to an example sentence.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "exampleOps = ExampleOperations(project)\n\n# Get examples for a specific sense\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0]\nfor example in exampleOps.GetAll(sense):\n    text = exampleOps.GetExample(example)\n    print(f\"Example: {text}\")\n\n# Get ALL examples in entire project\nfor example in exampleOps.GetAll():\n    text = exampleOps.GetExample(example)\n    print(f\"Example: {text}\")",
-          "description": "Get example sentences for a sense or all examples in the project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "sense = list(project.Senses.GetAll())[0]\nexamples = project.Examples.GetAll(sense)\nif examples:\n    pubs = project.Examples.GetDoNotPublishIn(examples[0])\n    print(pubs)",
-          "description": "Get the publications this example should not be published in.",
-          "operation": "read",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing example sentences in a FieldWorks project.\n\nExample sentences illustrate the usage of lexical senses in context. Each example\ncan have vernacular text, translations in multiple analysis languages, references\nto source texts, and associated media files.\n\nUsage::\n\nfrom flexlibs2 import FLExProject, ExampleOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nexampleOps = ExampleOperations(project)\n\n# Get first entry and sense\nentry = project.LexiconAllEntries().__next__()\nsense = entry.SensesOS[0] if entry.SensesOS.Count > 0 else None\n\n# Get all examples for a sense\nfor example in exampleOps.GetAll(sense):\ntext = exampleOps.GetExample(example)\ntrans = exampleOps.GetTranslation(example)\nprint(f\"Example: {text}\")\nprint(f\"Translation: {trans}\")\n\n# Create a new example\nexample = exampleOps.Create(sense, \"The cat sat on the mat.\")\nexampleOps.SetTranslation(example, \"Le chat s'est assis sur le tapis.\")\nexampleOps.SetReference(example, \"Example Corpus 1.23\")\n\nproject.CloseProject()",
       "example": "",
       "id": "ExampleOperations",
@@ -22313,6 +22509,36 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Returns the default analysis writing system as a handle (int)\nsuitable for `TsStringUtils.MakeString(text, ws)` and other\nmultistring accessors.\n\nSibling to `GetDefaultAnalysisWS()`, which returns a\n(Language-tag, Name) tuple. Use this method when you need the\nraw handle for LCM calls; use the tuple-returning method for\ndisplay.\n",
+          "example": "            >>> ws = project.GetDefaultAnalysisWSHandle()\n            >>> tss = TsStringUtils.MakeString(\"gloss\", ws)",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDefaultAnalysisWSHandle",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "int: The handle of the default analysis writing system.",
+              "type": "int"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "int",
+          "returns": "int: The handle of the default analysis writing system. ",
+          "signature": "GetDefaultAnalysisWSHandle()",
+          "summary": "Returns the default analysis writing system as a handle (int)\nsuitable for `TsStringUtils.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Returns the default vernacular writing system: (Language-tag, Name)\n",
           "example": "",
           "is_classmethod": false,
@@ -22337,6 +22563,36 @@
           "returns": "",
           "signature": "GetDefaultVernacularWS()",
           "summary": "Returns the default vernacular writing system: (Language-tag, Name)\n",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Returns the default vernacular writing system as a handle (int)\nsuitable for `TsStringUtils.MakeString(text, ws)` and other\nmultistring accessors.\n\nSibling to `GetDefaultVernacularWS()`, which returns a\n(Language-tag, Name) tuple. Use this method when you need the\nraw handle for LCM calls; use the tuple-returning method for\ndisplay.\n",
+          "example": "            >>> ws = project.GetDefaultVernacularWSHandle()\n            >>> tss = TsStringUtils.MakeString(\"hello\", ws)",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDefaultVernacularWSHandle",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "int: The handle of the default vernacular writing system.",
+              "type": "int"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "int",
+          "returns": "int: The handle of the default vernacular writing system. ",
+          "signature": "GetDefaultVernacularWSHandle()",
+          "summary": "Returns the default vernacular writing system as a handle (int)\nsuitable for `TsStringUtils.",
           "usage_hint": "retrieval"
         },
         {
@@ -22491,6 +22747,40 @@
           "returns": "",
           "signature": "GetPublications()",
           "summary": "Returns a list of the names of the publications defined in the\nproject.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get an LCM service or factory by interface type.\n\nDiscoverable wrapper around\n`self.project.ServiceLocator.GetService(interface_type)`.\nUse this to obtain factories and services when no higher-level\noperation class exposes the functionality you need.\n",
+          "example": "            >>> from SIL.LCModel import IPhPhonemeFactory\n            >>> factory = project.GetService(IPhPhonemeFactory)\n            >>> phoneme = factory.Create()",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetService",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The .NET interface type to resolve (e.g. `IPhPhonemeFactory`).",
+              "name": "interface_type",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "The service or factory instance registered for `interface_type`. ",
+          "signature": "GetService(interface_type)",
+          "summary": "Get an LCM service or factory by interface type.",
           "usage_hint": "retrieval"
         },
         {
@@ -25151,6 +25441,42 @@
       "namespace": "flexlibs2.code.FLExProject",
       "properties": [
         {
+          "description": "The underlying LcmCache. For advanced users dropping to raw LCM.\n\nProvides discoverable access to the LcmCache instance that backs this\nproject. Most users should prefer the operation classes (e.g.\n`project.Phonemes`, `project.LexEntry`), but this escape hatch is\navailable for cases where raw LCM access is required.\n",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\")\n            >>> cache = project.Cache\n            >>> # Use cache.ServiceLocator, cache.MainCacheAccessor, etc.",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [],
+            "utilities_used": []
+          },
+          "name": "Cache",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "LcmCache: The underlying SIL.LCModel cache instance.",
+              "type": "LcmCache"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "LcmCache",
+          "returns": "LcmCache: The underlying SIL.LCModel cache instance. ",
+          "signature": "Cache()",
+          "summary": "The underlying LcmCache.",
+          "usage_hint": null
+        },
+        {
           "description": "Access to Parts of Speech operations.\n",
           "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all parts of speech\n            >>> for pos in project.POS.GetAll():\n            ...     print(f\"{project.POS.GetName(pos)} ({project.POS.GetAbbreviation(pos)})\")\n            >>> # Create a new POS\n            >>> noun = project.POS.Create(\"Noun\", \"N\")\n            >>> # Find and update\n            >>> verb = project.POS.Find(\"Verb\")\n            >>> if verb:\n            ...     project.POS.SetAbbreviation(verb, \"V\")",
           "is_classmethod": false,
@@ -25775,6 +26101,48 @@
           "returns": "PhonologicalRuleOperations: Instance providing phonological rule management methods ",
           "signature": "PhonRules()",
           "summary": "Access to phonological rule operations.",
+          "usage_hint": null
+        },
+        {
+          "description": "Access to phonological feature operations.\n",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Bulk-import the standard MGA feature set\n            >>> result = project.PhonFeatures.ImportCatalog()\n            >>> print(f\"Created {result.created_count} entries\")\n            >>> # Create a specific feature\n            >>> cons = project.PhonFeatures.CreateFromCatalog(\"fPAConsonantal\")\n            >>> # Inspect its +/- values\n            >>> for v in project.PhonFeatures.GetValues(cons):\n            ...     print(project.PhonFeatures.GetAbbreviation(v))",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "PhonFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "PhonFeatureOperations: Instance providing phonological feature and feature-value management methods, including catalog import from the MGA PhonFeatsEticGlossList.",
+              "type": "PhonFeatureOperations"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "PhonFeatureOperations",
+          "returns": "PhonFeatureOperations: Instance providing phonological feature and feature-value management methods, including catalog import from the MGA PhonFeatsEticGlossList. ",
+          "signature": "PhonFeatures()",
+          "summary": "Access to phonological feature operations.",
           "usage_hint": null
         },
         {
@@ -29767,18 +30135,23 @@
     },
     "InflectionFeatureOperations": {
       "base_classes": [
-        "BaseOperations"
+        "BaseOperations",
+        "CatalogBackedMixin"
       ],
       "category": "grammar",
       "description": "This class provides operations for managing inflection classes, feature\nstructures, and features in a FieldWorks project.\n\nInflection classes group lexical items that inflect similarly (e.g., Latin\nnoun declensions, Spanish verb conjugations). Feature structures and features\nrepresent grammatical properties like person, number, gender, tense, aspect,\nmood, etc.\n\nUsage::\n\nfrom flexlibs2 import FLExProject, InflectionFeatureOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\ninflOps = InflectionFeatureOperations(project)\n\n# Get all inflection classes\nfor ic in inflOps.InflectionClassGetAll():\nname = inflOps.InflectionClassGetName(ic)\nprint(f\"Inflection Class: {name}\")\n\n# Create a new inflection class\nfirst_decl = inflOps.InflectionClassCreate(\"First Declension\")\n\n# Work with features\nfor feature in inflOps.FeatureGetAll():\nprint(f\"Feature: {feature}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "InflectionFeatureOperations",
       "lcm_dependencies": [
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
         "IFsComplexFeature",
         "IFsComplexFeatureFactory",
         "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
         "IMoInflClass",
         "IMoInflClassFactory",
         "ITsString",
@@ -30665,68 +31038,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "# Create \"kick the bucket\" idiom\nkick = project.LexEntry.Find(\"kick\")\nbucket = project.LexEntry.Find(\"bucket\")\nidiom = project.LexEntry.Create(\"kick the bucket\")\nproject.LexEntry.AddComplexFormComponent(idiom, kick)\nproject.LexEntry.AddComplexFormComponent(idiom, bucket)",
-          "description": "Add a component to a complex form (compound, idiom, phrasal verb).",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"run\")\nsense = project.LexEntry.AddSense(entry, \"to move rapidly on foot\")\ngloss = project.LexiconGetSenseGloss(sense)\nprint(gloss)\n            to move rapidly on foot\n\n# Add sense in specific writing system\nsense_fr = project.LexEntry.AddSense(entry, \"courir\",\n                                      project.WSHandle('fr'))",
-          "description": "Add a new sense to a lexical entry.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "# Create a basic stem entry with blank sense (default - no type needed!)\nentry = project.LexEntry.Create(\"run\")\nprint(project.LexEntry.GetHeadword(entry))\n            run\nprint(project.LexEntry.GetSenseCount(entry))\n            1\n\n# Create entry without sense\nentry = project.LexEntry.Create(\"run\", create_blank_sense=False)\nprint(project.LexEntry.GetSenseCount(entry))\n            0\n\n# Create an affix entry (auto-creates MoAffixAllomorph)\nsuffix = project.LexEntry.Create(\"-ing\", \"suffix\")\nprint(suffix.LexemeFormOA.ClassName)\n            MoAffixAllomorph\n\n# Create with specific writing system\nentry = project.LexEntry.Create(\"maison\", \"stem\",\n                                 project.WSHandle('fr'))",
-          "description": "Create a new lexical entry in the FLEx project.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"obsolete\")\nif entry:\n    project.LexEntry.Delete(entry)\n\n# Delete by HVO\nproject.LexEntry.Delete(12345)\n\n        Warning:\n            - This is a destructive operation\n            - All senses, forms, and relations will be deleted\n            - References from other entries may become invalid\n            - Cannot be undone\n            - Entry will be removed from all texts and analyses",
-          "description": "Delete a lexical entry from the FLEx project.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "# Deep duplicate (default: with all content)\nentry = project.LexEntry.Find(\"walk\")\nduplicate = project.LexEntry.Duplicate(entry)  # deep=True by default\nprint(project.LexEntry.GetSenseCount(duplicate))\n            3\n\n# Shallow duplicate (entry shell only)\nentry = project.LexEntry.Find(\"run\")\nduplicate = project.LexEntry.Duplicate(entry, deep=False)\nprint(project.LexEntry.GetLexemeForm(duplicate))\n            run\nprint(project.LexEntry.GetSenseCount(duplicate))\n            0\n\n        Warning:\n            - deep=True for LexEntry can be slow for complex entries with many\n              senses, subsenses, and examples\n            - The duplicate will have identical content but a new GUID\n            - Homograph numbers are not automatically assigned - you may need\n              to call SetHomographNumber() to distinguish duplicates\n            - Cross-references to other entries are NOT duplicated (to avoid\n              creating invalid references)",
-          "description": "Duplicate a lexical entry, creating a new entry with the same properties.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "if not project.LexEntry.Exists(\"run\"):\n    entry = project.LexEntry.Create(\"run\")\n\n# Check in specific writing system\nif project.LexEntry.Exists(\"maison\", project.WSHandle('fr')):\n    print(\"French entry exists\")",
-          "description": "Check if a lexical entry with the given lexeme form exists.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"run\")\nif entry:\n    headword = project.LexEntry.GetHeadword(entry)\n    print(f\"Found: {headword}\")\n            Found: run\n\n# Search in specific writing system\nentry = project.LexEntry.Find(\"maison\", project.WSHandle('fr'))",
-          "description": "Find a lexical entry by its lexeme form.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    senses = project.LexEntry.GetSenseCount(entry)\n    print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)",
-          "description": "Get all lexical entries in the project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"run\")\nall_senses = project.LexEntry.GetAllSenses(entry)\nprint(f\"Total senses (including subsenses): {len(all_senses)}\")\nfor sense in all_senses:\n    gloss = project.Senses.GetGloss(sense)\n    depth = len(list(sense.PathToRoot)) - 2  # Approximate depth\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
-          "description": "Get all senses owned by this entry, including subsenses recursively.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n            suffix: affix\n            infix: affix\n\n# Get only top-level types\ntop_level = project.LexEntry.GetAvailableMorphTypes(include_subcategories=False)",
-          "description": "Get a list of all available morph types in the project.",
-          "operation": "read",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing lexical entries in a\nFieldWorks project.\n\nLexical entries are the fundamental units of the lexicon, representing\nwords, morphemes, or other lexical items. Each entry has forms (lexeme,\ncitation, alternate), senses (meanings), and various properties.\n\nThis class should be accessed via FLExProject.LexEntry property.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all entries\nfor entry in project.LexEntry.GetAll():\nheadword = project.LexEntry.GetHeadword(entry)\nprint(headword)\n\n# Create a new entry\nentry = project.LexEntry.Create(\"run\", \"stem\")\n\n# Add a sense\nproject.LexEntry.AddSense(entry, \"to move rapidly on foot\", \"en\")\n\n# Set citation form\nproject.LexEntry.SetCitationForm(entry, \"run\")\n\nproject.CloseProject()",
       "example": "",
       "id": "LexEntryOperations",
@@ -33518,68 +33829,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "# Find synonym reference\nentry1 = project.LexEntry.Find(\"run\")\nsense1 = list(project.Senses.GetAll(entry1))[0]\nrefs = list(project.LexReferences.GetAll(sense1))\n\n# Find synonym type reference\nsyn_ref = None\nfor ref in refs:\n    ref_type = project.LexReferences.GetType(ref)\n    if project.LexReferences.GetTypeName(ref_type) == \"Synonym\":\n        syn_ref = ref\n        break\n\nif syn_ref:\n    # Add another synonym\n    entry2 = project.LexEntry.Find(\"sprint\")\n    sense2 = list(project.Senses.GetAll(entry2))[0]\n    project.LexReferences.AddTarget(syn_ref, sense2)",
-          "description": "Add a target sense or entry to an existing lexical reference.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "# Create synonym relation between two senses\nentry1 = project.LexEntry.Find(\"run\")\nentry2 = project.LexEntry.Find(\"jog\")\nif entry1 and entry2:\n    sense1 = list(project.Senses.GetAll(entry1))[0]\n    sense2 = list(project.Senses.GetAll(entry2))[0]\n\n    # Find or create synonym type\n    syn_type = project.LexReferences.FindType(\"Synonym\")\n    if not syn_type:\n        syn_type = project.LexReferences.CreateType(\"Synonym\", \"Symmetric\")\n\n    # Create the reference\n    ref = project.LexReferences.Create(syn_type, [sense1, sense2])\n\n# Create using type name\nref2 = project.LexReferences.Create(\"Antonym\", [sense1, sense3])",
-          "description": "Create a new lexical reference linking senses or entries.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "# Create symmetric relation (synonym)\nsyn_type = project.LexReferences.CreateType(\"Synonym\", \"Symmetric\")\nprint(project.LexReferences.GetTypeName(syn_type))\n            Synonym\n\n# Create asymmetric relation (hypernym/hyponym)\nhyper_type = project.LexReferences.CreateType(\n    \"Hypernym\",\n    \"Asymmetric\",\n    reverse_name=\"Hyponym\"\n)\n\n# Create tree relation (part-whole)\npart_type = project.LexReferences.CreateType(\n    \"Part-Whole\",\n    \"Tree\"\n)",
-          "description": "Create a new lexical relation type.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"run\")\nif entry:\n    sense = list(project.Senses.GetAll(entry))[0]\n    refs = list(project.LexReferences.GetAll(sense))\n    if refs:\n        # Delete first reference\n        project.LexReferences.Delete(refs[0])\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - The related entries/senses are not affected",
-          "description": "Delete a lexical reference.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "ref_type = project.LexReferences.FindType(\"Obsolete Relation\")\nif ref_type:\n    project.LexReferences.DeleteType(ref_type)\n\n        Warning:\n            - This is a destructive operation\n            - All references of this type will be deleted\n            - Cannot be undone\n            - Use with caution",
-          "description": "Delete a lexical relation type.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "syn_type = project.LexReferences.FindType(\"Synonym\")\nif syn_type:\n    mapping = project.LexReferences.GetMappingType(syn_type)\n    print(f\"Found: {mapping}\")\n            Found: Symmetric\n\n# Search with specific writing system\ntype_fr = project.LexReferences.FindType(\n    \"Synonyme\",\n    project.WSHandle('fr')\n)",
-          "description": "Find a lexical relation type by name.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "# Get references for specific sense\nentry = project.LexEntry.Find(\"run\")\nif entry:\n    senses = list(project.Senses.GetAll(entry))\n    if senses:\n        for ref in project.LexReferences.GetAll(senses[0]):\n            ref_type = project.LexReferences.GetType(ref)\n            type_name = project.LexReferences.GetTypeName(ref_type)\n            targets = project.LexReferences.GetTargets(ref)\n            print(f\"{type_name}: {len(targets)} targets\")\n            Synonym: 3 targets\n            Hypernym: 2 targets\n\n# Get ALL lexical references in entire project\nfor ref in project.LexReferences.GetAll():\n    ref_type = project.LexReferences.GetType(ref)\n    type_name = project.LexReferences.GetTypeName(ref_type)\n    print(f\"Reference type: {type_name}\")",
-          "description": "Get all lexical references for a sense or entry, or all references in the entire project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "for ref_type in project.LexReferences.GetAllTypes():\n    name = project.LexReferences.GetTypeName(ref_type)\n    mapping = project.LexReferences.GetMappingType(ref_type)\n    count = len(list(ref_type.MembersOC))\n    print(f\"{name} ({mapping}): {count} references\")\n            Synonym (Symmetric): 15 references\n            Antonym (Symmetric): 8 references\n            Part-Whole (Tree): 22 references",
-          "description": "Get all lexical relation types in the project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "# Find all complex forms containing \"run\"\nrun_entry = project.LexEntry.Find(\"run\")\nif run_entry:\n    complex_forms = project.LexReferences.GetComplexFormEntries(run_entry)\n    for cf in complex_forms:\n        headword = project.LexEntry.GetHeadword(cf)\n        print(f\"Complex form: {headword}\")\n            Complex form: running shoe\n            Complex form: run away\n            Complex form: run-up",
-          "description": "Get all complex form entries that show this entry as a component.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "# Find components of \"running shoe\"\nshoe_entry = project.LexEntry.Find(\"running shoe\")\nif shoe_entry:\n    components = project.LexReferences.GetComponentEntries(shoe_entry)\n    for comp in components:\n        headword = project.LexEntry.GetHeadword(comp)\n        print(f\"Component: {headword}\")\n            Component: run\n            Component: shoe",
-          "description": "Get all component entries that make up a complex form entry.",
-          "operation": "read",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing lexical references and\ncross-references in a FieldWorks project.\n\nLexical references connect entries or senses through various types of\nrelations such as synonyms, antonyms, hypernyms, part-whole relationships,\nand complex form relationships. These relations help organize the lexicon\nsemantically and structurally.\n\nThe class handles different mapping types:\n- Symmetric (e.g., synonym, antonym)\n- Asymmetric (e.g., hypernym/hyponym)\n- Tree (e.g., part-whole hierarchies)\n- Sequence (ordered relationships)\n\nThis class should be accessed via FLExProject.LexReferences property.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all relation types\nfor ref_type in project.LexReferences.GetAllTypes():\nname = project.LexReferences.GetTypeName(ref_type)\nmapping = project.LexReferences.GetMappingType(ref_type)\nprint(f\"{name}: {mapping}\")\n\n# Create a new relation type\nsynonym_type = project.LexReferences.CreateType(\n\"Synonym\",\n\"Symmetric\",\nreverse_name=None\n)\n\n# Create a reference between two senses\nentry1 = project.LexEntry.Find(\"run\")\nentry2 = project.LexEntry.Find(\"jog\")\nif entry1 and entry2:\nsense1 = list(project.Senses.GetAll(entry1))[0]\nsense2 = list(project.Senses.GetAll(entry2))[0]\nref = project.LexReferences.Create(synonym_type, [sense1, sense2])\n\n# Get all references for a sense\nfor ref in project.LexReferences.GetAll(sense1):\ntargets = project.LexReferences.GetTargets(ref)\nfor target in targets:\nif target.ClassName == \"LexSense\":\ngloss = project.Senses.GetGloss(target)\nprint(f\"Related sense: {gloss}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "LexReferenceOperations",
@@ -34701,38 +34950,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "entry = list(project.LexiconAllEntries())[0]\nsenses = list(project.Senses.GetAll(entry))\nif senses:\n    ex = project.Senses.AddExample(senses[0], \"She runs every morning.\")\n    # Add translation (would need additional code)\n    print(f\"Added example: {ex.Hvo}\")",
-          "description": "Add a new example sentence to a sense.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "# Get senses for a specific entry\nentry = list(project.LexiconAllEntries())[0]\nfor sense in project.Senses.GetAll(entry):\n    gloss = project.Senses.GetGloss(sense)\n    defn = project.Senses.GetDefinition(sense)\n    print(f\"{gloss}: {defn}\")\n            run: to move swiftly on foot\n            run: to flow or extend\n\n# Get ALL senses in entire project\nfor sense in project.Senses.GetAll():\n    gloss = project.Senses.GetGloss(sense)\n    print(f\"Sense: {gloss}\")",
-          "description": "Get senses for an entry or all senses in the project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"run\")\nsense = entry.SensesOS[0]\nall_senses = project.Senses.GetAllSenses(sense)\nprint(f\"Total (including subsenses): {len(all_senses)}\")\nfor s in all_senses:\n    gloss = project.Senses.GetGloss(s)\n    depth = len(list(s.PathToRoot)) - 2\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
-          "description": "Get this sense and all its subsenses recursively.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = project.LexEntry.Find(\"big\")\nsense = entry.SensesOS[0]\nlex_refs = project.Senses.GetMinimalLexReferences(sense)\nfor lex_ref in lex_refs:\n    ref_type = lex_ref.Owner  # ILexRefType\n    print(f\"Reference type: {ref_type.Name.BestAnalysisAlternative.Text}\")\n    for target in lex_ref.TargetsRS:\n        if target.Hvo != sense.Hvo:\n            gloss = project.Senses.GetGloss(target)\n            print(f\"  -> {gloss}\")",
-          "description": "Get essential lexical references for this sense.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "# Merge duplicate sense into main sense with auto-deduplication\nkeep = project.Senses.Find(...)\nremove = project.Senses.Find(...)\nproject.Senses.MergeObject(keep, remove, fLoseNoStringData=True)\n# 'remove' is deleted, data merged into 'keep'\n# Any duplicate examples are also auto-removed\n\n# Result with fLoseNoStringData=True:\n# Definition: \"defn 1; defn 2\" (LibLCM uses SEMICOLON separator)\n# Gloss: \"gloss 1; gloss 2\" (LibLCM uses SEMICOLON separator)",
-          "description": "Merge one sense into another (IRREVERSIBLE operation).",
-          "operation": "merge",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing lexical senses in a FieldWorks project.\n\nLexical senses represent the different meanings or uses of a lexical entry.\nEach sense can have glosses, definitions, grammatical information, semantic\ndomains, example sentences, pictures, and more.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Access via FLExProject.Senses property (recommended)\nentry = list(project.LexiconAllEntries())[0]\n\n# Get all senses\nfor sense in project.Senses.GetAll(entry):\ngloss = project.Senses.GetGloss(sense)\nprint(f\"Sense: {gloss}\")\n\n# Create a new sense\nsense = project.Senses.Create(entry, \"to run\", \"en\")\n\n# Set definition\nproject.Senses.SetDefinition(sense, \"To move swiftly on foot\", \"en\")\n\n# Add semantic domain\ndomains = project.GetAllSemanticDomains(flat=True)\nif domains:\nproject.Senses.AddSemanticDomain(sense, domains[0])\n\nproject.CloseProject()",
       "example": "",
       "id": "LexSenseOperations",
@@ -34748,6 +34965,7 @@
         "IMoStemMsaFactory",
         "IReversalIndexEntry",
         "ITsString",
+        "LexEntryTags",
         "ReflectionHelper",
         "TsStringUtils"
       ],
@@ -42858,6 +43076,25 @@
       "type": "class",
       "usage_hint": "Class for working with lexicon data in FieldWorks"
     },
+    "NC": {
+      "base_classes": [],
+      "category": "general",
+      "description": "A natural-class pattern element, optionally with alpha-feature constraints.\n",
+      "example": "",
+      "id": "NC",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "NC",
+      "namespace": "flexlibs2.code.Shared.rule_patterns",
+      "properties": [],
+      "source_file": "Shared/rule_patterns",
+      "summary": "A natural-class pattern element, optionally with alpha-feature constraints.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
     "NaturalClassOperations": {
       "base_classes": [
         "BaseOperations"
@@ -42867,6 +43104,8 @@
       "example": "",
       "id": "NaturalClassOperations",
       "lcm_dependencies": [
+        "IPhNCFeatures",
+        "IPhNCFeaturesFactory",
         "IPhNCSegments",
         "IPhNCSegmentsFactory",
         "IPhNaturalClass",
@@ -43034,6 +43273,69 @@
           "returns": "IPhNCSegments: The newly created natural class object. ",
           "signature": "Create(name, abbreviation=None)",
           "summary": "Create a new natural class.",
+          "usage_hint": "creation"
+        },
+        {
+          "description": "Create a feature-based natural class (IPhNCFeatures).\n\nFeature-based natural classes define membership by phonological\nfeature constraints (e.g. [+syllabic, +back]) rather than by an\nexplicit list of phonemes. Any phoneme whose features satisfy the\nconstraint is treated as a member; adding a phoneme that matches\nthe constraints brings it into the class automatically.\n\nUse this for generative phonology where you want natural classes\nlike \"back vowels\" or \"voiced obstruents\" expressed as feature\nbundles. Use ``Create`` instead for segment-based classes that\nenumerate their phonemes.\n",
+          "example": "            >>> # Build \"back vowels\" as [+back]\n            >>> back = project.PhonFeatures.Find(\"back\")\n            >>> back_plus = project.PhonFeatures.GetValues(back)[0]\n            >>> nc = project.NaturalClasses.CreateFeatureBased(\n            ...     \"Back vowels\", \"Vb\", specs=[(back, back_plus)]\n            ... )\n            >>> project.NaturalClasses.GetType(nc)\n            'features'\n\n            >>> # Create empty, populate later\n            >>> nc = project.NaturalClasses.CreateFeatureBased(\"High vowels\", \"Vh\")\n            >>> high = project.PhonFeatures.Find(\"high\")\n            >>> high_plus = project.PhonFeatures.GetValues(high)[0]\n            >>> project.NaturalClasses.SetFeatures(nc, [(high, high_plus)])\n\n        See Also:\n            Create, GetType, GetFeatures, SetFeatures",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "CreateFeatureBased",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If name is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If name is empty or specs is malformed."
+              }
+            ],
+            "notes": [
+              "Creates new object - requires write access"
+            ],
+            "success": {
+              "description": "IPhNCFeatures: The newly created feature-based natural class.",
+              "type": "IPhNCFeatures"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The name of the natural class (analysis WS).",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Short abbreviation. If None, no abbreviation alternative is written.",
+              "name": "abbreviation",
+              "type": "str, optional"
+            },
+            {
+              "default": null,
+              "description": "A list of ``(feature, value)`` tuples used to populate the natural class's feature struct. Each side may be an LCM object (IFsClosedFeature, IFsSymFeatVal), a wrapper, or an HVO. If provided, the resulting NC has a populated ``FeaturesOA``. If omitted, ``FeaturesOA`` remains unset and the caller can use ``SetFeatures`` later.",
+              "name": "specs",
+              "type": "list[tuple], optional"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If name is None.",
+            "FP_ParameterError: If name is empty or specs is malformed."
+          ],
+          "return_type": "IPhNCFeatures",
+          "returns": "IPhNCFeatures: The newly created feature-based natural class. ",
+          "signature": "CreateFeatureBased(name, abbreviation=None, specs=None)",
+          "summary": "Create a feature-based natural class (IPhNCFeatures).",
           "usage_hint": "creation"
         },
         {
@@ -43213,6 +43515,51 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Get the feature struct holding a feature-based natural class's\nconstraints.\n",
+          "example": "            >>> back = project.PhonFeatures.Find(\"back\")\n            >>> back_plus = project.PhonFeatures.GetValues(back)[0]\n            >>> nc = project.NaturalClasses.CreateFeatureBased(\n            ...     \"Back vowels\", \"Vb\", specs=[(back, back_plus)]\n            ... )\n            >>> fs = project.NaturalClasses.GetFeatures(nc)\n            >>> for spec in fs.FeatureSpecsOC:\n            ...     print(spec)\n\n        See Also:\n            SetFeatures, GetType, CreateFeatureBased",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If nc_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the natural class is not feature-based"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IFsFeatStruc or None: The owned feature structure (with its ``FeatureSpecsOC`` of IFsClosedValue specs), or ``None`` if ``FeaturesOA`` is unset (e.g. a feature-based class created with no initial specs that hasn't yet called ``SetFeatures``).",
+              "type": "IFsFeatStruc or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhNaturalClass object or HVO. Must be a feature-based natural class (IPhNCFeatures).",
+              "name": "nc_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If nc_or_hvo is None.",
+            "FP_ParameterError: If the natural class is not feature-based",
+            "(i.e. it is a segment-based IPhNCSegments)."
+          ],
+          "return_type": "IFsFeatStruc or None",
+          "returns": "IFsFeatStruc or None: The owned feature structure (with its ``FeatureSpecsOC`` of IFsClosedValue specs), or ``None`` if ``FeaturesOA`` is unset (e.g. a feature-based class created with no initial specs that hasn't yet called ``SetFeatures``). ",
+          "signature": "GetFeatures(nc_or_hvo)",
+          "summary": "Get the feature struct holding a feature-based natural class's\nconstraints.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get the name of a natural class.\n",
           "example": "            >>> for nc in project.NaturalClasses.GetAll():\n            ...     name = project.NaturalClasses.GetName(nc)\n            ...     print(name)\n            Voiceless Stops\n            Voiced Stops\n            Fricatives\n            Nasals\n            Vowels\n\n        See Also:\n            SetName, GetAbbreviation",
           "is_classmethod": false,
@@ -43342,6 +43689,50 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Return the concrete type of a natural class as a short string.\n",
+          "example": "            >>> stops = project.NaturalClasses.Create(\"Stops\", \"P\")\n            >>> project.NaturalClasses.GetType(stops)\n            'segments'\n            >>> vb = project.NaturalClasses.CreateFeatureBased(\"Back vowels\", \"Vb\")\n            >>> project.NaturalClasses.GetType(vb)\n            'features'\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetType",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If nc_or_hvo is None."
+              }
+            ],
+            "notes": [
+              "FlexLibs2 handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: ``\"segments\"`` for IPhNCSegments (enumerated phoneme members), ``\"features\"`` for IPhNCFeatures (feature-based membership), or the LCM ClassName as a defensive fallback for unknown subtypes.",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhNaturalClass object or HVO.",
+              "name": "nc_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If nc_or_hvo is None."
+          ],
+          "return_type": "str",
+          "returns": "str: ``\"segments\"`` for IPhNCSegments (enumerated phoneme members), ``\"features\"`` for IPhNCFeatures (feature-based membership), or the LCM ClassName as a defensive fallback for unknown subtypes. ",
+          "signature": "GetType(nc_or_hvo)",
+          "summary": "Return the concrete type of a natural class as a short string.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Remove a phoneme from a natural class.\n",
           "example": "            >>> # Remove /q/ from uvular stops if reclassified\n            >>> for nc in project.NaturalClasses.GetAll():\n            ...     if project.NaturalClasses.GetName(nc) == \"Uvular Stops\":\n            ...         q_phoneme = project.Phonemes.Find(\"/q/\")\n            ...         if q_phoneme and q_phoneme in project.NaturalClasses.GetPhonemes(nc):\n            ...             project.NaturalClasses.RemovePhoneme(nc, q_phoneme)\n\n            >>> # Clean up natural class\n            >>> for nc in project.NaturalClasses.GetAll():\n            ...     if project.NaturalClasses.GetName(nc) == \"Obsolete Phonemes\":\n            ...         phonemes = project.NaturalClasses.GetPhonemes(nc)\n            ...         for phoneme in phonemes:\n            ...             project.NaturalClasses.RemovePhoneme(nc, phoneme)\n",
           "is_classmethod": false,
@@ -43395,6 +43786,61 @@
           "signature": "RemovePhoneme(nc_or_hvo, phoneme_or_hvo)",
           "summary": "Remove a phoneme from a natural class.",
           "usage_hint": "deletion"
+        },
+        {
+          "description": "Replace a feature-based natural class's constraints with a new\nfeature struct built from ``specs``.\n\nAny existing ``FeaturesOA`` is discarded -- assigning to an\natomic-owning property in LCM disowns and deletes the previous\nowned object, so callers do not need to release it manually.\n",
+          "example": "            >>> nc = project.NaturalClasses.CreateFeatureBased(\"Back vowels\", \"Vb\")\n            >>> back = project.PhonFeatures.Find(\"back\")\n            >>> back_plus = project.PhonFeatures.GetValues(back)[0]\n            >>> project.NaturalClasses.SetFeatures(nc, [(back, back_plus)])\n\n            >>> # Replace constraints (previous FeaturesOA is discarded)\n            >>> high = project.PhonFeatures.Find(\"high\")\n            >>> high_plus = project.PhonFeatures.GetValues(high)[0]\n            >>> project.NaturalClasses.SetFeatures(\n            ...     nc, [(back, back_plus), (high, high_plus)]\n            ... )\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetFeatures",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If nc_or_hvo or specs is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the natural class is not feature-based"
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhNaturalClass object or HVO. Must be a feature-based natural class (IPhNCFeatures).",
+              "name": "nc_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "A list of ``(feature, value)`` tuples describing the new constraints. Same shape as ``PhonFeatures.MakeFeatStruc`` accepts; each side may be an LCM object, a wrapper, or an HVO.",
+              "name": "specs",
+              "type": "list[tuple]"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If nc_or_hvo or specs is None.",
+            "FP_ParameterError: If the natural class is not feature-based",
+            "or if specs is malformed."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetFeatures(nc_or_hvo, specs)",
+          "summary": "Replace a feature-based natural class's constraints with a new\nfeature struct built from ``specs``.",
+          "usage_hint": "modification"
         },
         {
           "description": "Set the name of a natural class.\n",
@@ -45038,7 +45484,8 @@
     },
     "POSOperations": {
       "base_classes": [
-        "BaseOperations"
+        "BaseOperations",
+        "CatalogBackedMixin"
       ],
       "category": "grammar",
       "description": "This class provides operations for managing Parts of Speech in a\nFieldWorks project.\n\nParts of Speech are fundamental grammatical categories used in linguistic\nanalysis (e.g., Noun, Verb, Adjective, etc.).\n\nUsage::\n\nfrom flexlibs2 import FLExProject, POSOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nposOps = POSOperations(project)\n\n# Get all parts of speech\nfor pos in posOps.GetAll():\nprint(posOps.GetName(pos), posOps.GetAbbreviation(pos))\n\n# Create a new POS\nnoun = posOps.Create(\"Noun\", \"N\")\n\n# Find and update\nverb = posOps.Find(\"Verb\")\nif verb:\nposOps.SetAbbreviation(verb, \"V\")\n\nproject.CloseProject()",
@@ -48314,6 +48761,688 @@
       "type": "class",
       "usage_hint": "Provides operations for working with notebook data in FieldWorks"
     },
+    "PhonFeatureOperations": {
+      "base_classes": [
+        "BaseOperations",
+        "CatalogBackedMixin"
+      ],
+      "category": "grammar",
+      "description": "This class provides operations for managing phonological features and\nfeature values in a FieldWorks project.\n\nPhonological features are owned by ``LangProject.PhFeatureSystemOA``\n(an ``IFsFeatureSystem``). Each feature is an ``IFsClosedFeature`` with\none or more ``IFsSymFeatVal`` value children (typically ``+`` and ``-``\nfor binary features). Phonemes and natural classes attach an\n``IFsFeatStruc`` whose ``FeatureSpecsOC`` references (feature, value)\npairs.\n\nThe MGA ``PhonFeatsEticGlossList.xml`` catalog provides the canonical\nset of features and values with stable GUIDs; ``ImportCatalog`` and\n``CreateFromCatalog`` populate the project from it.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nphonFeats = project.PhonFeatures\n\n# Bulk-import the standard MGA feature set.\nresult = phonFeats.ImportCatalog()\nprint(f\"Created {result.created_count}, \"\nf\"skipped {result.skipped_count}\")\n\n# Or create a specific feature with its +/- values.\ncons = phonFeats.CreateFromCatalog(\"fPAConsonantal\")\n\n# Compose a feature structure for a phoneme.\nplus = next(v for v in phonFeats.GetValues(cons)\nif phonFeats.GetAbbreviation(v) == \"+\")\nstruct = phonFeats.MakeFeatStruc([(cons, plus)], owner=phoneme)\n\nproject.CloseProject()",
+      "example": "",
+      "id": "PhonFeatureOperations",
+      "lcm_dependencies": [
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "methods": [
+        {
+          "description": "Create a new phonological feature (IFsClosedFeature).\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Create",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError, FP_NullParameterError, FP_ParameterError:"
+              },
+              {
+                "exception": "Per",
+                "when": "BaseOperations validation rules."
+              }
+            ],
+            "notes": [
+              "Creates new object - requires write access"
+            ],
+            "success": {
+              "description": "IFsClosedFeature: The newly created feature.",
+              "type": "IFsClosedFeature"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Feature name (e.g. \"consonantal\").",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Short abbreviation (e.g. \"cons\").",
+              "name": "abbreviation",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional catalog id. If it starts with the ``PHON:`` prefix (case-insensitive), the feature is created from the MGA catalog (canonical GUID + localized strings + +/- value children), then the user-supplied name/abbreviation overlay the analysis WS. Otherwise the value is written verbatim to ``CatalogSourceId``.",
+              "name": "catalogSourceId",
+              "type": "str, optional"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError, FP_NullParameterError, FP_ParameterError:",
+            "Per BaseOperations validation rules."
+          ],
+          "return_type": "IFsClosedFeature",
+          "returns": "IFsClosedFeature: The newly created feature. ",
+          "signature": "Create(name, abbreviation, catalogSourceId=None)",
+          "summary": "Create a new phonological feature (IFsClosedFeature).",
+          "usage_hint": "creation"
+        },
+        {
+          "description": "Create a new symbolic value (IFsSymFeatVal) under a closed feature.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "CreateValue",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [
+              "Creates new object - requires write access"
+            ],
+            "success": {
+              "description": "IFsSymFeatVal: The newly created value.",
+              "type": "IFsSymFeatVal"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IFsClosedFeature or HVO that owns the value.",
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Value name (e.g. \"positive\", \"negative\").",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Short abbreviation. For standard binary phonological features, conventionally \"+\" or \"-\".",
+              "name": "abbreviation",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Currently informational only -- accepted for API symmetry with FW UIs that ask the user to choose +/-, but the abbreviation itself carries the actual marker. Defaults to None (no constraint).",
+              "name": "value_marker",
+              "type": "str, optional"
+            }
+          ],
+          "raises": [],
+          "return_type": "IFsSymFeatVal",
+          "returns": "IFsSymFeatVal: The newly created value. ",
+          "signature": "CreateValue(feature_or_hvo, name, abbreviation, value_marker=None)",
+          "summary": "Create a new symbolic value (IFsSymFeatVal) under a closed feature.",
+          "usage_hint": "creation"
+        },
+        {
+          "description": "Delete a phonological feature.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Delete",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [
+              "Destructive operation - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IFsClosedFeature, wrapper, or HVO to delete.",
+              "name": "feature_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "Delete(feature_or_hvo)",
+          "summary": "Delete a phonological feature.",
+          "usage_hint": "deletion"
+        },
+        {
+          "description": "Delete a phonological feature value.\n\nRemoves the value from its owning feature's ValuesOC.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "DeleteValue",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [
+              "Destructive operation - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "value_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "DeleteValue(value_or_hvo)",
+          "summary": "Delete a phonological feature value.",
+          "usage_hint": "deletion"
+        },
+        {
+          "description": "Check whether a phonological feature with the given name exists.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Exists",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "name",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "Exists(name, wsHandle=None)",
+          "summary": "Check whether a phonological feature with the given name exists.",
+          "usage_hint": null
+        },
+        {
+          "description": "Find a phonological feature by name.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Find",
+          "output_behavior": {
+            "empty": {
+              "description": "None when not found",
+              "value": "None"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IFsClosedFeature or None: First match, or None.",
+              "type": "IFsClosedFeature or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The name to search for. Compared via NFD-normalised casefold match against each feature's Name in the chosen WS.",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "IFsClosedFeature or None",
+          "returns": "IFsClosedFeature or None: First match, or None. ",
+          "signature": "Find(name, wsHandle=None)",
+          "summary": "Find a phonological feature by name.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the abbreviation of a phonological feature or value.\n\nFor values, the abbreviation is typically ``+`` or ``-``.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetAbbreviation",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "GetAbbreviation(feature_or_hvo, wsHandle=None)",
+          "summary": "Get the abbreviation of a phonological feature or value.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get all phonological features in the project.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetAll",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IFsClosedFeature: Each feature in PhFeatureSystemOA.FeaturesOC.",
+              "type": "IFsClosedFeature"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "IFsClosedFeature",
+          "returns": "IFsClosedFeature: Each feature in PhFeatureSystemOA.FeaturesOC. ",
+          "signature": "GetAll()",
+          "summary": "Get all phonological features in the project.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the description of a phonological feature or value.\n\nReturns \"\" if the object has no Description property.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetDescription",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "GetDescription(feature_or_hvo, wsHandle=None)",
+          "summary": "Get the description of a phonological feature or value.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the name of a phonological feature or value.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetName",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [
+              "FlexLibs2 handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: The Name in the requested WS, or \"\" if not set.",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IFsClosedFeature, IFsSymFeatVal, or HVO.",
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "str",
+          "returns": "str: The Name in the requested WS, or \"\" if not set.",
+          "signature": "GetName(feature_or_hvo, wsHandle=None)",
+          "summary": "Get the name of a phonological feature or value.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get all IFsSymFeatVal values defined on a closed feature.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetValues",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IFsSymFeatVal: Each value (typically \"+\" and \"-\" for binary phonological features).",
+              "type": "IFsSymFeatVal"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IFsClosedFeature object or HVO.",
+              "name": "feature_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "IFsSymFeatVal",
+          "returns": "IFsSymFeatVal: Each value (typically \"+\" and \"-\" for binary phonological features).",
+          "signature": "GetValues(feature_or_hvo)",
+          "summary": "Get all IFsSymFeatVal values defined on a closed feature.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Build an IFsFeatStruc populated with (feature, value) pairs.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "MakeFeatStruc",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If a spec tuple is malformed, if an"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IFsFeatStruc: The populated feature structure (or empty struct, when ``owner=None`` and ``specs`` is empty).",
+              "type": "IFsFeatStruc"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "A list of ``(feature, value)`` tuples. Each side may be an IFsClosedFeature / IFsSymFeatVal object, a wrapper, or an HVO. Items are added to the struct's ``FeatureSpecsOC`` in the order provided.",
+              "name": "specs",
+              "type": "list[tuple]"
+            },
+            {
+              "default": null,
+              "description": "LCM object that should own the struct via its ``FeaturesOA`` atomic-owning property. If provided, the struct is attached to ``owner.FeaturesOA`` BEFORE its FeatureSpecsOC is populated -- mandatory because FsFeatStruc property setters will NPE on a free-floating struct (Phase 2 ownership rule). Phonemes and natural classes both use ``FeaturesOA``. When ``owner`` is None, this method returns an empty struct and ``specs`` must be empty; the caller is then responsible for attaching it to an owner before populating. When ``owner`` is provided, the struct is attached and populated atomically. Passing ``owner=None`` together with a non-empty ``specs`` is rejected because LCM would NPE on the first FeatureSpecsOC mutation.",
+              "name": "owner",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If a spec tuple is malformed, if an",
+            "owner is supplied but has no FeaturesOA property, or",
+            "if ``owner`` is None while ``specs`` is non-empty."
+          ],
+          "return_type": "IFsFeatStruc",
+          "returns": "IFsFeatStruc: The populated feature structure (or empty struct, when ``owner=None`` and ``specs`` is empty). ",
+          "signature": "MakeFeatStruc(specs, owner=None)",
+          "summary": "Build an IFsFeatStruc populated with (feature, value) pairs.",
+          "usage_hint": null
+        },
+        {
+          "description": "Set the abbreviation of a phonological feature or value.\n\nFor values, the abbreviation is typically ``+`` or ``-``.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetAbbreviation",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "abbrev",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetAbbreviation(feature_or_hvo, abbrev, wsHandle=None)",
+          "summary": "Set the abbreviation of a phonological feature or value.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Set the description of a phonological feature or value.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetDescription",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the object has no Description property."
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "description",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If the object has no Description property."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetDescription(feature_or_hvo, description, wsHandle=None)",
+          "summary": "Set the description of a phonological feature or value.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Set the name of a phonological feature or value.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetName",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "feature_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "name",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetName(feature_or_hvo, name, wsHandle=None)",
+          "summary": "Set the name of a phonological feature or value.",
+          "usage_hint": "modification"
+        },
+        {
+          "description": "Initialize PhonFeatureOperations with a FLExProject instance.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The FLExProject instance to operate on.",
+              "name": "project",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(project)",
+          "summary": "Initialize PhonFeatureOperations with a FLExProject instance.",
+          "usage_hint": null
+        }
+      ],
+      "name": "PhonFeatureOperations",
+      "namespace": "flexlibs2.code.Grammar.PhonFeatureOperations",
+      "properties": [],
+      "source_file": "Grammar/PhonFeatureOperations",
+      "summary": "This class provides operations for managing phonological features and\nfeature values in a FieldWorks project.",
+      "tags": [
+        "grammar",
+        "operations"
+      ],
+      "type": "class",
+      "usage_hint": "Provides operations for working with grammar data in FieldWorks"
+    },
     "PhonemeOperations": {
       "base_classes": [
         "BaseOperations"
@@ -48324,6 +49453,7 @@
       "id": "PhonemeOperations",
       "lcm_dependencies": [
         "ICmObjectRepository",
+        "IFsClosedFeature",
         "IFsFeatStruc",
         "IPhCode",
         "IPhCodeFactory",
@@ -48707,6 +49837,61 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Find a code (allophonic representation) on a phoneme by its\nrendered representation string.\n",
+          "example": "            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> aspirated = project.Phonemes.FindCode(phoneme, \"[tʰ]\")\n            >>> if aspirated is not None:\n            ...     # safe to ReplaceCode or RemoveCode it\n            ...     pass\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "FindCode",
+          "output_behavior": {
+            "empty": {
+              "description": "None when not found",
+              "value": "None"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If phoneme_or_hvo or representation"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IPhCode or None: The matching code object, or None if no code on this phoneme renders to ``representation``.",
+              "type": "IPhCode or None"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhPhoneme object or HVO.",
+              "name": "phoneme_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "The code representation to look up, e.g. ``\"[tʰ]\"``. Compared via NFD-normalised match (no casefold; IPA distinctions are case-sensitive).",
+              "name": "representation",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to vernacular WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If phoneme_or_hvo or representation",
+            "is None."
+          ],
+          "return_type": "IPhCode or None",
+          "returns": "IPhCode or None: The matching code object, or None if no code on this phoneme renders to ``representation``. ",
+          "signature": "FindCode(phoneme_or_hvo, representation, wsHandle=None)",
+          "summary": "Find a code (allophonic representation) on a phoneme by its\nrendered representation string.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get all phonemes in the project.\n",
           "example": "            >>> phonemeOps = PhonemeOperations(project)\n            >>> for phoneme in phonemeOps.GetAll():\n            ...     representation = phonemeOps.GetRepresentation(phoneme)\n            ...     description = phonemeOps.GetDescription(phoneme)\n            ...     print(f\"{representation}: {description}\")\n            /p/: voiceless bilabial stop\n            /b/: voiced bilabial stop\n            /t/: voiceless alveolar stop\n            /d/: voiced alveolar stop\n",
           "is_classmethod": false,
@@ -49008,6 +50193,75 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Import the BasicIPAInfo segment catalog into this project's\nphoneme set.\n\nPopulates ~245 IPhPhonemes with representation (Name +\nBasicIPASymbol), description, and a FeaturesOA feature structure\ncomposed of (IFsClosedFeature, IFsSymFeatVal) pairs resolved\nagainst PhFeatureSystemOA via the PhonFeats catalog.\n",
+          "example": "            >>> project.PhonFeatures.ImportCatalog()    # prerequisite\n            >>> result = project.Phonemes.ImportCatalog()\n            >>> print(f\"Created {result.created_count} phonemes; \"\n            ...       f\"{len(result.warnings)} warnings\")",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ImportCatalog",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the project has no PhonologicalDataOA,"
+              },
+              {
+                "exception": "False",
+                "when": ", or PhFeatureSystemOA has not been populated yet"
+              },
+              {
+                "exception": "FileNotFoundError",
+                "when": "If BasicIPAInfo.xml or"
+              },
+              {
+                "exception": "PhonFeatsEticGlossList",
+                "when": ".xml is not found under FWCodeDir."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "CatalogImportResult: Created/skipped counts and any warnings. ``created_guids`` contains synthetic ``\"BasicIPA:{code_point_id}\"`` tags (one per created phoneme) -- BasicIPAInfo has no real GUIDs, so the field is repurposed for verification only.",
+              "type": "CatalogImportResult"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Optional callable accepting ``(count, total, name)`` for progress reporting. May be None.",
+              "name": "progress",
+              "type": ""
+            },
+            {
+              "default": false,
+              "description": "If True, skip the non-empty-phoneme-set guard. BasicIPAInfo has no per-segment GUIDs and IPhPhoneme has no CatalogSourceId, so re-importing would duplicate existing phonemes; the default (force=False) refuses to run on a non-empty set. Pass True to layer additional segments onto an existing inventory.",
+              "name": "force",
+              "type": "bool"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_ParameterError: If the project has no PhonologicalDataOA,",
+            "no phoneme set, the phoneme set is non-empty and force is",
+            "False, or PhFeatureSystemOA has not been populated yet",
+            "(the BasicIPA catalog cross-references PhonFeats feature",
+            "ids and cannot be resolved against an empty feature",
+            "system).",
+            "FileNotFoundError: If BasicIPAInfo.xml or",
+            "PhonFeatsEticGlossList.xml is not found under FWCodeDir."
+          ],
+          "return_type": "CatalogImportResult",
+          "returns": "CatalogImportResult: Created/skipped counts and any warnings. ``created_guids`` contains synthetic ``\"BasicIPA:{code_point_id}\"`` tags (one per created phoneme) -- BasicIPAInfo has no real GUIDs, so the field is repurposed for verification only. ",
+          "signature": "ImportCatalog(progress=None, force=False)",
+          "summary": "Import the BasicIPAInfo segment catalog into this project's\nphoneme set.",
+          "usage_hint": null
+        },
+        {
           "description": "Check if a phoneme is classified as a consonant.\n",
           "example": "            >>> # Filter consonants from phoneme inventory\n            >>> consonants = []\n            >>> for phoneme in project.Phonemes.GetAll():\n            ...     if project.Phonemes.IsConsonant(phoneme):\n            ...         consonants.append(project.Phonemes.GetRepresentation(phoneme))\n            >>> print(\"Consonants:\", \", \".join(consonants))\n            Consonants: /p/, /t/, /k/, /b/, /d/, /g/, /m/, /n/\n\n            >>> # Create consonant natural classes\n            >>> for phoneme in project.Phonemes.GetAll():\n            ...     if project.Phonemes.IsConsonant(phoneme):\n            ...         desc = project.Phonemes.GetDescription(phoneme)\n            ...         repr = project.Phonemes.GetRepresentation(phoneme)\n            ...         print(f\"{repr}: {desc}\")\n",
           "is_classmethod": false,
@@ -49138,6 +50392,129 @@
           "signature": "RemoveCode(phoneme_or_hvo, code_or_hvo)",
           "summary": "Remove a code from a phoneme.",
           "usage_hint": "deletion"
+        },
+        {
+          "description": "Replace one code's representation on a phoneme.\n",
+          "example": "            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> # Fix an encoding typo: replace \"[ts]\" with the proper\n            >>> # affricate \"[t͡s]\".\n            >>> project.Phonemes.ReplaceCode(phoneme, \"[ts]\", \"[t͡s]\")\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ReplaceCode",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not opened with writeEnabled=True."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If any required parameter is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``old_code_or_repr`` is a string and"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IPhCode: The newly created code carrying ``new_representation``.",
+              "type": "IPhCode"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhPhoneme object or HVO.",
+              "name": "phoneme_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Either an IPhCode object on this phoneme, an HVO, or a string representation to look up via FindCode().",
+              "name": "old_code_or_repr",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "The replacement representation, e.g. ``\"[dʰ]\"``.",
+              "name": "new_representation",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to vernacular WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If project is not opened with writeEnabled=True.",
+            "FP_NullParameterError: If any required parameter is None.",
+            "FP_ParameterError: If ``old_code_or_repr`` is a string and",
+            "no matching code is found on the phoneme."
+          ],
+          "return_type": "IPhCode",
+          "returns": "IPhCode: The newly created code carrying ``new_representation``. ",
+          "signature": "ReplaceCode(phoneme_or_hvo, old_code_or_repr, new_representation, wsHandle=None)",
+          "summary": "Replace one code's representation on a phoneme.",
+          "usage_hint": null
+        },
+        {
+          "description": "Set the basic IPA symbol for a phoneme.\n",
+          "example": "            >>> phoneme = project.Phonemes.Find(\"/p/\")\n            >>> project.Phonemes.SetBasicIPASymbol(phoneme, \"p\")\n            >>> assert project.Phonemes.GetBasicIPASymbol(phoneme) == \"p\"\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "SetBasicIPASymbol",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not opened with writeEnabled=True."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If phoneme_or_hvo or ipa is None."
+              }
+            ],
+            "notes": [
+              "Modifies existing data - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhPhoneme object or HVO.",
+              "name": "phoneme_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "The IPA symbol to set, e.g. ``\"p\"``, ``\"tʃ\"``.",
+              "name": "ipa",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to vernacular WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If project is not opened with writeEnabled=True.",
+            "FP_NullParameterError: If phoneme_or_hvo or ipa is None."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "SetBasicIPASymbol(phoneme_or_hvo, ipa, wsHandle=None)",
+          "summary": "Set the basic IPA symbol for a phoneme.",
+          "usage_hint": "modification"
         },
         {
           "description": "Set the description of a phoneme.\n",
@@ -50707,10 +52084,13 @@
       "id": "PhonologicalRuleOperations",
       "lcm_dependencies": [
         "ICmObjectRepository",
+        "IPhFeatureConstraint",
+        "IPhFeatureConstraintFactory",
         "IPhIterationContextFactory",
         "IPhRegularRuleFactory",
         "IPhSegRuleRHSFactory",
         "IPhSegmentRuleFactory",
+        "IPhSimpleContextBdryFactory",
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "ITsString",
@@ -50718,7 +52098,7 @@
       ],
       "methods": [
         {
-          "description": "Add an input segment or natural class to the rule.\n",
+          "description": "[DEPRECATED] Use WireRule for new code.\n\nThis method writes to a single position (StrucDescOS[0]) and has\nknown limitations with multi-element contexts. Phase 2 fixed its\norphan-NPE bug. WireRule supersedes it with proper pattern-element\nsemantics (Seg, NC, Boundary) and Greek-variable agreement.\n\nAdd an input segment or natural class to the rule.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = phonRuleOps.Create(\"Voicing Rule\")\n            >>> # Add voiceless stop as input\n            >>> phoneme_t = project.Phonemes.Find(\"/t/\")\n            >>> phonRuleOps.AddInputSegment(rule, phoneme_t)\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -50763,11 +52143,11 @@
           "return_type": "",
           "returns": "",
           "signature": "AddInputSegment(rule_or_hvo, phoneme_or_class)",
-          "summary": "Add an input segment or natural class to the rule.",
+          "summary": "[DEPRECATED] Use WireRule for new code.",
           "usage_hint": "creation"
         },
         {
-          "description": "Add an output segment or natural class to the rule.\n",
+          "description": "[DEPRECATED] Use WireRule for new code.\n\nThis method writes to a single position (RightHandSidesOS[0].StrucChangeOS)\nand has known limitations with multi-element changes. Phase 2 fixed its\norphan-NPE bug. WireRule supersedes it with proper pattern-element\nsemantics (Seg, NC, Boundary) and Greek-variable agreement.\n\nAdd an output segment or natural class to the rule.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = phonRuleOps.Create(\"Voicing Rule\")\n            >>> # Add voiced stop as output\n            >>> phoneme_d = project.Phonemes.Find(\"/d/\")\n            >>> phonRuleOps.AddOutputSegment(rule, phoneme_d)\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -50812,7 +52192,7 @@
           "return_type": "",
           "returns": "",
           "signature": "AddOutputSegment(rule_or_hvo, phoneme_or_class)",
-          "summary": "Add an output segment or natural class to the rule.",
+          "summary": "[DEPRECATED] Use WireRule for new code.",
           "usage_hint": "creation"
         },
         {
@@ -50963,6 +52343,55 @@
           "returns": "",
           "signature": "Delete(rule_or_hvo)",
           "summary": "Delete a phonological rule.",
+          "usage_hint": "deletion"
+        },
+        {
+          "description": "Delete a feature constraint from the project.\n",
+          "example": "            >>> alpha = project.PhonRules.MakeConstraint(feat_back)\n            >>> # ... later ...\n            >>> project.PhonRules.DeleteConstraint(alpha)\n\n        Warning:\n            Deletion is permanent. Any positions referencing this\n            constraint (via ``PlusConstrRS`` / ``MinusConstrRS``) will\n            lose the alpha-binding.\n\n        See Also:\n            MakeConstraint, GetConstraints",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "DeleteConstraint",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If constraint_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the constraint is not present in"
+              }
+            ],
+            "notes": [
+              "Destructive operation - requires write access"
+            ],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IPhFeatureConstraint object or HVO.",
+              "name": "constraint_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If constraint_or_hvo is None.",
+            "FP_ParameterError: If the constraint is not present in",
+            "``PhonologicalDataOA.FeatConstraintsOS``."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "DeleteConstraint(constraint_or_hvo)",
+          "summary": "Delete a feature constraint from the project.",
           "usage_hint": "deletion"
         },
         {
@@ -51133,6 +52562,39 @@
           "returns": "RuleCollection: Smart collection of PhonologicalRule wrapped objects. ",
           "signature": "GetAll()",
           "summary": "Get all phonological rules in the project.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get all feature constraints in the project.\n",
+          "example": "            >>> for c in project.PhonRules.GetConstraints():\n            ...     feat = c.FeatureRA\n            ...     print(feat.Name.BestAnalysisAlternative.Text)\n\n        See Also:\n            MakeConstraint, DeleteConstraint",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetConstraints",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list[IPhFeatureConstraint]: All constraints in ``PhonologicalDataOA.FeatConstraintsOS``. Returns an empty list if no phonological data is defined.",
+              "type": "list[IPhFeatureConstraint]"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "list[IPhFeatureConstraint]",
+          "returns": "list[IPhFeatureConstraint]: All constraints in ``PhonologicalDataOA.FeatConstraintsOS``. Returns an empty list if no phonological data is defined. ",
+          "signature": "GetConstraints()",
+          "summary": "Get all feature constraints in the project.",
           "usage_hint": "retrieval"
         },
         {
@@ -51351,6 +52813,50 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Create an alpha-feature constraint variable bound to a feature.\n",
+          "example": "            >>> # Turkish vowel harmony: same backness as preceding vowel\n            >>> feat_back = project.PhonFeatures.Find(\"back\")\n            >>> alpha_back = project.PhonRules.MakeConstraint(feat_back)\n            >>> # Re-use alpha_back across positions for alpha-variable\n            >>> # identity (the SAME object means the SAME alpha value)\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "MakeConstraint",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If feature_or_hvo is None."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IPhFeatureConstraint: The newly created feature constraint.",
+              "type": "IPhFeatureConstraint"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IFsFeatDefn object, HVO (int), or wrapper.",
+              "name": "feature_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If feature_or_hvo is None."
+          ],
+          "return_type": "IPhFeatureConstraint",
+          "returns": "IPhFeatureConstraint: The newly created feature constraint. ",
+          "signature": "MakeConstraint(feature_or_hvo)",
+          "summary": "Create an alpha-feature constraint variable bound to a feature.",
+          "usage_hint": null
+        },
+        {
           "description": "Set the description of a phonological rule.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = list(phonRuleOps.GetAll())[0]\n            >>> phonRuleOps.SetDescription(rule,\n            ...     \"Voiceless stops become voiced between vowels\")\n\n        See Also:\n            GetDescription, SetName",
           "is_classmethod": false,
@@ -51460,7 +52966,7 @@
           "usage_hint": "modification"
         },
         {
-          "description": "Set the left context (environment before the target) for the rule.\n",
+          "description": "[DEPRECATED] Use WireRule for new code.\n\nThis method writes to ``StrucDescOS[0].LeftContextOA`` but the\n``LeftContextOA``/``RightContextOA`` properties actually live on\n``IPhSegRuleRHS`` (the structural-change/environment owner), not\non ``IPhSimpleContext``. As a result this method does not produce\nrunnable rules. WireRule supersedes it with the correct ownership\npath (``rhs.LeftContextOA``) and supports Seg/NC/Boundary elements.\n\nSet the left context (environment before the target) for the rule.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = phonRuleOps.Create(\"Final Devoicing\")\n            >>> # Set word boundary as left context\n            >>> phonRuleOps.SetLeftContext(rule, None)  # No left constraint\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -51505,7 +53011,7 @@
           "return_type": "",
           "returns": "",
           "signature": "SetLeftContext(rule_or_hvo, context_item)",
-          "summary": "Set the left context (environment before the target) for the rule.",
+          "summary": "[DEPRECATED] Use WireRule for new code.",
           "usage_hint": "modification"
         },
         {
@@ -51569,7 +53075,7 @@
           "usage_hint": "modification"
         },
         {
-          "description": "Set the right context (environment after the target) for the rule.\n",
+          "description": "[DEPRECATED] Use WireRule for new code.\n\nThis method writes to ``StrucDescOS[0].RightContextOA`` but the\n``RightContextOA``/``LeftContextOA`` properties actually live on\n``IPhSegRuleRHS``, not on ``IPhSimpleContext``. As a result this\nmethod does not produce runnable rules. WireRule supersedes it\nwith the correct ownership path (``rhs.RightContextOA``) and\nsupports Seg/NC/Boundary elements.\n\nSet the right context (environment after the target) for the rule.\n",
           "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = phonRuleOps.Create(\"Intervocalic Voicing\")\n            >>> # Get vowel natural class\n            >>> vowels = project.NaturalClasses.Find(\"Vowels\")\n            >>> # Set vowel as right context\n            >>> phonRuleOps.SetRightContext(rule, vowels)\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -51614,7 +53120,7 @@
           "return_type": "",
           "returns": "",
           "signature": "SetRightContext(rule_or_hvo, context_item)",
-          "summary": "Set the right context (environment after the target) for the rule.",
+          "summary": "[DEPRECATED] Use WireRule for new code.",
           "usage_hint": "modification"
         },
         {
@@ -51665,6 +53171,89 @@
           "signature": "SetStratum(rule_or_hvo, stratum)",
           "summary": "Set the stratum of a phonological rule.",
           "usage_hint": "modification"
+        },
+        {
+          "description": "High-level composer for phonological rules using SPE notation.\n",
+          "example": "            >>> # Turkish vowel harmony fragment: I -> [+back] / V[+back] _\n            >>> from flexlibs2 import Seg, NC, Boundary\n            >>> feat_back = project.PhonFeatures.Find(\"back\")\n            >>> alpha_back = project.PhonRules.MakeConstraint(feat_back)\n            >>> rule = project.PhonRules.Create(\"Back harmony\")\n            >>> project.PhonRules.WireRule(rule,\n            ...     input_pattern=[NC(archi_I)],\n            ...     output_change=[NC(archi_I, plus=[alpha_back])],\n            ...     left_context=[NC(vowels, plus=[alpha_back])],\n            ...     right_context=None,\n            ... )\n\n        See Also:\n            MakeConstraint, Create, Seg, NC, Boundary",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "WireRule",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not opened with write enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If rule_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If a pattern element is malformed (e.g. a"
+              },
+              {
+                "exception": "Seg",
+                "when": "with alpha-feature constraints, a Boundary appearing"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPhSegmentRule (or HVO) to wire.",
+              "name": "rule_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "List of one or more pattern elements (Seg/NC/Boundary) representing the rule's structural description (LHS).",
+              "name": "input_pattern",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "List of pattern elements (Seg/NC/Boundary) representing the structural change (RHS).",
+              "name": "output_change",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "List of pattern elements for the left-side context (right-justified to the focus position).",
+              "name": "left_context",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "List of pattern elements for the right-side context.",
+              "name": "right_context",
+              "type": ""
+            },
+            {
+              "default": "replace",
+              "description": "``\"replace\"`` (default) clears existing slots before wiring; ``\"append\"`` adds to existing.",
+              "name": "mode",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not opened with write enabled.",
+            "FP_NullParameterError: If rule_or_hvo is None.",
+            "FP_ParameterError: If a pattern element is malformed (e.g. a",
+            "Seg with alpha-feature constraints, a Boundary appearing",
+            "in the structural change, or multi-element left/right",
+            "contexts in this MVP)."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "WireRule(rule_or_hvo, input_pattern=None, output_change=None, left_context=None, right_context=None, mode='replace')",
+          "summary": "High-level composer for phonological rules using SPE notation.",
+          "usage_hint": null
         },
         {
           "description": "Initialize PhonologicalRuleOperations with a FLExProject instance.\n",
@@ -54964,44 +56553,6 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "common_patterns": [
-        {
-          "code": "pron = list(project.Pronunciations.GetAll(entry))[0]\n# Add audio recording\nmedia = project.Pronunciations.AddMediaFile(\n    pron,\n    \"/path/to/audio.wav\",\n    label=\"Speaker pronunciation\"\n)\nprint(f\"Added media file\")\n            Added media file",
-          "description": "Add a media file (typically audio) to a pronunciation.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = list(project.LexiconAllEntries())[0]\n# Create IPA pronunciation\npron = project.Pronunciations.Create(entry, \"rʌn\", \"en-fonipa\")\nprint(project.Pronunciations.GetForm(pron, \"en-fonipa\"))\n            rʌn\n\n# Create with default WS\npron = project.Pronunciations.Create(entry, \"run\")",
-          "description": "Create a new pronunciation for a lexical entry.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = list(project.LexiconAllEntries())[0]\npronunciations = list(project.Pronunciations.GetAll(entry))\nif pronunciations:\n    project.Pronunciations.Delete(pronunciations[0])",
-          "description": "Delete a pronunciation.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "# Get pronunciations for specific entry\nentry = list(project.LexiconAllEntries())[0]\nfor pron in project.Pronunciations.GetAll(entry):\n    ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")\n            IPA: rʌn\n            IPA: ɹʌn\n\n# Get ALL pronunciations in entire project\nfor pron in project.Pronunciations.GetAll():\n    ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n    print(f\"IPA: {ipa}\")",
-          "description": "Get all pronunciations for a lexical entry, or all pronunciations in the entire project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "# Move audio from one pronunciation to another\nentry = list(project.LexiconAllEntries())[0]\npron1 = entry.PronunciationsOS[0]  # IPA: [rʌn]\npron2 = entry.PronunciationsOS[1]  # IPA: [ɹʌn]\n\nmedia_files = project.Pronunciations.GetMediaFiles(pron1)\n# Move the audio to the correct pronunciation variant\nproject.Pronunciations.MoveMediaFile(media_files[0], pron1, pron2)\n\n# Verify the move\nprint(f\"Pron 1 media: {project.Pronunciations.GetMediaCount(pron1)}\")\nprint(f\"Pron 2 media: {project.Pronunciations.GetMediaCount(pron2)}\")\n\n# Can also move between different entries\nentry2 = list(project.LexiconAllEntries())[1]\nother_pron = entry2.PronunciationsOS[0]\nproject.Pronunciations.MoveMediaFile(media_files[1], pron1, other_pron)",
-          "description": "Move a media file from one pronunciation to another pronunciation.",
-          "operation": "reorder",
-          "source": "docstring"
-        },
-        {
-          "code": "entry = list(project.LexiconAllEntries())[0]\nprons = list(project.Pronunciations.GetAll(entry))\nif len(prons) > 1:\n    # Reverse the order\n    project.Pronunciations.Reorder(entry, list(reversed(prons)))",
-          "description": "Reorder pronunciations for a lexical entry.",
-          "operation": "reorder",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing pronunciations in a FieldWorks project.\n\nPronunciations represent the phonetic representation of lexical entries, typically\nusing IPA (International Phonetic Alphabet) notation. Each pronunciation can have\nforms in multiple writing systems (e.g., en-fonipa for IPA), associated audio files,\nand optional CV (consonant-vowel) pattern location information.\n\nThis class should be accessed via FLExProject.Pronunciations property.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all pronunciations for an entry\nentry = list(project.LexiconAllEntries())[0]\nfor pron in project.Pronunciations.GetAll(entry):\nipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\nprint(f\"IPA: {ipa}\")\n\n# Create a new pronunciation\npron = project.Pronunciations.Create(entry, \"rʌn\", \"en-fonipa\")\n\n# Add audio file\nproject.Pronunciations.AddMediaFile(pron, \"/path/to/audio.wav\")\n\n# Get media files\nmedia = project.Pronunciations.GetMediaFiles(pron)\nprint(f\"Audio files: {len(media)}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "PronunciationOperations",
@@ -56797,62 +58348,6 @@
         "BaseOperations"
       ],
       "category": "reversal",
-      "common_patterns": [
-        {
-          "code": "# Create English reversal index\nen_ws = project.WSHandle('en')\nrev_index = project.ReversalIndexes.Create(\"English\", en_ws)\nprint(project.ReversalIndexes.GetName(rev_index))\n            English\n\n# Create French reversal index\nfr_ws = project.WSHandle('fr')\nrev_index = project.ReversalIndexes.Create(\"French\", fr_ws)",
-          "description": "Create a new reversal index for an analysis writing system.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.Find(\"French\")\nif idx:\n    project.ReversalIndexes.Delete(idx)\n\n        Warning:\n            - This is a destructive operation\n            - All reversal entries in the index will be deleted\n            - Links to lexical senses will be removed\n            - Cannot be undone",
-          "description": "Delete a reversal index from the project.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.Find(\"English\")\nproject.ReversalIndexes.ExportToLIFT(idx, \"english_reversal.lift\")",
-          "description": "Export a reversal index to LIFT format.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.Find(\"English\")\nif idx:\n    entries = list(project.ReversalIndexes.GetEntries(idx))\n    print(f\"English index has {len(entries)} entries\")\n            English index has 250 entries",
-          "description": "Find a reversal index by its name.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "en_ws = project.WSHandle('en')\nidx = project.ReversalIndexes.FindByWritingSystem(en_ws)\nif idx:\n    name = project.ReversalIndexes.GetName(idx)\n    print(f\"Found reversal index: {name}\")\n            Found reversal index: English\n\n# Can also use string identifier\nidx = project.ReversalIndexes.FindByWritingSystem('en')",
-          "description": "Find a reversal index by its writing system.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "for idx in project.ReversalIndexes.GetAll():\n    name = project.ReversalIndexes.GetName(idx)\n    ws = project.ReversalIndexes.GetWritingSystem(idx)\n    entry_count = len(list(project.ReversalIndexes.GetEntries(idx)))\n    print(f\"{name} ({ws}): {entry_count} entries\")\n            English (en): 250 entries\n            French (fr): 120 entries",
-          "description": "Get all reversal indexes in the project.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.Find(\"English\")\nfor entry in project.ReversalIndexes.GetEntries(idx):\n    form = project.ReversalEntries.GetForm(entry)\n    senses = project.ReversalEntries.GetSenses(entry)\n    print(f\"{form}: {len(list(senses))} senses\")\n            run: 3 senses\n            walk: 2 senses",
-          "description": "Get all reversal entries in a reversal index.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.FindByWritingSystem('en')\nname = project.ReversalIndexes.GetName(idx)\nprint(name)\n            English\n\n        See Also:\n            SetName, Find",
-          "description": "Get the name of a reversal index.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "idx = project.ReversalIndexes.Find(\"English\")\nws = project.ReversalIndexes.GetWritingSystem(idx)\nprint(ws)\n            en\n\n        See Also:\n            FindByWritingSystem",
-          "description": "Get the writing system of a reversal index.",
-          "operation": "read",
-          "source": "docstring"
-        }
-      ],
       "description": "This class provides operations for managing reversal index entries in a FieldWorks project.\n\nReversal index entries are the individual entries within a reversal index. Each entry\nhas a form (the reverse headword) and links to one or more lexical senses. Entries can\nbe organized hierarchically with subentries.\n\nReversal entries enable users to look up words in the analysis language and find\ncorresponding vernacular entries.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get reversal index\nen_ws = project.WSHandle('en')\nidx = project.ReversalIndexes.FindByWritingSystem(en_ws)\n\n# Create reversal entry\nentry = project.ReversalEntries.Create(idx, \"run\")\n\n# Link to lexical sense\nlex_entry = list(project.LexiconAllEntries())[0]\nsense = list(lex_entry.SensesOS)[0]\nproject.ReversalEntries.AddSense(entry, sense)\n\n# Get all entries\nfor rev_entry in project.ReversalEntries.GetAll(idx):\nform = project.ReversalEntries.GetForm(rev_entry)\nprint(f\"Reversal: {form}\")\n\nproject.CloseProject()",
       "example": "",
       "id": "ReversalIndexEntryOperations",
@@ -60693,6 +62188,44 @@
       "type": "class",
       "usage_hint": "Provides operations for working with scripture data in FieldWorks"
     },
+    "Seg": {
+      "base_classes": [],
+      "category": "general",
+      "description": "A single-phoneme pattern element.\n",
+      "example": "",
+      "id": "Seg",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "Seg",
+      "namespace": "flexlibs2.code.Shared.rule_patterns",
+      "properties": [],
+      "source_file": "Shared/rule_patterns",
+      "summary": "A single-phoneme pattern element.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "SegmentDefinition": {
+      "base_classes": [],
+      "category": "general",
+      "description": "One <SegmentDefinition> from the BasicIPAInfo.xml catalog.\n\nBasicIPAInfo.xml ships with FW under Templates/BasicIPAInfo.xml. Unlike\nGOLDEtic / eticGlossList catalogs, segments have NO per-entry GUIDs:\nthe only stable identifier is ``code_point_id`` (e.g. \"u0061\"), which\nthe importer uses to dedup within a single pass but cannot use for\ncross-import idempotency.\n\nAttributes:\ncode_point_id: Value of the ``unicodeCodePoints`` attribute on the\n(first) ``<Representation>`` element, e.g. ``\"u0061\"``\nfor the segment \"a\".\nrepresentation: The element text of the (first) ``<Representation>``,\ne.g. ``\"a\"``. This is what the importer writes into\n``IPhPhoneme.Name`` and ``BasicIPASymbol``.\ndescriptions:  Map of ``lang`` attribute -> description text,\ne.g. ``{\"en\": \"Open front unrounded vowel\"}``.\nfeature_pairs: List of ``(feature_id, value_id)`` tuples from the\n``<Features>/<FeatureValuePair>`` children. Both ids\nreference PhonFeats catalog entries (e.g.\n``(\"fPAConsonantal\", \"vPAConsonantalNegative\")``).\nEmpty list when the segment has ``<Features/>``.",
+      "example": "",
+      "id": "SegmentDefinition",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "SegmentDefinition",
+      "namespace": "flexlibs2.code.Shared.catalog",
+      "properties": [],
+      "source_file": "Shared/catalog",
+      "summary": "One <SegmentDefinition> from the BasicIPAInfo.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
     "SegmentOperations": {
       "base_classes": [
         "BaseOperations"
@@ -61918,7 +63451,8 @@
         "ICmSemanticDomainFactory",
         "ILexSenseRepository",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "XmlList"
       ],
       "methods": [
         {
@@ -62833,6 +64367,63 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Import the full SemDom semantic-domain catalog into this project.\n\nLoads SIL's standard semantic-domain hierarchy (~1700 domains)\nfrom ``<FWCodeDir>/Templates/SemDom.xml`` via LCM's native\n``XmlList.ImportList``. The catalog supplies localized Name /\nAbbreviation / Description, OcmCodes, LouwNidaCodes, Questions\nand the full nested SubPossibilities hierarchy.\n\n**Idempotency guard**: LCM's underlying ``XmlList.ImportList``\nAPPENDS items into ``SemanticDomainListOA.PossibilitiesOS``\nwithout checking for canonical-GUID duplicates -- each call\nadds another full set of top-level domains. To prevent\naccidental duplication, this method refuses by default when\nthe list is already non-empty. Pass ``force=True`` to import\nanyway (e.g. to layer a second-language localization on top of\nan existing import). The caller then takes responsibility for\nany resulting duplicates.\n\n**Recovery from past duplication**: If a project already has\nduplicate top-level domains from prior unguarded imports, this\nmethod does NOT clean them up automatically -- that would be\ndestructive. Recovery requires either manual cleanup via the\nFieldWorks GUI, or deliberate ``bulk_delete``-style code the\ncaller writes to remove duplicate GUID groups.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ImportCatalog",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not write-enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_FileNotFoundError: If SemDom.xml cannot be located under"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``SemanticDomainListOA`` already has"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "int: Number of top-level domains in ``LangProject.SemanticDomainListOA.PossibilitiesOS`` after import. Useful as a sanity check for callers.",
+              "type": "int"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Optional ``SIL.LCModel.Utils.IProgress`` instance to report import progress. Pass ``None`` (the default) for silent import.",
+              "name": "progress",
+              "type": ""
+            },
+            {
+              "default": false,
+              "description": "If True, skip the non-empty list check and import anyway. Default False (refuse if list is non-empty).",
+              "name": "force",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not write-enabled.",
+            "FP_FileNotFoundError: If SemDom.xml cannot be located under",
+            "the FieldWorks install.",
+            "FP_ParameterError: If ``SemanticDomainListOA`` already has",
+            "domains and ``force`` is False."
+          ],
+          "return_type": "int",
+          "returns": "int: Number of top-level domains in ``LangProject.SemanticDomainListOA.PossibilitiesOS`` after import. Useful as a sanity check for callers. ",
+          "signature": "ImportCatalog(progress=None, force=False)",
+          "summary": "Import the full SemDom semantic-domain catalog into this project.",
+          "usage_hint": null
+        },
+        {
           "description": "Set the description of a semantic domain.\n",
           "example": "            >>> domain = project.SemanticDomains.Find(\"900.1\")  # custom domain\n            >>> project.SemanticDomains.SetDescription(domain,\n            ...     \"Use this domain for words related to modern technology.\")\n\n        See Also:\n            GetDescription, SetName",
           "is_classmethod": false,
@@ -63217,68 +64808,6 @@
         "BaseOperations"
       ],
       "category": "texts",
-      "common_patterns": [
-        {
-          "code": "# Mark word group as preposed\nwg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Create(wg, preposed=True)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            True\n\n# Mark as postposed\nmarker = project.ConstChartMovedText.Create(wg, preposed=False)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            False",
-          "description": "Create a moved text marker for a word group.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "marker = project.ConstChartMovedText.Find(wg)\nif marker:\n    project.ConstChartMovedText.Delete(marker)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Word group will no longer be marked as moved\n\n        See Also:\n            Create, Find",
-          "description": "Delete a moved text marker.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Find(wg)\nif marker:\n    print(\"Word group has moved text marker\")\n    if project.ConstChartMovedText.IsPreposed(marker):\n        print(\"Text is preposed\")",
-          "description": "Find the moved text marker for a word group.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\nmarkers = project.ConstChartMovedText.GetAll(chart)\npreposed_count = sum(1 for m in markers\n    if project.ConstChartMovedText.IsPreposed(m))\nprint(f\"Found {preposed_count} preposed markers\")",
-          "description": "Get all moved text markers in a constituent chart.",
-          "operation": "read",
-          "source": "docstring"
-        },
-        {
-          "code": "text = list(project.Texts.GetAll())[0]\nmedia = project.Texts.AddMediaFile(\n    text,\n    \"/home/user/audio/genesis.mp3\",\n    label=\"Genesis Recording\"\n)\nprint(f\"Media added: {media.Hvo}\")",
-          "description": "Add a media file to a text.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "is_diff, diffs = ops1.CompareTo(text1, text2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
-          "description": "Compare two texts for differences.",
-          "operation": "iterate",
-          "source": "docstring"
-        },
-        {
-          "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\nnarrative_genre = project.lp.GenreListOA.PossibilitiesOS[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
-          "description": "Create a new text in the project.",
-          "operation": "create",
-          "source": "docstring"
-        },
-        {
-          "code": "# Delete by object\ntext = project.Texts.GetAll()[0]\nproject.Texts.Delete(text)\n\n# Delete by HVO\nproject.Texts.Delete(text_hvo)\n\n        See Also:\n            Create, Exists, GetAll",
-          "description": "Delete a text from the project.",
-          "operation": "delete",
-          "source": "docstring"
-        },
-        {
-          "code": "# Deep duplicate (default: with all paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text)  # deep=True by default\nprint(project.Texts.GetParagraphCount(duplicate))\n            10\n\n# Shallow duplicate (text shell only, no paragraphs)\ntext = list(project.Texts.GetAll())[0]\nduplicate = project.Texts.Duplicate(text, deep=False)\nprint(project.Texts.GetName(duplicate))\n            Genesis (copy)\nprint(project.Texts.GetParagraphCount(duplicate))\n            0\n\n        Warning:\n            - deep=True for Text can be slow for long texts with many paragraphs\n            - The duplicate will have a \" (copy)\" suffix added to the name\n            - The duplicate will have identical content but a new GUID\n            - Media files are NOT duplicated (to avoid file duplication)\n            - Segments will need re-parsing if you want analyses",
-          "description": "Duplicate a text, creating a new text with the same properties.",
-          "operation": "general",
-          "source": "docstring"
-        },
-        {
-          "code": "if project.Texts.Exists(\"Genesis\"):\n    print(\"Text already exists\")\nelse:\n    text = project.Texts.Create(\"Genesis\")\n\n        See Also:\n            Create, GetAll, GetName",
-          "description": "Check if a text with the given name exists in the project.",
-          "operation": "general",
-          "source": "docstring"
-        }
-      ],
       "description": "Text operations for managing FLEx Text objects.\n\nThis class provides methods for creating, reading, updating, and deleting\ntexts in a FieldWorks Language Explorer project.\n\nUsage:\nproject = FLExProject()\nproject.OpenProject(\"MyProject\", writeEnabled=True)\n\n# Access through the Texts property\ntext_ops = TextOperations(project)\n\n# Or if integrated into FLExProject:\n# new_text = project.Texts.Create(\"Story 1\")",
       "example": "",
       "id": "TextOperations",
@@ -71273,13 +72802,61 @@
       ],
       "type": "class",
       "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "wrap_enumerable": {
+      "base_classes": [],
+      "category": "general",
+      "description": "Descriptor to automatically wrap IEnumerable return values.\n\nWraps methods that return C# IEnumerable collections to make them\nPythonic with .Count property and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!",
+      "example": "",
+      "id": "wrap_enumerable",
+      "lcm_dependencies": [],
+      "methods": [
+        {
+          "description": "Store the inner function/method.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "func",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(func)",
+          "summary": "Store the inner function/method.",
+          "usage_hint": null
+        }
+      ],
+      "name": "wrap_enumerable",
+      "namespace": "flexlibs2.code.BaseOperations",
+      "properties": [],
+      "source_file": "BaseOperations",
+      "summary": "Descriptor to automatically wrap IEnumerable return values.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
     }
   },
   "metadata": {
     "categories": {
       "discourse": 6,
-      "general": 26,
-      "grammar": 16,
+      "general": 34,
+      "grammar": 17,
       "lexicon": 14,
       "lists": 7,
       "notebook": 7,
@@ -71288,7 +72865,7 @@
       "system": 7,
       "texts": 10
     },
-    "files_analyzed": 84,
+    "files_analyzed": 88,
     "lcm_interfaces_used": [
       "CellarPropertyType",
       "CellarPropertyTypeFilter",
@@ -71350,11 +72927,16 @@
       "IDsDiscourseData",
       "IDsDiscourseFactory",
       "IFsClosedFeature",
+      "IFsClosedFeatureFactory",
+      "IFsClosedValue",
+      "IFsClosedValueFactory",
       "IFsComplexFeature",
       "IFsComplexFeatureFactory",
       "IFsFeatDefn",
       "IFsFeatStruc",
       "IFsFeatStrucFactory",
+      "IFsSymFeatVal",
+      "IFsSymFeatValFactory",
       "IFwMetaDataCacheManaged",
       "ILangProject",
       "ILexEntry",
@@ -71397,7 +72979,11 @@
       "IPhCodeFactory",
       "IPhEnvironment",
       "IPhEnvironmentFactory",
+      "IPhFeatureConstraint",
+      "IPhFeatureConstraintFactory",
       "IPhIterationContextFactory",
+      "IPhNCFeatures",
+      "IPhNCFeaturesFactory",
       "IPhNCSegments",
       "IPhNCSegmentsFactory",
       "IPhNaturalClass",
@@ -71406,6 +72992,7 @@
       "IPhRegularRuleFactory",
       "IPhSegRuleRHSFactory",
       "IPhSegmentRuleFactory",
+      "IPhSimpleContextBdryFactory",
       "IPhSimpleContextNCFactory",
       "IPhSimpleContextSegFactory",
       "IReversalIndex",
@@ -71477,17 +73064,18 @@
       "WfiGlossTags",
       "WfiMorphBundleTags",
       "WfiWordformTags",
-      "WorkerThreadException"
+      "WorkerThreadException",
+      "XmlList"
     ],
     "mapping_types": {
-      "composite": 112,
-      "convenience": 189,
-      "direct": 560,
-      "pure_python": 536
+      "composite": 119,
+      "convenience": 198,
+      "direct": 572,
+      "pure_python": 545
     },
-    "methods_with_return_type": 835,
-    "total_classes": 101,
-    "total_methods": 1397,
-    "total_properties": 154
+    "methods_with_return_type": 856,
+    "total_classes": 110,
+    "total_methods": 1434,
+    "total_properties": 156
   }
 }

@@ -32,7 +32,7 @@ try:
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
-        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
+        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_NAMESPACE, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
         KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
@@ -60,7 +60,7 @@ except ImportError:
         KEY_SELECTED, KEY_CONFIDENCE, KEY_REASONING, KEY_ALTERNATIVES, KEY_QUESTION,
         KEY_METHOD_NAME, KEY_OPERATION_TYPE, KEY_PYTHONIC_NAME, KEY_KIND, KEY_TARGET_TYPE,
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
-        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
+        KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_NAMESPACE, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
         KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
@@ -289,6 +289,20 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
         }
 
     return data
+
+
+def _build_entity_import(library: str, entity_name: str, namespace: str = "") -> str:
+    """Ready-to-paste `from ... import <Entity>` line for a result row.
+
+    liblcm uses the recorded LCM namespace (SIL.LCModel.*); empty string if
+    that's missing. flexlibs2 / flexlibs_stable always use the runtime-correct
+    top-level import form, ignoring the recorded deep package path (e.g.
+    `flexlibs2.code.System.CheckOperations`) -- IronPython interop wants
+    `from flexlibs2 import CheckOperations`.
+    """
+    if library == "liblcm":
+        return f"from {namespace} import {entity_name}" if namespace else ""
+    return f"from {library} import {entity_name}"
 
 
 def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexlibs2") -> dict:
@@ -660,14 +674,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 # carries them out -- without this, the assistant gets an entity
                 # name but no way to import it, which was the root cause of #12.
                 entity_namespace = entity.get("namespace", "") or ""
-                if source_name == "liblcm":
-                    entity_import = (
-                        f"from {entity_namespace} import {entity_name}"
-                        if entity_namespace
-                        else ""
-                    )
-                else:
-                    entity_import = f"from {source_name} import {entity_name}"
+                entity_import = _build_entity_import(source_name, entity_name, entity_namespace)
 
                 for method in entity.get(KEY_METHODS, []):
                     method_name = method.get(KEY_NAME, '')
@@ -691,7 +698,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 KEY_SCORE: score,
                                 KEY_SOURCE: source_name,
                                 KEY_ENTITY: entity_name,
-                                "namespace": entity_namespace,
+                                KEY_NAMESPACE: entity_namespace,
                                 KEY_IMPORT_STATEMENT: entity_import,
                                 KEY_NAME: method_name,
                                 KEY_TYPE: "method",
@@ -727,7 +734,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                                 KEY_SCORE: score,
                                 KEY_SOURCE: source_name,
                                 KEY_ENTITY: entity_name,
-                                "namespace": entity_namespace,
+                                KEY_NAMESPACE: entity_namespace,
                                 KEY_IMPORT_STATEMENT: entity_import,
                                 KEY_NAME: prop_name,
                                 KEY_PYTHONIC_NAME: pythonic_name if pythonic_name != prop_name else None,
@@ -833,14 +840,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             # Cache namespace + import_statement once per entity (same fix as
             # search_by_capability for #12 -- examples must carry import path).
             entity_namespace = entity.get("namespace", "") or ""
-            if source_name == "liblcm":
-                entity_import = (
-                    f"from {entity_namespace} import {entity_name}"
-                    if entity_namespace
-                    else ""
-                )
-            else:
-                entity_import = f"from {source_name} import {entity_name}"
+            entity_import = _build_entity_import(source_name, entity_name, entity_namespace)
 
             for method in entity.get(KEY_METHODS, []):
                 method_name_str = method.get(KEY_NAME, "")
@@ -854,7 +854,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
                 if method.get(KEY_EXAMPLE):
                     examples.append({
                         "class": entity_name,
-                        "namespace": entity_namespace,
+                        KEY_NAMESPACE: entity_namespace,
                         KEY_IMPORT_STATEMENT: entity_import,
                         KEY_METHOD_NAME: method_name_str,
                         KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -1086,19 +1086,13 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
         kind = entity.get("kind") or _infer_lcm_kind(type_name)
         category = entity.get("category")
 
-        if lib == "liblcm":
-            assembly = _lcm_namespace_to_assembly(namespace)
-            import_statement = (
-                f"from {namespace} import {type_name}" if namespace else ""
-            )
-        else:
-            assembly = None
-            import_statement = f"from {lib} import {type_name}"
+        assembly = _lcm_namespace_to_assembly(namespace) if lib == "liblcm" else None
+        import_statement = _build_entity_import(lib, type_name, namespace)
 
         canonical = {
             KEY_NAME: type_name,
             "kind": kind,
-            "namespace": namespace,
+            KEY_NAMESPACE: namespace,
             "assembly": assembly,
             "import_statement": import_statement,
             KEY_CATEGORY: category,

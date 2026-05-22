@@ -776,7 +776,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "flextools_start":
         # Let handle_start distinguish user-provided fields from defaults so it
         # can inherit prior session state (e.g. write_enabled) on re-init.
-        dumped["_user_provided_keys"] = set(validated_args.model_dump(exclude_unset=True).keys())
+        # Pydantic v2's `model_fields_set` is exactly this set, no re-dump needed.
+        dumped["_user_provided_keys"] = validated_args.model_fields_set
     result = await handler(dumped)
     if operations_logger:
         # Log result summary for reproducibility (first 1000 chars)

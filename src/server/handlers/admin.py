@@ -249,6 +249,33 @@ def _get_template(flavor: str) -> str | None:
         return None
 
 
+def _resolve_inherited_flag(
+    field: str,
+    args: dict,
+    user_provided: set,
+    same_project: bool,
+    default: bool = False,
+):
+    """Resolve a boolean session flag with explicit/inherit/default precedence.
+
+    Used for write_enabled and undoable (and any future flag that should
+    persist across same-project re-inits). Returns
+    (value, inherited, downgraded) where:
+        inherited  = prior session value was kept because no explicit value given
+        downgraded = explicit value flipped a previously-True flag to False
+                     (worth surfacing as a warning so the LLM can confirm intent)
+    """
+    explicit = field in user_provided
+    prior = bool(getattr(session_state, field, default))
+    if explicit or not same_project:
+        value = args.get(field, default)
+    else:
+        value = prior
+    inherited = same_project and not explicit and prior
+    downgraded = explicit and prior and not value
+    return value, inherited, downgraded
+
+
 async def handle_start(args: dict) -> list[TextContent]:
     """Initialize a FlexTools MCP session with mode and project settings.
 
@@ -264,45 +291,24 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
 
-    # write_enabled: if the user explicitly passed it, use that value. If they
-    # didn't pass it AND we already have a live session on the same project,
-    # inherit the prior write_enabled instead of resetting to False. Fixes #9
-    # (re-calling flextools_start silently dropped write_enabled).
     user_provided = args.get("_user_provided_keys", set())
-    write_enabled_explicit = "write_enabled" in user_provided
-    prior_write_enabled = bool(getattr(session_state, "write_enabled", False))
     same_project = (
         bool(session_state.initialized)
         and getattr(session_state, "project_name", "") == project_name
         and project_name != ""
     )
-    if write_enabled_explicit:
-        write_enabled = args.get(KEY_WRITE_ENABLED, False)
-    elif same_project:
-        write_enabled = prior_write_enabled
-    else:
-        write_enabled = args.get(KEY_WRITE_ENABLED, False)
 
-    write_enabled_inherited = (
-        same_project and not write_enabled_explicit and prior_write_enabled
-    )
-    write_enabled_downgraded = (
-        write_enabled_explicit and prior_write_enabled and not write_enabled
+    # #9 fix: write_enabled persists across re-init on the same project.
+    write_enabled, write_enabled_inherited, write_enabled_downgraded = (
+        _resolve_inherited_flag("write_enabled", args, user_provided, same_project)
     )
 
-    # #14 Phase 1: undoable opt-in. Same inherit-on-restart logic as
-    # write_enabled, plus it's only meaningful when write_enabled is also True
-    # (flexlibs2 ignores undoable when writeEnabled is False).
-    undoable_explicit = "undoable" in user_provided
-    prior_undoable = bool(getattr(session_state, "undoable", False))
-    if undoable_explicit:
-        undoable = args.get("undoable", False)
-    elif same_project:
-        undoable = prior_undoable
-    else:
-        undoable = args.get("undoable", False)
-    # Coerce off when write is off -- flexlibs2 silently ignores undoable in
-    # that case, but surfacing the effective value avoids LLM confusion.
+    # #14 Phase 1: undoable opt-in. Coerced off when write is off because
+    # flexlibs2 silently ignores undoable in that case -- coercing it here
+    # makes the effective value visible so the LLM can react.
+    undoable, _, _ = _resolve_inherited_flag(
+        "undoable", args, user_provided, same_project
+    )
     undoable = undoable and write_enabled
 
     # Generate session ID (format: YYYYMMDD-HHMMSS)
@@ -395,7 +401,7 @@ async def handle_start(args: dict) -> list[TextContent]:
             "undo stack. flextools_undo_last_operation can reverse them across "
             "MCP sessions (matches FLEx UI Ctrl+Z)."
         )
-    if undoable_explicit and args.get("undoable") and not write_enabled:
+    if "undoable" in user_provided and args.get("undoable") and not write_enabled:
         warnings.append(
             "undoable=True was requested but coerced to False because "
             "write_enabled=False (flexlibs2 ignores undoable in read-only mode)."

@@ -181,6 +181,120 @@ def Main(project, report, modifyAllowed):
             "NaturalClassOperations.Find",
         ],
     },
+    {
+        "id": "msa-creation-and-attach",
+        "title": "Create an MSA and attach it to a LexSense",
+        "summary": (
+            "Use project.MSA.CreateStem(target, pos) to build a stem MSA and "
+            "wire it onto a LexSense in one call. The flexlibs2 wrapper handles "
+            "the ownership + MorphoSyntaxAnalysisRA assignment, so callers "
+            "never touch SandboxGenericMSA or raw LCM factories. Sibling "
+            "variants (CreateDerivAff, CreateInflAff, CreateUnclassifiedAffix) "
+            "cover derivational, inflectional, and unclassified affix MSAs."
+        ),
+        "tags": [
+            "msa", "morphosyntax", "morpho-syntax", "stem msa", "stem",
+            "pos", "part of speech", "attach msa", "create msa",
+            "imostemmsa", "morphosyntaxanalysis",
+        ],
+        "library": "flexlibs2",
+        "code": '''from flexlibs2 import FLExProject
+
+def Main(project, report, modifyAllowed):
+    # Pick a sense to attach the MSA to. For this recipe we take the
+    # first sense of the first entry; in real scripts you'd iterate or
+    # look up a specific entry via project.LexEntry.Find(...).
+    entries = project.LexEntry.GetAll()
+    if not entries:
+        report.Error("Project has no entries")
+        return
+    senses = project.LexSense.GetAllSenses(entries[0])
+    if not senses:
+        report.Error("First entry has no senses")
+        return
+    sense = senses[0]
+
+    # Look up the POS the MSA should reference (e.g. "Noun").
+    pos = project.POS.Find("Noun")
+    if pos is None:
+        report.Error("POS 'Noun' not found in the project's POS list")
+        return
+
+    if modifyAllowed:
+        # CreateStem builds an IMoStemMsa AND wires sense.MorphoSyntaxAnalysisRA
+        # in one call -- no manual factory + AnalysesOC.Add + .RA assignment.
+        new_msa = project.MSA.CreateStem(sense, pos)
+        # Sibling variants for affix senses:
+        #   project.MSA.CreateDerivAff(sense, from_pos, to_pos)
+        #   project.MSA.CreateInflAff(sense, pos, slots=None)
+        #   project.MSA.CreateUnclassifiedAffix(sense, pos)
+        report.Info(f"Attached stem MSA to sense -- class id {new_msa.ClassID}")
+    else:
+        report.Info("(Would create + attach a stem MSA referencing 'Noun')")
+''',
+        "see_also": [
+            "MSAOperations.CreateStem",
+            "MSAOperations.CreateDerivAff",
+            "MSAOperations.CreateInflAff",
+            "MSAOperations.CreateUnclassifiedAffix",
+            "MSAOperations.SetStemMsaPos",
+            "POSOperations.Find",
+        ],
+    },
+    {
+        "id": "closed-feature-with-values",
+        "title": "Create a closed inflection feature with symbolic values",
+        "summary": (
+            "Define a closed inflection feature (e.g. gender) and its symbolic "
+            "values in a single call via project.Features.CreateClosedFeatureWithValues. "
+            "Avoids the interleaved Create + CreateValue boilerplate. Includes "
+            "the recommended idempotency check using project.InflectionFeatures.Find "
+            "so the script can be safely re-run."
+        ),
+        "tags": [
+            "closed feature", "symbolic value", "gender", "feature value",
+            "inflection feature", "feature system", "fs closed feature",
+            "ifsclosedfeature", "ifssymfeatval", "feature definition",
+        ],
+        "library": "flexlibs2",
+        "code": '''from flexlibs2 import FLExProject
+
+def Main(project, report, modifyAllowed):
+    # project.Features and project.InflectionFeatures are aliases for the
+    # inflection feature system wrapper. Find returns None when the feature
+    # doesn't exist yet, which is the idempotency hook for re-runnable scripts.
+    existing = project.InflectionFeatures.Find("gender")
+    if existing is not None:
+        report.Info("Feature 'gender' already exists; skipping")
+        return
+
+    if modifyAllowed:
+        # One-shot: create the closed feature plus its symbolic values.
+        # values is a list of (value_name, value_abbreviation) tuples;
+        # order is preserved.
+        feature, values = project.Features.CreateClosedFeatureWithValues(
+            name="gender",
+            abbreviation="gen",
+            values=[
+                ("masculine", "m"),
+                ("feminine",  "f"),
+                ("neuter",    "n"),
+            ],
+        )
+        report.Info(f"Created feature 'gender' with {len(values)} values")
+        # To wire these values into a feature structure on an MSA or
+        # inflection template, see project.InflectionFeatures.MakeFeatStruc.
+    else:
+        report.Info("(Would create 'gender' with masculine/feminine/neuter)")
+''',
+        "see_also": [
+            "InflectionFeatureOperations.CreateClosedFeatureWithValues",
+            "InflectionFeatureOperations.Create",
+            "InflectionFeatureOperations.CreateValue",
+            "InflectionFeatureOperations.Find",
+            "InflectionFeatureOperations.MakeFeatStruc",
+        ],
+    },
 ]
 
 

@@ -1116,8 +1116,17 @@ def _resolve_alias_maps(
                 and len(rhs.args) >= 1
             ):
                 casts[target_name] = func_id
-        elif isinstance(rhs, ast.Name) and rhs.id in operations:
-            operations[target_name] = operations[rhs.id]
+        elif isinstance(rhs, ast.Name):
+            # Chained rebind: propagate both alias kinds symmetrically so
+            #     a = ILexEntry(x)
+            #     b = a
+            # gives casts['b'] == 'ILexEntry'. Without this, detect_casting_needs
+            # (issue #15 fix) would still flag b.LexemeFormOA even though `a` is
+            # a known cast.
+            if rhs.id in operations:
+                operations[target_name] = operations[rhs.id]
+            elif rhs.id in casts:
+                casts[target_name] = casts[rhs.id]
     return operations, casts
 
 
@@ -1174,6 +1183,62 @@ def _find_cast_alias_property_writes(
                 'context': f'{current.id}.{chain_str} = ...',
             })
     return mutations
+
+
+def _extract_interface_names(entries: List[str]) -> set:
+    """Pull bare interface names out of `acceptable_interfaces` strings.
+
+    Entries may be bare names ('ILexEntry') or descriptive strings
+    ('ILexSense (raw LCM)'). Take the leading non-space, non-paren token
+    of each. Necessary because LCM's I-prefixed naming convention has
+    492 substring-collision pairs (e.g. 'ICmAgent' is a substring of
+    'ICmAgentEvaluation'); a substring match would let a cast to the
+    base interface incorrectly satisfy a property defined only on the
+    derived interface.
+    """
+    out: set = set()
+    for entry in entries or ():
+        if not entry:
+            continue
+        head = entry.split()[0].split("(")[0].strip()
+        if head:
+            out.add(head)
+    return out
+
+
+def _alias_satisfies(
+    line_num: int,
+    prop_name: str,
+    acceptable_interfaces: List[str],
+    alias_attr_accesses: Dict[int, List[Tuple[str, str]]],
+) -> bool:
+    """True if a cast-alias-rooted attribute access on `line_num` matches
+    `prop_name` AND the alias's interface is among `acceptable_interfaces`.
+
+    `prop_name` is matched as a prefix because KNOWN_CASTING_PATTERNS tags
+    (e.g. 'LexemeForm') are family names for the real attribute name
+    (e.g. 'LexemeFormOA'); this preserves the prefix semantics of the
+    existing pattern `r"\\.LexemeForm"`.
+
+    `acceptable_interfaces` may be bare names ('ILexEntry') or descriptive
+    strings ('ILexSense (raw LCM)'). Both shapes are handled by
+    `_extract_interface_names`; matching is then exact to avoid the
+    substring-collision risk inherent in LCM's I-prefixed naming.
+    """
+    if not acceptable_interfaces:
+        return False
+    line_accesses = alias_attr_accesses.get(line_num)
+    if not line_accesses:
+        return False
+    valid_interfaces = _extract_interface_names(acceptable_interfaces)
+    if not valid_interfaces:
+        return False
+    for attr, interface in line_accesses:
+        if not (attr == prop_name or attr.startswith(prop_name)):
+            continue
+        if interface in valid_interfaces:
+            return True
+    return False
 
 
 def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
@@ -1578,7 +1643,11 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     }
 
 
-def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dict:
+def detect_casting_needs(
+    code: str,
+    casting_index: Optional[Dict] = None,
+    tree: ast.AST | None = None,
+) -> dict:
     """Detect property access patterns that likely need casting for all 3 API flavors.
 
     Uses the casting_index (if available) to identify properties that:
@@ -1586,9 +1655,18 @@ def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dic
     - Require casting to concrete types (like ILexEntry)
     - Are part of polymorphic collections
 
+    Issue #15 fix: when `tree` is provided (or can be parsed), explicit cast
+    aliases (`s_typed = ILexSense(x)`) are honored — subsequent property access
+    rooted at the alias is NOT flagged if the cast's interface is listed in the
+    property's `defined_on`. This brings the preflight validator in line with
+    `certify_script_readonly`, which already honored these aliases.
+
     Args:
         code: Python code to analyze
         casting_index: Optional pre-built casting index with property metadata
+        tree: Optional pre-parsed AST. If None, we attempt ast.parse(code) and
+            fall through to regex-only behavior on SyntaxError. This matches the
+            tree-or-reparse pattern used in `certify_script_readonly`.
 
     Returns:
         {
@@ -1602,6 +1680,40 @@ def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dic
     """
     issues = []
     helpers_needed = set()  # Track which helpers are actually used
+
+    # Issue #15: build cast_aliases (e_typed = ILexEntry(x)) so the property-
+    # access regex below can skip flags when the LHS is already cast to an
+    # interface that defines the property. Without this, idiomatic chains like
+    #     e = ILexEntry(entry)
+    #     lf = e.LexemeFormOA
+    # get flagged on the second line even though the cast on the first line
+    # already satisfies the requirement.
+    cast_aliases: Dict[str, str] = {}
+    # alias_attr_accesses: line_num -> list of (attr_name, interface)
+    # Lets the regex loops below skip a flag when the underlying AST access is
+    # rooted at a cast alias. Built once from the AST so each regex hit only
+    # pays a dict lookup + a short list scan.
+    alias_attr_accesses: Dict[int, List[Tuple[str, str]]] = {}
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            tree = None
+    if tree is not None:
+        ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
+        _ops_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
+        if cast_aliases:
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Attribute):
+                    continue
+                if not isinstance(node.value, ast.Name):
+                    continue
+                root = node.value.id
+                if root not in cast_aliases:
+                    continue
+                alias_attr_accesses.setdefault(node.lineno, []).append(
+                    (node.attr, cast_aliases[root])
+                )
 
     # Known polymorphic patterns that ALWAYS need casting across all flavors
     # These are based on C# data model structure, not wrapper-specific
@@ -1644,6 +1756,16 @@ def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dic
         for property_name, pattern_info in KNOWN_CASTING_PATTERNS.items():
             for pattern in pattern_info["pattern_sources"]:
                 if re.search(pattern, line_content):
+                    # Issue #15: if the access on this line is rooted at a cast
+                    # alias whose interface is listed in available_on, the cast
+                    # already satisfies the requirement -- don't flag.
+                    if _alias_satisfies(
+                        line_num,
+                        property_name,
+                        pattern_info["available_on"],
+                        alias_attr_accesses,
+                    ):
+                        break
                     # Found a potential casting issue
                     issues.append({
                         "property": property_name,
@@ -1676,6 +1798,11 @@ def detect_casting_needs(code: str, casting_index: Optional[Dict] = None) -> dic
                 if prop_name in casting_props:
                     casting_info = casting_props[prop_name]
                     requires_cast = casting_info.get("requires_cast_from", [])
+                    defined_on = casting_info.get("defined_on", [])
+                    # Issue #15: skip if obj_var is a cast alias whose interface
+                    # is in defined_on -- the cast already satisfies the property.
+                    if cast_aliases.get(obj_var) and cast_aliases[obj_var] in defined_on:
+                        continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
                         # New issue not caught by known patterns
                         issues.append({

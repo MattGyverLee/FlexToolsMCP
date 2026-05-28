@@ -990,7 +990,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
     api_idx = get_api_index()
     casting_index = api_idx.casting_index if api_idx else None
-    casting_check = detect_casting_needs(code, casting_index)
+    casting_check = detect_casting_needs(code, casting_index, code_tree)
     if casting_check["has_casting_issues"]:
         # Format issues with clear fixes for all 3 API flavors
         issues = casting_check["casting_issues"]

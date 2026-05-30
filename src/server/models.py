@@ -301,6 +301,13 @@ class StartModuleInput(BaseModel):
         default=None,
         description="Include DRY_RUN safety mode for write operations"
     )
+    user_intent: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="One-sentence paraphrase of what the human user asked you to do, "
+                    "under 200 chars. Logged on session start for post-mortem clarity. "
+                    "Example: 'Add a Pinyin gloss to senses whose English gloss starts with to.'"
+    )
 
 
 class GetOperationLogsInput(BaseModel):
@@ -368,4 +375,12 @@ class RunModuleInput(BaseModel):
                     "Use when intentionally running module-shaped code (with `def Main`) "
                     "that lacks docs/FlexToolsModule scaffolding -- e.g. quick tests of a "
                     "Main-shaped function without bothering to fetch the full template."
+    )
+    user_intent: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="One-sentence paraphrase of what the human asked you to do, under 200 chars. "
+                    "Logged on the operation start line so post-mortem readers can see the goal "
+                    "without scrolling back through the conversation. "
+                    "Example: 'List entries whose lexeme form starts with a vowel.'"
     )

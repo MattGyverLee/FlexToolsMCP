@@ -337,12 +337,18 @@ def _log_operation_start(
     casting_check: Optional[Dict[str, Any]] = None,
     injection_tier: Optional[str] = None,
     helpers_needed: Optional[set] = None,
+    user_intent: Optional[str] = None,
 ) -> None:
     """Emit the opening block of a per-operation log entry.
 
     Logged unconditionally as the *first* thing in handle_run_module so even
     operations rejected by pre-flight validators still appear in the log --
     the user explicitly wants every attempted call to be visible.
+
+    `user_intent` (issue #18) is a one-line paraphrase of the human request,
+    supplied by the LLM. We log it (or "(not provided)") so post-mortem
+    readers know what the op was TRYING to accomplish without scrolling back
+    through the conversation.
     """
     logger = get_operations_logger()
     fp = _code_fingerprint(code)
@@ -350,6 +356,8 @@ def _log_operation_start(
     logger.info(f"Project:         {project_name}")
     logger.info(f"Write enabled:   {write_enabled}")
     logger.info(f"Source kind:     {source_kind}")
+    intent_display = (user_intent or "").strip() or "(not provided)"
+    logger.info(f"User intent:     {intent_display}")
     logger.info(
         f"Code fingerprint: sha256={fp['sha256_short']} bytes={fp['bytes']} lines={fp['lines']}"
     )
@@ -882,6 +890,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # #14 Phase 1: undoable session variable, ignored by flexlibs2 when write=False.
     undoable = session_state.is_undoable() and write_enabled
     api_mode = session_state.get_mode()
+    # user_intent (issue #18) is optional LLM-provided context paraphrasing
+    # the human's actual request. Logged on the Start block; never required.
+    user_intent = args.get("user_intent")
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging.
@@ -930,7 +941,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         code_tree = None
         source_kind = "parse_failed"
         _log_operation_start(
-            op_id, seq, project_name, write_enabled, code, source_kind
+            op_id, seq, project_name, write_enabled, code, source_kind,
+            user_intent=user_intent,
         )
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
@@ -948,7 +960,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Canonical Operation Start block (with source_kind). Casting details are
     # appended as their own line after the casting validator runs.
     _log_operation_start(
-        op_id, seq, project_name, write_enabled, code, source_kind
+        op_id, seq, project_name, write_enabled, code, source_kind,
+        user_intent=user_intent,
     )
 
     # === PREFLIGHT: Validate server state before attempting execution ===

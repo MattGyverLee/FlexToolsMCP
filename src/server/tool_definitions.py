@@ -246,7 +246,12 @@ You must include `from flexlibs2 import ...` in your code, or use the project
 accessors (project.POS, project.LexEntry, project.Senses, ...) which create the
 instances lazily. Every Operations class you reference must be discovered first
 via flextools_get_object_api -- the runner rejects code that uses an undiscovered
-entity (see api_discovery_required / undiscovered_entity errors).""",
+entity (see api_discovery_required / undiscovered_entity errors).
+
+When you call this, fill `user_intent` with a one-sentence summary of what the
+user asked you to do (under 200 chars). It is logged on the operation Start
+block so post-mortem readers can see the goal without scrolling back through
+the conversation. Skipping it is allowed but discouraged.""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,

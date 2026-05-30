@@ -13,7 +13,17 @@ from collections import defaultdict
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_api_index
-from ..models import ListCategoriesInput, ListEntitiesInCategoryInput, ListProjectsInput
+from ..models import (
+    ListCategoriesInput,
+    ListEntitiesInCategoryInput,
+    ListProjectsInput,
+    ListSkeletonsInput,
+)
+
+try:
+    from .. import skeleton_storage
+except ImportError:
+    from server import skeleton_storage
 
 try:
     from ..response_keys import (
@@ -189,4 +199,30 @@ async def handle_list_projects(args: dict) -> list[TextContent]:
             "existence are checked. No project files are opened, so .fwdata "
             "modification times are not affected."
         ),
+    }, indent=2))]
+
+
+async def handle_list_skeletons(args: ListSkeletonsInput) -> list[TextContent]:
+    """List captured skeleton helpers from the storage closet (issue #24).
+
+    Read-only: enumerates JSONL entries on disk, most-recent-first, no
+    filtering beyond ``limit``. For entity-aware retrieval, see
+    ``flextools_find_examples`` -- it weaves skeletons into normal examples.
+    """
+    # Support both Pydantic model and dict (legacy dispatch paths).
+    limit = args.limit if hasattr(args, "limit") else (args or {}).get("limit", 100)
+    try:
+        entries = skeleton_storage.list_all_skeletons(limit=limit)
+    except Exception as exc:
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"Failed to load skeletons: {exc}",
+            "skeletons": [],
+            "count": 0,
+        }, indent=2))]
+
+    return [TextContent(type="text", text=json.dumps({
+        "count": len(entries),
+        "limit": limit,
+        "storage_path": str(skeleton_storage.get_skeleton_path()),
+        "skeletons": entries,
     }, indent=2))]

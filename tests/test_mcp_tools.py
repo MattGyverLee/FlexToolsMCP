@@ -83,6 +83,7 @@ EXPECTED_TOOL_NAMES = [
     "flextools_undo_last_operation",
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
+    "flextools_list_skeletons",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
@@ -105,6 +106,7 @@ READ_ONLY_TOOLS = [
     "flextools_get_session_history",
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
+    "flextools_list_skeletons",
 ]
 
 # Tools that should be marked destructiveHint=True

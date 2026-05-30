@@ -32,6 +32,7 @@ from .models import (
     GetWrapperDependenciesInput,
     FindWrappersForLcmInput,
     ResolveTypeInput,
+    ListSkeletonsInput,
 )
 
 # ============================================================
@@ -70,6 +71,9 @@ TOOL_GET_WRAPPER_DEPENDENCIES = "flextools_get_wrapper_dependencies"
 TOOL_FIND_WRAPPERS_FOR_LCM = "flextools_find_wrappers_for_lcm"
 TOOL_RESOLVE_TYPE = "flextools_resolve_type"
 
+# Skeleton storage closet (issue #24)
+TOOL_LIST_SKELETONS = "flextools_list_skeletons"
+
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
@@ -91,6 +95,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_GET_WRAPPER_DEPENDENCIES,
     TOOL_FIND_WRAPPERS_FOR_LCM,
     TOOL_RESOLVE_TYPE,
+    TOOL_LIST_SKELETONS,
 ])
 
 # Import all handler functions
@@ -116,6 +121,7 @@ def _import_handlers():
             handle_list_categories,
             handle_list_entities_in_category,
             handle_list_projects,
+            handle_list_skeletons,
         )
         from .handlers.discovery import (
             handle_get_navigation_path,
@@ -149,6 +155,7 @@ def _import_handlers():
             handle_list_categories,
             handle_list_entities_in_category,
             handle_list_projects,
+            handle_list_skeletons,
         )
         from server.handlers.discovery import (
             handle_get_navigation_path,
@@ -176,6 +183,7 @@ def _import_handlers():
         "handle_list_categories": handle_list_categories,
         "handle_list_entities_in_category": handle_list_entities_in_category,
         "handle_list_projects": handle_list_projects,
+        "handle_list_skeletons": handle_list_skeletons,
         "handle_get_navigation_path": handle_get_navigation_path,
         "handle_start_module": handle_start_module,
         "handle_run_module": handle_run_module,
@@ -199,6 +207,7 @@ handle_resolve_property = _handlers["handle_resolve_property"]
 handle_list_categories = _handlers["handle_list_categories"]
 handle_list_entities_in_category = _handlers["handle_list_entities_in_category"]
 handle_list_projects = _handlers["handle_list_projects"]
+handle_list_skeletons = _handlers["handle_list_skeletons"]
 handle_get_navigation_path = _handlers["handle_get_navigation_path"]
 handle_start_module = _handlers["handle_start_module"]
 handle_run_module = _handlers["handle_run_module"]
@@ -248,6 +257,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     TOOL_GET_WRAPPER_DEPENDENCIES: (handle_get_wrapper_dependencies, GetWrapperDependenciesInput),
     TOOL_FIND_WRAPPERS_FOR_LCM: (handle_find_wrappers_for_lcm, FindWrappersForLcmInput),
     TOOL_RESOLVE_TYPE: (handle_resolve_type, ResolveTypeInput),
+
+    # Skeleton storage closet (issue #24)
+    TOOL_LIST_SKELETONS: (handle_list_skeletons, ListSkeletonsInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

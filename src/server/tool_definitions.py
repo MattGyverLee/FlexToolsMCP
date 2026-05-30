@@ -33,6 +33,7 @@ from .models import (
     GetWrapperDependenciesInput,
     FindWrappersForLcmInput,
     ResolveTypeInput,
+    ListSkeletonsInput,
 )
 
 
@@ -375,6 +376,23 @@ Example:
 
 Returns substring suggestions on a miss to help recover from typos.""",
         input_model=ResolveTypeInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_list_skeletons": ToolDef(
+        name="flextools_list_skeletons",
+        description="""List captured "skeleton" helpers that survived prior sessions (issue #24).
+
+Each successful flextools_run_module() call auto-captures top-level `def` functions to a
+JSONL "closet" on disk. This tool surfaces them so prior helpers (pos_abbr, get_words,
+seg_interlinear, affix-iteration patterns) can be reused instead of rewritten from scratch.
+
+Returns: name, source, entities the helper walked, the original user_intent (if known),
+captured_at timestamp, and op_id. Most-recent-first; capped by `limit` (default 100).
+
+Tip: flextools_find_examples also surfaces these (under `skeletons_from_your_sessions`)
+when filtered by object_type.""",
+        input_model=ListSkeletonsInput,
         annotations=READ_ONLY_SAFE,
     ),
 

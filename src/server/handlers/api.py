@@ -71,6 +71,12 @@ except ImportError:
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
     )
 
+# Skeleton storage closet (issue #24): surface prior-session helpers in find_examples.
+try:
+    from .. import skeleton_storage
+except ImportError:
+    from server import skeleton_storage
+
 # Type note: api_index is initialized by server.py before any handlers are called
 
 # Operation type keyword patterns
@@ -883,7 +889,31 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         max_results=max_results,
     )
 
-    return json_response({
+    # Issue #24: surface helpers captured from prior successful sessions.
+    # Filter by the requested object_type when provided; otherwise return
+    # the most-recent few across all entities so the user still sees them.
+    skeletons_from_sessions: list = []
+    try:
+        skeleton_entities = [object_type] if object_type else None
+        captured = skeleton_storage.find_skeletons(
+            entity_names=skeleton_entities,
+            limit=3,
+        )
+        for entry in captured:
+            captured_at = entry.get("captured_at", "")
+            # Short date prefix (YYYY-MM-DD) for human attribution.
+            date_str = captured_at[:10] if captured_at else "an earlier session"
+            skeletons_from_sessions.append({
+                KEY_NAME: entry.get("name"),
+                "source": entry.get("source"),
+                "captured_at": captured_at,
+                "attribution": f"captured from your prior session on {date_str}",
+            })
+    except Exception:
+        # Defensive: skeleton retrieval must never fail find_examples.
+        skeletons_from_sessions = []
+
+    response = {
         KEY_QUERY: {
             KEY_METHOD_NAME: method_name,
             KEY_OPERATION_TYPE: operation_type,
@@ -896,7 +926,12 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         # Distinct from per-method docstring examples above.
         "worked_examples": matched_patterns,
         "worked_examples_count": len(matched_patterns),
-    })
+    }
+    if skeletons_from_sessions:
+        # Closet entries under a separate key so they're clearly distinguished
+        # from the standard documented examples and worked_examples.
+        response["skeletons_from_your_sessions"] = skeletons_from_sessions
+    return json_response(response)
 
 
 async def handle_resolve_property(args: dict) -> list[TextContent]:

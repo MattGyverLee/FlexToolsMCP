@@ -332,6 +332,16 @@ class GetOperationLogsInput(BaseModel):
 # Execution Tools
 # ============================================================
 
+class ListSkeletonsInput(BaseModel):
+    """List captured skeletons from the storage closet (issue #24)."""
+    limit: int = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Maximum number of skeletons to return, most-recent-first."
+    )
+
+
 class RunModuleInput(BaseModel):
     """Execute code (snippet or full module) against a FieldWorks project.
 

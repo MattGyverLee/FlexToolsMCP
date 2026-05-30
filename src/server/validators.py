@@ -1730,6 +1730,92 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     }
 
 
+def _pick_cast_interface(
+    property_name: str,
+    available_on: List[str],
+    casting_index: Optional[Dict] = None,
+) -> Optional[str]:
+    """Pick the most-specific interface to cast to for `property_name`.
+
+    Strategy:
+      1. Prefer entries in `available_on` that start with 'I' (LCM convention).
+      2. If only one entry survives, use it; otherwise use the casting_index's
+         `defined_on` (which is the same shape but always I-prefixed).
+      3. Drop entries with parenthetical qualifiers like "ILexSense (raw LCM)"
+         — those are descriptive, not importable.
+    """
+    cleaned: List[str] = []
+    for entry in available_on or ():
+        if not entry:
+            continue
+        head = entry.split()[0].split("(")[0].strip()
+        if head.startswith("I"):
+            cleaned.append(head)
+    if len(cleaned) == 1:
+        return cleaned[0]
+    # Tie-breaker: consult casting_index for the canonical defined_on list.
+    if casting_index:
+        props = (casting_index or {}).get("properties") or {}
+        info = props.get(property_name) or {}
+        defined_on = [
+            d for d in info.get("defined_on", []) if isinstance(d, str) and d.startswith("I")
+        ]
+        if len(defined_on) == 1:
+            return defined_on[0]
+        if defined_on:
+            return defined_on[0]
+    if cleaned:
+        return cleaned[0]
+    return None
+
+
+def _build_cast_rewrite(
+    tree: Optional[ast.AST],
+    line_num: int,
+    property_name: str,
+    cast_interface: str,
+) -> Optional[str]:
+    """Build a single-site cast rewrite for an `obj.PropertyName` access on `line_num`.
+
+    Walks the AST once and finds the *first* attribute access matching
+    `property_name` on the target line. Wraps its receiver in
+    `cast_interface(receiver)` and returns the unparsed expression.
+
+    Returns None if:
+      - tree is None / unparsable,
+      - the property is accessed via a complex receiver we don't want to
+        single-site rewrite (e.g. chained calls); we deliberately do NOT
+        rewrite chained accesses per Issue #21's "single-site only" rule.
+    """
+    if tree is None or not cast_interface:
+        return None
+    if not hasattr(ast, "unparse"):
+        return None  # Python <3.9; not supported.
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        if getattr(node, "lineno", None) != line_num:
+            continue
+        if node.attr != property_name:
+            continue
+        receiver = node.value
+        # Single-site only: skip if receiver is itself a chained Attribute or
+        # a Call (e.g. project.X.Y.Z, foo().bar). Acceptable receivers:
+        # ast.Name (entry, sense) and ast.Subscript (entries[0]).
+        if isinstance(receiver, (ast.Name, ast.Subscript)):
+            wrapped_call = ast.Call(
+                func=ast.Name(id=cast_interface, ctx=ast.Load()),
+                args=[receiver],
+                keywords=[],
+            )
+            new_attr = ast.Attribute(value=wrapped_call, attr=property_name, ctx=ast.Load())
+            try:
+                return ast.unparse(new_attr)
+            except Exception:
+                return None
+    return None
+
+
 def detect_casting_needs(
     code: str,
     casting_index: Optional[Dict] = None,
@@ -1853,16 +1939,32 @@ def detect_casting_needs(
                         alias_attr_accesses,
                     ):
                         break
+                    # Issue #21: inline the structured rewrite so the LLM can
+                    # apply the cast without a second resolve_property call.
+                    cast_iface = _pick_cast_interface(
+                        property_name, pattern_info["available_on"], casting_index
+                    )
+                    rewrite = _build_cast_rewrite(
+                        tree, line_num, property_name, cast_iface or ""
+                    ) if cast_iface else None
+                    imports_needed = (
+                        [f"from SIL.LCModel import {cast_iface}"] if cast_iface else []
+                    )
+
                     # Found a potential casting issue
                     issues.append({
                         "property": property_name,
                         "line": line_num,
                         "pattern": line_content[:80],
+                        "found_at": line_content[:120],
                         "missing_on": pattern_info["missing_on"],
                         "available_on": pattern_info["available_on"],
                         "fix": pattern_info["fix"],
                         "flexlibs2_helper": pattern_info["flexlibs2_helper"],
-                        "severity": "error"
+                        "severity": "error",
+                        "rewrite": rewrite,
+                        "imports_needed": imports_needed,
+                        "cast_interface": cast_iface,
                     })
                     # Track which helper would be needed if this code runs
                     helpers_needed.add(pattern_info.get("helper", "safe_get_property"))
@@ -1891,16 +1993,32 @@ def detect_casting_needs(
                     if cast_aliases.get(obj_var) and cast_aliases[obj_var] in defined_on:
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
+                        # Issue #21: pick a concrete interface from the
+                        # casting index and emit a structured rewrite.
+                        cast_iface = _pick_cast_interface(
+                            prop_name, casting_info.get("defined_on", []), casting_index
+                        )
+                        rewrite = _build_cast_rewrite(
+                            tree, line_num, prop_name, cast_iface or ""
+                        ) if cast_iface else None
+                        imports_needed = (
+                            [f"from SIL.LCModel import {cast_iface}"] if cast_iface else []
+                        )
+
                         # New issue not caught by known patterns
                         issues.append({
                             "property": prop_name,
                             "line": line_num,
                             "pattern": line_content[:80],
+                            "found_at": line_content.strip()[:120],
                             "missing_on": requires_cast,
                             "available_on": casting_info.get("defined_on", []),
                             "fix": f"Cast {obj_var} to {casting_info.get('defined_on', ['concrete type'])[0]}",
                             "flexlibs2_helper": "Use resolve_property() tool to find exact casting requirements",
-                            "severity": "warning"
+                            "severity": "warning",
+                            "rewrite": rewrite,
+                            "imports_needed": imports_needed,
+                            "cast_interface": cast_iface,
                         })
 
     # Determine injection tier based on what was found

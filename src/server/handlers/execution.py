@@ -1330,26 +1330,57 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "casting_issues_detected",
             f"{len(issues)} polymorphic property access issue(s) require casting.",
         )
+        # Issue #21: each issue carries an inline rewrite + imports_needed so
+        # the LLM doesn't need to call flextools_resolve_property to recover.
+        # Issue #22: retarget the hint at the inlined rewrite, not the tool.
+        has_any_rewrite = any(i.get("rewrite") for i in issues)
+        first_rewrite = next(
+            (i for i in issues if i.get("rewrite")), None
+        )
+        if has_any_rewrite and first_rewrite is not None:
+            how_to_fix = [
+                f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
+                f"`{first_rewrite['rewrite']}`",
+                "2. Add the imports listed in casting_issues[*].imports_needed",
+                "3. Re-run your code",
+            ]
+            hint_msg = (
+                "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
+                "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                "Apply them line-by-line and re-run."
+            )
+        else:
+            # Fall back to the old guidance when the AST-rewrite path didn't
+            # produce anything (e.g. chained receivers).
+            how_to_fix = [
+                "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                    issues[0]["property"],
+                    issues[0].get("context_entity", "ICmObject"),
+                ),
+                "2. Apply the suggested cast from the tool response",
+                "3. Re-run your code",
+            ]
+            hint_msg = (
+                "No automatic rewrite was emitted (likely because the property "
+                "is accessed via a chained or call-rooted receiver). Use "
+                "flextools_resolve_property to resolve manually."
+            )
+        # Issue #28: wrap the rejection with the retry-loop detector so
+        # repeated casting failures surface _assistance hints.
         return _attach_assistance_if_loop(
             error_response(
                 "casting_issues_detected",
                 f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
                 severity=casting_check["severity"],
-                issues=issues,
+                casting_issues=issues,  # canonical key matching validator output
+                issues=issues,           # back-compat alias
                 general_guidance={
                     "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
                     "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
-                    "how_to_fix": [
-                        "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
-                            issues[0]["property"],
-                            issues[0].get("context_entity", "ICmObject")
-                        ),
-                        "2. Apply the suggested cast from the tool response",
-                        "3. Re-run your code"
-                    ]
+                    "how_to_fix": how_to_fix,
                 },
-                tool_to_call="flextools_resolve_property",
-                next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code",
+                hint=hint_msg,
+                next_steps=hint_msg,
                 op_id=op_id,
             ),
             error_code="casting_issues_detected",

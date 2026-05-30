@@ -177,5 +177,82 @@ class TestIssue20InlineDiscoveryHandler(unittest.TestCase):
         self.assertEqual(result, {})
 
 
+# ---------------------------------------------------------------------------
+# Issue #21: casting_issues carries inline rewrite + imports_needed
+# ---------------------------------------------------------------------------
+
+FAKE_CAST_INDEX = {
+    "properties": {
+        "IsLabel": {
+            "defined_on": ["ISegment"],
+            "requires_cast_from": ["ICmObject", "ICmObjectOrId"],
+        },
+        "BaselineText": {
+            "defined_on": ["ISegment"],
+            "requires_cast_from": ["ICmObject", "ICmObjectOrId"],
+        },
+        "Gloss": {
+            "defined_on": ["ILexSense"],
+            "requires_cast_from": ["ICmObject"],
+        },
+        "MorphRA": {
+            "defined_on": ["IWfiMorphBundle"],
+            "requires_cast_from": ["ICmObject"],
+        },
+    },
+    "polymorphic_collections": {},
+}
+
+
+class TestIssue21InlineRewrite(unittest.TestCase):
+    """Each casting issue must carry a structured rewrite + imports."""
+
+    def test_isLabel_rewrite_present(self):
+        # seg is a bare Name, so the rewrite should be ISegment(seg).IsLabel
+        code = "x = seg.IsLabel\n"
+        result = detect_casting_needs(code, FAKE_CAST_INDEX)
+        self.assertTrue(result["has_casting_issues"])
+        issues = result["casting_issues"]
+        # Find the IsLabel issue (there should be one).
+        is_label = next((i for i in issues if i["property"] == "IsLabel"), None)
+        self.assertIsNotNone(is_label, f"IsLabel not in issues: {issues}")
+        self.assertEqual(is_label["rewrite"], "ISegment(seg).IsLabel")
+        self.assertEqual(is_label["imports_needed"], ["from SIL.LCModel import ISegment"])
+        self.assertEqual(is_label["cast_interface"], "ISegment")
+        # Backwards compatibility: original keys still present.
+        self.assertIn("property", is_label)
+        self.assertIn("line", is_label)
+        self.assertIn("fix", is_label)
+
+    def test_morph_RA_rewrite(self):
+        code = "y = bundle.MorphRA\n"
+        result = detect_casting_needs(code, FAKE_CAST_INDEX)
+        morph = next(
+            (i for i in result["casting_issues"] if i["property"] == "MorphRA"), None
+        )
+        self.assertIsNotNone(morph)
+        self.assertEqual(morph["rewrite"], "IWfiMorphBundle(bundle).MorphRA")
+        self.assertEqual(
+            morph["imports_needed"], ["from SIL.LCModel import IWfiMorphBundle"]
+        )
+
+    def test_rewrite_omitted_for_chained_receiver(self):
+        # Chained receiver: we deliberately skip the rewrite per "single-site only".
+        # Note: foo() returns something that we then access .IsLabel on; the
+        # receiver is a Call, not a Name/Subscript, so rewrite must be None.
+        code = "x = get_seg().IsLabel\n"
+        result = detect_casting_needs(code, FAKE_CAST_INDEX)
+        issues = [i for i in result["casting_issues"] if i["property"] == "IsLabel"]
+        # Either no issue (regex didn't match) or rewrite is None.
+        for issue in issues:
+            self.assertIsNone(issue["rewrite"])
+
+    def test_imports_needed_is_list(self):
+        code = "x = seg.IsLabel\n"
+        result = detect_casting_needs(code, FAKE_CAST_INDEX)
+        for issue in result["casting_issues"]:
+            self.assertIsInstance(issue["imports_needed"], list)
+
+
 if __name__ == "__main__":
     unittest.main()

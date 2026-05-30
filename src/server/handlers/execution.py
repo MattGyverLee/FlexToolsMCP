@@ -58,6 +58,7 @@ try:
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
+        detect_candidate_entities,
     )
 except ImportError:
     from server.validators import (
@@ -66,6 +67,7 @@ except ImportError:
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
+        detect_candidate_entities,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -1411,17 +1413,49 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "api_discovery_required",
             "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
         )
-        return _attach_assistance_if_loop(
-            error_response(
-                "api_discovery_required",
-                "No APIs have been discovered yet. Before running code, you MUST use one of these tools first:\n"
+        # Issue #29: inline get_object_api for the top entities we can spot in
+        # the submitted code, so the LLM gets the real method shapes in the
+        # rejection itself and can recover in one round-trip instead of three.
+        candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
+        inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
+        if inline:
+            message = (
+                "Discovery required, but I ran get_object_api for the entities I "
+                "detected in your code -- see _inline_discovery. Use these "
+                "method/property shapes and resubmit.\n\n"
+                "(You can also call start(task='...'), get_object_api(object_type='...'), "
+                "or search_by_capability(query='...') for additional entities.)"
+            )
+        else:
+            message = (
+                "No APIs have been discovered yet. Before running code, you MUST "
+                "use one of these tools first:\n"
                 "1. start(task='...') - discovers relevant APIs automatically\n"
                 "2. get_object_api(object_type='...') - get API for specific object\n"
                 "3. search_by_capability(query='...') - search for APIs by description\n\n"
-                "This prevents using incorrect/hallucinated method names.",
-                hint="Call get_object_api() for each object/operation you use (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
-                session=session_state.summary(),
-                op_id=op_id,
+                "This prevents using incorrect/hallucinated method names."
+            )
+        extras: Dict[str, Any] = {
+            "hint": (
+                "Apply the method/property shapes from _inline_discovery and resubmit."
+                if inline else
+                "Call get_object_api() for each object/operation you use "
+                "(FLExProject, LexEntryOperations, etc.), then write code using "
+                "those discovered APIs."
+            ),
+            "session": session_state.summary(),
+            "op_id": op_id,
+            "detected_candidates": candidates,
+        }
+        if inline:
+            extras["_inline_discovery"] = inline
+        # Issue #28: wrap the rejection with the retry-loop detector so
+        # repeated api_discovery_required failures surface _assistance hints.
+        return _attach_assistance_if_loop(
+            error_response(
+                "api_discovery_required",
+                message,
+                **extras,
             ),
             error_code="api_discovery_required",
             code_size_bytes=_code_size_bytes,

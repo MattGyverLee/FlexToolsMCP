@@ -655,6 +655,51 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     return mapping
 
 
+def detect_candidate_entities(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None, limit: int = 3
+) -> List[str]:
+    """Identify top-N entity names referenced in code that match the API index.
+
+    Used by the api_discovery_required gate (Issue #29) to inline get_object_api
+    docs for likely entities when discovery hasn't happened yet, giving the LLM
+    a single-round-trip recovery path.
+
+    Walks the AST for Name nodes (e.g. `LexEntryOperations.GetAll(...)` ->
+    'LexEntryOperations') and Attribute nodes rooted at `project.` (e.g.
+    `project.LexSense.GetGloss(...)` -> mapped via the index to
+    'LexSenseOperations'). Names are scored by occurrence count so the most
+    central entity ranks first.
+    """
+    if code_tree is None:
+        return []
+    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+    entities = flexlibs2.get("entities") or {}
+    if not entities:
+        # Fallback to KNOWN_OPERATIONS so the gate at least returns plausible
+        # candidates when the index hasn't been loaded yet.
+        entity_set: Set[str] = set(KNOWN_OPERATIONS)
+    else:
+        entity_set = set(entities.keys())
+
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    counts: Dict[str, int] = {}
+
+    for node in ast.walk(code_tree):
+        if isinstance(node, ast.Name) and node.id in entity_set:
+            counts[node.id] = counts.get(node.id, 0) + 1
+        elif isinstance(node, ast.Attribute):
+            # project.<Accessor>... -> map to Operations class via index
+            if isinstance(node.value, ast.Name) and node.value.id == "project":
+                accessor = node.attr
+                ops_class = accessor_to_ops.get(accessor) or f"{accessor}Operations"
+                if ops_class in entity_set:
+                    counts[ops_class] = counts.get(ops_class, 0) + 1
+
+    # Sort by count desc, then by name for stability.
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [name for name, _ in ranked[:limit]]
+
+
 def _collect_flexlibs2_imports(code_tree: Optional[ast.AST]) -> Set[str]:
     """Return the set of names imported from the flexlibs2 package.
 

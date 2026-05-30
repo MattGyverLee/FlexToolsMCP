@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from server.validators import (  # noqa: E402
     _collect_flexlibs2_imports,
+    detect_candidate_entities,
     detect_casting_needs,
     detect_undiscovered_entities,
 )
@@ -252,6 +253,77 @@ class TestIssue21InlineRewrite(unittest.TestCase):
         result = detect_casting_needs(code, FAKE_CAST_INDEX)
         for issue in result["casting_issues"]:
             self.assertIsInstance(issue["imports_needed"], list)
+
+
+# ---------------------------------------------------------------------------
+# Issue #29: api_discovery_required inlines get_object_api for detected entities
+# ---------------------------------------------------------------------------
+
+LEX_ENTRY_OPS_ENTITY = {
+    "category": "lexicon",
+    "namespace": "flexlibs2.operations.LexEntryOperations",
+    "import_statement": "from flexlibs2 import LexEntryOperations",
+    "methods": [
+        {"name": "GetAll", "signature": "(project)", "is_mutating": False},
+        {"name": "Create", "signature": "(project, form, gloss)", "is_mutating": True},
+    ],
+    "properties": [],
+}
+
+
+class TestIssue29CandidateDetection(unittest.TestCase):
+    def test_detect_candidate_entities_finds_name_references(self):
+        code = "entries = LexEntryOperations.GetAll(project)\n"
+        tree = ast.parse(code)
+        api_idx = _FakeAPIIndex(
+            entities={
+                "LexEntryOperations": LEX_ENTRY_OPS_ENTITY,
+                "SegmentOperations": SEG_OPS_ENTITY,
+            }
+        )
+        result = detect_candidate_entities(tree, api_idx, limit=3)
+        self.assertIn("LexEntryOperations", result)
+
+    def test_detect_candidate_entities_finds_project_accessors(self):
+        # No accessor_to_ops_map in our fake index, so the naive
+        # `<Accessor>Operations` fallback handles this case.
+        code = "for x in project.LexEntry.GetAll():\n    pass\n"
+        tree = ast.parse(code)
+        api_idx = _FakeAPIIndex(entities={"LexEntryOperations": LEX_ENTRY_OPS_ENTITY})
+        result = detect_candidate_entities(tree, api_idx, limit=3)
+        self.assertIn("LexEntryOperations", result)
+
+    def test_detect_candidate_entities_capped_at_limit(self):
+        code = (
+            "a = LexEntryOperations.GetAll(project)\n"
+            "b = SegmentOperations.GetAll(project)\n"
+        )
+        tree = ast.parse(code)
+        api_idx = _FakeAPIIndex(
+            entities={
+                "LexEntryOperations": LEX_ENTRY_OPS_ENTITY,
+                "SegmentOperations": SEG_OPS_ENTITY,
+            }
+        )
+        result = detect_candidate_entities(tree, api_idx, limit=1)
+        self.assertEqual(len(result), 1)
+
+    def test_detect_candidate_entities_ranks_by_frequency(self):
+        # LexEntryOperations referenced twice; SegmentOperations once.
+        code = (
+            "a = LexEntryOperations.GetAll(project)\n"
+            "b = LexEntryOperations.Create(project, 'x', 'y')\n"
+            "c = SegmentOperations.GetAll(project)\n"
+        )
+        tree = ast.parse(code)
+        api_idx = _FakeAPIIndex(
+            entities={
+                "LexEntryOperations": LEX_ENTRY_OPS_ENTITY,
+                "SegmentOperations": SEG_OPS_ENTITY,
+            }
+        )
+        result = detect_candidate_entities(tree, api_idx, limit=3)
+        self.assertEqual(result[0], "LexEntryOperations")
 
 
 if __name__ == "__main__":

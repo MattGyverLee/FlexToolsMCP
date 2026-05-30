@@ -202,7 +202,9 @@ async def handle_list_projects(args: dict) -> list[TextContent]:
     }, indent=2))]
 
 
-async def handle_list_skeletons(args: ListSkeletonsInput) -> list[TextContent]:
+async def handle_list_skeletons(
+    args: ListSkeletonsInput | dict,
+) -> list[TextContent]:
     """List captured skeleton helpers from the storage closet (issue #24).
 
     Read-only: enumerates JSONL entries on disk, most-recent-first, no

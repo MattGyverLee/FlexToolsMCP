@@ -864,15 +864,17 @@ def detect_undiscovered_entities(
                 f"Found `from flexlibs2 import {entity_label}` in your code, but the "
                 f"discovery gate also requires calling "
                 f"`flextools_get_object_api(object_type='{entity_label}')` so you've "
-                f"validated the method shapes. Imports alone aren't enough."
+                # Issue #20 follow-up: the gate's purpose is putting the API
+                # surface in the LLM's context (loading), not validating Python.
+                f"loaded the method shapes into context. Imports alone aren't enough."
             )
         else:
             entity_list = ", ".join(imported_undiscovered)
             import_clarifier = (
                 f"Found `from flexlibs2 import ...` for [{entity_list}] in your code, "
                 f"but the discovery gate also requires calling "
-                f"flextools_get_object_api for each so you've validated the method "
-                f"shapes. Imports alone aren't enough."
+                f"flextools_get_object_api for each so you've loaded the method "
+                f"shapes into context. Imports alone aren't enough."
             )
         base_msg = import_clarifier + "\n\n" + base_msg
 

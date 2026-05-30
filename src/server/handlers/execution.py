@@ -740,7 +740,15 @@ def _attach_assistance_if_loop(
 _OPEN_PROJECT_PREFIX = "Failed to open project"
 # Network-share letters that FieldWorks sometimes stores in stale paths.
 # Listed in the project's settings hint when the drive isn't currently mounted.
-_DRIVE_LETTERS_TO_FLAG = ("U:", "V:", "W:", "X:", "Y:", "Z:")
+# Issue #23 follow-up: widen the flagged-drive set. Original list (U:..Z:)
+# missed common SIL mapping letters like D:, E:, F:. We now flag every
+# non-C: letter -- the cross-check still verifies the drive actually
+# doesn't exist before raising project_drive_unavailable, so this just
+# means we DETECT more offline-share cases. C: is excluded (it's the OS
+# drive and is always present on Windows).
+_DRIVE_LETTERS_TO_FLAG = tuple(
+    f"{chr(c)}:" for c in range(ord("A"), ord("Z") + 1) if chr(c) != "C"
+)
 
 
 def _extract_attempted_path(error_msg: str) -> Optional[str]:
@@ -782,11 +790,16 @@ def _diagnose_project_open_error(
         return None
 
     # ----- Issue #27: project locked by another process. ------------------
-    # flexlibs2 surfaces the LCM LcmCacheLockedException string in the failure
-    # message; FieldWorks's own error wording is "in use by another program".
+    # The real LCM class is LcmFileLockedException (NOT LcmCacheLockedException;
+    # the latter doesn't exist in LCM 11). flexlibs2 catches it in
+    # FLExProject.py and re-raises as FP_FileLockedError, whose message
+    # contains "This project is in use by another program." We match all
+    # three so we catch the error whether it surfaced from the wrapper or
+    # raw LCM.
     locked_markers = (
         "in use by another program",
-        "LcmCacheLockedException",
+        "LcmFileLockedException",
+        "FP_FileLockedError",
         "currently in use",
     )
     if any(marker.lower() in raw_error.lower() for marker in locked_markers):
@@ -798,8 +811,9 @@ def _diagnose_project_open_error(
             "hint": (
                 "Most common cause: FieldWorks GUI is open with this project. "
                 "Close FieldWorks and retry. Other causes: another MCP session "
-                "has the project open, or a stuck lock file in the project's "
-                "Lock subfolder."
+                "has the project open, or a stuck `.fwdata.lock` file sibling "
+                "to the project's `.fwdata`. Delete it only when sure no FW "
+                "process is running."
             ),
             "attempted_path": None,
         }
@@ -861,8 +875,14 @@ def _diagnose_project_open_error(
                 "discovered_at": str(discovered_dir),
                 "attempted_path": attempted_path,
                 "hint": (
-                    "Restart FieldWorks (it may be holding a stale path) or run "
-                    "flextools_list_projects to confirm canonical location."
+                    # Issue #23 follow-up: "Restart FieldWorks" was misleading
+                    # -- FW reads the projects-dir path on every call, so a
+                    # restart doesn't help. The actual config file is
+                    # ProjectsDir.txt under %ProgramData%\SIL\FieldWorks 9.
+                    "Check `%ProgramData%\\SIL\\FieldWorks 9\\ProjectsDir.txt` "
+                    "-- if it points at a moved/unavailable location, update it. "
+                    "Or use flextools_list_projects to confirm the canonical "
+                    "location."
                 ),
             }
 

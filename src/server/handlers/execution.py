@@ -642,6 +642,85 @@ def _log_preflight_reject(
     logger.info(f"=== Operation #{seq} End ({op_id}) ===")
 
 
+def _attach_assistance_if_loop(
+    response: list[TextContent],
+    error_code: str,
+    code_size_bytes: int,
+) -> list[TextContent]:
+    """Record a failure signal on the session, run the retry-loop detector,
+    and attach a top-level ``_assistance`` block to the response payload
+    when a stuck-loop or size-oscillation pattern is detected (issue #28).
+
+    Always returns the (possibly-mutated) response list so callers can use it
+    as a transparent wrapper:
+
+        return _attach_assistance_if_loop(
+            error_response("casting_issues_detected", ...),
+            error_code="casting_issues_detected",
+            code_size_bytes=len(code.encode("utf-8")),
+        )
+
+    The function is safe to call with response lists whose payload is already
+    JSON (the usual case from error_response()) or with a plain dict-bearing
+    list (the unit-test path). If JSON parsing fails for any reason, the
+    response is returned unchanged -- the detector should never break a
+    response that would otherwise have shipped fine.
+    """
+    # 1. Record the signal so future calls in this session can see it.
+    session_state.record_op_signal(
+        error_code=error_code, code_size_bytes=code_size_bytes
+    )
+
+    # 2. Run the detector. None means no pattern fired.
+    pattern = session_state.detect_retry_loop_pattern()
+    if pattern is None:
+        return response
+
+    # 3. Mutate the response payload to inject _assistance.
+    if not response:
+        return response
+    first = response[0]
+    text = getattr(first, "text", None)
+    if text is None and isinstance(first, dict):
+        text = first.get("text")
+    if not isinstance(text, str):
+        return response
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return response
+    if not isinstance(data, dict):
+        return response
+
+    data["_assistance"] = {
+        "pattern_detected": pattern["pattern_detected"],
+        "message": pattern["message"],
+        "error_code": pattern.get("error_code"),
+    }
+    # Include the diagnostic counters when available.
+    if "occurrences" in pattern:
+        data["_assistance"]["occurrences"] = pattern["occurrences"]
+    if "window_seconds" in pattern:
+        data["_assistance"]["window_seconds"] = pattern["window_seconds"]
+    if "code_sizes" in pattern:
+        data["_assistance"]["code_sizes"] = pattern["code_sizes"]
+
+    new_text = json.dumps(data, indent=2, ensure_ascii=False)
+    # Update the underlying object in place so callers don't need to swap refs.
+    if hasattr(first, "text"):
+        try:
+            first.text = new_text
+        except Exception:
+            # TextContent is a pydantic model in modern MCP; fall back to
+            # replacing the entry in the list.
+            return [TextContent(type="text", text=new_text)] + response[1:]
+        return response
+    if isinstance(first, dict):
+        first["text"] = new_text
+        return response
+    return response
+
+
 def _run_validator(validator_func, code: str, check_key: str, error_code: str, **validator_kwargs) -> Optional[list[TextContent]]:
     """Run a single validator and return error response if validation fails.
 
@@ -1003,6 +1082,9 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # returned to the LLM. Default 100 (first 50 + last 50 + truncation marker).
     # 0 disables the cap. Warnings/errors are NEVER capped regardless.
     max_info_messages = int(args.get("max_info_messages", 100))
+    # Issue #28: precompute code size for the retry-loop / size-oscillation
+    # detector. Same byte count used at every rejection / runtime-failure site.
+    _code_size_bytes = len(code.encode("utf-8", errors="replace")) if code else 0
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging.
@@ -1059,12 +1141,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "syntax_error",
             f"line {syn_exc.lineno}: {syn_exc.msg}",
         )
-        return error_response(
-            "syntax_error",
-            f"Invalid Python syntax at line {syn_exc.lineno}: {syn_exc.msg}",
-            line_number=syn_exc.lineno,
-            guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "syntax_error",
+                f"Invalid Python syntax at line {syn_exc.lineno}: {syn_exc.msg}",
+                line_number=syn_exc.lineno,
+                guidance="Check your Python code for syntax errors (missing colons, unmatched parentheses, etc.)",
+                op_id=op_id,
+            ),
+            error_code="syntax_error",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Canonical Operation Start block (with source_kind). Casting details are
@@ -1086,12 +1172,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "server_state_error",
             "Server initialization incomplete:\n" + "\n".join(error_details),
         )
-        return error_response(
-            "server_state_error",
-            "Server initialization incomplete. Cannot execute code:\n" + "\n".join(error_details),
-            server_state=server_health,
-            hint="The server may not have started correctly. Check the server logs and try restarting.",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "server_state_error",
+                "Server initialization incomplete. Cannot execute code:\n" + "\n".join(error_details),
+                server_state=server_health,
+                hint="The server may not have started correctly. Check the server logs and try restarting.",
+                op_id=op_id,
+            ),
+            error_code="server_state_error",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Partial-module structural check: when code defines `Main` but lacks the
@@ -1108,18 +1198,22 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "partial_module_structure",
                 f"missing_elements={partial_check.get('missing_elements')}",
             )
-            return error_response(
-                "partial_module_structure",
-                partial_check["suggestion"],
-                missing_elements=partial_check["missing_elements"],
-                next_steps=[
-                    "1. Call flextools_get_module_template(flavor='flexlibs2') to fetch the canonical scaffold",
-                    "2. Copy the missing pieces (docs dict, FlexToolsModule binding) into your code",
-                    "3. Re-run flextools_run_module()",
-                    "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
-                    "Override: pass skip_module_check=True to run the partial code as-is",
-                ],
-                op_id=op_id,
+            return _attach_assistance_if_loop(
+                error_response(
+                    "partial_module_structure",
+                    partial_check["suggestion"],
+                    missing_elements=partial_check["missing_elements"],
+                    next_steps=[
+                        "1. Call flextools_get_module_template(flavor='flexlibs2') to fetch the canonical scaffold",
+                        "2. Copy the missing pieces (docs dict, FlexToolsModule binding) into your code",
+                        "3. Re-run flextools_run_module()",
+                        "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
+                        "Override: pass skip_module_check=True to run the partial code as-is",
+                    ],
+                    op_id=op_id,
+                ),
+                error_code="partial_module_structure",
+                code_size_bytes=_code_size_bytes,
             )
 
     # Check for unprotected mutations - HARD BLOCK if found
@@ -1135,7 +1229,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "unprotected_writes",
             f"mutating_calls={mutating[:5]}",
         )
-        return [TextContent(type="text", text=json.dumps(guidance, indent=2))]
+        return _attach_assistance_if_loop(
+            [TextContent(type="text", text=json.dumps(guidance, indent=2))],
+            error_code="unprotected_writes",
+            code_size_bytes=_code_size_bytes,
+        )
 
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
@@ -1159,26 +1257,30 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "casting_issues_detected",
             f"{len(issues)} polymorphic property access issue(s) require casting.",
         )
-        return error_response(
-            "casting_issues_detected",
-            f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
-            severity=casting_check["severity"],
-            issues=issues,
-            general_guidance={
-                "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
-                "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
-                "how_to_fix": [
-                    "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
-                        issues[0]["property"],
-                        issues[0].get("context_entity", "ICmObject")
-                    ),
-                    "2. Apply the suggested cast from the tool response",
-                    "3. Re-run your code"
-                ]
-            },
-            tool_to_call="flextools_resolve_property",
-            next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "casting_issues_detected",
+                f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
+                severity=casting_check["severity"],
+                issues=issues,
+                general_guidance={
+                    "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
+                    "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
+                    "how_to_fix": [
+                        "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                            issues[0]["property"],
+                            issues[0].get("context_entity", "ICmObject")
+                        ),
+                        "2. Apply the suggested cast from the tool response",
+                        "3. Re-run your code"
+                    ]
+                },
+                tool_to_call="flextools_resolve_property",
+                next_steps="Use flextools_resolve_property to resolve the casting issue, then update your code",
+                op_id=op_id,
+            ),
+            error_code="casting_issues_detected",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Require API discovery before executing code
@@ -1197,16 +1299,20 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "api_discovery_required",
             "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
         )
-        return error_response(
-            "api_discovery_required",
-            "No APIs have been discovered yet. Before running code, you MUST use one of these tools first:\n"
-            "1. start(task='...') - discovers relevant APIs automatically\n"
-            "2. get_object_api(object_type='...') - get API for specific object\n"
-            "3. search_by_capability(query='...') - search for APIs by description\n\n"
-            "This prevents using incorrect/hallucinated method names.",
-            hint="Call get_object_api() for each object/operation you use (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
-            session=session_state.summary(),
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "api_discovery_required",
+                "No APIs have been discovered yet. Before running code, you MUST use one of these tools first:\n"
+                "1. start(task='...') - discovers relevant APIs automatically\n"
+                "2. get_object_api(object_type='...') - get API for specific object\n"
+                "3. search_by_capability(query='...') - search for APIs by description\n\n"
+                "This prevents using incorrect/hallucinated method names.",
+                hint="Call get_object_api() for each object/operation you use (FLExProject, LexEntryOperations, etc.), then write code using those discovered APIs.",
+                session=session_state.summary(),
+                op_id=op_id,
+            ),
+            error_code="api_discovery_required",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Per-entity gate: even after some discovery has happened, reject code that
@@ -1222,13 +1328,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "undiscovered_entity",
                 f"undiscovered={undiscovered_check.get('undiscovered')}",
             )
-            return error_response(
-                "undiscovered_entity",
-                undiscovered_check["suggestion"],
-                undiscovered=undiscovered_check["undiscovered"],
-                hint="Call flextools_get_object_api for each listed entity, then re-run.",
-                session=session_state.summary(),
-                op_id=op_id,
+            return _attach_assistance_if_loop(
+                error_response(
+                    "undiscovered_entity",
+                    undiscovered_check["suggestion"],
+                    undiscovered=undiscovered_check["undiscovered"],
+                    hint="Call flextools_get_object_api for each listed entity, then re-run.",
+                    session=session_state.summary(),
+                    op_id=op_id,
+                ),
+                error_code="undiscovered_entity",
+                code_size_bytes=_code_size_bytes,
             )
 
     # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
@@ -1243,12 +1353,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "undefined_variables",
             f"undefined_vars={undefined_check.get('undefined_vars')}",
         )
-        return error_response(
-            "undefined_variables",
-            undefined_check["suggestion"],
-            undefined_vars=undefined_check["undefined_vars"],
-            guidance="All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names.",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "undefined_variables",
+                undefined_check["suggestion"],
+                undefined_vars=undefined_check["undefined_vars"],
+                guidance="All variables must be either: (1) imported from a module, (2) defined in your code, or (3) provided by FlexTools (project, report, modifyAllowed). Do not use internal MCP variable names.",
+                op_id=op_id,
+            ),
+            error_code="undefined_variables",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Check for missing Operations class imports
@@ -1259,13 +1373,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "missing_imports",
             f"missing_imports={missing_ops_check.get('missing_imports')} api_mode={api_mode}",
         )
-        return error_response(
-            "missing_imports",
-            missing_ops_check["suggestion"],
-            missing_imports=missing_ops_check["missing_imports"],
-            api_mode=api_mode,
-            guidance="Add the import statement shown above to the top of your code.",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "missing_imports",
+                missing_ops_check["suggestion"],
+                missing_imports=missing_ops_check["missing_imports"],
+                api_mode=api_mode,
+                guidance="Add the import statement shown above to the top of your code.",
+                op_id=op_id,
+            ),
+            error_code="missing_imports",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Check for wrong library imports
@@ -1276,13 +1394,17 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "wrong_library_imports",
             f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
         )
-        return error_response(
-            "wrong_library_imports",
-            wrong_imports_check["suggestion"],
-            wrong_imports=wrong_imports_check["wrong_imports"],
-            api_mode=api_mode,
-            guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode.",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "wrong_library_imports",
+                wrong_imports_check["suggestion"],
+                wrong_imports=wrong_imports_check["wrong_imports"],
+                api_mode=api_mode,
+                guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode.",
+                op_id=op_id,
+            ),
+            error_code="wrong_library_imports",
+            code_size_bytes=_code_size_bytes,
         )
 
     # Pre-flight: catch project.<accessor>/<method> typos before subprocess launch.
@@ -1296,12 +1418,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "invalid_api_chain",
             f"issues={chain_check.get('issues')}",
         )
-        return error_response(
-            "invalid_api_chain",
-            chain_check["suggestion"],
-            issues=chain_check["issues"],
-            guidance="Replace each flagged expression with the suggested correct name and re-run.",
-            op_id=op_id,
+        return _attach_assistance_if_loop(
+            error_response(
+                "invalid_api_chain",
+                chain_check["suggestion"],
+                issues=chain_check["issues"],
+                guidance="Replace each flagged expression with the suggested correct name and re-run.",
+                op_id=op_id,
+            ),
+            error_code="invalid_api_chain",
+            code_size_bytes=_code_size_bytes,
         )
 
     timeout_seconds = args.get("timeout_seconds", 300)
@@ -1903,6 +2029,7 @@ MODULE_CODE = {code}
         duration_s = time.monotonic() - t_start
 
         # Log operation completion with rich formatting
+        code_size_bytes = len(code.encode("utf-8", errors="replace"))
         if execution_result.get("success"):
             _log_operation_end_success(
                 op_id=op_id, seq=seq, duration_s=duration_s,
@@ -1925,6 +2052,9 @@ MODULE_CODE = {code}
                     "warning_count": warning_count,
                     "error_count": error_count,
                 })
+            # Issue #28: a successful op resets the retry-loop detector --
+            # by definition we've broken whatever loop we were stuck in.
+            session_state.reset_op_signals()
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,
@@ -1937,6 +2067,14 @@ MODULE_CODE = {code}
                 messages=report_messages,
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
+            )
+            # Issue #28: record a runtime-failure signal. Use the structured
+            # error_type when available; fall back to a generic bucket.
+            runtime_error_code = execution_result.get("error_type") or "runtime_error"
+            return _attach_assistance_if_loop(
+                [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))],
+                error_code=runtime_error_code,
+                code_size_bytes=code_size_bytes,
             )
 
         return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]

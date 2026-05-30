@@ -12,7 +12,7 @@ import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, List, Any, Deque
+from typing import Optional, Dict, List, Any, Deque, Tuple
 
 
 # Cap on session-local undo checkpoint log. Long-running sessions still bound
@@ -26,6 +26,71 @@ logger = logging.getLogger(__name__)
 _STATUS_PATTERN = re.compile(r"\[(OK|WARN|ERROR|INFO)\]\s+(.+)", re.MULTILINE)
 _NAME_PATTERN = re.compile(r"'([^']+)'")
 _HVO_PATTERN = re.compile(r"hvo=(\d+)")
+
+
+# Issue #28: tailored next-step hints per error class. Keep the strings short --
+# they ride on every rejection response once the detector trips, and the LLM has
+# to actually read them. The default fallback covers any error_code not in the map.
+_ASSISTANCE_HINTS_BY_ERROR_CODE = {
+    "casting_issues_detected": (
+        "the cast is missing or wrong. Call flextools_resolve_property "
+        "with the offending property name to get the exact cast and "
+        "import path -- don't keep guessing."
+    ),
+    "undiscovered_entity": (
+        "the Operations class hasn't been discovered for this session. "
+        "Call flextools_get_object_api on the entity (e.g. LexEntry, "
+        "POS) before referencing it again."
+    ),
+    "project_not_open": (
+        "the project isn't open. Call flextools_list_projects to see "
+        "what's available, then re-call flextools_start with a valid "
+        "project_name."
+    ),
+    "project_name_required": (
+        "the project_name is missing. Call flextools_list_projects to "
+        "see what's available, then pass one to flextools_start."
+    ),
+    "syntax_error": (
+        "the Python is malformed. Read the line number in the error and "
+        "fix the syntax -- don't resubmit substantially-similar code."
+    ),
+    "server_state_error": (
+        "the server didn't initialize cleanly. Check the server logs "
+        "and consider restarting -- retrying won't help."
+    ),
+    "partial_module_structure": (
+        "call flextools_get_module_template to get the full "
+        "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
+        "wrapper entirely and submit the body as a bare snippet."
+    ),
+}
+
+
+def _assistance_message_for_error(
+    error_code: Optional[str],
+    count: int = 5,
+    oscillating: bool = False,
+) -> str:
+    """Compose a human-readable assistance message for a detected retry pattern.
+
+    Pulls a tailored hint from _ASSISTANCE_HINTS_BY_ERROR_CODE; falls back to
+    a generic prompt for unknown error codes.
+    """
+    hint = _ASSISTANCE_HINTS_BY_ERROR_CODE.get(
+        error_code or "",
+        "the same error keeps firing. Stop iterating: call "
+        "flextools_find_examples for a worked pattern, or "
+        "flextools_search_by_capability to discover the right API."
+    )
+    if oscillating:
+        prefix = (
+            f"You've alternated between two code shapes {count} times and "
+            f"all of them failed with {error_code!r}: "
+        )
+    else:
+        prefix = f"You've hit {error_code!r} {count} times in a row: "
+    return prefix + hint
 
 
 @dataclass
@@ -71,6 +136,14 @@ class SessionState:
     # undo state lives in LCM's persistent stack, not here.
     undo_checkpoints: Deque[Dict[str, Any]] = field(
         default_factory=lambda: deque(maxlen=_UNDO_CHECKPOINT_CAP)
+    )
+
+    # Issue #28: Retry-loop / size-oscillation detector. Each entry is
+    # (timestamp, error_code, code_size_bytes); only the last 5 ops are
+    # retained. error_code is None for successful ops -- a success resets
+    # the loop detector (logically: we cleared the bad pattern).
+    recent_op_signals: Deque[Tuple[datetime, Optional[str], int]] = field(
+        default_factory=lambda: deque(maxlen=5)
     )
 
     def configure(self, **kwargs) -> None:
@@ -328,6 +401,92 @@ class SessionState:
             "undo_stack_depth": len(self.undo_stack),
             "redo_stack_depth": len(self.redo_stack),
         }
+
+    # ===== Issue #28: Retry-loop / size-oscillation detection =====
+
+    def record_op_signal(
+        self,
+        error_code: Optional[str],
+        code_size_bytes: int,
+        timestamp: Optional[datetime] = None,
+    ) -> None:
+        """Append a one-tuple signal for the retry-loop detector.
+
+        Call this AFTER every run_module attempt (success OR failure):
+          - On failure: pass the rejection or runtime error_code.
+          - On success: pass error_code=None, which acts as a reset for the
+            detector (a working op breaks the pattern by definition).
+
+        Maintaining a fixed-size deque keeps the per-session footprint
+        bounded at maxlen=5 entries.
+        """
+        self.recent_op_signals.append(
+            (timestamp or datetime.now(), error_code, code_size_bytes)
+        )
+
+    def reset_op_signals(self) -> None:
+        """Drop all retry-loop signals (e.g., after a successful op)."""
+        self.recent_op_signals.clear()
+
+    def detect_retry_loop_pattern(self) -> Optional[Dict[str, Any]]:
+        """Inspect the last 5 op signals for stuck-in-a-loop patterns.
+
+        Two patterns trigger detection:
+
+        1. ``same_error_retry_loop``: 4+ consecutive ops with identical
+           non-None ``error_code`` within a 5-minute window. The LLM is
+           hammering the same failure mode.
+
+        2. ``size_oscillation``: 4 consecutive ops with code_size deltas
+           alternating sign (up/down/up/down or down/up/down/up) and all
+           4 prior + current failing. The LLM is bouncing between two
+           shapes hoping one will work.
+
+        Returns the detected pattern dict (with ``pattern_detected`` and a
+        tailored ``message``) or None if no pattern matches. Caller is
+        responsible for surfacing the result; this function never mutates
+        state.
+        """
+        signals = list(self.recent_op_signals)
+        # Need at least 5 entries to evaluate "4 prior + current".
+        if len(signals) < 5:
+            return None
+
+        last5 = signals[-5:]
+        # All five must be failures for either pattern to fire.
+        if any(s[1] is None for s in last5):
+            return None
+
+        # --- Pattern 1: same error 4+ times in <5min ---
+        error_codes = [s[1] for s in last5]
+        if all(ec == error_codes[-1] for ec in error_codes):
+            time_span = (last5[-1][0] - last5[0][0]).total_seconds()
+            if time_span < 300:  # 5 minutes
+                return {
+                    "pattern_detected": "same_error_retry_loop",
+                    "message": _assistance_message_for_error(error_codes[-1], count=5),
+                    "error_code": error_codes[-1],
+                    "occurrences": 5,
+                    "window_seconds": int(time_span),
+                }
+
+        # --- Pattern 2: size oscillation across 5 consecutive failures ---
+        sizes = [s[2] for s in last5]
+        deltas = [sizes[i + 1] - sizes[i] for i in range(4)]
+        # Need all deltas non-zero and alternating in sign.
+        if all(d != 0 for d in deltas):
+            signs = [1 if d > 0 else -1 for d in deltas]
+            if signs == [1, -1, 1, -1] or signs == [-1, 1, -1, 1]:
+                return {
+                    "pattern_detected": "size_oscillation",
+                    "message": _assistance_message_for_error(
+                        error_codes[-1], count=5, oscillating=True
+                    ),
+                    "error_code": error_codes[-1],
+                    "code_sizes": sizes,
+                }
+
+        return None
 
     def export_history(self) -> List[Dict[str, Any]]:
         """Export full operation history as list of dictionaries.

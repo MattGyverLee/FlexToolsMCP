@@ -454,27 +454,29 @@ def _log_operation_failure(
     """Emit the [FAIL] / Messages / Operation End block with diagnostic detail.
 
     On failure we dump *everything* useful for reconstruction:
-    - error type + first line at INFO (visible in errors-only filter)
+    - [FAIL] marker, error type, first error line at ERROR (the operation
+      genuinely failed; this should surface in standard error filters)
+    - polymorphic resolve_property hint at ERROR (it's part of the failure)
     - full traceback at DEBUG (long but only present on failures)
     - stderr tail at DEBUG (subprocess noise)
     - all captured report.* messages including Info (context before the crash)
-    - polymorphic resolve_property suggestion when applicable
+    - Messages/Duration tally + Operation End marker at INFO (bookkeeping)
 
     op_id/seq/duration are optional because some early-exception paths in the
     handler don't have them yet -- losing the close marker is still better
     than no log at all.
     """
     logger = get_operations_logger()
-    logger.info("[FAIL] Operation failed")
+    logger.error("[FAIL] Operation failed")
     if error_type:
-        logger.info(f"Error type:      {error_type}")
+        logger.error(f"Error type:      {error_type}")
     if error:
         first_line = error.strip().splitlines()[0] if error.strip() else ""
         if len(first_line) > 500:
             first_line = first_line[:500] + "..."
-        logger.info(f"Error:           {first_line}")
+        logger.error(f"Error:           {first_line}")
     if polymorphic_hint and polymorphic_hint.get("is_polymorphic_error"):
-        logger.info(
+        logger.error(
             f"Polymorphic hint: object={polymorphic_hint.get('object_type')} "
             f"property={polymorphic_hint.get('property_name')} "
             f"-> call flextools_resolve_property to get the cast"
@@ -510,14 +512,18 @@ def _log_preflight_reject(
     Pre-flight rejects never reach the subprocess so they have no traceback /
     stderr / report messages -- just the validator reason. We still emit the
     block so the user sees that the LLM tried something and was blocked.
+
+    The [REJECT] marker, reason code, and detail lines are emitted at WARNING
+    because the LLM's submission was blocked (worth surfacing in default-level
+    filters); Duration and the Operation End marker stay at INFO as bookkeeping.
     """
     logger = get_operations_logger()
-    logger.info("[REJECT] Pre-flight validation blocked execution")
-    logger.info(f"Reason code:     {reason_code}")
+    logger.warning("[REJECT] Pre-flight validation blocked execution")
+    logger.warning(f"Reason code:     {reason_code}")
     if detail:
         # Detail can be a multi-line `suggestion` from validators -- keep it.
         for line in detail.strip().splitlines()[:30]:
-            logger.info(f"  {line}")
+            logger.warning(f"  {line}")
     logger.info(f"Duration:        {duration_s:.3f}s")
     logger.info(f"=== Operation #{seq} End ({op_id}) ===")
 

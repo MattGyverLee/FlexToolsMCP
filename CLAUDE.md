@@ -188,18 +188,27 @@ When users encounter `AttributeError` or "has no attribute" errors:
 
 **READ FIRST:** See [`docs/FLEXTOOLS-STYLE-GUIDE.md`](docs/FLEXTOOLS-STYLE-GUIDE.md) for comprehensive best practices that should guide all script generation.
 
-### When to fetch the template (CRITICAL)
+### When to fetch the template (advisory)
 
-`run_module` accepts both bare snippets and full FlexTools modules. The two shapes have different conformance requirements -- mixing them up is what produced Dennis's silent-failure debugging arc.
+`run_module` accepts both bare snippets and full FlexTools modules. Bare
+snippets are the right primitive for exploration -- short, low-ceremony,
+written and executed in seconds. Don't paper them over with module
+boilerplate before they've earned it.
 
-**ALWAYS call `flextools_get_module_template(flavor='flexlibs2')` BEFORE:**
-- Saving any code to a `.py` file in the user's FlexTools Modules folder
-- Writing code containing `def Main(project, report, modifyAllowed)` that's intended for reuse
-- The user uses words like "save", "module", "to a file", "reusable", "deploy", or names the script
+**Use `flextools_get_module_template(flavor='flexlibs2')` when graduating
+a snippet into a reusable, named module** -- i.e., the user wants to keep
+the code, run it from FlexTools' GUI, or share it. Cues that you're at the
+graduation step: "save this", "make it a module", "deploy", or the user
+gives the artifact a name.
 
-A bare snippet (no `def Main`) for a one-shot probe does NOT need the template. The runner accepts it as-is. The template is required when the artifact is meant to survive the session.
+The skeleton-closet workflow (see issue #24) is the planned persistence
+path for working snippets; until it lands, fetch the template at save-time.
 
-The MCP also runs a `partial_module_structure` check at run time: code that defines `Main` but lacks the `docs` dict / `FlexToolsModule` binding will be refused with a pointer back to `get_module_template`. Calling the template up front avoids that round-trip.
+The MCP still runs a `partial_module_structure` check at run time: code
+that defines `Main` but lacks the `docs` dict / `FlexToolsModule` binding
+will be refused with a pointer back to `get_module_template`. That's a
+safety net for half-converted modules, not an instruction to fetch the
+template before every snippet.
 
 ### Lightweight op form (no `Main`)
 

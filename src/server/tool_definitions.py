@@ -198,9 +198,12 @@ against project names.""",
 
     "flextools_get_module_template": ToolDef(
         name="flextools_get_module_template",
-        description="""Get the official FlexTools module template.
+        description="""Get the official FlexTools module template (Main/docs/FlexToolsModule scaffold).
 
-Call this before running flextools_run_module() to get the proper boilerplate.""",
+Fetch this when you are graduating a working snippet into a named, reusable
+module the user wants to keep (saved as a .py file in their FlexTools Modules
+folder). For exploratory snippets executed via flextools_run_module(), the
+bare-snippet form is first-class -- no template required.""",
         input_model=GetModuleTemplateInput,
         annotations=READ_ONLY_SAFE,
     ),

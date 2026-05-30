@@ -43,21 +43,37 @@ This guide helps AI assistants and users generate **correct, maintainable FLExTo
 
 The `Main()` function allows **one codebase to work in both contexts**. Use it.
 
-### Single Module-Based Approach
+### Snippets vs Modules
 
-FlexToolsMCP now uses a unified `flextools_run_module()` tool. Always write a proper module with `Main(project, report, modifyAllowed)`:
+FlexToolsMCP's `flextools_run_module()` accepts **two equally-valid shapes**:
 
-- Quick one-off queries: Still use module form
-- Prototyping: Still use module form
-- Testing APIs: Still use module form
+| Shape | When | Look-and-feel |
+| --- | --- | --- |
+| **Bare snippet** (no `Main`) | Exploration, probes, one-shot edits | A few lines that use the pre-injected `project`, `report`, `modifyAllowed` |
+| **Full module** (`Main(...)` + `docs` + `FlexToolsModule`) | Code the user is keeping or running from the FlexTools GUI | Template from `flextools_get_module_template` |
 
-**All code goes through the same Main() pattern** - this ensures consistency and prevents code divergence.
+**Bare snippets are first-class.** Don't wrap a 4-line probe in `Main()` boilerplate just because "modules are canonical" -- the runner injects the same execution environment either way, and the `if modifyAllowed:` guard rule applies to both.
+
+**Graduate to the module form when** the user asks to save, name, deploy, or run-from-FlexTools-GUI the code. That's when you call `flextools_get_module_template`. Issue #24's "skeleton closet" is the planned long-term home for working snippets; until that ships, the module-template is the persistence path.
+
+### Save-time hygiene: in-code intent comment
+
+When you graduate a snippet (or write a full module), drop a one-line `# User asked: ...` comment at the top of the file/code block paraphrasing the human's request. Post-mortems on shipped logs depend on this -- when something breaks weeks later, the intent comment is the single line that lets the next reader see what the script was trying to do.
+
+```python
+# User asked: Add a Pinyin (zh-Latn-pinyin) gloss to every sense whose English gloss starts with "to ".
+
+from flexlibs2 import FLExProject, LexSenseOperations
+# ... rest of module
+```
+
+This pairs with the `user_intent` parameter on `flextools_run_module` (see issue #18) -- the parameter captures intent in the structured log, the comment captures it in the saved artifact.
 
 ---
 
 ## For AI Assistants (Claude, Copilot, etc.)
 
-When generating FLExTools scripts, **always generate a complete module** with the `Main(project, report, modifyAllowed)` signature. The MCP tool `flextools_run_module()` executes this directly. No need to distinguish between different execution paths - one module works everywhere.
+When generating FLExTools scripts, **match the form to the task**: bare snippet for exploration and one-shots, full module (template from `flextools_get_module_template`) when the code is being saved or run from the FlexTools GUI. The MCP tool `flextools_run_module()` executes both shapes against the same execution environment.
 
 ### 1. Choose the Right Flavor
 

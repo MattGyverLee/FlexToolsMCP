@@ -356,5 +356,100 @@ class TestIssue27ProjectLocked(unittest.TestCase):
         self.assertIsNone(diag)
 
 
+class TestIssue23ProjectPathMismatch(unittest.TestCase):
+    def setUp(self):
+        from server.project_discovery import clear_cache
+
+        clear_cache()
+        # Patch the project_discovery module functions that
+        # _diagnose_project_open_error imports on demand.
+        from unittest.mock import patch
+        self._patchers = []
+        self._patchers.append(
+            patch(
+                "server.project_discovery.list_projects",
+                return_value=(["Foo", "Bar"], "env"),
+            )
+        )
+        self._patchers.append(
+            patch(
+                "server.project_discovery.get_last_directory",
+                return_value=r"C:\ProgramData\SIL\FieldWorks\Projects",
+            )
+        )
+        for p in self._patchers:
+            p.start()
+
+    def tearDown(self):
+        for p in self._patchers:
+            p.stop()
+        from server.project_discovery import clear_cache
+        clear_cache()
+
+    def test_path_mismatch_when_project_in_discovered_list(self):
+        from server.handlers.execution import _diagnose_project_open_error
+
+        exec_result = {
+            "error": (
+                "Failed to open project 'Foo': System.IO.DirectoryNotFoundException: "
+                "Could not find a part of the path 'C:\\OtherLocation\\Foo\\Foo.fwdata'."
+            ),
+        }
+        diag = _diagnose_project_open_error(exec_result, "Foo")
+        self.assertIsNotNone(diag)
+        assert diag is not None
+        self.assertEqual(diag["error_code"], "project_path_mismatch")
+        self.assertIn("Foo", diag["message"])
+        self.assertEqual(
+            diag["attempted_path"],
+            "C:\\OtherLocation\\Foo\\Foo.fwdata",
+        )
+        self.assertIn("FieldWorks", diag["hint"])
+        # discovered_at should be present so the LLM can show the user the
+        # canonical location alongside the failing attempt.
+        self.assertIn("discovered_at", diag)
+
+    def test_drive_unavailable_detected_for_offline_share(self):
+        from server.handlers.execution import _diagnose_project_open_error
+
+        exec_result = {
+            "error": (
+                "Failed to open project 'Foo': System.IO.DirectoryNotFoundException: "
+                "Could not find a part of the path 'V:\\fau-iya-flex\\SharedSettings'."
+            ),
+        }
+        diag = _diagnose_project_open_error(exec_result, "Foo")
+        self.assertIsNotNone(diag)
+        assert diag is not None
+        # V: is in the flagged-letter set, and os.path.exists('V:\\') is False
+        # on a typical test machine -- so we should see project_drive_unavailable.
+        self.assertEqual(diag["error_code"], "project_drive_unavailable")
+        self.assertIn("V:", diag["message"])
+        self.assertEqual(
+            diag["attempted_path"], "V:\\fau-iya-flex\\SharedSettings"
+        )
+
+    def test_path_mismatch_falls_back_to_project_not_found_when_unknown(self):
+        from server.handlers.execution import _diagnose_project_open_error
+
+        exec_result = {
+            "error": (
+                "Failed to open project 'CompletelyUnknown': "
+                "System.IO.DirectoryNotFoundException: "
+                "Could not find a part of the path 'C:\\Path\\CompletelyUnknown.fwdata'."
+            ),
+        }
+        diag = _diagnose_project_open_error(exec_result, "CompletelyUnknown")
+        self.assertIsNotNone(diag)
+        assert diag is not None
+        self.assertEqual(diag["error_code"], "project_not_found")
+        # The fall-through path should still attach the attempted_path so the
+        # user can see what FieldWorks tried.
+        self.assertEqual(
+            diag["attempted_path"],
+            "C:\\Path\\CompletelyUnknown.fwdata",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -732,12 +732,34 @@ def _attach_assistance_if_loop(
 
 
 _OPEN_PROJECT_PREFIX = "Failed to open project"
+# Network-share letters that FieldWorks sometimes stores in stale paths.
+# Listed in the project's settings hint when the drive isn't currently mounted.
+_DRIVE_LETTERS_TO_FLAG = ("U:", "V:", "W:", "X:", "Y:", "Z:")
+
+
+def _extract_attempted_path(error_msg: str) -> Optional[str]:
+    """Pull the path out of a .NET 'Could not find a part of the path' error.
+
+    The full message shape from the runner is roughly:
+        Failed to open project 'X': System.IO.DirectoryNotFoundException:
+        Could not find a part of the path 'V:\\fau-iya-flex\\SharedSettings'.
+    """
+    import re as _re
+
+    match = _re.search(r"Could not find a part of the path '([^']+)'", error_msg)
+    if match:
+        return match.group(1)
+    return None
 
 
 def _diagnose_project_open_error(
     execution_result: Dict[str, Any], project_name: str
 ) -> Optional[Dict[str, Any]]:
     """Recognize known project-open failure modes and return a structured payload.
+
+    Issue #23: path-resolution failures (.NET DirectoryNotFoundException) should
+    cross-check against the safe-enumeration list and surface project_path_mismatch
+    / project_drive_unavailable diagnostics so the user isn't left guessing.
 
     Issue #27: "in use by another program" should hint at closing the FieldWorks
     GUI (the most common cause).
@@ -774,6 +796,94 @@ def _diagnose_project_open_error(
                 "Lock subfolder."
             ),
             "attempted_path": None,
+        }
+
+    # ----- Issue #23: path-resolution failure. ----------------------------
+    path_failed_markers = (
+        "Could not find a part of the path",
+        "DirectoryNotFoundException",
+    )
+    if any(marker in raw_error for marker in path_failed_markers):
+        attempted_path = _extract_attempted_path(raw_error)
+
+        # Cross-check against the safe-enumeration list.
+        try:
+            from ..project_discovery import list_projects, get_last_directory
+        except (ImportError, ValueError):
+            from server.project_discovery import list_projects, get_last_directory
+        try:
+            discovered_names, _src = list_projects()
+            discovered_dir = get_last_directory()
+        except Exception:
+            discovered_names, discovered_dir = [], None
+
+        # Drive-letter heuristic: if the attempted path lives on an unusual
+        # network-share letter (U:..Z:) that doesn't currently exist on this
+        # machine, surface project_drive_unavailable as a separate code so
+        # the user can immediately see "your share is probably down".
+        if attempted_path:
+            upper_path = attempted_path[:2].upper()
+            if (
+                upper_path in _DRIVE_LETTERS_TO_FLAG
+                and not os.path.exists(upper_path + os.sep)
+            ):
+                return {
+                    "error_code": "project_drive_unavailable",
+                    "message": (
+                        f"Project '{project_name}' references drive {upper_path} "
+                        f"({attempted_path}), but that drive is not currently "
+                        f"reachable from this machine."
+                    ),
+                    "hint": (
+                        "The drive is likely an offline network share. Reconnect "
+                        "the share (or remap the drive letter) and retry. If the "
+                        "project really lives elsewhere, check "
+                        "flextools_list_projects for the canonical location."
+                    ),
+                    "attempted_path": attempted_path,
+                }
+
+        # Path-mismatch case: we know where the project actually lives.
+        if project_name in (discovered_names or []) and discovered_dir:
+            return {
+                "error_code": "project_path_mismatch",
+                "message": (
+                    f"Project '{project_name}' was found in {discovered_dir} "
+                    f"but FieldWorks tried to open it at "
+                    f"{attempted_path or '(path not parsed from error)'}."
+                ),
+                "discovered_at": str(discovered_dir),
+                "attempted_path": attempted_path,
+                "hint": (
+                    "Restart FieldWorks (it may be holding a stale path) or run "
+                    "flextools_list_projects to confirm canonical location."
+                ),
+            }
+
+        # Fall-through: path-not-found and the project isn't in the discovered
+        # list. Re-use resolve_or_explain so the LLM gets normalized
+        # suggestions instead of a bare "directory not found" string.
+        try:
+            from ..project_discovery import resolve_or_explain
+        except (ImportError, ValueError):
+            from server.project_discovery import resolve_or_explain
+        _resolved, payload = resolve_or_explain(project_name)
+        if payload is not None:
+            payload = dict(payload)  # don't mutate the shared dict
+            payload["attempted_path"] = attempted_path
+            return payload
+        return {
+            "error_code": "project_not_found",
+            "message": (
+                f"Could not open project '{project_name}': the path "
+                f"{attempted_path or '(unparsed)'} does not exist, and the "
+                f"safe-enumeration list also did not contain this name."
+            ),
+            "attempted_path": attempted_path,
+            "hint": (
+                "Call flextools_list_projects to see what's actually available, "
+                "then retry with the canonical name."
+            ),
         }
 
     return None

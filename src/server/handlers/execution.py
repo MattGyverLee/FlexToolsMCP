@@ -1548,11 +1548,37 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # CRITICAL: Refuse unprotected code unconditionally
     if not cert["is_certified_readonly"]:
         guidance = get_unprotected_write_guidance(cert)
-        mutating = [m.get("method") for m in cert.get("mutating_calls", []) if m.get("is_mutating")]
+        mutating = [m for m in cert.get("mutating_calls", []) if m.get("is_mutating")]
+        unprotected_lcm = cert.get("unprotected_liblcm_calls", []) or []
+        raw_lcm = cert.get("raw_lcm_patterns", []) or []
+        # Mirror the casting-reject pattern: an INFO summary + per-issue DEBUG
+        # lines so the .log captures WHY writeability failed, not just that it
+        # did. Without this the detail field only carries the first 5 method
+        # names and the actual line numbers / contexts are lost.
+        op_logger = get_operations_logger()
+        op_logger.info(
+            f"Preflight writeability: mutating={len(mutating)} "
+            f"unprotected_lcm={len(unprotected_lcm)} raw_lcm={len(raw_lcm)} (rejected)"
+        )
+        for m in mutating[:10]:
+            op_logger.debug(
+                f"  writeability: class={m.get('class')} method={m.get('method')} "
+                f"source={m.get('source')}"
+            )
+        for c in unprotected_lcm[:10]:
+            op_logger.debug(
+                f"  writeability: line={c.get('line')} method={c.get('method')} "
+                f"context={(c.get('context') or '')[:80]!r}"
+            )
+        for p in raw_lcm[:10]:
+            op_logger.debug(
+                f"  writeability: line={p.get('line')} method={p.get('method')} "
+                f"context={(p.get('context') or '')[:80]!r}"
+            )
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
             "unprotected_writes",
-            f"mutating_calls={mutating[:5]}",
+            f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
         )
         return _attach_assistance_if_loop(
             [TextContent(type="text", text=json.dumps(guidance, indent=2))],

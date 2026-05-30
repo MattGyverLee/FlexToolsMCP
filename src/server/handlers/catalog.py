@@ -216,6 +216,18 @@ async def handle_list_skeletons(
     try:
         entries = skeleton_storage.list_all_skeletons(limit=limit)
     except Exception as exc:
+        # Log before returning -- otherwise the .log has no trace of the
+        # failure and the only signal is the error JSON in the MCP response.
+        try:
+            from ..kernel import get_operations_logger
+        except (ImportError, ValueError):
+            from server.kernel import get_operations_logger
+        op_logger = get_operations_logger()
+        if op_logger:
+            op_logger.error(
+                f"handle_list_skeletons: list_all_skeletons(limit={limit}) failed: {exc}",
+                exc_info=True,
+            )
         return [TextContent(type="text", text=json.dumps({
             "error": f"Failed to load skeletons: {exc}",
             "skeletons": [],

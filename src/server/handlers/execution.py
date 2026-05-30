@@ -834,7 +834,13 @@ def _diagnose_project_open_error(
         try:
             discovered_names, _src = list_projects()
             discovered_dir = get_last_directory()
-        except Exception:
+        except Exception as disc_exc:
+            # If project discovery itself fails here, the eventual error
+            # message will claim "no nearby projects" for the wrong reason.
+            # Log so the operator can tell the two failure modes apart.
+            get_operations_logger().warning(
+                f"path_failed diagnostic: list_projects() failed: {disc_exc}"
+            )
             discovered_names, discovered_dir = [], None
 
         # Drive-letter heuristic: if the attempted path lives on an unusual
@@ -1412,8 +1418,15 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     _code_size_bytes = len(code.encode("utf-8", errors="replace")) if code else 0
 
     # Validate project_name is available BEFORE assigning an op_id -- without
-    # both code and project the call isn't really an "operation" worth logging.
+    # both code and project the call isn't really an "operation" worth logging
+    # as a full Start/End block. But we still WARN so the .log records what
+    # the LLM tried and why we bounced it -- otherwise these pre-op rejects
+    # leave no trace and a "user keeps hitting project_name_required" debug
+    # has no .log evidence.
     if not project_name:
+        get_operations_logger().warning(
+            "[PRE-OP REJECT] project_name_required: no project_name in args or session"
+        )
         return error_response(
             "project_name_required",
             "No project specified. Either set project_name in start() or provide it directly.",
@@ -1429,6 +1442,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         from server.project_discovery import resolve_or_explain
     resolved, _resolve_err = resolve_or_explain(project_name)
     if _resolve_err:
+        get_operations_logger().warning(
+            f"[PRE-OP REJECT] {_resolve_err['error_code']}: "
+            f"project_name={project_name!r} reason={_resolve_err.get('reason')!r}"
+        )
         return error_response(
             _resolve_err["error_code"],
             _resolve_err["message"],

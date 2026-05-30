@@ -1785,19 +1785,54 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     }
 
 
+# Issue #21 follow-up: receiver-name -> preferred interface tie-break.
+# When `defined_on` lists more than one candidate interface, an alphabetical
+# pick (the old behavior) produces confidently-wrong rewrites for the most
+# ambiguous properties (Form -> ILexEtymology instead of IMoForm, Gloss ->
+# ILexEtymology instead of ILexSense, Name -> ICmAgent instead of
+# ICmPossibility). The Dennis cascade-failure pattern (memory/
+# dennis_cascade_failure.md) shows that a confidently-wrong rewrite is
+# worse than no rewrite -- the LLM follows it to a dead end and abandons
+# the wrapper layer entirely.
+#
+# Linguist-convention variable names are a reliable signal: scripts almost
+# always call a sense `sense`, an entry `entry`, a POS object `pos`, etc.
+# Keep this map small and obvious -- ambiguous variable names (e.g. `obj`,
+# `x`) deliberately fall through to None (manual resolve_property).
+_RECEIVER_NAME_TO_INTERFACE = {
+    "sense": "ILexSense",
+    "entry": "ILexEntry",
+    "pos": "ICmPossibility",
+    "pos_obj": "ICmPossibility",
+    "domain": "ICmPossibility",
+    "bundle": "IWfiMorphBundle",
+    "morph": "IMoForm",
+    "seg": "ISegment",
+}
+
+
 def _pick_cast_interface(
     property_name: str,
     available_on: List[str],
     casting_index: Optional[Dict] = None,
+    receiver_name: Optional[str] = None,
 ) -> Optional[str]:
     """Pick the most-specific interface to cast to for `property_name`.
 
     Strategy:
       1. Prefer entries in `available_on` that start with 'I' (LCM convention).
-      2. If only one entry survives, use it; otherwise use the casting_index's
-         `defined_on` (which is the same shape but always I-prefixed).
-      3. Drop entries with parenthetical qualifiers like "ILexSense (raw LCM)"
-         — those are descriptive, not importable.
+      2. If exactly one survives, use it.
+      3. Otherwise consult casting_index's `defined_on`; if exactly one
+         I-prefixed entry, use it.
+      4. If multiple candidates remain AND we have a `receiver_name` matching
+         a known linguist-convention variable, prefer the matching interface
+         when it's in the candidate set.
+      5. Otherwise return None. The Dennis cascade-failure pattern shows a
+         confidently-wrong rewrite (alphabetical tie-break) is worse than
+         no rewrite -- downstream this routes to the existing fallback hint
+         ("call flextools_resolve_property to resolve manually").
+      6. Drop entries with parenthetical qualifiers like "ILexSense (raw LCM)"
+         -- those are descriptive, not importable.
     """
     cleaned: List[str] = []
     for entry in available_on or ():
@@ -1808,7 +1843,9 @@ def _pick_cast_interface(
             cleaned.append(head)
     if len(cleaned) == 1:
         return cleaned[0]
-    # Tie-breaker: consult casting_index for the canonical defined_on list.
+
+    # Consult the casting_index's defined_on for the canonical interface list.
+    defined_on: List[str] = []
     if casting_index:
         props = (casting_index or {}).get("properties") or {}
         info = props.get(property_name) or {}
@@ -1817,10 +1854,74 @@ def _pick_cast_interface(
         ]
         if len(defined_on) == 1:
             return defined_on[0]
-        if defined_on:
-            return defined_on[0]
+
+    # Multiple candidates. Try the receiver-name tie-break before giving up.
+    candidates = defined_on if defined_on else cleaned
+    if receiver_name and candidates:
+        preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
+        if preferred and preferred in candidates:
+            return preferred
+
+    # Ambiguous and we have no signal to disambiguate. Return None rather
+    # than picking alphabetically (Issue #21 follow-up: drop confident-wrong
+    # tie-break). The handler's fallback path emits the
+    # "call flextools_resolve_property" hint.
+    if len(cleaned) > 1 or len(defined_on) > 1:
+        return None
     if cleaned:
         return cleaned[0]
+    return None
+
+
+# Issue #21 follow-up: some LCM interfaces live OUTSIDE SIL.LCModel.
+# IMultiAccessorBase (and its kin) live in SIL.LCModel.Core.KernelInterfaces.
+# Emitting `from SIL.LCModel import IMultiAccessorBase` produces an
+# ImportError at runtime, which is worse than no rewrite at all.
+_INTERFACE_NAMESPACE_OVERRIDES = {
+    "IMultiAccessorBase": "SIL.LCModel.Core.KernelInterfaces",
+    "IMultiStringAccessor": "SIL.LCModel.Core.KernelInterfaces",
+    "IMultiUnicode": "SIL.LCModel.Core.KernelInterfaces",
+    "IMultiString": "SIL.LCModel.Core.KernelInterfaces",
+    "ITsString": "SIL.LCModel.Core.KernelInterfaces",
+    "ITsMultiString": "SIL.LCModel.Core.KernelInterfaces",
+}
+
+
+def _imports_for_interface(cast_interface: Optional[str]) -> List[str]:
+    """Build the imports_needed list for an emitted cast.
+
+    Defaults to `from SIL.LCModel import X`, but routes a small set of
+    known-elsewhere interfaces (IMultiAccessorBase et al.) to their real
+    namespace. Returns [] when cast_interface is falsy.
+    """
+    if not cast_interface:
+        return []
+    ns = _INTERFACE_NAMESPACE_OVERRIDES.get(cast_interface, "SIL.LCModel")
+    return [f"from {ns} import {cast_interface}"]
+
+
+def _find_receiver_name(
+    tree: Optional[ast.AST], line_num: int, property_name: str
+) -> Optional[str]:
+    """Find the receiver variable name for `obj.property_name` on `line_num`.
+
+    Used by `_pick_cast_interface` to disambiguate properties defined on
+    multiple interfaces (Issue #21 follow-up). Only returns the name when
+    the receiver is a bare ast.Name -- chained or call-rooted receivers
+    don't get a tie-break (they also wouldn't get a rewrite emitted).
+    """
+    if tree is None:
+        return None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        if getattr(node, "lineno", None) != line_num:
+            continue
+        if node.attr != property_name:
+            continue
+        receiver = node.value
+        if isinstance(receiver, ast.Name):
+            return receiver.id
     return None
 
 
@@ -1996,15 +2097,19 @@ def detect_casting_needs(
                         break
                     # Issue #21: inline the structured rewrite so the LLM can
                     # apply the cast without a second resolve_property call.
+                    # Issue #21 follow-up: receiver-name signal disambiguates
+                    # confidently-wrong tie-breaks (Form / Gloss / Name).
+                    receiver_name = _find_receiver_name(tree, line_num, property_name)
                     cast_iface = _pick_cast_interface(
-                        property_name, pattern_info["available_on"], casting_index
+                        property_name,
+                        pattern_info["available_on"],
+                        casting_index,
+                        receiver_name=receiver_name,
                     )
                     rewrite = _build_cast_rewrite(
                         tree, line_num, property_name, cast_iface or ""
                     ) if cast_iface else None
-                    imports_needed = (
-                        [f"from SIL.LCModel import {cast_iface}"] if cast_iface else []
-                    )
+                    imports_needed = _imports_for_interface(cast_iface)
 
                     # Found a potential casting issue
                     issues.append({
@@ -2050,15 +2155,18 @@ def detect_casting_needs(
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
                         # Issue #21: pick a concrete interface from the
                         # casting index and emit a structured rewrite.
+                        # Issue #21 follow-up: use obj_var as the receiver
+                        # tie-break signal (regex already captured it).
                         cast_iface = _pick_cast_interface(
-                            prop_name, casting_info.get("defined_on", []), casting_index
+                            prop_name,
+                            casting_info.get("defined_on", []),
+                            casting_index,
+                            receiver_name=obj_var,
                         )
                         rewrite = _build_cast_rewrite(
                             tree, line_num, prop_name, cast_iface or ""
                         ) if cast_iface else None
-                        imports_needed = (
-                            [f"from SIL.LCModel import {cast_iface}"] if cast_iface else []
-                        )
+                        imports_needed = _imports_for_interface(cast_iface)
 
                         # New issue not caught by known patterns
                         issues.append({

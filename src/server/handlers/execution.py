@@ -721,6 +721,79 @@ def _attach_assistance_if_loop(
     return response
 
 
+def _inline_discovery_docs(
+    entity_names: List[str], api_index: Any, limit: int = 3
+) -> Dict[str, Any]:
+    """Return get_object_api-like documentation for entities, inlined into a rejection.
+
+    Issue #20 / Issue #29: when the discovery / undiscovered-entity gates fire,
+    pull each listed entity straight out of the loaded flexlibs2 index so the
+    LLM doesn't have to make a second tool call to learn the method shapes.
+
+    Args:
+        entity_names: Entity names to look up (e.g. "SegmentOperations", "LexEntryOperations").
+        api_index: The loaded APIIndex; may be None on cold start.
+        limit: Max number of entities to inline (avoid bloating the payload).
+
+    Returns:
+        Dict keyed by entity name with a compact api-doc shape. Empty dict if
+        no entities matched or the index has not been loaded yet.
+    """
+    if not entity_names or api_index is None:
+        return {}
+    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+    entities = flexlibs2.get("entities") or {}
+    inlined: Dict[str, Any] = {}
+    for name in entity_names[:limit]:
+        entity = entities.get(name)
+        # Try the accessor <-> ops-class swap so 'POS' resolves to 'POSOperations'
+        # (and vice-versa) when the assistant used the other form in code.
+        if entity is None and not name.endswith("Operations"):
+            entity = entities.get(name + "Operations")
+            if entity is not None:
+                name = name + "Operations"
+        if entity is None and name.endswith("Operations"):
+            short = name[: -len("Operations")]
+            entity = entities.get(short)
+            if entity is not None:
+                name = short
+        if entity is None:
+            continue
+        # Compact shape: methods/properties with name + signature/return_type,
+        # capped so the payload stays under ~2KB per entity.
+        methods = entity.get("methods", []) or []
+        properties = entity.get("properties", []) or []
+        method_caps = []
+        for m in methods[:30]:
+            method_caps.append({
+                "name": m.get("name"),
+                "signature": m.get("signature") or m.get("python_signature"),
+                "summary": (m.get("description") or m.get("docstring") or "")[:160],
+                "is_mutating": m.get("is_mutating", False),
+            })
+        prop_caps = []
+        for p in properties[:20]:
+            prop_caps.append({
+                "name": p.get("name"),
+                "return_type": p.get("return_type"),
+                "summary": (p.get("description") or "")[:120],
+            })
+        inlined[name] = {
+            "category": entity.get("category"),
+            "namespace": entity.get("namespace"),
+            "import_statement": entity.get("import_statement"),
+            "methods": method_caps,
+            "method_count_total": len(methods),
+            "properties": prop_caps,
+            "property_count_total": len(properties),
+            "note": (
+                "Inlined for single-round-trip recovery. For the full surface, "
+                f"call flextools_get_object_api(object_type='{name}')."
+            ),
+        }
+    return inlined
+
+
 def _run_validator(validator_func, code: str, check_key: str, error_code: str, **validator_kwargs) -> Optional[list[TextContent]]:
     """Run a single validator and return error response if validation fails.
 
@@ -1328,14 +1401,30 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "undiscovered_entity",
                 f"undiscovered={undiscovered_check.get('undiscovered')}",
             )
+            # Issue #20: inline get_object_api docs when the undiscovered
+            # entity is explicitly imported from flexlibs2. Single round-trip
+            # recovery -- the LLM sees the rejection AND the method/property
+            # shapes in the same payload, no second tool call needed.
+            extras: Dict[str, Any] = {
+                "undiscovered": undiscovered_check["undiscovered"],
+                "imported_undiscovered": undiscovered_check.get("imported_undiscovered", []),
+                "hint": "Call flextools_get_object_api for each listed entity, then re-run.",
+                "session": session_state.summary(),
+                "op_id": op_id,
+            }
+            inline = _inline_discovery_docs(
+                undiscovered_check.get("imported_undiscovered") or [],
+                api_idx,
+            )
+            if inline:
+                extras["_inline_discovery"] = inline
+            # Issue #28: wrap the rejection with the retry-loop detector so
+            # repeated undiscovered_entity failures surface _assistance hints.
             return _attach_assistance_if_loop(
                 error_response(
                     "undiscovered_entity",
                     undiscovered_check["suggestion"],
-                    undiscovered=undiscovered_check["undiscovered"],
-                    hint="Call flextools_get_object_api for each listed entity, then re-run.",
-                    session=session_state.summary(),
-                    op_id=op_id,
+                    **extras,
                 ),
                 error_code="undiscovered_entity",
                 code_size_bytes=_code_size_bytes,

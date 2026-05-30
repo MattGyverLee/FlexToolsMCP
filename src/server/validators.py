@@ -655,6 +655,41 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     return mapping
 
 
+def _collect_flexlibs2_imports(code_tree: Optional[ast.AST]) -> Set[str]:
+    """Return the set of names imported from the flexlibs2 package.
+
+    Matches:
+        from flexlibs2 import SegmentOperations           -> {'SegmentOperations'}
+        from flexlibs2 import SegmentOperations as SO     -> {'SegmentOperations'}
+        from flexlibs2.foo import Bar                     -> {'Bar'}
+        import flexlibs2.SegmentOperations                -> {'SegmentOperations'}
+        import flexlibs2.SegmentOperations as SO          -> {'SegmentOperations'}
+
+    Why we key on the *original* name (not the alias): the undiscovered-entity
+    gate compares against API-index entity names (SegmentOperations), so an
+    `import ... as SO` should still satisfy the gate's "this entity is imported"
+    check.
+    """
+    if code_tree is None:
+        return set()
+    names: Set[str] = set()
+    for node in ast.walk(code_tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module == "flexlibs2" or module.startswith("flexlibs2."):
+                for alias in node.names:
+                    if alias.name and alias.name != "*":
+                        names.add(alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name and alias.name.startswith("flexlibs2."):
+                    # import flexlibs2.SegmentOperations [as SO]
+                    last = alias.name.rsplit(".", 1)[-1]
+                    if last:
+                        names.add(last)
+    return names
+
+
 def detect_undiscovered_entities(
     code_tree: Optional[ast.AST],
     session_state,
@@ -683,8 +718,17 @@ def detect_undiscovered_entities(
       - has_undiscovered: bool
       - undiscovered: list[str] -- entity names that need discovery
       - suggestion: human-readable hint with exact tool calls to make
+      - imported_undiscovered: list[str] -- undiscovered entities that were
+        explicitly imported from flexlibs2 (subset of `undiscovered`). Used by
+        the execution handler to inline get_object_api docs and clarify that
+        imports alone don't satisfy the discovery gate.
     """
-    result = {"has_undiscovered": False, "undiscovered": [], "suggestion": ""}
+    result = {
+        "has_undiscovered": False,
+        "undiscovered": [],
+        "suggestion": "",
+        "imported_undiscovered": [],
+    }
     if code_tree is None:
         return result
 
@@ -735,12 +779,29 @@ def detect_undiscovered_entities(
     if not undiscovered:
         return result
 
+    # Issue #20: identify undiscovered entities that the user actually imported.
+    # The discovery gate is sometimes confusing because `from flexlibs2 import X`
+    # populates Python's namespace but NOT session_state.discovered_apis -- the
+    # rejection then reads as "we couldn't find X" even though X is right there
+    # in the import line. Pulling the import set lets the rejection say so
+    # explicitly and lets the execution handler inline a get_object_api result
+    # for single-import recovery.
+    imported_names = _collect_flexlibs2_imports(code_tree)
+    # Also accept the accessor-form of imported names (e.g. user imports
+    # LexSenseOperations -> also satisfies project.LexSense / 'Senses' callouts).
+    accessor_forms_of_imports: Set[str] = set()
+    for name in imported_names:
+        if name.endswith("Operations"):
+            accessor_forms_of_imports.add(name[: -len("Operations")])
+        if name in ops_to_accessor:
+            accessor_forms_of_imports.add(ops_to_accessor[name])
+    imported_or_accessor = imported_names | accessor_forms_of_imports
+    imported_undiscovered = sorted(e for e in undiscovered if e in imported_or_accessor)
+
     suggestions = "\n  - ".join(
         f"flextools_get_object_api(object_type='{e}')" for e in undiscovered
     )
-    result["has_undiscovered"] = True
-    result["undiscovered"] = undiscovered
-    result["suggestion"] = (
+    base_msg = (
         f"Code uses {len(undiscovered)} entity/entities that were not validated via "
         f"flextools_get_object_api in this session: {', '.join(undiscovered)}.\n\n"
         f"Call these first so you have the real signatures (this prevents hallucinated "
@@ -748,6 +809,32 @@ def detect_undiscovered_entities(
         f"  - {suggestions}\n\n"
         f"Tip: get_object_api accepts either form -- 'POS' or 'POSOperations' both work."
     )
+    if imported_undiscovered:
+        # Surface the import-vs-discovery distinction in plain language so the
+        # LLM doesn't loop on "but I imported it" reasoning. Single entity gets
+        # a tailored sentence; multiple imports get a comma-joined version.
+        entity_label = imported_undiscovered[0]
+        if len(imported_undiscovered) == 1:
+            import_clarifier = (
+                f"Found `from flexlibs2 import {entity_label}` in your code, but the "
+                f"discovery gate also requires calling "
+                f"`flextools_get_object_api(object_type='{entity_label}')` so you've "
+                f"validated the method shapes. Imports alone aren't enough."
+            )
+        else:
+            entity_list = ", ".join(imported_undiscovered)
+            import_clarifier = (
+                f"Found `from flexlibs2 import ...` for [{entity_list}] in your code, "
+                f"but the discovery gate also requires calling "
+                f"flextools_get_object_api for each so you've validated the method "
+                f"shapes. Imports alone aren't enough."
+            )
+        base_msg = import_clarifier + "\n\n" + base_msg
+
+    result["has_undiscovered"] = True
+    result["undiscovered"] = undiscovered
+    result["imported_undiscovered"] = imported_undiscovered
+    result["suggestion"] = base_msg
     return result
 
 

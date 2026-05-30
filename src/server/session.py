@@ -33,9 +33,15 @@ _HVO_PATTERN = re.compile(r"hvo=(\d+)")
 # to actually read them. The default fallback covers any error_code not in the map.
 _ASSISTANCE_HINTS_BY_ERROR_CODE = {
     "casting_issues_detected": (
-        "the cast is missing or wrong. Call flextools_resolve_property "
-        "with the offending property name to get the exact cast and "
-        "import path -- don't keep guessing."
+        # Issue #28 follow-up: #21 inlines the cast rewrite directly into
+        # the rejection payload at casting_issues[*].rewrite (and
+        # imports_needed). After 5 retry loops, the LLM needs to read what
+        # the rejection already provided, not chase another tool call.
+        "the inlined rewrite in casting_issues[*].rewrite is the right "
+        "fix. If that field is null (chained or call-rooted receiver), "
+        "call flextools_resolve_property with the property name and "
+        "context entity -- but otherwise apply what's already in the "
+        "rejection."
     ),
     "undiscovered_entity": (
         "the Operations class hasn't been discovered for this session. "

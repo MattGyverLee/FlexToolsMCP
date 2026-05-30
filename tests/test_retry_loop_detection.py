@@ -42,9 +42,16 @@ def test_same_error_4_prior_plus_current_triggers():
     assert pattern is not None, "5 same-error ops should trigger the detector"
     assert pattern["pattern_detected"] == "same_error_retry_loop"
     assert pattern["error_code"] == "casting_issues_detected"
-    assert "resolve_property" in pattern["message"], (
-        "casting_issues_detected hint should mention resolve_property; "
+    # Issue #28 follow-up: hint now points at the #21 inlined rewrite as
+    # the primary fix path; resolve_property is the fallback for chained
+    # receivers. Both substrings must appear.
+    assert "rewrite" in pattern["message"], (
+        "casting_issues_detected hint should mention the inlined rewrite; "
         f"got: {pattern['message']!r}"
+    )
+    assert "resolve_property" in pattern["message"], (
+        "casting_issues_detected hint should still mention resolve_property "
+        f"as the fallback for chained receivers; got: {pattern['message']!r}"
     )
 
 

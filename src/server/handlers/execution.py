@@ -383,6 +383,112 @@ def _log_operation_start(
         logger.debug(code_line)
 
 
+def _classify_message_level(m: Dict[str, Any]) -> str:
+    """Return one of "INFO", "WARNING", "ERROR", or "OTHER" for a raw
+    runner message dict. Accepts both the string `type` shape and the older
+    int `msgType` shape so legacy payloads still classify correctly."""
+    INT_TO_LABEL = {0: "INFO", 1: "WARNING", 2: "ERROR", 3: "BLANK"}
+    raw = m.get("type", m.get("msgType"))
+    if isinstance(raw, int):
+        label = INT_TO_LABEL.get(raw, "")
+    else:
+        label = (raw or "").upper()
+    return label if label in ("INFO", "WARNING", "ERROR") else "OTHER"
+
+
+def _cap_info_messages(
+    messages: List[Dict[str, Any]],
+    cap: int,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Cap the number of report.Info entries returned to the LLM (issue #25).
+
+    A single run_module call can emit hundreds of info messages -- 785 in
+    one of Dennis's sessions -- which floods the response context with no
+    semantic gain. We keep the first ``cap // 2`` info messages and the
+    last ``cap // 2`` and drop the middle, leaving a synthetic INFO marker
+    in between so the LLM can see how many were elided.
+
+    - Warnings and errors are NEVER capped: they always pass through intact,
+      preserving their original positions relative to the surviving infos.
+    - Pass ``cap == 0`` to disable the cap (returns ``messages`` unchanged).
+    - When the info count is at-or-below ``cap``, messages are returned as-is.
+
+    Returns ``(capped_messages, info_stats)`` where info_stats is::
+
+        {
+            "original_info_count": <int>,
+            "kept_info_count":     <int>,
+            "truncated":           <bool>,
+            "cap":                 <int>,
+        }
+
+    The caller logs info_stats on the op-Start block and (optionally)
+    attaches it to the response payload so the LLM can see whether output
+    was trimmed.
+    """
+    if not messages:
+        return messages, {
+            "original_info_count": 0,
+            "kept_info_count": 0,
+            "truncated": False,
+            "cap": cap,
+        }
+
+    # Index every entry so we can preserve original order on reassembly.
+    info_indices = [
+        i for i, m in enumerate(messages)
+        if _classify_message_level(m) == "INFO"
+    ]
+    original_info_count = len(info_indices)
+
+    # cap == 0 means "no cap" -- pass through.
+    # Likewise when we're already under the cap.
+    if cap <= 0 or original_info_count <= cap:
+        return messages, {
+            "original_info_count": original_info_count,
+            "kept_info_count": original_info_count,
+            "truncated": False,
+            "cap": cap,
+        }
+
+    head_count = cap // 2
+    tail_count = cap - head_count  # honors odd cap values
+    keep_head = set(info_indices[:head_count])
+    keep_tail = set(info_indices[-tail_count:]) if tail_count else set()
+    drop_indices = set(info_indices[head_count:-tail_count]) if tail_count \
+        else set(info_indices[head_count:])
+    dropped_count = len(drop_indices)
+
+    # Truncation marker -- inserted at the position of the first dropped info
+    # so its location in the timeline matches reality.
+    first_drop_pos = min(drop_indices) if drop_indices else None
+    marker = {
+        "type": "INFO",
+        "message": (
+            f"... [{dropped_count} additional info messages truncated; "
+            f"pass max_info_messages=0 to disable cap] ..."
+        ),
+        "ref": None,
+    }
+
+    capped: List[Dict[str, Any]] = []
+    inserted_marker = False
+    for i, m in enumerate(messages):
+        if i in drop_indices:
+            if not inserted_marker and i == first_drop_pos:
+                capped.append(marker)
+                inserted_marker = True
+            continue
+        capped.append(m)
+
+    return capped, {
+        "original_info_count": original_info_count,
+        "kept_info_count": head_count + tail_count,
+        "truncated": True,
+        "cap": cap,
+    }
+
+
 def _log_report_messages(messages: List[Dict[str, Any]], include_info: bool) -> None:
     """Spill captured report.* messages into the log.
 
@@ -893,6 +999,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
     # the human's actual request. Logged on the Start block; never required.
     user_intent = args.get("user_intent")
+    # max_info_messages (issue #25): cap the number of report.Info messages
+    # returned to the LLM. Default 100 (first 50 + last 50 + truncation marker).
+    # 0 disables the cap. Warnings/errors are NEVER capped regardless.
+    max_info_messages = int(args.get("max_info_messages", 100))
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging.
@@ -1739,7 +1849,39 @@ MODULE_CODE = {code}
 
         # Extract structured failure detail before logging so the .log block
         # has full reconstruction info: traceback, report messages, hint.
+        # NOTE: report_messages is the FULL list (no cap) so .log post-mortems
+        # can replay every Info message; the cap below only trims the response
+        # payload returned to the LLM.
         report_messages = execution_result.get("messages") or []
+
+        # Cap report.Info messages in the LLM-facing response (issue #25).
+        # Errors/warnings always survive intact -- this only trims info noise.
+        capped_messages, info_stats = _cap_info_messages(
+            report_messages, max_info_messages
+        )
+        execution_result["messages"] = capped_messages
+        # Surface the cap state on the operation block so post-mortems can
+        # see what the LLM actually saw vs. what the runner produced.
+        _logger_for_cap = get_operations_logger()
+        if info_stats["truncated"] and _logger_for_cap:
+            _logger_for_cap.info(
+                f"Info-cap:        {info_stats['cap']} "
+                f"(truncated from {info_stats['original_info_count']} "
+                f"to {info_stats['kept_info_count']})"
+            )
+        elif _logger_for_cap and info_stats["original_info_count"] > 0:
+            _logger_for_cap.info(
+                f"Info-cap:        {info_stats['cap']} "
+                f"(no truncation; {info_stats['original_info_count']} info messages)"
+            )
+        if info_stats["truncated"]:
+            # Surface the truncation in the response summary so the LLM knows
+            # not all info messages were returned.
+            summary = execution_result.setdefault("summary", {})
+            summary["info_truncated"] = True
+            summary["info_returned"] = info_stats["kept_info_count"]
+            summary["info_original"] = info_stats["original_info_count"]
+            summary["info_cap"] = info_stats["cap"]
         # The runner stuffs `traceback.format_exc()` into the `error` field
         # using a "Execution error: <msg>\n<traceback>" shape. Split it back
         # out so the .log can show the traceback as DEBUG without polluting

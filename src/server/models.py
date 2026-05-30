@@ -384,3 +384,12 @@ class RunModuleInput(BaseModel):
                     "without scrolling back through the conversation. "
                     "Example: 'List entries whose lexeme form starts with a vowel.'"
     )
+    max_info_messages: int = Field(
+        default=100,
+        ge=0,
+        le=10000,
+        description="Max report.Info messages to return verbatim. If exceeded, keep the "
+                    "first cap//2 and last cap//2 with a truncation marker in between. "
+                    "Pass 0 to disable the cap (return all info messages, no truncation). "
+                    "Errors and warnings are NEVER capped -- they always survive intact."
+    )

@@ -117,6 +117,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
+        "IPartOfSpeech",
+        "PartOfSpeechTags",
         "ITsString",
         "ITsString"
       ],
@@ -12483,6 +12485,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "name": [
+            "arg[0] of normalize_match_key()"
+          ],
           "owner_class": [
             "arg[0] of _ValidateParam()",
             "arg[0] of GetAllFields()"
@@ -13835,7 +13840,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "composite",
+        "mapping_type": "convenience",
         "methods_called": [
           ".Remove()"
         ],
@@ -13845,7 +13850,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "RecordsOC (OwningCollection)",
           "SubRecordsOS (OwningSequence)"
         ],
@@ -13874,13 +13878,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "RecordsOC (OwningCollection)",
         "SubRecordsOS (OwningSequence)"
       ],
@@ -19980,7 +19983,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -19991,8 +19994,7 @@
           ]
         },
         "properties_accessed": [
-          "ExamplesOS (OwningSequence)",
-          "Owner"
+          "ExamplesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -20015,14 +20017,13 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "ExamplesOS (OwningSequence)",
-        "Owner"
+        "ExamplesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -20054,7 +20055,6 @@
         },
         "properties_accessed": [
           "ExamplesOS (OwningSequence)",
-          "Owner",
           "TranslationsOC (OwningCollection)",
           "TypeRA (ReferenceAtomic)"
         ],
@@ -20104,7 +20104,6 @@
       ],
       "properties_accessed": [
         "ExamplesOS (OwningSequence)",
-        "Owner",
         "TranslationsOC (OwningCollection)",
         "TypeRA (ReferenceAtomic)"
       ],
@@ -20266,6 +20265,11 @@
             "description": "Applies default writing system if not specified",
             "pattern": "WSHandle",
             "type": "ws_default"
+          },
+          {
+            "description": "Returns empty string instead of None",
+            "pattern": "or ''",
+            "type": "null_coalesce"
           },
           {
             "description": "Converts to int",
@@ -30860,6 +30864,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -30873,12 +30878,14 @@
     "GramCatOperations.Create": {
       "class": "GramCatOperations",
       "factories_used": [
-        "ICmPossibilityFactory"
+        "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory"
       ],
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [
-          "ICmPossibilityFactory"
+          "ICmPossibilityFactory",
+          "IFsFeatStrucTypeFactory"
         ],
         "mapping_type": "composite",
         "methods_called": [
@@ -30920,6 +30927,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -30967,6 +30975,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -30985,12 +30994,14 @@
     "GramCatOperations.Duplicate": {
       "class": "GramCatOperations",
       "factories_used": [
-        "ICmPossibilityFactory"
+        "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory"
       ],
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [
-          "ICmPossibilityFactory"
+          "ICmPossibilityFactory",
+          "IFsFeatStrucTypeFactory"
         ],
         "mapping_type": "composite",
         "methods_called": [
@@ -31034,6 +31045,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31086,6 +31098,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31154,6 +31167,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31200,6 +31214,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31252,6 +31267,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31303,6 +31319,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31361,6 +31378,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31396,6 +31414,7 @@
       "lcm_deps": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString",
         "TsStringUtils"
       ],
@@ -31490,15 +31509,21 @@
         "param_usage": {
           "abbreviation": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of MakeString()",
+            "arg[2] of __OverlayCanonicalLabels()"
           ],
           "catalogSourceId": [
-            "arg[0] of CreateFromCatalog()"
+            "arg[0] of CreateFromCatalog()",
+            "arg[5] of __OverlayCanonicalLabels()"
+          ],
+          "force": [
+            "arg[4] of __OverlayCanonicalLabels()"
           ],
           "name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of Exists()",
-            "arg[0] of MakeString()"
+            "arg[0] of MakeString()",
+            "arg[1] of __OverlayCanonicalLabels()"
           ]
         },
         "properties_accessed": [
@@ -31515,6 +31540,11 @@
           {
             "default": "None",
             "param": "catalogSourceId",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "force",
             "type": "default_value"
           }
         ],
@@ -31972,7 +32002,6 @@
           ]
         },
         "properties_accessed": [
-          "FeaturesOS (OwningSequence)",
           "ValuesOC (OwningCollection)"
         ],
         "repositories_used": [],
@@ -32013,7 +32042,6 @@
       "method": "FeatureGetValues",
       "methods_called": [],
       "properties_accessed": [
-        "FeaturesOS (OwningSequence)",
         "ValuesOC (OwningCollection)"
       ],
       "repositories_used": [],
@@ -32088,8 +32116,7 @@
           ]
         },
         "properties_accessed": [
-          "FeaturesOA (OwningAtomic)",
-          "Owner"
+          "FeaturesOA (OwningAtomic)"
         ],
         "repositories_used": [],
         "transformations": [],
@@ -32118,8 +32145,7 @@
       "method": "FeatureStructureDelete",
       "methods_called": [],
       "properties_accessed": [
-        "FeaturesOA (OwningAtomic)",
-        "Owner"
+        "FeaturesOA (OwningAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -32130,22 +32156,12 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {},
-        "properties_accessed": [
-          "FeaturesOC (OwningCollection)",
-          "FeaturesOS (OwningSequence)",
-          "MsFeatureSystemOA (OwningAtomic)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -32167,14 +32183,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "FeatureStructureGetAll",
       "methods_called": [],
-      "properties_accessed": [
-        "FeaturesOC (OwningCollection)",
-        "FeaturesOS (OwningSequence)",
-        "MsFeatureSystemOA (OwningAtomic)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -37582,7 +37594,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -37593,8 +37605,7 @@
           ]
         },
         "properties_accessed": [
-          "MembersOC (OwningCollection)",
-          "Owner"
+          "MembersOC (OwningCollection)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -37621,14 +37632,13 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "MembersOC (OwningCollection)",
-        "Owner"
+        "MembersOC (OwningCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -37696,7 +37706,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandleAnalysis()",
@@ -38756,13 +38767,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -38830,13 +38841,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -38937,13 +38948,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39058,13 +39069,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39141,13 +39152,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39215,13 +39226,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39287,13 +39298,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39386,13 +39397,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39499,13 +39510,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39540,7 +39551,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -39551,7 +39562,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "SensesOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -39579,13 +39589,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39598,13 +39608,12 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "SensesOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -39628,7 +39637,7 @@
         ],
         "param_usage": {
           "deep": [
-            "arg[2] of _copy_sense_content()"
+            "arg[2] of __copy_sense_content()"
           ],
           "item_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -39679,13 +39688,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39708,6 +39717,93 @@
       "properties_accessed": [
         "Owner",
         "SensesOS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "LexSenseOperations.Find": {
+      "class": "LexSenseOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".get_String()"
+        ],
+        "param_usage": {
+          "gloss": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
+          ],
+          "wsHandle": [
+            "arg[0] of __WSHandle()",
+            "arg[0] of get_String()"
+          ]
+        },
+        "properties_accessed": [
+          "Gloss"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to ITsString",
+            "pattern": "ITsString",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILexSense",
+        "ILexSenseFactory",
+        "ILexEntry",
+        "ILexExampleSentenceFactory",
+        "ICmSemanticDomain",
+        "ICmPicture",
+        "ICmPictureFactory",
+        "ICmTranslationFactory",
+        "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
+        "LexEntryTags",
+        "MoMorphTypeTags",
+        "ITsString",
+        "TsStringUtils",
+        "ReflectionHelper",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString",
+        "ITsString"
+      ],
+      "mapping_type": "direct",
+      "method": "Find",
+      "methods_called": [
+        ".get_String()"
+      ],
+      "properties_accessed": [
+        "Gloss"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -39758,13 +39854,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39833,13 +39929,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39906,13 +40002,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -39979,13 +40075,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40064,13 +40160,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40148,13 +40244,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40236,13 +40332,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40307,13 +40403,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40404,13 +40500,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40503,13 +40599,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40590,13 +40686,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40665,13 +40761,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40750,13 +40846,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40825,13 +40921,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40905,13 +41001,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -40989,13 +41085,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41085,13 +41181,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41171,13 +41267,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41250,13 +41346,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41325,13 +41421,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41388,13 +41484,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41459,13 +41555,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41491,7 +41587,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "sense_or_hvo": [
@@ -41499,10 +41595,7 @@
             "arg[0] of __GetSenseObject()"
           ]
         },
-        "properties_accessed": [
-          "ClassName",
-          "Owner"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -41533,13 +41626,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41552,13 +41645,10 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetOwningEntry",
       "methods_called": [],
-      "properties_accessed": [
-        "ClassName",
-        "Owner"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -41568,7 +41658,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "sense_or_hvo": [
@@ -41576,10 +41666,7 @@
             "arg[0] of __GetSenseObject()"
           ]
         },
-        "properties_accessed": [
-          "ClassName",
-          "Owner"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -41614,13 +41701,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41633,13 +41720,10 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetParentSense",
       "methods_called": [],
-      "properties_accessed": [
-        "ClassName",
-        "Owner"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -41690,13 +41774,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41755,13 +41839,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41839,13 +41923,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41914,13 +41998,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -41994,13 +42078,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42078,13 +42162,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42151,13 +42235,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42237,13 +42321,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42298,13 +42382,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42376,13 +42460,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42460,13 +42544,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42533,13 +42617,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42615,13 +42699,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42699,13 +42783,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42762,13 +42846,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42844,13 +42928,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42924,13 +43008,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -42999,13 +43083,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43080,13 +43164,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43154,13 +43238,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43234,13 +43318,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43322,13 +43406,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43397,13 +43481,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43470,13 +43554,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43555,13 +43639,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43634,13 +43718,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43707,13 +43791,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43783,13 +43867,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43864,13 +43948,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -43953,13 +44037,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44041,13 +44125,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44133,13 +44217,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44230,13 +44314,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44318,13 +44402,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44406,13 +44490,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44494,13 +44578,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44591,13 +44675,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44679,13 +44763,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44751,13 +44835,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44826,13 +44910,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44854,17 +44938,11 @@
     },
     "LexSenseOperations.SetPartOfSpeech": {
       "class": "LexSenseOperations",
-      "factories_used": [
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IMoInflAffMsaFactory",
-          "IMoStemMsaFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "convenience",
         "methods_called": [
           ".Add()",
           ".Create()"
@@ -44896,6 +44974,10 @@
             "type": "hvo_resolution"
           },
           {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
             "description": "Converts to list",
             "pattern": "list",
             "type": "type_conversion"
@@ -44913,13 +44995,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -44932,7 +45014,7 @@
         "ITsString",
         "ITsString"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "SetPartOfSpeech",
       "methods_called": [
         ".Add()",
@@ -45007,13 +45089,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45095,13 +45177,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45172,13 +45254,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45256,13 +45338,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45328,13 +45410,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45414,13 +45496,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45491,13 +45573,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45559,13 +45641,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -45615,13 +45697,13 @@
         "ICmPictureFactory",
         "ICmTranslationFactory",
         "IReversalIndexEntry",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsaFactory",
         "LexEntryTags",
         "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper",
-        "IMoInflAffMsaFactory",
-        "IMoStemMsaFactory",
         "ITsString",
         "ITsString",
         "ITsString",
@@ -52071,12 +52153,10 @@
         "methods_called": [],
         "param_usage": {
           "note": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of hasattr()"
+            "arg[0] of _ValidateParam()"
           ]
         },
         "properties_accessed": [
-          "BeginObjectRA (ReferenceAtomic)",
           "Owner"
         ],
         "repositories_used": [],
@@ -52107,7 +52187,6 @@
       "method": "GetOwner",
       "methods_called": [],
       "properties_accessed": [
-        "BeginObjectRA (ReferenceAtomic)",
         "Owner"
       ],
       "repositories_used": [],
@@ -52565,7 +52644,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "AddElement",
@@ -52616,7 +52696,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "FindByChart",
@@ -52664,7 +52745,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "GetChart",
@@ -52706,7 +52788,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "pure_python",
       "method": "GetDisplayOrder",
@@ -52753,7 +52836,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "GetElements",
@@ -52802,7 +52886,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "GetPossItems",
@@ -52844,7 +52929,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "pure_python",
       "method": "GetVisibleOverlays",
@@ -52891,7 +52977,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "IsVisible",
@@ -52935,7 +53022,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "RemoveElement",
@@ -52982,7 +53070,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "pure_python",
       "method": "SetDisplayOrder",
@@ -53027,7 +53116,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "direct",
       "method": "SetVisible",
@@ -53062,7 +53152,8 @@
         "ICmPossibility",
         "ICmPossibilityFactory",
         "ITsString",
-        "TsStringUtils"
+        "TsStringUtils",
+        "DsConstChartTags"
       ],
       "mapping_type": "pure_python",
       "method": "__init__",
@@ -54294,7 +54385,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -54304,7 +54395,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "ParagraphsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -54324,13 +54414,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "ParagraphsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -55172,7 +55261,8 @@
           ]
         },
         "properties_accessed": [
-          "PeopleOC (OwningCollection)"
+          "PeopleOA (OwningAtomic)",
+          "PossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -55215,7 +55305,8 @@
         ".set_String()"
       ],
       "properties_accessed": [
-        "PeopleOC (OwningCollection)"
+        "PeopleOA (OwningAtomic)",
+        "PossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -55228,7 +55319,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
         "methods_called": [
           ".Remove()"
         ],
@@ -55239,7 +55330,8 @@
           ]
         },
         "properties_accessed": [
-          "PeopleOC (OwningCollection)"
+          "PeopleOA (OwningAtomic)",
+          "PossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [],
@@ -55256,13 +55348,14 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "PeopleOC (OwningCollection)"
+        "PeopleOA (OwningAtomic)",
+        "PossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -55293,9 +55386,10 @@
         "properties_accessed": [
           "Comment",
           "LanguagesRC (ReferenceCollection)",
-          "PeopleOC (OwningCollection)",
+          "PeopleOA (OwningAtomic)",
           "PlacesOfResidenceRC (ReferenceCollection)",
-          "PositionsRC (ReferenceCollection)"
+          "PositionsRC (ReferenceCollection)",
+          "PossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -55334,9 +55428,10 @@
       "properties_accessed": [
         "Comment",
         "LanguagesRC (ReferenceCollection)",
-        "PeopleOC (OwningCollection)",
+        "PeopleOA (OwningAtomic)",
         "PlacesOfResidenceRC (ReferenceCollection)",
-        "PositionsRC (ReferenceCollection)"
+        "PositionsRC (ReferenceCollection)",
+        "PossibilitiesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -56926,15 +57021,21 @@
         "param_usage": {
           "abbreviation": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of MakeString()",
+            "arg[2] of __OverlayCanonicalLabels()"
           ],
           "catalogSourceId": [
-            "arg[0] of CreateFromCatalog()"
+            "arg[0] of CreateFromCatalog()",
+            "arg[5] of __OverlayCanonicalLabels()"
+          ],
+          "force": [
+            "arg[4] of __OverlayCanonicalLabels()"
           ],
           "name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of Exists()",
-            "arg[0] of MakeString()"
+            "arg[0] of MakeString()",
+            "arg[1] of __OverlayCanonicalLabels()"
           ]
         },
         "properties_accessed": [
@@ -56946,6 +57047,11 @@
           {
             "default": "None",
             "param": "catalogSourceId",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "force",
             "type": "default_value"
           }
         ],
@@ -60071,21 +60177,16 @@
     },
     "PhonologicalRuleOperations.Duplicate": {
       "class": "PhonologicalRuleOperations",
-      "factories_used": [
-        "IPhRegularRuleFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IPhRegularRuleFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "convenience",
         "methods_called": [
           ".Add()",
           ".CopyAlternatives()",
           ".Create()",
-          ".Insert()",
-          ".Remove()"
+          ".Insert()"
         ],
         "param_usage": {
           "item_or_hvo": [
@@ -60094,6 +60195,7 @@
           ]
         },
         "properties_accessed": [
+          "ClassName",
           "PhonRulesOS (OwningSequence)",
           "PhonologicalDataOA (OwningAtomic)",
           "StratumRA (ReferenceAtomic)"
@@ -60135,16 +60237,16 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Duplicate",
       "methods_called": [
         ".Add()",
         ".CopyAlternatives()",
         ".Create()",
-        ".Insert()",
-        ".Remove()"
+        ".Insert()"
       ],
       "properties_accessed": [
+        "ClassName",
         "PhonRulesOS (OwningSequence)",
         "PhonologicalDataOA (OwningAtomic)",
         "StratumRA (ReferenceAtomic)"
@@ -60896,33 +60998,14 @@
     },
     "PhonologicalRuleOperations.SetLeftContext": {
       "class": "PhonologicalRuleOperations",
-      "factories_used": [
-        "IPhSimpleContextSegFactory"
-      ],
+      "factories_used": [],
       "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IPhSimpleContextSegFactory"
-        ],
-        "mapping_type": "composite",
-        "methods_called": [
-          ".Create()"
-        ],
-        "param_usage": {
-          "context_item": [
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
-          ],
-          "rule_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "FeatureStructureRA (ReferenceAtomic)",
-          "LeftContextOA (OwningAtomic)",
-          "StrucDescOS (OwningSequence)"
-        ],
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -60944,16 +61027,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "pure_python",
       "method": "SetLeftContext",
-      "methods_called": [
-        ".Create()"
-      ],
-      "properties_accessed": [
-        "FeatureStructureRA (ReferenceAtomic)",
-        "LeftContextOA (OwningAtomic)",
-        "StrucDescOS (OwningSequence)"
-      ],
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -61035,33 +61112,14 @@
     },
     "PhonologicalRuleOperations.SetRightContext": {
       "class": "PhonologicalRuleOperations",
-      "factories_used": [
-        "IPhSimpleContextSegFactory"
-      ],
+      "factories_used": [],
       "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "IPhSimpleContextSegFactory"
-        ],
-        "mapping_type": "composite",
-        "methods_called": [
-          ".Create()"
-        ],
-        "param_usage": {
-          "context_item": [
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
-          ],
-          "rule_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "FeatureStructureRA (ReferenceAtomic)",
-          "RightContextOA (OwningAtomic)",
-          "StrucDescOS (OwningSequence)"
-        ],
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -61083,16 +61141,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "pure_python",
       "method": "SetRightContext",
-      "methods_called": [
-        ".Create()"
-      ],
-      "properties_accessed": [
-        "FeatureStructureRA (ReferenceAtomic)",
-        "RightContextOA (OwningAtomic)",
-        "StrucDescOS (OwningSequence)"
-      ],
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -71029,7 +71081,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -71040,7 +71092,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "SegmentsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -71054,13 +71105,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "SegmentsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -71091,7 +71141,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "SegmentsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -71131,7 +71180,6 @@
         ".Remove()"
       ],
       "properties_accessed": [
-        "Owner",
         "SegmentsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -71291,17 +71339,12 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "segment_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetSegmentObject()"
-          ],
-          "wsHandle": [
-            "arg[0] of __WSHandleVern()"
           ]
         },
         "properties_accessed": [],
@@ -71313,11 +71356,6 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
             "description": "Returns empty string instead of None",
             "pattern": "or ''",
             "type": "null_coalesce"
@@ -71325,11 +71363,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -71342,11 +71375,9 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetBaselineText",
-      "methods_called": [
-        ".get_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -71626,6 +71657,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Returns empty string instead of None",
+            "pattern": "or ''",
+            "type": "null_coalesce"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -71850,10 +71886,8 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
+        "mapping_type": "direct",
+        "methods_called": [],
         "param_usage": {
           "segment_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -71896,11 +71930,9 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "SetBaselineText",
-      "methods_called": [
-        ".set_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": [
@@ -72143,7 +72175,6 @@
           ]
         },
         "properties_accessed": [
-          "Owner",
           "SegmentsOS (OwningSequence)"
         ],
         "repositories_used": [],
@@ -72184,7 +72215,6 @@
         ".set_String()"
       ],
       "properties_accessed": [
-        "Owner",
         "SegmentsOS (OwningSequence)"
       ],
       "repositories_used": [],
@@ -73195,12 +73225,18 @@
           ]
         },
         "properties_accessed": [
+          "Hvo",
           "SemanticDomainsRC (ReferenceCollection)"
         ],
         "repositories_used": [
           "ILexSenseRepository"
         ],
         "transformations": [
+          {
+            "default": "False",
+            "param": "recursive",
+            "type": "default_value"
+          },
           {
             "description": "Resolves HVO (integer) to object if needed",
             "pattern": "GetSense",
@@ -73225,6 +73261,7 @@
       "method": "GetSenseCount",
       "methods_called": [],
       "properties_accessed": [
+        "Hvo",
         "SemanticDomainsRC (ReferenceCollection)"
       ],
       "repositories_used": [
@@ -74143,6 +74180,74 @@
       ],
       "utilities_used": []
     },
+    "TextOperations.Find": {
+      "class": "TextOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".get_String()"
+        ],
+        "param_usage": {
+          "title": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
+          ],
+          "wsHandle": [
+            "arg[0] of __WSHandle()",
+            "arg[0] of get_String()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to ITsString",
+            "pattern": "ITsString",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IText",
+        "ITextFactory",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITextRepository",
+        "IStTxtPara",
+        "ICmPossibility",
+        "ICmMedia",
+        "ICmMediaFactory",
+        "ICmFolderFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "Find",
+      "methods_called": [
+        ".get_String()"
+      ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "TextOperations.GetAbbreviation": {
       "class": "TextOperations",
       "factories_used": [],
@@ -74736,6 +74841,54 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "TextOperations.GetTitle": {
+      "class": "TextOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "text_or_hvo": [
+            "arg[0] of GetName()"
+          ],
+          "wsHandle": [
+            "wsHandle= of GetName()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IText",
+        "ITextFactory",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITextRepository",
+        "IStTxtPara",
+        "ICmPossibility",
+        "ICmMedia",
+        "ICmMediaFactory",
+        "ICmFolderFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetTitle",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "TextOperations.SetGenre": {
       "class": "TextOperations",
       "factories_used": [],
@@ -74923,6 +75076,57 @@
       "utilities_used": [
         "TsStringUtils.MakeString"
       ]
+    },
+    "TextOperations.SetTitle": {
+      "class": "TextOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "text_or_hvo": [
+            "arg[0] of SetName()"
+          ],
+          "title": [
+            "arg[1] of SetName()"
+          ],
+          "wsHandle": [
+            "wsHandle= of SetName()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IText",
+        "ITextFactory",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITextRepository",
+        "IStTxtPara",
+        "ICmPossibility",
+        "ICmMedia",
+        "ICmMediaFactory",
+        "ICmFolderFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "SetTitle",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
     },
     "TextOperations.__init__": {
       "class": "TextOperations",
@@ -78021,6 +78225,9 @@
           "analysis_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetAnalysisObject()"
+          ],
+          "status": [
+            "arg[0] of _coerce_approval_status()"
           ]
         },
         "properties_accessed": [],
@@ -79350,7 +79557,7 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
           ".Remove()"
         ],
@@ -79361,8 +79568,7 @@
           ]
         },
         "properties_accessed": [
-          "MorphBundlesOS (OwningSequence)",
-          "Owner"
+          "MorphBundlesOS (OwningSequence)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -79385,14 +79591,13 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
         ".Remove()"
       ],
       "properties_accessed": [
-        "MorphBundlesOS (OwningSequence)",
-        "Owner"
+        "MorphBundlesOS (OwningSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -79422,7 +79627,6 @@
         },
         "properties_accessed": [
           "Form",
-          "Gloss",
           "Hvo",
           "InflClassRA (ReferenceAtomic)",
           "MorphBundlesOS (OwningSequence)",
@@ -79477,7 +79681,6 @@
       ],
       "properties_accessed": [
         "Form",
-        "Gloss",
         "Hvo",
         "InflClassRA (ReferenceAtomic)",
         "MorphBundlesOS (OwningSequence)",
@@ -80791,7 +80994,6 @@
         ],
         "mapping_type": "composite",
         "methods_called": [
-          ".Add()",
           ".Create()",
           ".set_String()"
         ],
@@ -80807,9 +81009,7 @@
           ]
         },
         "properties_accessed": [
-          "Form",
-          "WordformInventoryOA (OwningAtomic)",
-          "WordformsOC (OwningCollection)"
+          "Form"
         ],
         "repositories_used": [],
         "transformations": [
@@ -80850,14 +81050,11 @@
       "mapping_type": "composite",
       "method": "Create",
       "methods_called": [
-        ".Add()",
         ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
-        "Form",
-        "WordformInventoryOA (OwningAtomic)",
-        "WordformsOC (OwningCollection)"
+        "Form"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -80870,9 +81067,9 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
-          ".Remove()"
+          ".Delete()"
         ],
         "param_usage": {
           "wordform_or_hvo": [
@@ -80880,10 +81077,7 @@
             "arg[0] of Object()"
           ]
         },
-        "properties_accessed": [
-          "WordformInventoryOA (OwningAtomic)",
-          "WordformsOC (OwningCollection)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [],
         "utilities_used": []
@@ -80898,15 +81092,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
-        ".Remove()"
+        ".Delete()"
       ],
-      "properties_accessed": [
-        "WordformInventoryOA (OwningAtomic)",
-        "WordformsOC (OwningCollection)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -80949,9 +81140,7 @@
           "MorphBundlesOS (OwningSequence)",
           "MorphRA (ReferenceAtomic)",
           "MsaRA (ReferenceAtomic)",
-          "SenseRA (ReferenceAtomic)",
-          "WordformInventoryOA (OwningAtomic)",
-          "WordformsOC (OwningCollection)"
+          "SenseRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -80995,9 +81184,7 @@
         "MorphBundlesOS (OwningSequence)",
         "MorphRA (ReferenceAtomic)",
         "MsaRA (ReferenceAtomic)",
-        "SenseRA (ReferenceAtomic)",
-        "WordformInventoryOA (OwningAtomic)",
-        "WordformsOC (OwningCollection)"
+        "SenseRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []

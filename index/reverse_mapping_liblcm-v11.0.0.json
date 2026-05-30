@@ -12,6 +12,7 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IPartOfSpeech",
         "ITsString"
       ]
     },
@@ -23,7 +24,7 @@
     },
     "AgentOperations": {
       "category": "lists",
-      "method_count": 14,
+      "method_count": 15,
       "methods": {},
       "wraps_interfaces": [
         "ICmAgent",
@@ -88,7 +89,7 @@
     },
     "AnthropologyOperations": {
       "category": "notebook",
-      "method_count": 35,
+      "method_count": 37,
       "methods": {},
       "wraps_interfaces": [
         "ICmAnthroItem",
@@ -107,7 +108,6 @@
       "wraps_interfaces": [
         "ICmAgent",
         "ICmAgentEvaluation",
-        "ICmAgentEvaluationFactory",
         "IPartOfSpeech",
         "ITsString",
         "IWfiAnalysis",
@@ -122,7 +122,9 @@
       "category": "general",
       "method_count": 10,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "ITsString"
+      ]
     },
     "Boundary": {
       "category": "general",
@@ -194,6 +196,17 @@
         "IWfiGlossRepository"
       ]
     },
+    "ConstChartCellTagOperations": {
+      "category": "discourse",
+      "method_count": 8,
+      "methods": {},
+      "wraps_interfaces": [
+        "ICmPossibility",
+        "IConstChartRow",
+        "IConstChartTag",
+        "IConstChartTagFactory"
+      ]
+    },
     "ConstChartClauseMarkerOperations": {
       "category": "discourse",
       "method_count": 8,
@@ -203,6 +216,20 @@
         "IConstChartClauseMarkerFactory",
         "IConstChartRow",
         "IConstChartWordGroup"
+      ]
+    },
+    "ConstChartMarkerOperations": {
+      "category": "discourse",
+      "method_count": 9,
+      "methods": {},
+      "wraps_interfaces": [
+        "ICmPossibility",
+        "ICmPossibilityFactory",
+        "ICmPossibilityList",
+        "ICmPossibilityListFactory",
+        "IDsDiscourseData",
+        "IDsDiscourseDataFactory",
+        "ITsString"
       ]
     },
     "ConstChartMovedTextOperations": {
@@ -239,19 +266,6 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
-        "IDsConstChart",
-        "ITsString"
-      ]
-    },
-    "ConstChartTagOperations": {
-      "category": "discourse",
-      "method_count": 9,
-      "methods": {},
-      "wraps_interfaces": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IConstChartTag",
-        "IConstChartTagFactory",
         "IDsConstChart",
         "ITsString"
       ]
@@ -333,7 +347,9 @@
       "category": "general",
       "method_count": 1,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "ITsString"
+      ]
     },
     "EnvironmentOperations": {
       "category": "grammar",
@@ -372,7 +388,7 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 100,
+      "method_count": 103,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -437,21 +453,26 @@
       "wraps_interfaces": [
         "ICmPossibility",
         "ICmPossibilityFactory",
+        "IFsFeatStrucTypeFactory",
         "ITsString"
       ]
     },
     "InflectionFeatureOperations": {
       "category": "grammar",
-      "method_count": 18,
+      "method_count": 26,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedFeature",
         "IFsClosedFeatureFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "IFsComplexFeature",
         "IFsComplexFeatureFactory",
         "IFsFeatDefn",
         "IFsFeatStruc",
         "IFsFeatStrucFactory",
+        "IFsFeatStrucType",
+        "IFsFeatStrucTypeFactory",
         "IFsSymFeatVal",
         "IFsSymFeatValFactory",
         "IMoInflClass",
@@ -521,7 +542,7 @@
     },
     "LexSenseOperations": {
       "category": "lexicon",
-      "method_count": 84,
+      "method_count": 86,
       "methods": {},
       "wraps_interfaces": [
         "ICmPicture",
@@ -532,6 +553,7 @@
         "ILexExampleSentenceFactory",
         "ILexSense",
         "ILexSenseFactory",
+        "IMoInflAffMsaFactory",
         "IMoStemMsaFactory",
         "IReversalIndexEntry",
         "ITsString"
@@ -553,6 +575,23 @@
       "method_count": 7,
       "methods": {},
       "wraps_interfaces": []
+    },
+    "MSAOperations": {
+      "category": "lexicon",
+      "method_count": 6,
+      "methods": {},
+      "wraps_interfaces": [
+        "ILexEntry",
+        "ILexSense",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory"
+      ]
     },
     "MediaOperations": {
       "category": "general",
@@ -605,9 +644,10 @@
     },
     "NaturalClassOperations": {
       "category": "grammar",
-      "method_count": 17,
+      "method_count": 19,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedValue",
         "IPhNCFeatures",
         "IPhNCFeaturesFactory",
         "IPhNCSegments",
@@ -635,7 +675,9 @@
       "category": "general",
       "method_count": 1,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "ITsString"
+      ]
     },
     "OverlayOperations": {
       "category": "lists",
@@ -704,10 +746,11 @@
     },
     "PhonemeOperations": {
       "category": "grammar",
-      "method_count": 23,
+      "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
+        "IFsClosedFeature",
         "IFsFeatStruc",
         "IPhCode",
         "IPhCodeFactory",
@@ -742,7 +785,10 @@
         "IPhRegularRuleFactory",
         "IPhSegRuleRHSFactory",
         "IPhSegmentRuleFactory",
+        "IPhSequenceContext",
+        "IPhSequenceContextFactory",
         "IPhSimpleContextBdryFactory",
+        "IPhSimpleContextNC",
         "IPhSimpleContextNCFactory",
         "IPhSimpleContextSegFactory",
         "ITsString"
@@ -930,6 +976,12 @@
       "methods": {},
       "wraps_interfaces": []
     },
+    "SegmentDefinition": {
+      "category": "general",
+      "method_count": 0,
+      "methods": {},
+      "wraps_interfaces": []
+    },
     "SegmentOperations": {
       "category": "texts",
       "method_count": 25,
@@ -974,7 +1026,7 @@
     },
     "TextOperations": {
       "category": "texts",
-      "method_count": 20,
+      "method_count": 23,
       "methods": {},
       "wraps_interfaces": [
         "ICmFolderFactory",
@@ -1021,7 +1073,6 @@
       "wraps_interfaces": [
         "ICmAgent",
         "ICmAgentEvaluation",
-        "ICmAgentEvaluationFactory",
         "IPartOfSpeech",
         "ITsString",
         "IWfiAnalysis",
@@ -1100,11 +1151,21 @@
       "methods": {},
       "wraps_interfaces": []
     },
+    "_LCMNativeCatalogImportMixin": {
+      "category": "general",
+      "method_count": 0,
+      "methods": {},
+      "wraps_interfaces": [
+        "ITsString"
+      ]
+    },
     "wrap_enumerable": {
       "category": "general",
       "method_count": 1,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "ITsString"
+      ]
     }
   },
   "by_liblcm_entity": {
@@ -1296,19 +1357,6 @@
           "class": "AgentOperations",
           "methods": []
         },
-        {
-          "class": "ApprovalStatusTypes",
-          "methods": []
-        },
-        {
-          "class": "WfiAnalysisOperations",
-          "methods": []
-        }
-      ],
-      "flexlibs_stable": null
-    },
-    "ICmAgentEvaluationFactory": {
-      "flexlibs_2": [
         {
           "class": "ApprovalStatusTypes",
           "methods": []
@@ -1698,11 +1746,15 @@
           "methods": []
         },
         {
-          "class": "ConstChartOperations",
+          "class": "ConstChartCellTagOperations",
           "methods": []
         },
         {
-          "class": "ConstChartTagOperations",
+          "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        {
+          "class": "ConstChartOperations",
           "methods": []
         },
         {
@@ -1751,7 +1803,7 @@
           "methods": []
         },
         {
-          "class": "ConstChartTagOperations",
+          "class": "ConstChartMarkerOperations",
           "methods": []
         },
         {
@@ -1781,6 +1833,10 @@
       "flexlibs_2": [
         {
           "class": "CheckOperations",
+          "methods": []
+        },
+        {
+          "class": "ConstChartMarkerOperations",
           "methods": []
         },
         {
@@ -1877,6 +1933,10 @@
         },
         {
           "class": "CheckOperations",
+          "methods": []
+        },
+        {
+          "class": "ConstChartMarkerOperations",
           "methods": []
         },
         {
@@ -2176,6 +2236,10 @@
     "IConstChartRow": {
       "flexlibs_2": [
         {
+          "class": "ConstChartCellTagOperations",
+          "methods": []
+        },
+        {
           "class": "ConstChartClauseMarkerOperations",
           "methods": []
         },
@@ -2214,7 +2278,7 @@
     "IConstChartTag": {
       "flexlibs_2": [
         {
-          "class": "ConstChartTagOperations",
+          "class": "ConstChartCellTagOperations",
           "methods": []
         },
         {
@@ -2226,7 +2290,7 @@
     },
     "IConstChartTagFactory": {
       "flexlibs_2": {
-        "class": "ConstChartTagOperations",
+        "class": "ConstChartCellTagOperations",
         "methods": []
       },
       "flexlibs_stable": null
@@ -2298,10 +2362,6 @@
           "methods": []
         },
         {
-          "class": "ConstChartTagOperations",
-          "methods": []
-        },
-        {
           "class": "DiscourseOperations",
           "methods": []
         },
@@ -2344,8 +2404,21 @@
       "flexlibs_stable": null
     },
     "IDsDiscourseData": {
+      "flexlibs_2": [
+        {
+          "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        {
+          "class": "DiscourseOperations",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "IDsDiscourseDataFactory": {
       "flexlibs_2": {
-        "class": "DiscourseOperations",
+        "class": "ConstChartMarkerOperations",
         "methods": []
       },
       "flexlibs_stable": null
@@ -2374,6 +2447,10 @@
         {
           "class": "PhonFeatureOperations",
           "methods": []
+        },
+        {
+          "class": "PhonemeOperations",
+          "methods": []
         }
       ],
       "flexlibs_stable": null
@@ -2392,17 +2469,33 @@
       "flexlibs_stable": null
     },
     "IFsClosedValue": {
-      "flexlibs_2": {
-        "class": "PhonFeatureOperations",
-        "methods": []
-      },
+      "flexlibs_2": [
+        {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "NaturalClassOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonFeatureOperations",
+          "methods": []
+        }
+      ],
       "flexlibs_stable": null
     },
     "IFsClosedValueFactory": {
-      "flexlibs_2": {
-        "class": "PhonFeatureOperations",
-        "methods": []
-      },
+      "flexlibs_2": [
+        {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonFeatureOperations",
+          "methods": []
+        }
+      ],
       "flexlibs_stable": null
     },
     "IFsComplexFeature": {
@@ -2451,6 +2544,26 @@
         },
         {
           "class": "PhonFeatureOperations",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "IFsFeatStrucType": {
+      "flexlibs_2": {
+        "class": "InflectionFeatureOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IFsFeatStrucTypeFactory": {
+      "flexlibs_2": [
+        {
+          "class": "GramCatOperations",
+          "methods": []
+        },
+        {
+          "class": "InflectionFeatureOperations",
           "methods": []
         }
       ],
@@ -2631,6 +2744,10 @@
         },
         {
           "class": "LexSenseOperations",
+          "methods": []
+        },
+        {
+          "class": "MSAOperations",
           "methods": []
         },
         {
@@ -3103,6 +3220,10 @@
           "methods": []
         },
         {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        {
           "class": "ReversalIndexEntryOperations",
           "methods": []
         },
@@ -3221,6 +3342,20 @@
       ],
       "flexlibs_stable": null
     },
+    "IMoDerivAffMsa": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IMoDerivAffMsaFactory": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
     "IMoEndoCompoundFactory": {
       "flexlibs_2": {
         "class": "MorphRuleOperations",
@@ -3247,6 +3382,26 @@
         },
         {
           "class": "LexEntryOperations",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "IMoInflAffMsa": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IMoInflAffMsaFactory": {
+      "flexlibs_2": [
+        {
+          "class": "LexSenseOperations",
+          "methods": []
+        },
+        {
+          "class": "MSAOperations",
           "methods": []
         }
       ],
@@ -3391,9 +3546,36 @@
       ],
       "flexlibs_stable": null
     },
-    "IMoStemMsaFactory": {
+    "IMoStemMsa": {
       "flexlibs_2": {
-        "class": "LexSenseOperations",
+        "class": "MSAOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IMoStemMsaFactory": {
+      "flexlibs_2": [
+        {
+          "class": "LexSenseOperations",
+          "methods": []
+        },
+        {
+          "class": "MSAOperations",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "IMoUnclassifiedAffixMsa": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IMoUnclassifiedAffixMsaFactory": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
         "methods": []
       },
       "flexlibs_stable": null
@@ -3565,6 +3747,10 @@
     "IPartOfSpeech": {
       "flexlibs_2": [
         {
+          "class": "AffixTemplate",
+          "methods": []
+        },
+        {
           "class": "ApprovalStatusTypes",
           "methods": []
         },
@@ -3717,7 +3903,28 @@
       },
       "flexlibs_stable": null
     },
+    "IPhSequenceContext": {
+      "flexlibs_2": {
+        "class": "PhonologicalRuleOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IPhSequenceContextFactory": {
+      "flexlibs_2": {
+        "class": "PhonologicalRuleOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
     "IPhSimpleContextBdryFactory": {
+      "flexlibs_2": {
+        "class": "PhonologicalRuleOperations",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
+    "IPhSimpleContextNC": {
       "flexlibs_2": {
         "class": "PhonologicalRuleOperations",
         "methods": []
@@ -4644,6 +4851,10 @@
           "methods": []
         },
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
           "class": "CatalogBackedMixin",
           "methods": []
         },
@@ -4656,15 +4867,15 @@
           "methods": []
         },
         {
+          "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        {
           "class": "ConstChartOperations",
           "methods": []
         },
         {
           "class": "ConstChartRowOperations",
-          "methods": []
-        },
-        {
-          "class": "ConstChartTagOperations",
           "methods": []
         },
         {
@@ -4677,6 +4888,10 @@
         },
         {
           "class": "DiscourseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
           "methods": []
         },
         {
@@ -4749,6 +4964,10 @@
         },
         {
           "class": "NoteOperations",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
           "methods": []
         },
         {
@@ -4873,6 +5092,14 @@
         },
         {
           "class": "WritingSystemOperations",
+          "methods": []
+        },
+        {
+          "class": "_LCMNativeCatalogImportMixin",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],

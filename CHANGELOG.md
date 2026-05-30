@@ -1,8 +1,8 @@
 # FlexToolsMCP Changelog
 
-## [Unreleased] - 2026-05-30
+## [2.1.0] - 2026-05-30
 
-Coverage-test post-mortem follow-up: 13 issues (#17-#29) opened from the May 22 session-log audit, all landed. Three follow-up corrections from lex-domain review also included.
+Coverage-test post-mortem follow-up: 13 issues (#17-#29) opened from the May 22 session-log audit, all landed. Three follow-up corrections from lex-domain review also included, plus a late-cycle Seth-session false-positive fix and a logging-gap audit pass.
 
 ### Features
 - Capture `user_intent` on `run_module` / `start_module`; echo into operations log (#18)
@@ -21,6 +21,13 @@ Coverage-test post-mortem follow-up: 13 issues (#17-#29) opened from the May 22 
 - Diagnose SharedSettings / path-mismatch errors against discovered project list (#23)
 - Surface `project_locked` with close-FieldWorks hint; correct exception class to `LcmFileLockedException` and FW9 lock-file location (#27)
 - Retry-loop assistance hint now points at #21 inlined rewrite, not `resolve_property` (#28 follow-up)
+- Casting validator skips mid-chain segments rooted at a typed receiver -- eliminates the `wf.Form.BestVernacularAlternative` and `IWfiWordform(ana).Form.BestVernacularAlternative` false positives surfaced in Seth's 2026-05-28 session
+
+### Observability
+- Writeability rejects log per-issue DEBUG (mutating calls / unprotected LCM / raw LCM patterns with line + context), mirroring the casting-reject log pattern
+- Close logging gaps so every `error_response` in `handle_run_module` is preceded by either `_log_preflight_reject` (in-op) or `[PRE-OP REJECT]` WARN (pre-op-id rejections like `project_name_required` / fuzzy-resolve failure)
+- `handle_list_skeletons` storage failure now logs at ERROR with `exc_info`, not just packed into JSON
+- Silent `list_projects()` failure inside the path-failed diagnostic now WARNs so the operator can tell discovery-failed from no-projects-nearby
 
 ### Docs
 - Relax module-template mandate; bare snippets are first-class (#26)

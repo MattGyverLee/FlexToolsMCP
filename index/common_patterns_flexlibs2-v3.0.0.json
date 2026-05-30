@@ -85,7 +85,7 @@
       },
       {
         "class": "LexEntryOperations",
-        "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n            suffix: affix\n            infix: affix\n\n# Get only top-level types\ntop_level = project.LexEntry.GetAvailableMorphTypes(include_subcategories=False)",
+        "code": "morph_types = project.LexEntry.GetAvailableMorphTypes()\nfor name, mt, is_stem in morph_types:\n    type_str = \"stem\" if is_stem else \"affix\"\n    print(f\"{name}: {type_str}\")\n            stem: stem\n            root: stem\n            prefix: affix\n\n\n# Top-level types only\ntop_level = project.LexEntry.GetAvailableMorphTypes(recursive=False)\n\n        See Also:\n            ValidateMorphType, SetMorphType, Create",
         "description": "Get a list of all available morph types in the project.",
         "method": "GetAvailableMorphTypes",
         "object_type": "ILexEntry",
@@ -446,7 +446,7 @@
       },
       {
         "class": "LexSenseOperations",
-        "code": "# Get senses for a specific entry\nentry = list(project.LexiconAllEntries())[0]\nfor sense in project.Senses.GetAll(entry):\n    gloss = project.Senses.GetGloss(sense)\n    defn = project.Senses.GetDefinition(sense)\n    print(f\"{gloss}: {defn}\")\n            run: to move swiftly on foot\n            run: to flow or extend\n\n# Get ALL senses in entire project\nfor sense in project.Senses.GetAll():\n    gloss = project.Senses.GetGloss(sense)\n    print(f\"Sense: {gloss}\")",
+        "code": "# Every sense in the project, subsenses included\nfor sense in project.Senses.GetAll():\n    print(project.Senses.GetGloss(sense))\n\n# Top-level senses only, scoped to one entry\nentry = project.LexEntry.Find(\"run\")\nfor sense in project.Senses.GetAll(entry, recursive=False):\n    print(project.Senses.GetGloss(sense))\n\n        See Also:\n            Create, GetSubsenses, GetOwningEntry",
         "description": "Get senses for an entry or all senses in the project.",
         "method": "GetAll",
         "object_type": "ILexSense",
@@ -467,6 +467,24 @@
         "code": "entry = project.LexEntry.Find(\"big\")\nsense = entry.SensesOS[0]\nlex_refs = project.Senses.GetMinimalLexReferences(sense)\nfor lex_ref in lex_refs:\n    ref_type = lex_ref.Owner  # ILexRefType\n    print(f\"Reference type: {ref_type.Name.BestAnalysisAlternative.Text}\")\n    for target in lex_ref.TargetsRS:\n        if target.Hvo != sense.Hvo:\n            gloss = project.Senses.GetGloss(target)\n            print(f\"  -> {gloss}\")",
         "description": "Get essential lexical references for this sense.",
         "method": "GetMinimalLexReferences",
+        "object_type": "ILexSense",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
+        "code": "verb_pos = project.POS.Find(\"Verb\")\nsense = senses[0]\nif project.Senses.GetPartOfSpeechObject(sense) is not verb_pos:\n    project.Senses.SetPartOfSpeech(sense, verb_pos)\n\n        See Also:\n            GetPartOfSpeech, SetPartOfSpeech",
+        "description": "Get the part of speech LCM object for a sense (symmetric to\n:meth:`SetPartOfSpeech`).",
+        "method": "GetPartOfSpeechObject",
+        "object_type": "ILexSense",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexSenseOperations",
+        "code": "sense = project.Senses.GetAll(entry, recursive=False)[0]\nfor sub in project.Senses.GetSubsenses(sense):\n    print(project.Senses.GetGloss(sub))     # All descendants\n\n# Direct children only\nfor sub in project.Senses.GetSubsenses(sense, recursive=False):\n    print(project.Senses.GetGloss(sub))\n\n        See Also:\n            CreateSubsense, GetParentSense",
+        "description": "Get the subsenses (child senses) of a sense.",
+        "method": "GetSubsenses",
         "object_type": "ILexSense",
         "operation": "read",
         "source": "docstring"
@@ -1003,7 +1021,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "# Get all human agents\nhumans = project.Agent.FindByType(True)\nfor agent in humans:\n    name = project.Agent.GetName(agent)\n    person = project.Agent.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agent.FindByType(False)\nfor parser in parsers:\n    name = project.Agent.GetName(parser)\n    version = project.Agent.GetVersion(parser)\n    print(f\"{name} v{version}\")",
+        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
         "description": "Find all agents of a specific type (human or parser).",
         "method": "FindByType",
         "object_type": "general",
@@ -1012,7 +1030,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\ncreated = project.Agent.GetDateCreated(agent)\nprint(f\"Created: {created}\")\n            Created: 2025-01-15 14:30:22\n\n# Find oldest agent\nagents = list(project.Agent.GetAll())\noldest = min(agents, key=lambda a: project.Agent.GetDateCreated(a))\nprint(f\"Oldest: {project.Agent.GetName(oldest)}\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\ncreated = project.Agents.GetDateCreated(agent)\nprint(f\"Created: {created}\")\n            Created: 2025-01-15 14:30:22\n\n# Find oldest agent\nagents = list(project.Agents.GetAll())\noldest = min(agents, key=lambda a: project.Agents.GetDateCreated(a))\nprint(f\"Oldest: {project.Agents.GetName(oldest)}\")",
         "description": "Get the creation date of an agent record.",
         "method": "GetDateCreated",
         "object_type": "general",
@@ -1021,7 +1039,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\nmodified = project.Agent.GetDateModified(agent)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Find recently modified agents\nfrom datetime import datetime, timedelta\n# Note: System.DateTime, not Python datetime\nfor agent in project.Agent.GetAll():\n    modified = project.Agent.GetDateModified(agent)\n    name = project.Agent.GetName(agent)\n    print(f\"{name}: {modified}\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\nmodified = project.Agents.GetDateModified(agent)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Find recently modified agents\nfrom datetime import datetime, timedelta\n# Note: System.DateTime, not Python datetime\nfor agent in project.Agents.GetAll():\n    modified = project.Agents.GetDateModified(agent)\n    name = project.Agents.GetName(agent)\n    print(f\"{name}: {modified}\")",
         "description": "Get the last modification date of an agent record.",
         "method": "GetDateModified",
         "object_type": "general",
@@ -1030,7 +1048,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\ncount = project.Agent.GetEvaluationCount(agent)\nprint(f\"Parser has {count} evaluations\")\n            Parser has 145 evaluations\n\n# Compare human vs parser evaluations\nfor agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    count = project.Agent.GetEvaluationCount(agent)\n    agent_type = \"Human\" if project.Agent.IsHuman(agent) else \"Parser\"\n    print(f\"{name} ({agent_type}): {count} evaluations\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\ncount = project.Agents.GetEvaluationCount(agent)\nprint(f\"Parser has {count} evaluations\")\n            Parser has 145 evaluations\n\n# Compare human vs parser evaluations\nfor agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    count = project.Agents.GetEvaluationCount(agent)\n    agent_type = \"Human\" if project.Agents.IsHuman(agent) else \"Parser\"\n    print(f\"{name} ({agent_type}): {count} evaluations\")",
         "description": "Get the number of evaluations created by an agent.",
         "method": "GetEvaluationCount",
         "object_type": "general",
@@ -1043,7 +1061,7 @@
     "create": [
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\ncreated = project.Agent.GetDateCreated(agent)\nprint(f\"Created: {created}\")\n            Created: 2025-01-15 14:30:22\n\n# Find oldest agent\nagents = list(project.Agent.GetAll())\noldest = min(agents, key=lambda a: project.Agent.GetDateCreated(a))\nprint(f\"Oldest: {project.Agent.GetName(oldest)}\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\ncreated = project.Agents.GetDateCreated(agent)\nprint(f\"Created: {created}\")\n            Created: 2025-01-15 14:30:22\n\n# Find oldest agent\nagents = list(project.Agents.GetAll())\noldest = min(agents, key=lambda a: project.Agents.GetDateCreated(a))\nprint(f\"Oldest: {project.Agents.GetName(oldest)}\")",
         "description": "Get the creation date of an agent record.",
         "method": "GetDateCreated",
         "object_type": "general",
@@ -1195,6 +1213,15 @@
         "source": "docstring"
       },
       {
+        "class": "ConstChartMarkerOperations",
+        "code": "topic = project.ConstChartMarkers.Create(\"Topic\")\nproject.ConstChartMarkers.Find(\"Topic\").Hvo == topic.Hvo\n            True",
+        "description": "Create a new top-level chart marker in the project-wide\nChartMarkersOA possibility list.",
+        "method": "Create",
+        "object_type": "general",
+        "operation": "create",
+        "source": "docstring"
+      },
+      {
         "class": "ConstChartMovedTextOperations",
         "code": "# Mark word group as preposed\nwg = project.ConstChartWordGroups.Find(row, 0)\nmarker = project.ConstChartMovedText.Create(wg, preposed=True)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            True\n\n# Mark as postposed\nmarker = project.ConstChartMovedText.Create(wg, preposed=False)\nprint(project.ConstChartMovedText.IsPreposed(marker))\n            False",
         "description": "Create a moved text marker for a word group.",
@@ -1222,15 +1249,6 @@
         "source": "docstring"
       },
       {
-        "class": "ConstChartTagOperations",
-        "code": "chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\ntag = project.ConstChartTags.Create(chart, \"Topic\")\nprint(project.ConstChartTags.GetName(tag))\n            Topic",
-        "description": "Create a new chart tag possibility.",
-        "method": "Create",
-        "object_type": "general",
-        "operation": "create",
-        "source": "docstring"
-      },
-      {
         "class": "ConstChartWordGroupOperations",
         "code": "# Get segments from a text\ntext = project.Texts.Find(\"Genesis 1\")\npara = text.ContentsOA.ParagraphsOS[0]\nsegments = list(para.SegmentsOS)\n\n# Create word group spanning first 3 words\nwg = project.ConstChartWordGroups.Create(\n    row,\n    segments[0],  # Begin\n    segments[2]   # End\n)",
         "description": "Create a new word group in a chart row.",
@@ -1250,7 +1268,7 @@
       },
       {
         "class": "CustomFieldOperations",
-        "code": "# Create a vernacular multi-string field\nfield_id = project.CustomFields.CreateField(\n    \"LexEntry\",\n    \"Dialect Variant\",\n    \"MultiString\",\n    \"vernacular\"\n)\n\n# Create an integer field\nfreq_field = project.CustomFields.CreateField(\n    \"LexEntry\",\n    \"Frequency\",\n    \"Integer\"\n)\n\n# Create a reference to a possibility list\nregion_field = project.CustomFields.CreateField(\n    \"LexSense\",\n    \"Region\",\n    \"ReferenceAtom\"\n)\n\n        Warning:\n            - This operation modifies the project schema\n            - Field creation is permanent and cannot be easily undone\n            - Field names must be unique within a class\n            - Use FLEx UI for complex field setup (lists, etc.)",
+        "code": "# Create a vernacular multi-string field\nfield_id = project.CustomFields.CreateField(\n    \"LexEntry\",\n    \"Dialect Variant\",\n    \"MultiString\",\n    \"vernacular\"\n)\n\n# Create an integer field\nfreq_field = project.CustomFields.CreateField(\n    \"LexEntry\",\n    \"Frequency\",\n    \"Integer\"\n)\n\n# Create a reference to a possibility list\nregion_field = project.CustomFields.CreateField(\n    \"LexSense\",\n    \"Region\",\n    \"ReferenceAtom\"\n)\n\n        Warning:\n            - This operation modifies the project schema\n            - Field creation is permanent and cannot be easily undone\n            - Field names must be unique within a class\n            - Use FLEx UI for complex field setup (lists, etc.)\n\n        Transaction Safety:\n            Custom field creation is a SCHEMA mutation and cannot run inside\n            an open UnitOfWork. In Phase 1 transaction mode (the default),\n            OpenProject() opens a non-undoable envelope that remains open\n            until CloseProject(), so CreateField() will refuse with\n            FP_TransactionError.\n\n            Bypassing this guard with raw LCM (IFwMetaDataCacheManaged.\n            AddCustomField) creates the field in memory only; subsequent\n            SetValue calls appear to succeed but the schema does NOT persist,\n            producing corrupted records on next FLEx UI open. See\n            docs/CUSTOM_FIELDS.md for the recommended workflow.",
         "description": "Create a new custom field.",
         "method": "CreateField",
         "object_type": "general",
@@ -1413,15 +1431,6 @@
         "source": "docstring"
       },
       {
-        "class": "ConstChartTagOperations",
-        "code": "tag = project.ConstChartTags.Find(chart, \"Old Tag\")\nif tag:\n    project.ConstChartTags.Delete(tag)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - References to this tag from word groups may become invalid\n\n        See Also:\n            Create, Find",
-        "description": "Delete a chart tag.",
-        "method": "Delete",
-        "object_type": "general",
-        "operation": "delete",
-        "source": "docstring"
-      },
-      {
         "class": "ConstChartWordGroupOperations",
         "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nif wg:\n    project.ConstChartWordGroups.Delete(wg)\n\n        Warning:\n            - This is a destructive operation\n            - All moved text markers and clause markers will be deleted\n            - Cannot be undone",
         "description": "Delete a word group from its chart row.",
@@ -1578,6 +1587,15 @@
         "class": "FilterOperations",
         "code": "filter_obj = project.Filter.Find(\"Old Filter\")\nif filter_obj:\n    project.Filter.Delete(filter_obj)\n\n        Warning:\n            - This is a destructive operation\n            - Cannot be undone\n            - Filter is permanently removed from the project",
         "description": "Delete a saved filter from the project.",
+        "method": "Delete",
+        "object_type": "general",
+        "operation": "delete",
+        "source": "docstring"
+      },
+      {
+        "class": "GramCatOperations",
+        "code": "gramCatOps = GramCatOperations(project)\nobsolete = gramCatOps.Create(\"obsolete_feature\")\n# Later, if not needed...\ngramCatOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a category that is in use may raise an error from FLEx\n            - Will also delete all subcategories recursively\n            - Deletion is permanent and cannot be undone\n            - Morphological rules or entries using this may be affected\n\n        See Also:\n            Create",
+        "description": "Delete a grammatical category.",
         "method": "Delete",
         "object_type": "general",
         "operation": "delete",
@@ -1859,7 +1877,7 @@
     "iterate": [
       {
         "class": "AgentOperations",
-        "code": "for agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    if project.Agent.IsHuman(agent):\n        person = project.Agent.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agent.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
+        "code": "for agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    if project.Agents.IsHuman(agent):\n        person = project.Agents.GetHuman(agent)\n        email = project.Person.GetEmail(person)\n        print(f\"Human: {name} ({email})\")\n    else:\n        version = project.Agents.GetVersion(agent)\n        print(f\"Parser: {name} v{version}\")\n            Human: John Smith (john.smith@example.com)\n            Parser: MyParser v1.0.0",
         "description": "Check if an agent is a human analyst.",
         "method": "IsHuman",
         "object_type": "general",
@@ -1868,7 +1886,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "parser = project.Agent.Find(\"MyParser\")\nif project.Agent.IsParser(parser):\n    version = project.Agent.GetVersion(parser)\n    print(f\"Parser version: {version}\")\n            Parser version: 1.0.0\n\n# Filter only parsers\nparsers = [a for a in project.Agent.GetAll()\n           if project.Agent.IsParser(a)]\nprint(f\"Found {len(parsers)} parsers\")",
+        "code": "parser = project.Agents.Find(\"MyParser\")\nif project.Agents.IsParser(parser):\n    version = project.Agents.GetVersion(parser)\n    print(f\"Parser version: {version}\")\n            Parser version: 1.0.0\n\n# Filter only parsers\nparsers = [a for a in project.Agents.GetAll()\n           if project.Agents.IsParser(a)]\nprint(f\"Found {len(parsers)} parsers\")",
         "description": "Check if an agent is a parser (automated analyzer).",
         "method": "IsParser",
         "object_type": "general",
@@ -2160,7 +2178,7 @@
     "read": [
       {
         "class": "AgentOperations",
-        "code": "# Get all human agents\nhumans = project.Agent.FindByType(True)\nfor agent in humans:\n    name = project.Agent.GetName(agent)\n    person = project.Agent.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agent.FindByType(False)\nfor parser in parsers:\n    name = project.Agent.GetName(parser)\n    version = project.Agent.GetVersion(parser)\n    print(f\"{name} v{version}\")",
+        "code": "# Get all human agents\nhumans = project.Agents.FindByType(True)\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n\n# Get all parsers\nparsers = project.Agents.FindByType(False)\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    print(f\"{name} v{version}\")",
         "description": "Find all agents of a specific type (human or parser).",
         "method": "FindByType",
         "object_type": "general",
@@ -2169,7 +2187,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\nmodified = project.Agent.GetDateModified(agent)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Find recently modified agents\nfrom datetime import datetime, timedelta\n# Note: System.DateTime, not Python datetime\nfor agent in project.Agent.GetAll():\n    modified = project.Agent.GetDateModified(agent)\n    name = project.Agent.GetName(agent)\n    print(f\"{name}: {modified}\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\nmodified = project.Agents.GetDateModified(agent)\nprint(f\"Last modified: {modified}\")\n            Last modified: 2025-01-20 09:15:43\n\n# Find recently modified agents\nfrom datetime import datetime, timedelta\n# Note: System.DateTime, not Python datetime\nfor agent in project.Agents.GetAll():\n    modified = project.Agents.GetDateModified(agent)\n    name = project.Agents.GetName(agent)\n    print(f\"{name}: {modified}\")",
         "description": "Get the last modification date of an agent record.",
         "method": "GetDateModified",
         "object_type": "general",
@@ -2178,7 +2196,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\ncount = project.Agent.GetEvaluationCount(agent)\nprint(f\"Parser has {count} evaluations\")\n            Parser has 145 evaluations\n\n# Compare human vs parser evaluations\nfor agent in project.Agent.GetAll():\n    name = project.Agent.GetName(agent)\n    count = project.Agent.GetEvaluationCount(agent)\n    agent_type = \"Human\" if project.Agent.IsHuman(agent) else \"Parser\"\n    print(f\"{name} ({agent_type}): {count} evaluations\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\ncount = project.Agents.GetEvaluationCount(agent)\nprint(f\"Parser has {count} evaluations\")\n            Parser has 145 evaluations\n\n# Compare human vs parser evaluations\nfor agent in project.Agents.GetAll():\n    name = project.Agents.GetName(agent)\n    count = project.Agents.GetEvaluationCount(agent)\n    agent_type = \"Human\" if project.Agents.IsHuman(agent) else \"Parser\"\n    print(f\"{name} ({agent_type}): {count} evaluations\")",
         "description": "Get the number of evaluations created by an agent.",
         "method": "GetEvaluationCount",
         "object_type": "general",
@@ -2187,7 +2205,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"MyParser\")\nevaluations = project.Agent.GetEvaluations(agent)\nprint(f\"Parser created {len(evaluations)} evaluations\")\n            Parser created 145 evaluations\n\n# Examine evaluations\nfor eval in evaluations[:5]:\n    # Access evaluation properties\n    print(f\"Evaluation: {eval.Guid}\")",
+        "code": "agent = project.Agents.Find(\"MyParser\")\nevaluations = project.Agents.GetEvaluations(agent)\nprint(f\"Parser created {len(evaluations)} evaluations\")\n            Parser created 145 evaluations\n\n# Examine evaluations\nfor eval in evaluations[:5]:\n    # Access evaluation properties\n    print(f\"Evaluation: {eval.Guid}\")",
         "description": "Get all evaluations created by an agent.",
         "method": "GetEvaluations",
         "object_type": "general",
@@ -2196,7 +2214,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "agent = project.Agent.Find(\"John Smith\")\nif project.Agent.IsHuman(agent):\n    person = project.Agent.GetHuman(agent)\n    name = project.Person.GetName(person)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n            John Smith: john.smith@example.com\n\n# Parser agents return None\nparser = project.Agent.Find(\"MyParser\")\nperson = project.Agent.GetHuman(parser)\nprint(person)\n            None",
+        "code": "agent = project.Agents.Find(\"John Smith\")\nif project.Agents.IsHuman(agent):\n    person = project.Agents.GetHuman(agent)\n    name = project.Person.GetName(person)\n    email = project.Person.GetEmail(person)\n    print(f\"{name}: {email}\")\n            John Smith: john.smith@example.com\n\n# Parser agents return None\nparser = project.Agents.Find(\"MyParser\")\nperson = project.Agents.GetHuman(parser)\nprint(person)\n            None",
         "description": "Get the linked person for a human agent.",
         "method": "GetHuman",
         "object_type": "general",
@@ -2205,7 +2223,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "humans = project.Agent.GetHumanAgents()\nprint(f\"Found {len(humans)} human agents\")\n            Found 3 human agents\n\nfor agent in humans:\n    name = project.Agent.GetName(agent)\n    person = project.Agent.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"Analyst: {name} ({email})\")\n            Analyst: John Smith (john.smith@example.com)\n            Analyst: Maria Garcia (maria.garcia@example.com)\n            Analyst: Ahmed Hassan (ahmed.hassan@example.com)",
+        "code": "humans = project.Agents.GetHumanAgents()\nprint(f\"Found {len(humans)} human agents\")\n            Found 3 human agents\n\nfor agent in humans:\n    name = project.Agents.GetName(agent)\n    person = project.Agents.GetHuman(agent)\n    email = project.Person.GetEmail(person)\n    print(f\"Analyst: {name} ({email})\")\n            Analyst: John Smith (john.smith@example.com)\n            Analyst: Maria Garcia (maria.garcia@example.com)\n            Analyst: Ahmed Hassan (ahmed.hassan@example.com)",
         "description": "Get all human agents in the project.",
         "method": "GetHumanAgents",
         "object_type": "general",
@@ -2214,7 +2232,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "parsers = project.Agent.GetParserAgents()\nprint(f\"Found {len(parsers)} parsers\")\n            Found 2 parsers\n\nfor parser in parsers:\n    name = project.Agent.GetName(parser)\n    version = project.Agent.GetVersion(parser)\n    count = project.Agent.GetEvaluationCount(parser)\n    print(f\"{name} v{version}: {count} evaluations\")\n            MyParser v1.0.0: 145 evaluations\n            AutoAnalyzer v2.1.3: 89 evaluations",
+        "code": "parsers = project.Agents.GetParserAgents()\nprint(f\"Found {len(parsers)} parsers\")\n            Found 2 parsers\n\nfor parser in parsers:\n    name = project.Agents.GetName(parser)\n    version = project.Agents.GetVersion(parser)\n    count = project.Agents.GetEvaluationCount(parser)\n    print(f\"{name} v{version}: {count} evaluations\")\n            MyParser v1.0.0: 145 evaluations\n            AutoAnalyzer v2.1.3: 89 evaluations",
         "description": "Get all parser agents in the project.",
         "method": "GetParserAgents",
         "object_type": "general",
@@ -2223,7 +2241,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "parser = project.Agent.Find(\"MyParser\")\nversion = project.Agent.GetVersion(parser)\nprint(f\"Version: {version}\")\n            Version: 1.0.0\n\n# Human agents typically don't have versions\nhuman = project.Agent.Find(\"John Smith\")\nversion = project.Agent.GetVersion(human)\nprint(version)",
+        "code": "parser = project.Agents.Find(\"MyParser\")\nversion = project.Agents.GetVersion(parser)\nprint(f\"Version: {version}\")\n            Version: 1.0.0\n\n# Human agents typically don't have versions\nhuman = project.Agents.Find(\"John Smith\")\nversion = project.Agents.GetVersion(human)\nprint(version)",
         "description": "Get the version string of an agent.",
         "method": "GetVersion",
         "object_type": "general",
@@ -2569,7 +2587,7 @@
     "update": [
       {
         "class": "AgentOperations",
-        "code": "# Convert parser to human agent\nagent = project.Agent.Find(\"MyAgent\")\nperson = project.Person.Find(\"John Smith\")\nproject.Agent.SetHuman(agent, person)\n\n# Unlink person (convert to parser)\nproject.Agent.SetHuman(agent, None)",
+        "code": "# Convert parser to human agent\nagent = project.Agents.Find(\"MyAgent\")\nperson = project.Person.Find(\"John Smith\")\nproject.Agents.SetHuman(agent, person)\n\n# Unlink person (convert to parser)\nproject.Agents.SetHuman(agent, None)",
         "description": "Set the linked person for an agent (making it a human agent).",
         "method": "SetHuman",
         "object_type": "general",
@@ -2578,7 +2596,7 @@
       },
       {
         "class": "AgentOperations",
-        "code": "parser = project.Agent.Find(\"MyParser\")\nproject.Agent.SetVersion(parser, \"1.0.1\")\nprint(project.Agent.GetVersion(parser))\n            1.0.1\n\n# Update to new version\nproject.Agent.SetVersion(parser, \"2.0.0\")\n\n# Clear version\nproject.Agent.SetVersion(parser, \"\")",
+        "code": "parser = project.Agents.Find(\"MyParser\")\nproject.Agents.SetVersion(parser, \"1.0.1\")\nprint(project.Agents.GetVersion(parser))\n            1.0.1\n\n# Update to new version\nproject.Agents.SetVersion(parser, \"2.0.0\")\n\n# Clear version\nproject.Agents.SetVersion(parser, \"\")",
         "description": "Set the version string of an agent.",
         "method": "SetVersion",
         "object_type": "general",
@@ -2757,24 +2775,6 @@
         "source": "docstring"
       },
       {
-        "class": "ConstChartTagOperations",
-        "code": "tag = project.ConstChartTags.Find(chart, \"Topic\")\nproject.ConstChartTags.SetDescription(tag,\n    \"Marks the topic of the sentence\")",
-        "description": "Set the description of a chart tag.",
-        "method": "SetDescription",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
-      },
-      {
-        "class": "ConstChartTagOperations",
-        "code": "tag = project.ConstChartTags.Find(chart, \"Old Name\")\nproject.ConstChartTags.SetName(tag, \"New Name\")\nprint(project.ConstChartTags.GetName(tag))\n            New Name",
-        "description": "Set the name of a chart tag.",
-        "method": "SetName",
-        "object_type": "general",
-        "operation": "update",
-        "source": "docstring"
-      },
-      {
         "class": "ConstChartWordGroupOperations",
         "code": "wg = project.ConstChartWordGroups.Find(row, 0)\nnew_segment = segments[5]\nproject.ConstChartWordGroups.SetBeginSegment(wg, new_segment)",
         "description": "Set the beginning segment of a word group.",
@@ -2836,6 +2836,24 @@
         "object_type": "general",
         "operation": "update",
         "source": "docstring"
+      },
+      {
+        "class": "DataNotebookOperations",
+        "code": "# Set confidence by name\nrecord = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetConfidence(record, \"High\")\n\n# Set confidence by object\nconf_levels = project.Confidence.GetAll()\nhigh = next((c for c in conf_levels if \"High\" in str(c.Name)), None)\nif high:\n    project.DataNotebook.SetConfidence(record, high)",
+        "description": "Set the confidence level of a notebook record.",
+        "method": "SetConfidence",
+        "object_type": "general",
+        "operation": "update",
+        "source": "docstring"
+      },
+      {
+        "class": "DataNotebookOperations",
+        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nproject.DataNotebook.SetContent(\n    record,\n    \"Detailed notes from interview about kinship terminology. \"\n    \"Speaker provided examples of terms for siblings and cousins.\"\n)\n\n# Update content incrementally\nexisting = project.DataNotebook.GetContent(record)\nnew_content = existing + \"\\n\\nAdditional observations...\"\nproject.DataNotebook.SetContent(record, new_content)\n\n# Set in multiple languages\nproject.DataNotebook.SetContent(record, \"English notes\", \"en\")\nproject.DataNotebook.SetContent(record, \"Notas en español\", \"es\")",
+        "description": "Set the content/body text of a notebook record.",
+        "method": "SetContent",
+        "object_type": "general",
+        "operation": "update",
+        "source": "docstring"
       }
     ]
   },
@@ -2851,7 +2869,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1166,
-    "unique_patterns": 113
+    "total_patterns": 1163,
+    "unique_patterns": 115
   }
 }

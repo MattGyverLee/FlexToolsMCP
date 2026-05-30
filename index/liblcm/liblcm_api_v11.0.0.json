@@ -50996,19 +50996,6 @@
       "name": "ICmAgentEvaluationFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
-      "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "ApprovalStatusTypes",
-            "methods": []
-          },
-          {
-            "class": "WfiAnalysisOperations",
-            "methods": []
-          }
-        ],
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for CmAgentEvaluationFactory operations",
       "tags": [
@@ -61733,11 +61720,15 @@
             "methods": []
           },
           {
-            "class": "ConstChartOperations",
+            "class": "ConstChartCellTagOperations",
             "methods": []
           },
           {
-            "class": "ConstChartTagOperations",
+            "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
+            "class": "ConstChartOperations",
             "methods": []
           },
           {
@@ -61954,7 +61945,7 @@
             "methods": []
           },
           {
-            "class": "ConstChartTagOperations",
+            "class": "ConstChartMarkerOperations",
             "methods": []
           },
           {
@@ -62655,6 +62646,10 @@
             "methods": []
           },
           {
+            "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
             "class": "FLExProject",
             "methods": []
           },
@@ -63226,6 +63221,10 @@
           },
           {
             "class": "CheckOperations",
+            "methods": []
+          },
+          {
+            "class": "ConstChartMarkerOperations",
             "methods": []
           },
           {
@@ -65442,6 +65441,10 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "ConstChartCellTagOperations",
+            "methods": []
+          },
+          {
             "class": "ConstChartClauseMarkerOperations",
             "methods": []
           },
@@ -65638,7 +65641,7 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
-            "class": "ConstChartTagOperations",
+            "class": "ConstChartCellTagOperations",
             "methods": []
           },
           {
@@ -65778,7 +65781,7 @@
       "properties": [],
       "python_wrappers": {
         "flexlibs_2": {
-          "class": "ConstChartTagOperations",
+          "class": "ConstChartCellTagOperations",
           "methods": []
         },
         "flexlibs_stable": null
@@ -68280,10 +68283,6 @@
             "methods": []
           },
           {
-            "class": "ConstChartTagOperations",
-            "methods": []
-          },
-          {
             "class": "DiscourseOperations",
             "methods": []
           },
@@ -68519,10 +68518,16 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "DiscourseOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
+            "class": "DiscourseOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -68583,6 +68588,13 @@
       "name": "IDsDiscourseDataFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "ConstChartMarkerOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for DsDiscourseDataFactory operations",
       "tags": [
@@ -69771,6 +69783,10 @@
           {
             "class": "PhonFeatureOperations",
             "methods": []
+          },
+          {
+            "class": "PhonemeOperations",
+            "methods": []
           }
         ],
         "flexlibs_stable": null
@@ -69955,10 +69971,20 @@
         }
       ],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "PhonFeatureOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "NaturalClassOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonFeatureOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": {
@@ -69995,10 +70021,16 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "PhonFeatureOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonFeatureOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -71833,6 +71865,13 @@
           "type": "IMultiUnicode"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -71917,6 +71956,19 @@
       "name": "IFsFeatStrucTypeFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": [
+          {
+            "class": "GramCatOperations",
+            "methods": []
+          },
+          {
+            "class": "InflectionFeatureOperations",
+            "methods": []
+          }
+        ],
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for FsFeatStrucTypeFactory operations",
       "tags": [
@@ -80765,6 +80817,10 @@
             "methods": []
           },
           {
+            "class": "MSAOperations",
+            "methods": []
+          },
+          {
             "class": "PronunciationOperations",
             "methods": []
           },
@@ -86389,6 +86445,10 @@
             "methods": []
           },
           {
+            "class": "MSAOperations",
+            "methods": []
+          },
+          {
             "class": "ReversalIndexEntryOperations",
             "methods": []
           },
@@ -89198,6 +89258,13 @@
           "type": "ILcmReferenceCollection"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [
           {
@@ -89341,6 +89408,13 @@
       "name": "IMoDerivAffMsaFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for MoDerivAffMsaFactory operations",
       "tags": [
@@ -90981,6 +91055,13 @@
           "type": "ILcmReferenceCollection"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [
           {
@@ -91082,6 +91163,19 @@
       "name": "IMoInflAffMsaFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": [
+          {
+            "class": "LexSenseOperations",
+            "methods": []
+          },
+          {
+            "class": "MSAOperations",
+            "methods": []
+          }
+        ],
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for MoInflAffMsaFactory operations",
       "tags": [
@@ -95428,6 +95522,13 @@
           "type": "IMoStratum"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [
           {
@@ -95585,10 +95686,16 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "LexSenseOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "LexSenseOperations",
+            "methods": []
+          },
+          {
+            "class": "MSAOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -96356,6 +96463,13 @@
           "type": "IPartOfSpeech"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [],
@@ -96428,6 +96542,13 @@
       "name": "IMoUnclassifiedAffixMsaFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for MoUnclassifiedAffixMsaFactory operations",
       "tags": [
@@ -99227,6 +99348,10 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "AffixTemplate",
+            "methods": []
+          },
           {
             "class": "ApprovalStatusTypes",
             "methods": []
@@ -103119,6 +103244,13 @@
           "type": "ILcmReferenceSequence"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "PhonologicalRuleOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [],
@@ -103153,6 +103285,13 @@
       "name": "IPhSequenceContextFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "PhonologicalRuleOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for PhSequenceContextFactory operations",
       "tags": [
@@ -103458,6 +103597,13 @@
           "type": "ILcmReferenceSequence"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "PhonologicalRuleOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [],

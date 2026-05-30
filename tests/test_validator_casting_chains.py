@@ -205,5 +205,90 @@ class TestCastAliasAwareness(unittest.TestCase):
         )
 
 
+class TestTypedChainSegmentBypass(unittest.TestCase):
+    """Option-1 follow-up to issue #21: when the regex's obj_var is a
+    mid-chain property name (not a real variable) and the chain root is a
+    typed receiver -- either a cast alias or an inline `I*(...)` call --
+    the static cast already constrains the chain's type. Flagging the
+    next attribute as needing-a-cast would require return-type info the
+    validator doesn't track, so the false positive must be dropped.
+
+    Captured from Seth's 2026-05-28 session: `wf.Form.BestVernacularAlternative`
+    and `IWfiWordform(ana).Form.BestVernacularAlternative.Text` were both
+    being rejected as needing-a-cast on `Form` / `BestVernacularAlternative`.
+    """
+
+    INDEX = {
+        "properties": {
+            "Form": {
+                "defined_on": ["IMoForm", "IWfiWordform", "IWfiGloss"],
+                "requires_cast_from": ["IAnalysis", "ICmObject"],
+            },
+            "BestVernacularAlternative": {
+                "defined_on": ["IMultiAccessorBase"],
+                "requires_cast_from": ["ITsMultiString"],
+            },
+        },
+        "polymorphic_collections": {},
+    }
+
+    def _flagged(self, result):
+        return {issue["property"] for issue in result["casting_issues"]}
+
+    def test_inline_typed_receiver_chain_does_not_flag(self):
+        """`IWfiWordform(ana).Form.BestVernacularAlternative.Text` -- no alias,
+        chain rooted at an inline cast call. Must NOT flag Form or
+        BestVernacularAlternative.
+        """
+        code = (
+            "def f(ana):\n"
+            "    return IWfiWordform(ana).Form.BestVernacularAlternative.Text or '?'\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("Form", flagged)
+        self.assertNotIn("BestVernacularAlternative", flagged)
+
+    def test_alias_then_chain_does_not_flag(self):
+        """`wf = IWfiWordform(ana); wf.Form.BestVernacularAlternative.Text` --
+        chain rooted at a cast-alias Name. Must NOT flag Form or
+        BestVernacularAlternative.
+        """
+        code = (
+            "def f(ana):\n"
+            "    wf = IWfiWordform(ana)\n"
+            "    return wf.Form.BestVernacularAlternative.Text or '?'\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("Form", flagged)
+        self.assertNotIn("BestVernacularAlternative", flagged)
+
+    def test_untyped_root_still_flags(self):
+        """The bypass keys off a TYPED chain root. A bare variable access like
+        `mstring.BestVernacularAlternative` (no cast in sight, no typed
+        receiver upstream) must still flag -- we don't know what `mstring` is,
+        so removing the warning would let real bugs through. Probe the
+        BestVernacularAlternative arm directly because the advanced loop's
+        regex consumes `.Form.` before reaching it in a longer chain.
+        """
+        code = (
+            "def f(mstring):\n"
+            "    return mstring.BestVernacularAlternative.Text\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertIn("BestVernacularAlternative", flagged)
+
+    def test_untyped_root_chain_still_flags_first_segment(self):
+        """And `obj.Form...` from an unknown root must still flag Form --
+        the bypass only suppresses MID-chain segments after a typed root,
+        not the head of a chain rooted at an untyped variable.
+        """
+        code = (
+            "def f(obj):\n"
+            "    return obj.Form.BestVernacularAlternative.Text\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertIn("Form", flagged)
+
+
 if __name__ == "__main__":
     unittest.main()

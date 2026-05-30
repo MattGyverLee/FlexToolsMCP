@@ -2025,6 +2025,15 @@ def detect_casting_needs(
     # rooted at a cast alias. Built once from the AST so each regex hit only
     # pays a dict lookup + a short list scan.
     alias_attr_accesses: Dict[int, List[Tuple[str, str]]] = {}
+    # typed_chain_segments: line_num -> {attr_names that the regex would parse
+    # as obj_var but are actually mid-chain property names whose chain root is
+    # a typed receiver (cast alias OR inline `I*(...)` call)}. The static cast
+    # at the root already constrains the chain's type, so the next attribute
+    # in the chain doesn't need a separate cast. Without this, the advanced
+    # casting-index loop's regex `(\w+)\.([A-Z]\w+)` flags pairs like
+    # `Form.BestVernacularAlternative` in `wf.Form.BestVernacularAlternative`
+    # -- treating the property name `Form` as if it were a variable.
+    typed_chain_segments: Dict[int, set] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -2045,6 +2054,24 @@ def detect_casting_needs(
                 alias_attr_accesses.setdefault(node.lineno, []).append(
                     (node.attr, cast_aliases[root])
                 )
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Attribute):
+                continue
+            if not isinstance(node.value, ast.Attribute):
+                continue
+            inner = node.value
+            root = inner.value
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            typed_root = False
+            if isinstance(root, ast.Name) and root.id in cast_aliases:
+                typed_root = True
+            elif isinstance(root, ast.Call) and isinstance(root.func, ast.Name):
+                fid = root.func.id
+                if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
+                    typed_root = True
+            if typed_root:
+                typed_chain_segments.setdefault(inner.lineno, set()).add(inner.attr)
 
     # Known polymorphic patterns that ALWAYS need casting across all flavors
     # These are based on C# data model structure, not wrapper-specific
@@ -2144,6 +2171,17 @@ def detect_casting_needs(
             line_content = re.sub(r'#.*$', '', line)
             for match in re.finditer(property_access_pattern, line_content):
                 obj_var, prop_name = match.groups()
+
+                # Option-1 false-positive fix: obj_var is a mid-chain property
+                # name (e.g. `Form` in `wf.Form.BestVernacularAlternative`) and
+                # the chain root is statically typed. The cast at the root
+                # already constrains what `obj_var` returns, so flagging the
+                # next attribute would require return-type info we don't have.
+                # KNOWN_CASTING_PATTERNS still catches `.Owner.HeadWord`-shaped
+                # cases (its regex sources are explicit), so this only relaxes
+                # the heuristic where it was guessing.
+                if obj_var in typed_chain_segments.get(line_num, ()):
+                    continue
 
                 # Check if this property is in the casting index and requires cast
                 if prop_name in casting_props:

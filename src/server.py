@@ -711,10 +711,13 @@ async def list_tools() -> list[Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
-    # Log tool invocation (with safety check for early init)
+    # Log tool invocation (with safety check for early init).
+    # [TOOL CALL] and [TOOL ARGS] are both INFO so they survive the default
+    # log-level cutoff and reach operations.log across sessions (issue #19).
+    # Args truncated to 500 chars to keep the record bounded.
     if operations_logger:
         operations_logger.info(f"[TOOL CALL] {name}")
-        operations_logger.debug(f"[TOOL ARGS] {name}: {json.dumps(arguments, default=str)[:500]}")
+        operations_logger.info(f"[TOOL ARGS] {name}: {json.dumps(arguments, default=str)[:500]}")
 
     # api_index is pre-loaded in main() at startup, no lazy loading needed
     # Session initialization gate: flextools_start is the only tool that doesn't require it

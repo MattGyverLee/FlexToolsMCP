@@ -97,6 +97,33 @@ def get_log_dir() -> Path:
     return log_dir
 
 
+# Custom attribute marker for the cross-session handler. Set on
+# RotatingFileHandler instances that target the always-on operations.log
+# (NOT per-session files). rotate_logging_to_session() refuses to remove
+# any handler bearing this flag, so [TOOL CALL] / [FAIL] markers always
+# land in the durable cross-session log regardless of session rotation.
+_CROSS_SESSION_HANDLER_FLAG = "_flextoolsmcp_cross_session"
+
+
+def _make_file_handler(log_file: Path):
+    """Build the standard rotating file handler with our format. Helper to
+    avoid drift between setup_logging and rotate_logging_to_session."""
+    from logging.handlers import RotatingFileHandler
+    handler = RotatingFileHandler(
+        log_file,
+        maxBytes=5*1024*1024,  # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-7s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    handler.setFormatter(formatter)
+    return handler
+
+
 def setup_logging(session_id: str = ""):
     """Configure file and console logging for operations.
 
@@ -104,22 +131,16 @@ def setup_logging(session_id: str = ""):
         session_id: Optional session ID (format: YYYYMMDD-HHMMSS) for organizing logs by date/session
                    If provided, logs are stored in logs/YYYY-MM-DD/session_ID.log
                    If not provided, logs go to logs/operations.log for backward compatibility
+
+    The cross-session handler (operations.log) is always attached and marked
+    with `_CROSS_SESSION_HANDLER_FLAG=True` so that rotate_logging_to_session
+    never removes it. This guarantees [TOOL CALL] and other operation markers
+    survive rotation and reach the durable log (issue #19).
     """
     log_dir = get_log_dir()
 
-    # Determine log file path based on session_id
-    if session_id:
-        # Extract date from session_id (format: YYYYMMDD-HHMMSS)
-        date_part = session_id[:8]  # YYYYMMDD
-        year = date_part[:4]
-        month = date_part[4:6]
-        day = date_part[6:8]
-        dated_dir = log_dir / f"{year}-{month}-{day}"
-        dated_dir.mkdir(parents=True, exist_ok=True)
-        log_file = dated_dir / f"session_{session_id}.log"
-    else:
-        # Fallback to monolithic log for backward compatibility
-        log_file = log_dir / "operations.log"
+    # Always-on cross-session log file
+    cross_session_log = log_dir / "operations.log"
 
     # Create a logger for operations
     logger = logging.getLogger("flextoolsmcp.operations")
@@ -127,32 +148,41 @@ def setup_logging(session_id: str = ""):
 
     # Avoid adding duplicate handlers
     if not logger.handlers:
-        # File handler with rotation (max 5MB, keep 3 backups)
-        from logging.handlers import RotatingFileHandler
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=5*1024*1024,  # 5MB
-            backupCount=3,
-            encoding='utf-8'
-        )
-        file_handler.setLevel(logging.DEBUG)
+        # Cross-session handler -- attached for the lifetime of the process
+        cross_handler = _make_file_handler(cross_session_log)
+        setattr(cross_handler, _CROSS_SESSION_HANDLER_FLAG, True)
+        logger.addHandler(cross_handler)
 
-        # Format: timestamp | level | message
-        formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)-7s | %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        # If a session_id was provided at startup, also attach the per-session
+        # handler immediately. (Normal flow: setup_logging() is called without
+        # session_id at process start; rotate_logging_to_session() adds the
+        # per-session handler later when flextools_start fires.)
+        if session_id:
+            date_part = session_id[:8]
+            year, month, day = date_part[:4], date_part[4:6], date_part[6:8]
+            dated_dir = log_dir / f"{year}-{month}-{day}"
+            dated_dir.mkdir(parents=True, exist_ok=True)
+            session_log = dated_dir / f"session_{session_id}.log"
+            logger.addHandler(_make_file_handler(session_log))
 
     return logger
 
 
 def rotate_logging_to_session(session_id: str) -> None:
-    """Rotate the logging handler to a new session-specific log file.
+    """Add a per-session log handler without disturbing the cross-session one.
 
-    Called by the start handler to switch from the default operations.log
-    to a per-session log file organized by date.
+    Called by the start handler when flextools_start fires. Previously this
+    function removed ALL RotatingFileHandlers (including operations.log),
+    which is why ~74 [TOOL CALL] records vanished across 13 sessions in the
+    shipped logs (issue #19). It now:
+
+      1. Removes ONLY the previous per-session handler (the one without the
+         `_CROSS_SESSION_HANDLER_FLAG` marker), so consecutive starts don't
+         keep stacking session files.
+      2. Adds a new per-session handler for the incoming session_id.
+      3. Leaves the cross-session operations.log handler alone -- every
+         record continues to fan out to BOTH the durable cross-session log
+         AND the new per-session log.
 
     Args:
         session_id: Session ID (format: YYYYMMDD-HHMMSS)
@@ -162,9 +192,11 @@ def rotate_logging_to_session(session_id: str) -> None:
     if not operations_logger:
         return
 
-    # Remove existing file handlers
+    # Remove ONLY the previous per-session handler (NOT the cross-session one)
     for handler in operations_logger.handlers[:]:
         if isinstance(handler, logging.handlers.RotatingFileHandler):
+            if getattr(handler, _CROSS_SESSION_HANDLER_FLAG, False):
+                continue  # keep the cross-session handler attached
             operations_logger.removeHandler(handler)
             handler.close()
 
@@ -179,21 +211,7 @@ def rotate_logging_to_session(session_id: str) -> None:
     log_file = dated_dir / f"session_{session_id}.log"
 
     # Add new file handler for the session
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=3,
-        encoding='utf-8'
-    )
-    file_handler.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        '%(asctime)s | %(levelname)-7s | %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    file_handler.setFormatter(formatter)
-    operations_logger.addHandler(file_handler)
+    operations_logger.addHandler(_make_file_handler(log_file))
     operations_logger.info(f"Switched to session log: session_{session_id}.log")
     _emit_session_header(session_id)
 

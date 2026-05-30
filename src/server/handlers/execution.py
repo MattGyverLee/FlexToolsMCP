@@ -731,6 +731,54 @@ def _attach_assistance_if_loop(
     return response
 
 
+_OPEN_PROJECT_PREFIX = "Failed to open project"
+
+
+def _diagnose_project_open_error(
+    execution_result: Dict[str, Any], project_name: str
+) -> Optional[Dict[str, Any]]:
+    """Recognize known project-open failure modes and return a structured payload.
+
+    Issue #27: "in use by another program" should hint at closing the FieldWorks
+    GUI (the most common cause).
+
+    Returns None if the error doesn't match a recognized open-time failure
+    pattern. Otherwise returns a dict the caller merges into execution_result.
+    """
+    raw_error = execution_result.get("error") or ""
+    if not isinstance(raw_error, str):
+        return None
+    if not raw_error.startswith(_OPEN_PROJECT_PREFIX):
+        # Only diagnose open-time failures; runtime errors flow through the
+        # polymorphic / attribute hint paths.
+        return None
+
+    # ----- Issue #27: project locked by another process. ------------------
+    # flexlibs2 surfaces the LCM LcmCacheLockedException string in the failure
+    # message; FieldWorks's own error wording is "in use by another program".
+    locked_markers = (
+        "in use by another program",
+        "LcmCacheLockedException",
+        "currently in use",
+    )
+    if any(marker.lower() in raw_error.lower() for marker in locked_markers):
+        return {
+            "error_code": "project_locked",
+            "message": (
+                f"Project '{project_name}' is currently locked by another process."
+            ),
+            "hint": (
+                "Most common cause: FieldWorks GUI is open with this project. "
+                "Close FieldWorks and retry. Other causes: another MCP session "
+                "has the project open, or a stuck lock file in the project's "
+                "Lock subfolder."
+            ),
+            "attempted_path": None,
+        }
+
+    return None
+
+
 def _inline_discovery_docs(
     entity_names: List[str], api_index: Any, limit: int = 3
 ) -> Dict[str, Any]:
@@ -2099,6 +2147,29 @@ MODULE_CODE = {code}
             "confidence": cert["confidence"],
             "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
         }
+
+        # Issues #23 + #27: when the subprocess failed inside OpenProject
+        # (path missing, share offline, project locked), enrich the response
+        # with a structured diagnostic that points at the actual fix instead
+        # of the bare .NET exception string.
+        if execution_result.get("error"):
+            open_diag = _diagnose_project_open_error(execution_result, project_name)
+            if open_diag is not None:
+                execution_result["error_code"] = open_diag["error_code"]
+                execution_result["help"] = open_diag.get("hint")
+                # Promote the diagnosis fields (message override, attempted_path,
+                # discovered_at, hint) onto the response payload.
+                for key, value in open_diag.items():
+                    if key == "error_code":
+                        continue
+                    if key == "message":
+                        # Replace the raw .NET-exception "error" string with the
+                        # human-readable diagnosis. Keep the original under
+                        # raw_error so debugging info isn't lost.
+                        execution_result["raw_error"] = execution_result["error"]
+                        execution_result["error"] = value
+                        continue
+                    execution_result[key] = value
 
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):

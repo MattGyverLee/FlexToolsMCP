@@ -326,5 +326,35 @@ class TestIssue29CandidateDetection(unittest.TestCase):
         self.assertEqual(result[0], "LexEntryOperations")
 
 
+# ---------------------------------------------------------------------------
+# Issue #27: in-use-by-another-program detection
+# Issue #23: SharedSettings / path-mismatch / drive-unavailable detection
+# ---------------------------------------------------------------------------
+
+class TestIssue27ProjectLocked(unittest.TestCase):
+    def test_locked_message_returns_project_locked_payload(self):
+        from server.handlers.execution import _diagnose_project_open_error
+
+        exec_result = {
+            "error": (
+                "Failed to open project 'Foo': LcmCacheLockedException: The project "
+                "is in use by another program."
+            ),
+        }
+        diag = _diagnose_project_open_error(exec_result, "Foo")
+        self.assertIsNotNone(diag)
+        assert diag is not None
+        self.assertEqual(diag["error_code"], "project_locked")
+        self.assertIn("Close FieldWorks", diag["hint"])
+
+    def test_non_locked_message_returns_none_for_lock_path(self):
+        from server.handlers.execution import _diagnose_project_open_error
+
+        # Unrelated error -> no diagnosis (caller leaves error alone).
+        exec_result = {"error": "Execution error: AttributeError: 'X' has no attribute 'Y'"}
+        diag = _diagnose_project_open_error(exec_result, "Foo")
+        self.assertIsNone(diag)
+
+
 if __name__ == "__main__":
     unittest.main()

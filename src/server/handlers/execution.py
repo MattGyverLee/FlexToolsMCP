@@ -886,6 +886,28 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             session=session_state.summary()
         )
 
+    # Fuzzy resolution: autocorrect case/whitespace-only typos, return an
+    # error with suggestions for bigger mismatches. Runs BEFORE the op_id
+    # block so unresolvable names don't pollute the operation log.
+    try:
+        from ..project_discovery import resolve_or_explain
+    except (ImportError, ValueError):
+        from server.project_discovery import resolve_or_explain
+    resolved, _resolve_err = resolve_or_explain(project_name)
+    if _resolve_err:
+        return error_response(
+            _resolve_err["error_code"],
+            _resolve_err["message"],
+            suggestions=_resolve_err["suggestions"],
+            reason=_resolve_err["reason"],
+            hint=_resolve_err["hint"],
+            session=session_state.summary(),
+        )
+    if resolved and resolved != project_name:
+        # Update session so subsequent calls (and the op log) use the canonical name.
+        session_state.project_name = resolved
+        project_name = resolved
+
     # === Operation logging begins here ===
     # Every code-bearing call gets an op_id and a Start block, regardless of
     # whether it later passes pre-flight. The user wants ALL attempted ops

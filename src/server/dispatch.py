@@ -24,6 +24,7 @@ from .models import (
     FindExamplesInput,
     ListCategoriesInput,
     ListEntitiesInCategoryInput,
+    ListProjectsInput,
     ResolvePropertyInput,
     StartModuleInput,
     GetOperationLogsInput,
@@ -52,6 +53,7 @@ TOOL_FIND_EXAMPLES = "flextools_find_examples"
 # Catalog tools
 TOOL_LIST_CATEGORIES = "flextools_list_categories"
 TOOL_LIST_ENTITIES_IN_CATEGORY = "flextools_list_entities_in_category"
+TOOL_LIST_PROJECTS = "flextools_list_projects"
 
 # Module management tools
 TOOL_START_MODULE = "flextools_start_module"
@@ -81,6 +83,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_FIND_EXAMPLES,
     TOOL_LIST_CATEGORIES,
     TOOL_LIST_ENTITIES_IN_CATEGORY,
+    TOOL_LIST_PROJECTS,
     TOOL_START_MODULE,
     TOOL_GET_OPERATION_LOGS,
     TOOL_RUN_MODULE,
@@ -112,6 +115,7 @@ def _import_handlers():
         from .handlers.catalog import (
             handle_list_categories,
             handle_list_entities_in_category,
+            handle_list_projects,
         )
         from .handlers.discovery import (
             handle_get_navigation_path,
@@ -144,6 +148,7 @@ def _import_handlers():
         from server.handlers.catalog import (
             handle_list_categories,
             handle_list_entities_in_category,
+            handle_list_projects,
         )
         from server.handlers.discovery import (
             handle_get_navigation_path,
@@ -170,6 +175,7 @@ def _import_handlers():
         "handle_resolve_property": handle_resolve_property,
         "handle_list_categories": handle_list_categories,
         "handle_list_entities_in_category": handle_list_entities_in_category,
+        "handle_list_projects": handle_list_projects,
         "handle_get_navigation_path": handle_get_navigation_path,
         "handle_start_module": handle_start_module,
         "handle_run_module": handle_run_module,
@@ -192,6 +198,7 @@ handle_find_examples = _handlers["handle_find_examples"]
 handle_resolve_property = _handlers["handle_resolve_property"]
 handle_list_categories = _handlers["handle_list_categories"]
 handle_list_entities_in_category = _handlers["handle_list_entities_in_category"]
+handle_list_projects = _handlers["handle_list_projects"]
 handle_get_navigation_path = _handlers["handle_get_navigation_path"]
 handle_start_module = _handlers["handle_start_module"]
 handle_run_module = _handlers["handle_run_module"]
@@ -225,6 +232,7 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Catalog tools
     TOOL_LIST_CATEGORIES: (handle_list_categories, ListCategoriesInput),
     TOOL_LIST_ENTITIES_IN_CATEGORY: (handle_list_entities_in_category, ListEntitiesInCategoryInput),
+    TOOL_LIST_PROJECTS: (handle_list_projects, ListProjectsInput),
 
     # Module management tools
     TOOL_START_MODULE: (handle_start_module, StartModuleInput),

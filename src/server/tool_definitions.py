@@ -25,6 +25,7 @@ from .models import (
     FindExamplesInput,
     ListCategoriesInput,
     ListEntitiesInCategoryInput,
+    ListProjectsInput,
     ResolvePropertyInput,
     StartModuleInput,
     GetOperationLogsInput,
@@ -172,6 +173,26 @@ with entity counts for each.""",
 
 Example categories: 'lexicon', 'grammar', 'texts', 'media'""",
         input_model=ListEntitiesInCategoryInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_list_projects": ToolDef(
+        name="flextools_list_projects",
+        description="""List FieldWorks projects available on this machine.
+
+SAFE: This tool never opens any project. It only enumerates the projects
+directory and checks for <name>/<name>.fwdata sibling files -- no LCM cache
+load, no .fwdata modification-time change. Free to call at any time.
+
+When to use:
+- The user asked for a project but you don't have it set yet, or the name
+  they gave doesn't match (run_module/start will autocorrect minor case or
+  whitespace differences and return suggestions for bigger mismatches).
+- The user explicitly asks "what projects do I have?" or "list FLEx projects".
+
+Optional name_contains filter applies a case-insensitive substring match
+against project names.""",
+        input_model=ListProjectsInput,
         annotations=READ_ONLY_SAFE,
     ),
 

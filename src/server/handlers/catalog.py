@@ -13,7 +13,7 @@ from collections import defaultdict
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_api_index
-from ..models import ListCategoriesInput, ListEntitiesInCategoryInput
+from ..models import ListCategoriesInput, ListEntitiesInCategoryInput, ListProjectsInput
 
 try:
     from ..response_keys import (
@@ -155,4 +155,38 @@ async def handle_list_entities_in_category(args: dict) -> list[TextContent]:
         KEY_CATEGORY: category,
         KEY_ENTITIES: entities,
         KEY_COUNTS: {name: len(items) for name, items in entities.items()},
+    }, indent=2))]
+
+
+async def handle_list_projects(args: dict) -> list[TextContent]:
+    """List FieldWorks projects without opening them.
+
+    Safe by construction: scans the projects directory and checks for
+    <name>/<name>.fwdata file existence only. Never loads the LCM cache,
+    so .fwdata mtimes are not modified (see P10-Export-FLEx issue #13).
+    """
+    try:
+        from ..project_discovery import list_projects, get_last_directory
+    except ImportError:
+        from server.project_discovery import list_projects, get_last_directory
+
+    # Dispatch may pass a Pydantic model or a dict — handle both.
+    raw_filter = args.get("name_contains") if isinstance(args, dict) else getattr(args, "name_contains", None)
+    name_contains = (raw_filter or "").strip()
+
+    names, source = list_projects()
+    if name_contains:
+        needle = name_contains.casefold()
+        names = [n for n in names if needle in n.casefold()]
+
+    return [TextContent(type="text", text=json.dumps({
+        "projects": names,
+        "count": len(names),
+        "source": source,
+        "projects_directory": get_last_directory(),
+        "safety_note": (
+            "Listing is read-only: only directory entries and .fwdata file "
+            "existence are checked. No project files are opened, so .fwdata "
+            "modification times are not affected."
+        ),
     }, indent=2))]

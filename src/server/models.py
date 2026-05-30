@@ -210,6 +210,14 @@ class ListEntitiesInCategoryInput(BaseModel):
     )
 
 
+class ListProjectsInput(BaseModel):
+    """List available FieldWorks projects on this machine."""
+    name_contains: Optional[str] = Field(
+        default=None,
+        description="Optional case-insensitive substring filter applied to project names."
+    )
+
+
 class ResolvePropertyInput(BaseModel):
     """Resolve property names and check casting requirements."""
     property_name: str = Field(

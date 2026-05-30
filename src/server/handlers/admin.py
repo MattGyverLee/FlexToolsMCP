@@ -23,6 +23,16 @@ from ..response_keys import (
     KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
 )
 
+try:
+    from ...response_utils import error_response
+except (ImportError, ValueError):
+    from response_utils import error_response
+
+try:
+    from ..project_discovery import resolve_or_explain
+except (ImportError, ValueError):
+    from server.project_discovery import resolve_or_explain
+
 # Import kernel dependencies with fallback support
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 rotate_logging_to_session, _ = safe_import_logging_helpers()
@@ -290,6 +300,34 @@ async def handle_start(args: dict) -> list[TextContent]:
     api_mode = args.get(KEY_API_MODE, "flexlibs2")
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
+
+    # Fuzzy resolution: autocorrect case/whitespace-only typos, return a helpful
+    # error (with suggestions) for bigger mismatches. Skipped when no name was
+    # given -- that's a separately-valid "no project yet" state. Must run before
+    # same_project so capitalization differences don't break session continuity.
+    if project_name:
+        resolved, err = resolve_or_explain(project_name)
+        if err:
+            return error_response(
+                err["error_code"],
+                err["message"],
+                suggestions=err["suggestions"],
+                reason=err["reason"],
+                hint=err["hint"],
+                session=session_state.summary(),
+            )
+        if resolved and resolved != project_name:
+            try:
+                from ..kernel import get_operations_logger
+            except ImportError:
+                from server.kernel import get_operations_logger
+            _autocorrect_logger = get_operations_logger()
+            if _autocorrect_logger:
+                _autocorrect_logger.info(
+                    f"[SESSION-START] project_name autocorrected: "
+                    f"{project_name!r} -> {resolved!r} (case/whitespace only)"
+                )
+            project_name = resolved
 
     user_provided = args.get("_user_provided_keys", set())
     same_project = (

@@ -20,6 +20,17 @@ from server.handlers.admin import handle_start, handle_undo_last_operation
 from server.undo_subprocess import build_undo_script, parse_undo_result
 
 
+@pytest.fixture(autouse=True)
+def _bypass_project_resolution(monkeypatch):
+    """These tests use synthetic project names that don't exist on the host
+    machine; they exercise session/undo wiring, not project discovery. Bypass
+    the fuzzy resolver so any name is accepted.
+    """
+    def _passthrough(project_name):
+        return project_name, None
+    monkeypatch.setattr("server.handlers.admin.resolve_or_explain", _passthrough)
+
+
 def _init_kernel():
     initialize_kernel()
     api_index = APIIndex.load(get_index_dir())

@@ -860,7 +860,17 @@ def detect_polymorphic_error(error_msg: str) -> dict:
             "is_polymorphic_error": True,
             "object_type": object_type,
             "property_name": property_name,
-            "suggestion": f"Call resolve_property(property_name='{property_name}', context_entity='{object_type}') to find the correct property and required casting."
+            # Issue #22: nudge at the preflight rewrite path first; resolve_property
+            # is the secondary escape hatch (e.g. for chained-receiver cases the
+            # rewriter deliberately skips).
+            "suggestion": (
+                f"Re-submit your code -- the preflight casting validator should "
+                f"now flag '{property_name}' on '{object_type}' with an inline "
+                f"`rewrite` (the cast-wrapped expression) and `imports_needed`. "
+                f"If the preflight doesn't catch it (e.g. chained receiver), call "
+                f"flextools_resolve_property(property_name='{property_name}', "
+                f"context_entity='{object_type}') as a fallback."
+            ),
         }
 
     return {"is_polymorphic_error": False}

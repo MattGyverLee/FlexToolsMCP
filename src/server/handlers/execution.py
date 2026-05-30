@@ -590,10 +590,18 @@ def _log_operation_failure(
             first_line = first_line[:500] + "..."
         logger.error(f"Error:           {first_line}")
     if polymorphic_hint and polymorphic_hint.get("is_polymorphic_error"):
-        logger.error(
+        # Issue #22: with #21's inlined rewrite, the preflight casting
+        # validator usually catches these BEFORE subprocess launch and
+        # returns the rewrite in casting_issues[*].rewrite. By the time we
+        # reach this runtime path, the validator missed it -- so point at
+        # the inlined-rewrite field for next-attempt recovery, not at an
+        # extra resolve_property hop. Logged at INFO because the hint is a
+        # recovery breadcrumb, not a failure marker (those are at ERROR via #17).
+        logger.info(
             f"Polymorphic hint: object={polymorphic_hint.get('object_type')} "
             f"property={polymorphic_hint.get('property_name')} "
-            f"-> call flextools_resolve_property to get the cast"
+            f"-> resubmit; preflight should now emit casting_issues[*].rewrite "
+            f"and casting_issues[*].imports_needed"
         )
     if traceback_text:
         logger.debug("Traceback:")

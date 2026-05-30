@@ -275,7 +275,14 @@ Returns: Recent log entries, errors, and AI-generated recommendations for fixing
         description="""Resolve property names and check pythonnet casting requirements.
 
 When you encounter "has no attribute" errors or need to know if a property requires casting,
-use this tool to get the full resolution path and casting instructions.""",
+use this tool to get the full resolution path and casting instructions.
+
+When to use: Mostly redundant when the polymorphic-casting validator fires --
+the casting_issues_detected rejection now inlines the rewrite (the cast-wrapped
+expression) and imports_needed (the SIL.LCModel imports to add) directly in
+each casting_issues[*] entry. Use this tool for ad-hoc lookups when writing
+new code from scratch, or as a fallback when the preflight didn't catch the
+issue (e.g. chained or call-rooted receivers the inline rewriter skips).""",
         input_model=ResolvePropertyInput,
         annotations=READ_ONLY_SAFE,
     ),

@@ -565,11 +565,24 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
 
     accessors = set(_project_accessors(api_index))
     # Direct project methods typically start with a verb prefix; treat names
-    # with these prefixes as definitely-not-accessors (e.g., GetWritingSystems,
-    # LexiconAllEntries) and skip them so we don't false-positive against the
-    # type-name accessors (WritingSystem, LexEntry).
+    # with these prefixes as definitely-not-accessors (e.g., GetWritingSystems)
+    # and skip them so we don't false-positive against the type-name accessors
+    # (WritingSystem, LexEntry). Issue #34: removed blanket "Lexicon" skip --
+    # replace it with an enumerated set of known Lexicon* method names so that
+    # typos like LexiconGetSenses (should be LexiconGetSense) still get caught.
     method_prefixes = ("Get", "Set", "Has", "Is", "Add", "Remove", "Create",
-                       "Delete", "Update", "Find", "Make", "Build", "Lexicon", "To", "From")
+                       "Delete", "Update", "Find", "Make", "Build", "To", "From")
+
+    # Build enumerated set of known Lexicon* direct-project methods from index.
+    # Only names actually in the index pass as valid; others get fuzzy-checked.
+    known_lexicon_methods: Set[str] = set()
+    if api_index is not None:
+        flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
+        flex_project = (flexlibs2.get("entities") or {}).get("FLExProject", {})
+        for m in flex_project.get("methods", []):
+            name = m.get("name", "")
+            if name.startswith("Lexicon"):
+                known_lexicon_methods.add(name)
     issues: List[Dict[str, Any]] = []
 
     for node in ast.walk(code_tree):
@@ -582,6 +595,10 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                 continue
             if x.startswith(method_prefixes):
                 continue  # Looks like a direct project method, not an accessor typo
+            # Issue #34: Lexicon* names only skip if they're a known indexed method.
+            # Unknown Lexicon* names (e.g. LexiconGetSenses typo) fall through.
+            if x.startswith("Lexicon") and x in known_lexicon_methods:
+                continue
             # Only reject if a *high-confidence* close match exists in the accessor set.
             # Otherwise this might be a direct project method we don't enumerate.
             close = _suggest_attribute_matches(x, list(accessors), cutoff=0.7)
@@ -789,8 +806,21 @@ def detect_undiscovered_entities(
         if "." in api_key:
             discovered_entities.add(api_key.split(".", 1)[0])
 
+    # Issue #31: treat `from flexlibs2 import XOperations` as implicit discovery.
+    # Importing an operations class means the user deliberately brought the API
+    # surface into scope -- the discovery gate's purpose (ensuring the LLM has
+    # seen real method signatures) is satisfied by the import statement itself.
+    implicit_discovered = _collect_flexlibs2_imports(code_tree)
+    implicit_accessor_forms: Set[str] = set()
+    for name in implicit_discovered:
+        if name.endswith("Operations"):
+            implicit_accessor_forms.add(name[: -len("Operations")])
+        if name in ops_to_accessor:
+            implicit_accessor_forms.add(ops_to_accessor[name])
+    implicit_all = implicit_discovered | implicit_accessor_forms
+
     satisfied: Set[str] = set()
-    for v in validated | discovered_entities:
+    for v in validated | discovered_entities | implicit_all:
         satisfied.add(v)
         # Cross-link accessor <-> ops class via the index when possible
         if v in accessor_to_ops:
@@ -885,7 +915,7 @@ def detect_undiscovered_entities(
     return result
 
 
-def detect_polymorphic_error(error_msg: str) -> dict:
+def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
     Identifies errors like "'IPhSegmentRule' object has no attribute 'RightHandSidesOS'"
@@ -896,6 +926,8 @@ def detect_polymorphic_error(error_msg: str) -> dict:
       - object_type: str - the object type from the error (e.g., 'IPhSegmentRule')
       - property_name: str - the missing property (e.g., 'RightHandSidesOS')
       - suggestion: str - suggested resolve_property call
+      - rewrite: str | None - inline cast rewrite if casting_index resolved it
+      - imports_needed: list[str] - imports to add alongside the rewrite
     """
     # Match pattern: 'ObjectType' object has no attribute 'PropertyName'
     pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
@@ -903,10 +935,30 @@ def detect_polymorphic_error(error_msg: str) -> dict:
 
     if match:
         object_type, property_name = match.groups()
+
+        # Issue #36: mirror the pre-flight casting lookup so runtime errors carry
+        # the same self-healing payload (rewrite + imports_needed) that pre-flight
+        # rejections do, eliminating an extra round-trip.
+        rewrite: Optional[str] = None
+        imports_needed: List[str] = []
+        if casting_index:
+            casting_props = (casting_index or {}).get("properties") or {}
+            if property_name in casting_props:
+                cast_info = casting_props[property_name]
+                available_on = cast_info.get("available_on") or cast_info.get("defined_on") or []
+                cast_iface = _pick_cast_interface(
+                    property_name, available_on, casting_index, object_type.lower()
+                )
+                if cast_iface:
+                    rewrite = f"{cast_iface}(obj).{property_name}"
+                    imports_needed = _imports_for_interface(cast_iface)
+
         return {
             "is_polymorphic_error": True,
             "object_type": object_type,
             "property_name": property_name,
+            "rewrite": rewrite,
+            "imports_needed": imports_needed,
             # Issue #22: nudge at the preflight rewrite path first; resolve_property
             # is the secondary escape hatch (e.g. for chained-receiver cases the
             # rewriter deliberately skips).
@@ -1640,8 +1692,20 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                         break
 
                 if not method_found:
-                    # Class found but method not in index - conservative: treat as mutating
-                    if not is_protected:
+                    # Class found but method not in index.
+                    # Issue #32: Get*/Find*/Is*/Has*/Count*/Contains* prefixes are
+                    # unambiguously read-only -- don't false-positive them as mutating.
+                    _READONLY_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains")
+                    if method_name.startswith(_READONLY_PREFIXES):
+                        mutating_calls.append({
+                            "class": class_name,
+                            "method": method_name,
+                            "is_mutating": False,
+                            "source": "prefix_heuristic",
+                            "line": line_num,
+                            "protected": True
+                        })
+                    elif not is_protected:
                         unknown_calls.append({
                             "class": class_name,
                             "method": method_name,
@@ -1810,7 +1874,20 @@ _RECEIVER_NAME_TO_INTERFACE = {
     "bundle": "IWfiMorphBundle",
     "morph": "IMoForm",
     "seg": "ISegment",
+    # Issue #30: common _obj suffix variants used in user scripts
+    "sense_obj": "ILexSense",
+    "entry_obj": "ILexEntry",
+    "seg_obj": "ISegment",
+    "para_obj": "IStTxtPara",
+    "text_obj": "IStText",
+    "wf_obj": "IWfiWordform",
+    "wa_obj": "IWfiAnalysis",
+    "morph_obj": "IMoForm",
+    "bundle_obj": "IWfiMorphBundle",
 }
+
+# Suffixes that signal a typed receiver -- strip and retry the base name.
+_TYPED_RECEIVER_SUFFIXES = ("_obj", "_typed", "_cast")
 
 
 def _pick_cast_interface(
@@ -1861,6 +1938,14 @@ def _pick_cast_interface(
     candidates = defined_on if defined_on else cleaned
     if receiver_name and candidates:
         preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
+        if preferred is None:
+            # Issue #30: normalize _obj/_typed/_cast suffix and retry
+            for suffix in _TYPED_RECEIVER_SUFFIXES:
+                if receiver_name.endswith(suffix):
+                    base = receiver_name[: -len(suffix)]
+                    preferred = _RECEIVER_NAME_TO_INTERFACE.get(base)
+                    if preferred is not None:
+                        break
         if preferred and preferred in candidates:
             return preferred
 

@@ -259,6 +259,21 @@ def resolve_project_name(requested: str) -> ResolveResult:
     return ResolveResult(None, suggestions, "no_match")
 
 
+def check_project_locked(project_name: str) -> Optional[Path]:
+    """Issue #33: check for a .fwdata.lock file before launching the subprocess.
+
+    Returns the Path to the lock file if one exists, else None.
+    Requires get_projects_directory() to succeed; if it can't determine the
+    directory, returns None (let the subprocess surface its own error).
+    """
+    dir_result = get_projects_directory()
+    if dir_result is None:
+        return None
+    projects_dir, _ = dir_result
+    lock = Path(projects_dir) / project_name / (project_name + _FWDATA_EXT + ".lock")
+    return lock if lock.exists() else None
+
+
 def resolve_or_explain(project_name: str) -> tuple:
     """Resolve a project_name for handler use.
 

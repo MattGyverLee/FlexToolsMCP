@@ -2079,6 +2079,26 @@ class SimpleReporter:
         import pathlib
         return pathlib.Path(os.path.abspath(fname)).as_uri()
 
+    def Result(self, data):
+        """Issue #35: return structured data from a user script.
+
+        Serializes `data` as JSON and stores it for inclusion in the response
+        envelope under `result_data`. Multiple calls overwrite (last-wins).
+        Size cap: 1 MB serialized. Raises ValueError if exceeded.
+        """
+        try:
+            payload = json.dumps(data, ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("report.Result: data is not JSON-serializable: {}".format(exc))
+        _MAX_RESULT_BYTES = 1 * 1024 * 1024  # 1 MB
+        if len(payload.encode("utf-8")) > _MAX_RESULT_BYTES:
+            raise ValueError(
+                "report.Result: payload exceeds 1 MB limit ({} bytes). "
+                "Consider writing to a file for very large outputs.".format(len(payload.encode("utf-8")))
+            )
+        print("===FLEXTOOLS_USER_RESULT===")
+        print(payload)
+
 
 def run_module():
     result = {
@@ -2228,6 +2248,19 @@ def run_module():
             module_namespace["FlexToolsModule"].Run(project, report, WRITE_ENABLED)
         # else: bare code already executed at line 978 during exec(MODULE_CODE, module_namespace)
 
+        # Issue #16: log LCM UndoableActionCount so callers can verify that
+        # bulk-mutation loops committed the expected number of actions. If the
+        # count is much lower than expected, the UoW likely hit an undocumented
+        # cap and the caller should re-run on the residual set.
+        if WRITE_ENABLED:
+            try:
+                ah = project.project.ActionHandlerAccessor
+                lcm_action_count = getattr(ah, "UndoableActionCount", None)
+                if lcm_action_count is not None:
+                    result["lcm_undoable_action_count"] = int(lcm_action_count)
+            except Exception:
+                pass
+
         # Collect results
         result["success"] = True
         result["messages"] = report.messages
@@ -2310,6 +2343,32 @@ MODULE_CODE = {code}
         }, indent=2))]
 
     try:
+        # Issue #33: fail fast if a .fwdata.lock file exists (project is open in FW).
+        # Do this here, after the temp script is written, so that if the lock check
+        # is unavailable (no projects dir) we still fall through to the subprocess,
+        # which surfaces its own error with accurate context.
+        try:
+            from ..project_discovery import check_project_locked
+        except (ImportError, ValueError):
+            from server.project_discovery import check_project_locked
+        _lock_path = check_project_locked(project_name)
+        if _lock_path is not None:
+            _lock_msg = (
+                f"Project '{project_name}' is locked by FieldWorks (found "
+                f"{_lock_path.name}). Close FieldWorks and retry."
+            )
+            _log_preflight_reject(op_id, seq, time.monotonic() - t_start, "project_locked", _lock_msg)
+            return _attach_assistance_if_loop(
+                error_response(
+                    "project_locked",
+                    _lock_msg,
+                    guidance="Close FieldWorks (or delete the .lock file only if no FW process is running), then retry.",
+                    op_id=op_id,
+                ),
+                error_code="project_locked",
+                code_size_bytes=_code_size_bytes,
+            )
+
         # Determine if we need the write lock
         # Use index-based certification as primary, regex-based as fallback
         # Only lock if: write_enabled=True AND script is NOT certified readonly
@@ -2348,6 +2407,18 @@ MODULE_CODE = {code}
                 "op_id": op_id,
             }, indent=2))]
 
+        # Issue #35: extract user result payload (report.Result) before the main envelope.
+        _user_result_sentinel = "===FLEXTOOLS_USER_RESULT==="
+        _user_result_data = None
+        if _user_result_sentinel in stdout:
+            _ur_start = stdout.index(_user_result_sentinel) + len(_user_result_sentinel)
+            _ur_end = stdout.find("===FLEXTOOLS_RESULT_JSON===", _ur_start)
+            _ur_raw = (stdout[_ur_start:_ur_end] if _ur_end != -1 else stdout[_ur_start:]).strip()
+            try:
+                _user_result_data = json.loads(_ur_raw)
+            except json.JSONDecodeError:
+                _user_result_data = _ur_raw
+
         # Parse the JSON result from stdout
         if "===FLEXTOOLS_RESULT_JSON===" in stdout:
             json_start = stdout.index("===FLEXTOOLS_RESULT_JSON===") + len("===FLEXTOOLS_RESULT_JSON===")
@@ -2369,6 +2440,10 @@ MODULE_CODE = {code}
                 "raw_output": stdout,
                 "stderr": stderr
             }
+
+        # Issue #35: attach user-returned structured payload if present.
+        if _user_result_data is not None:
+            execution_result["result_data"] = _user_result_data
 
         # Add warnings, metadata, and optionally the full module code for learning
         execution_result["warnings"] = warnings
@@ -2410,13 +2485,19 @@ MODULE_CODE = {code}
 
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
-            polymorphic_info = detect_polymorphic_error(execution_result["error"])
+            _rt_casting_index = api_idx.casting_index if api_idx else None
+            polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
             if polymorphic_info["is_polymorphic_error"]:
                 execution_result["polymorphic_error_detected"] = True
                 execution_result["error_type"] = "PolymorphicAttributeError"
                 execution_result["object_type"] = polymorphic_info["object_type"]
                 execution_result["property_name"] = polymorphic_info["property_name"]
                 execution_result["help"] = polymorphic_info["suggestion"]
+                # Issue #36: attach rewrite + imports so runtime errors carry the
+                # same self-healing payload as pre-flight casting rejections.
+                if polymorphic_info.get("rewrite"):
+                    execution_result["rewrite"] = polymorphic_info["rewrite"]
+                    execution_result["imports_needed"] = polymorphic_info["imports_needed"]
             else:
                 # Try wrapper-API name suggestions (project.LexEntries -> project.LexEntry,
                 # GetPOS -> GetPartOfSpeech, etc.)
@@ -2494,6 +2575,9 @@ MODULE_CODE = {code}
                 "is_polymorphic_error": True,
                 "object_type": execution_result.get("object_type"),
                 "property_name": execution_result.get("property_name"),
+                # Issue #36: include cast rewrite so runtime errors are self-healing
+                "rewrite": execution_result.get("rewrite"),
+                "imports_needed": execution_result.get("imports_needed") or [],
             }
 
         duration_s = time.monotonic() - t_start

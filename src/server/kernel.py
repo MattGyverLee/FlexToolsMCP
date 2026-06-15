@@ -228,9 +228,15 @@ def _emit_session_header(session_id: str) -> None:
 
     import platform
     try:
-        from .versioning import detect_installed_library_version
+        from .versioning import (
+            detect_installed_library_version,
+            detect_liblcm_version_from_disk,
+        )
     except ImportError:
-        from server.versioning import detect_installed_library_version  # type: ignore
+        from server.versioning import (  # type: ignore
+            detect_installed_library_version,
+            detect_liblcm_version_from_disk,
+        )
 
     def _safe(label: str, fn) -> str:
         try:
@@ -241,16 +247,32 @@ def _emit_session_header(session_id: str) -> None:
     flexlibs2_ver = _safe("flexlibs2", lambda: detect_installed_library_version(
         "FlexLibs 2.0", import_path="flexlibs2", package_name="flexlibs2"
     ))
-    liblcm_ver = _safe("liblcm", lambda: detect_installed_library_version(
-        "LibLCM", assembly_name="SIL.LCModel"
+    # LibLCM: read from the DLL on disk because the assembly isn't loaded into
+    # the CLR yet at session-header time (no project open). Fall back to the
+    # assembly-reflection path in case the DLL happens to already be loaded.
+    liblcm_ver = _safe("liblcm", lambda: (
+        detect_liblcm_version_from_disk()
+        or detect_installed_library_version("LibLCM", assembly_name="SIL.LCModel")
     ))
 
+    # Server version: prefer the repo VERSION file (running from source is the
+    # common case for contributors and for Ron). Fall back to installed package
+    # metadata when running from a pip install.
     server_ver = "(unknown)"
     try:
-        from importlib.metadata import version as _pkg_version
-        server_ver = _pkg_version("flextoolsmcp")
+        version_file = Path(__file__).resolve().parent.parent.parent / "VERSION"
+        if version_file.exists():
+            text = version_file.read_text(encoding="utf-8").strip()
+            if text:
+                server_ver = text
     except Exception:
         pass
+    if server_ver == "(unknown)":
+        try:
+            from importlib.metadata import version as _pkg_version
+            server_ver = _pkg_version("flextoolsmcp")
+        except Exception:
+            pass
 
     log = operations_logger
     log.info("=== Session Environment ===")

@@ -124,6 +124,61 @@ def detect_installed_library_version(
     return None
 
 
+def detect_liblcm_version_from_disk(
+    dll_name: str = "SIL.LCModel.dll",
+    search_paths: Optional[list[Path]] = None,
+) -> Optional[str]:
+    """Read SIL.LCModel version directly from the DLL on disk.
+
+    Session-header logging runs before any FLExProject opens, so the assembly
+    isn't yet loaded into the CLR -- `Assembly.Load("SIL.LCModel")` returns None.
+    Reading the DLL off disk gives a usable version in the very first log line,
+    which is when bug-report triage needs it most.
+
+    Args:
+        dll_name: DLL filename to locate
+        search_paths: Override search paths. Defaults to FIELDWORKS_DLL_PATH env
+            var plus the standard FieldWorks install locations.
+
+    Returns:
+        Version string like '11.0.0', or None if pythonnet/DLL unavailable.
+    """
+    import os
+
+    if search_paths is None:
+        search_paths = []
+        env_path = os.environ.get("FIELDWORKS_DLL_PATH")
+        if env_path:
+            search_paths.append(Path(env_path))
+        search_paths.extend([
+            Path(r"D:/Github/Fieldworks/Output/Debug"),
+            Path(r"D:/Github/Fieldworks/Output/Release"),
+            Path(r"C:/Program Files/SIL/FieldWorks 9"),
+            Path(r"C:/Program Files (x86)/SIL/FieldWorks 9"),
+        ])
+
+    dll_path: Optional[Path] = None
+    for base in search_paths:
+        candidate = base / dll_name
+        if candidate.exists():
+            dll_path = candidate
+            break
+
+    if dll_path is None:
+        _log_ops_debug(f"Could not locate {dll_name} on disk for version detection")
+        return None
+
+    try:
+        import clr  # type: ignore  # noqa: F401
+        import System  # type: ignore
+        asm = System.Reflection.Assembly.LoadFile(str(dll_path))
+        v = asm.GetName().Version
+        return f"{v.Major}.{v.Minor}.{v.Build}"
+    except Exception as exc:
+        _log_ops_debug(f"Could not read {dll_name} version from {dll_path}: {exc}")
+        return None
+
+
 def find_api_files(
     index_dir: Path,
     prefix: str,

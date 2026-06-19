@@ -2343,37 +2343,40 @@ MODULE_CODE = {code}
         }, indent=2))]
 
     try:
-        # Issue #33: fail fast if a .fwdata.lock file exists (project is open in FW).
-        # Do this here, after the temp script is written, so that if the lock check
-        # is unavailable (no projects dir) we still fall through to the subprocess,
-        # which surfaces its own error with accurate context.
-        try:
-            from ..project_discovery import check_project_locked
-        except (ImportError, ValueError):
-            from server.project_discovery import check_project_locked
-        _lock_path = check_project_locked(project_name)
-        if _lock_path is not None:
-            _lock_msg = (
-                f"Project '{project_name}' is locked by FieldWorks (found "
-                f"{_lock_path.name}). Close FieldWorks and retry."
-            )
-            _log_preflight_reject(op_id, seq, time.monotonic() - t_start, "project_locked", _lock_msg)
-            return _attach_assistance_if_loop(
-                error_response(
-                    "project_locked",
-                    _lock_msg,
-                    guidance="Close FieldWorks (or delete the .lock file only if no FW process is running), then retry.",
-                    op_id=op_id,
-                ),
-                error_code="project_locked",
-                code_size_bytes=_code_size_bytes,
-            )
-
         # Determine if we need the write lock
         # Use index-based certification as primary, regex-based as fallback
         # Only lock if: write_enabled=True AND script is NOT certified readonly
         is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
         needs_lock = write_enabled and is_mutating_script
+
+        # Issue #33: fail fast if a .fwdata.lock file exists AND we intend to mutate.
+        # Read-only probes are allowed through to LCM, which permits shared-project
+        # access when FLEx has the database open in shared mode. Only an exclusive
+        # write would actually collide, so we gate the pre-flight on write intent
+        # and let LCM arbitrate the rest (LcmFileLockedException is caught downstream).
+        if needs_lock:
+            try:
+                from ..project_discovery import check_project_locked
+            except (ImportError, ValueError):
+                from server.project_discovery import check_project_locked
+            _lock_path = check_project_locked(project_name)
+            if _lock_path is not None:
+                _lock_msg = (
+                    f"Project '{project_name}' is locked by FieldWorks (found "
+                    f"{_lock_path.name}) and this script requests write access. "
+                    f"Close FieldWorks or run the script read-only, then retry."
+                )
+                _log_preflight_reject(op_id, seq, time.monotonic() - t_start, "project_locked", _lock_msg)
+                return _attach_assistance_if_loop(
+                    error_response(
+                        "project_locked",
+                        _lock_msg,
+                        guidance="Close FieldWorks (or delete the .lock file only if no FW process is running), then retry. Read-only operations do not require closing FieldWorks.",
+                        op_id=op_id,
+                    ),
+                    error_code="project_locked",
+                    code_size_bytes=_code_size_bytes,
+                )
 
         if needs_lock:
             # Serialize CUD operations on same project to prevent database corruption

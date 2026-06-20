@@ -342,7 +342,8 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
         KEY_SOURCE_FILE: entity.get(KEY_SOURCE_FILE, ""),
     }
 
-    if object_type in OPERATIONS_CLASSES:
+    is_operations_class = object_type in OPERATIONS_CLASSES
+    if is_operations_class:
         result[KEY_IMPORT_STATEMENT] = f"from {library} import {object_type}"
         result[KEY_IMPORT_REQUIRED] = True
 
@@ -357,11 +358,25 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
 
     methods = methods[offset:offset + limit]
 
-    if summary_only:
+    # Operations classes are flat namespaces with many methods; default to a
+    # thin index unless the caller has narrowed with method_filter or
+    # explicitly opted into full bodies via summary_only=False AND a filter.
+    force_thin = is_operations_class and not method_filter
+
+    if summary_only or force_thin:
         result[KEY_METHODS] = [
-            {KEY_NAME: m.get(KEY_NAME), KEY_SIGNATURE: m.get(KEY_SIGNATURE, "")}
+            {
+                KEY_NAME: m.get(KEY_NAME),
+                KEY_SIGNATURE: m.get(KEY_SIGNATURE, ""),
+                KEY_DESCRIPTION: (m.get(KEY_SUMMARY) or m.get(KEY_DESCRIPTION, "") or "").split("\n")[0][:120],
+            }
             for m in methods
         ]
+        if force_thin:
+            result[KEY_HINT] = (
+                f"{object_type} is an Operations namespace; only method index returned. "
+                f"Call get_object_api with method_filter='<name>' for full signature, params, and examples."
+            )
     else:
         result[KEY_METHODS] = methods
 

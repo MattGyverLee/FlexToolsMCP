@@ -104,7 +104,14 @@ class TestIssue20ImportedUndiscovered(unittest.TestCase):
         names = _collect_flexlibs2_imports(tree)
         self.assertEqual(names, set())
 
-    def test_imported_undiscovered_populated_when_single_import(self):
+    def test_import_alone_satisfies_discovery_gate(self):
+        """Issue #31 supersedes the original #20 behavior: a bare
+        `from flexlibs2 import X` is now treated as implicit discovery, so the
+        imported entity is no longer flagged as undiscovered. (The function's
+        own #31 comment documents this: importing an operations class brings
+        the API surface into scope, satisfying the gate.) The stricter
+        "imported but still undiscovered" assertion this test once made is
+        therefore obsolete -- import + use must pass cleanly."""
         code = (
             "from flexlibs2 import SegmentOperations\n"
             "x = SegmentOperations(project).GetAll()\n"
@@ -112,15 +119,8 @@ class TestIssue20ImportedUndiscovered(unittest.TestCase):
         tree = ast.parse(code)
         session = _FakeSession()
         result = detect_undiscovered_entities(tree, session, api_index=None)
-        self.assertTrue(result["has_undiscovered"])
-        self.assertIn("SegmentOperations", result["undiscovered"])
-        self.assertEqual(result["imported_undiscovered"], ["SegmentOperations"])
-        # Suggestion text must explicitly call out the import-vs-discovery gap.
-        self.assertIn(
-            "from flexlibs2 import SegmentOperations",
-            result["suggestion"],
-        )
-        self.assertIn("Imports alone aren't enough", result["suggestion"])
+        self.assertFalse(result["has_undiscovered"])
+        self.assertEqual(result["imported_undiscovered"], [])
 
     def test_imported_undiscovered_empty_when_not_imported(self):
         code = "x = SegmentOperations(project).GetAll()\n"

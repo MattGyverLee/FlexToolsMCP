@@ -498,6 +498,24 @@ def _suggest_attribute_matches(attr_name: str, candidates: List[str], cutoff: fl
     return acronym_hits[:3]
 
 
+# Issue #39: Python 3.10+ appends "Did you mean: 'X'?" to AttributeError /
+# NameError messages. This is authoritative -- it reflects the attributes that
+# actually exist on the live runtime object -- so for a typo (e.g. ILexDb has
+# no 'EntriesOC', did you mean 'Entries') it beats any statically-guessed cast.
+_PATTERN_PY_DID_YOU_MEAN = re.compile(r"Did you mean:?\s*'([^']+)'")
+
+
+def extract_python_did_you_mean(error_msg: str) -> Optional[str]:
+    """Pull the name out of Python's native "Did you mean: 'X'?" suffix.
+
+    Returns the suggested name, or None if the error carries no such suffix.
+    """
+    if not error_msg:
+        return None
+    match = _PATTERN_PY_DID_YOU_MEAN.search(error_msg)
+    return match.group(1) if match else None
+
+
 def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
     """Detect AttributeErrors on FlexLibs2 wrapper accessors and suggest correct names.
 
@@ -975,6 +993,47 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
     return {"is_polymorphic_error": False}
 
 
+def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
+    """Collect every name bound by an import in `code` via AST.
+
+    Issue #41: the old regex (`from \\w+ import ([^#\\n]+)`) only saw the first
+    physical line of an import, so parenthesized / multi-line forms like
+
+        from flexlibs2 import (
+            SegmentOperations,
+            WordformOperations,
+        )
+
+    left SegmentOperations / WordformOperations out of the imported set and the
+    missing-imports gate then false-rejected valid code. AST parsing normalizes
+    all import shapes (parenthesized, multi-line, aliased) into one name list.
+
+    Both the original name and any alias are recorded (the missing-imports gate
+    compares against the original Operations-class names). Returns None when the
+    code can't be parsed, signalling the caller to fall back to the regex scan.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    names: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name and alias.name != "*":
+                    names.add(alias.name)
+                if alias.asname:
+                    names.add(alias.asname)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name:
+                    names.add(alias.name)
+                    names.add(alias.name.rsplit(".", 1)[-1])
+                if alias.asname:
+                    names.add(alias.asname)
+    return names
+
+
 def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     """Detect Operations classes used without imports and suggest what to add.
 
@@ -997,13 +1056,18 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     if not matches:
         return result
 
-    # Check which are imported using compiled pattern
-    import_lines = _PATTERN_IMPORT_STMT.findall(code)
-    imported = set()
-    for line in import_lines:
-        # Parse comma-separated imports
-        parts = [p.strip() for p in line.split(',')]
-        imported.update(parts)
+    # Issue #41: collect imported names via AST so parenthesized / multi-line
+    # imports are seen. Fall back to the single-line regex only when the code
+    # can't be parsed (it can't run in that state either, but the regex keeps
+    # behavior unchanged for the unparsable path).
+    imported = _collect_all_imported_names(code)
+    if imported is None:
+        import_lines = _PATTERN_IMPORT_STMT.findall(code)
+        imported = set()
+        for line in import_lines:
+            # Parse comma-separated imports; strip `X as Y` aliases to the name.
+            parts = [p.strip().split(" as ")[0].strip() for p in line.split(',')]
+            imported.update(parts)
 
     # Find missing imports
     used = set(matches)
@@ -1889,6 +1953,12 @@ _RECEIVER_NAME_TO_INTERFACE = {
 # Suffixes that signal a typed receiver -- strip and retry the base name.
 _TYPED_RECEIVER_SUFFIXES = ("_obj", "_typed", "_cast")
 
+# Issue #40: members that live on ICmObject itself -- accessing them never
+# requires a cast to a concrete interface, so the polymorphic-casting heuristic
+# must never flag them. These were a recurring false-positive source in user
+# session logs (e.g. `obj.Hvo`, `obj.Guid`) that forced needless rewrites.
+_CASTING_ALWAYS_SAFE_MEMBERS = frozenset({"Guid", "Hvo", "ClassID", "ClassName"})
+
 
 def _pick_cast_interface(
     property_name: str,
@@ -2119,6 +2189,10 @@ def detect_casting_needs(
     # `Form.BestVernacularAlternative` in `wf.Form.BestVernacularAlternative`
     # -- treating the property name `Form` as if it were a variable.
     typed_chain_segments: Dict[int, set] = {}
+    # Issue #40: operations-class aliases (segOps = SegmentOperations(project))
+    # so a method call captured by the property regex (segOps.IsLabel(seg)) is
+    # recognized as a wrapper call, not a polymorphic property access.
+    operations_aliases: Dict[str, str] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -2126,7 +2200,7 @@ def detect_casting_needs(
             tree = None
     if tree is not None:
         ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
-        _ops_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
+        operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
         if cast_aliases:
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
@@ -2257,6 +2331,20 @@ def detect_casting_needs(
             for match in re.finditer(property_access_pattern, line_content):
                 obj_var, prop_name = match.groups()
 
+                # Issue #40: universally-safe members (Guid/Hvo/ClassID/ClassName)
+                # live on ICmObject itself -- they never need a cast. Skip them
+                # so safe read-only access stops getting false-rejected.
+                if prop_name in _CASTING_ALWAYS_SAFE_MEMBERS:
+                    continue
+
+                # Issue #40: a call on an Operations-class instance
+                # (segOps.IsLabel(seg)) is a flexlibs2 wrapper method, not a
+                # polymorphic property access. The regex captures it because the
+                # method name is CamelCase; skip when obj_var is a known
+                # Operations alias.
+                if obj_var in operations_aliases:
+                    continue
+
                 # Option-1 false-positive fix: obj_var is a mid-chain property
                 # name (e.g. `Form` in `wf.Form.BestVernacularAlternative`) and
                 # the chain root is statically typed. The cast at the root
@@ -2275,7 +2363,13 @@ def detect_casting_needs(
                     defined_on = casting_info.get("defined_on", [])
                     # Issue #15: skip if obj_var is a cast alias whose interface
                     # is in defined_on -- the cast already satisfies the property.
-                    if cast_aliases.get(obj_var) and cast_aliases[obj_var] in defined_on:
+                    # Issue #40: normalize defined_on via _extract_interface_names
+                    # so descriptive entries ("IWfiAnalysis (raw LCM)") still match
+                    # -- the raw `in defined_on` check missed those, re-flagging
+                    # properties like CategoryRA even after `wa = IWfiAnalysis(ana)`.
+                    if cast_aliases.get(obj_var) and (
+                        cast_aliases[obj_var] in _extract_interface_names(defined_on)
+                    ):
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
                         # Issue #21: pick a concrete interface from the

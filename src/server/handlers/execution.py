@@ -64,7 +64,7 @@ try:
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
-        detect_candidate_entities,
+        detect_candidate_entities, extract_python_did_you_mean,
     )
 except ImportError:
     from server.validators import (
@@ -73,7 +73,7 @@ except ImportError:
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
-        detect_candidate_entities,
+        detect_candidate_entities, extract_python_did_you_mean,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -1573,9 +1573,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         # did. Without this the detail field only carries the first 5 method
         # names and the actual line numbers / contexts are lost.
         op_logger = get_operations_logger()
+        # Issue #44: a raw `set_String` / collection write surfaces in
+        # unprotected_lcm but NOT in the flexlibs2-index `mutating` list, which
+        # made the old line read `mutating=0 ... raw_lcm=1` -- self-contradictory
+        # (a raw write IS a mutation). Report the true total and keep the
+        # per-source breakdown so the count and the raw_lcm flag agree.
+        total_mutations = len(mutating) + len(unprotected_lcm)
         op_logger.info(
-            f"Preflight writeability: mutating={len(mutating)} "
-            f"unprotected_lcm={len(unprotected_lcm)} raw_lcm={len(raw_lcm)} (rejected)"
+            f"Preflight writeability: mutating={total_mutations} "
+            f"(flexlibs2={len(mutating)} unprotected_lcm={len(unprotected_lcm)} "
+            f"raw_lcm={len(raw_lcm)}) (rejected)"
         )
         for m in mutating[:10]:
             op_logger.debug(
@@ -2490,7 +2497,15 @@ MODULE_CODE = {code}
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
             _rt_casting_index = api_idx.casting_index if api_idx else None
             polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
-            if polymorphic_info["is_polymorphic_error"]:
+            # Issue #39: Python's own "Did you mean: 'X'?" suffix is authoritative
+            # about what exists on the live object, so for a typo it beats any
+            # statically-guessed cast. Only trust the polymorphic (cast) path when
+            # it produced a CONCRETE rewrite -- otherwise prefer the name
+            # suggestion so the LLM self-corrects in one round-trip instead of
+            # being told to "resubmit" for a preflight that can't catch a raw-LCM
+            # attribute typo.
+            native_did_you_mean = extract_python_did_you_mean(execution_result["error"])
+            if polymorphic_info["is_polymorphic_error"] and polymorphic_info.get("rewrite"):
                 execution_result["polymorphic_error_detected"] = True
                 execution_result["error_type"] = "PolymorphicAttributeError"
                 execution_result["object_type"] = polymorphic_info["object_type"]
@@ -2498,9 +2513,8 @@ MODULE_CODE = {code}
                 execution_result["help"] = polymorphic_info["suggestion"]
                 # Issue #36: attach rewrite + imports so runtime errors carry the
                 # same self-healing payload as pre-flight casting rejections.
-                if polymorphic_info.get("rewrite"):
-                    execution_result["rewrite"] = polymorphic_info["rewrite"]
-                    execution_result["imports_needed"] = polymorphic_info["imports_needed"]
+                execution_result["rewrite"] = polymorphic_info["rewrite"]
+                execution_result["imports_needed"] = polymorphic_info["imports_needed"]
             else:
                 # Try wrapper-API name suggestions (project.LexEntries -> project.LexEntry,
                 # GetPOS -> GetPartOfSpeech, etc.)
@@ -2508,6 +2522,24 @@ MODULE_CODE = {code}
                 if hint.get("has_suggestion"):
                     execution_result["did_you_mean"] = hint["did_you_mean"]
                     execution_result["help"] = hint["suggestion"]
+                elif native_did_you_mean:
+                    # Issue #39: surface Python's native suggestion for typos on
+                    # any object type (e.g. ILexDb.EntriesOC -> Entries) that our
+                    # index-based suggester doesn't cover.
+                    execution_result["did_you_mean"] = [native_did_you_mean]
+                    execution_result["help"] = (
+                        f"'{polymorphic_info.get('property_name')}' does not exist on "
+                        f"'{polymorphic_info.get('object_type')}'. Python suggests "
+                        f"'{native_did_you_mean}'. Replace it and re-run."
+                    )
+                elif polymorphic_info["is_polymorphic_error"]:
+                    # No concrete rewrite and no name suggestion: fall back to the
+                    # resolve_property hint for manual casting.
+                    execution_result["polymorphic_error_detected"] = True
+                    execution_result["error_type"] = "PolymorphicAttributeError"
+                    execution_result["object_type"] = polymorphic_info["object_type"]
+                    execution_result["property_name"] = polymorphic_info["property_name"]
+                    execution_result["help"] = polymorphic_info["suggestion"]
 
         # Record API usage patterns for learning
         from ..kernel import get_pattern_tracker

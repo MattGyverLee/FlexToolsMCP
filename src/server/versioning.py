@@ -102,16 +102,25 @@ def detect_installed_library_version(
 
     # Try Python package detection (FlexLibs, FlexLibs2)
     if import_path:
+        # Live module attributes are checked FIRST and preferred over
+        # importlib.metadata: for path / editable installs (the common dev
+        # setup here), pip metadata goes stale while the source on sys.path is
+        # the version actually in use. flexlibs2 exposes its version as
+        # `version` (not `__version__`); checking only `__version__` made the
+        # server fall back to stale pip metadata and load a mismatched index
+        # (e.g. detecting 3.0.0 while flexlibs2 4.0.1 was on the path). #38
         try:
             module = __import__(import_path)
-            if hasattr(module, '__version__'):
-                version = module.__version__  # type: ignore
-                log_debug(f"Detected {library_name} version from __version__: {version}")
-                return version
+            for attr in ("__version__", "version"):
+                ver = getattr(module, attr, None)
+                if isinstance(ver, str) and ver.strip():
+                    log_debug(f"Detected {library_name} version from {attr}: {ver}")
+                    return ver.strip()
         except Exception:
             pass
 
-        # Try package metadata fallback
+        # Try package metadata fallback (only when the live module had no
+        # usable version attribute).
         try:
             from importlib.metadata import version
             pkg_version = version(package_name or import_path)

@@ -10,6 +10,7 @@ Provides read-only API discovery tools:
 
 import json
 import heapq
+import re
 from mcp.types import TextContent
 from typing import List, Dict, Any, cast
 
@@ -188,6 +189,44 @@ DOMAIN_SYNONYMS = {
     "usage": "register style sociolinguistic",
 }
 
+# Issue #45: canonical-intent map. High-frequency user intents where the
+# assistant historically guessed plausible-but-nonexistent accessor/method
+# names (e.g. project.LexEntries, LexiconGetSensePartOfSpeech) and burned
+# multiple round-trips before landing on the real API. Each entry maps a set
+# of normalized intent phrases to the ONE canonical flexlibs2 method that
+# satisfies it. When a query contains one of these phrases, the method is
+# fetched from the index and PREPENDED to the search results as the top hit
+# (the normal keyword/semantic search still runs and its results follow), so
+# the correct method is offered on the first try without replacing anything.
+#
+# Keep entries verified against the flexlibs2 index -- an entry pointing at a
+# non-existent method would silently drop out (the loader skips unknown ones).
+# Phrases are matched as substrings of the normalized query; list the most
+# specific phrases so they win over broader ones.
+CANONICAL_INTENTS = [
+    # (intent phrases, entity, method)
+    (("sense part of speech", "part of speech of sense", "senses part of speech",
+      "sense pos", "pos of sense"),
+     "LexSenseOperations", "GetPartOfSpeechObject"),
+    (("wordform gloss", "word gloss", "gloss of word", "analysis gloss"),
+     "WfiGlossOperations", "GetForm"),
+    (("sense gloss", "gloss of sense"),
+     "LexSenseOperations", "GetGloss"),
+    (("sense definition", "definition of sense"),
+     "LexSenseOperations", "GetDefinition"),
+    (("list texts", "all texts", "get all texts", "iterate texts", "get texts"),
+     "TextOperations", "GetAll"),
+    (("list entries", "all entries", "get all entries", "iterate entries", "get entries"),
+     "LexEntryOperations", "GetAll"),
+    (("list wordforms", "all wordforms", "get all wordforms", "get wordforms"),
+     "WordformOperations", "GetAll"),
+    (("lexeme form", "citation form"),
+     "LexEntryOperations", "GetLexemeForm"),
+    (("headword",),
+     "LexEntryOperations", "GetHeadword"),
+]
+
+
 # Search synonyms for keyword matching
 SEARCH_SYNONYMS = {
     "add": ["add", "set", "create", "insert", "append"],
@@ -327,6 +366,61 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "") ->
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
     return f"from {library} import {entity_name}"
+
+
+_CANONICAL_INTENT_SCORE = 1000  # sort above any keyword/semantic score
+
+
+def _match_canonical_intents(query: str, flexlibs2_index: dict | None) -> list:
+    """Return canonical top-result rows for high-frequency intents (issue #45).
+
+    Normalizes the query (lowercase, punctuation -> spaces, collapsed spaces)
+    and, for each CANONICAL_INTENTS entry whose phrase is a substring, fetches
+    the named method from the flexlibs2 index and builds a result row shaped
+    like search_source()'s output. Entries whose method isn't in the index are
+    skipped (defensive against index churn). De-duplicated by entity.method so
+    a query matching two phrase groups pointing at the same method yields one
+    row.
+    """
+    if not flexlibs2_index:
+        return []
+    norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
+    if not norm:
+        return []
+    entities = flexlibs2_index.get("entities", {})
+    rows = []
+    seen = set()
+    for phrases, entity_name, method_name in CANONICAL_INTENTS:
+        if not any(p in norm for p in phrases):
+            continue
+        key = f"{entity_name}.{method_name}"
+        if key in seen:
+            continue
+        entity = entities.get(entity_name)
+        if not entity:
+            continue
+        method = next(
+            (m for m in entity.get(KEY_METHODS, []) if m.get(KEY_NAME) == method_name),
+            None,
+        )
+        if not method:
+            continue
+        seen.add(key)
+        namespace = entity.get("namespace", "") or ""
+        rows.append({
+            KEY_SCORE: _CANONICAL_INTENT_SCORE,
+            KEY_SOURCE: "flexlibs2",
+            KEY_ENTITY: entity_name,
+            KEY_NAMESPACE: namespace,
+            KEY_IMPORT_STATEMENT: _build_entity_import("flexlibs2", entity_name, namespace),
+            KEY_NAME: method_name,
+            KEY_TYPE: "method",
+            KEY_SIGNATURE: method.get(KEY_SIGNATURE),
+            KEY_DESCRIPTION: method.get(KEY_SUMMARY, method.get(KEY_DESCRIPTION, ""))[:150],
+            KEY_CATEGORY: entity.get(KEY_CATEGORY, "general"),
+            "canonical_intent": True,
+        })
+    return rows
 
 
 def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexlibs2") -> dict:
@@ -812,6 +906,20 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         # Use heapq.nlargest for efficiency (don't sort all, just get top N)
         results = heapq.nlargest(max_results, results, key=lambda x: x[KEY_SCORE])
 
+    # Issue #45: prepend canonical-intent hits so high-frequency intents land
+    # the exact method on the first try instead of guessing nonexistent names
+    # (project.LexEntries, LexiconGetSensePartOfSpeech, ...). Dedup against
+    # whatever search already found so the canonical row isn't duplicated.
+    canonical_rows = _match_canonical_intents(query, api_index.flexlibs2)
+    if canonical_rows:
+        canonical_keys = {(r[KEY_ENTITY], r[KEY_NAME]) for r in canonical_rows}
+        results = canonical_rows + [
+            r for r in results
+            if (r.get(KEY_ENTITY), r.get(KEY_NAME)) not in canonical_keys
+        ]
+        if max_results:
+            results = results[:max_results]
+
     for r in results:
         entity = r.get(KEY_ENTITY, "")
         method = r.get(KEY_NAME, "")
@@ -839,6 +947,8 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
         KEY_FALLBACK_USED: fallback_used,
         KEY_SEMANTIC_AVAILABLE: get_api_index().semantic_search.enabled if get_api_index().semantic_search else False,
         KEY_RESULTS_COUNT: len(results),
+        # Issue #45: how many rows are canonical-intent hits (surfaced on top).
+        "canonical_matches": sum(1 for r in results if r.get("canonical_intent")),
         "results": results,
         # Multi-step worked-example recipes matching the same query.
         "worked_examples": matched_patterns,

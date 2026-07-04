@@ -1,6 +1,6 @@
 # FlexToolsMCP Changelog
 
-## [Unreleased]
+## [2.3.0] - 2026-07-04
 
 ### Changed
 - **Renamed `flexlibs2` -> `flexicon`.** The deep wrapper is now the `flexicon`

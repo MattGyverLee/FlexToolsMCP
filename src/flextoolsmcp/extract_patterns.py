@@ -22,11 +22,11 @@ from typing import Dict, List, Any, Set, Optional
 if __package__:
     from .json_utils import sort_json_arrays
     from .server.versioning import find_latest_versioned_api_file
-    from .file_utils import get_project_root, load_json, save_json
+    from .file_utils import get_project_root, get_index_dir, load_json, save_json
 else:
     from json_utils import sort_json_arrays
     from server.versioning import find_latest_versioned_api_file
-    from file_utils import get_project_root, load_json, save_json
+    from file_utils import get_project_root, get_index_dir, load_json, save_json
 
 
 def classify_operation(method_name: str, example: str) -> str:
@@ -266,7 +266,7 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
-    flexlibs_dir = root / "index" / "flexlibs"
+    flexlibs_dir = get_index_dir() / "flexlibs"
 
     # Find latest Flexicon API file
     flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
@@ -284,7 +284,7 @@ def main():
     if version_match:
         flexicon_version = version_match.group(1)
         output_filename = f"common_patterns_flexicon-v{flexicon_version}.json"
-        output_path = root / "index" / output_filename
+        output_path = get_index_dir() / output_filename
 
     # Save patterns
     output_path.parent.mkdir(parents=True, exist_ok=True)

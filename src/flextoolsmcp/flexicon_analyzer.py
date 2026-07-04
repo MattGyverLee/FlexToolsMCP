@@ -1668,7 +1668,7 @@ def cross_reference_liblcm(flexlibs_data: Dict[str, Any], liblcm_path: str | Non
     """
     if liblcm_path is None:
         # Try default path
-        default_path = Path(__file__).parent.parent / "index" / "liblcm" / "flex-api-enhanced.json"
+        default_path = Path(__file__).parent / "index" / "liblcm" / "flex-api-enhanced.json"
         if default_path.exists():
             liblcm_path = str(default_path)
         else:

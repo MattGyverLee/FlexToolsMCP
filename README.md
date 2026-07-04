@@ -41,25 +41,55 @@ This presentation, given to an audience of programmers, discusses the background
 ## Getting Started
 
 ### 1. Installation
-See [SETUP.md](SETUP.md) for detailed installation steps.
 
-**Quick summary:**
+FLExToolsMCP is published on PyPI. The indexed API documentation ships inside
+the package, so there is nothing to clone or build. The one prerequisite is
+FieldWorks/FLExTools, which means **Windows + .NET**.
+
+**One-line install (recommended)** — no repo, no manual dependency install:
+
 ```bash
-git clone https://github.com/MattGyverLee/FlexToolsMCP.git
-cd FlexToolsMCP
-pip install -r requirements.txt
+# Claude Code
+claude mcp add flextoolsmcp -- uvx flextoolsmcp
+```
 
-# Install Flexicon (pyflexicon package on PyPI)
-pip install pyflexicon
+`uvx` (from [uv](https://docs.astral.sh/uv/)) fetches the package and all of its
+dependencies — including [Flexicon](https://pypi.org/project/pyflexicon/), the
+deep FieldWorks wrapper — into an isolated cache and runs the server. Nothing
+else to install. Upgrading FLExToolsMCP re-resolves to the latest compatible
+Flexicon. Prefer a persistent install? `uv tool install flextoolsmcp` or
+`pip install flextoolsmcp`.
 
-# Test it works
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
+**Manual MCP config** (Claude Desktop, Cursor, and other tools):
+
+```json
+{
+  "mcpServers": {
+    "flextoolsmcp": {
+      "command": "uvx",
+      "args": ["flextoolsmcp"]
+    }
+  }
+}
 ```
 
 ### 2. Connect to Your AI Assistant
 See [SETUP.md](SETUP.md#connecting-to-ai-assistants) for Claude Code, Antigravity, and other tools.
 
 **Note:** Each AI tool has different MCP configuration syntax. See SETUP.md for your specific tool.
+
+**User data** lives under `~/.flextoolsmcp/` (logs, saved skeletons, cached
+models, and any runtime-refreshed indexes) — it persists across upgrades.
+
+### Developing from source
+```bash
+git clone https://github.com/MattGyverLee/FlexToolsMCP.git
+cd FlexToolsMCP
+pip install -e ".[dev]"     # editable install with dev tools (pulls in Flexicon)
+
+# Test it works
+python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
+```
 
 ### 3. Updating to New Versions
 See [SETUP.md](SETUP.md#updating-flextoolsmcp) for how to pull new releases.

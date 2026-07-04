@@ -26,7 +26,7 @@ import sys
 
 # ── Configuration ──────────────────────────────────────────────────
 
-SRC_DIR = "src"
+SRC_DIR = "src/flextoolsmcp"
 LOCAL_MODULES = {"json_utils"}
 MIN_TOOL_COUNT = 10
 CORE_CLASSES = ["FLExInitialize", "FLExCleanup", "FLExProject"]
@@ -216,8 +216,8 @@ def check_server_tools():
 
 def _count_tools_from_ast():
     """Count Tool() constructor calls in server.py AND ToolDef instances in tool_definitions.py."""
-    with open("src/server.py") as f:
-        tree = ast.parse(f.read(), filename="src/server.py")
+    with open("src/flextoolsmcp/server.py") as f:
+        tree = ast.parse(f.read(), filename="src/flextoolsmcp/server.py")
 
     tool_count = 0
     for node in ast.walk(tree):
@@ -229,8 +229,8 @@ def _count_tools_from_ast():
             tool_count += 1
 
     try:
-        with open("src/server/tool_definitions.py") as f:
-            tooldef_tree = ast.parse(f.read(), filename="src/server/tool_definitions.py")
+        with open("src/flextoolsmcp/server/tool_definitions.py") as f:
+            tooldef_tree = ast.parse(f.read(), filename="src/flextoolsmcp/server/tool_definitions.py")
 
         tooldef_count = 0
         for node in ast.walk(tooldef_tree):
@@ -260,14 +260,14 @@ def _count_tools_from_ast():
 def check_refresh_runs():
     """Verify refresh.py runs successfully with --help."""
     result = subprocess.run(
-        [sys.executable, "src/refresh.py", "--help"],
+        [sys.executable, "src/flextoolsmcp/refresh.py", "--help"],
         capture_output=True,
         text=True,
         timeout=30,
     )
 
     if result.returncode != 0:
-        print("REFRESH ERROR: `python src/refresh.py --help` failed", file=sys.stderr)
+        print("REFRESH ERROR: `python src/flextoolsmcp/refresh.py --help` failed", file=sys.stderr)
         print(result.stderr, file=sys.stderr)
         return False
 
@@ -289,16 +289,16 @@ def check_refresh_runs():
 
 def check_server_internal_consistency():
     """Verify the 3 copies of the Operations list match across server.py and execution.py."""
-    with open("src/server/constants.py") as f:
+    with open("src/flextoolsmcp/server/constants.py") as f:
         constants_source = f.read()
-    with open("src/server/handlers/execution.py") as f:
+    with open("src/flextoolsmcp/server/handlers/execution.py") as f:
         execution_source = f.read()
 
     errors = []
 
     known_ops = extract_set_from_ast(constants_source, "KNOWN_OPERATIONS")
     if not known_ops:
-        errors.append("Could not find KNOWN_OPERATIONS set in src/server/constants.py")
+        errors.append("Could not find KNOWN_OPERATIONS set in src/flextoolsmcp/server/constants.py")
         return errors
 
     ops_classes = extract_set_from_ast(constants_source, "OPERATIONS_CLASSES")
@@ -375,11 +375,15 @@ def check_flexicon_contract(operations_classes, exception_classes):
 
     version = getattr(flexicon, "__version__", None)
     if version is None:
-        try:
-            from importlib.metadata import version as pkg_version
-            version = pkg_version("flexicon")
-        except Exception:
-            pass
+        # Distribution is `pyflexicon` (imported as `flexicon`); try the live
+        # dist name first, then the legacy import name for older installs.
+        from importlib.metadata import version as pkg_version
+        for dist_name in ("pyflexicon", "flexicon"):
+            try:
+                version = pkg_version(dist_name)
+                break
+            except Exception:
+                continue
     if version:
         print(f"  flexicon version: {version}")
     else:
@@ -501,8 +505,8 @@ def cmd_server(args):
     all_ok = True
 
     for script_path, description in [
-        ("src/server.py", "MCP server"),
-        ("src/refresh.py", "refresh script"),
+        ("src/flextoolsmcp/server.py", "MCP server"),
+        ("src/flextoolsmcp/refresh.py", "refresh script"),
     ]:
         if not check_runtime_import(script_path, description):
             all_ok = False

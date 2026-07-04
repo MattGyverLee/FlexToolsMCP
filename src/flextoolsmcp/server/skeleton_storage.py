@@ -50,20 +50,17 @@ _FILENAME = "skeletons.jsonl"
 _WRITE_LOCK = Lock()
 
 
-def _project_root() -> Path:
-    """Return the project root (two levels up from this file).
-
-    Layout: <root>/src/server/skeleton_storage.py
-    """
-    return Path(__file__).resolve().parent.parent.parent
-
-
 def get_skeleton_dir() -> Path:
-    """Resolve the skeleton storage directory, honoring the env override."""
+    """Resolve the skeleton storage directory, honoring the env override.
+
+    Defaults to the user home (``~/.flextoolsmcp``) so saved skeletons persist
+    across package upgrades and are never lost in an ephemeral install/uvx
+    cache. Override with ``FLEXTOOLSMCP_SKELETON_DIR``.
+    """
     override = os.environ.get(_ENV_VAR)
     if override:
         return Path(override)
-    return _project_root() / _DEFAULT_SUBDIR
+    return Path.home() / _DEFAULT_SUBDIR
 
 
 def get_skeleton_path() -> Path:

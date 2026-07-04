@@ -45,8 +45,12 @@ TYPE_ENTITY = "entity"
 
 
 def get_index_dir() -> Path:
-    """Get the index directory path."""
-    return Path(__file__).parent.parent / "index"
+    """Get the working index directory (delegates to file_utils overlay logic)."""
+    if __package__:
+        from .file_utils import get_index_dir as _impl
+    else:
+        from file_utils import get_index_dir as _impl
+    return _impl()
 
 
 def _create_item_dict(

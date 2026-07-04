@@ -1,5 +1,24 @@
 # FlexToolsMCP Changelog
 
+## [2.3.1] - 2026-07-04
+
+### Packaging
+- **Published to PyPI as `flextools-mcp`** — installable/runnable with a single
+  `uvx flextools-mcp` (or `pip install flextools-mcp`); no clone or manual
+  dependency install. The indexed API documentation ships inside the wheel as
+  package data. Restructured to a `src/flextoolsmcp/` src-layout with a
+  `pyproject.toml`, console-script entry points (`flextools-mcp` /
+  `flextoolsmcp`), and a `python -m flextoolsmcp` module runner.
+- **`pyflexicon` is now a runtime dependency**, so the deep FieldWorks wrapper
+  is installed automatically and re-resolves to the latest on upgrade.
+- **User-writable state consolidated under `~/.flextoolsmcp/`** (logs, saved
+  skeletons, model cache, and runtime-refreshed indexes) so it persists across
+  upgrades and is never written into the installed package. Runtime
+  auto-refresh writes a user-overlay index seeded from the bundled one; source
+  checkouts still refresh the in-tree index for committing.
+- Added a tag-triggered GitHub Actions release workflow using PyPI Trusted
+  Publishing (OIDC), plus `RELEASING.md`.
+
 ## [2.3.0] - 2026-07-04
 
 ### Changed

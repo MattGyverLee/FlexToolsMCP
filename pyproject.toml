@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flextools-mcp"
+dynamic = ["version"]
+description = "MCP server that gives AI assistants searchable LibLCM / FlexLibs / Flexicon API docs for writing FLExTools scripts."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Matthew Lee", email = "matthew_lee@sil.org" }]
+keywords = ["mcp", "fieldworks", "flextools", "flexlibs", "flexicon", "liblcm", "linguistics", "lexicon"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+# Runtime dependencies. FLExTools/FieldWorks require Windows + .NET, so the
+# .NET interop (pythonnet) and semantic-search stack ship as core deps rather
+# than optional extras -- there is no lightweight cross-platform install to
+# protect. Mirrors requirements.txt.
+dependencies = [
+    "mcp>=1.27.0",
+    "anyio>=4.5",
+    "httpx>=0.27.1",
+    "typing-inspection>=0.4.1",
+    "sentence-transformers>=2.2.0",
+    "faiss-cpu>=1.7.4",
+    "pythonnet>=3.0.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    # The deep FieldWorks wrapper the server generates scripts against. A floor
+    # (not a pin) so upgrading FLExToolsMCP re-resolves to the latest Flexicon.
+    "pyflexicon>=4.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pre-commit>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/MattGyverLee/FlexToolsMCP"
+Repository = "https://github.com/MattGyverLee/FlexToolsMCP"
+Issues = "https://github.com/MattGyverLee/FlexToolsMCP/issues"
+
+# Two console-script names: `flextoolsmcp` matches the distribution so
+# `uvx flextoolsmcp` works with no --from, and `flextools-mcp` is the readable
+# hyphenated alias. Both launch the stdio MCP server.
+[project.scripts]
+flextoolsmcp = "flextoolsmcp.server:run"
+flextools-mcp = "flextoolsmcp.server:run"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# The indexed API documentation is bundled as package data so it is available
+# after `pip install` / `uvx` with no separate download.
+[tool.setuptools.package-data]
+flextoolsmcp = ["index/**/*", "VERSION"]

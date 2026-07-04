@@ -12,6 +12,9 @@ faiss-cpu>=1.7.4
 # .NET Interop (for LibLCM extraction)
 pythonnet>=3.0.0
 
+# FieldWorks wrapper the server generates scripts against
+pyflexicon>=4.1.0
+
 # Utilities
 pydantic>=2.0.0
 python-dotenv>=1.0.0

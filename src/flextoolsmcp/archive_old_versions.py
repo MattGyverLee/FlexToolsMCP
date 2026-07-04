@@ -19,9 +19,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 if __package__:
-    from .file_utils import get_project_root
+    from .file_utils import get_index_dir
 else:
-    from file_utils import get_project_root
+    from file_utils import get_index_dir
 
 
 def parse_version(filename: str) -> Tuple[int, int, int]:
@@ -104,8 +104,7 @@ def main():
 
     args = parser.parse_args()
 
-    root = get_project_root()
-    index_dir = root / "index"
+    index_dir = get_index_dir()
 
     print("[INFO] Archiving old API versions...")
     print(f"  Keeping {args.keep} latest version(s)")

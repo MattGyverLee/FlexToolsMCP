@@ -1,0 +1,67 @@
+name: Publish to PyPI
+
+# Publishes the package to PyPI when a version tag is pushed (e.g. v2.3.1).
+# Uses PyPI Trusted Publishing (OIDC): no API token is stored in the repo.
+#
+# One-time PyPI setup (see RELEASING.md):
+#   https://pypi.org/manage/project/flextools-mcp/settings/publishing/
+#   Add a trusted publisher:
+#     Owner:        MattGyverLee
+#     Repository:   FlexToolsMCP
+#     Workflow:     publish.yml
+#     Environment:  pypi
+#   For the very first release (project not created yet), add a
+#   "pending publisher" at https://pypi.org/manage/account/publishing/ instead.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}   # allow manual runs from the Actions tab
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Check metadata
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # The environment must match the trusted-publisher config on PyPI.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/flextools-mcp/
+    permissions:
+      id-token: write   # required for OIDC Trusted Publishing
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,9 +1,8 @@
 {
   "mcpServers": {
-    "flextools": {
-      "command": "python",
-      "args": ["src/server.py"],
-      "cwd": "D:\\Github\\FlexToolsMCP"
+    "flextoolsmcp": {
+      "command": "uvx",
+      "args": ["flextoolsmcp"]
     }
   }
 }

@@ -133,11 +133,12 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     Returns:
         The data dict, optionally with session_context added
     """
-    # Import here to avoid circular imports
-    try:
+    # Import here to avoid circular imports. Package-relative when installed,
+    # absolute for script runs (dual-mode guard, per repo convention).
+    if __package__:
+        from .server.kernel import session_state
+    else:
         from server.kernel import session_state
-    except ImportError:
-        from src.server.kernel import session_state
 
     if include_session and hasattr(session_state, 'initialized') and session_state.initialized:
         data["session_context"] = {

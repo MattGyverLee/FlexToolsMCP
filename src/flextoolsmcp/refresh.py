@@ -35,10 +35,10 @@ from datetime import datetime
 
 if __package__:
     from .json_utils import sort_json_arrays
-    from .file_utils import get_project_root
+    from .file_utils import get_project_root, get_index_dir
 else:
     from json_utils import sort_json_arrays
-    from file_utils import get_project_root
+    from file_utils import get_project_root, get_index_dir
 
 
 def load_env():
@@ -48,7 +48,7 @@ def load_env():
     - Leave paths commented out (default) → use installed packages
     - Uncomment paths in .env → use repository clones instead
     """
-    env_file = Path(__file__).parent.parent / ".env"
+    env_file = get_project_root() / ".env"
     if env_file.exists():
         print(f"[INFO] Loading configuration from {env_file}")
         with open(env_file, 'r') as f:
@@ -101,6 +101,16 @@ def find_existing_versions(base_dir: Path, prefix: str) -> dict:
             versions[version] = file
 
     return versions
+
+
+def _pkg_script(name: str) -> str:
+    """Absolute path to a sibling build/extractor script in this package.
+
+    Invoking by absolute path puts the package dir on ``sys.path[0]`` so the
+    script's sibling imports resolve whether running from source or from an
+    installed wheel (where a repo-relative ``src/...`` path would not exist).
+    """
+    return str(Path(__file__).parent / name)
 
 
 def run_command(cmd: list, description: str) -> bool:
@@ -173,13 +183,13 @@ def _refresh_library(
                 print(f"        Or uncomment {env_var_name} in .env")
                 return False
 
-    index_dir = get_project_root() / "index" / "flexlibs"
+    index_dir = get_index_dir() / "flexlibs"
     index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / f"{output_prefix}_temp.json"
 
     cmd = [
         sys.executable,
-        "src/flexicon_analyzer.py",
+        _pkg_script("flexicon_analyzer.py"),
         cmd_flag, library_path,
         "--output", str(temp_output)
     ]
@@ -244,13 +254,13 @@ def refresh_liblcm(dll_path: str | None = None) -> bool:
     if dll_path is None:
         dll_path = os.environ.get("FIELDWORKS_DLL_PATH")
 
-    index_dir = get_project_root() / "index" / "liblcm"
+    index_dir = get_index_dir() / "liblcm"
     index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / "liblcm_api_temp.json"
 
     cmd = [
         sys.executable,
-        "src/liblcm_extractor.py",
+        _pkg_script("liblcm_extractor.py"),
         "--output", str(temp_output)
     ]
 
@@ -283,7 +293,7 @@ def apply_categorization() -> bool:
     try:
         from collections import Counter
 
-        index_dir = get_project_root() / "index" / "liblcm"
+        index_dir = get_index_dir() / "liblcm"
 
         # Find the most recently generated versioned file
         versions = find_existing_versions(index_dir, "liblcm_api")
@@ -403,7 +413,7 @@ def run_postprocess_reverse_mapping() -> bool:
     """Build reverse mapping from LibLCM to FlexLibs."""
     cmd = [
         sys.executable,
-        "src/build_reverse_mapping.py",
+        _pkg_script("build_reverse_mapping.py"),
         "--update-liblcm"
     ]
     return run_command(cmd, "Building reverse mapping (LibLCM -> FlexLibs)")
@@ -413,7 +423,7 @@ def run_postprocess_navigation_graph() -> bool:
     """Build navigation graph from LibLCM relationships."""
     cmd = [
         sys.executable,
-        "src/build_navigation_graph.py",
+        _pkg_script("build_navigation_graph.py"),
         "--update-liblcm"
     ]
     return run_command(cmd, "Building navigation graph")
@@ -423,7 +433,7 @@ def run_postprocess_patterns() -> bool:
     """Extract common patterns from FlexLibs docstrings."""
     cmd = [
         sys.executable,
-        "src/extract_patterns.py",
+        _pkg_script("extract_patterns.py"),
         "--update-flexlibs"
     ]
     return run_command(cmd, "Extracting common patterns")
@@ -432,7 +442,7 @@ def run_postprocess_casting_index() -> bool:
     """Build casting index for pythonnet interface casting requirements."""
     cmd = [
         sys.executable,
-        "src/build_casting_index.py"
+        _pkg_script("build_casting_index.py")
     ]
     return run_command(cmd, "Building casting index (pythonnet interface casting)")
 
@@ -441,7 +451,7 @@ def run_archive_old_versions() -> bool:
     """Archive old versions of API files."""
     cmd = [
         sys.executable,
-        "src/archive_old_versions.py",
+        _pkg_script("archive_old_versions.py"),
         "--keep", "1"  # Keep only the latest version
     ]
     return run_command(cmd, "Archiving old API versions")

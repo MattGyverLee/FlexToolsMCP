@@ -31,8 +31,9 @@ _imports_std_done = _time_module.time()
 # Suppress noisy third-party warnings and output
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
 os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
-# Cache HuggingFace models to home directory (persistent across runs)
-os.environ['HF_HOME'] = str(Path.home() / '.cache' / 'flextoolsmcp' / 'hf')
+# Cache HuggingFace models under the single user-state root (persistent across
+# runs and package upgrades). Only set if the user hasn't chosen their own.
+os.environ.setdefault('HF_HOME', str(Path.home() / '.flextoolsmcp' / 'hf'))
 warnings.filterwarnings('ignore', message='.*position_ids.*')
 
 # Capture HF Hub unauthenticated warning to log it properly
@@ -590,8 +591,17 @@ _server_init_done = _time_module.time()
 api_index: Optional[APIIndex] = None
 
 def get_index_dir() -> Path:
-    """Get the index directory path."""
-    return Path(__file__).parent.parent / "index"
+    """Get the working index directory.
+
+    Delegates to file_utils, which returns the in-tree index for source
+    checkouts and a user-writable overlay (~/.flextoolsmcp/index, seeded from
+    the bundled index) for installed wheels.
+    """
+    if __package__:
+        from .file_utils import get_index_dir as _impl
+    else:
+        from file_utils import get_index_dir as _impl
+    return _impl()
 
 def get_installed_liblcm_version() -> Optional[str]:
     """Detect the version of LibLCM currently installed.
@@ -653,7 +663,9 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
             return False
 
         import subprocess
-        project_root = Path(__file__).parent.parent
+        # Run from the package directory so refresh.py's absolute-path script
+        # invocations resolve in both source and installed (wheel) layouts.
+        project_root = Path(__file__).parent
 
         cmd = [sys.executable, str(refresh_script)]
 
@@ -879,6 +891,16 @@ async def main():
         finally:
             _server_run_done = _time_module.time()
 
+def run() -> None:
+    """Synchronous entry point for the ``flextoolsmcp`` console script.
+
+    Console scripts (and ``python -m flextoolsmcp``) cannot target an async
+    function directly, so this wraps ``main()`` in an event loop. This is the
+    target referenced by ``[project.scripts]`` in pyproject.toml.
+    """
+    asyncio.run(main())
+
+
 if __name__ == "__main__":
     _asyncio_begin = _time_module.time()
-    asyncio.run(main())
+    run()

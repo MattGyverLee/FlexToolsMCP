@@ -68,14 +68,9 @@ def _ensure_flexicon() -> Tuple[Optional[object], Optional[str]]:
         Tuple of (module, error_message) where module is None if import failed
     """
     try:
-        # This will be called when Flexicon operations are attempted
-        # For now, just verify it can be imported
-        if __package__:
-            import flexicon  # type: ignore
-        else:
-            import sys
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent / "flexicon" / "src"))
-            import flexicon  # type: ignore
+        # Flexicon is now a PyPI package (pip install pyflexicon, imported as
+        # `flexicon`), so a plain import works in both installed and source runs.
+        import flexicon  # type: ignore
         return flexicon, None
     except ImportError as e:
         error_msg = f"Flexicon not available: {e}"
@@ -255,22 +250,25 @@ def _emit_session_header(session_id: str) -> None:
         or detect_installed_library_version("LibLCM", assembly_name="SIL.LCModel")
     ))
 
-    # Server version: prefer the repo VERSION file (running from source is the
-    # common case for contributors and for Ron). Fall back to installed package
-    # metadata when running from a pip install.
+    # Server version: prefer installed package metadata (the common case once
+    # distributed via pip/uvx). Fall back to a VERSION file found by walking up
+    # from this module, which covers running from a source checkout.
     server_ver = "(unknown)"
     try:
-        version_file = Path(__file__).resolve().parent.parent.parent / "VERSION"
-        if version_file.exists():
-            text = version_file.read_text(encoding="utf-8").strip()
-            if text:
-                server_ver = text
+        from importlib.metadata import version as _pkg_version
+        server_ver = _pkg_version("flextools-mcp")
     except Exception:
         pass
     if server_ver == "(unknown)":
         try:
-            from importlib.metadata import version as _pkg_version
-            server_ver = _pkg_version("flextoolsmcp")
+            here = Path(__file__).resolve()
+            for parent in here.parents:
+                version_file = parent / "VERSION"
+                if version_file.exists():
+                    text = version_file.read_text(encoding="utf-8").strip()
+                    if text:
+                        server_ver = text
+                    break
         except Exception:
             pass
 
@@ -534,12 +532,17 @@ def get_project_write_lock(project_name: str) -> asyncio.Lock:
 
 
 def get_index_dir() -> Path:
-    """Get the index directory path.
+    """Get the working index directory.
 
-    Respects config if available (will be integrated in Feature 2).
-    Currently returns hardcoded path, updated by config fallback in Feature 2.
+    Delegates to file_utils, which returns the in-tree index for source
+    checkouts and a user-writable overlay (~/.flextoolsmcp/index, seeded from
+    the bundled index) for installed wheels.
     """
-    return Path(__file__).parent.parent.parent / "index"
+    if __package__:
+        from ..file_utils import get_index_dir as _impl
+    else:
+        from file_utils import get_index_dir as _impl
+    return _impl()
 
 
 def initialize_kernel() -> Tuple[bool, Optional[str]]:

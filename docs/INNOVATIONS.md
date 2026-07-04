@@ -191,6 +191,51 @@ run_operation(
 
 The `start` tool accepts a `flavor` parameter to target the appropriate layer.
 
+### 11. Zero-Setup Distribution with a Self-Healing Index Overlay
+
+**Problem:** An index-based MCP is only useful if its knowledge base is present.
+The naive distribution — "clone the repo, `pip install -r requirements.txt`,
+point your tool at `src/server.py`" — puts real setup friction on the
+non-programmer linguists this tool exists to serve, and couples the server to a
+working directory. Worse, the index is version-specific: LibLCM and Flexicon
+evolve independently, so a shipped index can go stale against whatever the user
+actually has installed.
+
+**Innovation:** FlexTools MCP ships as a single PyPI package (`flextools-mcp`)
+with the **entire indexed knowledge base bundled as package data**, installed
+and run in one line:
+
+```bash
+uvx flextools-mcp
+```
+
+No clone, no manual dependency install (Flexicon rides along as a declared
+dependency), no path configuration. The full index travels inside the wheel, so
+every capability in sections 1-10 is available the instant the server starts.
+
+The subtle part is keeping that work with the versioning/auto-refresh system: a
+wheel installed in a read-only (or ephemeral `uvx`) location cannot rewrite its
+own files. FlexTools MCP resolves this with a **two-tier index**:
+
+| Tier | Location | Role |
+|------|----------|------|
+| Bundled | inside the package (read-only) | Baseline index, always present |
+| User overlay | `~/.flextoolsmcp/index/` (writable) | Seeded from the bundle; preferred by the loader |
+
+When the server detects a library version it wasn't shipped for, it regenerates
+just that index **into the overlay** — so the tool adapts to the user's exact
+FieldWorks / LibLCM / Flexicon versions without ever touching `site-packages`,
+and that adaptation persists across upgrades. A source checkout is detected
+(via the repo `.git`) and writes to the in-tree index instead, so maintainers
+still regenerate the committed, bundled copy.
+
+All user-writable state lives under one root, `~/.flextoolsmcp/` (logs, saved
+skeletons, the embedding-model cache, and refreshed indexes), keeping the
+installed package immutable and the user's data portable.
+
+The result: the entire discovery knowledge base is delivered with zero setup,
+yet stays correct for each user's environment.
+
 ## Comparison: Simple Index vs FlexTools MCP
 
 | Capability | Simple Index | FlexTools MCP |
@@ -203,6 +248,8 @@ The `start` tool accepts a `flavor` parameter to target the appropriate layer.
 | Provide code examples | Limited | Yes (pattern extraction) |
 | Guide workflow | No | Yes (`start` tool) |
 | Execute code directly | No | Yes (with safety rails) |
+| Zero-setup install | No | Yes (`uvx flextools-mcp`, index bundled) |
+| Self-heal index to user's versions | No | Yes (writable `~/.flextoolsmcp/index` overlay) |
 
 ## Technical Implementation
 
@@ -241,7 +288,7 @@ flexicon_api.json      liblcm_api.json          casting_index.json
 All indexes can be regenerated from source:
 
 ```bash
-python src/refresh.py
+python -m flextoolsmcp.refresh
 ```
 
 This ensures indexes stay synchronized with upstream changes.

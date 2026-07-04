@@ -102,6 +102,7 @@ def __getattr__(name: str):
         'build_response_with_context',
         'rank_object_matches',
         'main',
+        'run',
     }
 
     if name in LAZY_IMPORTS:

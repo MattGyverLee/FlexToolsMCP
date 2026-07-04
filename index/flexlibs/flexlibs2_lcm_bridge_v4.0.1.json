@@ -6553,19 +6553,22 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "arg[3] of _apply_props_loop()"
+          ],
           "item": [
-            "arg[0] of getattr()",
-            "arg[0] of hasattr()",
-            "arg[0] of setattr()"
+            "arg[0] of _apply_props_loop()"
           ],
           "props": [
+            "arg[1] of _apply_props_loop()",
             "arg[0] of isinstance()",
             "arg[0] of type()"
+          ],
+          "ws_map": [
+            "ws_map= of _apply_props_loop()"
           ]
         },
         "properties_accessed": [],
@@ -6577,39 +6580,29 @@
             "type": "default_value"
           },
           {
+            "default": "False",
+            "param": "fill_gaps",
+            "type": "default_value"
+          },
+          {
             "description": "Applies default writing system if not specified",
             "pattern": "WSHandle",
             "type": "ws_default"
-          },
-          {
-            "description": "Conditional logic for handling special cases",
-            "type": "conditional"
-          },
-          {
-            "description": "Converts to str",
-            "pattern": "str",
-            "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "TsStringUtils",
         "TsStringUtils",
         "ITsString"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "ApplySyncableProperties",
-      "methods_called": [
-        ".set_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "BaseOperations.CompareTo": {
       "class": "BaseOperations",
@@ -17870,6 +17863,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -17886,6 +17882,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -31177,6 +31178,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -31193,6 +31197,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -31822,6 +31831,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -31838,6 +31850,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -33985,7 +34002,7 @@
         "properties_accessed": [
           "Guid",
           "PossibilitiesOS (OwningSequence)",
-          "PublicationsOA (OwningAtomic)"
+          "PublicationTypesOA (OwningAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -34031,7 +34048,7 @@
       "properties_accessed": [
         "Guid",
         "PossibilitiesOS (OwningSequence)",
-        "PublicationsOA (OwningAtomic)"
+        "PublicationTypesOA (OwningAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -39804,7 +39821,7 @@
         "properties_accessed": [
           "Guid",
           "PossibilitiesOS (OwningSequence)",
-          "PublicationsOA (OwningAtomic)",
+          "PublicationTypesOA (OwningAtomic)",
           "SenseTypeRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
@@ -39847,7 +39864,7 @@
       "properties_accessed": [
         "Guid",
         "PossibilitiesOS (OwningSequence)",
-        "PublicationsOA (OwningAtomic)",
+        "PublicationTypesOA (OwningAtomic)",
         "SenseTypeRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
@@ -48955,6 +48972,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -48971,6 +48991,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -50237,6 +50262,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -50253,6 +50281,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -53122,6 +53155,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -53138,6 +53174,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -57986,6 +58027,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -58002,6 +58046,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -59779,6 +59828,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -59795,6 +59847,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],

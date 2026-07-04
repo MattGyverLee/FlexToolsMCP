@@ -8492,6 +8492,11 @@
               "description": "Optional dict mapping source-project writing-system Id strings to target-project writing-system Id strings. Default is identity (a source 'en' value is applied to target's 'en' writing system if it exists). Source values whose mapped target WS Id does not exist in the target are silently skipped — callers wishing strict matching should validate ws_map against the target's WS inventory before calling.",
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [
@@ -8501,7 +8506,7 @@
           ],
           "return_type": "",
           "returns": "None. ",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply a syncable-properties dict (from GetSyncableProperties) onto an\nitem.",
           "usage_hint": null
         },
@@ -19695,12 +19700,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -30726,12 +30736,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -31321,12 +31336,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -44039,12 +44059,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -45615,12 +45640,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -48083,12 +48113,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto a POS.",
           "usage_hint": null
         },
@@ -52113,12 +52148,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -54725,12 +54765,17 @@
               "default": null,
               "name": "ws_map",
               "type": ""
+            },
+            {
+              "default": false,
+              "name": "fill_gaps",
+              "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None)",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
           "usage_hint": null
         },
@@ -76369,9 +76414,9 @@
     ],
     "mapping_types": {
       "composite": 114,
-      "convenience": 211,
+      "convenience": 210,
       "direct": 593,
-      "pure_python": 584
+      "pure_python": 585
     },
     "methods_with_return_type": 885,
     "total_classes": 116,

@@ -1,7 +1,7 @@
 """
-Static Analysis Tests for FlexLibs 2.0
+Static Analysis Tests for Flexicon
 
-Analyzes FlexLibs 2.0 source code without requiring a live FieldWorks project.
+Analyzes Flexicon source code without requiring a live FieldWorks project.
 Checks for:
 - Parameter validation issues
 - Null/None handling
@@ -9,7 +9,7 @@ Checks for:
 - Error handling completeness
 - Known patterns that might indicate bugs
 
-Run with: python tests/test_flexlibs2_static_analysis.py
+Run with: python tests/test_flexicon_static_analysis.py
 """
 
 import ast
@@ -49,7 +49,7 @@ class CodeIssue:
 class ASTPatternVisitor(ast.NodeVisitor):
     """Single-pass AST visitor for detecting multiple patterns efficiently."""
 
-    def __init__(self, analyzer: 'FlexLibs2StaticAnalyzer', file_path: Path):
+    def __init__(self, analyzer: 'FlexiconStaticAnalyzer', file_path: Path):
         self.analyzer = analyzer
         self.file_path = file_path
 
@@ -77,19 +77,19 @@ class ASTPatternVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-class FlexLibs2StaticAnalyzer:
-    """Static analysis of FlexLibs 2.0 code"""
+class FlexiconStaticAnalyzer:
+    """Static analysis of Flexicon code"""
 
-    def __init__(self, flexlibs2_path: str = "D:/Github/flexlibs2"):
-        self.flexlibs2_path = Path(flexlibs2_path)
+    def __init__(self, flexicon_path: str = "D:/Github/flexicon"):
+        self.flexicon_path = Path(flexicon_path)
         self.issues: List[CodeIssue] = []
         self.files_analyzed = 0
         self.python_files: List[Path] = []
         self._ast_cache: Dict[Path, Optional[ast.AST]] = {}  # Cache parsed trees
 
     def find_python_files(self) -> List[Path]:
-        """Find all Python files in flexlibs2"""
-        self.python_files = list(self.flexlibs2_path.glob("**/*.py"))
+        """Find all Python files in flexicon"""
+        self.python_files = list(self.flexicon_path.glob("**/*.py"))
         print(f"[INFO] Found {len(self.python_files)} Python files")
         return self.python_files
 
@@ -97,7 +97,7 @@ class FlexLibs2StaticAnalyzer:
                  check: str, description: str, code_snippet: str = "") -> None:
         """Record an issue"""
         issue = CodeIssue(
-            file=str(file).replace(str(self.flexlibs2_path), ""),
+            file=str(file).replace(str(self.flexicon_path), ""),
             line=line,
             level=level,
             check=check,
@@ -363,7 +363,7 @@ class FlexLibs2StaticAnalyzer:
                     print(f"  {issue.file}:{issue.line} - {issue.description}")
 
 if __name__ == "__main__":
-    analyzer = FlexLibs2StaticAnalyzer()
+    analyzer = FlexiconStaticAnalyzer()
     analyzer.find_python_files()
     analyzer.analyze()
     analyzer.print_summary()

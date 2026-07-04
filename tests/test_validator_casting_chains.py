@@ -141,7 +141,7 @@ class TestCastAliasAwareness(unittest.TestCase):
         # Verbatim shape from the issue body's "Reproducing" section, made
         # syntactically self-contained by wrapping in a function.
         code = (
-            "from flexlibs2 import LexEntryOperations\n"
+            "from flexicon import LexEntryOperations\n"
             "from SIL.LCModel import ILexEntry, IMoForm\n"
             "def f(project, vws):\n"
             "    leops = LexEntryOperations(project)\n"

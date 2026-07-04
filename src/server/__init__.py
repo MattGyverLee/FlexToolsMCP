@@ -54,7 +54,7 @@ from .validators import (
 # Re-export kernel state and utilities (Feature 4)
 from .kernel import (
     check_mcp_available,
-    _ensure_flexlibs2,
+    _ensure_flexicon,
     get_log_dir,
     setup_logging,
     rotate_logging_to_session,

@@ -57,7 +57,7 @@
   <text x="1210" y="258" font-size="11" fill="#475569"><tspan font-weight="700" fill="#1E40AF">out:</tspan> snippet + surrounding context</text>
   <text x="1210" y="280" font-size="10" fill="#64748B">operation_type ∈ {create, read, update,</text>
   <text x="1210" y="294" font-size="10" fill="#64748B">  delete, iterate, search}</text>
-  <text x="1210" y="320" font-size="10" font-style="italic" fill="#16A34A">82% of flexlibs2 methods have at least one example</text>
+  <text x="1210" y="320" font-size="10" font-style="italic" fill="#16A34A">82% of flexicon methods have at least one example</text>
 
   <!-- Row 2 y=355 -->
 
@@ -81,7 +81,7 @@
   <text x="440" y="451" font-size="11" fill="#475569">     repositories, factories, mapping_type</text>
   <text x="440" y="473" font-size="10" fill="#64748B">Use to see what a wrapper "really" does,</text>
   <text x="440" y="487" font-size="10" fill="#64748B">or whether dropping to liblcm gets you more</text>
-  <text x="440" y="515" font-size="10" font-style="italic" fill="#16A34A">reads from flexlibs2_lcm_bridge_*.json</text>
+  <text x="440" y="515" font-size="10" font-style="italic" fill="#16A34A">reads from flexicon_lcm_bridge_*.json</text>
 
   <!-- Tool 7 -->
   <rect x="810" y="355" width="370" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
@@ -150,7 +150,7 @@
   <text x="825" y="772" font-size="11" fill="#475569">Even one unguarded mutation blocks the whole script.</text>
 
   <text x="825" y="798" font-size="12" font-weight="700" fill="#9F1239">✗ Mix import flavors</text>
-  <text x="825" y="814" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">from flexlibs import FLExProject   <tspan fill="#9F1239"># in flexlibs2 mode</tspan></text>
+  <text x="825" y="814" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">from flexlibs import FLExProject   <tspan fill="#9F1239"># in flexicon mode</tspan></text>
   <text x="825" y="830" font-size="11" fill="#475569">Gate 9 (wrong-library imports) catches this — the silent-fail risk.</text>
 
   <text x="825" y="858" font-size="12" font-weight="700" fill="#9F1239">✗ Access polymorphic property without cast</text>

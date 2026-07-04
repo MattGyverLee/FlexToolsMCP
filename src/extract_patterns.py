@@ -3,7 +3,7 @@
 """
 Extract Common Patterns from FlexLibs Docstrings
 
-Extracts code examples from FlexLibs2 docstrings and categorizes them
+Extracts code examples from Flexicon docstrings and categorizes them
 by operation type (create, read, update, delete, iterate).
 
 Usage:
@@ -111,23 +111,23 @@ def extract_object_type(class_name: str, example: str) -> str:
     return "general"
 
 
-def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
-    """Extract patterns from FlexLibs2 docstrings."""
+def extract_patterns(flexicon_path: Path) -> Dict[str, Any]:
+    """Extract patterns from Flexicon docstrings."""
     # Configuration limits
     MIN_EXAMPLE_LENGTH = 20  # Minimum example text length to include
     MIN_CLEANED_EXAMPLE_LENGTH = 10  # Minimum length after cleanup
     MAX_PATTERNS_PER_OBJECT = 20  # Maximum patterns to keep per object type
     MAX_PATTERNS_PER_OPERATION = 30  # Maximum patterns per operation type
 
-    flexlibs2 = load_json(flexlibs2_path)
+    flexicon = load_json(flexicon_path)
 
     patterns_by_object = defaultdict(list)
     patterns_by_operation = defaultdict(list)
     all_patterns = []
 
-    print("[INFO] Extracting patterns from FlexLibs2 examples...")
+    print("[INFO] Extracting patterns from Flexicon examples...")
 
-    for class_name, entity in flexlibs2.get("entities", {}).items():
+    for class_name, entity in flexicon.get("entities", {}).items():
         for method in entity.get("methods", []):
             example = method.get("example", "").strip()
 
@@ -186,12 +186,12 @@ def extract_patterns(flexlibs2_path: Path) -> Dict[str, Any]:
     return result
 
 
-def add_patterns_to_flexlibs(flexlibs2_path: Path, patterns: Dict):
+def add_patterns_to_flexlibs(flexicon_path: Path, patterns: Dict):
     """Add common_patterns field to FlexLibs entities."""
 
-    flexlibs2 = load_json(flexlibs2_path)
+    flexicon = load_json(flexicon_path)
 
-    print("[INFO] Adding common_patterns to FlexLibs2 entities...")
+    print("[INFO] Adding common_patterns to Flexicon entities...")
 
     # Map object types to FlexLibs class names
     object_to_class = {
@@ -214,8 +214,8 @@ def add_patterns_to_flexlibs(flexlibs2_path: Path, patterns: Dict):
         obj_patterns = patterns["by_object"][obj_type][:10]  # Limit to 10
 
         for class_name in class_names:
-            if class_name in flexlibs2["entities"]:
-                flexlibs2["entities"][class_name]["common_patterns"] = [
+            if class_name in flexicon["entities"]:
+                flexicon["entities"][class_name]["common_patterns"] = [
                     {
                         "description": p["description"],
                         "operation": p["operation"],
@@ -228,7 +228,7 @@ def add_patterns_to_flexlibs(flexlibs2_path: Path, patterns: Dict):
 
     print(f"[INFO] Added patterns to {updated} entities")
 
-    save_json(flexlibs2, flexlibs2_path)
+    save_json(flexicon, flexicon_path)
 
 
 def print_summary(result: Dict):
@@ -260,7 +260,7 @@ def main():
     parser.add_argument(
         "--update-flexlibs",
         action="store_true",
-        help="Also update FlexLibs2 index with common_patterns field"
+        help="Also update Flexicon index with common_patterns field"
     )
 
     args = parser.parse_args()
@@ -268,22 +268,22 @@ def main():
     root = get_project_root()
     flexlibs_dir = root / "index" / "flexlibs"
 
-    # Find latest FlexLibs 2.0 API file
-    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
-    if not flexlibs2_path:
-        print("[ERROR] FlexLibs 2.0 API file not found")
+    # Find latest Flexicon API file
+    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
+    if not flexicon_path:
+        print("[ERROR] Flexicon API file not found")
         return 1
 
     output_path = root / args.output
 
     # Extract patterns
-    result = extract_patterns(flexlibs2_path)
+    result = extract_patterns(flexicon_path)
 
-    # Extract version from flexlibs2_path for versioned filename
-    version_match = re.search(r'flexlibs2_api_v(\d+\.\d+\.\d+)', str(flexlibs2_path))
+    # Extract version from flexicon_path for versioned filename
+    version_match = re.search(r'flexicon_api_v(\d+\.\d+\.\d+)', str(flexicon_path))
     if version_match:
-        flexlibs2_version = version_match.group(1)
-        output_filename = f"common_patterns_flexlibs2-v{flexlibs2_version}.json"
+        flexicon_version = version_match.group(1)
+        output_filename = f"common_patterns_flexicon-v{flexicon_version}.json"
         output_path = root / "index" / output_filename
 
     # Save patterns
@@ -295,7 +295,7 @@ def main():
 
     # Optionally update FlexLibs
     if args.update_flexlibs:
-        add_patterns_to_flexlibs(flexlibs2_path, result)
+        add_patterns_to_flexlibs(flexicon_path, result)
 
     print("\n[DONE] Pattern extraction complete")
     return 0

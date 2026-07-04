@@ -59,7 +59,7 @@ They end up re-learning everything each time.
 
 ### The Dual-Language Barrier
 
-Before FlexLibs 2.0 and this MCP, the biggest barrier was the split between two programming paradigms:
+Before Flexicon and this MCP, the biggest barrier was the split between two programming paradigms:
 
 **Simple operations: The "Python way" (FlexLibs)**
 ```python
@@ -90,7 +90,7 @@ The moment you needed something FlexLibs stable didn't cover (~95% of FLEx featu
 
 This created a cliff: simple tasks were easy, but anything beyond basic lexicon access required a deep dive into .NET internals.
 
-**FlexLibs 2.0 + MCP flattens this cliff.** The AI handles the translation between what you want and how LibLCM implements it.
+**Flexicon + MCP flattens this cliff.** The AI handles the translation between what you want and how LibLCM implements it.
 
 ## What AI Changes
 
@@ -158,7 +158,7 @@ AI: "That's a pythonnet casting issue. The MSA objects in
 
     You need to cast to the concrete type first:
 
-    from flexlibs2.code.lcm_casting import get_pos_from_msa
+    from flexicon.code.lcm_casting import get_pos_from_msa
     pos = get_pos_from_msa(msa)
 
     Let me fix the code..."

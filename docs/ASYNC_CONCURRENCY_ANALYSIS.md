@@ -76,11 +76,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 ```
 
 **Tools**:
-- `get_object_api` - Reads from `api_index.flexlibs2` / `api_index.liblcm`
+- `get_object_api` - Reads from `api_index.flexicon` / `api_index.liblcm`
 - `search_by_capability` - Reads from `api_index.semantic_search` (FAISS index)
 - `get_navigation_path` - Reads from `api_index.navigation_graph`
-- `list_categories` - Reads from `api_index.flexlibs2.get("categories")`
-- `find_examples` - Reads from `api_index.flexlibs2.get("examples")`
+- `list_categories` - Reads from `api_index.flexicon.get("categories")`
+- `find_examples` - Reads from `api_index.flexicon.get("examples")`
 
 **Concurrency Safety**:
 - ✓ Index dictionaries are not mutated during runtime (loaded at startup, never updated)
@@ -119,7 +119,7 @@ process = await asyncio.create_subprocess_exec(
 
 **Each subprocess gets**:
 - Independent Python interpreter (separate PID)
-- Separate FlexLibs2 instance (separate heap)
+- Separate Flexicon instance (separate heap)
 - Separate LibLCM connection (if using liblcm mode)
 
 **Verdict**: ✓ **No Python-level data corruption** between concurrent subprocesses
@@ -352,7 +352,7 @@ await run_operation(
 **What happens**:
 1. Both subprocesses call `FLExProject().OpenProject("MyProject", writeEnabled=True)`
 2. Both acquire file handle to MyProject.fwdata-wal
-3. FlexLibs2 caches load state
+3. Flexicon caches load state
 4. First operation creates entry, commits
 5. Second operation reads old cached state, modifies, commits
 6. First operation's changes are lost
@@ -508,7 +508,7 @@ async def test_concurrent_writes_without_lock():
 ### Phase 2 (Future)
 
 - Implement read-write locks (allow multiple reads, exclusive write)
-- Consider connection pooling for FlexLibs2 project instances
+- Consider connection pooling for Flexicon project instances
 - Monitor actual concurrency patterns from users
 - Implement telemetry for "writes blocked waiting for lock" metrics
 

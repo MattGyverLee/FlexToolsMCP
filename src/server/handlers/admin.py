@@ -77,16 +77,17 @@ KEY_REMAINING_UNDOABLE = "remaining_undoable"
 
 # Template flavors mapping
 TEMPLATE_MAP = {
-    "flexlibs2": "2-flexlibs2-template.py",
+    "flexicon": "2-flexicon-template.py",
     "flexlibs_stable": "1-flexlibs-stable-template.py",
     "liblcm": "3-liblcm-template.py",
     "stable": "1-flexlibs-stable-template.py",  # Alias
     "advanced": "3-liblcm-template.py",  # Alias
+    "flexlibs2": "2-flexicon-template.py",  # Deprecated alias for 'flexicon'
 }
 
 # Template guidance (static data, not rebuilt per request)
 FLAVOR_GUIDANCE = {
-    "flexlibs2": {
+    "flexicon": {
         "description": "Recommended - Best documented, 90% API coverage",
         "use_when": "For most projects with FieldWorks 9.0+",
         "advantages": [
@@ -98,7 +99,7 @@ FLAVOR_GUIDANCE = {
     },
     "flexlibs_stable": {
         "description": "Legacy - Limited but stable",
-        "use_when": "For FieldWorks < 9.0 or when flexlibs2 not available",
+        "use_when": "For FieldWorks < 9.0 or when flexicon not available",
         "advantages": [
             "Works with older FieldWorks versions",
             "Limited API (~40 functions) but stable",
@@ -107,20 +108,20 @@ FLAVOR_GUIDANCE = {
     },
     "liblcm": {
         "description": "Advanced - Full API access",
-        "use_when": "For edge cases not covered by flexlibs2",
+        "use_when": "For edge cases not covered by flexicon",
         "advantages": [
             "100% API coverage",
             "Direct C# access for complex operations",
             "Performance-critical code"
         ],
-        "warning": "Complex code, hard to maintain. Use flexlibs2 first."
+        "warning": "Complex code, hard to maintain. Use flexicon first."
     }
 }
 
 # Mode guidance for API initialization
 MODE_GUIDANCE = {
-    "flexlibs2": {
-        "description": "FlexLibs 2.0 - Pythonic wrapper with Operations classes",
+    "flexicon": {
+        "description": "Flexicon - Pythonic wrapper with Operations classes",
         "example": "project.LexEntries.GetAll(), project.Wordforms.GetForm(wf)",
         "note": "Recommended mode - best documentation and examples"
     },
@@ -180,7 +181,7 @@ RUNTIME_PRIMER = {
     "multistring_placeholder": {
         "description": "FLEx stores '***' as the placeholder for unset multilingual string fields (Gloss, Definition, Form, ...).",
         "wrapper_behavior": (
-            "FlexLibs2 wrapper getters normalize '***' to '' so `if not gloss:` works. "
+            "Flexicon wrapper getters normalize '***' to '' so `if not gloss:` works. "
             "Use:  gloss = LexSenseOperations(project).GetGloss(sense)  # '' if empty"
         ),
         "raw_csharp_behavior": (
@@ -220,14 +221,14 @@ def _get_flavor_guidance(flavor: str) -> dict:
         flavor = "flexlibs_stable"
     elif flavor in ["liblcm", "advanced"]:
         flavor = "liblcm"
-    return FLAVOR_GUIDANCE.get(flavor, FLAVOR_GUIDANCE["flexlibs2"])
+    return FLAVOR_GUIDANCE.get(flavor, FLAVOR_GUIDANCE["flexicon"])
 
 
 def _get_template(flavor: str) -> str | None:
     """Load and cache template file content (O(1) lookup after first call).
 
     Args:
-        flavor: Template flavor (e.g., 'flexlibs2')
+        flavor: Template flavor (e.g., 'flexicon')
 
     Returns:
         Template file content, or None if not found
@@ -297,7 +298,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     - Available writing systems and their language tags
     - Number of entries in the project
     """
-    api_mode = args.get(KEY_API_MODE, "flexlibs2")
+    api_mode = args.get(KEY_API_MODE, "flexicon")
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
 
@@ -342,7 +343,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     )
 
     # #14 Phase 1: undoable opt-in. Coerced off when write is off because
-    # flexlibs2 silently ignores undoable in that case -- coercing it here
+    # flexicon silently ignores undoable in that case -- coercing it here
     # makes the effective value visible so the LLM can react.
     undoable, _, _ = _resolve_inherited_flag(
         "undoable", args, user_provided, same_project
@@ -360,8 +361,8 @@ async def handle_start(args: dict) -> list[TextContent]:
     if get_api_index():
         if get_api_index().liblcm_version:
             api_versions["liblcm"] = get_api_index().liblcm_version
-        if get_api_index().flexlibs2_version:
-            api_versions["flexlibs2"] = get_api_index().flexlibs2_version
+        if get_api_index().flexicon_version:
+            api_versions["flexicon"] = get_api_index().flexicon_version
         if get_api_index().flexlibs_stable_version:
             api_versions["flexlibs_stable"] = get_api_index().flexlibs_stable_version
 
@@ -414,7 +415,7 @@ async def handle_start(args: dict) -> list[TextContent]:
         ]
     }
 
-    result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexlibs2"])
+    result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexicon"])
     result["runtime_primer"] = RUNTIME_PRIMER
 
     # Warnings
@@ -442,7 +443,7 @@ async def handle_start(args: dict) -> list[TextContent]:
     if "undoable" in user_provided and args.get("undoable") and not write_enabled:
         warnings.append(
             "undoable=True was requested but coerced to False because "
-            "write_enabled=False (flexlibs2 ignores undoable in read-only mode)."
+            "write_enabled=False (flexicon ignores undoable in read-only mode)."
         )
 
     if warnings:
@@ -673,14 +674,14 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
 
     Uses module-level template cache to avoid repeated disk I/O (50-100ms savings).
     """
-    flavor = args.get(KEY_FLAVOR, "flexlibs2")
+    flavor = args.get(KEY_FLAVOR, "flexicon")
 
     if flavor not in TEMPLATE_MAP:
         return json_response({
             KEY_ERROR: "invalid_flavor",
             KEY_MESSAGE: f"Unknown flavor '{flavor}'",
             "available_flavors": list(TEMPLATE_MAP.keys()),
-            "recommended": "flexlibs2"
+            "recommended": "flexicon"
         })
 
     # Use cached template (O(1) lookup after first request)

@@ -83,7 +83,7 @@ TOOLS: dict[str, ToolDef] = {
         name="flextools_start",
         description="""[WORKFLOW - BEGIN HERE] Initialize the FlexTools MCP session.
 
-REQUIRED: Sets api_mode to determine which API (flexlibs2, flexlibs_stable, or liblcm) to use.
+REQUIRED: Sets api_mode to determine which API (flexicon, flexlibs_stable, or liblcm) to use.
 OPTIONAL: task description for initial API discovery, project_name for operations, etc.
 
 After calling flextools_start():
@@ -126,7 +126,7 @@ Example queries:
 - "Iterate over all wordforms in a text"
 
 The search engine uses semantic understanding to find relevant APIs, including:
-- FlexLibs 2.0 wrapper classes (recommended, ~1400 methods with examples)
+- Flexicon wrapper classes (recommended, ~1400 methods with examples)
 - Direct LibLCM interfaces for advanced use
 - Navigation methods to move between related objects""",
         input_model=SearchCapabilityInput,
@@ -215,7 +215,7 @@ bare-snippet form is first-class -- no template required.""",
 
 Guides you through:
 1. Module name and synopsis
-2. Target API mode (flexlibs2, flexlibs_stable, liblcm)
+2. Target API mode (flexicon, flexlibs_stable, liblcm)
 3. Whether it modifies the database
 4. Primary domain (lexicon, grammar, texts, etc.)
 5. Optional dry-run mode setup""",
@@ -243,7 +243,7 @@ All code has access to:
 - Helpers: is_empty_multistring, FLEX_EMPTY_PLACEHOLDER, find_writing_system, list_writing_systems
 
 Operations classes (POSOperations, LexEntryOperations, etc.) are NOT auto-imported.
-You must include `from flexlibs2 import ...` in your code, or use the project
+You must include `from flexicon import ...` in your code, or use the project
 accessors (project.POS, project.LexEntry, project.Senses, ...) which create the
 instances lazily. Every Operations class you reference must be discovered first
 via flextools_get_object_api -- the runner rejects code that uses an undiscovered
@@ -293,7 +293,7 @@ issue (e.g. chained or call-rooted receivers the inline rewriter skips).""",
         description="""Get, set, delete, or list persistent configuration values.
 
 Actions:
-- 'get': Retrieve a config value by dotted key (e.g., 'paths.flexlibs2')
+- 'get': Retrieve a config value by dotted key (e.g., 'paths.flexicon')
 - 'set': Set a config value
 - 'delete': Remove a config value
 - 'list': Show all configuration""",
@@ -342,14 +342,14 @@ back a single run_module that wrapped multiple UndoableOperations).""",
 
     "flextools_get_wrapper_dependencies": ToolDef(
         name="flextools_get_wrapper_dependencies",
-        description="""Look up the LibLCM internals (factories, repositories, properties, methods, mapping_type) that a flexlibs/flexlibs2 wrapper method uses.
+        description="""Look up the LibLCM internals (factories, repositories, properties, methods, mapping_type) that a flexlibs/flexicon wrapper method uses.
 
 Use this when you need to understand what a wrapper method does under the hood, or whether
 switching to api_mode='liblcm' would let you reach internals the wrapper doesn't expose.
 
 Input:
 - method: 'ClassName.MethodName' (e.g. 'LexEntryOperations.GetHeadword')
-- library: 'flexlibs2' (default) or 'flexlibs_stable'
+- library: 'flexicon' (default) or 'flexlibs_stable'
 
 Returns the bridge entry: lcm_deps, properties_accessed, methods_called, repositories_used,
 factories_used, mapping_type, plus an advisory about which surface is callable in the active session.""",
@@ -366,7 +366,7 @@ to know which `from <namespace> import <Type>` line to use.
 
 Use this when you have a bare type name (from search results, an error message, or context)
 and need the import path before you can use it in code. Searches liblcm first (most common
-case for raw LCM types), then flexlibs2 / flexlibs_stable.
+case for raw LCM types), then flexicon / flexlibs_stable.
 
 Example:
   flextools_resolve_type(type_name='SandboxGenericMSA')
@@ -401,13 +401,13 @@ when filtered by object_type.""",
         description="""Find which wrapper methods cover a given LibLCM symbol (entity, factory, repository, method, or property).
 
 Use this when you have an LCM name (e.g. 'ILexEntry', 'ICmAgentEvaluationFactory',
-'ICmObjectRepository') and want to know whether flexlibs2 or flexlibs_stable wraps it -
+'ICmObjectRepository') and want to know whether flexicon or flexlibs_stable wraps it -
 or whether you need to drop to api_mode='liblcm' because no wrapper exists.
 
 Input:
 - lcm_name: e.g. 'ILexEntry', 'ILexEntry.HeadWord', 'ICmAgentEvaluationFactory'
 - kind: 'entity' | 'factory' | 'repository' | 'method' | 'property' | 'auto' (default)
-- include: list of libraries to check (default ['flexlibs2', 'flexlibs_stable'])
+- include: list of libraries to check (default ['flexicon', 'flexlibs_stable'])
 
 Returns coverage per library and an explicit `gaps` list naming libraries with no coverage,
 so missing wrappers are surfaced rather than silently absent.""",

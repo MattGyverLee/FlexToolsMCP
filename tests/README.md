@@ -1,6 +1,6 @@
 # FlexTools MCP Testing Suite
 
-This directory contains comprehensive tests for FlexLibs 2.0, focusing on bug detection and edge case validation.
+This directory contains comprehensive tests for Flexicon, focusing on bug detection and edge case validation.
 
 ## Quick Start
 
@@ -8,11 +8,11 @@ This directory contains comprehensive tests for FlexLibs 2.0, focusing on bug de
 
 ```bash
 cd d:\Github\FlexToolsMCP
-python tests/test_flexlibs2_static_analysis.py
+python tests/test_flexicon_static_analysis.py
 ```
 
 **What it does:**
-- Analyzes 201 Python files in FlexLibs 2.0
+- Analyzes 201 Python files in Flexicon
 - Checks for common bug patterns (unchecked indexing, exception handling, type conversions)
 - Generates report: `test_static_analysis.json`
 - Takes ~10 seconds
@@ -30,7 +30,7 @@ Total Issues: 1,882
 
 ```bash
 cd d:\Github\FlexToolsMCP
-python tests/test_flexlibs2_operations.py
+python tests/test_flexicon_operations.py
 ```
 
 **What it does:**
@@ -48,7 +48,7 @@ Total Tests: 20
 
 ## Test Structure
 
-### Static Analysis (`test_flexlibs2_static_analysis.py`)
+### Static Analysis (`test_flexicon_static_analysis.py`)
 
 Automated checks for:
 
@@ -62,7 +62,7 @@ Automated checks for:
 | unsafe_int_conversion | 17 | ℹ Low | `int()` without ValueError handling |
 | multistring_check | 8 | ℹ Low | Missing `'***'` placeholder checks |
 
-### Operational Tests (`test_flexlibs2_operations.py`)
+### Operational Tests (`test_flexicon_operations.py`)
 
 Test categories:
 
@@ -86,7 +86,7 @@ Test categories:
    - Optional None fields
 
 5. **Known Issues** (3 tests)
-   - FlexLibs 2.0 stability
+   - Flexicon stability
    - Parameter validation
    - Error message clarity
 
@@ -98,9 +98,9 @@ Test categories:
 # In FLExTools Modules > New Module
 import sys
 sys.path.insert(0, 'D:/Github/FlexToolsMCP/tests')
-from test_flexlibs2_operations import FlexLibs2TestRunner
+from test_flexicon_operations import FlexiconTestRunner
 
-runner = FlexLibs2TestRunner(project_name='YourProjectName', dry_run=True)
+runner = FlexiconTestRunner(project_name='YourProjectName', dry_run=True)
 runner.run_all_tests()
 runner.save_report('test_results.json')
 ```
@@ -113,9 +113,9 @@ runner.save_report('test_results.json')
 # ONLY use with a test project, never production!
 import sys
 sys.path.insert(0, 'D:/Github/FlexToolsMCP/tests')
-from test_flexlibs2_operations import FlexLibs2TestRunner
+from test_flexicon_operations import FlexiconTestRunner
 
-runner = FlexLibs2TestRunner(
+runner = FlexiconTestRunner(
     project_name='TestProject',  # Use a TEST project
     dry_run=False  # Enable write operations
 )
@@ -145,7 +145,7 @@ runner.save_report('test_results.json')
   "by_check": {
     "unchecked_indexing": [
       {
-        "file": "flexlibs2/code/Lexicon/LexSenseOperations.py",
+        "file": "flexicon/code/Lexicon/LexSenseOperations.py",
         "line": 123,
         "level": "WARNING",
         "check": "unchecked_indexing",
@@ -159,8 +159,8 @@ runner.save_report('test_results.json')
 
 **What to look for:**
 - ERROR level issues (critical)
-- WARNING in core flexlibs2/code/ files (medium priority)
-- INFO in flexlibs2/examples/ or tests/ (low priority)
+- WARNING in core flexicon/code/ files (medium priority)
+- INFO in flexicon/examples/ or tests/ (low priority)
 
 ### Operational Test Report
 
@@ -216,7 +216,7 @@ runner.save_report('test_results.json')
 ### Add a New Test Case
 
 ```python
-# In test_flexlibs2_operations.py
+# In test_flexicon_operations.py
 def test_custom_operation(self) -> None:
     """Test a custom operation"""
     test_category = "Custom"
@@ -238,7 +238,7 @@ assert result is not None
 ### Add a New Static Check
 
 ```python
-# In test_flexlibs2_static_analysis.py
+# In test_flexicon_static_analysis.py
 def check_my_pattern(self, file_path: Path, lines: List[str]) -> None:
     """Check for a custom pattern"""
     for i, line in enumerate(lines, 1):
@@ -253,10 +253,10 @@ def check_my_pattern(self, file_path: Path, lines: List[str]) -> None:
 
 ### "No module named 'code.flexlibs_main'"
 
-**Cause:** FlexLibs 2.0 not importable in Python
+**Cause:** Flexicon not importable in Python
 **Solution:** Run in FLExTools environment where FlexLibs is available
 
-### "Could not import FlexLibs2"
+### "Could not import Flexicon"
 
 **Expected:** This is normal when running outside FLExTools
 **Action:** Proceed with dry-run tests, they're still useful
@@ -271,7 +271,7 @@ def check_my_pattern(self, file_path: Path, lines: List[str]) -> None:
 **Fix:**
 ```bash
 cd d:\Github\FlexToolsMCP
-python tests/test_flexlibs2_operations.py  # Should create test_report.json
+python tests/test_flexicon_operations.py  # Should create test_report.json
 ```
 
 ## Performance
@@ -286,7 +286,7 @@ python tests/test_flexlibs2_operations.py  # Should create test_report.json
 
 - Full results: [TESTING_RESULTS.md](TESTING_RESULTS.md)
 - Test data: `test_static_analysis.json`, `test_report.json`
-- FlexLibs 2.0: `D:/Github/flexlibs2`
+- Flexicon: `D:/Github/flexicon`
 - FLEx conventions: `../CLAUDE.md`
 
 ## Support
@@ -296,7 +296,7 @@ For questions about the tests:
 2. Review test source code comments
 3. Check console output for specific error messages
 
-For FlexLibs 2.0 issues found by tests:
+For Flexicon issues found by tests:
 1. Note the file and line number
 2. Check the issue description and code snippet
 3. Decide on severity (WARNING vs INFO)

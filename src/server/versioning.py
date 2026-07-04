@@ -39,7 +39,7 @@ def _log_ops_debug(msg: str) -> None:
 def extract_version(filename: str) -> Tuple[int, int, int]:
     """Extract semantic version (major, minor, patch) from filename.
 
-    Supports formats like 'liblcm_api_v11.0.0.json' or 'flexlibs2_api-v2.1.5.json'.
+    Supports formats like 'liblcm_api_v11.0.0.json' or 'flexicon_api-v2.1.5.json'.
 
     Args:
         filename: Filename containing version pattern (e.g., 'api_v11.0.0.json')
@@ -67,9 +67,9 @@ def detect_installed_library_version(
     - For Python packages: Checks __version__ attribute, then importlib.metadata
 
     Args:
-        library_name: Display name for logging (e.g., 'LibLCM', 'FlexLibs 2.0')
-        import_path: Module name for Python imports (e.g., 'flexlibs2')
-        package_name: Package name for importlib.metadata (e.g., 'flexlibs2')
+        library_name: Display name for logging (e.g., 'LibLCM', 'Flexicon')
+        import_path: Module name for Python imports (e.g., 'flexicon')
+        package_name: Package name for importlib.metadata (e.g., 'flexicon')
         assembly_name: C# assembly name (e.g., 'SIL.LCModel')
         logger: Logger instance (defaults to operations_logger if available)
 
@@ -100,15 +100,15 @@ def detect_installed_library_version(
         except Exception as e:
             log_debug(f"Could not detect {library_name} (C# assembly): {e}")
 
-    # Try Python package detection (FlexLibs, FlexLibs2)
+    # Try Python package detection (FlexLibs, Flexicon)
     if import_path:
         # Live module attributes are checked FIRST and preferred over
         # importlib.metadata: for path / editable installs (the common dev
         # setup here), pip metadata goes stale while the source on sys.path is
-        # the version actually in use. flexlibs2 exposes its version as
+        # the version actually in use. flexicon exposes its version as
         # `version` (not `__version__`); checking only `__version__` made the
         # server fall back to stale pip metadata and load a mismatched index
-        # (e.g. detecting 3.0.0 while flexlibs2 4.0.1 was on the path). #38
+        # (e.g. detecting 3.0.0 while flexicon 4.0.1 was on the path). #38
         try:
             module = __import__(import_path)
             for attr in ("__version__", "version"):

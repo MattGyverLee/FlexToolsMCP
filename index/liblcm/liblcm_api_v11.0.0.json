@@ -3904,7 +3904,7 @@
           "can_write": true,
           "description": "Property of type IWfiGloss",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -5874,7 +5874,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -6322,7 +6322,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -7752,7 +7752,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -9097,7 +9097,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -9435,7 +9435,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -9810,7 +9810,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -10307,7 +10307,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -11047,7 +11047,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -12536,7 +12536,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -13797,7 +13797,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -13825,7 +13825,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -13873,7 +13873,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -13901,7 +13901,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -14204,7 +14204,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -14232,7 +14232,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -14310,7 +14310,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -14791,7 +14791,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -15167,7 +15167,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -15218,7 +15218,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -15834,7 +15834,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -16250,7 +16250,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -16301,7 +16301,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -16372,7 +16372,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -16563,7 +16563,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -18558,7 +18558,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -19980,7 +19980,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -20306,7 +20306,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -21036,7 +21036,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -21132,7 +21132,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -22218,7 +22218,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -22394,7 +22394,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -22638,7 +22638,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -22826,7 +22826,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -23381,7 +23381,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -24238,7 +24238,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -24405,7 +24405,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -25174,7 +25174,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -25751,7 +25751,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -25779,7 +25779,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -29684,7 +29684,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -39454,7 +39454,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -39834,7 +39834,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -40987,7 +40987,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -41535,7 +41535,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -41949,7 +41949,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -42407,7 +42407,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -42984,7 +42984,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -43105,7 +43105,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -43153,7 +43153,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -43181,7 +43181,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -43229,7 +43229,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -44058,7 +44058,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -44772,7 +44772,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -44870,7 +44870,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -44921,7 +44921,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -44969,7 +44969,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -46895,7 +46895,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47446,7 +47446,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47544,7 +47544,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47572,7 +47572,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47600,7 +47600,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47648,7 +47648,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -47676,7 +47676,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -49261,7 +49261,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -50091,7 +50091,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -50260,7 +50260,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -50435,7 +50435,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -50719,7 +50719,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -51189,7 +51189,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53036,7 +53036,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53064,7 +53064,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53092,7 +53092,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53225,7 +53225,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53253,7 +53253,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53306,7 +53306,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53606,7 +53606,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53839,7 +53839,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -53890,7 +53890,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -54263,7 +54263,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -54528,7 +54528,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -54579,7 +54579,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -54693,7 +54693,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -55964,7 +55964,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -59535,7 +59535,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -59707,7 +59707,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -60279,7 +60279,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -60307,7 +60307,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -61105,7 +61105,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -61216,7 +61216,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -61435,7 +61435,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -62279,7 +62279,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -62641,6 +62641,10 @@
       ],
       "python_wrappers": {
         "flexlibs_2": [
+          {
+            "class": "AnnotationDefOperations",
+            "methods": []
+          },
           {
             "class": "CheckOperations",
             "methods": []
@@ -63580,7 +63584,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -63652,7 +63656,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -64463,7 +64467,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -64491,7 +64495,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -66315,7 +66319,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -68524,6 +68528,10 @@
             "methods": []
           },
           {
+            "class": "ConstChartOperations",
+            "methods": []
+          },
+          {
             "class": "DiscourseOperations",
             "methods": []
           }
@@ -68589,10 +68597,16 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": {
-          "class": "ConstChartMarkerOperations",
-          "methods": []
-        },
+        "flexlibs_2": [
+          {
+            "class": "ConstChartMarkerOperations",
+            "methods": []
+          },
+          {
+            "class": "ConstChartOperations",
+            "methods": []
+          }
+        ],
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -70464,7 +70478,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -70540,7 +70554,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -70588,7 +70602,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -70616,7 +70630,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -70644,7 +70658,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -71737,7 +71751,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -71790,7 +71804,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -71841,7 +71855,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -72840,7 +72854,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -73069,7 +73083,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -73122,7 +73136,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -73150,7 +73164,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -73178,7 +73192,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -73206,7 +73220,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -75135,7 +75149,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -75374,7 +75388,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -76002,7 +76016,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -79608,7 +79622,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -79636,7 +79650,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -79689,7 +79703,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -80236,7 +80250,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -80534,7 +80548,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -80631,7 +80645,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -81268,7 +81282,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -81296,7 +81310,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -81819,7 +81833,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -82783,7 +82797,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -82811,7 +82825,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83013,7 +83027,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83041,7 +83055,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83069,7 +83083,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83097,7 +83111,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83125,7 +83139,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83201,7 +83215,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83229,7 +83243,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83389,7 +83403,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83682,7 +83696,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -83899,7 +83913,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -84212,7 +84226,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -84240,7 +84254,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -84566,7 +84580,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -84717,7 +84731,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85223,7 +85237,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85274,7 +85288,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85348,7 +85362,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85422,7 +85436,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85496,7 +85510,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85613,7 +85627,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85687,7 +85701,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85715,7 +85729,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85743,7 +85757,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -85959,7 +85973,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -86056,7 +86070,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -86150,7 +86164,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -86224,7 +86238,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -86344,7 +86358,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -87104,7 +87118,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -87155,7 +87169,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -88139,7 +88153,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -88187,7 +88201,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -89738,7 +89752,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -90177,7 +90191,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -90458,7 +90472,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -90627,7 +90641,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -91164,16 +91178,10 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "LexSenseOperations",
-            "methods": []
-          },
-          {
-            "class": "MSAOperations",
-            "methods": []
-          }
-        ],
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -91248,7 +91256,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -91276,7 +91284,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -91600,7 +91608,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -91691,7 +91699,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -92000,7 +92008,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -92028,7 +92036,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -92056,7 +92064,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -93908,7 +93916,7 @@
           "can_write": false,
           "description": "Property of type ITsMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -93936,7 +93944,7 @@
           "can_write": false,
           "description": "Property of type ITsMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -94927,7 +94935,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -94978,7 +94986,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -95686,16 +95694,10 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "LexSenseOperations",
-            "methods": []
-          },
-          {
-            "class": "MSAOperations",
-            "methods": []
-          }
-        ],
+        "flexlibs_2": {
+          "class": "MSAOperations",
+          "methods": []
+        },
         "flexlibs_stable": null
       },
       "relationships": [],
@@ -95746,7 +95748,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -95820,7 +95822,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -95848,7 +95850,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -96012,7 +96014,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -96040,7 +96042,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -96068,7 +96070,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -96115,6 +96117,13 @@
           "type": "IPhPhonemeSet"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "StratumOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [
@@ -96395,6 +96404,13 @@
       "name": "IMoStratumFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "StratumOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for MoStratumFactory operations",
       "tags": [
@@ -97726,7 +97742,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -99357,6 +99373,10 @@
             "methods": []
           },
           {
+            "class": "MorphRuleOperations",
+            "methods": []
+          },
+          {
             "class": "POSOperations",
             "methods": []
           },
@@ -99731,7 +99751,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -100036,7 +100056,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -100087,7 +100107,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -101286,7 +101306,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -101314,7 +101334,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -101342,7 +101362,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -101460,7 +101480,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -102293,7 +102313,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -102321,7 +102341,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -102927,7 +102947,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -103041,7 +103061,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -103922,7 +103942,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -103950,7 +103970,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -104395,7 +104415,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -104471,7 +104491,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -104986,7 +105006,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -105106,7 +105126,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -105468,7 +105488,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -105616,7 +105636,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -105826,7 +105846,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -105977,7 +105997,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -106252,7 +106272,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -107159,7 +107179,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -108046,7 +108066,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -109178,7 +109198,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -110905,7 +110925,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -111188,7 +111208,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -111287,7 +111307,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -112413,7 +112433,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -112441,7 +112461,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -112469,7 +112489,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -113182,7 +113202,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -115043,7 +115063,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -115276,7 +115296,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -121464,7 +121484,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -121572,7 +121592,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -122098,7 +122118,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -122241,7 +122261,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -122269,7 +122289,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -123485,7 +123505,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -123601,7 +123621,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -124203,7 +124223,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -124446,7 +124466,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -125896,7 +125916,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -126110,7 +126130,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -126250,7 +126270,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -130446,7 +130466,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -130659,7 +130679,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -130993,7 +131013,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -131021,7 +131041,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -131273,7 +131293,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -132209,7 +132229,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -136147,7 +136167,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -136386,7 +136406,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -136483,7 +136503,7 @@
           "can_write": false,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -136807,7 +136827,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -137115,7 +137135,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -149757,7 +149777,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -149785,7 +149805,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -149883,7 +149903,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -150599,7 +150619,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -150988,7 +151008,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -151016,7 +151036,7 @@
           "can_write": false,
           "description": "Property of type VirtualStringAccessor",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -151087,7 +151107,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -151256,7 +151276,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -152111,7 +152131,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -152139,7 +152159,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -153014,7 +153034,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154265,7 +154285,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154293,7 +154313,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154555,7 +154575,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154628,7 +154648,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154656,7 +154676,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154684,7 +154704,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154712,7 +154732,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154888,7 +154908,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154959,7 +154979,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -154987,7 +155007,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -155354,7 +155374,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -155986,7 +156006,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -156448,7 +156468,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -157051,7 +157071,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -157079,7 +157099,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -157479,7 +157499,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -157676,7 +157696,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -158528,7 +158548,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -158579,7 +158599,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -158721,7 +158741,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -158818,7 +158838,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -158892,7 +158912,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159009,7 +159029,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159083,7 +159103,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159111,7 +159131,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159139,7 +159159,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159450,7 +159470,7 @@
           "can_write": false,
           "description": "Property of type VirtualStringAccessor",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159633,7 +159653,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159778,7 +159798,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159806,7 +159826,7 @@
           "can_write": false,
           "description": "Property of type VirtualStringAccessor",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159851,7 +159871,7 @@
           "can_write": false,
           "description": "Property of type VirtualStringAccessor",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -159942,7 +159962,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -160064,7 +160084,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -160117,7 +160137,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -160237,7 +160257,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -162558,7 +162578,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -162609,7 +162629,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -164344,7 +164364,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -164995,7 +165015,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -165043,7 +165063,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -167381,7 +167401,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -168724,7 +168744,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -169717,7 +169737,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -170070,7 +170090,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -170308,7 +170328,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -170522,7 +170542,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -171509,7 +171529,7 @@
           "can_write": false,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -171765,7 +171785,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -172326,7 +172346,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -172402,7 +172422,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -172493,7 +172513,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173201,7 +173221,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173292,7 +173312,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173745,7 +173765,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173841,7 +173861,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173869,7 +173889,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -173986,7 +174006,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -175745,7 +175765,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -177262,7 +177282,7 @@
           "can_write": false,
           "description": "Property of type ITsMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -177290,7 +177310,7 @@
           "can_write": false,
           "description": "Property of type ITsMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -177409,7 +177429,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -177871,7 +177891,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -178534,7 +178554,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -178585,7 +178605,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -180171,7 +180191,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -180520,7 +180540,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -180662,7 +180682,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -180690,7 +180710,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -180761,7 +180781,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -181021,7 +181041,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -181094,7 +181114,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -181122,7 +181142,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -181193,7 +181213,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -182288,7 +182308,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -184294,7 +184314,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -185442,7 +185462,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -188819,7 +188839,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -188847,7 +188867,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -189465,7 +189485,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -189516,7 +189536,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -189587,7 +189607,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -191877,7 +191897,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -191973,7 +191993,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -192001,7 +192021,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -192236,7 +192256,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -193703,7 +193723,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -193731,7 +193751,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -194921,7 +194941,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -195035,7 +195055,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -196875,7 +196895,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -196903,7 +196923,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -196951,7 +196971,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -199077,7 +199097,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -199197,7 +199217,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -199833,7 +199853,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -199981,7 +200001,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -200356,7 +200376,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -200507,7 +200527,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -201009,7 +201029,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -202359,7 +202379,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -203437,7 +203457,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -203818,7 +203838,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -203892,7 +203912,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -205201,7 +205221,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -205438,7 +205458,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -207914,7 +207934,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -208265,7 +208285,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -208364,7 +208384,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -209639,7 +209659,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -209667,7 +209687,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -209695,7 +209715,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -210991,7 +211011,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -213869,7 +213889,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -214102,7 +214122,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -223294,7 +223314,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -223402,7 +223422,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -224345,7 +224365,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -224488,7 +224508,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -224516,7 +224536,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -227267,7 +227287,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -228130,7 +228150,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -228424,7 +228444,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -228717,7 +228737,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -231059,7 +231079,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -231195,7 +231215,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -232006,7 +232026,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -232223,7 +232243,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -232322,7 +232342,7 @@
           "can_write": false,
           "description": "Property of type IMultiAccessorBase",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -235714,7 +235734,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -235919,7 +235939,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -235972,7 +235992,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -241936,7 +241956,7 @@
           "can_write": true,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -244325,7 +244345,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -244436,7 +244456,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -244839,7 +244859,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -245389,7 +245409,7 @@
           "can_write": false,
           "description": "Property of type IMultiString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -245417,7 +245437,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -245990,7 +246010,7 @@
           "can_write": false,
           "description": "Property of type IMultiUnicode",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -246282,7 +246302,7 @@
           "can_write": false,
           "description": "Property of type String",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },
@@ -247010,7 +247030,7 @@
           "can_write": true,
           "description": "Property of type ITsString",
           "empty_value_behavior": {
-            "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'",
+            "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'",
             "returns_when_empty": "***",
             "warning": "Returns '***' placeholder when empty, not empty string or None"
           },

@@ -5,7 +5,7 @@
 ```
 /src
   server.py              # MCP server with 12 tools
-  flexlibs2_analyzer.py  # FlexLibs Python AST extraction
+  flexicon_analyzer.py  # FlexLibs Python AST extraction
   liblcm_extractor.py    # LibLCM .NET reflection extraction
   build_casting_index.py # Pythonnet casting requirements generator
   refresh.py             # Unified refresh script
@@ -16,8 +16,8 @@
     liblcm_api_v11.0.1.json     # etc.
   /flexlibs              # FlexLibs API documentation (versioned JSON)
     flexlibs_api_v1.2.8.json    # FlexLibs stable v1.2.8
-    flexlibs2_api_v2.0.0.json   # FlexLibs 2.0 v2.0.0
-    flexlibs2_api_v2.1.5.json   # etc.
+    flexicon_api_v4.0.0.json    # Flexicon v4.0.0
+    flexicon_api_v4.1.0.json    # etc.
   /embeddings            # Cached embeddings for semantic search
   navigation_graph.json  # Object relationship graph
   casting_index.json     # Pythonnet interface casting requirements
@@ -39,7 +39,7 @@
 
 The MCP supports multiple library versions simultaneously:
 
-- API files are stored with version suffixes: `flexlibs2_api_v2.1.5.json`
+- API files are stored with version suffixes: `flexicon_api_v4.1.0.json`
 - The server auto-detects installed library versions on startup
 - Missing versions are automatically refreshed
 - This allows users to run on different library versions without conflicts
@@ -48,7 +48,7 @@ See [docs/VERSIONING.md](docs/VERSIONING.md) for complete details.
 
 ## Refreshing Indexes
 
-Users typically don't need to manually refresh - it happens automatically when versions change. However, developers modifying FlexLibs 2.0 between releases may need manual refreshing.
+Users typically don't need to manually refresh - it happens automatically when versions change. However, developers modifying Flexicon between releases may need manual refreshing.
 
 ### Manual Refresh Commands
 
@@ -59,8 +59,8 @@ python src/refresh.py
 # Refresh only FlexLibs stable
 python src/refresh.py --flexlibs-only
 
-# Refresh only FlexLibs 2.0
-python src/refresh.py --flexlibs2-only
+# Refresh only Flexicon
+python src/refresh.py --flexicon-only
 
 # Refresh only LibLCM (requires pythonnet and FieldWorks DLLs)
 python src/refresh.py --liblcm-only
@@ -68,17 +68,17 @@ python src/refresh.py --liblcm-only
 
 ### When to Manually Refresh
 
-If you're iterating on FlexLibs 2.0 without changing the version number:
+If you're iterating on Flexicon without changing the version number:
 
 1. Modify the library code
-2. Run `python src/refresh.py --flexlibs2-only`
+2. Run `python src/refresh.py --flexicon-only`
 3. Test with the MCP
 
 ## Key Technical Decisions
 
 - **Self-contained extraction**: Indexes regenerated from source code
 - **Static analysis primary**: Python AST parsing for FlexLibs, .NET reflection for LibLCM
-- **FlexLibs 2.0 preferred**: Better documentation coverage (99% descriptions, 82% examples)
+- **Flexicon preferred**: Better documentation coverage (99% descriptions, 82% examples)
 - **Semantic categorization**: Entities organized by domain and capability
 - **Object-centric organization**: Index organized around LibLCM interfaces (ILexEntry, ILexSense, etc.)
 - **API versioning**: Support multiple library versions via filename suffixes
@@ -90,7 +90,7 @@ If you're iterating on FlexLibs 2.0 without changing the version number:
 | **FieldWorks** | User-facing GUI (provides LibLCM DLLs) | Required - .NET reflection |
 | **LibLCM** | C# data model (2,295 entities) | Required - via FieldWorks |
 | **FlexLibs** | Python wrappers stable (~71 methods) | Optional - indexed for legacy modules |
-| **FlexLibs 2.0** | Python wrappers comprehensive (~1,400 methods) | Optional - indexed for modern modules |
+| **Flexicon** (`pyflexicon` on PyPI) | Python wrappers comprehensive (~1,400 methods) | Optional - indexed for modern modules |
 | **FLExTools** | GUI for running modules | Optional - reference only |
 
 Python packages (see `requirements.txt`):
@@ -110,7 +110,7 @@ Python packages (see `requirements.txt`):
 - Legacy wrapper around LibLCM
 - Used for backward compatibility
 
-### FlexLibs 2.0
+### Flexicon
 - **~1,400** methods with comprehensive documentation
 - 99% description coverage
 - 82% code example coverage
@@ -147,7 +147,7 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
                     |
             FLExTools (IronPython)
                     |
-            FlexLibs 2.0 (Python wrappers)
+            Flexicon (Python wrappers)
                     |
             LibLCM (C# library)
                     |
@@ -167,7 +167,7 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
 Contributions are welcome! Areas for contribution:
 
 - Adding more code examples to the index
-- Testing edge cases in FlexLibs 2.0
+- Testing edge cases in Flexicon
 - Improving semantic search
 - Performance optimizations
 - Documentation improvements

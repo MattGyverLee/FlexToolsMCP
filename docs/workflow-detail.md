@@ -16,7 +16,7 @@ Textual companion to the six detail SVGs in `docs/workflow-detail-*.svg`. Comple
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
-| `api_mode` | string | `"flexlibs2"` ★ recommended · `"flexlibs_stable"` · `"liblcm"` |
+| `api_mode` | string | `"flexicon"` ★ recommended · `"flexlibs_stable"` · `"liblcm"` |
 | `project_name` | string, optional | FieldWorks project name (can be set later) |
 | `write_enabled` | bool | **default FALSE** — dry-run by default |
 | `task` | string, optional | natural-language task hint for early discovery |
@@ -27,7 +27,7 @@ All settings can be updated later; `project_name` and `write_enabled` are also a
 
 1. `session_id = strftime("%Y%m%d-%H%M%S")`
 2. `session_state.clear_discovered_apis()` — forces re-discovery
-3. `api_versions ← detected from APIIndex` (liblcm, flexlibs2, flexlibs_stable)
+3. `api_versions ← detected from APIIndex` (liblcm, flexicon, flexlibs_stable)
 4. `session_state.configure(api_mode, output_type="auto", project, write, versions)`
 5. `rotate_logging_to_session(session_id)` — per-session log file
 
@@ -40,7 +40,7 @@ Pushed proactively so the AI sees runtime invariants BEFORE writing code.
 - **output** — `report.Info / report.Warning / report.Error / report.Blank`. `print()` works but bypasses message counts and ref links.
 - **clickable_refs** — `project.BuildGotoURL(obj) → str`; passed as 2nd arg to `report.*` makes the message clickable in FlexTools UI.
 - **write_protection** — `if modifyAllowed: <mutation>` required for any DB mutation; refused at validation if missing (gate 4).
-- **multistring_placeholder** — FLEx stores `'***'` for unset multilingual fields. flexlibs2 wrapper getters normalize to `''`; raw C# access still returns `'***'`.
+- **multistring_placeholder** — FLEx stores `'***'` for unset multilingual fields. flexicon wrapper getters normalize to `''`; raw C# access still returns `'***'`.
 - **namespace_helpers** — pre-injected, no import needed: `is_empty_multistring(text)`, `FLEX_EMPTY_PLACEHOLDER`, `find_writing_system(project, query)`, `list_writing_systems(project)`. ⚠ MCP-runner only — these helpers are NOT present when the module runs in FlexTools.
 
 Plus `next_steps` (5-step user guide), `mode_info`, session summary, warnings (e.g. "WRITE MODE ENABLED" if `write_enabled=True` or "no project_name set").
@@ -65,7 +65,7 @@ Plus `next_steps` (5-step user guide), `mode_info`, session summary, warnings (e
 | --- | --- |
 | `module_name` | `"Export Custom Data"` |
 | `synopsis` | 1–2 sentence description |
-| `api_target` | `flexlibs2` ★ · `flexlibs_stable` · `liblcm` |
+| `api_target` | `flexicon` ★ · `flexlibs_stable` · `liblcm` |
 | `modifies_db` | bool — gates the write-guard auto-injection |
 | `domain` | `lexicon` · `grammar` · `texts` · `media` · `general` |
 
@@ -81,7 +81,7 @@ Plus `next_steps` (5-step user guide), `mode_info`, session summary, warnings (e
 
 | Parameter | Notes |
 | --- | --- |
-| `flavor` | `flexlibs2` · `flexlibs_stable` · `liblcm` (aliases: `stable`, `advanced`) |
+| `flavor` | `flexicon` · `flexlibs_stable` · `liblcm` (aliases: `stable`, `advanced`) |
 
 Returns `template + flavor guidance + style-guide refs + 5-step next_steps`. Module-init cache saves 50–100 ms per repeat request.
 
@@ -139,16 +139,16 @@ Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per l
 - **Refresh:** `python src/refresh.py --liblcm-only`
 - Requires pythonnet + FieldWorks DLLs at refresh time only
 
-#### `flexlibs2_api.json` ★
-- **Source:** FlexLibs 2.0 Python wrapper (~90% LCM coverage)
+#### `flexicon_api.json` ★
+- **Source:** Flexicon Python wrapper (~90% LCM coverage)
 - **Extraction:** AST static analysis — parses `.py` files, captures Operations classes, decorators, type hints, docstrings, inline examples
 - **Coverage:** ~1400 methods · 99% docs · 82% examples
-- **Refresh:** `python src/refresh.py --flexlibs2-only`
+- **Refresh:** `python src/refresh.py --flexicon-only`
 - Primary recommendation for new modules — best documentation
 
 #### `flexlibs_api.json`
 - **Source:** FlexLibs stable (legacy shallow wrapper)
-- **Extraction:** AST static analysis (same parser as flexlibs2)
+- **Extraction:** AST static analysis (same parser as flexicon)
 - **Coverage:** ~40 functions · stable, FW-version-tolerant
 - **Use when:** FieldWorks < 9.0 or compatibility-bound scripts
 - **Refresh:** `refresh.py --flexlibs-only`
@@ -167,22 +167,22 @@ Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per l
 
 #### Bridge files (cross-flavor coverage map)
 - Consumers: `get_wrapper_dependencies`, `find_wrappers_for_lcm`
-- Files: `flexlibs2_lcm_bridge_*.json`, `flexlibs_lcm_bridge_*.json`, `reverse_mapping_liblcm-*.json`
+- Files: `flexicon_lcm_bridge_*.json`, `flexlibs_lcm_bridge_*.json`, `reverse_mapping_liblcm-*.json`
 - Forward: wrapper method → LCM internals it touches
 - Reverse: LCM symbol → wrappers that cover it
 - Surfaces gaps explicitly — `<coverage gap>` rather than silent absence
 
 #### Version multiplexing
-- Multiple versions coexist in `/index/`: `flexlibs2_api_v2.1.5.json`, `flexlibs2_api_v2.2.0.json` ← active per session
+- Multiple versions coexist in `/index/`: `flexicon_api_v4.0.0.json`, `flexicon_api_v4.1.0.json` ← active per session
 - Server detects installed library version, loads matching index, auto-refreshes if missing
 - See `docs/VERSIONING.md` for the full resolution algorithm
 
 #### Refresh process — regeneration is offline
 - No network, no external API calls, auditable
 - `python src/refresh.py` — refresh all three indexes
-- Flags: `--flexlibs2-only`, `--flexlibs-only`, `--liblcm-only`
+- Flags: `--flexicon-only`, `--flexlibs-only`, `--liblcm-only`
 - Run when source library updates, or first-time setup, or version change detected
-- See `flexlibs2_analyzer.py`, `liblcm_extractor.py`
+- See `flexicon_analyzer.py`, `liblcm_extractor.py`
 
 ### Consumers — what reads from the foundation
 
@@ -238,7 +238,7 @@ Every method name must come from the index. Every Stage 3 tool call adds entries
 - **in:** `method_name | operation_type | object_type`
 - **out:** snippet + surrounding context
 - `operation_type ∈ {create, read, update, delete, iterate, search}`
-- 82% of flexlibs2 methods have at least one example
+- 82% of flexicon methods have at least one example
 
 #### `resolve_property` — casting / property resolution
 - **in:** `property_name`, `context_entity`
@@ -250,7 +250,7 @@ Every method name must come from the index. Every Stage 3 tool call adds entries
 - **in:** `method` (`Class.Method`), `library`
 - **out:** `lcm_deps`, properties, methods, repositories, factories, `mapping_type`
 - Use to see what a wrapper "really" does, or whether dropping to liblcm gets you more
-- Reads from `flexlibs2_lcm_bridge_*.json`
+- Reads from `flexicon_lcm_bridge_*.json`
 
 #### `find_wrappers_for_lcm` — LCM symbol → wrapper coverage
 - **in:** `lcm_name`, `kind`, `include[]`
@@ -276,7 +276,7 @@ Stage 4 is the moment the AI assembles a module from concrete artifacts handed f
 - **From Stage 3 — `get_object_api`** — the verbatim `import_statement` plus exact method signatures, parameter names, and return types for every entity touched.
 - **From Stage 3 — `get_navigation_path`** — a code skeleton for entity-to-entity traversal with null-safety and casts already in place.
 - **From Stage 3 — `find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loop structure).
-- **From Stage 3 — `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexlibs2 or drop to liblcm.
+- **From Stage 3 — `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexicon or drop to liblcm.
 
 Every method name in the finished module traces back to an audit trail of lookups. If a needed call wasn't discovered, the AI is expected to return to Stage 3 rather than guess; gate 6 enforces this structurally.
 
@@ -317,7 +317,7 @@ Direct C# access (`sense.Gloss.BestAnalysisAlternative.Text`) still returns `'**
 | --- | --- |
 | Use a method you didn't discover | Gate 6 (empty `discovered_apis`); Gate 10 catches typos |
 | Mutate without a guard | Gate 4 — even one unguarded mutation blocks the whole script |
-| Mix import flavors (e.g. `from flexlibs import ...` in flexlibs2 mode) | Gate 9 (wrong-library imports) — the silent-fail risk |
+| Mix import flavors (e.g. `from flexlibs import ...` in flexicon mode) | Gate 9 (wrong-library imports) — the silent-fail risk |
 | Access polymorphic property without cast (`sense.Owner.HeadWord`) | Gate 5 — sends you to `resolve_property` |
 | Define a partial module (`def Main` without `docs` + `FlexToolsModule` binding) | Gate 3 |
 
@@ -450,7 +450,7 @@ Queues a rollback, doesn't auto-execute.
 | 6 | API discovery gate | `len(session.discovered_apis) > 0` |  | "I'll just write code from memory" — no Stage 3 tool was called | `api_discovery_required` |
 | 7 | Undefined variables | `detect_undefined_variables()` |  | MCP-internal names that leaked. Allows: imports, locals, FlexTools-provided (`project`, `report`, `modifyAllowed`) | `undefined_variables` |
 | 8 | Missing Operations imports | `detect_missing_operations_imports()` |  | uses `LexEntryOperations`, `LexSenseOperations` etc. without importing. Enforces the `import_statement` contract from `get_object_api` | `missing_imports` |
-| 9 | Wrong-library imports | `detect_wrong_library_imports()` |  | imports that don't match `api_mode` (e.g. `from flexlibs import ...` in flexlibs2 mode). The silent-fail risk | `wrong_library_imports` |
+| 9 | Wrong-library imports | `detect_wrong_library_imports()` |  | imports that don't match `api_mode` (e.g. `from flexlibs import ...` in flexicon mode). The silent-fail risk | `wrong_library_imports` |
 | 10 | Invalid project chain | `detect_invalid_project_chains()` |  | `project.<name>` typos. Conservative — only blocks when difflib finds a high-confidence match (≥0.7) | `invalid_api_chain` |
 | 11 | Per-project write lock | `get_project_write_lock(name)` |  | acquires `asyncio.Lock` keyed by project. Fires only when `write_enabled=True` AND mutating (5b pass) | (lock acquisition) |
 | 12 | Subprocess timeout | `run_script_async(timeout=300)` |  | configurable via `timeout_seconds`. UTF-8 reconfigured stdout/err. Temp `.py` cleaned up on exit | `Execution timeout` |

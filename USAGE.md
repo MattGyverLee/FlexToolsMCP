@@ -13,7 +13,7 @@ The server exposes 16 tools organized by category:
 | Tool | Description |
 |------|-------------|
 | `flextools_start` | **BEGIN HERE** - Initialize session, set project name and API mode |
-| `flextools_manage_config` | Get/set/delete persistent configuration (dotted keys like `paths.flexlibs2`) |
+| `flextools_manage_config` | Get/set/delete persistent configuration (dotted keys like `paths.flexicon`) |
 | `flextools_get_session_history` | View operation history and undo/redo stack depth |
 | `flextools_undo_last_operation` | Undo the most recent database write operation |
 | `flextools_get_module_template` | Get the official FLExTools module template |
@@ -49,9 +49,11 @@ The server supports three API modes for different use cases:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| `flexlibs2` | FlexLibs 2.0 (~1,400 methods) | Recommended for new development |
+| `flexicon` | Flexicon (~1,400 methods) | Recommended for new development |
 | `flexlibs_stable` | FlexLibs stable with LibLCM fallback | Legacy compatibility |
 | `liblcm` | Pure LibLCM C# API | Maximum flexibility |
+
+**Note:** `flexicon` is the canonical `api_mode` value. The former `flexicon` value is still accepted as a deprecated alias.
 
 ## Recommended Workflow
 
@@ -67,7 +69,7 @@ User Query: "I want to delete senses with 'test' in the gloss"
                     v
     +---------------------------+
     |     flextools_start       |  task="delete senses with test in gloss"
-    |   - Analyzes your task    |  api_mode="flexlibs2"
+    |   - Analyzes your task    |  api_mode="flexicon"
     |   - Finds relevant APIs   |
     |   - Checks casting needs  |
     |   - Gets code examples    |  -> Complete plan with code skeleton
@@ -158,7 +160,7 @@ User Query: "I want to delete senses with 'test' in the gloss"
 - **From `get_object_api`** — the verbatim `import_statement` plus exact method signatures, parameter names, and return types.
 - **From `get_navigation_path`** — a code skeleton for entity-to-entity traversal with null-safety and casts already in place.
 - **From `find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loop structure).
-- **From `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexlibs2 or drop to liblcm.
+- **From `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexicon or drop to liblcm.
 
 Every method name in the finished module traces back to a discovery step you can audit. If a needed call wasn't surfaced by Phases 1–2, return to discovery rather than guess — `run_module` refuses execution when no APIs were discovered (gate 6, `api_discovery_required`).
 
@@ -218,8 +220,8 @@ When working with collections like `MorphoSyntaxAnalysesOC`, objects are returne
 for msa in entry.MorphoSyntaxAnalysesOC:
     pos = msa.PartOfSpeechRA  # AttributeError!
 
-# RIGHT - Use FlexLibs2 casting helper
-from flexlibs2.code.lcm_casting import get_pos_from_msa
+# RIGHT - Use Flexicon casting helper
+from flexicon.code.lcm_casting import get_pos_from_msa
 for msa in entry.MorphoSyntaxAnalysesOC:
     pos = get_pos_from_msa(msa)  # Works!
 ```
@@ -236,17 +238,17 @@ for msa in entry.MorphoSyntaxAnalysesOC:
 Indexes refresh automatically when you:
 - Update FieldWorks (LibLCM version may change)
 - Update FlexLibs
-- Update FlexLibs 2.0
+- Update Flexicon
 
 The server detects version changes on startup and refreshes missing or outdated indexes automatically.
 
-**Only manual refresh is needed if:** You're a developer modifying FlexLibs 2.0 between releases without incrementing the version number. See [DEVELOPMENT.md](DEVELOPMENT.md) for manual refresh commands.
+**Only manual refresh is needed if:** You're a developer modifying Flexicon between releases without incrementing the version number. See [DEVELOPMENT.md](DEVELOPMENT.md) for manual refresh commands.
 
 ## Known Limitations
 
 - Cannot control the FLEx GUI interface (e.g., set filters)
 - Only manipulates data, not UI state
-- FlexLibs 2.0 may contain bugs - further testing needed
+- Flexicon may contain bugs - further testing needed
 - Some edge cases in the Scripture module were recently fixed
 
 ## Next Steps

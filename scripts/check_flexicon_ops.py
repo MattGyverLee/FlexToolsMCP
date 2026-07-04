@@ -10,9 +10,9 @@ import os
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from validate_integrity import cmd_flexlibs2
+from validate_integrity import cmd_flexicon
 
 if __name__ == "__main__":
     class Args:
         command = None
-    sys.exit(cmd_flexlibs2(Args()))
+    sys.exit(cmd_flexicon(Args()))

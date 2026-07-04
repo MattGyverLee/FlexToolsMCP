@@ -17,7 +17,7 @@ from server.validators import certify_script_readonly
 
 @lru_cache(maxsize=1)
 def load_api_index():
-    """Load the FlexLibs2 API index (latest version available).
+    """Load the Flexicon API index (latest version available).
 
     Returns an APIIndex instance matching the shape that production code
     passes to certify_script_readonly (attribute access, not dict access).
@@ -30,18 +30,18 @@ def load_api_index():
 
     index_dir = Path(__file__).parent.parent / "index" / "flexlibs"
 
-    # Find the latest flexlibs2 API file
-    flexlibs2_files = sorted(index_dir.glob("flexlibs2_api_v*.json"))
-    if not flexlibs2_files:
-        raise FileNotFoundError(f"No FlexLibs2 API index found in {index_dir}")
+    # Find the latest flexicon API file
+    flexicon_files = sorted(index_dir.glob("flexicon_api_v*.json"))
+    if not flexicon_files:
+        raise FileNotFoundError(f"No Flexicon API index found in {index_dir}")
 
-    index_file = flexlibs2_files[-1]  # Use latest version
+    index_file = flexicon_files[-1]  # Use latest version
 
     with open(index_file, encoding='utf-8') as f:
         api = json.load(f)
 
     idx = APIIndex()
-    idx.flexlibs2 = api
+    idx.flexicon = api
     return idx
 
 
@@ -205,7 +205,7 @@ def test_protected_liblcm_with_writeenabled():
 
 
 def test_protected_with_modifyallowed():
-    """Test that FlexLibs2 mutations protected by modifyAllowed parameter are allowed."""
+    """Test that Flexicon mutations protected by modifyAllowed parameter are allowed."""
     api_index = load_api_index()
 
     code = """
@@ -225,7 +225,7 @@ def test_protected_with_modifyallowed():
     mutating = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
     assert len(mutating) == 0, f"Should have no UNPROTECTED mutations, but got: {mutating}"
 
-    print("[OK] Protected FlexLibs2 mutations with modifyAllowed parameter allowed")
+    print("[OK] Protected Flexicon mutations with modifyAllowed parameter allowed")
 
 
 def test_protected_liblcm_with_modifyallowed():

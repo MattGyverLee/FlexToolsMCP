@@ -53,7 +53,7 @@ No AI model has this in its training data. It must be looked up.
 Developers must navigate three interconnected APIs:
 
 ```
-FlexLibs 2.0 (Python, ~1,400 methods)
+Flexicon (Python, ~1,400 methods)
     |
     v
 FlexLibs stable (Python, ~71 methods)
@@ -72,7 +72,7 @@ Each layer has different:
 
 To get a sense's gloss, you could:
 
-1. **FlexLibs 2.0**: `LexSenseOperations.GetGloss(sense, writing_system)`
+1. **Flexicon**: `LexSenseOperations.GetGloss(sense, writing_system)`
 2. **FlexLibs stable**: `lexicon.GetGloss(entry)` (entry level only)
 3. **LibLCM direct**: `sense.Gloss.get_String(ws_handle).Text`
 
@@ -121,7 +121,7 @@ A generic AI cannot:
 
 ### Hallucination Risk
 
-Even when AI models have been trained on documentation or given context about an API, they cannot hold 2,295 LibLCM entities + 1,400 FlexLibs2 methods in working memory. The result is **syntactically plausible hallucinations**:
+Even when AI models have been trained on documentation or given context about an API, they cannot hold 2,295 LibLCM entities + 1,400 Flexicon methods in working memory. The result is **syntactically plausible hallucinations**:
 
 ```python
 # These look correct but DON'T EXIST:
@@ -151,7 +151,7 @@ The MCP maintains indexed, searchable documentation:
 |-------|----------|------------------|
 | `liblcm_api.json` | 2,295 C# entities | On LibLCM release |
 | `flexlibs_api.json` | 71 stable methods | On FlexLibs release |
-| `flexlibs2_api.json` | 1,400+ methods | On FlexLibs 2.0 release |
+| `flexicon_api.json` | 1,400+ methods | On Flexicon release |
 | `casting_index.json` | Pythonnet casting rules | Derived from LibLCM |
 | `navigation_graph.json` | Object relationships | Derived from LibLCM |
 
@@ -179,7 +179,7 @@ The MCP enforces best practices:
 Beyond code generation, the MCP can:
 - Execute operations directly on FLEx databases
 - Show what would change before committing
-- Handle the FlexLibs2 initialization automatically
+- Handle the Flexicon initialization automatically
 
 ## Real-World Comparison
 

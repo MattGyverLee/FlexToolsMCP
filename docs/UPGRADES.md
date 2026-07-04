@@ -109,7 +109,7 @@ _cache: Optional[dict] = None
 _cache_mtime: float = 0.0
 
 def config_get(key: str, default=None):
-    """Get a config value by dotted key, e.g. 'paths.flexlibs2'."""
+    """Get a config value by dotted key, e.g. 'paths.flexicon'."""
 
 def config_set(key: str, value) -> None:
     """Set a config value. Persists immediately."""
@@ -123,7 +123,7 @@ def config_delete(key: str) -> bool:
 | Key | Replaces |
 |-----|---------|
 | `paths.flexlibs` | `FLEXLIBS_PATH` env var |
-| `paths.flexlibs2` | `FLEXLIBS2_PATH` env var |
+| `paths.flexicon` | `FLEXICON_PATH` env var |
 | `paths.liblcm` | `LIBLCM_PATH` env var |
 | `paths.fieldworks` | `FIELDWORKS_PATH` env var |
 | `server.index_dir` | hardcoded `Path(__file__).parent.parent / "index"` in `get_index_dir()` |
@@ -208,7 +208,7 @@ def pop_undo(self) -> Optional[dict]:
 # Patterns to recognize (examples):
 # "[OK] Created entry 'water' (hvo=12345)" -> operation_type="create_entry", details="form='water', hvo=12345"
 # "[OK] Added sense to 'water' with gloss 'H2O'" -> operation_type="add_sense", details="form='water', gloss='H2O'"
-# These patterns come from flexlibs2 operation stdout; map common messages to operation_type
+# These patterns come from flexicon operation stdout; map common messages to operation_type
 ```
 
 **New tool: `get_session_history`**
@@ -266,7 +266,7 @@ Logic:
 The generated undo script template (stored inline or in `get_module_template`):
 ```python
 # FlexToolsMCP Auto-Generated Undo Script
-from flexlibs2 import FLExProject
+from flexicon import FLExProject
 project = FLExProject()
 project.OpenProject(project_name, write_enabled=True)
 try:
@@ -317,7 +317,7 @@ if _mcp_error:
 
 Formalize the semantic search lazy load (lines 1202-1209) — already correct, just add docstring.
 
-Formalize `_validate_api_mode` flexlibs import (lines 4035-4050) — extract to `_ensure_flexlibs2()` function mirroring `liblcm_extractor.init_pythonnet()`.
+Formalize `_validate_api_mode` flexlibs import (lines 4035-4050) — extract to `_ensure_flexicon()` function mirroring `liblcm_extractor.init_pythonnet()`.
 
 **Scope**: ~20 lines changed/added in server.py
 
@@ -332,7 +332,7 @@ Formalize `_validate_api_mode` flexlibs import (lines 4035-4050) — extract to 
 | **Feature 1** | Centralized error handling via `@tool_handler` + `make_error()` | Consistent error envelopes, better resilience |
 | **Feature 2** | Persistent dotted-key JSON config (`~/.flextoolsmcp/config.json`) | Users can customize paths and settings without code changes |
 | **Feature 3** | Session history + undo/redo via `get_session_history`, `undo_last_operation` tools | Track operations, see what will be undone, leverage FLEx ActionHandler |
-| **Feature 4** | Formalized lazy module loading for MCP, semantic search, flexlibs2 | Better startup resilience if dependencies missing |
+| **Feature 4** | Formalized lazy module loading for MCP, semantic search, flexicon | Better startup resilience if dependencies missing |
 | **Feature 5** | Modularized server.py architecture (8 focused modules, 300-600 lines each) | Easier to navigate, test, and maintain; re-exports preserve backward compatibility |
 
 ### New Tools (3 tools added)
@@ -535,7 +535,7 @@ Unified release combining new functionality (Features 1-4) and architectural imp
    - ~15 lines changed in kernel.py, handlers
 
 6. **Add Feature 4 (Lazy Loading)**:
-   - Add `_ensure_flexlibs2()` function in kernel.py
+   - Add `_ensure_flexicon()` function in kernel.py
    - Wrap MCP imports with try/except in `src/server/__init__.py`
    - ~20 lines in kernel.py
 

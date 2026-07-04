@@ -165,7 +165,7 @@ def _add_polymorphic_warnings(result: dict, steps: list) -> None:
 
     if warnings:
         result[KEY_CASTING_WARNINGS] = warnings
-        result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use CastingOperations from FlexLibs2 to access type-specific properties."
+        result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use CastingOperations from Flexicon to access type-specific properties."
 
 
 async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextContent]:

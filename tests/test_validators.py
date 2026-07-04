@@ -171,7 +171,7 @@ class TestImportValidation(unittest.TestCase):
         code = """
 entries = LexEntryOperations(project).GetAll()
 """
-        result = detect_missing_operations_imports(code, "flexlibs2")
+        result = detect_missing_operations_imports(code, "flexicon")
         self.assertIn("missing_imports", result)
 
     def test_wrong_library_detection(self):
@@ -179,7 +179,7 @@ entries = LexEntryOperations(project).GetAll()
         code = """
 from SIL.LCModel import ILexEntry
 """
-        result = detect_wrong_library_imports(code, "flexlibs2")
+        result = detect_wrong_library_imports(code, "flexicon")
         # Result structure varies - just check keys exist
         self.assertIsInstance(result, dict)
 

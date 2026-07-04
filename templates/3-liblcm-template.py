@@ -5,14 +5,14 @@ PURPOSE:
     [What this module does - ideally something that requires edge case access]
 
 REQUIRES:
-    - FlexLibs2 2.0+ (for casting utilities)
+    - Flexicon 2.0+ (for casting utilities)
     - FieldWorks 9.0+
     - Python/IronPython with pythonnet support
 
 ⚠️  ADVANCED: POWER USERS ONLY
     This template uses direct LibLCM C# access. Complex code, hard to maintain.
-    Use only for edge cases not covered by flexlibs2.
-    See 2-flexlibs2-template.py for recommended approach first.
+    Use only for edge cases not covered by flexicon.
+    See 2-flexicon-template.py for recommended approach first.
 
 AUTHOR:
     [Your Name / Claude Code]
@@ -28,9 +28,9 @@ DATE:
 # pythonnet for C# interop
 import clr
 
-# FlexLibs2 casting utilities
-from flexlibs2.code.lcm_casting import cast_to_concrete
-from flexlibs2.code.lcm_casting import (
+# Flexicon casting utilities
+from flexicon.code.lcm_casting import cast_to_concrete
+from flexicon.code.lcm_casting import (
     ILexEntry,
     ILexSense,
     ILexEntryRef,
@@ -92,7 +92,7 @@ def Main(project, report, modifyAllowed):
                     report.Info(f"  [{i+1}] {form}")
 
                     # BuildGoToURL creates clickable links in FLExTools output
-                    # Works with C# objects just like flexlibs2
+                    # Works with C# objects just like flexicon
                     try:
                         entry_url = project.BuildGotoURL(entry_hvo)
                         report.Info(f"      Goto: {entry_url}")
@@ -173,7 +173,7 @@ def cast_to_interface(obj, interface_type):
 
     Args:
         obj: Raw C# object
-        interface_type: Interface class from flexlibs2.code.lcm_casting
+        interface_type: Interface class from flexicon.code.lcm_casting
 
     Returns:
         Casted object or None if cast fails
@@ -224,18 +224,18 @@ WHAT IS LIBLCM?
   Direct access = 100% API coverage, but complex code.
 
 WHEN TO USE:
-  - Edge cases not covered by flexlibs2
+  - Edge cases not covered by flexicon
   - Performance-critical inner loops
   - Complex data structure manipulation
   - Custom type handling
 
 WHEN NOT TO USE:
-  - Simple read/write operations (use flexlibs2)
+  - Simple read/write operations (use flexicon)
   - Team not familiar with C#
   - Maintenance burden is concern
   - Code readability matters more than power
 
-KEY DIFFERENCES FROM FLEXLIBS2:
+KEY DIFFERENCES FROM FLEXICON:
   1. Raw C# access (no Python-friendly wrappers)
   2. Multistring fields return "***" (must check)
   3. Collections are C# IEnumerable (not Python lists)
@@ -291,7 +291,7 @@ BUILDGOTOURL - CLICKABLE LINKS:
   project.BuildGotoURL(obj) works with both cast objects and HVO identifiers.
   Creates FLExTools-clickable links for instant navigation.
 
-  Works with C# objects just like flexlibs2:
+  Works with C# objects just like flexicon:
     entry = cast_to_concrete(entry_hvo, ILexEntry)
     url = project.BuildGotoURL(entry)  # Works with cast object
     url = project.BuildGotoURL(entry_hvo)  # Also works with HVO
@@ -316,10 +316,10 @@ BUILDGOTOURL - CLICKABLE LINKS:
   Always wrap in try/except - BuildGoToURL might not be available
   in all environments or versions.
 
-WHEN FLEXLIBS2 IS NOT ENOUGH:
+WHEN FLEXICON IS NOT ENOUGH:
   Compare before choosing LibLCM:
 
-  # FlexLibs2 (easier)
+  # Flexicon (easier)
   form = project.LexEntry.GetLexemeForm(entry)  # Returns ""
 
   # LibLCM (harder)
@@ -328,8 +328,8 @@ WHEN FLEXLIBS2 IS NOT ENOUGH:
   if form_text == "***":
       form = ""
 
-  Unless you NEED that extra power, use flexlibs2.
+  Unless you NEED that extra power, use flexicon.
 
-  NOTE: Both LibLCM and flexlibs2 support BuildGoToURL,
+  NOTE: Both LibLCM and flexicon support BuildGoToURL,
   so don't choose LibLCM just for link generation.
 """

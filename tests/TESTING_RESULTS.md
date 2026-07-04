@@ -1,4 +1,4 @@
-# FlexLibs 2.0 Systematic Testing Results
+# Flexicon Systematic Testing Results
 
 **Date:** 2026-02-21
 **Test Suite Version:** 1.0
@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-A comprehensive testing framework has been created to systematically test FlexLibs 2.0 for bugs and edge cases. Two test suites were developed:
+A comprehensive testing framework has been created to systematically test Flexicon for bugs and edge cases. Two test suites were developed:
 
-1. **Static Analysis Suite** - Analyzes FlexLibs 2.0 source code without requiring a live FieldWorks project
+1. **Static Analysis Suite** - Analyzes Flexicon source code without requiring a live FieldWorks project
 2. **Operational Test Suite** - Tests actual operations against a running FieldWorks project (requires live connection)
 
 ### Key Findings
@@ -27,9 +27,9 @@ A comprehensive testing framework has been created to systematically test FlexLi
 
 ## Testing Framework
 
-### Test Suite 1: Operational Tests (`test_flexlibs2_operations.py`)
+### Test Suite 1: Operational Tests (`test_flexicon_operations.py`)
 
-Tests core FlexLibs 2.0 operations with a live FieldWorks project.
+Tests core Flexicon operations with a live FieldWorks project.
 
 #### Test Coverage
 
@@ -66,7 +66,7 @@ Status Breakdown:
 
 Configuration:
   - dry_run: True (read-only mode, no modifications)
-  - FlexLibs2: Not loaded (requires live FieldWorks environment)
+  - Flexicon: Not loaded (requires live FieldWorks environment)
 ```
 
 #### How to Run Live Tests
@@ -75,7 +75,7 @@ When you have access to a FieldWorks project:
 
 ```bash
 # With dry-run (read-only, safer)
-python tests/test_flexlibs2_operations.py
+python tests/test_flexicon_operations.py
 
 # For full CRUD testing (requires DRY_RUN=False in environment)
 # First modify line in FlexTools environment to set DRY_RUN=False
@@ -84,9 +84,9 @@ python tests/test_flexlibs2_operations.py
 
 ---
 
-### Test Suite 2: Static Analysis (`test_flexlibs2_static_analysis.py`)
+### Test Suite 2: Static Analysis (`test_flexicon_static_analysis.py`)
 
-Analyzes FlexLibs 2.0 source code for potential bugs without requiring live connection.
+Analyzes Flexicon source code for potential bugs without requiring live connection.
 
 #### Analysis Scope
 
@@ -113,9 +113,9 @@ value = collection[0] if collection else None
 ```
 
 **Top Files:**
-- `flexlibs2/code/Lexicon/LexSenseOperations.py` (118 issues)
-- `flexlibs2/code/Lexicon/ExampleOperations.py` (50 issues)
-- `flexlibs2/code/TextsWords/WfiMorphBundleOperations.py` (43 issues)
+- `flexicon/code/Lexicon/LexSenseOperations.py` (118 issues)
+- `flexicon/code/Lexicon/ExampleOperations.py` (50 issues)
+- `flexicon/code/TextsWords/WfiMorphBundleOperations.py` (43 issues)
 
 **Recommendation:** Review methods that access collections by index. Many may be safely protected by prior validation, but explicit length checks improve clarity and safety.
 
@@ -266,7 +266,7 @@ Tested with:
 - Emoji: 👋🌍✨
 - Mixed: café naïve 日本語
 
-**Status:** FlexLibs 2.0 should handle all these correctly (UTF-8 support in Python 3)
+**Status:** Flexicon should handle all these correctly (UTF-8 support in Python 3)
 
 ### Empty Multistring Fields ✓
 
@@ -305,20 +305,20 @@ Tested:
 ### Prerequisites
 
 ```bash
-# Install FlexLibs 2.0
-cd D:/Github/flexlibs2
+# Install Flexicon
+cd D:/Github/flexicon
 
 # Or have FieldWorks running with FLExTools
 
 # For static analysis only (no prerequisites):
-python tests/test_flexlibs2_static_analysis.py
+python tests/test_flexicon_static_analysis.py
 ```
 
 ### Run Static Analysis (No Live Project Required)
 
 ```bash
 # Full analysis of all 201 Python files
-python tests/test_flexlibs2_static_analysis.py
+python tests/test_flexicon_static_analysis.py
 
 # Output: tests/test_static_analysis.json
 ```
@@ -327,7 +327,7 @@ python tests/test_flexlibs2_static_analysis.py
 
 ```bash
 # Structured test cases (dry-run mode, read-only)
-python tests/test_flexlibs2_operations.py
+python tests/test_flexicon_operations.py
 
 # Output: tests/test_report.json
 
@@ -344,7 +344,7 @@ python tests/test_flexlibs2_operations.py
 ### High Priority
 
 1. **Test with Live FieldWorks Project**
-   - Run `test_flexlibs2_operations.py` against real project
+   - Run `test_flexicon_operations.py` against real project
    - Monitor for crashes or unexpected behavior
    - Validate each operation type
 
@@ -355,7 +355,7 @@ python tests/test_flexlibs2_operations.py
 
 3. **Standardize Exception Handling (942 issues)**
    - Most are in test/example files (lower priority)
-   - Focus on core flexlibs2/code/ directory
+   - Focus on core flexicon/code/ directory
    - Use specific exception types instead of bare except
 
 ### Medium Priority
@@ -385,8 +385,8 @@ This testing effort created:
 
 ```
 tests/
-  ├── test_flexlibs2_operations.py      (20 test cases - CRUD + edge cases)
-  ├── test_flexlibs2_static_analysis.py (7 automated checks - 1,882 issues)
+  ├── test_flexicon_operations.py      (20 test cases - CRUD + edge cases)
+  ├── test_flexicon_static_analysis.py (7 automated checks - 1,882 issues)
   ├── test_report.json                  (Operational test results)
   ├── test_static_analysis.json         (Static analysis results)
   └── TESTING_RESULTS.md                (This file)
@@ -399,7 +399,7 @@ tests/
 1. **Live Testing**
    ```bash
    # When you have access to a test FieldWorks project:
-   python tests/test_flexlibs2_operations.py
+   python tests/test_flexicon_operations.py
    ```
 
 2. **Review Top Issues**
@@ -410,7 +410,7 @@ tests/
 3. **Create Regression Tests**
    - For any bugs found, add specific test case
    - Include expected behavior documentation
-   - Add to test_flexlibs2_operations.py
+   - Add to test_flexicon_operations.py
 
 4. **Document Edge Cases**
    - Update CLAUDE.md with known limitations
@@ -451,6 +451,6 @@ FIELDWORKS_DLL_PATH=C:/Program Files/SIL/FieldWorks 9
 ✓ **Edge cases covered:** Unicode, empty multistrings, nulls
 ⏳ **Next: Run live tests with real FieldWorks project**
 
-The FlexLibs 2.0 library appears stable with **no critical errors** in static analysis. Most issues are related to defensive programming practices (exception handling, null checks) rather than functional bugs.
+The Flexicon library appears stable with **no critical errors** in static analysis. Most issues are related to defensive programming practices (exception handling, null checks) rather than functional bugs.
 
 Recommended: **Run operational tests against a test FieldWorks project to identify any runtime issues.**

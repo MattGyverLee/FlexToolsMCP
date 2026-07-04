@@ -8,9 +8,9 @@ to avoid duplication and ensure consistency.
 """
 
 # ============================================================
-# Known FlexLibs2 Operations Classes
+# Known Flexicon Operations Classes
 # ============================================================
-# Complete set of Operations classes available in FlexLibs2.
+# Complete set of Operations classes available in Flexicon.
 # Used by validators and analysis tools.
 #
 # These sets are required by pre-commit hooks to verify runtime consistency.
@@ -69,7 +69,25 @@ OPERATIONS_CLASSES = KNOWN_OPERATIONS  # Alias for backwards compatibility
 # ============================================================
 # API Mode Values
 # ============================================================
-# Supported FlexLibs API modes. Used across validators, models,
+# Supported API modes. Used across validators, models,
 # and execution handlers to ensure consistent validation.
-API_MODES = ("flexlibs2", "flexlibs_stable", "liblcm")
-API_MODES_DEFAULT = "flexlibs2"
+API_MODES = ("flexicon", "flexlibs_stable", "liblcm")
+API_MODES_DEFAULT = "flexicon"
+
+# Deprecated api_mode aliases -> canonical value. `flexlibs2` was the previous
+# name for flexicon (pip install pyflexicon); callers passing the old value are
+# transparently mapped to the new one so existing configs / scripts keep working.
+API_MODE_ALIASES = {
+    "flexlibs2": "flexicon",
+}
+
+
+def normalize_api_mode(value):
+    """Map a deprecated api_mode alias to its canonical value.
+
+    Non-string values and unknown modes are returned unchanged so downstream
+    validation (Literal/enum checks) still fires on genuinely invalid input.
+    """
+    if isinstance(value, str):
+        return API_MODE_ALIASES.get(value, value)
+    return value

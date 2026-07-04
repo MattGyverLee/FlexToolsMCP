@@ -1,9 +1,9 @@
 {
   "_schema": "flexlibs-lcm-bridge/1.0",
   "_source": {
-    "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)",
-    "type": "flexlibs2",
-    "version": "4.0.1"
+    "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
+    "type": "flexicon",
+    "version": "4.1.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -18628,6 +18628,9 @@
         "mapping_type": "direct",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()",
             "arg[0] of hasattr()",
@@ -18645,6 +18648,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           }
         ],
@@ -20265,6 +20273,9 @@
           ".set_String()"
         ],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()",
             "arg[0] of Create()"
@@ -20284,6 +20295,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           },
           {
@@ -33990,6 +34006,9 @@
           ".Clear()"
         ],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()",
             "arg[0] of getattr()",
@@ -34009,6 +34028,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           },
           {
@@ -39809,6 +39833,9 @@
           ".Clear()"
         ],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()",
             "arg[0] of getattr()",
@@ -39829,6 +39856,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           },
           {
@@ -73703,6 +73735,9 @@
         "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
           "item": [
             "arg[0] of ApplySyncableProperties()"
           ],
@@ -73710,7 +73745,7 @@
             "arg[1] of ApplySyncableProperties()"
           ],
           "ws_map": [
-            "arg[2] of ApplySyncableProperties()"
+            "ws_map= of ApplySyncableProperties()"
           ]
         },
         "properties_accessed": [],
@@ -73719,6 +73754,11 @@
           {
             "default": "None",
             "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
             "type": "default_value"
           },
           {

@@ -4,16 +4,16 @@
 Safe Casting Helpers for FLExTools Scripts
 
 Provides utility functions for safe property access with automatic fallback casting.
-Works with all 3 API flavors: flexlibs_stable, flexlibs2, liblcm
+Works with all 3 API flavors: flexlibs_stable, flexicon, liblcm
 
 These helpers can be injected into generated code to handle polymorphic type issues
 where base interfaces (like ICmObject) don't expose properties that concrete types have.
 
 Usage:
-    from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+    from flexicon import FLExInitialize, FLExCleanup, FLExProject
     from casting_helpers import safe_get_property, smart_cast
 
-    # For flexlibs2
+    # For flexicon
     entry = project.LexEntry.GetAll()[0]
 
     # Safe property access with auto-casting

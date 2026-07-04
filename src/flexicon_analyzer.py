@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-FlexLibs 2.0 Analyzer
+Flexicon Analyzer
 
-Analyzes the FlexLibs 2.0 Python source code to extract API structure,
+Analyzes the Flexicon Python source code to extract API structure,
 including all operations classes, their methods, and mappings to LibLCM.
 
 Output follows the unified-api-doc/2.0 schema for consistency with
@@ -27,7 +27,7 @@ else:
 
 # ---- Module-Level Constants (for efficient membership testing) ---------------
 
-# LibLCM property names commonly accessed in FlexLibs2 code
+# LibLCM property names commonly accessed in Flexicon code
 COMMON_LCM_PROPERTIES = {
     "Form", "Gloss", "Definition", "Comment", "CitationForm",
     "LexemeFormOA", "MorphTypeRA", "PartOfSpeechRA", "Guid", "Hvo",
@@ -59,7 +59,7 @@ def _detect_version_from_files(base_path: Path,
     Used by library-specific version detection functions.
 
     Args:
-        base_path: Path to search (e.g., Path to flexlibs2/)
+        base_path: Path to search (e.g., Path to flexicon/)
         filenames: Ordered list of filenames to try (e.g., ["__init__.py", "setup.py", "pyproject.toml"])
         patterns: Dict mapping filename -> regex pattern string to extract version
                   Pattern should have one capture group: (X.Y.Z)
@@ -113,9 +113,9 @@ def detect_flexlibs_version(flexlibs_path: str) -> str:
     return "0.0.0"
 
 
-def detect_flexlibs2_version(flexlibs2_path: str) -> str:
-    """Detect FlexLibs 2.0 version from source code or installed package."""
-    base_path = Path(flexlibs2_path) / "flexlibs2"
+def detect_flexicon_version(flexicon_path: str) -> str:
+    """Detect Flexicon version from source code or installed package."""
+    base_path = Path(flexicon_path) / "flexicon"
     version_pattern = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
 
     # Try to detect from files
@@ -131,11 +131,11 @@ def detect_flexlibs2_version(flexlibs2_path: str) -> str:
     if version != "0.0.0":
         return version
 
-    # Fallback: try to import installed flexlibs2 package
+    # Fallback: try to import installed flexicon package
     try:
-        import flexlibs2
-        if hasattr(flexlibs2, 'version'):
-            return flexlibs2.version
+        import flexicon
+        if hasattr(flexicon, 'version'):
+            return flexicon.version
     except ImportError:
         pass
 
@@ -315,7 +315,7 @@ def generate_method_usage_hint(method_name: str, return_type: str = "") -> str:
 
 
 def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
-                          raises: List[str], is_flexlibs2: bool = True) -> Dict[str, Any]:
+                          raises: List[str], is_flexicon: bool = True) -> Dict[str, Any]:
     """
     Infer structured output behavior from method signature and documentation.
 
@@ -345,13 +345,13 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
 
     # Infer empty/not-found behavior based on return type and method name
     if rt_lower == "str":
-        # FlexLibs2 returns "" for empty text fields (handles '***')
-        if is_flexlibs2:
+        # Flexicon returns "" for empty text fields (handles '***')
+        if is_flexicon:
             output["empty"] = {
                 "value": '""',
                 "description": "Empty string when field is not set"
             }
-            output["notes"].append("FlexLibs2 handles '***' placeholder automatically, returns ''")
+            output["notes"].append("Flexicon handles '***' placeholder automatically, returns ''")
         else:
             output["empty"] = {
                 "value": '"***" or ""',
@@ -434,13 +434,13 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
 
 def infer_unified_output_behavior(method_or_property_name: str,
                                   return_type: str,
-                                  library: str = "flexlibs2",
+                                  library: str = "flexicon",
                                   property_kind: Optional[str] = None,
                                   returns_doc: str = "",
                                   raises: List[str] = None,
                                   is_method: bool = True) -> Dict[str, Any]:
     """
-    Unified output behavior inference for FlexLibs, FlexLibs2, and LibLCM.
+    Unified output behavior inference for FlexLibs, Flexicon, and LibLCM.
 
     Consolidates behavior inference logic to avoid duplication across analyzers.
     Automatically adapts behavior based on library type and property characteristics.
@@ -448,7 +448,7 @@ def infer_unified_output_behavior(method_or_property_name: str,
     Args:
         method_or_property_name: Name of method or property (e.g., "GetGloss", "Definition")
         return_type: Return type string (e.g., "str", "bool", "List[ILexSense]", "string")
-        library: "flexlibs2" (default), "flexlibs", or "liblcm"
+        library: "flexicon" (default), "flexlibs", or "liblcm"
         property_kind: LibLCM property kind suffix (OS/OC/RS/RC/OA/RA) if applicable
         returns_doc: Documentation of return value (optional)
         raises: List of exception names that can be raised (optional)
@@ -504,13 +504,13 @@ def infer_unified_output_behavior(method_or_property_name: str,
             }
             output["notes"].append("Check for '***' placeholder in multilingual text fields")
         else:
-            # FlexLibs2 handles '***' automatically
-            if library == "flexlibs2":
+            # Flexicon handles '***' automatically
+            if library == "flexicon":
                 output["empty"] = {
                     "value": '""',
                     "description": "Empty string when field is not set"
                 }
-                output["notes"].append("FlexLibs2 handles '***' placeholder automatically, returns ''")
+                output["notes"].append("Flexicon handles '***' placeholder automatically, returns ''")
             else:
                 # Stable FlexLibs may return '***'
                 output["empty"] = {
@@ -786,7 +786,7 @@ LCM_UTILITIES = {
     "ITsTextProps": ["GetIntProp", "GetStrProp"],
 }
 
-# Common transformation patterns in FlexLibs2
+# Common transformation patterns in Flexicon
 TRANSFORMATION_PATTERNS = {
     "hvo_resolution": ["GetObject", "__GetObject", "ObjectOrId", "GetLexEntry", "GetSense"],
     "ws_default": ["WSHandle", "__WSHandle", "DefaultVernacularWs", "DefaultAnalysisWs"],
@@ -966,7 +966,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
     - methods_called: List of specific LibLCM methods called
     - utilities_used: List of utility classes/methods used (e.g., TsStringUtils)
     - mapping_type: Classification of the mapping (direct, convenience, composite, pure_python)
-    - param_usage: Dict mapping FlexLibs2 params to their LibLCM usage
+    - param_usage: Dict mapping Flexicon params to their LibLCM usage
     - transformations: List of detected transformations (defaults, conversions, etc.)
     """
     result = {
@@ -1095,7 +1095,7 @@ def _get_call_string(node: ast.Call) -> str:
 
 def _classify_mapping_type(lcm_data: Dict[str, Any]) -> str:
     """
-    Classify the type of FlexLibs2 -> LibLCM mapping.
+    Classify the type of Flexicon -> LibLCM mapping.
 
     Types:
     - direct: 1:1 mapping to a single LibLCM call or property access
@@ -1221,7 +1221,7 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
         return_type=return_type,
         returns_doc=parsed_doc["returns"],
         raises=parsed_doc["raises"],
-        is_flexlibs2=True
+        is_flexicon=True
     )
 
     # Derive is_mutating from AST evidence + name-prefix heuristic
@@ -1301,8 +1301,8 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, 
     elif "Wordform" in module_path:
         category = "wordform"
 
-    # Build real Python namespace (flexlibs2.code.Lexicon.LexEntryOperations)
-    namespace = f"flexlibs2.code.{module_path.replace('/', '.')}"
+    # Build real Python namespace (flexicon.code.Lexicon.LexEntryOperations)
+    namespace = f"flexicon.code.{module_path.replace('/', '.')}"
 
     return {
         "id": node.name,  # Alias for compatibility with LibLCM schema
@@ -1371,23 +1371,23 @@ def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, 
     return file_info
 
 
-def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
-    """Analyze the entire FlexLibs 2.0 codebase."""
-    base_path = Path(flexlibs2_path) / "flexlibs2" / "code"
+def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
+    """Analyze the entire Flexicon codebase."""
+    base_path = Path(flexicon_path) / "flexicon" / "code"
 
     if not base_path.exists():
-        raise FileNotFoundError(f"FlexLibs 2.0 code directory not found: {base_path}")
+        raise FileNotFoundError(f"Flexicon code directory not found: {base_path}")
 
-    version = detect_flexlibs2_version(flexlibs2_path)
-    print(f"[INFO] Analyzing FlexLibs 2.0 at: {base_path}")
+    version = detect_flexicon_version(flexicon_path)
+    print(f"[INFO] Analyzing Flexicon at: {base_path}")
     print(f"[INFO] Detected version: {version}")
 
     result = {
         "_schema": "unified-api-doc/2.0",
         "_source": {
-            "type": "flexlibs2",
+            "type": "flexicon",
             "version": version,
-            "description": "FlexLibs 2.0 - Deep Python wrapper for LibLCM (~90% coverage)"
+            "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)"
         },
         "metadata": {
             "total_classes": 0,
@@ -1406,7 +1406,7 @@ def analyze_flexlibs2(flexlibs2_path: str) -> Dict[str, Any]:
         },
         "entities": {},
         "categories": {},
-        "lcm_mapping": {}  # Maps FlexLibs2 methods to LibLCM interfaces
+        "lcm_mapping": {}  # Maps Flexicon methods to LibLCM interfaces
     }
 
     # Analyze all Python files recursively
@@ -1812,7 +1812,7 @@ def _analyze_and_save(analyze_func, library_path: str, output_file: str, version
     """Analyze a library and save results (DRY consolidation of main() code).
 
     Args:
-        analyze_func: Function to call (analyze_flexlibs2 or analyze_flexlibs_stable)
+        analyze_func: Function to call (analyze_flexicon or analyze_flexlibs_stable)
         library_path: Path to library source
         output_file: Output JSON filename
         version_name: Display name ("2.0" or "stable")
@@ -1853,9 +1853,9 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Analyze FlexLibs Python API")
-    parser.add_argument("--flexlibs2-path",
+    parser.add_argument("--flexicon-path",
                         default=None,
-                        help="Path to FlexLibs 2.0 repository")
+                        help="Path to Flexicon repository")
     parser.add_argument("--flexlibs-path",
                         default=None,
                         help="Path to FlexLibs stable repository")
@@ -1876,26 +1876,26 @@ def main():
             exit_on_error=True
         )
 
-    elif args.flexlibs2_path:
-        # Analyze FlexLibs 2.0 (explicit path)
+    elif args.flexicon_path:
+        # Analyze Flexicon (explicit path)
         _analyze_and_save(
-            analyze_flexlibs2,
-            args.flexlibs2_path,
-            args.output or "flexlibs2_api.json",
+            analyze_flexicon,
+            args.flexicon_path,
+            args.output or "flexicon_api.json",
             "2.0",
             exit_on_error=True
         )
 
     else:
         # Default: analyze both if paths exist from environment
-        default_flexlibs2 = os.environ.get("FLEXLIBS2_PATH", r"..\flexlibs2")
+        default_flexicon = os.environ.get("FLEXICON_PATH", r"..\flexicon")
         default_flexlibs = os.environ.get("FLEXLIBS_PATH", r"..\flexlibs")
 
-        if Path(default_flexlibs2).exists():
+        if Path(default_flexicon).exists():
             _analyze_and_save(
-                analyze_flexlibs2,
-                default_flexlibs2,
-                args.output or "flexlibs2_api.json",
+                analyze_flexicon,
+                default_flexicon,
+                args.output or "flexicon_api.json",
                 "2.0"
             )
 

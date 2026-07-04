@@ -4,9 +4,9 @@
 Equivalence handler functions for FlexToolsMCP.
 
 These handlers surface the cross-flavor mapping data that lives in the LCM
-bridge files (flexlibs2_lcm_bridge_*.json, flexlibs_lcm_bridge_*.json) and
+bridge files (flexicon_lcm_bridge_*.json, flexlibs_lcm_bridge_*.json) and
 in reverse_mapping_liblcm-*.json. They are the deliberate, scoped path for
-the LLM to do flexlibs <-> flexlibs2 <-> liblcm lookups, replacing the
+the LLM to do flexlibs <-> flexicon <-> liblcm lookups, replacing the
 previous implicit cross-layer leakage.
 
 Tools:
@@ -25,7 +25,7 @@ try:
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
-        KEY_FLEXLIBS2, KEY_FLEXLIBS_STABLE,
+        KEY_FLEXICON, KEY_FLEXLIBS_STABLE,
     )
 except ImportError:
     from server.kernel import get_api_index, session_state
@@ -33,15 +33,15 @@ except ImportError:
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
-        KEY_FLEXLIBS2, KEY_FLEXLIBS_STABLE,
+        KEY_FLEXICON, KEY_FLEXLIBS_STABLE,
     )
 
 
 # Library label keys used by the reverse_mapping by_liblcm_entity entries.
 # (The reverse mapping uses 'flexlibs_2' / 'flexlibs_stable' rather than
-# 'flexlibs2' / 'flexlibs_stable'.)
+# 'flexicon' / 'flexlibs_stable'.)
 _REVERSE_LIB_KEYS = {
-    "flexlibs2": "flexlibs_2",
+    "flexicon": "flexlibs_2",
     "flexlibs_stable": "flexlibs_stable",
 }
 
@@ -61,9 +61,9 @@ def _get_bridge(library: str) -> Optional[dict]:
     if api is None:
         return None
 
-    if library == "flexlibs2":
-        api.ensure_flexlibs2_bridge_loaded()
-        return api.flexlibs2_lcm_bridge
+    if library == "flexicon":
+        api.ensure_flexicon_bridge_loaded()
+        return api.flexicon_lcm_bridge
     if library == "flexlibs_stable":
         api.ensure_flexlibs_stable_bridge_loaded()
         return api.flexlibs_stable_lcm_bridge
@@ -84,16 +84,16 @@ def _get_reverse_mapping() -> Optional[dict]:
 
 async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
     """Look up the LCM internals (factories, repos, properties, methods,
-    mapping_type) used by a flexlibs/flexlibs2 wrapper method."""
+    mapping_type) used by a flexlibs/flexicon wrapper method."""
     method = args.get("method", "")
-    library = args.get("library", "flexlibs2")
+    library = args.get("library", "flexicon")
 
-    if library not in ("flexlibs2", "flexlibs_stable"):
+    if library not in ("flexicon", "flexlibs_stable"):
         return _text({
             KEY_FOUND: False,
             KEY_LIBRARY: library,
             KEY_METHOD: method,
-            KEY_MESSAGE: f"Unknown library: {library!r}. Use 'flexlibs2' or 'flexlibs_stable'.",
+            KEY_MESSAGE: f"Unknown library: {library!r}. Use 'flexicon' or 'flexlibs_stable'.",
         })
 
     bridge = _get_bridge(library)
@@ -110,7 +110,7 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
     entry = by_method.get(method)
     if entry is None:
         # Suggest checking the other library as a hint.
-        other = "flexlibs_stable" if library == "flexlibs2" else "flexlibs2"
+        other = "flexlibs_stable" if library == "flexicon" else "flexicon"
         return _text({
             KEY_FOUND: False,
             KEY_LIBRARY: library,
@@ -124,7 +124,7 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
 
     # Surface the current session mode so the caller knows whether the LCM
     # names below are callable on the active surface or just informational.
-    api_mode = getattr(session_state, "api_mode", "flexlibs2")
+    api_mode = getattr(session_state, "api_mode", "flexicon")
     advisory = (
         f"These LCM names are bridge metadata, not callable surface in "
         f"{library} mode. To call LCM directly, switch to api_mode='liblcm'."
@@ -244,7 +244,7 @@ def _lookup_flat_kind(
     The reverse mapping does not split these by library, so we report the flat
     list as wrapper coverage and surface a gap whenever an `include` library
     is asked for but produced zero hits. (Currently every entry is a
-    flexlibs2 method since that is the wrapper layer that maps LCM directly.)
+    flexicon method since that is the wrapper layer that maps LCM directly.)
     """
     bucket = reverse.get(kind, {}) if kind != "factory" else reverse.get("factories", {})
     if kind == "factory":
@@ -262,13 +262,13 @@ def _lookup_flat_kind(
 
     # Split entries by inferred library. The reverse mapping does not encode
     # this directly, so we infer: any entry whose `class` matches a class in
-    # the flexlibs2 bridge belongs to flexlibs2; anything else falls back to
+    # the flexicon bridge belongs to flexicon; anything else falls back to
     # flexlibs_stable. To avoid pulling the bridge for a hot path, default
-    # to attributing all entries to flexlibs2 (which is where the reverse
+    # to attributing all entries to flexicon (which is where the reverse
     # mapping is generated from in build_reverse_mapping.py).
     coverage = {lib: [] for lib in include}
-    if "flexlibs2" in coverage:
-        coverage["flexlibs2"] = list(entries)
+    if "flexicon" in coverage:
+        coverage["flexicon"] = list(entries)
 
     gaps = [lib for lib, v in coverage.items() if not v]
 
@@ -341,12 +341,12 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
     libraries with no coverage in the `gaps` field."""
     lcm_name = args.get("lcm_name", "")
     kind = args.get("kind", "auto") or "auto"
-    include = args.get("include") or ["flexlibs2", "flexlibs_stable"]
+    include = args.get("include") or ["flexicon", "flexlibs_stable"]
 
     # Validate include (silently drop unknown libs)
     include = [lib for lib in include if lib in _REVERSE_LIB_KEYS]
     if not include:
-        include = ["flexlibs2", "flexlibs_stable"]
+        include = ["flexicon", "flexlibs_stable"]
 
     reverse = _get_reverse_mapping()
     if not reverse:

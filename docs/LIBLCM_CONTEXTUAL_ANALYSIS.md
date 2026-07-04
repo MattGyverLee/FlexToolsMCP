@@ -187,11 +187,11 @@ For each detected mutation:
 | Scenario | is_certified_readonly | Confidence |
 |----------|---------------------|----|
 | No mutations | `True` | `high` |
-| Only FlexLibs2 methods | `True` | `high` |
+| Only Flexicon methods | `True` | `high` |
 | Only protected LibLCM | `True` | `high` |
-| Mixed protected + FlexLibs2 | `True` | `high` |
+| Mixed protected + Flexicon | `True` | `high` |
 | Unprotected LibLCM present | `False` | `high` |
-| Unknown FlexLibs2 methods | `False` | `low` |
+| Unknown Flexicon methods | `False` | `low` |
 
 ---
 
@@ -223,10 +223,10 @@ entry = project.LexEntry.Find("run")
 project._cache.BeginNonUndoableTask()  # Will fail certification
 ```
 
-### Safe: FlexLibs2 Already Guards
+### Safe: Flexicon Already Guards
 
 ```python
-# OK: No need for extra guard (FlexLibs2 has _EnsureWriteEnabled)
+# OK: No need for extra guard (Flexicon has _EnsureWriteEnabled)
 entry = project.LexEntry.Create("new_word")
 entry.SensesOS.Add(project.LexSense.Create(...))
 ```

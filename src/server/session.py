@@ -121,7 +121,7 @@ class SessionState:
     Also tracks operation history and undo/redo stacks (Feature 3).
     """
     session_id: str = ""                   # Session ID (timestamp format: YYYYMMDD-HHMMSS)
-    api_mode: str = "flexlibs2"            # API mode: flexlibs2, flexlibs_stable, liblcm
+    api_mode: str = "flexicon"            # API mode: flexicon, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
     write_enabled: bool = False            # Write access: False = read-only/dry-run

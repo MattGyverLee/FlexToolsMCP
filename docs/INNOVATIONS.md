@@ -42,7 +42,7 @@ for msa in entry.MorphoSyntaxAnalysesOC:
 }
 ```
 
-The `resolve_property` tool surfaces these warnings **before** code is written, and suggests the FlexLibs2 casting helpers.
+The `resolve_property` tool surfaces these warnings **before** code is written, and suggests the Flexicon casting helpers.
 
 ### 2. Semantic Domain Categorization
 
@@ -76,7 +76,7 @@ The `get_navigation_path` tool returns traversal code, not just relationship nam
 
 ### 4. Reverse Mapping (LibLCM -> FlexLibs)
 
-**Problem:** User finds `ILexEntry.SensesOS` in LibLCM docs but wants the FlexLibs2 wrapper.
+**Problem:** User finds `ILexEntry.SensesOS` in LibLCM docs but wants the Flexicon wrapper.
 
 **Innovation:** Bi-directional mapping between C# and Python layers:
 
@@ -89,7 +89,7 @@ This is embedded in the indexes, enabling seamless API discovery regardless of w
 
 ### 5. Cross-Library Linking
 
-**Innovation:** FlexLibs2 entities explicitly link to the LibLCM interfaces they wrap:
+**Innovation:** Flexicon entities explicitly link to the LibLCM interfaces they wrap:
 
 ```json
 {
@@ -121,7 +121,7 @@ The `search_by_capability` tool expands queries using these synonyms.
 
 ### 7. Pattern Extraction from Docstrings
 
-**Innovation:** Common code patterns extracted from FlexLibs2 docstrings and examples:
+**Innovation:** Common code patterns extracted from Flexicon docstrings and examples:
 
 | Pattern | Description | Source |
 |---------|-------------|--------|
@@ -158,7 +158,7 @@ This ensures users understand the APIs before writing code.
 - **`get_object_api`** — verbatim `import_statement`, exact signatures, parameter names, return types.
 - **`get_navigation_path`** — code skeleton for entity-to-entity traversal with null-safety and casts.
 - **`find_examples`** — real CRUD snippets that anchor call shape (argument order, paired calls, surrounding loops).
-- **`resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide flexlibs2-vs-liblcm.
+- **`resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide flexicon-vs-liblcm.
 
 Every method name in the finished module traces back to an audited lookup. If a needed call wasn't discovered, the AI returns to discovery rather than guessing — gate 6 (`api_discovery_required`) enforces this structurally at run time.
 
@@ -185,7 +185,7 @@ run_operation(
 
 | Layer | Coverage | Documentation | Use Case |
 |-------|----------|---------------|----------|
-| `flexlibs2` | ~1,400 methods | 99% described, 82% examples | New development |
+| `flexicon` | ~1,400 methods | 99% described, 82% examples | New development |
 | `flexlibs_stable` | ~71 methods | Basic | Legacy compatibility |
 | `liblcm` | 2,295 entities | Minimal | Maximum flexibility |
 
@@ -213,12 +213,12 @@ Source Code
     |
     v
 +-------------------+     +-------------------+     +-------------------+
-| flexlibs2_analyzer|     | liblcm_extractor  |     | build_casting_index|
+| flexicon_analyzer|     | liblcm_extractor  |     | build_casting_index|
 | (Python AST)      |     | (.NET reflection) |     | (cross-reference)  |
 +-------------------+     +-------------------+     +-------------------+
     |                         |                         |
     v                         v                         v
-flexlibs2_api.json      liblcm_api.json          casting_index.json
+flexicon_api.json      liblcm_api.json          casting_index.json
                               |
                               v
                     +-------------------+

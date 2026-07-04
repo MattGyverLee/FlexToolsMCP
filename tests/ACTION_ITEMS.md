@@ -1,9 +1,9 @@
-# FlexLibs 2.0 Testing - Action Items
+# Flexicon Testing - Action Items
 
 ## Critical Review Items
 
 ### 1. LexSenseOperations.py (118 issues)
-**File:** `flexlibs2/code/Lexicon/LexSenseOperations.py`
+**File:** `flexicon/code/Lexicon/LexSenseOperations.py`
 **Primary Issues:** Unchecked array indexing (likely 118/118 are indexing)
 
 **What to check:**
@@ -22,7 +22,7 @@ definition = senses[0].Definition if senses else None  # ✓
 ---
 
 ### 2. ExampleOperations.py (50 issues)
-**File:** `flexlibs2/code/Lexicon/ExampleOperations.py`
+**File:** `flexicon/code/Lexicon/ExampleOperations.py`
 **Primary Issues:** Unchecked array indexing
 
 **Similar pattern to LexSenseOperations**
@@ -30,7 +30,7 @@ definition = senses[0].Definition if senses else None  # ✓
 ---
 
 ### 3. WfiMorphBundleOperations.py (43 issues)
-**File:** `flexlibs2/code/TextsWords/WfiMorphBundleOperations.py`
+**File:** `flexicon/code/TextsWords/WfiMorphBundleOperations.py`
 **Primary Issues:** Unchecked array indexing
 
 **Likely same pattern as above**
@@ -167,8 +167,8 @@ definition = senses[0].Definition if senses else None  # ✓
 
 ```
 tests/
-├── test_flexlibs2_operations.py       [20 test cases]
-├── test_flexlibs2_static_analysis.py  [7 automated checks]
+├── test_flexicon_operations.py       [20 test cases]
+├── test_flexicon_static_analysis.py  [7 automated checks]
 ├── test_static_analysis.json          [1,882 issues detailed]
 ├── test_report.json                   [test results]
 ├── TESTING_RESULTS.md                 [full analysis]
@@ -184,15 +184,15 @@ tests/
 When committing these test files:
 
 ```
-Add comprehensive FlexLibs 2.0 testing suite
+Add comprehensive Flexicon testing suite
 
-- Created test_flexlibs2_operations.py with 20 test cases
+- Created test_flexicon_operations.py with 20 test cases
   * CRUD operations (Create/Read/Update/Delete)
   * Unicode handling (Chinese, Arabic, Greek, Cyrillic, emoji)
   * Empty multistring fields ('***' placeholder)
   * Null reference handling
 
-- Created test_flexlibs2_static_analysis.py with 7 automated checks
+- Created test_flexicon_static_analysis.py with 7 automated checks
   * Analyzed 201 Python files
   * Found 1,882 issues (0 critical)
   * Issues: unchecked indexing (724), exception handling (942)
@@ -219,7 +219,7 @@ When you have access to a FieldWorks project:
 cd d:\Github\FlexToolsMCP
 
 # 2. Run operational tests in dry-run mode (safe)
-python tests/test_flexlibs2_operations.py
+python tests/test_flexicon_operations.py
 
 # 3. Review results
 cat tests/test_report.json
@@ -240,4 +240,4 @@ cat tests/test_report.json
 ✓ **Operational test structure ready**
 ⏳ **Next: Live testing with FieldWorks project**
 
-**Overall Assessment:** FlexLibs 2.0 appears stable. No critical errors in static analysis. Recommended: Run operational tests to validate runtime behavior.
+**Overall Assessment:** Flexicon appears stable. No critical errors in static analysis. Recommended: Run operational tests to validate runtime behavior.

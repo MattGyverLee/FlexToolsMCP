@@ -63,7 +63,7 @@ When you graduate a snippet (or write a full module), drop a one-line `# User as
 ```python
 # User asked: Add a Pinyin (zh-Latn-pinyin) gloss to every sense whose English gloss starts with "to ".
 
-from flexlibs2 import FLExProject, LexSenseOperations
+from flexicon import FLExProject, LexSenseOperations
 # ... rest of module
 ```
 
@@ -78,13 +78,13 @@ When generating FLExTools scripts, **match the form to the task**: bare snippet 
 ### 1. Choose the Right Flavor
 
 ```python
-# USE FLEXLIBS2 BY DEFAULT
+# USE FLEXICON BY DEFAULT
 # Unless:
 #   - User explicitly requests a specific flavor
 #   - FieldWorks < 9.0 (use stable flexlibs)
-#   - Edge case not covered by flexlibs2 (use LibLCM)
+#   - Edge case not covered by flexicon (use LibLCM)
 
-from flexlibs2 import FLExProject, LexEntryOperations, LexSenseOperations
+from flexicon import FLExProject, LexEntryOperations, LexSenseOperations
 ```
 
 **Never assume stable flexlibs** - it has ~40 functions (limiting).
@@ -107,8 +107,8 @@ This was discovered by Dennis - it's a **proven UX improvement**.
 ### 3. Explicit Imports (CRITICAL)
 
 ```python
-# ALWAYS import explicitly from flexlibs2
-from flexlibs2 import (
+# ALWAYS import explicitly from flexicon
+from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
@@ -145,7 +145,7 @@ report.Error(f"Failed to process entry: {e}")
 ### 5. Multistring Handling
 
 ```python
-# FlexLibs2 (recommended)
+# Flexicon (recommended)
 gloss = project.LexSense.GetGloss(sense)
 if not gloss:  # Empty check is normal Python
     report.Info("Gloss is empty")
@@ -259,7 +259,7 @@ Allow users to preview changes without write access enabled.
 
 The MCP runner injects these into the execution namespace before running your code, in both lightweight ops and full modules. Importing them is unnecessary and reinventing them is a code smell.
 
-> ⚠️ **Scope warning:** these helpers exist only inside the MCP runner subprocess. If you save your code as a FlexTools module file (`.py` in the FlexTools modules folder), the helpers are NOT there when FlexTools loads the file — inline your own copies, or stick to standard flexlibs2 calls.
+> ⚠️ **Scope warning:** these helpers exist only inside the MCP runner subprocess. If you save your code as a FlexTools module file (`.py` in the FlexTools modules folder), the helpers are NOT there when FlexTools loads the file — inline your own copies, or stick to standard flexicon calls.
 
 ```python
 # Empty-multistring detection (covers None, "", and "***")
@@ -291,7 +291,7 @@ def report_with_link(project, report, obj, label):
         return False
 
 def multistring_safe(project, sense, field_name):
-    """Get multistring field safely (flexlibs2)"""
+    """Get multistring field safely (flexicon)"""
     try:
         if field_name == "gloss":
             return project.LexSense.GetGloss(sense)
@@ -308,9 +308,9 @@ def multistring_safe(project, sense, field_name):
 
 ### DO ✓
 
-- ✓ Use flexlibs2 by default (unless constrained)
+- ✓ Use flexicon by default (unless constrained)
 - ✓ Add BuildGoToURL links for navigation
-- ✓ Import explicitly from flexlibs2
+- ✓ Import explicitly from flexicon
 - ✓ Use report.Info/Warning/Error appropriately
 - ✓ Wrap in try/except at multiple levels
 - ✓ **ALWAYS check `modifyAllowed` before ANY write** (CRITICAL)
@@ -371,10 +371,10 @@ This design emerged from lessons learned about code divergence - using two separ
 
 When generating a script:
 
-1. **Default** → Use `2-flexlibs2-template.py`
+1. **Default** → Use `2-flexicon-template.py`
 2. **User says "stable flexlibs"** → Use `1-flexlibs-stable-template.py`
 3. **User says "edge case" or "performance"** → Use `3-liblcm-template.py`
-4. **Unsure** → Ask the user which flavor, or use flexlibs2
+4. **Unsure** → Ask the user which flavor, or use flexicon
 
 ---
 
@@ -406,7 +406,7 @@ except Exception as e:
 ```
 
 ### Pattern 3: Namespace Awareness
-Dennis lost trust in flexlibs2 when hitting the OperationsMethod bug. Lesson:
+Dennis lost trust in flexicon when hitting the OperationsMethod bug. Lesson:
 - Every template must explicitly import from its flavor
 - Prevent silent shadowing by stable flexlibs
 - Make it obvious which version is being used
@@ -494,9 +494,9 @@ If you discover a new pattern or best practice:
 ## Version Information
 
 - **FlexLibs stable:** v1.2.8 (limited, legacy)
-- **FlexLibs2:** v2.0+ (recommended, preferred)
+- **Flexicon:** v4.1.0+ (recommended, preferred)
 - **LibLCM:** v11.0.0+ (full API, complex)
-- **FieldWorks:** 9.0+ for flexlibs2/LibLCM; 8.x for stable
+- **FieldWorks:** 9.0+ for flexicon/LibLCM; 8.x for stable
 
 ---
 
@@ -504,6 +504,6 @@ If you discover a new pattern or best practice:
 
 - `templates/00-FLAVOR-GUIDE.md` - Flavor comparison and when to use each
 - `templates/1-flexlibs-stable-template.py` - Stable flexlibs examples
-- `templates/2-flexlibs2-template.py` - FlexLibs2 examples (RECOMMENDED)
+- `templates/2-flexicon-template.py` - Flexicon examples (RECOMMENDED)
 - `templates/3-liblcm-template.py` - LibLCM examples
 - `CLAUDE.md` - Overall project guidelines

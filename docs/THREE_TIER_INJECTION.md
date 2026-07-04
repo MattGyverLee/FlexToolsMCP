@@ -18,7 +18,7 @@ The system now uses an **intelligent three-tier strategy** to optimize casting h
 
 ```python
 # User code runs with NO helper definitions
-api_imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject"""
+api_imports = """from flexicon import FLExInitialize, FLExCleanup, FLExProject"""
 # ← No casting helpers added
 ```
 
@@ -31,7 +31,7 @@ api_imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject"
 **What gets injected**: Only the helpers that are actually needed
 
 ```python
-api_imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+api_imports = """from flexicon import FLExInitialize, FLExCleanup, FLExProject
 try:
     from casting_helpers import get_headword, safe_get_property
 except ImportError:
@@ -53,7 +53,7 @@ except ImportError:
 **What gets injected**: All possible helpers (safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form)
 
 ```python
-api_imports = """from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+api_imports = """from flexicon import FLExInitialize, FLExCleanup, FLExProject
 try:
     from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
 except ImportError:
@@ -172,7 +172,7 @@ def _get_api_mode_imports(
 
 Now works for all 3 modes:
 - **flexlibs_stable**: Uses tier-based injection
-- **flexlibs2**: Uses tier-based injection
+- **flexicon**: Uses tier-based injection
 - **liblcm**: Uses tier-based injection
 
 ### 4. Execution Handler Integration
@@ -235,7 +235,7 @@ for entry in project.LexEntry.GetAll():
 
 **Generated code:**
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 # ← NO casting helpers injected (user was explicit about casting)
 
 def Main(project, report, modifyAllowed):
@@ -264,7 +264,7 @@ helpers_needed = {"safe_get_property"}
 
 **Generated code:**
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 try:
     from casting_helpers import safe_get_property
 except ImportError:
@@ -294,7 +294,7 @@ for sense in senses:
 
 **Generated code:**
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 try:
     from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
 except ImportError:

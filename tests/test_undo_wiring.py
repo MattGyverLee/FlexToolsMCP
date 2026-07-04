@@ -39,7 +39,7 @@ def _init_kernel():
 
 def _start(project_name: str, write_enabled: bool, undoable: bool) -> dict:
     args = {
-        "api_mode": "flexlibs2",
+        "api_mode": "flexicon",
         "project_name": project_name,
         "output_type": "auto",
         "write_enabled": write_enabled,
@@ -76,7 +76,7 @@ def test_undoable_inherited_on_same_project_restart():
     _start("Proj_inherit", write_enabled=True, undoable=True)
     # Restart with no undoable arg (and not in _user_provided_keys)
     r = asyncio.run(handle_start({
-        "api_mode": "flexlibs2",
+        "api_mode": "flexicon",
         "project_name": "Proj_inherit",
         "output_type": "auto",
         "write_enabled": True,
@@ -209,7 +209,7 @@ def test_undo_pops_checkpoint_on_no_real_undo():
     ss.undo_checkpoints = [{"op_id": "fake", "seq": 1}]
     r = asyncio.run(handle_undo_last_operation({"count": 1}))
     data = json.loads(r[0].text)
-    # Subprocess will fail (no real flexlibs2/FW available) -> undid == 0
+    # Subprocess will fail (no real flexicon/FW available) -> undid == 0
     assert data["success"] is False
     assert data.get("undid", 0) == 0
     # And no checkpoint should be popped

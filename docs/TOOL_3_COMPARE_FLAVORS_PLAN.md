@@ -4,7 +4,7 @@ Status: **NOT IMPLEMENTED.** Plan only. Tools 1 (`get_wrapper_dependencies`) and
 
 ## Purpose
 
-Show the same operation expressed in all three flavors side-by-side: flexlibs2 wrapper, flexlibs_stable wrapper, raw liblcm. Help users (and the LLM) pick the right flavor for a task and understand the trade-offs.
+Show the same operation expressed in all three flavors side-by-side: flexicon wrapper, flexlibs_stable wrapper, raw liblcm. Help users (and the LLM) pick the right flavor for a task and understand the trade-offs.
 
 ## When to build
 
@@ -16,7 +16,7 @@ Wait until Tools 1 + 2 have actually been used in real sessions. If the LLM cons
 
 ```python
 class CompareFlavorsInput(BaseModel):
-    """Show how the same operation looks across flexlibs2, flexlibs_stable, and liblcm."""
+    """Show how the same operation looks across flexicon, flexlibs_stable, and liblcm."""
     query: Optional[str] = Field(
         default=None,
         description="Natural-language operation description (e.g. 'get headword for entry'). Mutually exclusive with `operation`."
@@ -26,7 +26,7 @@ class CompareFlavorsInput(BaseModel):
         description="Specific wrapper method to compare (e.g. 'LexEntryOperations.GetHeadword'). Tool will reverse-resolve to LCM and stable equivalents."
     )
     include: list[str] = Field(
-        default_factory=lambda: ["flexlibs2", "flexlibs_stable", "liblcm"],
+        default_factory=lambda: ["flexicon", "flexlibs_stable", "liblcm"],
         description="Which flavors to include. Omit a flavor if you don't need it."
     )
     show_examples: bool = Field(
@@ -44,20 +44,20 @@ Exactly one of `query` or `operation` required.
   "found": true,
   "matched_on": "operation" | "query",
   "anchor": {
-    "library": "flexlibs2",
+    "library": "flexicon",
     "class": "LexEntryOperations",
     "method": "GetHeadword",
     "signature": "GetHeadword(entry_or_hvo)",
     "summary": "Get the headword for an entry."
   },
   "flavors": {
-    "flexlibs2": {
+    "flexicon": {
       "available": true,
       "class": "LexEntryOperations",
       "method": "GetHeadword",
       "signature": "GetHeadword(entry_or_hvo)",
       "example": "<from index if show_examples>",
-      "import": "from flexlibs2 import LexEntryOperations",
+      "import": "from flexicon import LexEntryOperations",
       "tradeoff_notes": ["Returns clean Python str", "Handles '***' multistring placeholder"]
     },
     "flexlibs_stable": {
@@ -80,7 +80,7 @@ Exactly one of `query` or `operation` required.
     }
   },
   "gaps": [],
-  "session_mode": "flexlibs2",
+  "session_mode": "flexicon",
   "advisory": "<contextual advice if user is in a mode missing from results>"
 }
 ```
@@ -95,26 +95,26 @@ If a flavor lacks coverage, its block has `available: false` and `gaps` lists th
    - If `methods_called` is non-empty and `properties_accessed` is empty → primary is the first method in `methods_called`.
    - If `properties_accessed` is non-empty → primary is the first property access.
    - Otherwise, use `factories_used` if present.
-3. Use Tool 2's reverse mapping to find the *other* wrapper (stable if anchor was flexlibs2, vice versa) that covers the same LCM symbol.
+3. Use Tool 2's reverse mapping to find the *other* wrapper (stable if anchor was flexicon, vice versa) that covers the same LCM symbol.
 4. Build the liblcm block from the LCM symbol directly (look up in `api_index.liblcm.entities` to get type, kind, signature).
 
 **`query` path**: anchor is whichever flavor matches best.
 1. Run `search_by_capability` against all three sources internally with the query.
-2. Pick the top result as anchor (prefer flexlibs2 > flexlibs_stable > liblcm if scores are close).
+2. Pick the top result as anchor (prefer flexicon > flexlibs_stable > liblcm if scores are close).
 3. Resolve to other flavors via the same logic as the `operation` path, using Tool 1 and Tool 2.
 
 ### Edge cases & rules
 
 - **Casting hints**: when the liblcm block returns a polymorphic type, include a casting note pulled from `casting_index_liblcm-v11.0.0.json`. Reuse the polymorphic-collection logic from `resolve_property`.
-- **Empty multistring**: any flavor returning a multistring should note that flexlibs2 normalizes `'***'` to `''` while raw liblcm does not. Pull this from the existing `KEY_IS_MULTISTRING` / `KEY_EMPTY_VALUE_WARNING` machinery.
-- **Mode coherence**: if `session_mode` is not in `include`, surface an advisory ("you're in flexlibs2 mode but didn't ask for flexlibs2 — most users want this included").
+- **Empty multistring**: any flavor returning a multistring should note that flexicon normalizes `'***'` to `''` while raw liblcm does not. Pull this from the existing `KEY_IS_MULTISTRING` / `KEY_EMPTY_VALUE_WARNING` machinery.
+- **Mode coherence**: if `session_mode` is not in `include`, surface an advisory ("you're in flexicon mode but didn't ask for flexicon — most users want this included").
 - **No anchor found**: return `{"found": false}` with hints to try `search_by_capability` or `find_wrappers_for_lcm` directly.
 
 ### What it composes
 
 | Calls into | Why |
 |---|---|
-| `flexlibs2_lcm_bridge` (Tool 1's data) | Resolve flexlibs2 method → LCM internals |
+| `flexicon_lcm_bridge` (Tool 1's data) | Resolve flexicon method → LCM internals |
 | `flexlibs_lcm_bridge` (Tool 1's data) | Resolve flexlibs_stable method → LCM internals |
 | `reverse_mapping` (Tool 2's data) | Resolve LCM symbol → wrapper coverage in *other* libraries |
 | `api_index.liblcm["entities"]` | Get the liblcm-flavor signature, kind, type |
@@ -145,7 +145,7 @@ Tool 3 is a true *aggregator* — it adds no new data, just composes the three s
 - [ ] Reuse casting-hint logic from `resolve_property` rather than re-implementing.
 - [ ] Tests:
   - [ ] `operation`-mode: `LexEntryOperations.GetHeadword` returns three populated flavor blocks.
-  - [ ] `operation`-mode: a flexlibs2-only wrapper returns `flexlibs_stable.available=false` with gap surfaced.
+  - [ ] `operation`-mode: a flexicon-only wrapper returns `flexlibs_stable.available=false` with gap surfaced.
   - [ ] `query`-mode: "get headword for entry" lands on a sensible anchor.
   - [ ] `include=["liblcm"]` returns only the liblcm block.
   - [ ] Multistring case (e.g. `LexSenseOperations.GetGloss`) surfaces the `'***'` normalization advisory.

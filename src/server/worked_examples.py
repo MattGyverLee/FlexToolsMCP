@@ -14,7 +14,7 @@ Each entry:
 - title           one-line description
 - summary         when to use this
 - tags            keywords for matching (lowercase)
-- library         "flexlibs2" or "liblcm" (which surface this targets)
+- library         "flexicon" or "liblcm" (which surface this targets)
 - code            the recipe itself, ready to run inside a FlexTools Main()
 - see_also        method/class names worth reading next
 """
@@ -64,8 +64,8 @@ WORKED_EXAMPLES: List[Dict] = [
             "servicelocator", "service", "factory", "lcm", "discovery",
             "getservice", "getclrtype", "ilookup",
         ],
-        "library": "flexlibs2",
-        "code": '''from flexlibs2 import FLExProject
+        "library": "flexicon",
+        "code": '''from flexicon import FLExProject
 # Resolve any LCM factory or service interface by type.
 # project.GetService is a discoverable wrapper around
 # project.Cache.ServiceLocator.GetService(...) -- you do NOT need
@@ -78,7 +78,7 @@ def Main(project, report, modifyAllowed):
 
     if modifyAllowed:
         # Factories create unowned objects -- always Add to the owning
-        # collection before setting properties (see flexlibs2 Phase 2
+        # collection before setting properties (see flexicon Phase 2
         # 'orphan-NPE' notes).
         new_phoneme = phoneme_factory.Create()
         project.Cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC.Add(new_phoneme)
@@ -99,8 +99,8 @@ def Main(project, report, modifyAllowed):
             "phoneme", "phonemes", "phoneme set", "ipa", "phonology",
             "create phoneme", "add phoneme",
         ],
-        "library": "flexlibs2",
-        "code": '''from flexlibs2 import FLExProject
+        "library": "flexicon",
+        "code": '''from flexicon import FLExProject
 
 def Main(project, report, modifyAllowed):
     # Check the phoneme doesn't already exist (Find returns None if absent).
@@ -143,8 +143,8 @@ def Main(project, report, modifyAllowed):
             "phonology", "natural class", "input segment", "output segment",
             "context", "voicing", "assimilation",
         ],
-        "library": "flexlibs2",
-        "code": '''from flexlibs2 import FLExProject
+        "library": "flexicon",
+        "code": '''from flexicon import FLExProject
 
 def Main(project, report, modifyAllowed):
     # Look up the phonemes and natural class we'll wire into the rule.
@@ -186,7 +186,7 @@ def Main(project, report, modifyAllowed):
         "title": "Create an MSA and attach it to a LexSense",
         "summary": (
             "Use project.MSA.CreateStem(target, pos) to build a stem MSA and "
-            "wire it onto a LexSense in one call. The flexlibs2 wrapper handles "
+            "wire it onto a LexSense in one call. The flexicon wrapper handles "
             "the ownership + MorphoSyntaxAnalysisRA assignment, so callers "
             "never touch SandboxGenericMSA or raw LCM factories. Sibling "
             "variants (CreateDerivAff, CreateInflAff, CreateUnclassifiedAffix) "
@@ -197,8 +197,8 @@ def Main(project, report, modifyAllowed):
             "pos", "part of speech", "attach msa", "create msa",
             "imostemmsa", "morphosyntaxanalysis",
         ],
-        "library": "flexlibs2",
-        "code": '''from flexlibs2 import FLExProject
+        "library": "flexicon",
+        "code": '''from flexicon import FLExProject
 
 def Main(project, report, modifyAllowed):
     # Pick a sense to attach the MSA to. For this recipe we take the
@@ -256,8 +256,8 @@ def Main(project, report, modifyAllowed):
             "inflection feature", "feature system", "fs closed feature",
             "ifsclosedfeature", "ifssymfeatval", "feature definition",
         ],
-        "library": "flexlibs2",
-        "code": '''from flexlibs2 import FLExProject
+        "library": "flexicon",
+        "code": '''from flexicon import FLExProject
 
 def Main(project, report, modifyAllowed):
     # project.Features and project.InflectionFeatures are aliases for the

@@ -375,7 +375,7 @@
     <text x="100" y="962" font-weight="700">Source indexes (versioned per library)</text>
     <text x="100" y="984">• liblcm_api.json</text>
     <text x="120" y="998" fill="#4338CA" font-size="10">.NET reflection of LibLCM C# assemblies</text>
-    <text x="100" y="1018">• flexlibs2_api.json</text>
+    <text x="100" y="1018">• flexicon_api.json</text>
     <text x="120" y="1032" fill="#4338CA" font-size="10">AST · ~1400 methods · 99% docs · 82% examples</text>
     <text x="100" y="1052">• flexlibs_api.json</text>
     <text x="120" y="1066" fill="#4338CA" font-size="10">AST · stable wrapper, ~40 functions</text>
@@ -392,7 +392,7 @@
     <!-- Col 3: Cross-cutting -->
     <text x="1100" y="962" font-weight="700">Cross-cutting artifacts</text>
     <text x="1100" y="984">• Bridge files</text>
-    <text x="1120" y="998" fill="#4338CA" font-size="10">flexlibs2 ↔ stable ↔ liblcm coverage map</text>
+    <text x="1120" y="998" fill="#4338CA" font-size="10">flexicon ↔ stable ↔ liblcm coverage map</text>
     <text x="1100" y="1018">• Examples corpus</text>
     <text x="1120" y="1032" fill="#4338CA" font-size="10">CRUD samples by method, find_examples</text>
     <text x="1100" y="1052">• Version multiplexing</text>

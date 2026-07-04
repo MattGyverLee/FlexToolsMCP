@@ -1,5 +1,20 @@
 # FlexToolsMCP Changelog
 
+## [Unreleased]
+
+### Changed
+- **Renamed `flexlibs2` -> `flexicon`.** The deep wrapper is now the `flexicon`
+  package, installed via `pip install pyflexicon` (imported as `flexicon`)
+  instead of being cloned as a sibling repo. Updated across the MCP: analyzer
+  module (`flexicon_analyzer.py`), index prefixes (`flexicon_api`,
+  `flexicon_lcm_bridge`, `common_patterns_flexicon`), refresh CLI
+  (`--flexicon-only` / `--flexicon-path`), the `FLEXICON_PATH` env var, and all
+  templates/docs. The `api_mode` / `library` / template-flavor value is now
+  `flexicon`; the previous `flexlibs2` value is still accepted as a **deprecated
+  alias** (normalized to `flexicon`). Version detection now reads the
+  `pyflexicon` distribution. Dated entries below retain their original
+  `flexlibs2` naming for historical accuracy.
+
 ## [2.2.1] - 2026-07-01
 
 June session-log triage follow-up: index freshness + discoverability.

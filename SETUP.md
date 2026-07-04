@@ -6,7 +6,7 @@
 - FieldWorks 9.x installed (for LibLCM DLLs)
 - One or more of:
   - [FlexLibs](https://github.com/cdfarrow/flexlibs) (stable, ~71 functions)
-  - [FlexLibs 2.0](https://github.com/your-repo/flexlibs2) (comprehensive, ~1,400 methods)
+  - [Flexicon](https://pypi.org/project/pyflexicon/) (`pip install pyflexicon`, comprehensive, ~1,400 methods)
 
 ### Recommended
 - Context7 MCP for improving and modernizing generated Python and C# code
@@ -31,14 +31,12 @@ cd FlexToolsMCP
 pip install -r requirements.txt
 ```
 
-### 4. Clone and Install FlexLibs 2.0
+### 4. Install Flexicon
 
-**Note:** The repo is named `flexlibs`, so clone it into the `flexlibs2` folder to avoid naming conflicts:
+Flexicon is published on PyPI as `pyflexicon`. Install it with pip (it is no longer cloned as a sibling repo):
 
 ```bash
-cd ..
-git clone https://github.com/MattGyverLee/flexlibs.git flexlibs2
-pip install ./flexlibs2
+pip install pyflexicon
 ```
 
 ### 5. Configure Paths
@@ -52,10 +50,10 @@ cp .env.example .env
 ### 6. Test the Installation
 
 ```bash
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
 ```
 
-If this succeeds, the MCP and FlexLibs2 are installed correctly.
+If this succeeds, the MCP and Flexicon are installed correctly.
 
 ## Updating FLExToolsMCP
 
@@ -94,13 +92,13 @@ After updating, you may need to reinstall or upgrade packages:
 
 ```bash
 pip install -r requirements.txt --upgrade
-pip install ./flexlibs2 --upgrade
+pip install pyflexicon --upgrade
 ```
 
 Then test that everything still works:
 
 ```bash
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
 ```
 
 ## Connecting to AI Assistants

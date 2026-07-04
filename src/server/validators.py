@@ -98,7 +98,7 @@ _LIBLCM_MUTABLE_PATTERNS = [
     (re.compile(r'\.Clear\s*\('), 'Clear', 'Mutate'),
     (re.compile(r'\.MoveTo\s*\('), 'MoveTo', 'Reorder'),
     (re.compile(r'\.Insert\s*\('), 'Insert', 'Mutate'),
-    # FlexLibs2 project-accessor mutations: project.<X>.Create/Delete/Set*(...)
+    # Flexicon project-accessor mutations: project.<X>.Create/Delete/Set*(...)
     # These are wrapper calls but they still mutate the DB and must be guarded.
     # Without these, project.LexEntry.Create(...) was caught only by the
     # line-blind raw_lcm_patterns path and could not be certified-as-protected.
@@ -221,7 +221,7 @@ def validate_server_state() -> dict:
 def detect_cud_operations(code: str) -> dict:
     """Detect Create, Update, Delete operations in code that modify the FLEx database.
 
-    Only detects actual FlexLibs2/LCM database modifications, not:
+    Only detects actual Flexicon/LCM database modifications, not:
     - Local Python list operations (results.append(), etc.)
     - Variable assignments to local variables
     - Comments containing keywords
@@ -438,7 +438,7 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
 def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     """Valid project.<X> accessor names.
 
-    Reads the real FLExProject property list from the flexlibs2 index when
+    Reads the real FLExProject property list from the flexicon index when
     available, unioned with the legacy KNOWN_OPERATIONS-derived names so
     accessors like LexSense (Operations-class shorthand) keep validating.
     Falls back to the KNOWN_OPERATIONS-derived list alone if the index is
@@ -447,8 +447,8 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     legacy = [op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")]
     if api_index is None:
         return legacy
-    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-    entities = flexlibs2.get("entities") or {}
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
     flex_project = entities.get("FLExProject") or {}
     real_props = [p.get("name") for p in flex_project.get("properties", []) if p.get("name")]
     if not real_props:
@@ -463,11 +463,11 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
 
 
 def _operation_method_names(api_index: Optional[Any], operations_class: str) -> List[str]:
-    """Methods on an Operations class, looked up in the flexlibs2 index."""
+    """Methods on an Operations class, looked up in the flexicon index."""
     if api_index is None:
         return []
-    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-    entity = (flexlibs2.get("entities") or {}).get(operations_class, {})
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(operations_class, {})
     return [m.get("name", "") for m in entity.get("methods", []) if m.get("name")]
 
 
@@ -517,7 +517,7 @@ def extract_python_did_you_mean(error_msg: str) -> Optional[str]:
 
 
 def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = None) -> dict:
-    """Detect AttributeErrors on FlexLibs2 wrapper accessors and suggest correct names.
+    """Detect AttributeErrors on Flexicon wrapper accessors and suggest correct names.
 
     Targets the common "namespace thrash" pattern where users guess at accessor or
     method names (project.LexEntries -> project.LexEntry, GetPOS -> GetPartOfSpeech).
@@ -595,8 +595,8 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     # Only names actually in the index pass as valid; others get fuzzy-checked.
     known_lexicon_methods: Set[str] = set()
     if api_index is not None:
-        flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-        flex_project = (flexlibs2.get("entities") or {}).get("FLExProject", {})
+        flexicon = getattr(api_index, "flexicon", None) or {}
+        flex_project = (flexicon.get("entities") or {}).get("FLExProject", {})
         for m in flex_project.get("methods", []):
             name = m.get("name", "")
             if name.startswith("Lexicon"):
@@ -674,13 +674,13 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
 
     Used to figure out what entity a `project.Senses.GetAll()` call actually needs
     discovered (LexSenseOperations) -- a naive `f"{accessor}Operations"` is wrong
-    for most accessors because flexlibs2 names diverge (Senses->LexSense, Wordforms->
+    for most accessors because flexicon names diverge (Senses->LexSense, Wordforms->
     WfiWordform, PhonRules->PhonologicalRule, ...).
     """
     if api_index is None:
         return {}
-    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-    fp = (flexlibs2.get("entities") or {}).get("FLExProject", {})
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    fp = (flexicon.get("entities") or {}).get("FLExProject", {})
     mapping: Dict[str, str] = {}
     for prop in fp.get("properties", []) or []:
         name = prop.get("name") or ""
@@ -707,8 +707,8 @@ def detect_candidate_entities(
     """
     if code_tree is None:
         return []
-    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-    entities = flexlibs2.get("entities") or {}
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
     if not entities:
         # Fallback to KNOWN_OPERATIONS so the gate at least returns plausible
         # candidates when the index hasn't been loaded yet.
@@ -735,15 +735,21 @@ def detect_candidate_entities(
     return [name for name, _ in ranked[:limit]]
 
 
-def _collect_flexlibs2_imports(code_tree: Optional[ast.AST]) -> Set[str]:
-    """Return the set of names imported from the flexlibs2 package.
+# Naming: `flexicon` is the current package name; `flexlibs2` is its
+# deprecated import alias, which still resolves at runtime, so user code that
+# imports from either should satisfy the discovery gate.
+_FLEXICON_IMPORT_ROOTS = ("flexicon", "flexlibs2")
 
-    Matches:
-        from flexlibs2 import SegmentOperations           -> {'SegmentOperations'}
-        from flexlibs2 import SegmentOperations as SO     -> {'SegmentOperations'}
-        from flexlibs2.foo import Bar                     -> {'Bar'}
-        import flexlibs2.SegmentOperations                -> {'SegmentOperations'}
-        import flexlibs2.SegmentOperations as SO          -> {'SegmentOperations'}
+
+def _collect_flexicon_imports(code_tree: Optional[ast.AST]) -> Set[str]:
+    """Return the set of names imported from the flexicon package.
+
+    Matches (and the deprecated `flexlibs2` alias, which still resolves):
+        from flexicon import SegmentOperations           -> {'SegmentOperations'}
+        from flexicon import SegmentOperations as SO     -> {'SegmentOperations'}
+        from flexicon.foo import Bar                     -> {'Bar'}
+        import flexicon.SegmentOperations                -> {'SegmentOperations'}
+        import flexicon.SegmentOperations as SO          -> {'SegmentOperations'}
 
     Why we key on the *original* name (not the alias): the undiscovered-entity
     gate compares against API-index entity names (SegmentOperations), so an
@@ -756,14 +762,18 @@ def _collect_flexlibs2_imports(code_tree: Optional[ast.AST]) -> Set[str]:
     for node in ast.walk(code_tree):
         if isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if module == "flexlibs2" or module.startswith("flexlibs2."):
+            if module in _FLEXICON_IMPORT_ROOTS or any(
+                module.startswith(root + ".") for root in _FLEXICON_IMPORT_ROOTS
+            ):
                 for alias in node.names:
                     if alias.name and alias.name != "*":
                         names.add(alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name and alias.name.startswith("flexlibs2."):
-                    # import flexlibs2.SegmentOperations [as SO]
+                if alias.name and any(
+                    alias.name.startswith(root + ".") for root in _FLEXICON_IMPORT_ROOTS
+                ):
+                    # import flexicon.SegmentOperations [as SO]
                     last = alias.name.rsplit(".", 1)[-1]
                     if last:
                         names.add(last)
@@ -799,7 +809,7 @@ def detect_undiscovered_entities(
       - undiscovered: list[str] -- entity names that need discovery
       - suggestion: human-readable hint with exact tool calls to make
       - imported_undiscovered: list[str] -- undiscovered entities that were
-        explicitly imported from flexlibs2 (subset of `undiscovered`). Used by
+        explicitly imported from flexicon (subset of `undiscovered`). Used by
         the execution handler to inline get_object_api docs and clarify that
         imports alone don't satisfy the discovery gate.
     """
@@ -824,11 +834,11 @@ def detect_undiscovered_entities(
         if "." in api_key:
             discovered_entities.add(api_key.split(".", 1)[0])
 
-    # Issue #31: treat `from flexlibs2 import XOperations` as implicit discovery.
+    # Issue #31: treat `from flexicon import XOperations` as implicit discovery.
     # Importing an operations class means the user deliberately brought the API
     # surface into scope -- the discovery gate's purpose (ensuring the LLM has
     # seen real method signatures) is satisfied by the import statement itself.
-    implicit_discovered = _collect_flexlibs2_imports(code_tree)
+    implicit_discovered = _collect_flexicon_imports(code_tree)
     implicit_accessor_forms: Set[str] = set()
     for name in implicit_discovered:
         if name.endswith("Operations"):
@@ -873,13 +883,13 @@ def detect_undiscovered_entities(
         return result
 
     # Issue #20: identify undiscovered entities that the user actually imported.
-    # The discovery gate is sometimes confusing because `from flexlibs2 import X`
+    # The discovery gate is sometimes confusing because `from flexicon import X`
     # populates Python's namespace but NOT session_state.discovered_apis -- the
     # rejection then reads as "we couldn't find X" even though X is right there
     # in the import line. Pulling the import set lets the rejection say so
     # explicitly and lets the execution handler inline a get_object_api result
     # for single-import recovery.
-    imported_names = _collect_flexlibs2_imports(code_tree)
+    imported_names = _collect_flexicon_imports(code_tree)
     # Also accept the accessor-form of imported names (e.g. user imports
     # LexSenseOperations -> also satisfies project.LexSense / 'Senses' callouts).
     accessor_forms_of_imports: Set[str] = set()
@@ -909,7 +919,7 @@ def detect_undiscovered_entities(
         entity_label = imported_undiscovered[0]
         if len(imported_undiscovered) == 1:
             import_clarifier = (
-                f"Found `from flexlibs2 import {entity_label}` in your code, but the "
+                f"Found `from flexicon import {entity_label}` in your code, but the "
                 f"discovery gate also requires calling "
                 f"`flextools_get_object_api(object_type='{entity_label}')` so you've "
                 # Issue #20 follow-up: the gate's purpose is putting the API
@@ -919,7 +929,7 @@ def detect_undiscovered_entities(
         else:
             entity_list = ", ".join(imported_undiscovered)
             import_clarifier = (
-                f"Found `from flexlibs2 import ...` for [{entity_list}] in your code, "
+                f"Found `from flexicon import ...` for [{entity_list}] in your code, "
                 f"but the discovery gate also requires calling "
                 f"flextools_get_object_api for each so you've loaded the method "
                 f"shapes into context. Imports alone aren't enough."
@@ -999,7 +1009,7 @@ def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
     Issue #41: the old regex (`from \\w+ import ([^#\\n]+)`) only saw the first
     physical line of an import, so parenthesized / multi-line forms like
 
-        from flexlibs2 import (
+        from flexicon import (
             SegmentOperations,
             WordformOperations,
         )
@@ -1039,7 +1049,7 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
 
     Args:
         code: User's module/operation code
-        api_mode: Selected API mode ('flexlibs_stable', 'flexlibs2', 'liblcm')
+        api_mode: Selected API mode ('flexlibs_stable', 'flexicon', 'liblcm')
 
     Returns:
         dict with 'missing_imports', 'has_missing', and 'suggestion'
@@ -1077,7 +1087,7 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
         result["has_missing"] = True
         result["missing_imports"] = sorted(list(missing))
 
-        library = "flexlibs2" if api_mode == "flexlibs2" else "flexlibs"
+        library = "flexicon" if api_mode == "flexicon" else "flexlibs"
         import_stmt = f"from {library} import {', '.join(sorted(missing))}"
 
         result["suggestion"] = (
@@ -1093,7 +1103,7 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
 
     Args:
         code: User's module/operation code
-        api_mode: Selected API mode ('flexlibs_stable', 'flexlibs2', 'liblcm')
+        api_mode: Selected API mode ('flexlibs_stable', 'flexicon', 'liblcm')
 
     Returns:
         dict with 'has_wrong_imports', 'wrong_imports', and 'suggestion'
@@ -1108,26 +1118,35 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
     import_pattern = r'(?:from|import)\s+([\w.]+)'
     imports = re.findall(import_pattern, code)
 
-    if api_mode == "flexlibs2":
-        # In flexlibs2 mode, flag imports from stable flexlibs
-        wrong_libs = [imp for imp in imports if imp.startswith('flexlibs') and not imp.startswith('flexlibs2')]
+    if api_mode == "flexicon":
+        # In flexicon mode, flag imports from stable flexlibs. `flexlibs2` is the
+        # deprecated import alias for flexicon (it still resolves), so it is NOT
+        # wrong here -- only true stable-flexlibs imports are.
+        wrong_libs = [
+            imp for imp in imports
+            if imp.startswith('flexlibs') and not imp.startswith('flexlibs2')
+        ]
         if wrong_libs:
             result["has_wrong_imports"] = True
             result["wrong_imports"] = wrong_libs
             result["suggestion"] = (
-                f"Code in flexlibs2 mode is importing from flexlibs (stable). "
+                f"Code in flexicon mode is importing from flexlibs (stable). "
                 f"Detected: {', '.join(set(wrong_libs))}. "
-                f"Use 'from flexlibs2 import ...' instead for API consistency."
+                f"Use 'from flexicon import ...' instead for API consistency."
             )
 
     elif api_mode == "flexlibs_stable":
-        # In stable mode, warn about flexlibs2 imports that might not work
-        wrong_libs = [imp for imp in imports if imp.startswith('flexlibs2')]
+        # In stable mode, warn about flexicon imports (including the deprecated
+        # flexlibs2 alias) that target the wrong library.
+        wrong_libs = [
+            imp for imp in imports
+            if imp.startswith('flexicon') or imp.startswith('flexlibs2')
+        ]
         if wrong_libs:
             result["has_wrong_imports"] = True
             result["wrong_imports"] = wrong_libs
             result["suggestion"] = (
-                f"Code in flexlibs (stable) mode is importing from flexlibs2. "
+                f"Code in flexlibs (stable) mode is importing from flexicon. "
                 f"Detected: {', '.join(set(wrong_libs))}. "
                 f"Use 'from flexlibs import ...' for API consistency."
             )
@@ -1218,7 +1237,7 @@ def detect_undefined_variables(code: str, tree: ast.AST | None = None) -> dict:
             return {
                 "has_undefined": True,
                 "undefined_vars": sorted(suspicious),
-                "suggestion": f"Undefined variables detected: {', '.join(suspicious)}. Make sure all classes and modules are imported (e.g., 'from flexlibs2 import ...'). Do not use internal MCP variables like API_MODE_IMPORTS."
+                "suggestion": f"Undefined variables detected: {', '.join(suspicious)}. Make sure all classes and modules are imported (e.g., 'from flexicon import ...'). Do not use internal MCP variables like API_MODE_IMPORTS."
             }
 
         return {"has_undefined": False, "undefined_vars": []}
@@ -1349,7 +1368,7 @@ def _resolve_alias_maps(
     Cast alias shape:         s_typed = ILexSense(sense)
 
     Generic operations match (Name ending in 'Operations', single positional
-    arg) survives flexlibs2 adding new Operations classes in parallel without
+    arg) survives flexicon adding new Operations classes in parallel without
     us touching a hardcoded list. Generic cast match ('I' + Uppercase) avoids
     false positives like 'IndexCounter' (lowercase second char).
 
@@ -1627,7 +1646,7 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
 
 
 def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -> dict:
-    """Certify whether a script makes any FlexLibs2 mutating calls using API index.
+    """Certify whether a script makes any Flexicon mutating calls using API index.
 
     Uses the is_mutating flag from the API index to identify write operations with
     high confidence. Falls back to regex-based detection for code not in the index
@@ -1645,7 +1664,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         {
           "is_certified_readonly": bool,           # True = no unprotected mutations
           "confidence": str,                       # "high" | "medium" | "low"
-          "mutating_calls": [                      # Detected FlexLibs2 mutations
+          "mutating_calls": [                      # Detected Flexicon mutations
               {"class": str, "method": str, "is_mutating": bool, "source": str}
           ],
           "unprotected_liblcm_calls": [            # Raw LCM calls without guard
@@ -1668,7 +1687,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     protected_liblcm_calls = []
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
-    # Get protected ranges once for both FlexLibs2 and LibLCM checks
+    # Get protected ranges once for both Flexicon and LibLCM checks
     # Pass pre-parsed tree if available to avoid re-parsing
     protected_ranges = find_protected_ranges(code, tree)
 
@@ -1681,7 +1700,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         except SyntaxError:
             tree = None
 
-    # Step 1: Extract FlexLibs2 Operations method calls with line numbers
+    # Step 1: Extract Flexicon Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
     operations_calls_with_lines = []
 
@@ -1694,7 +1713,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Step 1b: AST-based alias detection (#8). Catches:
     #     posOps = POSOperations(project)
     #     posOps.Create(...)             # <- invisible to the regex above
-    # Generic to any *Operations class so flexlibs2 churn doesn't break it.
+    # Generic to any *Operations class so flexicon churn doesn't break it.
     # One ast.walk pass feeds both alias kinds + the property-writes helper
     # at Step 4b, instead of four separate walks.
     operations_aliases: Dict[str, str] = {}
@@ -1711,8 +1730,8 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                     operations_calls_with_lines.append(triple)
 
     # Step 2: Look up each call in the API index and check if protected
-    if api_index and api_index.flexlibs2:
-        entities = api_index.flexlibs2.get("entities", {})
+    if api_index and api_index.flexicon:
+        entities = api_index.flexicon.get("entities", {})
 
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard
@@ -1848,7 +1867,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
 
     # Step 7: Build certification result.
     # Script is read-only certified if:
-    # 1. No FlexLibs2 mutating calls (index lookup, line-aware, protection-checked)
+    # 1. No Flexicon mutating calls (index lookup, line-aware, protection-checked)
     # 2. No unprotected raw LCM / project-accessor mutations (line-aware, protection-checked)
     # raw_lcm_patterns is intentionally NOT a gate -- it is line-blind and would
     # block guarded code like `if modifyAllowed: project.LexEntry.Create(...)`,
@@ -1901,7 +1920,7 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
             "after": "if modifyAllowed:\n    project.LexEntry.SetLexemeForm(entry, 'new_form')\n    report.Info('Updated entry')\nelse:\n    report.Info('(Would update entry to: new_form)')"
         },
         "templates_to_review": [
-            "templates/2-flexlibs2-template.py (recommended - best documented)",
+            "templates/2-flexicon-template.py (recommended - best documented)",
             "templates/1-flexlibs-stable-template.py (for FieldWorks < 9.0)",
             "templates/3-liblcm-template.py (for advanced use cases)"
         ],
@@ -2034,13 +2053,20 @@ def _pick_cast_interface(
 # IMultiAccessorBase (and its kin) live in SIL.LCModel.Core.KernelInterfaces.
 # Emitting `from SIL.LCModel import IMultiAccessorBase` produces an
 # ImportError at runtime, which is worse than no rewrite at all.
+# Issue #12 correction: the IMulti* family (IMultiAccessorBase,
+# IMultiStringAccessor, IMultiUnicode, IMultiString) actually lives in
+# SIL.LCModel -- both LibLCM reflection (the liblcm index) and the #12 user
+# session confirm it. The earlier #21 override routed them to
+# SIL.LCModel.Core.KernelInterfaces, which produces an ImportError (the exact
+# bug class #12 was filed for). Only the ITs* text-string kernel types
+# genuinely live in KernelInterfaces and aren't in the LCM domain index, so
+# they remain here; everything else falls through to the SIL.LCModel default.
 _INTERFACE_NAMESPACE_OVERRIDES = {
-    "IMultiAccessorBase": "SIL.LCModel.Core.KernelInterfaces",
-    "IMultiStringAccessor": "SIL.LCModel.Core.KernelInterfaces",
-    "IMultiUnicode": "SIL.LCModel.Core.KernelInterfaces",
-    "IMultiString": "SIL.LCModel.Core.KernelInterfaces",
     "ITsString": "SIL.LCModel.Core.KernelInterfaces",
     "ITsMultiString": "SIL.LCModel.Core.KernelInterfaces",
+    "ITsTextProps": "SIL.LCModel.Core.KernelInterfaces",
+    "ITsStrBldr": "SIL.LCModel.Core.KernelInterfaces",
+    "ITsIncStrBldr": "SIL.LCModel.Core.KernelInterfaces",
 }
 
 
@@ -2242,7 +2268,7 @@ def detect_casting_needs(
             "available_on": ["ILexEntry"],
             "pattern_sources": [r"\.Owner\s*\.\s*HeadWord", r"entry\s*\.\s*HeadWord"],
             "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nheadword = entry.HeadWord.Text",
-            "flexlibs2_helper": "Use cast_to_concrete(obj) from flexlibs2.code.lcm_casting"
+            "flexicon_helper": "Use cast_to_concrete(obj) from flexicon.code.lcm_casting"
         },
         "LexemeForm": {
             "helper": "get_lexeme_form",  # ← Which helper to inject if needed
@@ -2250,15 +2276,15 @@ def detect_casting_needs(
             "available_on": ["ILexEntry"],
             "pattern_sources": [r"\.LexemeForm", r"entry\s*\.\s*LexemeForm"],
             "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nform = entry.LexemeForm",
-            "flexlibs2_helper": "Use cast_to_concrete(obj) to get ILexEntry"
+            "flexicon_helper": "Use cast_to_concrete(obj) to get ILexEntry"
         },
         "ReversalEntriesRC": {
             "helper": "safe_get_property",  # ← Use safe access helper for this
-            "missing_on": ["ILexSense (flexlibs2 wrapped)"],
+            "missing_on": ["ILexSense (flexicon wrapped)"],
             "available_on": ["ILexSense (raw LCM)"],
             "pattern_sources": [r"sense\s*\.\s*ReversalEntriesRC", r"\.ReversalEntriesRC"],
-            "fix": "# Access collection on raw sense object, not flexlibs2-wrapped\nreversals = list(sense.ReversalEntriesRC)",
-            "flexlibs2_helper": "Unwrap flexlibs2 object first, or use ReversalOperations"
+            "fix": "# Access collection on raw sense object, not flexicon-wrapped\nreversals = list(sense.ReversalEntriesRC)",
+            "flexicon_helper": "Unwrap flexicon object first, or use ReversalOperations"
         },
     }
 
@@ -2308,7 +2334,7 @@ def detect_casting_needs(
                         "missing_on": pattern_info["missing_on"],
                         "available_on": pattern_info["available_on"],
                         "fix": pattern_info["fix"],
-                        "flexlibs2_helper": pattern_info["flexlibs2_helper"],
+                        "flexicon_helper": pattern_info["flexicon_helper"],
                         "severity": "error",
                         "rewrite": rewrite,
                         "imports_needed": imports_needed,
@@ -2338,7 +2364,7 @@ def detect_casting_needs(
                     continue
 
                 # Issue #40: a call on an Operations-class instance
-                # (segOps.IsLabel(seg)) is a flexlibs2 wrapper method, not a
+                # (segOps.IsLabel(seg)) is a flexicon wrapper method, not a
                 # polymorphic property access. The regex captures it because the
                 # method name is CamelCase; skip when obj_var is a known
                 # Operations alias.
@@ -2396,7 +2422,7 @@ def detect_casting_needs(
                             "missing_on": requires_cast,
                             "available_on": casting_info.get("defined_on", []),
                             "fix": f"Cast {obj_var} to {casting_info.get('defined_on', ['concrete type'])[0]}",
-                            "flexlibs2_helper": "Use resolve_property() tool to find exact casting requirements",
+                            "flexicon_helper": "Use resolve_property() tool to find exact casting requirements",
                             "severity": "warning",
                             "rewrite": rewrite,
                             "imports_needed": imports_needed,

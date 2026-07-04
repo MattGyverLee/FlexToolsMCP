@@ -121,8 +121,8 @@ def main():
         ],
         index_dir / "flexlibs": [
             ("flexlibs_api_v*.json", "FlexLibs"),
-            ("flexlibs2_api_v*.json", "FlexLibs 2.0"),
-            ("common_patterns_flexlibs2-v*.json", "Common Patterns"),
+            ("flexicon_api_v*.json", "Flexicon"),
+            ("common_patterns_flexicon-v*.json", "Common Patterns"),
         ],
     }
 

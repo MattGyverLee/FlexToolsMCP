@@ -37,7 +37,7 @@ DEFAULT_MODEL = "all-MiniLM-L6-v2"
 # Constants (avoid stringly-typed code)
 # ============================================================
 SOURCE_FLEXLIBS_STABLE = "flexlibs_stable"
-SOURCE_FLEXLIBS2 = "flexlibs2"
+SOURCE_FLEXICON = "flexicon"
 SOURCE_LIBLCM = "liblcm"
 
 TYPE_METHOD = "method"
@@ -82,19 +82,19 @@ def load_flexlibs_data() -> Tuple[Dict, Dict]:
     flexlibs_dir = index_dir / "flexlibs"
 
     flexlibs_stable = {}
-    flexlibs2 = {}
+    flexicon = {}
 
     stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
     if stable_path and stable_path.exists():
         with open(stable_path, "r", encoding="utf-8") as f:
             flexlibs_stable = json.load(f)
 
-    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
-    if flexlibs2_path and flexlibs2_path.exists():
-        with open(flexlibs2_path, "r", encoding="utf-8") as f:
-            flexlibs2 = json.load(f)
+    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
+    if flexicon_path and flexicon_path.exists():
+        with open(flexicon_path, "r", encoding="utf-8") as f:
+            flexicon = json.load(f)
 
-    return flexlibs_stable, flexlibs2
+    return flexlibs_stable, flexicon
 
 
 def load_liblcm_data() -> Dict:
@@ -167,7 +167,7 @@ def create_entity_text(entity_name: str, entity: Dict, source: str) -> str:
     return " ".join(parts)
 
 
-def extract_searchable_items(flexlibs_stable: Dict, flexlibs2: Dict, liblcm: Dict) -> List[Dict]:
+def extract_searchable_items(flexlibs_stable: Dict, flexicon: Dict, liblcm: Dict) -> List[Dict]:
     """Extract all searchable items with their text representations."""
     items = []
 
@@ -187,13 +187,13 @@ def extract_searchable_items(flexlibs_stable: Dict, flexlibs2: Dict, liblcm: Dic
                 category=entity.get("category", "general"),
             ))
 
-    # FlexLibs 2.0 methods
-    for entity_name, entity in flexlibs2.get("entities", {}).items():
+    # Flexicon methods
+    for entity_name, entity in flexicon.get("entities", {}).items():
         # Entity itself
-        entity_text = create_entity_text(entity_name, entity, SOURCE_FLEXLIBS2)
+        entity_text = create_entity_text(entity_name, entity, SOURCE_FLEXICON)
         items.append(_create_item_dict(
-            item_id=f"{SOURCE_FLEXLIBS2}:{entity_name}",
-            source=SOURCE_FLEXLIBS2,
+            item_id=f"{SOURCE_FLEXICON}:{entity_name}",
+            source=SOURCE_FLEXICON,
             entity_name=entity_name,
             name=entity_name,
             item_type=TYPE_ENTITY,
@@ -204,10 +204,10 @@ def extract_searchable_items(flexlibs_stable: Dict, flexlibs2: Dict, liblcm: Dic
 
         # Methods
         for method in entity.get("methods", []):
-            text = create_method_text(entity_name, method, SOURCE_FLEXLIBS2)
+            text = create_method_text(entity_name, method, SOURCE_FLEXICON)
             items.append(_create_item_dict(
-                item_id=f"{SOURCE_FLEXLIBS2}:{entity_name}.{method['name']}",
-                source=SOURCE_FLEXLIBS2,
+                item_id=f"{SOURCE_FLEXICON}:{entity_name}.{method['name']}",
+                source=SOURCE_FLEXICON,
                 entity_name=entity_name,
                 name=method["name"],
                 item_type=TYPE_METHOD,
@@ -279,7 +279,7 @@ def save_embeddings(embeddings: np.ndarray, items: List[Dict], index_dir: Path):
             "embedding_dimension": embeddings.shape[1],
             "sources": {
                 "flexlibs_stable": len([i for i in items if i["source"] == "flexlibs_stable"]),
-                "flexlibs2": len([i for i in items if i["source"] == "flexlibs2"]),
+                "flexicon": len([i for i in items if i["source"] == "flexicon"]),
                 "liblcm": len([i for i in items if i["source"] == "liblcm"]),
             },
             "types": {
@@ -316,16 +316,16 @@ def main():
 
     # Load data
     print("\n[INFO] Loading API indexes...")
-    flexlibs_stable, flexlibs2 = load_flexlibs_data()
+    flexlibs_stable, flexicon = load_flexlibs_data()
     liblcm = load_liblcm_data()
 
     print(f"  FlexLibs stable: {len(flexlibs_stable.get('entities', {}))} entities")
-    print(f"  FlexLibs 2.0: {len(flexlibs2.get('entities', {}))} entities")
+    print(f"  Flexicon: {len(flexicon.get('entities', {}))} entities")
     print(f"  LibLCM: {len(liblcm.get('entities', {}))} entities")
 
     # Extract searchable items
     print("\n[INFO] Extracting searchable items...")
-    items = extract_searchable_items(flexlibs_stable, flexlibs2, liblcm)
+    items = extract_searchable_items(flexlibs_stable, flexicon, liblcm)
     print(f"  Total items: {len(items)}")
 
     # Build embeddings

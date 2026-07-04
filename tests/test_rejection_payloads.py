@@ -23,7 +23,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from server.validators import (  # noqa: E402
-    _collect_flexlibs2_imports,
+    _collect_flexicon_imports,
     detect_candidate_entities,
     detect_casting_needs,
     detect_undiscovered_entities,
@@ -43,10 +43,10 @@ class _FakeSession:
 
 
 class _FakeAPIIndex:
-    """Stand-in for APIIndex.flexlibs2 with a small entities map."""
+    """Stand-in for APIIndex.flexicon with a small entities map."""
 
     def __init__(self, entities=None):
-        self.flexlibs2 = {"entities": dict(entities or {})}
+        self.flexicon = {"entities": dict(entities or {})}
         # Minimal casting index used by issue #21 helpers (if any).
         self.casting_index = {
             "properties": {
@@ -69,8 +69,8 @@ class _FakeAPIIndex:
 
 SEG_OPS_ENTITY = {
     "category": "texts",
-    "namespace": "flexlibs2.operations.SegmentOperations",
-    "import_statement": "from flexlibs2 import SegmentOperations",
+    "namespace": "flexicon.operations.SegmentOperations",
+    "import_statement": "from flexicon import SegmentOperations",
     "methods": [
         {"name": "GetAll", "signature": "(project)", "is_mutating": False},
         {"name": "GetText", "signature": "(self, segment)", "is_mutating": False},
@@ -84,36 +84,36 @@ SEG_OPS_ENTITY = {
 # ---------------------------------------------------------------------------
 
 class TestIssue20ImportedUndiscovered(unittest.TestCase):
-    def test_collect_flexlibs2_imports_basic(self):
+    def test_collect_flexicon_imports_basic(self):
         tree = ast.parse(
-            "from flexlibs2 import SegmentOperations\n"
-            "from flexlibs2 import LexEntryOperations as LEO\n"
-            "import flexlibs2.WfiWordformOperations\n"
+            "from flexicon import SegmentOperations\n"
+            "from flexicon import LexEntryOperations as LEO\n"
+            "import flexicon.WfiWordformOperations\n"
         )
-        names = _collect_flexlibs2_imports(tree)
+        names = _collect_flexicon_imports(tree)
         # We key on original name -- aliases don't matter for index lookup.
         self.assertIn("SegmentOperations", names)
         self.assertIn("LexEntryOperations", names)
         self.assertIn("WfiWordformOperations", names)
 
-    def test_collect_ignores_non_flexlibs2_imports(self):
+    def test_collect_ignores_non_flexicon_imports(self):
         tree = ast.parse(
             "from flexlibs import LexEntryOperations\n"
             "from os import path\n"
         )
-        names = _collect_flexlibs2_imports(tree)
+        names = _collect_flexicon_imports(tree)
         self.assertEqual(names, set())
 
     def test_import_alone_satisfies_discovery_gate(self):
         """Issue #31 supersedes the original #20 behavior: a bare
-        `from flexlibs2 import X` is now treated as implicit discovery, so the
+        `from flexicon import X` is now treated as implicit discovery, so the
         imported entity is no longer flagged as undiscovered. (The function's
         own #31 comment documents this: importing an operations class brings
         the API surface into scope, satisfying the gate.) The stricter
         "imported but still undiscovered" assertion this test once made is
         therefore obsolete -- import + use must pass cleanly."""
         code = (
-            "from flexlibs2 import SegmentOperations\n"
+            "from flexicon import SegmentOperations\n"
             "x = SegmentOperations(project).GetAll()\n"
         )
         tree = ast.parse(code)
@@ -132,7 +132,7 @@ class TestIssue20ImportedUndiscovered(unittest.TestCase):
 
     def test_discovered_entity_not_flagged_even_if_imported(self):
         code = (
-            "from flexlibs2 import SegmentOperations\n"
+            "from flexicon import SegmentOperations\n"
             "x = SegmentOperations(project).GetAll()\n"
         )
         tree = ast.parse(code)
@@ -282,8 +282,10 @@ AMBIGUOUS_CAST_INDEX = {
             "requires_cast_from": ["ICmObject"],
         },
         "BestAnalysisAlternative": {
-            # IMultiAccessorBase lives in SIL.LCModel.Core.KernelInterfaces,
-            # NOT SIL.LCModel -- emitted import must reflect that.
+            # Issue #12 correction: IMultiAccessorBase lives in SIL.LCModel
+            # (confirmed by LibLCM reflection and the #12 user session), NOT
+            # SIL.LCModel.Core.KernelInterfaces -- the emitted import must
+            # reflect that. Only the ITs* kernel text types use KernelInterfaces.
             "defined_on": ["IMultiAccessorBase"],
             "requires_cast_from": ["ICmObject"],
         },
@@ -351,10 +353,12 @@ class TestIssue21AmbiguousNoTieBreak(unittest.TestCase):
             self.assertEqual(name_issue["cast_interface"], "ICmPossibility")
             self.assertEqual(name_issue["rewrite"], "ICmPossibility(pos).Name")
 
-    def test_imultiaccessorbase_uses_kernelinterfaces_namespace(self):
-        # BestAnalysisAlternative -> IMultiAccessorBase. The namespace
-        # override must route it to SIL.LCModel.Core.KernelInterfaces, NOT
-        # SIL.LCModel (which would fail at import time).
+    def test_imultiaccessorbase_uses_sil_lcmodel_namespace(self):
+        # Issue #12 correction: BestAnalysisAlternative -> IMultiAccessorBase,
+        # which lives in SIL.LCModel (per LibLCM reflection + the #12 session),
+        # NOT SIL.LCModel.Core.KernelInterfaces. Routing it to KernelInterfaces
+        # (the old #21 override) produced an ImportError -- the exact bug #12
+        # was filed for.
         code = "x = obj.BestAnalysisAlternative\n"
         result = detect_casting_needs(code, AMBIGUOUS_CAST_INDEX)
         baa = next(
@@ -364,7 +368,7 @@ class TestIssue21AmbiguousNoTieBreak(unittest.TestCase):
         if baa is not None and baa["cast_interface"] == "IMultiAccessorBase":
             self.assertEqual(
                 baa["imports_needed"],
-                ["from SIL.LCModel.Core.KernelInterfaces import IMultiAccessorBase"],
+                ["from SIL.LCModel import IMultiAccessorBase"],
             )
 
 
@@ -396,8 +400,8 @@ class TestIssue21FallbackHintWhenNoRewrite(unittest.TestCase):
 
 LEX_ENTRY_OPS_ENTITY = {
     "category": "lexicon",
-    "namespace": "flexlibs2.operations.LexEntryOperations",
-    "import_statement": "from flexlibs2 import LexEntryOperations",
+    "namespace": "flexicon.operations.LexEntryOperations",
+    "import_statement": "from flexicon import LexEntryOperations",
     "methods": [
         {"name": "GetAll", "signature": "(project)", "is_mutating": False},
         {"name": "Create", "signature": "(project, form, gloss)", "is_mutating": True},

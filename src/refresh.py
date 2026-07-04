@@ -11,11 +11,11 @@ Priority order (per library):
   2. Path from .env (if uncommented)
   3. Fails with helpful error (instructs user to install or configure)
 
-Run this when LibLCM, FlexLibs stable, or FlexLibs 2.0 is updated.
+Run this when LibLCM, FlexLibs stable, or Flexicon is updated.
 
 Usage:
     python src/refresh.py                     # Refresh all indexes
-    python src/refresh.py --flexlibs2-only    # Only refresh FlexLibs 2.0
+    python src/refresh.py --flexicon-only    # Only refresh Flexicon
     python src/refresh.py --flexlibs-only     # Only refresh FlexLibs stable
     python src/refresh.py --liblcm-only       # Only refresh LibLCM
 
@@ -146,8 +146,8 @@ def _refresh_library(
     """Generic library refresh function.
 
     Args:
-        library_name: Display name (e.g., 'FlexLibs', 'FlexLibs 2.0')
-        import_name: Python module to import (e.g., 'flexlibs', 'flexlibs2')
+        library_name: Display name (e.g., 'FlexLibs', 'Flexicon')
+        import_name: Python module to import (e.g., 'flexlibs', 'flexicon')
         env_var_name: Environment variable key (e.g., 'FLEXLIBS_PATH')
         library_path: Explicit path (None to try import first)
         cmd_flag: Command-line flag (e.g., '--flexlibs-path')
@@ -167,7 +167,7 @@ def _refresh_library(
             if library_path:
                 print(f"[INFO] {library_name} not installed; using repo path from .env: {library_path}")
             else:
-                install_cmd = "pip install flexlibs" if "stable" in output_prefix else "pip install ./flexlibs2"
+                install_cmd = "pip install flexlibs" if "stable" in output_prefix else "pip install pyflexicon"
                 print(f"[ERROR] {library_name} not installed and {env_var_name} not set in .env")
                 print(f"        Install with: {install_cmd}")
                 print(f"        Or uncomment {env_var_name} in .env")
@@ -179,7 +179,7 @@ def _refresh_library(
 
     cmd = [
         sys.executable,
-        "src/flexlibs2_analyzer.py",
+        "src/flexicon_analyzer.py",
         cmd_flag, library_path,
         "--output", str(temp_output)
     ]
@@ -226,15 +226,15 @@ def refresh_flexlibs_stable(flexlibs_path: str | None = None) -> bool:
     )
 
 
-def refresh_flexlibs2(flexlibs2_path: str | None = None) -> bool:
-    """Refresh FlexLibs 2.0 index from installed package (live version)."""
+def refresh_flexicon(flexicon_path: str | None = None) -> bool:
+    """Refresh Flexicon index from installed package (live version)."""
     return _refresh_library(
-        library_name="FlexLibs 2.0",
-        import_name="flexlibs2",
-        env_var_name="FLEXLIBS2_PATH",
-        library_path=flexlibs2_path,
-        cmd_flag="--flexlibs2-path",
-        output_prefix="flexlibs2_api",
+        library_name="Flexicon",
+        import_name="flexicon",
+        env_var_name="FLEXICON_PATH",
+        library_path=flexicon_path,
+        cmd_flag="--flexicon-path",
+        output_prefix="flexicon_api",
     )
 
 
@@ -452,9 +452,9 @@ def main():
         description="Refresh FlexTools MCP API indexes"
     )
     parser.add_argument(
-        "--flexlibs2-only",
+        "--flexicon-only",
         action="store_true",
-        help="Only refresh FlexLibs 2.0 index"
+        help="Only refresh Flexicon index"
     )
     parser.add_argument(
         "--flexlibs-only",
@@ -467,9 +467,9 @@ def main():
         help="Only refresh LibLCM index"
     )
     parser.add_argument(
-        "--flexlibs2-path",
+        "--flexicon-path",
         default=None,
-        help="Path to FlexLibs 2.0 repository (fallback; installed package is always preferred)"
+        help="Path to Flexicon repository (fallback; installed package is always preferred)"
     )
     parser.add_argument(
         "--flexlibs-path",
@@ -501,16 +501,16 @@ def main():
     success = True
 
     # Determine what to refresh
-    only_one = args.flexlibs2_only or args.flexlibs_only or args.liblcm_only
+    only_one = args.flexicon_only or args.flexlibs_only or args.liblcm_only
 
     # Refresh FlexLibs stable
     if args.flexlibs_only or (not only_one):
         if not refresh_flexlibs_stable(args.flexlibs_path):
             success = False
 
-    # Refresh FlexLibs 2.0
-    if args.flexlibs2_only or (not only_one):
-        if not refresh_flexlibs2(args.flexlibs2_path):
+    # Refresh Flexicon
+    if args.flexicon_only or (not only_one):
+        if not refresh_flexicon(args.flexicon_path):
             success = False
 
     # Refresh LibLCM

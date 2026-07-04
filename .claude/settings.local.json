@@ -5,7 +5,7 @@
       "Bash(dir:*)",
       "Bash(wc:*)",
       "Bash(grep:*)",
-      "Bash(python src/flexlibs2_analyzer.py:*)",
+      "Bash(python src/flexicon_analyzer.py:*)",
       "Bash(python:*)",
       "mcp__flextoolsmcp__find_examples",
       "mcp__flextoolsmcp__get_navigation_path",
@@ -55,7 +55,13 @@
       "Read(//tmp/**)",
       "Read(//d/tmp/**)",
       "Skill(ralph-loop:ralph-loop)",
-      "Skill(ralph-loop:ralph-loop:*)"
+      "Skill(ralph-loop:ralph-loop:*)",
+      "Bash(Select-Object -Last 20)",
+      "Bash(git -C \"D:/Github/_Projects/_LEX/FlexToolsMCP\" remote -v)",
+      "Bash(git -C \"D:/Github/_Projects/_LEX/flexlibs2/flexlibs2/code\" remote -v)",
+      "Bash(git -C \"D:/Github/_Projects/_LEX/flexlibs2\" remote -v)",
+      "Bash(gh auth *)",
+      "Bash(cd /d/Github/_Projects/_LEX/FlexToolsMCP *)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\flexlibs2\\flexlibs2\\code",

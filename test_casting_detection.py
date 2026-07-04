@@ -36,13 +36,13 @@ if result['casting_issues']:
         print(f"\n    Suggested fix:")
         print("    " + "\n    ".join(issue['fix'].split("\n")))
 
-# Test Case 2: ReversalEntriesRC access (flexlibs2 wrapping issue)
-print("\n\n[TEST 2] ReversalEntriesRC Issue (flexlibs2 wrapped object)")
+# Test Case 2: ReversalEntriesRC access (flexicon wrapping issue)
+print("\n\n[TEST 2] ReversalEntriesRC Issue (flexicon wrapped object)")
 print("=" * 60)
 
 reversals_code = """
 sense = senses[0]
-reversals = sense.ReversalEntriesRC  # May not exist on flexlibs2 wrapped ILexSense
+reversals = sense.ReversalEntriesRC  # May not exist on flexicon wrapped ILexSense
 for rev in reversals:
     report.Info(rev.Form)
 """
@@ -54,7 +54,7 @@ if result['casting_issues']:
     for issue in result['casting_issues']:
         print(f"\n  Issue at line {issue['line']}:")
         print(f"    Property: {issue['property']}")
-        print(f"    Suggested helper: {issue['flexlibs2_helper']}")
+        print(f"    Suggested helper: {issue['flexicon_helper']}")
 
 # Test Case 3: Clean code with no issues
 print("\n\n[TEST 3] Clean Code (no casting issues)")

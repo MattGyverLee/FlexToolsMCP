@@ -7,9 +7,8 @@ LibLCM: the internal data model an API governing all operations on a Fieldwords 
 FlexLibs (stable) A shallow and partial Ironpython wrapper that calls some liblcm functions to read and manipulate Flex Lexicons.
     ..\flexlibs
     https://github.com/cdfarrow/flexlibs/
-FlexLibs 2.0 A deep and nearly-complete but untested Ironpython wrapper that wraps nearly all liblcm functions to read and manipulate Flex Lexicons.
-    ..\flexlibs2
-    https://github.com/mattgyverlee/flexlibs/
+Flexicon A deep and nearly-complete but untested Ironpython wrapper that wraps nearly all liblcm functions to read and manipulate Flex Lexicons. Installed as a pip package (not cloned): `pip install pyflexicon`.
+    https://pypi.org/project/pyflexicon/
 FLExTools: A Gui application for running prepared "macros" written in python. The python "macros" call FlexLibs if the function has been ported but must call liblcm directly in most cases.
     ..\flextools
     https://github.com/cdfarrow/flextools/

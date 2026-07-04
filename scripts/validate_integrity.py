@@ -6,13 +6,13 @@ Supports subcommands:
   imports     Check import guards on relative imports
   server      Verify server.py tool count
   refresh     Verify refresh.py functionality
-  flexlibs2   Verify flexlibs2 contract (Operations, exceptions)
+  flexicon   Verify flexicon contract (Operations, exceptions)
   all         Run all checks (default)
 
 Examples:
   python scripts/validate_integrity.py                    # Run all checks
   python scripts/validate_integrity.py syntax             # Syntax only
-  python scripts/validate_integrity.py flexlibs2          # Contract check only
+  python scripts/validate_integrity.py flexicon          # Contract check only
 """
 
 import argparse
@@ -272,7 +272,7 @@ def check_refresh_runs():
         return False
 
     help_text = result.stdout
-    expected_flags = ["--flexlibs2-only", "--flexlibs-only", "--liblcm-only"]
+    expected_flags = ["--flexicon-only", "--flexlibs-only", "--liblcm-only"]
     missing = [f for f in expected_flags if f not in help_text]
     if missing:
         print(
@@ -285,7 +285,7 @@ def check_refresh_runs():
     return True
 
 
-# ── Contract Checks (FlexLibs2) ────────────────────────────────────
+# ── Contract Checks (Flexicon) ────────────────────────────────────
 
 def check_server_internal_consistency():
     """Verify the 3 copies of the Operations list match across server.py and execution.py."""
@@ -339,9 +339,9 @@ def check_server_internal_consistency():
 
 
 def _try_import(cls_name):
-    """Try to import cls_name from flexlibs2. Returns (obj, error)."""
+    """Try to import cls_name from flexicon. Returns (obj, error)."""
     try:
-        obj = getattr(__import__("flexlibs2", fromlist=[cls_name]), cls_name)
+        obj = getattr(__import__("flexicon", fromlist=[cls_name]), cls_name)
         if obj is None:
             return None, f"{cls_name} is None"
         return obj, None
@@ -349,15 +349,15 @@ def _try_import(cls_name):
         return None, str(e)
 
 
-def check_flexlibs2_contract(operations_classes, exception_classes):
-    """Full runtime contract check against installed flexlibs2."""
+def check_flexicon_contract(operations_classes, exception_classes):
+    """Full runtime contract check against installed flexicon."""
     errors = []
     warnings = []
 
     try:
-        import flexlibs2
+        import flexicon
     except ImportError:
-        print("flexlibs2 not installed — skipping runtime contract checks.")
+        print("flexicon not installed — skipping runtime contract checks.")
         return [], []
 
     # Import the non-enumerable operations list from server constants
@@ -373,17 +373,17 @@ def check_flexlibs2_contract(operations_classes, exception_classes):
             "ProjectSettingsOperations",
         }
 
-    version = getattr(flexlibs2, "__version__", None)
+    version = getattr(flexicon, "__version__", None)
     if version is None:
         try:
             from importlib.metadata import version as pkg_version
-            version = pkg_version("flexlibs2")
+            version = pkg_version("flexicon")
         except Exception:
             pass
     if version:
-        print(f"  flexlibs2 version: {version}")
+        print(f"  flexicon version: {version}")
     else:
-        errors.append("flexlibs2 has no __version__ attribute or package metadata")
+        errors.append("flexicon has no __version__ attribute or package metadata")
 
     for cls_name in CORE_CLASSES:
         _, err = _try_import(cls_name)
@@ -415,7 +415,7 @@ def check_flexlibs2_contract(operations_classes, exception_classes):
         else:
             exc_passed += 1
 
-    all_exports = set(dir(flexlibs2))
+    all_exports = set(dir(flexicon))
     new_ops = {
         name for name in all_exports
         if name.endswith("Operations")
@@ -424,7 +424,7 @@ def check_flexlibs2_contract(operations_classes, exception_classes):
     }
     if new_ops:
         warnings.append(
-            f"flexlibs2 has {len(new_ops)} Operations class(es) not in server.py: "
+            f"flexicon has {len(new_ops)} Operations class(es) not in server.py: "
             f"{sorted(new_ops)}\n"
             f"  Add them to KNOWN_OPERATIONS, OPERATIONS_CLASSES, and exec_namespace."
         )
@@ -524,9 +524,9 @@ def cmd_refresh(args):
         return 1
 
 
-def cmd_flexlibs2(args):
-    """Check flexlibs2 contract."""
-    print("Checking flexlibs2 contract...")
+def cmd_flexicon(args):
+    """Check flexicon contract."""
+    print("Checking flexicon contract...")
     print("Checking server.py internal consistency...")
     result = check_server_internal_consistency()
     if isinstance(result[0], list) and len(result) == 3:
@@ -549,9 +549,9 @@ def cmd_flexlibs2(args):
             f"{len(operations_set)} classes, {len(exceptions_set)} exceptions"
         )
 
-    print("Checking flexlibs2 runtime contract...")
+    print("Checking flexicon runtime contract...")
     if operations_set:
-        runtime_errors, runtime_warnings = check_flexlibs2_contract(
+        runtime_errors, runtime_warnings = check_flexicon_contract(
             operations_set, exceptions_set
         )
         all_errors.extend(runtime_errors)
@@ -570,7 +570,7 @@ def cmd_flexlibs2(args):
             print(f"  {err}", file=sys.stderr)
         return 1
 
-    print("\nFlexLibs2 contract check passed.")
+    print("\nFlexicon contract check passed.")
     return 0
 
 
@@ -590,8 +590,8 @@ def cmd_all(args):
     print("\n[4/5] Checking refresh...")
     all_ok = cmd_refresh(args) == 0 and all_ok
 
-    print("\n[5/5] Checking flexlibs2...")
-    all_ok = cmd_flexlibs2(args) == 0 and all_ok
+    print("\n[5/5] Checking flexicon...")
+    all_ok = cmd_flexicon(args) == 0 and all_ok
 
     return 0 if all_ok else 1
 
@@ -610,7 +610,7 @@ def main():
     subparsers.add_parser('imports', help='Check import guards')
     subparsers.add_parser('server', help='Check server.py tools')
     subparsers.add_parser('refresh', help='Check refresh.py')
-    subparsers.add_parser('flexlibs2', help='Check flexlibs2 contract')
+    subparsers.add_parser('flexicon', help='Check flexicon contract')
     subparsers.add_parser('all', help='Run all checks')
 
     args = parser.parse_args()
@@ -620,7 +620,7 @@ def main():
         'imports': cmd_imports,
         'server': cmd_server,
         'refresh': cmd_refresh,
-        'flexlibs2': cmd_flexlibs2,
+        'flexicon': cmd_flexicon,
         'all': cmd_all,
         None: cmd_all,  # Default to all checks
     }

@@ -15,7 +15,7 @@ cp .env.example .env
 python src/refresh.py
 
 # Test the MCP server loads correctly
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexlibs2.get(\"entities\",{}))} FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexicon.get(\"entities\",{}))} Flexicon entities')"
 
 # Run the MCP server (for Claude Code integration)
 python src/server.py
@@ -33,7 +33,7 @@ User Request -> AI Assistant -> MCP Server -> Indexed Documentation
                     |
             FLExTools (IronPython)
                     |
-            FlexLibs 2.0 (Python wrappers)
+            Flexicon (Python wrappers)
                     |
             LibLCM (C# library)
                     |
@@ -60,14 +60,16 @@ FLExTools MCP makes FieldWorks automation accessible to non-programmers by:
 
 ## Related Repositories
 
-Configure paths in `.env` file. These external repositories are dependencies:
+Configure paths in `.env` file. These dependencies are external repositories,
+except Flexicon which is a PyPI package (`pip install pyflexicon`, imported as
+`flexicon`) and no longer a cloned sibling repo:
 
-| Repository | Purpose | Default Path |
+| Dependency | Purpose | Source |
 |------------|---------|--------------|
 | **FieldWorks** | User-facing GUI for managing lexicons | ../FieldWorks |
 | **LibLCM** | C# data model and API for FieldWorks databases | ../liblcm |
 | **FlexLibs** (stable) | Shallow IronPython wrapper (~40 functions) | ../flexlibs |
-| **FlexLibs 2.0** | Deep IronPython wrapper (~90% coverage) | ../flexlibs2 |
+| **Flexicon** | Deep Python wrapper (~90% coverage) | `pip install pyflexicon` (import `flexicon`) |
 | **FLExTools** | GUI app for running Python macros | ../flextools |
 
 ## Project Structure
@@ -75,7 +77,7 @@ Configure paths in `.env` file. These external repositories are dependencies:
 ```
 /src
   server.py              # MCP server with 6 tools
-  flexlibs2_analyzer.py  # FlexLibs stable + 2.0 Python AST extraction
+  flexicon_analyzer.py   # FlexLibs stable + Flexicon Python AST extraction
   liblcm_extractor.py    # LibLCM .NET reflection extraction
   refresh.py             # Unified refresh script
 
@@ -85,7 +87,7 @@ Configure paths in `.env` file. These external repositories are dependencies:
     liblcm_api_v8.3.0.json    # Version 8.3.0 (etc.)
   /flexlibs              # FlexLibs API documentation (versioned JSON)
     flexlibs_api_v1.0.0.json      # FlexLibs stable version 1.0.0
-    flexlibs2_api_v2.1.5.json     # FlexLibs 2.0 version 2.1.5
+    flexicon_api_v4.1.0.json     # Flexicon version 4.1.0
 
 /docs
   PROGRESS.md            # Project progress log
@@ -108,7 +110,7 @@ The server exposes 6 tools:
 
 ## Refreshing Indexes
 
-When LibLCM, FlexLibs stable, or FlexLibs 2.0 changes, refresh the indexes:
+When LibLCM, FlexLibs stable, or Flexicon changes, refresh the indexes:
 
 ```bash
 # Refresh all
@@ -117,14 +119,14 @@ python src/refresh.py
 # Refresh only FlexLibs stable
 python src/refresh.py --flexlibs-only
 
-# Refresh only FlexLibs 2.0
-python src/refresh.py --flexlibs2-only
+# Refresh only Flexicon
+python src/refresh.py --flexicon-only
 
 # Refresh only LibLCM (requires pythonnet and FieldWorks DLLs)
 python src/refresh.py --liblcm-only
 ```
 
-**API Versioning**: Files are now stored with version suffixes (e.g., `flexlibs2_api_v2.1.5.json`).
+**API Versioning**: Files are now stored with version suffixes (e.g., `flexicon_api_v4.1.0.json`).
 - Server automatically detects library versions and loads matching API files
 - Missing versions are auto-refreshed on startup
 - Multiple versions can coexist in the index directory
@@ -136,14 +138,14 @@ python src/refresh.py --liblcm-only
 
 FLEx/LCM uses `'***'` as a placeholder when multilingual string fields (Definition, Gloss, etc.) have no value set.
 
-**FlexLibs2 v2.0+ automatically converts "***" to ""** in all public methods that return multistring values. This is a breaking change from stable FlexLibs v1.x but provides better UX consistency. See [FlexLibs2 MIGRATION_GUIDE](../flexlibs2/docs/MIGRATION_GUIDE.md) for migration details.
+**Flexicon v2.0+ automatically converts "***" to ""** in all public methods that return multistring values. This is a breaking change from stable FlexLibs v1.x but provides better UX consistency. See the Flexicon MIGRATION_GUIDE (bundled with the `pyflexicon` package) for migration details.
 
 **Affected fields** (in LibLCM / direct C# access): Any property returning `IMultiString` or `IMultiUnicode`:
 - `ILexSense.Definition`, `ILexSense.Gloss`
 - `ILexEntry.LiteralMeaning`, `ILexEntry.Bibliography`
 - Many others...
 
-**FlexLibs2 Operations Methods** - automatically normalize:
+**Flexicon Operations Methods** - automatically normalize:
 ```python
 # These methods return "" for empty, not "***"
 gloss = sense.GetGloss()  # Returns "" if empty, not "***"
@@ -178,7 +180,7 @@ When users encounter `AttributeError` or "has no attribute" errors:
 ## Key Technical Decisions
 
 - **Self-contained extraction**: Can regenerate indexes from source (no external dependencies)
-- **FlexLibs 2.0 preferred**: Better documented (99% descriptions, 82% examples)
+- **Flexicon preferred**: Better documented (99% descriptions, 82% examples)
 - **Static analysis primary**: AST parsing for Python, .NET reflection for C#
 - **Semantic categorization**: Entities categorized by namespace and naming patterns
 - **Object-centric organization**: Index organized around objects (ILexEntry, ILexSense, etc.)
@@ -195,7 +197,7 @@ snippets are the right primitive for exploration -- short, low-ceremony,
 written and executed in seconds. Don't paper them over with module
 boilerplate before they've earned it.
 
-**Use `flextools_get_module_template(flavor='flexlibs2')` when graduating
+**Use `flextools_get_module_template(flavor='flexicon')` when graduating
 a snippet into a reusable, named module** -- i.e., the user wants to keep
 the code, run it from FlexTools' GUI, or share it. Cues that you're at the
 graduation step: "save this", "make it a module", "deploy", or the user
@@ -224,9 +226,9 @@ for entry in project.LexEntry.GetAll():
     report.Info(headword, project.BuildGotoURL(entry))
 ```
 
-### Preferred: FlexLibs 2.0
+### Preferred: Flexicon
 
-When generating FLExTools scripts for users, **always use flexlibs2** template:
+When generating FLExTools scripts for users, **always use flexicon** template:
 - Better documented (99% descriptions, 82% examples)
 - 90% API coverage (stable flexlibs only ~40 functions)
 - Handles edge cases (multistring normalization, descriptor protocol)
@@ -242,7 +244,7 @@ Purpose:
     [What this module does and why]
 
 Requires:
-    - FlexLibs2 version 2.0+
+    - Flexicon version 2.0+
     - FieldWorks version [X.Y.Z]+
 
 Author: Claude Code
@@ -252,9 +254,10 @@ Usage:
     Load in FLExTools and run on a FieldWorks project.
 """
 
-# CRITICAL: Explicitly import from flexlibs2
-# This prevents FLExTools's default flexlibs (stable version) from shadowing flexlibs2
-from flexlibs2 import (
+# CRITICAL: Explicitly import from flexicon (pip install pyflexicon)
+# Don't rely on FLExTools's default flexlibs (stable version) -- import the
+# Flexicon API surface by name so you get the deep wrapper, not the shallow one.
+from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
@@ -277,7 +280,7 @@ def Main(project, report, modify):
         report.Info(f"Processing {len(entries)} entries...")
 
         for entry in entries:
-            # Use flexlibs2 wrapped methods
+            # Use flexicon wrapped methods
             senses = project.LexSense.GetAllSenses(entry)
             for sense in senses:
                 gloss = project.LexSense.GetGloss(sense)
@@ -293,14 +296,14 @@ def Main(project, report, modify):
 
 ### Why This Matters
 
-**Silent Failure Risk**: FLExTools loads stable flexlibs first. Without explicit flexlibs2 imports, your code will silently use the wrong (stable) version:
+**Silent Failure Risk**: FLExTools loads stable flexlibs first. Without explicit flexicon imports, your code will silently use the wrong (stable) version:
 
 ```python
 # WRONG - Gets stable flexlibs version
 entry = project.LexEntry.GetAll()
 
-# CORRECT - Guarantees flexlibs2 version
-from flexlibs2 import LexEntryOperations
+# CORRECT - Guarantees flexicon version
+from flexicon import LexEntryOperations
 entry = project.LexEntry.GetAll()
 ```
 
@@ -308,14 +311,14 @@ Users won't see an error—the code will "work" but with incorrect behavior/sign
 
 ### Key Points
 
-1. **Always import from flexlibs2**, never rely on global imports
+1. **Always import from flexicon**, never rely on global imports
 2. **Include Requires section** - tell users what versions they need
-3. **Use flexlibs2 wrapped methods** - they handle edge cases (e.g., "***" multistring normalization)
+3. **Use flexicon wrapped methods** - they handle edge cases (e.g., "***" multistring normalization)
 4. **Catch and report errors** - FLExTools captures exceptions, make them visible via report
 5. **Comment non-obvious code** - users will read and maintain this
 
 ## Don'ts:
 - This is a Windows system; don't use emojis in console messages.
 - Call Python with `python` instead of `python3`.
-- **Don't omit the flexlibs2 imports** - this causes silent failures with wrong library versions.
+- **Don't omit the flexicon imports** - this causes silent failures with wrong library versions.
 - Don't assume FLExTools will inject the right library - be explicit.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Tests for issue #45: canonical-intent map surfaces the correct flexlibs2
+Tests for issue #45: canonical-intent map surfaces the correct flexicon
 method as the top search result for high-frequency intents, instead of the
 assistant guessing nonexistent accessor/method names.
 """
@@ -11,11 +11,11 @@ import unittest
 from server.handlers.api import _match_canonical_intents, CANONICAL_INTENTS
 
 
-# Minimal fake flexlibs2 index carrying just the methods the map points at.
+# Minimal fake flexicon index carrying just the methods the map points at.
 FAKE_INDEX = {
     "entities": {
         "LexSenseOperations": {
-            "namespace": "flexlibs2.code.Lexicon.LexSenseOperations",
+            "namespace": "flexicon.code.Lexicon.LexSenseOperations",
             "category": "lexicon",
             "methods": [
                 {"name": "GetPartOfSpeechObject", "signature": "GetPartOfSpeechObject(sense)",
@@ -25,12 +25,12 @@ FAKE_INDEX = {
             ],
         },
         "TextOperations": {
-            "namespace": "flexlibs2.code.TextsWords.TextOperations",
+            "namespace": "flexicon.code.TextsWords.TextOperations",
             "category": "texts",
             "methods": [{"name": "GetAll", "signature": "GetAll()", "summary": "All texts."}],
         },
         "LexEntryOperations": {
-            "namespace": "flexlibs2.code.Lexicon.LexEntryOperations",
+            "namespace": "flexicon.code.Lexicon.LexEntryOperations",
             "category": "lexicon",
             "methods": [
                 {"name": "GetAll", "signature": "GetAll()", "summary": "All entries."},
@@ -39,12 +39,12 @@ FAKE_INDEX = {
             ],
         },
         "WordformOperations": {
-            "namespace": "flexlibs2.code.TextsWords.WordformOperations",
+            "namespace": "flexicon.code.TextsWords.WordformOperations",
             "category": "texts",
             "methods": [{"name": "GetAll", "signature": "GetAll()", "summary": "All wordforms."}],
         },
         "WfiGlossOperations": {
-            "namespace": "flexlibs2.code.TextsWords.WfiGlossOperations",
+            "namespace": "flexicon.code.TextsWords.WfiGlossOperations",
             "category": "texts",
             "methods": [{"name": "GetForm", "signature": "GetForm(g)", "summary": "Gloss form."}],
         },
@@ -75,7 +75,7 @@ class TestCanonicalIntents(unittest.TestCase):
         self.assertTrue(rows)
         row = rows[0]
         self.assertTrue(row["canonical_intent"])
-        self.assertEqual(row["import_statement"], "from flexlibs2 import LexEntryOperations")
+        self.assertEqual(row["import_statement"], "from flexicon import LexEntryOperations")
         self.assertEqual(row["type"], "method")
 
     def test_no_match_returns_empty(self):

@@ -39,10 +39,10 @@ UNDO_COUNT = {undo_count}
 result = {{"success": False, "undid": 0, "stack_depth_before": None, "stack_depth_after": None}}
 
 try:
-    from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+    from flexicon import FLExInitialize, FLExCleanup, FLExProject
 except Exception as e:
     result["error"] = "import_failed"
-    result["error_message"] = "flexlibs2 import failed: {{}}".format(e)
+    result["error_message"] = "flexicon import failed: {{}}".format(e)
     print("__UNDO_RESULT_START__")
     print(json.dumps(result))
     print("__UNDO_RESULT_END__")

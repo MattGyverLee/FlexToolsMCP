@@ -4,7 +4,7 @@
 Configuration Management: Persistent dotted-key JSON configuration for FlexToolsMCP.
 
 Provides:
-- Dotted-key access (e.g., 'paths.flexlibs2') to nested config values
+- Dotted-key access (e.g., 'paths.flexicon') to nested config values
 - In-memory caching to avoid disk reads on every call
 - Auto-creation of config directory if missing
 - JSON type auto-detection (integers stay integers, not strings)
@@ -85,16 +85,16 @@ def config_get(key: str, default: Any = None) -> Any:
     returns the default value.
 
     Args:
-        key: Dotted key path (e.g., 'paths.flexlibs2', 'api.timeout')
+        key: Dotted key path (e.g., 'paths.flexicon', 'api.timeout')
         default: Value to return if key is not found (default: None)
 
     Returns:
         The config value, or default if not found
 
     Example:
-        >>> config_set('paths.flexlibs2', '/home/user/flexlibs2')
-        >>> config_get('paths.flexlibs2')
-        '/home/user/flexlibs2'
+        >>> config_set('paths.flexicon', '/home/user/flexicon')
+        >>> config_get('paths.flexicon')
+        '/home/user/flexicon'
         >>> config_get('paths.nonexistent', 'default_value')
         'default_value'
     """
@@ -118,11 +118,11 @@ def config_set(key: str, value: Any) -> None:
     (integers, booleans, etc.) instead of storing everything as strings.
 
     Args:
-        key: Dotted key path (e.g., 'paths.flexlibs2')
+        key: Dotted key path (e.g., 'paths.flexicon')
         value: The value to set (can be str, int, bool, dict, list, etc.)
 
     Example:
-        >>> config_set('paths.flexlibs2', '/home/user/flexlibs2')
+        >>> config_set('paths.flexicon', '/home/user/flexicon')
         >>> config_set('api.timeout', 30)  # Stored as int, not "30"
         >>> config_set('flags.enabled', True)  # Stored as bool, not "true"
     """
@@ -167,8 +167,8 @@ def config_delete(key: str) -> bool:
         True if the key existed and was deleted, False otherwise
 
     Example:
-        >>> config_set('paths.flexlibs2', '/home/user/flexlibs2')
-        >>> config_delete('paths.flexlibs2')
+        >>> config_set('paths.flexicon', '/home/user/flexicon')
+        >>> config_delete('paths.flexicon')
         True
         >>> config_delete('paths.nonexistent')
         False
@@ -202,9 +202,9 @@ def config_list() -> Dict[str, Any]:
         The complete config dict
 
     Example:
-        >>> config_set('paths.flexlibs2', '/path')
+        >>> config_set('paths.flexicon', '/path')
         >>> config_list()
-        {'paths': {'flexlibs2': '/path'}}
+        {'paths': {'flexicon': '/path'}}
     """
     return dict(_get_cache())
 

@@ -11,7 +11,7 @@ Resolution order for the projects directory:
   1. FW_PROJECTS_DIR env var (developer override)
   2. Windows registry HKLM\\Software\\SIL\\FieldWorks\\9, value ProjectsDir
   3. Default %ProgramData%\\SIL\\FieldWorks\\Projects
-  4. Subprocess fallback into flexlibs2.FLExLCM.GetListOfProjects()
+  4. Subprocess fallback into flexicon.FLExLCM.GetListOfProjects()
 
 Allowed I/O is restricted to:
   - registry read (read-only)
@@ -101,9 +101,9 @@ def get_projects_directory() -> Optional[tuple]:
 def _scan_directory(projects_dir: Path) -> list:
     """Return sorted project names under projects_dir.
 
-    Mirrors flexlibs2.FLExLCM.GetListOfProjects: keep only entries where
+    Mirrors flexicon.FLExLCM.GetListOfProjects: keep only entries where
     <dir>/<name>/<name>.fwdata exists, to filter ghost directories FW
-    leaves behind after project deletion (flexlibs2 Issue #48).
+    leaves behind after project deletion (flexicon Issue #48).
     """
     names = []
     try:
@@ -117,7 +117,7 @@ def _scan_directory(projects_dir: Path) -> list:
 
 
 def _list_via_subprocess(timeout_seconds: int = 30) -> Optional[list]:
-    """Last-resort: shell out to flexlibs2.FLExLCM.GetListOfProjects().
+    """Last-resort: shell out to flexicon.FLExLCM.GetListOfProjects().
 
     Only used when registry + default-path discovery fail (rare). Slow
     (5-10s cold pythonnet start), but authoritative -- same enumeration
@@ -126,7 +126,7 @@ def _list_via_subprocess(timeout_seconds: int = 30) -> Optional[list]:
     snippet = (
         "import json, sys\n"
         "try:\n"
-        "    from flexlibs2.FLExLCM import GetListOfProjects\n"
+        "    from flexicon.FLExLCM import GetListOfProjects\n"
         "    print(json.dumps(sorted(GetListOfProjects())))\n"
         "except Exception as exc:\n"
         "    sys.stderr.write(type(exc).__name__ + ': ' + str(exc))\n"

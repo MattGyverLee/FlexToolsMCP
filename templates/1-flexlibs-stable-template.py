@@ -9,8 +9,8 @@ REQUIRES:
     - FieldWorks version [X.Y.Z]+ (typically 8.x - 9.x)
 
 ⚠️  LEGACY VERSION
-    This template uses stable flexlibs. For new projects, use flexlibs2.
-    See 2-flexlibs2-template.py for recommended approach.
+    This template uses stable flexlibs. For new projects, use flexicon.
+    See 2-flexicon-template.py for recommended approach.
 
 AUTHOR:
     [Your Name / Claude Code]
@@ -52,7 +52,7 @@ def Main(project, report, modifyAllowed):
                 form = project.LexiconGetEntryForm(entry)
 
                 # Limited sense operations available
-                # (flexlibs2 has much better coverage)
+                # (flexicon has much better coverage)
                 report.Info(f"  [{i+1}] {form}")
 
                 # BuildGoToURL creates clickable links in FLExTools output
@@ -135,7 +135,7 @@ MULTISTRING HANDLING:
         return "" if form == "***" else form
 
 CONSIDER UPGRADING:
-  If your system supports FieldWorks 9.0+, use flexlibs2 instead:
+  If your system supports FieldWorks 9.0+, use flexicon instead:
     - 90% API coverage (vs ~40 functions)
     - Automatic "***" normalization
     - Better error messages
@@ -143,8 +143,8 @@ CONSIDER UPGRADING:
 
 MIGRATION PATH:
   1. Check if FieldWorks version is 9.0+
-  2. Check if FlexLibs2 is available
-  3. Use 2-flexlibs2-template.py instead
+  2. Check if Flexicon is available
+  3. Use 2-flexicon-template.py instead
   4. Minimal code changes needed
 
 BUILDGOTOURL - CLICKABLE LINKS:
@@ -164,10 +164,10 @@ BUILDGOTOURL - CLICKABLE LINKS:
   Wrapped in try/except because BuildGotoURL may not be available
   in all versions or environments.
 
-WHY NOT FLEXLIBS2?
+WHY NOT FLEXICON?
   This template is only for systems where:
     - FieldWorks < 9.0 (old systems)
-    - FlexLibs2 not available
+    - Flexicon not available
     - System is locked down
     - Other constraints prevent upgrade
 """

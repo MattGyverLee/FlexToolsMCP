@@ -22,7 +22,7 @@ try:
         # Basic fields
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXLIBS2_MATCHES,
+        KEY_MATCHES, KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES,
         KEY_LIBLCM_MATCHES, KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
         KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT, KEY_EXAMPLE,
         # Handler-specific discovery fields
@@ -35,7 +35,7 @@ try:
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
         KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_NAMESPACE, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
-        KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
+        KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXICON_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
@@ -50,7 +50,7 @@ except ImportError:
         # Basic fields
         KEY_OBJECT_TYPE, KEY_FOUND, KEY_METHODS, KEY_ENTITY, KEY_NAME, KEY_TYPE,
         KEY_SOURCE, KEY_SIGNATURE, KEY_DESCRIPTION, KEY_CATEGORY, KEY_SCORE,
-        KEY_MATCHES, KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXLIBS2_MATCHES,
+        KEY_MATCHES, KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_FLEXICON_MATCHES,
         KEY_LIBLCM_MATCHES, KEY_FLEXLIBS_STABLE_MATCHES, KEY_DISAMBIGUATION, KEY_QUERY, KEY_RESULTS_COUNT,
         KEY_EXAMPLES, KEY_MESSAGE, KEY_SUMMARY, KEY_METHODS_COUNT, KEY_EXAMPLE,
         # Handler-specific discovery fields
@@ -63,7 +63,7 @@ except ImportError:
         KEY_IS_MULTISTRING, KEY_EMPTY_VALUE_WARNING, KEY_PROPERTY_NAME, KEY_CONTEXT_ENTITY,
         KEY_LIMIT, KEY_OFFSET, KEY_SUMMARY_ONLY, KEY_NAMESPACE, KEY_INCLUDE_CASTING_INFO, KEY_SUFFIX_GUIDE,
         KEY_USAGE_EXAMPLES, KEY_PYTHONNET_CASTING, KEY_REQUIRES_CAST, KEY_DEFINED_ON,
-        KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXLIBS2_HELPER,
+        KEY_NOT_AVAILABLE_ON, KEY_WARNING, KEY_PATTERN, KEY_FLEXICON_HELPER,
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
@@ -102,10 +102,10 @@ SUFFIX_KIND_GUIDE = {
 
 # API mode configuration
 API_MODE_CONFIG = {
-    "flexlibs2": {
-        "primary": ["flexlibs2"],
+    "flexicon": {
+        "primary": ["flexicon"],
         "fallback": [],
-        "description": "FlexLibs 2.0 (recommended)"
+        "description": "Flexicon (recommended)"
     },
     "flexlibs_stable": {
         "primary": ["flexlibs_stable"],
@@ -118,7 +118,7 @@ API_MODE_CONFIG = {
         "description": "Pure LibLCM"
     },
     "all": {
-        "primary": ["flexlibs2", "flexlibs_stable", "liblcm"],
+        "primary": ["flexicon", "flexlibs_stable", "liblcm"],
         "fallback": [],
         "description": "All sources"
     }
@@ -128,11 +128,11 @@ API_MODE_CONFIG = {
 # Used by every read-only handler so a single mode never bleeds another source's
 # entities/methods into the response. The "all" mode is the explicit opt-out.
 _MODE_SOURCES: Dict[str, list] = {
-    "flexlibs2": [("flexlibs2", "flexlibs2", KEY_FLEXLIBS2)],
+    "flexicon": [("flexicon", "flexicon", KEY_FLEXICON)],
     "flexlibs_stable": [("flexlibs_stable", "flexlibs_stable", KEY_FLEXLIBS_STABLE)],
     "liblcm": [("liblcm", "liblcm", KEY_LIBLCM)],
     "all": [
-        ("flexlibs2", "flexlibs2", KEY_FLEXLIBS2),
+        ("flexicon", "flexicon", KEY_FLEXICON),
         ("flexlibs_stable", "flexlibs_stable", KEY_FLEXLIBS_STABLE),
         ("liblcm", "liblcm", KEY_LIBLCM),
     ],
@@ -144,9 +144,9 @@ def active_sources_for_mode(mode: str) -> list:
 
     Each tuple is (source_name, APIIndex attribute, response key). Single-mode
     sessions return one tuple; "all" returns all three. Unknown modes default
-    to flexlibs2 to keep wrappers as the safe default surface.
+    to flexicon to keep wrappers as the safe default surface.
     """
-    return _MODE_SOURCES.get(mode, _MODE_SOURCES["flexlibs2"])
+    return _MODE_SOURCES.get(mode, _MODE_SOURCES["flexicon"])
 
 
 def ensure_active_sources_loaded(api_index, mode: str) -> None:
@@ -193,13 +193,13 @@ DOMAIN_SYNONYMS = {
 # assistant historically guessed plausible-but-nonexistent accessor/method
 # names (e.g. project.LexEntries, LexiconGetSensePartOfSpeech) and burned
 # multiple round-trips before landing on the real API. Each entry maps a set
-# of normalized intent phrases to the ONE canonical flexlibs2 method that
+# of normalized intent phrases to the ONE canonical flexicon method that
 # satisfies it. When a query contains one of these phrases, the method is
 # fetched from the index and PREPENDED to the search results as the top hit
 # (the normal keyword/semantic search still runs and its results follow), so
 # the correct method is offered on the first try without replacing anything.
 #
-# Keep entries verified against the flexlibs2 index -- an entry pointing at a
+# Keep entries verified against the flexicon index -- an entry pointing at a
 # non-existent method would silently drop out (the loader skips unknown ones).
 # Phrases are matched as substrings of the normalized query; list the most
 # specific phrases so they win over broader ones.
@@ -306,9 +306,9 @@ def rank_object_matches(partial_name: str, matches: list, api_mode: str) -> dict
             score += 30
             reasons.append(f"Matches session API mode ({api_mode})")
 
-        if "Operations" in match.get(KEY_NAME, "") and api_mode == "flexlibs2":
+        if "Operations" in match.get(KEY_NAME, "") and api_mode == "flexicon":
             score += 20
-            reasons.append("Operations class (FlexLibs2 pattern)")
+            reasons.append("Operations class (Flexicon pattern)")
 
         if match.get(KEY_CATEGORY) == "lexicon":
             score += 10
@@ -358,10 +358,10 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "") ->
     """Ready-to-paste `from ... import <Entity>` line for a result row.
 
     liblcm uses the recorded LCM namespace (SIL.LCModel.*); empty string if
-    that's missing. flexlibs2 / flexlibs_stable always use the runtime-correct
+    that's missing. flexicon / flexlibs_stable always use the runtime-correct
     top-level import form, ignoring the recorded deep package path (e.g.
-    `flexlibs2.code.System.CheckOperations`) -- IronPython interop wants
-    `from flexlibs2 import CheckOperations`.
+    `flexicon.code.System.CheckOperations`) -- IronPython interop wants
+    `from flexicon import CheckOperations`.
     """
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
@@ -371,23 +371,23 @@ def _build_entity_import(library: str, entity_name: str, namespace: str = "") ->
 _CANONICAL_INTENT_SCORE = 1000  # sort above any keyword/semantic score
 
 
-def _match_canonical_intents(query: str, flexlibs2_index: dict | None) -> list:
+def _match_canonical_intents(query: str, flexicon_index: dict | None) -> list:
     """Return canonical top-result rows for high-frequency intents (issue #45).
 
     Normalizes the query (lowercase, punctuation -> spaces, collapsed spaces)
     and, for each CANONICAL_INTENTS entry whose phrase is a substring, fetches
-    the named method from the flexlibs2 index and builds a result row shaped
+    the named method from the flexicon index and builds a result row shaped
     like search_source()'s output. Entries whose method isn't in the index are
     skipped (defensive against index churn). De-duplicated by entity.method so
     a query matching two phrase groups pointing at the same method yields one
     row.
     """
-    if not flexlibs2_index:
+    if not flexicon_index:
         return []
     norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
     if not norm:
         return []
-    entities = flexlibs2_index.get("entities", {})
+    entities = flexicon_index.get("entities", {})
     rows = []
     seen = set()
     for phrases, entity_name, method_name in CANONICAL_INTENTS:
@@ -409,10 +409,10 @@ def _match_canonical_intents(query: str, flexlibs2_index: dict | None) -> list:
         namespace = entity.get("namespace", "") or ""
         rows.append({
             KEY_SCORE: _CANONICAL_INTENT_SCORE,
-            KEY_SOURCE: "flexlibs2",
+            KEY_SOURCE: "flexicon",
             KEY_ENTITY: entity_name,
             KEY_NAMESPACE: namespace,
-            KEY_IMPORT_STATEMENT: _build_entity_import("flexlibs2", entity_name, namespace),
+            KEY_IMPORT_STATEMENT: _build_entity_import("flexicon", entity_name, namespace),
             KEY_NAME: method_name,
             KEY_TYPE: "method",
             KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -423,7 +423,7 @@ def _match_canonical_intents(query: str, flexlibs2_index: dict | None) -> list:
     return rows
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexlibs2") -> dict:
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon") -> dict:
     """Apply pagination and filtering to an entity's methods and properties."""
     try:
         from ..constants import OPERATIONS_CLASSES, KNOWN_OPERATIONS
@@ -574,8 +574,8 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     """Get API documentation for a specific object type.
 
     Source isolation: only the source(s) for the session mode are surfaced.
-    flexlibs2 mode shows flexlibs2; flexlibs_stable shows flexlibs_stable;
-    liblcm shows liblcm; "all" shows all three. The legacy include_flexlibs2/
+    flexicon mode shows flexicon; flexlibs_stable shows flexlibs_stable;
+    liblcm shows liblcm; "all" shows all three. The legacy include_flexicon/
     include_liblcm overrides still work but only widen the active source set.
     """
     object_type = args[KEY_OBJECT_TYPE]
@@ -591,9 +591,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     sources = list(active_sources_for_mode(mode))
     # Legacy explicit opt-ins widen the surface (back-compat) but never bleed
     # other modes' content unless the caller asks for it.
-    if args.get("include_flexlibs2") and not any(s[0] == "flexlibs2" for s in sources):
-        api_index.ensure_liblcm_loaded()  # no-op for flexlibs2 but cheap
-        sources.append(("flexlibs2", "flexlibs2", KEY_FLEXLIBS2))
+    if args.get("include_flexicon") and not any(s[0] == "flexicon" for s in sources):
+        api_index.ensure_liblcm_loaded()  # no-op for flexicon but cheap
+        sources.append(("flexicon", "flexicon", KEY_FLEXICON))
     if args.get("include_liblcm") and not any(s[0] == "liblcm" for s in sources):
         api_index.ensure_liblcm_loaded()
         sources.append(("liblcm", "liblcm", KEY_LIBLCM))
@@ -602,7 +602,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     object_type_lower = object_type.lower()
 
     matches_key_for = {
-        "flexlibs2": KEY_FLEXLIBS2_MATCHES,
+        "flexicon": KEY_FLEXICON_MATCHES,
         "flexlibs_stable": KEY_FLEXLIBS_STABLE_MATCHES,
         "liblcm": KEY_LIBLCM_MATCHES,
     }
@@ -640,9 +640,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     if not result[KEY_FOUND]:
         result[KEY_MESSAGE] = f"No API documentation found for '{object_type}'. Try searching with search_by_capability or list_categories to explore available APIs."
     else:
-        if KEY_FLEXLIBS2_MATCHES in result:
+        if KEY_FLEXICON_MATCHES in result:
             matches_with_source = [
-                {**m, KEY_SOURCE: "flexlibs2"} for m in result[KEY_FLEXLIBS2_MATCHES]
+                {**m, KEY_SOURCE: "flexicon"} for m in result[KEY_FLEXICON_MATCHES]
             ]
             ranked = rank_object_matches(object_type, matches_with_source, mode)
             if ranked.get(KEY_AUTO_RESOLVED):
@@ -660,7 +660,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                     KEY_ALTERNATIVES: ranked.get(KEY_MATCHES, []),
                     KEY_QUESTION: "Multiple matches found. Which did you mean?"
                 }
-            for match, ranked_match in zip(result[KEY_FLEXLIBS2_MATCHES], ranked.get(KEY_MATCHES, [])):
+            for match, ranked_match in zip(result[KEY_FLEXICON_MATCHES], ranked.get(KEY_MATCHES, [])):
                 match[KEY_SCORE] = ranked_match.get(KEY_SCORE)
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
@@ -702,9 +702,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
 
-        if KEY_FLEXLIBS2 in result:
-            entity_name = result[KEY_FLEXLIBS2].get(KEY_NAME, object_type)
-            for method in result[KEY_FLEXLIBS2].get(KEY_METHODS, []):
+        if KEY_FLEXICON in result:
+            entity_name = result[KEY_FLEXICON].get(KEY_NAME, object_type)
+            for method in result[KEY_FLEXICON].get(KEY_METHODS, []):
                 method_name = method.get(KEY_NAME, "")
                 if method_name:
                     session_state.record_discovered_api(entity_name, method_name)
@@ -764,7 +764,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     config = API_MODE_CONFIG.get(api_mode, API_MODE_CONFIG["all"])
 
     if use_semantic and api_index.semantic_search and api_index.semantic_search.enabled:
-        semantic_source = api_mode if api_mode in ["flexlibs2", "liblcm"] else "all"
+        semantic_source = api_mode if api_mode in ["flexicon", "liblcm"] else "all"
         semantic_results = api_index.semantic_search.search(expanded_query, max_results, semantic_source)
         if semantic_results:
             results = semantic_results
@@ -879,14 +879,14 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                             }
                             if prop.get(KEY_IS_MULTISTRING):
                                 result_item[KEY_IS_MULTISTRING] = True
-                                result_item[KEY_EMPTY_VALUE_WARNING] = "Returns '***' when empty - use flexlibs2 wrapper or normalize_text()"
+                                result_item[KEY_EMPTY_VALUE_WARNING] = "Returns '***' when empty - use flexicon wrapper or normalize_text()"
                             source_results.append(result_item)
             return source_results
 
         for source in config["primary"]:
-            if source == "flexlibs2" and api_index.flexlibs2:
-                results.extend(search_source("flexlibs2", api_index.flexlibs2, boost=5))
-                sources_searched.append("flexlibs2")
+            if source == "flexicon" and api_index.flexicon:
+                results.extend(search_source("flexicon", api_index.flexicon, boost=5))
+                sources_searched.append("flexicon")
             elif source == "flexlibs_stable" and api_index.flexlibs_stable:
                 results.extend(search_source("flexlibs_stable", api_index.flexlibs_stable, boost=3))
                 sources_searched.append("flexlibs_stable")
@@ -910,7 +910,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
     # the exact method on the first try instead of guessing nonexistent names
     # (project.LexEntries, LexiconGetSensePartOfSpeech, ...). Dedup against
     # whatever search already found so the canonical row isn't duplicated.
-    canonical_rows = _match_canonical_intents(query, api_index.flexlibs2)
+    canonical_rows = _match_canonical_intents(query, api_index.flexicon)
     if canonical_rows:
         canonical_keys = {(r[KEY_ENTITY], r[KEY_NAME]) for r in canonical_rows}
         results = canonical_rows + [
@@ -1158,7 +1158,7 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                 KEY_NOT_AVAILABLE_ON: casting_info.get(KEY_REQUIRES_CAST, []),
                 KEY_WARNING: f"Property '{property_name}' is NOT available on base interfaces: {', '.join(casting_info.get(KEY_REQUIRES_CAST, []))}. You must cast to a concrete interface first.",
                 KEY_PATTERN: "concrete = InterfaceType(obj)  # Cast based on obj.ClassName",
-                KEY_FLEXLIBS2_HELPER: "Use CastingOperations.cast_to_concrete(obj) from flexlibs2"
+                KEY_FLEXICON_HELPER: "Use CastingOperations.cast_to_concrete(obj) from flexicon"
             }
 
             if property_name in prop_to_concrete:
@@ -1227,7 +1227,7 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
 
     Single-purpose lookup for #12 -- cheaper than get_object_api when you only
     need the import path. Searches liblcm first by default (most common case),
-    then flexlibs2 / flexlibs_stable.
+    then flexicon / flexlibs_stable.
     """
     type_name = args["type_name"]
     library_filter = args.get("library", "auto")
@@ -1237,7 +1237,7 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
         return json_response({KEY_ERROR: "API index not loaded"})
 
     if library_filter == "auto":
-        search_order = ["liblcm", "flexlibs2", "flexlibs_stable"]
+        search_order = ["liblcm", "flexicon", "flexlibs_stable"]
     else:
         search_order = [library_filter]
 

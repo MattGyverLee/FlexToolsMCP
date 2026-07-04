@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MCP server now supports versioned API indexes, allowing it to handle independent library updates (LibLCM, FlexLibs, FlexLibs 2.0) that occur at different times.
+The MCP server now supports versioned API indexes, allowing it to handle independent library updates (LibLCM, FlexLibs, Flexicon) that occur at different times.
 
 ## How It Works
 
@@ -10,7 +10,7 @@ The MCP server now supports versioned API indexes, allowing it to handle indepen
 
 Each analyzer automatically detects the version of the library it's scanning:
 
-- **FlexLibs / FlexLibs 2.0**: Reads version from `setup.py` or `pyproject.toml`
+- **FlexLibs / Flexicon**: Reads version from `setup.py` or `pyproject.toml`
 - **LibLCM**: Extracts version from .NET assembly metadata using pythonnet
 
 Version format: `X.Y.Z` (semantic versioning, 3 elements)
@@ -20,9 +20,9 @@ Version format: `X.Y.Z` (semantic versioning, 3 elements)
 API files are stored with version suffixes in the filename:
 
 ```
-Old:  flexlibs2_api.json
-New:  flexlibs2_api_v2.1.5.json
-      flexlibs2_api_v2.2.0.json
+Old:  flexicon_api.json
+New:  flexicon_api_v4.0.0.json
+      flexicon_api_v4.1.0.json
 
 Old:  liblcm_api.json
 New:  liblcm_api_v8.2.3.json
@@ -115,7 +115,7 @@ python src/server.py
 ### Key Functions in `refresh.py`
 
 - `detect_flexlibs_version(path)` - Extract FlexLibs version
-- `detect_flexlibs2_version(path)` - Extract FlexLibs 2.0 version
+- `detect_flexicon_version(path)` - Extract Flexicon version
 - `get_versioned_output_path(base_path, version)` - Generate versioned filename
 - `extract_version_from_json(path)` - Read version from generated JSON
 - `find_existing_versions(dir, prefix)` - List all existing versioned files
@@ -139,12 +139,12 @@ Example:
 # Old files (will be ignored)
 index/liblcm/liblcm_api.json
 index/flexlibs/flexlibs_api.json
-index/flexlibs/flexlibs2_api.json
+index/flexlibs/flexicon_api.json
 
 # New versioned files (automatically generated/detected)
 index/liblcm/liblcm_api_v8.2.3.json
 index/flexlibs/flexlibs_api_v1.0.0.json
-index/flexlibs/flexlibs2_api_v2.1.5.json
+index/flexlibs/flexicon_api_v4.1.0.json
 ```
 
 ## Future Enhancements

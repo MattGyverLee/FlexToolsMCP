@@ -2,7 +2,7 @@
 
 ## Overview
 
-The casting system provides **three-layer protection** against polymorphic type errors across all 3 API flavors (flexlibs_stable, flexlibs2, liblcm).
+The casting system provides **three-layer protection** against polymorphic type errors across all 3 API flavors (flexlibs_stable, flexicon, liblcm).
 
 This solves the problem Dennis encountered:
 ```python
@@ -71,7 +71,7 @@ form = get_lexeme_form(entry)    # Get entry headword form
 All generated code automatically includes casting helpers:
 
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 # Auto-injected:
 try:
     from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
@@ -84,7 +84,7 @@ except ImportError:
 
 This means:
 - **flexlibs_stable**: Helpers available
-- **flexlibs2**: Helpers available (integrates with cast_to_concrete)
+- **flexicon**: Helpers available (integrates with cast_to_concrete)
 - **liblcm**: Helpers available (handles pythonnet casting)
 
 ### Layer 3: On-Error Detection (Recovery)
@@ -114,7 +114,7 @@ These patterns always need casting across all 3 API flavors:
 |---------|-----------|-------------|-----|
 | `sense.Owner.HeadWord` | ICmObject | ILexEntry | `ILexEntry(sense.Owner).HeadWord.Text` |
 | `entry.LexemeForm` | ICmObject | ILexEntry | `ILexEntry(entry).LexemeForm` |
-| `sense.ReversalEntriesRC` | ILexSense (flexlibs2) | ILexSense (raw LCM) | Use raw sense or ReversalOperations |
+| `sense.ReversalEntriesRC` | ILexSense (flexicon) | ILexSense (raw LCM) | Use raw sense or ReversalOperations |
 
 ---
 
@@ -147,11 +147,11 @@ entry = ILexEntry(sense.Owner)
 headword = entry.HeadWord.Text
 ```
 
-### Pattern 3: Flexlibs2-Wrapped Objects
+### Pattern 3: Flexicon-Wrapped Objects
 
 ```python
-# flexlibs2 wrappers may not expose all collection properties
-from flexlibs2 import LexSenseOperations
+# flexicon wrappers may not expose all collection properties
+from flexicon import LexSenseOperations
 
 sense = LexSenseOperations.GetAll(project)[0]
 
@@ -270,7 +270,7 @@ All generated code includes casting helper imports/definitions for all 3 API mod
 ### Example 1: Using Safe Helpers
 
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 # Casting helpers automatically available (or defined as fallback)
 
 def Main(project, report, modifyAllowed):
@@ -291,7 +291,7 @@ def Main(project, report, modifyAllowed):
 ### Example 2: Explicit Casting (Recommended)
 
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 from SIL.LCModel import ILexEntry
 
 def Main(project, report, modifyAllowed):
@@ -307,7 +307,7 @@ def Main(project, report, modifyAllowed):
 ### Example 3: With cast_or_default Helper
 
 ```python
-from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+from flexicon import FLExInitialize, FLExCleanup, FLExProject
 
 def Main(project, report, modifyAllowed):
     senses = project.LexSense.GetAll()

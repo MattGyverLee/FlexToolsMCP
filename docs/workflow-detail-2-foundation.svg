@@ -32,17 +32,17 @@
   <text x="160" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">python src/refresh.py --liblcm-only</text>
   <text x="60" y="385" font-size="10" font-style="italic" fill="#3730A3">requires pythonnet + FieldWorks DLLs at refresh time only</text>
 
-  <!-- flexlibs2 -->
+  <!-- flexicon -->
   <rect x="555" y="220" width="490" height="180" rx="10" fill="white" stroke="#4F46E5" stroke-width="1.5"/>
-  <text x="575" y="246" font-size="14" font-weight="700" fill="#312E81">flexlibs2_api.json  ★</text>
-  <text x="575" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: FlexLibs 2.0 Python wrapper (~90% LCM coverage)</text>
+  <text x="575" y="246" font-size="14" font-weight="700" fill="#312E81">flexicon_api.json  ★</text>
+  <text x="575" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: Flexicon Python wrapper (~90% LCM coverage)</text>
   <text x="575" y="288" font-size="11" font-weight="700" fill="#1E40AF">Extraction: AST static analysis</text>
   <text x="575" y="305" font-size="11" fill="#475569">parses .py files · captures Operations classes, decorators,</text>
   <text x="575" y="319" font-size="11" fill="#475569">type hints, docstrings, inline examples</text>
   <text x="575" y="343" font-size="11" font-weight="700" fill="#1E40AF">Coverage:</text>
   <text x="675" y="343" font-size="11" font-weight="700" fill="#16A34A">~1400 methods · 99% docs · 82% examples</text>
   <text x="575" y="362" font-size="11" font-weight="700" fill="#1E40AF">Refresh:</text>
-  <text x="675" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">python src/refresh.py --flexlibs2-only</text>
+  <text x="675" y="362" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#475569">python src/refresh.py --flexicon-only</text>
   <text x="575" y="385" font-size="10" font-style="italic" fill="#3730A3">primary recommendation for new modules — best documentation</text>
 
   <!-- flexlibs_stable -->
@@ -50,7 +50,7 @@
   <text x="1090" y="246" font-size="14" font-weight="700" fill="#312E81">flexlibs_api.json</text>
   <text x="1090" y="266" font-size="11" fill="#4338CA" font-style="italic">Source: FlexLibs stable (legacy shallow wrapper)</text>
   <text x="1090" y="288" font-size="11" font-weight="700" fill="#1E40AF">Extraction: AST static analysis</text>
-  <text x="1090" y="305" font-size="11" fill="#475569">same parser as flexlibs2 · smaller surface area</text>
+  <text x="1090" y="305" font-size="11" fill="#475569">same parser as flexicon · smaller surface area</text>
   <text x="1090" y="324" font-size="11" font-weight="700" fill="#1E40AF">Coverage:</text>
   <text x="1190" y="324" font-size="11" fill="#475569">~40 functions · stable, FW-version-tolerant</text>
   <text x="1090" y="343" font-size="11" font-weight="700" fill="#1E40AF">Use when:</text>
@@ -97,7 +97,7 @@
   <text x="1215" y="476" font-size="13" font-weight="700" fill="#312E81">Examples corpus</text>
   <text x="1215" y="496" font-size="11" fill="#4338CA" font-style="italic">consumer: find_examples</text>
   <text x="1215" y="518" font-size="11" fill="#475569">CRUD samples extracted from docstrings</text>
-  <text x="1215" y="532" font-size="11" fill="#475569">+ inline code blocks in flexlibs2 source</text>
+  <text x="1215" y="532" font-size="11" fill="#475569">+ inline code blocks in flexicon source</text>
   <text x="1215" y="552" font-size="11" fill="#475569">Indexed by: method_name, operation_type</text>
   <text x="1215" y="566" font-size="11" fill="#475569">(create/read/update/delete/iterate/search),</text>
   <text x="1215" y="580" font-size="11" fill="#475569">object_type</text>
@@ -109,7 +109,7 @@
   <rect x="40" y="650" width="490" height="170" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
   <text x="60" y="676" font-size="13" font-weight="700" fill="#312E81">Bridge files (cross-flavor coverage map)</text>
   <text x="60" y="696" font-size="11" fill="#4338CA" font-style="italic">consumers: get_wrapper_dependencies, find_wrappers_for_lcm</text>
-  <text x="60" y="718" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_lcm_bridge_*.json</text>
+  <text x="60" y="718" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexicon_lcm_bridge_*.json</text>
   <text x="60" y="734" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs_lcm_bridge_*.json</text>
   <text x="60" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">reverse_mapping_liblcm-*.json</text>
   <text x="60" y="773" font-size="11" fill="#475569">Forward: wrapper method → LCM internals it touches</text>
@@ -121,8 +121,8 @@
   <text x="575" y="676" font-size="13" font-weight="700" fill="#312E81">Version multiplexing</text>
   <text x="575" y="696" font-size="11" fill="#4338CA" font-style="italic">consumer: server startup + per-session resolution</text>
   <text x="575" y="718" font-size="11" fill="#475569">Multiple versions coexist in /index/ directory</text>
-  <text x="575" y="734" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_api_v2.1.5.json</text>
-  <text x="575" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexlibs2_api_v2.2.0.json   ← active per session</text>
+  <text x="575" y="734" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexicon_api_v2.1.5.json</text>
+  <text x="575" y="750" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">flexicon_api_v2.2.0.json   ← active per session</text>
   <text x="575" y="773" font-size="11" fill="#475569">Server detects installed library version,</text>
   <text x="575" y="787" font-size="11" fill="#475569">loads matching index, auto-refreshes if missing</text>
   <text x="575" y="803" font-size="10" font-style="italic" fill="#3730A3">See docs/VERSIONING.md for the full resolution algorithm</text>
@@ -133,10 +133,10 @@
   <text x="1090" y="696" font-size="11" fill="#4338CA" font-style="italic">no network · no external API calls · auditable</text>
   <text x="1090" y="720" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">python src/refresh.py</text>
   <text x="1090" y="736" font-size="10" fill="#475569">  refresh all three indexes</text>
-  <text x="1090" y="754" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">  --flexlibs2-only   --flexlibs-only   --liblcm-only</text>
+  <text x="1090" y="754" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E40AF">  --flexicon-only   --flexlibs-only   --liblcm-only</text>
   <text x="1090" y="780" font-size="11" fill="#475569">Run when: any source library updates,</text>
   <text x="1090" y="794" font-size="11" fill="#475569">or first-time setup, or version change detected</text>
-  <text x="1090" y="810" font-size="10" font-style="italic" fill="#3730A3">see flexlibs2_analyzer.py · liblcm_extractor.py</text>
+  <text x="1090" y="810" font-size="10" font-style="italic" fill="#3730A3">see flexicon_analyzer.py · liblcm_extractor.py</text>
 
   <!-- ============ CONSUMERS PANEL ============ -->
   <rect x="40" y="850" width="1520" height="200" rx="10" fill="white" stroke="#4F46E5" stroke-width="2"/>

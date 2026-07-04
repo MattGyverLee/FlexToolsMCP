@@ -24,7 +24,7 @@
   <rect x="60" y="180" width="700" height="160" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
   <text x="75" y="202" font-size="13" font-weight="700" fill="#1E40AF">INPUTS</text>
   <text x="75" y="226" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">api_mode</text>
-  <text x="200" y="226" font-size="11" fill="#475569">"flexlibs2" ★ recommended | "flexlibs_stable" | "liblcm"</text>
+  <text x="200" y="226" font-size="11" fill="#475569">"flexicon" ★ recommended | "flexlibs_stable" | "liblcm"</text>
   <text x="75" y="250" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">project_name</text>
   <text x="200" y="250" font-size="11" fill="#475569">FieldWorks project name (optional, can be set later)</text>
   <text x="75" y="274" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">write_enabled</text>
@@ -38,7 +38,7 @@
   <text x="75" y="377" font-size="13" font-weight="700" fill="#1E40AF">INTERNAL ACTIONS (in order)</text>
   <text x="75" y="402" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">1.</tspan> session_id = strftime("%Y%m%d-%H%M%S")</text>
   <text x="75" y="421" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">2.</tspan> session_state.clear_discovered_apis()  <tspan fill="#64748B" font-size="10">— forces re-discovery</tspan></text>
-  <text x="75" y="440" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">3.</tspan> api_versions ← detected from APIIndex (liblcm, flexlibs2, flexlibs_stable)</text>
+  <text x="75" y="440" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">3.</tspan> api_versions ← detected from APIIndex (liblcm, flexicon, flexlibs_stable)</text>
   <text x="75" y="459" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">4.</tspan> session_state.configure(api_mode, output_type="auto", project, write, versions)</text>
   <text x="75" y="478" font-size="11.5" fill="#1E3A8A"><tspan font-weight="700">5.</tspan> rotate_logging_to_session(session_id)  <tspan fill="#64748B" font-size="10">— per-session log file</tspan></text>
   <text x="75" y="503" font-size="10" font-style="italic" fill="#3730A3">No subprocess. No DB connection. Cheap, idempotent, restart-friendly.</text>
@@ -62,7 +62,7 @@
 
   <text x="75" y="728" font-size="12" font-weight="700" fill="#7C2D12">• multistring_placeholder</text>
   <text x="245" y="728" font-size="11" fill="#475569">FLEx stores '***' for unset multilingual fields</text>
-  <text x="245" y="742" font-size="10" fill="#64748B" font-style="italic">flexlibs2 wrapper getters normalize to ''; raw C# access still returns '***'</text>
+  <text x="245" y="742" font-size="10" fill="#64748B" font-style="italic">flexicon wrapper getters normalize to ''; raw C# access still returns '***'</text>
 
   <text x="75" y="768" font-size="12" font-weight="700" fill="#7C2D12">• namespace_helpers</text>
   <text x="220" y="768" font-size="11" fill="#475569">pre-injected, no import needed:</text>
@@ -100,7 +100,7 @@
   <text x="855" y="262" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">synopsis</text>
   <text x="985" y="262" font-size="11" fill="#475569">1–2 sentence description</text>
   <text x="855" y="279" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">api_target</text>
-  <text x="985" y="279" font-size="11" fill="#475569">flexlibs2 ★ | flexlibs_stable | liblcm</text>
+  <text x="985" y="279" font-size="11" fill="#475569">flexicon ★ | flexlibs_stable | liblcm</text>
   <text x="855" y="296" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">modifies_db</text>
   <text x="985" y="296" font-size="11" fill="#475569">bool — gates the write-guard auto-injection</text>
   <text x="855" y="313" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">domain</text>
@@ -116,7 +116,7 @@
   <rect x="840" y="395" width="700" height="100" rx="8" fill="white" stroke="#93C5FD" stroke-width="1.2"/>
   <text x="855" y="417" font-size="13" font-weight="700" fill="#1E40AF">flextools_get_module_template — direct template fetch</text>
   <text x="855" y="438" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="#1E3A8A">flavor:</text>
-  <text x="930" y="438" font-size="11" fill="#475569">flexlibs2 | flexlibs_stable | liblcm  (aliases: stable, advanced)</text>
+  <text x="930" y="438" font-size="11" fill="#475569">flexicon | flexlibs_stable | liblcm  (aliases: stable, advanced)</text>
   <text x="855" y="458" font-size="11" fill="#475569">Returns template + flavor guidance + style-guide refs + 5-step next_steps</text>
   <text x="855" y="478" font-size="10" font-style="italic" fill="#3730A3">Module-init cache · 50–100 ms saved per repeat request</text>
 

@@ -2,16 +2,16 @@
 FLExTools Module Template
 
 PURPOSE:
-    This is a template for writing FLExTools modules that use flexlibs2.
+    This is a template for writing FLExTools modules that use flexicon.
     Replace [Placeholders] with your actual implementation.
 
 CRITICAL REQUIREMENT:
-    The flexlibs2 imports below are MANDATORY.
-    FLExTools loads stable flexlibs by default. Without explicit flexlibs2 imports,
+    The flexicon imports below are MANDATORY.
+    FLExTools loads stable flexlibs by default. Without explicit flexicon imports,
     your code will silently use the wrong (stable) version, causing subtle bugs.
 
 REQUIRES:
-    - FlexLibs2 version 2.0+
+    - Flexicon version 2.0+
     - FieldWorks version [X.Y.Z]+
     - Python 3.7+ (IronPython via FLExTools)
 
@@ -23,10 +23,10 @@ DATE:
 """
 
 # ============================================================================
-# CRITICAL: Explicitly import from flexlibs2 (not flexlibs)
+# CRITICAL: Explicitly import from flexicon (not flexlibs)
 # ============================================================================
 # This prevents FLExTools's default flexlibs (stable version) from being used
-from flexlibs2 import (
+from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
@@ -180,7 +180,7 @@ def report_with_link(project, report, obj, label):
 # ============================================================================
 
 """
-FLEXLIBS2 ADVANTAGES:
+FLEXICON ADVANTAGES:
   - Handles "***" multistring normalization automatically
   - Comprehensive coverage of FieldWorks APIs (~90%)
   - Better error messages
@@ -195,7 +195,7 @@ COMMON PATTERNS:
 2. Get senses:
    senses = project.LexSense.GetAllSenses(entry)
 
-3. Check for empty fields (flexlibs2 returns "" not "***"):
+3. Check for empty fields (flexicon returns "" not "***"):
    gloss = project.LexSense.GetGloss(sense)
    if not gloss:
        report.Info("Gloss is empty")

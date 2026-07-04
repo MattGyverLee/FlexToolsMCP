@@ -13,7 +13,7 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
                      ↓
              FLExTools (IronPython)
                      ↓
-             FlexLibs 2.0 (Python wrappers)
+             Flexicon (Python wrappers)
                      ↓
              LibLCM (C# library)
                      ↓
@@ -23,7 +23,7 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 ### Key Components
 1. **LibLCM**: C# library - the ground truth API (2,295 entities extracted)
 2. **FlexLibs stable**: Current Python wrapper (~71 methods in FLExProject class)
-3. **FlexLibs 2.0**: Comprehensive Python wrapper (~90% coverage, 1,398 methods, 78 classes)
+3. **Flexicon**: Comprehensive Python wrapper (~90% coverage, 1,398 methods, 78 classes)
 4. **FieldWorks**: Main application source - contains real usage examples
 5. **FLExTools**: Existing script library - shallow but shows patterns
 
@@ -32,13 +32,13 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 ### Primary Method: Static Analysis (Not Heavy AI)
 - Parse C# source with reflection/AST tools
 - Parse Python source with ast module
-- Link through deterministic mapping (FlexLibs 2.0 → C# is 1:1)
+- Link through deterministic mapping (Flexicon → C# is 1:1)
 - Use AI only for enrichment, not extraction
 
 ### Agent Swarm Purpose: Validation & Completion
-**NOT** for documentation extraction alone - for validating and completing FlexLibs 2.0 itself:
+**NOT** for documentation extraction alone - for validating and completing Flexicon itself:
 - Verify LibLCM understanding is complete and consistent
-- Find gaps in FlexLibs 2.0 coverage
+- Find gaps in Flexicon coverage
 - Validate implementations are correct
 - Generate tests for validation
 - Mine usage patterns from FieldWorks
@@ -69,11 +69,11 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 
 ---
 
-### Phase 2: FlexLibs 2.0 Mapping & Validation (Week 1-2)
+### Phase 2: Flexicon Mapping & Validation (Week 1-2)
 **Method**: Static analysis + agent validation
 
 **Tasks**:
-- Parse FlexLibs 2.0 Python source with ast module
+- Parse Flexicon Python source with ast module
 - For each function, extract which C# method(s) it calls
 - Map Python parameters to C# parameters
 - Document any transformations/abstractions added
@@ -81,7 +81,7 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 - Find gaps (LibLCM methods without Python wrappers)
 - Flag potential implementation issues
 
-**Output**: `flexlibs2_mapping.json` linking Python API to C# API
+**Output**: `flexicon_mapping.json` linking Python API to C# API
 
 **Verification**:
 - Confirm C# calls in Python match Phase 1 extracted methods
@@ -99,20 +99,20 @@ User Request → AI Assistant → MCP Server → Indexed Documentation
 **Method**: AST body parsing + pattern matching
 
 **Context**:
-Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the actual LibLCM calls inside each method. This phase extracts method-to-method mappings to enable bidirectional code conversion between LibLCM C# and FlexLibs 2.0 Python.
+Phase 2 extracted Flexicon method signatures and docstrings, but not the actual LibLCM calls inside each method. This phase extracts method-to-method mappings to enable bidirectional code conversion between LibLCM C# and Flexicon Python.
 
 **Tasks**:
-- Enhance `flexlibs2_analyzer.py` to parse method bodies (not just signatures)
+- Enhance `flexicon_analyzer.py` to parse method bodies (not just signatures)
 - Extract LibLCM method calls by pattern-matching against known interfaces
-- Classify each FlexLibs 2.0 method by mapping type:
+- Classify each Flexicon method by mapping type:
   - **1:1 direct**: Single LibLCM call (e.g., `GetGloss` → `sense.Gloss.get_String(ws)`)
   - **Convenience wrapper**: Adds defaults, null handling, HVO resolution
   - **Composite**: Combines multiple LibLCM calls (e.g., `Create` calls factory + sets properties)
   - **Pure Python**: No LibLCM calls, utility operations (e.g., `Sort`, `MoveUp`)
-- Map FlexLibs 2.0 parameters to LibLCM parameters
+- Map Flexicon parameters to LibLCM parameters
 - Document transformations (type conversions, default values)
 
-**Output**: Enhanced `flexlibs2_api.json` with `lcm_mapping` field per method:
+**Output**: Enhanced `flexicon_api.json` with `lcm_mapping` field per method:
 ```json
 {
   "name": "GetGloss",
@@ -139,9 +139,9 @@ Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the act
 
 **Use Cases**:
 1. **C# to Python conversion**: Given `sense.Gloss.get_String(ws)`, suggest `project.Senses.GetGloss(sense, ws)`
-2. **LibLCM fallback**: When FlexLibs 2.0 lacks coverage, show raw LibLCM equivalent
+2. **LibLCM fallback**: When Flexicon lacks coverage, show raw LibLCM equivalent
 3. **Documentation enrichment**: Show "under the hood" LibLCM calls in docs
-4. **Coverage analysis**: Identify which LibLCM methods have FlexLibs 2.0 wrappers
+4. **Coverage analysis**: Identify which LibLCM methods have Flexicon wrappers
 
 **Verification**:
 - Sample 20 methods manually, verify extracted mappings match source
@@ -326,7 +326,7 @@ Phase 2 extracted FlexLibs 2.0 method signatures and docstrings, but not the act
 **Implemented Tools**:
 ```python
 @mcp.tool()
-def get_object_api(object_type: str, include_flexlibs2: bool = True, include_liblcm: bool = True) -> dict:
+def get_object_api(object_type: str, include_flexicon: bool = True, include_liblcm: bool = True) -> dict:
     """Get all methods/properties for an object like ILexSense.
     Returns object-centric documentation including python_wrappers and relationships."""
 
@@ -341,7 +341,7 @@ def get_navigation_path(from_object: str, to_object: str) -> dict:
 
 @mcp.tool()
 def find_examples(method_name: str = None, operation_type: str = None, object_type: str = None, max_results: int = 5) -> list:
-    """Get code examples from FlexLibs2 docstrings."""
+    """Get code examples from Flexicon docstrings."""
 
 @mcp.tool()
 def list_categories() -> list:
@@ -387,7 +387,7 @@ def list_entities_in_category(category: str, source: str = "all") -> list:
 - Check relationship graph validity
 - Flag gaps or inconsistencies
 
-**Agent 3: FlexLibs 2.0 Mapper**
+**Agent 3: Flexicon Mapper**
 - Parse Python source
 - Extract C# calls
 - Validate against Agent 1's model
@@ -428,7 +428,7 @@ def list_entities_in_category(category: str, source: str = "all") -> list:
 **Validation hierarchy**:
 1. LibLCM C# source (immutable ground truth)
 2. Static extraction (validated against #1)
-3. FlexLibs 2.0 analysis (validated against #2)
+3. Flexicon analysis (validated against #2)
 4. Generated tests (validated against real database)
 5. Documentation (validated against #2-4)
 
@@ -498,12 +498,12 @@ class FlexLibsTestRunner:
 ### Three Levels
 1. **LibLCM (C#)**: Direct calls, most powerful, most verbose
 2. **FlexLibs Light**: Limited (~40 functions), stable
-3. **FlexLibs 2.0**: Comprehensive (~90% coverage), Pythonic, beta
+3. **Flexicon**: Comprehensive (~90% coverage), Pythonic, beta
 
 ### MCP Default Behavior
-- **Auto mode** (default): Use FlexLibs 2.0 when available, fall back to LibLCM
+- **Auto mode** (default): Use Flexicon when available, fall back to LibLCM
 - **Explicit mode**: User specifies preference
-- **Fallback allowed**: If FlexLibs 2.0 missing, suggest LibLCM alternative
+- **Fallback allowed**: If Flexicon missing, suggest LibLCM alternative
 
 ### User Control
 ```python
@@ -559,7 +559,7 @@ search_fieldworks_api(
 
 ### Quality Gates
 - **Phase 1**: >99% LibLCM API coverage (verify against FieldWorks usage)
-- **Phase 2**: >90% FlexLibs 2.0 correctly mapped to LibLCM
+- **Phase 2**: >90% Flexicon correctly mapped to LibLCM
 - **Phase 3**: >95% of generated tests pass against real database
 - **Phase 4**: >90% of usage examples correctly converted
 - **Phase 7**: User can generate working scripts with <2 iterations
@@ -579,7 +579,7 @@ search_fieldworks_api(
 | Phase | Status | Key Outputs |
 |-------|--------|-------------|
 | Phase 1: LibLCM Ground Truth | COMPLETE | 2,295 entities in flex-api-enhanced.json |
-| Phase 2: FlexLibs 2.0 Mapping | COMPLETE | 1,398 methods with lcm_mapping |
+| Phase 2: Flexicon Mapping | COMPLETE | 1,398 methods with lcm_mapping |
 | Phase 2b: Method-Level Mapping | COMPLETE | 68% LibLCM coverage, mapping types classified |
 | Phase 3: Test Generation | PARTIAL | Test infrastructure pending |
 | Phase 4: Example Mining | PARTIAL | 82% docstring examples extracted |
@@ -589,7 +589,7 @@ search_fieldworks_api(
 
 ### Original Schedule (for reference)
 - **Week 1**: Phase 1 (LibLCM extraction + validation)
-- **Week 2**: Phase 2 (FlexLibs 2.0 mapping) + Phase 3 (test generation starts)
+- **Week 2**: Phase 2 (Flexicon mapping) + Phase 3 (test generation starts)
 - **Week 3**: Phase 4 (examples) + Phase 5 (enrichment) + Phase 6 (index construction)
 - **Week 4**: Phase 7 (MCP server) + testing
 - **Week 5**: Beta user testing + iteration
@@ -601,7 +601,7 @@ search_fieldworks_api(
 
 ### Top Risks
 1. **Agent quality varies** → Heavy validation, human spot-checks
-2. **FlexLibs 2.0 has bugs** → Tests will catch them, flag for manual fix
+2. **Flexicon has bugs** → Tests will catch them, flag for manual fix
 3. **Index too large for effective search** → Hierarchical/filtered search
 4. **AI generates plausible but wrong info** → Multiple validation layers
 5. **Cross-language mapping breaks** → Static analysis catches most issues
@@ -620,7 +620,7 @@ search_fieldworks_api(
 ### Week 1 Priority
 1. **Verify Phase 1 work** (your previous LibLCM extraction)
 2. **Build test harness** (critical infrastructure)
-3. **Parse FlexLibs 2.0 source** (static analysis)
+3. **Parse Flexicon source** (static analysis)
 4. **Extract 10 sample objects** end-to-end
 5. **Validate with manual test** (can Claude generate working scripts from this?)
 
@@ -649,7 +649,7 @@ search_fieldworks_api(
 - MCP server runs locally (Python)
 - Works with Claude Code, Copilot, Gemini CLI (MCP support confirmed)
 - Index stored as JSON files or SQLite
-- Usage of the MCP will assume required Fieldworks and liblcm binaries are installed (if only targeting LIBLCM). When creating Python scripts with the MCP, we will assume that either flexLibs (stable) or flexlibs 2.0 is installed.
+- Usage of the MCP will assume required Fieldworks and liblcm binaries are installed (if only targeting LIBLCM). When creating Python scripts with the MCP, we will assume that either flexLibs (stable) or Flexicon (pyflexicon package) is installed.
 
 ---
 

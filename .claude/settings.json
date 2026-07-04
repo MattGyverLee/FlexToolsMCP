@@ -10,11 +10,15 @@
       "mcp__neurolinked-brain__remember",
       "mcp__neurolinked-brain__brain_knowledge_stats",
       "Read(//c/Users/thoua/.claude/skills/build-index-mcp/**)",
-      "Read(//c/Users/thoua/.flextoolsmcp/logs/2026-04-19/**)"
+      "Read(//c/Users/thoua/.flextoolsmcp/logs/2026-04-19/**)",
+      "PowerShell(python -m pytest tests/ -q --tb=line 2>&1)",
+      "Bash(gh label *)",
+      "Bash(mkdir -p \"d:/tmp/issues\")"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src",
-      "\\tmp"
+      "\\tmp",
+      "d:\\tmp"
     ]
   },
   "hooks": {

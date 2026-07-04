@@ -1,7 +1,7 @@
 """
-Systematic FlexLibs 2.0 Testing Suite
+Systematic Flexicon Testing Suite
 
-Tests core operations and edge cases in FlexLibs 2.0:
+Tests core operations and edge cases in Flexicon:
 - CRUD operations (Create, Read, Update, Delete)
 - Unicode handling
 - Empty multistring fields ('***' placeholder)
@@ -49,8 +49,8 @@ class OperationResult:
             "error_trace": self.error_trace
         }
 
-class FlexLibs2TestRunner:
-    """Main test runner for FlexLibs 2.0"""
+class FlexiconTestRunner:
+    """Main test runner for Flexicon"""
 
     def __init__(self, project_name: Optional[str] = None, dry_run: bool = True):
         """
@@ -67,17 +67,17 @@ class FlexLibs2TestRunner:
         self.loaded = False
 
     def setup(self) -> bool:
-        """Load FlexLibs2 and connect to project"""
+        """Load Flexicon and connect to project"""
         try:
-            # Try to import and initialize FlexLibs2
+            # Try to import and initialize Flexicon
             try:
                 import sys
-                sys.path.insert(0, 'D:/Github/flexlibs2')
+                sys.path.insert(0, 'D:/Github/flexicon')
                 from code.flexlibs_main import FLExProject
                 self.FLExProject = FLExProject
-                print("[OK] FlexLibs2 imported successfully")
+                print("[OK] Flexicon imported successfully")
             except ImportError as e:
-                print(f"[WARN] Could not import FlexLibs2: {e}")
+                print(f"[WARN] Could not import Flexicon: {e}")
                 print("[INFO] Continuing with mock tests for validation")
                 self.loaded = False
                 return False
@@ -420,11 +420,11 @@ else:
     # =====================================================================
 
     def test_known_issues(self) -> None:
-        """Test for documented/potential issues in FlexLibs 2.0"""
+        """Test for documented/potential issues in Flexicon"""
         test_category = "KnownIssues"
 
-        # From README.md: "FlexLibs 2.0 may contain bugs - further testing needed"
-        self.add_result("FlexLibs 2.0 stability", test_category, ResultStatus.SKIP,
+        # From README.md: "Flexicon may contain bugs - further testing needed"
+        self.add_result("Flexicon stability", test_category, ResultStatus.SKIP,
                        "Systematic testing in progress - monitor for crashes or unexpected behavior")
 
         # Issue tracking placeholder
@@ -488,11 +488,11 @@ else:
     def run_all_tests(self) -> None:
         """Run complete test suite"""
         print("\n" + "="*70)
-        print("FlexLibs 2.0 Systematic Testing Suite")
+        print("Flexicon Systematic Testing Suite")
         print("="*70 + "\n")
 
         if not self.setup():
-            print("[WARN] Could not load FlexLibs2, continuing with validation tests\n")
+            print("[WARN] Could not load Flexicon, continuing with validation tests\n")
 
         # Run test groups
         print("\n--- CRUD Operations ---")
@@ -531,6 +531,6 @@ else:
 
 if __name__ == "__main__":
     # Run tests
-    runner = FlexLibs2TestRunner(dry_run=True)
+    runner = FlexiconTestRunner(dry_run=True)
     runner.run_all_tests()
     runner.save_report("tests/test_report.json")

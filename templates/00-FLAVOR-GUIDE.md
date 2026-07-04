@@ -7,7 +7,7 @@ The MCP can generate scripts in **three flavors**, each with tradeoffs:
 | Flavor | API Size | Coverage | Complexity | Best For |
 |--------|----------|----------|-----------|----------|
 | **FlexLibs (stable)** | ~40 functions | Basic ops | Simple | Legacy systems, constraints |
-| **FlexLibs2** | ~200 functions | 90% complete | Moderate | **Recommended** - most use cases |
+| **Flexicon** | ~200 functions | 90% complete | Moderate | **Recommended** - most use cases |
 | **LibLCM** | 500+ types | 100% complete | Complex | Power users, edge cases |
 
 ---
@@ -42,15 +42,15 @@ def Main(project, report, modify):
 - No type safety
 
 ### Migration
-To upgrade to flexlibs2:
+To upgrade to flexicon:
 ```diff
 - from flexlibs import FLExProject
-+ from flexlibs2 import FLExProject, LexEntryOperations
++ from flexicon import FLExProject, LexEntryOperations
 ```
 
 ---
 
-## Flavor 2: FlexLibs2 (Recommended)
+## Flavor 2: Flexicon (Recommended)
 
 ### When to Use
 - ✓ **Most projects** (recommended)
@@ -64,7 +64,7 @@ To upgrade to flexlibs2:
 
 ### Example
 ```python
-from flexlibs2 import (
+from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
@@ -88,14 +88,14 @@ def Main(project, report, modify):
 
 ### Conversion to/from other flavors
 - **From FlexLibs:** Easy migration (wrapper calls same underlying APIs)
-- **From LibLCM:** Use flexlibs2 Operations methods instead of raw C# properties
+- **From LibLCM:** Use flexicon Operations methods instead of raw C# properties
 
 ---
 
 ## Flavor 3: LibLCM (Direct C#)
 
 ### When to Use
-- ✓ Edge cases not covered by flexlibs2
+- ✓ Edge cases not covered by flexicon
 - ✓ Performance-critical code
 - ✓ Custom type handling
 - ✓ Power users who understand C# data model
@@ -107,7 +107,7 @@ def Main(project, report, modify):
 
 ### Example
 ```python
-from flexlibs2.code.lcm_casting import cast_to_concrete, ILexEntry
+from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
 
 def Main(project, report, modify):
     # Direct C# access via pythonnet
@@ -137,27 +137,27 @@ def Main(project, report, modify):
 
 ## Conversion Guide
 
-### FlexLibs → FlexLibs2 (Easy ✓)
+### FlexLibs → Flexicon (Easy ✓)
 
 ```python
 # Before (FlexLibs)
 entry = project.LexAllEntries()[0]
 form = project.LexiconGetEntryForm(entry)
 
-# After (FlexLibs2)
-from flexlibs2 import LexEntryOperations
+# After (Flexicon)
+from flexicon import LexEntryOperations
 entry = project.LexEntry.GetAll()[0]
 form = project.LexEntry.GetLexemeForm(entry)
 ```
 
-### FlexLibs2 → LibLCM (Hard ✗)
+### Flexicon → LibLCM (Hard ✗)
 
 ```python
-# Before (FlexLibs2)
+# Before (Flexicon)
 form = project.LexEntry.GetLexemeForm(entry)  # Returns normalized string
 
 # After (LibLCM)
-from flexlibs2.code.lcm_casting import cast_to_concrete, ILexEntry
+from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
 entry_obj = cast_to_concrete(entry, ILexEntry)
 raw_form = entry_obj.LexemeForm.VernacularForm.Text  # Raw C# access
 # Must handle "***" yourself
@@ -167,16 +167,16 @@ else:
     form = raw_form
 ```
 
-### LibLCM → FlexLibs2 (Easy ✓)
+### LibLCM → Flexicon (Easy ✓)
 
-If you have LibLCM code, wrap it with flexlibs2 for better UX:
+If you have LibLCM code, wrap it with flexicon for better UX:
 
 ```python
 # Before (LibLCM raw)
 entry_obj = cast_to_concrete(entry, ILexEntry)
 raw_form = entry_obj.LexemeForm.VernacularForm.Text
 
-# After (FlexLibs2 wrapper)
+# After (Flexicon wrapper)
 form = project.LexEntry.GetLexemeForm(entry)  # Handles edge cases
 ```
 
@@ -188,9 +188,9 @@ form = project.LexEntry.GetLexemeForm(entry)  # Handles edge cases
 Does your system have FieldWorks 9.0+?
 ├─ NO → Use FlexLibs (stable) template
 └─ YES → Does your use case need edge case handling?
-    ├─ NO → Use FlexLibs2 template ✓ RECOMMENDED
-    └─ YES → Does flexlibs2 cover it?
-        ├─ YES → Use FlexLibs2 template ✓ RECOMMENDED
+    ├─ NO → Use Flexicon template ✓ RECOMMENDED
+    └─ YES → Does flexicon cover it?
+        ├─ YES → Use Flexicon template ✓ RECOMMENDED
         └─ NO → Use LibLCM template (accept complexity)
 ```
 
@@ -200,14 +200,14 @@ Does your system have FieldWorks 9.0+?
 
 **To generate a script in a specific flavor:**
 
-> "Generate a FLExTools script using **flexlibs2** that..."
+> "Generate a FLExTools script using **flexicon** that..."
 > "Generate a FLExTools script using **LibLCM** that..."
 > "Generate a FLExTools script using **flexlibs (stable)** that..."
 
 **To port an existing script:**
 
-> "Convert this flexlibs script to flexlibs2"
-> "Upgrade this flexlibs script to work with flexlibs2"
+> "Convert this flexlibs script to flexicon"
+> "Upgrade this flexlibs script to work with flexicon"
 > "Rewrite this in LibLCM for performance"
 
 ---
@@ -215,7 +215,7 @@ Does your system have FieldWorks 9.0+?
 ## Template Files
 
 - `1-flexlibs-stable-template.py` - Use for legacy systems
-- `2-flexlibs2-template.py` - **RECOMMENDED** for most projects
+- `2-flexicon-template.py` - **RECOMMENDED** for most projects
 - `3-liblcm-template.py` - Use for edge cases and power users
 
 See each template for detailed examples and best practices for that flavor.

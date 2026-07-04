@@ -59,8 +59,8 @@ def check_mcp_available() -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def _ensure_flexlibs2() -> Tuple[Optional[object], Optional[str]]:
-    """Ensure FlexLibs 2.0 is available and can be imported.
+def _ensure_flexicon() -> Tuple[Optional[object], Optional[str]]:
+    """Ensure Flexicon is available and can be imported.
 
     Follows the pattern from liblcm_extractor.init_pythonnet().
 
@@ -68,20 +68,20 @@ def _ensure_flexlibs2() -> Tuple[Optional[object], Optional[str]]:
         Tuple of (module, error_message) where module is None if import failed
     """
     try:
-        # This will be called when FlexLibs 2.0 operations are attempted
+        # This will be called when Flexicon operations are attempted
         # For now, just verify it can be imported
         if __package__:
-            import flexlibs2  # type: ignore
+            import flexicon  # type: ignore
         else:
             import sys
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent / "flexlibs2" / "src"))
-            import flexlibs2  # type: ignore
-        return flexlibs2, None
+            sys.path.insert(0, str(Path(__file__).parent.parent.parent / "flexicon" / "src"))
+            import flexicon  # type: ignore
+        return flexicon, None
     except ImportError as e:
-        error_msg = f"FlexLibs 2.0 not available: {e}"
+        error_msg = f"Flexicon not available: {e}"
         return None, error_msg
     except Exception as e:
-        error_msg = f"Error loading FlexLibs 2.0: {e}"
+        error_msg = f"Error loading Flexicon: {e}"
         return None, error_msg
 
 
@@ -244,8 +244,8 @@ def _emit_session_header(session_id: str) -> None:
         except Exception as exc:
             return f"(error: {exc})"
 
-    flexlibs2_ver = _safe("flexlibs2", lambda: detect_installed_library_version(
-        "FlexLibs 2.0", import_path="flexlibs2", package_name="flexlibs2"
+    flexicon_ver = _safe("flexicon", lambda: detect_installed_library_version(
+        "Flexicon", import_path="flexicon", package_name="pyflexicon"
     ))
     # LibLCM: read from the DLL on disk because the assembly isn't loaded into
     # the CLR yet at session-header time (no project open). Fall back to the
@@ -278,7 +278,7 @@ def _emit_session_header(session_id: str) -> None:
     log.info("=== Session Environment ===")
     log.info(f"Session ID:      {session_id}")
     log.info(f"FlexToolsMCP:    {server_ver}")
-    log.info(f"FlexLibs 2.0:    {flexlibs2_ver}")
+    log.info(f"Flexicon:    {flexicon_ver}")
     log.info(f"LibLCM:          {liblcm_ver}")
     log.info(f"Python:          {platform.python_implementation()} {platform.python_version()}")
     log.info(f"OS:              {platform.system()} {platform.release()} ({platform.machine()})")

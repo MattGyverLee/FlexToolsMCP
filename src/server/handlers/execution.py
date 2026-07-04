@@ -114,20 +114,20 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
     Args:
-        api_mode: One of 'flexlibs_stable', 'flexlibs2', 'liblcm'
+        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
 
     Returns:
         (is_valid, error_message)
     """
-    if api_mode == "flexlibs2":
+    if api_mode == "flexicon":
         try:
-            import flexlibs2  # type: ignore
-            # Check version is available (flexlibs2 uses 'version' not '__version__')
-            if not hasattr(flexlibs2, 'version') and not hasattr(flexlibs2, '__version__'):
-                return False, "flexlibs2 missing version info"
+            import flexicon  # type: ignore
+            # Check version is available (flexicon uses 'version' not '__version__')
+            if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
+                return False, "flexicon missing version info"
             return True, ""
         except ImportError as e:
-            return False, f"flexlibs2 not found: {e}"
+            return False, f"flexicon not found: {e}"
 
     elif api_mode == "flexlibs_stable":
         try:
@@ -190,7 +190,7 @@ def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, i
     """Generate imports and namespace dict for a given API mode.
 
     Args:
-        api_mode: One of 'flexlibs_stable', 'flexlibs2', 'liblcm'
+        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
         helpers_needed: Optional set of specific helper names to inject (e.g., {'get_headword'})
         injection_tier: 'none' | 'minimal' | 'full'
             - none: Don't inject casting helpers (code pre-flighted, safe)
@@ -214,7 +214,7 @@ def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, i
     # Base imports per API mode
     BASE_IMPORTS = {
         "flexlibs_stable": "from flexlibs import FLExInitialize, FLExCleanup, FLExProject",
-        "flexlibs2": "from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject",
+        "flexicon": "from flexicon import FLExInitialize, FLExCleanup, FLExProject",
         "liblcm": """import clr
 clr.AddReference('SIL.LCModel')
 from SIL.LCModel import *
@@ -791,7 +791,7 @@ def _diagnose_project_open_error(
 
     # ----- Issue #27: project locked by another process. ------------------
     # The real LCM class is LcmFileLockedException (NOT LcmCacheLockedException;
-    # the latter doesn't exist in LCM 11). flexlibs2 catches it in
+    # the latter doesn't exist in LCM 11). flexicon catches it in
     # FLExProject.py and re-raises as FP_FileLockedError, whose message
     # contains "This project is in use by another program." We match all
     # three so we catch the error whether it surfaced from the wrapper or
@@ -927,7 +927,7 @@ def _inline_discovery_docs(
     """Return get_object_api-like documentation for entities, inlined into a rejection.
 
     Issue #20 / Issue #29: when the discovery / undiscovered-entity gates fire,
-    pull each listed entity straight out of the loaded flexlibs2 index so the
+    pull each listed entity straight out of the loaded flexicon index so the
     LLM doesn't have to make a second tool call to learn the method shapes.
 
     Args:
@@ -941,8 +941,8 @@ def _inline_discovery_docs(
     """
     if not entity_names or api_index is None:
         return {}
-    flexlibs2 = getattr(api_index, "flexlibs2", None) or {}
-    entities = flexlibs2.get("entities") or {}
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
     inlined: Dict[str, Any] = {}
     for name in entity_names[:limit]:
         entity = entities.get(name)
@@ -1119,9 +1119,9 @@ async def handle_start_module(args: dict) -> list[TextContent]:
             "type": "choice",
             "options": [
                 {
-                    "value": "flexlibs2",
-                    "label": "FlexLibs 2.0 (Recommended)",
-                    "description": "Modern Python wrappers with 99% documentation coverage and examples. Best for new modules. Use api_mode='flexlibs2' in searches."
+                    "value": "flexicon",
+                    "label": "Flexicon (Recommended)",
+                    "description": "Modern Python wrappers with 99% documentation coverage and examples. Best for new modules. Use api_mode='flexicon' in searches."
                 },
                 {
                     "value": "flexlibs_stable",
@@ -1134,7 +1134,7 @@ async def handle_start_module(args: dict) -> list[TextContent]:
                     "description": "Direct C# API access via pythonnet. Maximum flexibility but requires .NET knowledge. Use api_mode='liblcm' in searches."
                 }
             ],
-            "recommended": "flexlibs2"
+            "recommended": "flexicon"
         })
 
     if "modifies_db" not in provided:
@@ -1302,15 +1302,15 @@ if __name__ == '__main__':
 
     # API-specific notes and search guidance
     api_notes = {
-        "flexlibs2": {
-            "search_mode": "flexlibs2",
+        "flexicon": {
+            "search_mode": "flexicon",
             "tips": [
                 "Use project.Senses.GetAll() to iterate senses",
                 "Use project.CustomFields.GetValue/SetValue for custom fields",
                 "Use project.Media.* for file operations",
                 "Full documentation at 99% coverage with examples"
             ],
-            "search_reminder": "Use api_mode='flexlibs2' when calling search_by_capability"
+            "search_reminder": "Use api_mode='flexicon' when calling search_by_capability"
         },
         "flexlibs_stable": {
             "search_mode": "flexlibs_stable",
@@ -1403,7 +1403,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     project_name = args.get("project_name") or session_state.get_project()
     write_enabled_arg = args.get("write_enabled")
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
-    # #14 Phase 1: undoable session variable, ignored by flexlibs2 when write=False.
+    # #14 Phase 1: undoable session variable, ignored by flexicon when write=False.
     undoable = session_state.is_undoable() and write_enabled
     api_mode = session_state.get_mode()
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
@@ -1546,7 +1546,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     partial_check["suggestion"],
                     missing_elements=partial_check["missing_elements"],
                     next_steps=[
-                        "1. Call flextools_get_module_template(flavor='flexlibs2') to fetch the canonical scaffold",
+                        "1. Call flextools_get_module_template(flavor='flexicon') to fetch the canonical scaffold",
                         "2. Copy the missing pieces (docs dict, FlexToolsModule binding) into your code",
                         "3. Re-run flextools_run_module()",
                         "Alternative: drop the `def Main:` wrapper to run the body as a bare snippet",
@@ -1574,14 +1574,14 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         # names and the actual line numbers / contexts are lost.
         op_logger = get_operations_logger()
         # Issue #44: a raw `set_String` / collection write surfaces in
-        # unprotected_lcm but NOT in the flexlibs2-index `mutating` list, which
+        # unprotected_lcm but NOT in the flexicon-index `mutating` list, which
         # made the old line read `mutating=0 ... raw_lcm=1` -- self-contradictory
         # (a raw write IS a mutation). Report the true total and keep the
         # per-source breakdown so the count and the raw_lcm flag agree.
         total_mutations = len(mutating) + len(unprotected_lcm)
         op_logger.info(
             f"Preflight writeability: mutating={total_mutations} "
-            f"(flexlibs2={len(mutating)} unprotected_lcm={len(unprotected_lcm)} "
+            f"(flexicon={len(mutating)} unprotected_lcm={len(unprotected_lcm)} "
             f"raw_lcm={len(raw_lcm)}) (rejected)"
         )
         for m in mutating[:10]:
@@ -1678,7 +1678,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 issues=issues,           # back-compat alias
                 general_guidance={
                     "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
-                    "applies_to": "All 3 API flavors (flexlibs_stable, flexlibs2, liblcm) - this is a C# type system issue, not wrapper-specific",
+                    "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
                     "how_to_fix": how_to_fix,
                 },
                 hint=hint_msg,
@@ -1767,7 +1767,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 f"undiscovered={undiscovered_check.get('undiscovered')}",
             )
             # Issue #20: inline get_object_api docs when the undiscovered
-            # entity is explicitly imported from flexlibs2. Single round-trip
+            # entity is explicitly imported from flexicon. Single round-trip
             # recovery -- the LLM sees the rejection AND the method/property
             # shapes in the same payload, no second tool call needed.
             extras: Dict[str, Any] = {
@@ -2121,7 +2121,7 @@ def run_module():
 
     try:
         # API Mode-specific imports
-        from flexlibs2 import FLExInitialize, FLExCleanup, FLExProject
+        from flexicon import FLExInitialize, FLExCleanup, FLExProject
 
         FLExInitialize()
 
@@ -2313,7 +2313,7 @@ if __name__ == "__main__":
     # Escape the code for embedding in the script
     escaped_code = repr(code)
 
-    # Note: API mode imports are now hardcoded in the template (flexlibs2)
+    # Note: API mode imports are now hardcoded in the template (flexicon)
 
     # Create the complete script with configuration
     full_script = '''# Configuration

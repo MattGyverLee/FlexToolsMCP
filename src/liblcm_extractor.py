@@ -5,7 +5,7 @@ LibLCM Extractor
 
 Extracts API documentation from FieldWorks .NET assemblies using pythonnet.
 Produces output in the unified-api-doc/2.0 schema format for consistency
-with the FlexLibs 2.0 analyzer output.
+with the Flexicon analyzer output.
 
 Usage:
     python src/liblcm_extractor.py --dll-path "D:/path/to/dlls" --output index/liblcm/liblcm_api.json
@@ -29,7 +29,7 @@ from typing import Dict, List, Any, Optional, Tuple
 
 if __package__:
     from .json_utils import sort_json_arrays
-    from .flexlibs2_analyzer import infer_unified_output_behavior
+    from .flexicon_analyzer import infer_unified_output_behavior
     from .constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
         PROPERTY_KIND_OWNING_COLLECTION,
@@ -68,7 +68,7 @@ if __package__:
     )
 else:
     from json_utils import sort_json_arrays
-    from flexlibs2_analyzer import infer_unified_output_behavior
+    from flexicon_analyzer import infer_unified_output_behavior
     from constants import (
         PROPERTY_KIND_OWNING_SEQUENCE,
         PROPERTY_KIND_OWNING_COLLECTION,
@@ -470,7 +470,7 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
             result["empty_value_behavior"] = {
                 "returns_when_empty": "***",
                 "warning": "Returns '***' placeholder when empty, not empty string or None",
-                "recommended_handling": "Use flexlibs2 wrapper methods or normalize_text() to handle '***'"
+                "recommended_handling": "Use flexicon wrapper methods or normalize_text() to handle '***'"
             }
 
         return result

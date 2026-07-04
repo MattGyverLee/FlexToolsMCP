@@ -25,7 +25,7 @@ Convert 16 tool parameter schemas from raw JSON Schema dicts to Pydantic BaseMod
 
 **Models to create (16 total):**
 1. `FlexToolsStartInput` - api_mode, task, project_name, output_type, write_enabled
-2. `GetObjectApiInput` - object_type, include_flexlibs2, include_liblcm, summary_only, method_filter, limit, offset
+2. `GetObjectApiInput` - object_type, include_flexicon, include_liblcm, summary_only, method_filter, limit, offset
 3. `SearchCapabilityInput` - query, max_results, api_mode
 4. `GetNavigationPathInput` - from_object, to_object
 5. `FindExamplesInput` - method_name, operation_type, object_type, max_results

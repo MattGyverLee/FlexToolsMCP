@@ -56,7 +56,7 @@ class TestIssue40CastingOverRejection(unittest.TestCase):
     def test_method_call_on_operations_alias_not_flagged(self):
         """`segOps.IsLabel(seg)` is a wrapper method, not property access."""
         code = (
-            "from flexlibs2 import SegmentOperations\n"
+            "from flexicon import SegmentOperations\n"
             "def f(project, seg):\n"
             "    segOps = SegmentOperations(project)\n"
             "    return segOps.IsLabel(seg)\n"
@@ -92,7 +92,7 @@ class TestIssue41ParenthesizedImports(unittest.TestCase):
 
     def test_parenthesized_multiline_import_satisfies_gate(self):
         code = (
-            "from flexlibs2 import (\n"
+            "from flexicon import (\n"
             "    SegmentOperations,\n"
             "    WordformOperations,\n"
             ")\n"
@@ -100,7 +100,7 @@ class TestIssue41ParenthesizedImports(unittest.TestCase):
             "    SegmentOperations(project)\n"
             "    WordformOperations(project)\n"
         )
-        result = detect_missing_operations_imports(code, "flexlibs2")
+        result = detect_missing_operations_imports(code, "flexicon")
         self.assertFalse(
             result["has_missing"],
             f"Parenthesized import should satisfy the gate; got: {result}"
@@ -108,7 +108,7 @@ class TestIssue41ParenthesizedImports(unittest.TestCase):
 
     def test_aliased_import_collected(self):
         names = _collect_all_imported_names(
-            "from flexlibs2 import LexEntryOperations as LEO\n"
+            "from flexicon import LexEntryOperations as LEO\n"
         )
         self.assertIsNotNone(names)
         self.assertIn("LexEntryOperations", names)
@@ -119,7 +119,7 @@ class TestIssue41ParenthesizedImports(unittest.TestCase):
             "def f(project):\n"
             "    SegmentOperations(project)\n"
         )
-        result = detect_missing_operations_imports(code, "flexlibs2")
+        result = detect_missing_operations_imports(code, "flexicon")
         self.assertTrue(result["has_missing"])
         self.assertIn("SegmentOperations", result["missing_imports"])
 

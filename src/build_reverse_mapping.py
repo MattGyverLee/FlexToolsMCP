@@ -163,7 +163,7 @@ def _add_liblcm_mapping(
 
 
 def build_reverse_mapping(
-    flexlibs2_path: Path,
+    flexicon_path: Path,
     flexlibs_path: Path | None = None,
     liblcm_path: Path | None = None
 ) -> Dict[str, Any]:
@@ -190,7 +190,7 @@ def build_reverse_mapping(
     }
     """
 
-    flexlibs2 = load_json(flexlibs2_path)
+    flexicon = load_json(flexicon_path)
     flexlibs = load_json(flexlibs_path) if flexlibs_path and flexlibs_path.exists() else None
     liblcm = load_json(liblcm_path) if liblcm_path and liblcm_path.exists() else None
 
@@ -212,9 +212,9 @@ def build_reverse_mapping(
         }
     }
 
-    # Process FlexLibs 2.0 entities
-    print("[INFO] Processing FlexLibs 2.0 mappings...")
-    for class_name, entity in flexlibs2.get("entities", {}).items():
+    # Process Flexicon entities
+    print("[INFO] Processing Flexicon mappings...")
+    for class_name, entity in flexicon.get("entities", {}).items():
         # Skip exception/error classes
         if is_exception_class(class_name):
             continue
@@ -396,19 +396,19 @@ def main():
     liblcm_dir = root / "index" / "liblcm"
 
     # Find latest versioned API files
-    flexlibs2_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs2_api")
+    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
     flexlibs_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
     liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 
-    if not flexlibs2_path:
-        print("[ERROR] FlexLibs 2.0 API file not found")
+    if not flexicon_path:
+        print("[ERROR] Flexicon API file not found")
         return 1
     if not liblcm_path:
         print("[ERROR] LibLCM API file not found")
         return 1
 
     # Type narrowing: checks above ensure these are not None
-    assert flexlibs2_path is not None
+    assert flexicon_path is not None
     assert liblcm_path is not None
 
     # Extract version from liblcm_path for versioned filename
@@ -421,7 +421,7 @@ def main():
         output_path = root / args.output
 
     # Build reverse mapping
-    result = build_reverse_mapping(flexlibs2_path, flexlibs_path, liblcm_path)
+    result = build_reverse_mapping(flexicon_path, flexlibs_path, liblcm_path)
 
     # Save reverse mapping
     output_path.parent.mkdir(parents=True, exist_ok=True)

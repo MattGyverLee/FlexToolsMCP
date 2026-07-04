@@ -34,8 +34,8 @@ def Main(project, report, modify):
 
 ---
 
-### 2️⃣ FlexLibs2 (Recommended ⭐)
-**File:** `2-flexlibs2-template.py`
+### 2️⃣ Flexicon (Recommended ⭐)
+**File:** `2-flexicon-template.py`
 
 **Use for:** **Most projects** (default choice)
 
@@ -49,7 +49,7 @@ def Main(project, report, modify):
 
 **Example:**
 ```python
-from flexlibs2 import FLExProject, LexEntryOperations
+from flexicon import FLExProject, LexEntryOperations
 
 def Main(project, report, modify):
     entries = project.LexEntry.GetAll()
@@ -63,7 +63,7 @@ def Main(project, report, modify):
 **File:** `3-liblcm-template.py`
 
 **Use when:**
-- Need edge cases not in flexlibs2
+- Need edge cases not in flexicon
 - Performance-critical code
 - Comfortable with C# data model
 
@@ -71,7 +71,7 @@ def Main(project, report, modify):
 
 **Example:**
 ```python
-from flexlibs2.code.lcm_casting import cast_to_concrete, ILexEntry
+from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
 
 def Main(project, report, modify):
     entry = cast_to_concrete(entry_obj, ILexEntry)
@@ -84,23 +84,23 @@ def Main(project, report, modify):
 
 ### By Flavor
 ```
-"Generate a FLExTools script using flexlibs2 that..."
+"Generate a FLExTools script using flexicon that..."
 "Generate a FLExTools script using LibLCM that..."
 "Generate a FLExTools script using stable flexlibs that..."
 ```
 
 ### To Port Between Flavors
 ```
-"Convert this flexlibs script to flexlibs2"
+"Convert this flexlibs script to flexicon"
 "Rewrite this in LibLCM for better performance"
-"Upgrade this to use flexlibs2 instead"
+"Upgrade this to use flexicon instead"
 ```
 
 ---
 
 ## Flavor Comparison Table
 
-| Aspect | FlexLibs (stable) | FlexLibs2 ⭐ | LibLCM |
+| Aspect | FlexLibs (stable) | Flexicon ⭐ | LibLCM |
 |--------|-------------------|-------------|--------|
 | **API Size** | ~40 functions | ~200 functions | 500+ types |
 | **Coverage** | Basic ops only | 90% complete | 100% complete |
@@ -111,26 +111,26 @@ def Main(project, report, modify):
 | **Maintenance** | Easy | Easy | Hard |
 | **Performance** | Good | Good | Excellent |
 | **FieldWorks version** | 8.x - 9.x | 9.0+ | 9.0+ |
-| **Recommended?** | Only if stuck | **YES ✓** | If flexlibs2 insufficient |
+| **Recommended?** | Only if stuck | **YES ✓** | If flexicon insufficient |
 
 ---
 
 ## Migration Paths
 
-### FlexLibs → FlexLibs2 (Easy ✓)
-Most flexlibs code ports directly to flexlibs2 with minimal changes:
+### FlexLibs → Flexicon (Easy ✓)
+Most flexlibs code ports directly to flexicon with minimal changes:
 - Method names change from `LexiconGetX()` to `Project.LexEntry.GetX()`
 - Multistring handling becomes automatic
 - More methods become available
 
-### FlexLibs2 → LibLCM (Hard ✗)
+### Flexicon → LibLCM (Hard ✗)
 Requires understanding C# data model:
 - Use `cast_to_concrete()` to get C# objects
 - Access properties directly instead of calling methods
 - Handle multistring "***" manually again
 
-### LibLCM → FlexLibs2 (Easy ✓)
-Simplify complex LibLCM code by using flexlibs2 wrappers
+### LibLCM → Flexicon (Easy ✓)
+Simplify complex LibLCM code by using flexicon wrappers
 
 ---
 
@@ -144,7 +144,7 @@ if form == "***":
     form = ""
 ```
 
-### FlexLibs2 ⭐ (Recommended)
+### Flexicon ⭐ (Recommended)
 ```python
 # Automatic multistring handling
 form = project.LexEntry.GetLexemeForm(entry)
@@ -166,9 +166,9 @@ form = "" if form_text == "***" else form_text
 ## Version Information
 
 - **FlexLibs:** v1.2.8 (stable, legacy)
-- **FlexLibs2:** v2.0+ (recommended)
+- **Flexicon:** v2.0+ (recommended)
 - **LibLCM:** v11.0.0+
-- **FieldWorks:** 9.0+ for flexlibs2/LibLCM, 8.x for stable flexlibs
+- **FieldWorks:** 9.0+ for flexicon/LibLCM, 8.x for stable flexlibs
 
 ---
 
@@ -180,14 +180,14 @@ Has your system got FieldWorks 9.0+?
 ├─ NO → Use FlexLibs (stable) template
 │       └─ Contact your admin about upgrading
 │
-└─ YES → Does flexlibs2 cover your use case?
+└─ YES → Does flexicon cover your use case?
     │
-    ├─ YES → Use FlexLibs2 template ⭐ RECOMMENDED
+    ├─ YES → Use Flexicon template ⭐ RECOMMENDED
     │        └─ Simplest, most maintainable
     │
     └─ NO → Is it an edge case?
         │
-        ├─ Maybe, but unsure → Try flexlibs2 first anyway
+        ├─ Maybe, but unsure → Try flexicon first anyway
         │
         └─ Yes, definitely need full API → Use LibLCM template
                 └─ Accept the complexity cost

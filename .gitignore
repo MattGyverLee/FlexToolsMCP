@@ -37,3 +37,4 @@ index/flexlibs/archive/
 # index/flexlibs/*.json
 
 user-logs/
+.flextoolsmcp/skeletons.jsonl

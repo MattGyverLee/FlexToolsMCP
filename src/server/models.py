@@ -9,14 +9,28 @@ and IDE autocomplete support.
 """
 
 from typing import Optional, Literal, Any
-from pydantic import BaseModel, Field
-from .constants import API_MODES, API_MODES_DEFAULT
+from pydantic import BaseModel, Field, field_validator
+from .constants import API_MODES, API_MODES_DEFAULT, normalize_api_mode
 
 # Ensure API mode constants match Literal types
-assert API_MODES == ("flexlibs2", "flexlibs_stable", "liblcm"), \
+assert API_MODES == ("flexicon", "flexlibs_stable", "liblcm"), \
     "API_MODES constant must match Literal types in models"
-assert API_MODES_DEFAULT == "flexlibs2", \
+assert API_MODES_DEFAULT == "flexicon", \
     "API_MODES_DEFAULT must match FlexToolsStartInput.api_mode default"
+
+
+def _normalize_mode(value):
+    """Field-validator helper: map deprecated api_mode aliases (e.g. 'flexlibs2')
+    to their canonical value BEFORE Literal validation runs, so old callers keep
+    working without widening the Literal types."""
+    return normalize_api_mode(value)
+
+
+def _normalize_mode_list(value):
+    """Normalize each element of a library-list field (e.g. FindWrappersForLcm.include)."""
+    if isinstance(value, list):
+        return [normalize_api_mode(v) for v in value]
+    return value
 
 
 # ============================================================
@@ -25,11 +39,13 @@ assert API_MODES_DEFAULT == "flexlibs2", \
 
 class FlexToolsStartInput(BaseModel):
     """Initialize a FlexTools MCP session."""
-    api_mode: Literal["flexlibs2", "flexlibs_stable", "liblcm"] = Field(
+    api_mode: Literal["flexicon", "flexlibs_stable", "liblcm"] = Field(
         default=API_MODES_DEFAULT,
-        description="API mode - REQUIRED: 'flexlibs2' (recommended, ~1400 methods), "
-                    "'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API)."
+        description="API mode - REQUIRED: 'flexicon' (recommended, ~1400 methods), "
+                    "'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API). "
+                    "The deprecated value 'flexlibs2' is accepted as an alias for 'flexicon'."
     )
+    _normalize_api_mode = field_validator("api_mode", mode="before")(_normalize_mode)
     task: Optional[str] = Field(
         default=None,
         description="Optional: Task/goal description in natural language. "
@@ -67,7 +83,7 @@ class ManageConfigInput(BaseModel):
     )
     key: Optional[str] = Field(
         default=None,
-        description="Dotted key (e.g., 'paths.flexlibs2') for get/set/delete actions"
+        description="Dotted key (e.g., 'paths.flexicon') for get/set/delete actions"
     )
     value: Optional[Any] = Field(
         default=None,
@@ -126,10 +142,12 @@ class SearchCapabilityInput(BaseModel):
         le=100,
         description="Maximum number of results to return"
     )
-    api_mode: Literal["flexlibs2", "flexlibs_stable", "liblcm", "all"] = Field(
-        default="flexlibs2",
-        description="API mode: 'flexlibs2' (recommended), 'flexlibs_stable', 'liblcm', 'all'"
+    api_mode: Literal["flexicon", "flexlibs_stable", "liblcm", "all"] = Field(
+        default="flexicon",
+        description="API mode: 'flexicon' (recommended), 'flexlibs_stable', 'liblcm', 'all'. "
+                    "The deprecated value 'flexlibs2' is accepted as an alias for 'flexicon'."
     )
+    _normalize_api_mode = field_validator("api_mode", mode="before")(_normalize_mode)
 
 
 class GetObjectApiInput(BaseModel):
@@ -137,9 +155,9 @@ class GetObjectApiInput(BaseModel):
     object_type: str = Field(
         description="The object type to look up (e.g., 'ILexEntry', 'LexEntryOperations')"
     )
-    include_flexlibs2: bool = Field(
+    include_flexicon: bool = Field(
         default=True,
-        description="Include FlexLibs 2.0 wrapper methods"
+        description="Include Flexicon wrapper methods"
     )
     include_liblcm: bool = Field(
         default=True,
@@ -234,14 +252,16 @@ class ResolvePropertyInput(BaseModel):
 
 
 class GetWrapperDependenciesInput(BaseModel):
-    """Look up the LibLCM internals a flexlibs/flexlibs2 wrapper method uses."""
+    """Look up the LibLCM internals a flexlibs/flexicon wrapper method uses."""
     method: str = Field(
         description="Fully-qualified wrapper method (e.g. 'LexEntryOperations.GetHeadword' or 'FLExProject.LexiconAllEntries')"
     )
-    library: Literal["flexlibs2", "flexlibs_stable"] = Field(
-        default="flexlibs2",
-        description="Which wrapper library: 'flexlibs2' or 'flexlibs_stable'"
+    library: Literal["flexicon", "flexlibs_stable"] = Field(
+        default="flexicon",
+        description="Which wrapper library: 'flexicon' or 'flexlibs_stable' "
+                    "('flexlibs2' accepted as a deprecated alias for 'flexicon')"
     )
+    _normalize_library = field_validator("library", mode="before")(_normalize_mode)
 
 
 class ResolveTypeInput(BaseModel):
@@ -250,10 +270,11 @@ class ResolveTypeInput(BaseModel):
         description="Type name to resolve (e.g. 'SandboxGenericMSA', 'IMultiAccessorBase', 'ILexEntry'). "
                     "Single-purpose lookup -- cheaper than get_object_api when you only need the import path."
     )
-    library: Literal["liblcm", "flexlibs2", "flexlibs_stable", "auto"] = Field(
+    library: Literal["liblcm", "flexicon", "flexlibs_stable", "auto"] = Field(
         default="auto",
         description="Which index to search. 'auto' (default) searches liblcm first, then flexlibs."
     )
+    _normalize_library = field_validator("library", mode="before")(_normalize_mode)
 
 
 class FindWrappersForLcmInput(BaseModel):
@@ -266,9 +287,11 @@ class FindWrappersForLcmInput(BaseModel):
         description="What kind of LCM thing this is: 'entity' | 'factory' | 'repository' | 'method' | 'property' | 'auto'"
     )
     include: list[str] = Field(
-        default_factory=lambda: ["flexlibs2", "flexlibs_stable"],
-        description="Which wrapper libraries to check"
+        default_factory=lambda: ["flexicon", "flexlibs_stable"],
+        description="Which wrapper libraries to check ('flexlibs2' accepted as a "
+                    "deprecated alias for 'flexicon')"
     )
+    _normalize_include = field_validator("include", mode="before")(_normalize_mode_list)
 
 
 # ============================================================
@@ -285,10 +308,11 @@ class StartModuleInput(BaseModel):
         default=None,
         description="Short description of what the module does"
     )
-    api_target: Optional[Literal["flexlibs2", "flexlibs_stable", "liblcm"]] = Field(
+    api_target: Optional[Literal["flexicon", "flexlibs_stable", "liblcm"]] = Field(
         default=None,
-        description="Target API: 'flexlibs2' (recommended), 'flexlibs_stable', 'liblcm'"
+        description="Target API: 'flexicon' (recommended), 'flexlibs_stable', 'liblcm'"
     )
+    _normalize_api_target = field_validator("api_target", mode="before")(_normalize_mode)
     modifies_db: Optional[bool] = Field(
         default=None,
         description="Whether the module modifies the database"
@@ -355,7 +379,7 @@ class RunModuleInput(BaseModel):
     code: str = Field(
         description="Python code to execute. Can be a snippet or full module with Main() function. "
                     "Has access to: project (FLExProject), report (SimpleReporter), write_enabled (bool). "
-                    "All flexlibs2 Operations classes are pre-imported."
+                    "All flexicon Operations classes are pre-imported."
     )
     project_name: Optional[str] = Field(
         default=None,

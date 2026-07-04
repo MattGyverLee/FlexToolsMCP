@@ -27,9 +27,9 @@ repos:
         always_run: true
         pass_filenames: false
 
-      - id: check-flexlibs2-ops
-        name: Check FlexLibs2 Operations classes load
-        entry: python scripts/check_flexlibs2_ops.py
+      - id: check-flexicon-ops
+        name: Check Flexicon Operations classes load
+        entry: python scripts/check_flexicon_ops.py
         language: python
         always_run: true
         pass_filenames: false

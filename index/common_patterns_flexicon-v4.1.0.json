@@ -76,6 +76,15 @@
       },
       {
         "class": "LexEntryOperations",
+        "code": "affixes = project.LexEntry.GetAllByMorphType(['prefix', 'suffix', 'infix'])\nstems = project.LexEntry.GetAllByMorphType('stem')\nenclitics = project.LexEntry.GetAllByMorphType('=enclitic')  # markers OK",
+        "description": "Return all entries whose lexeme-form morph type matches the given name(s).",
+        "method": "GetAllByMorphType",
+        "object_type": "ILexEntry",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "LexEntryOperations",
         "code": "entry = project.LexEntry.Find(\"run\")\nall_senses = project.LexEntry.GetAllSenses(entry)\nprint(f\"Total senses (including subsenses): {len(all_senses)}\")\nfor sense in all_senses:\n    gloss = project.Senses.GetGloss(sense)\n    depth = len(list(sense.PathToRoot)) - 2  # Approximate depth\n    indent = \"  \" * depth\n    print(f\"{indent}{gloss}\")",
         "description": "Get all senses owned by this entry, including subsenses recursively.",
         "method": "GetAllSenses",
@@ -169,15 +178,6 @@
         "code": "entry = project.LexEntry.Find(\"run\")\nguid = project.LexEntry.GetGuid(entry)\nprint(guid)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Get as string\nguid_str = str(guid)\nprint(guid_str)\n            a1b2c3d4-e5f6-7890-abcd-ef1234567890\n\n# Use GUID to retrieve entry later\nentry2 = project.Object(guid)\nprint(project.LexEntry.GetHeadword(entry2))\n            run",
         "description": "Get the GUID (Globally Unique Identifier) of a lexical entry.",
         "method": "GetGuid",
-        "object_type": "ILexEntry",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "LexEntryOperations",
-        "code": "entry = project.LexEntry.Find(\"run\")\nheadword = project.LexEntry.GetHeadword(entry)\nprint(headword)\n            run\n\n# Entry with homograph number\nbank1 = project.LexEntry.Find(\"bank\")  # financial institution\nprint(project.LexEntry.GetHeadword(bank1))\n            bank₁",
-        "description": "Returns the headword (lemma, citation form, lexeme) for an entry.",
-        "method": "GetHeadword",
         "object_type": "ILexEntry",
         "operation": "read",
         "source": "docstring"
@@ -2167,8 +2167,8 @@
       },
       {
         "class": "SegmentOperations",
-        "code": "seg1 = segments[0]\nseg2 = segments[1]\nmerged = project.Segments.MergeSegments(seg1, seg2)\nprint(project.Segments.GetBaselineText(merged))\n            In the beginning God created the heavens and the earth.\n\n        See Also:\n            SplitSegment, Create, Delete",
-        "description": "Merge two adjacent segments into one.",
+        "code": "seg1 = segments[0]\nseg2 = segments[1]\nmerged = project.Segments.MergeSegments(seg1, seg2)\nprint(project.Segments.GetBaselineText(merged))\n            In the beginning God created the heavens and the earth.\n\n        See Also:\n            SplitSegment, AppendSentence, ReparseParagraph",
+        "description": "Merge two adjacent segments into one, removing the inter-segment boundary.",
         "method": "MergeSegments",
         "object_type": "general",
         "operation": "merge",
@@ -2526,15 +2526,6 @@
         "description": "Move a picture from one sense to another sense.",
         "method": "MovePicture",
         "object_type": "ILexSense",
-        "operation": "reorder",
-        "source": "docstring"
-      },
-      {
-        "class": "NoteOperations",
-        "code": "entry = project.LexEntry.Find(\"run\")\nnotes = list(project.Note.GetAll(entry))\n# Reverse the order\nnotes.reverse()\nproject.Note.Reorder(entry, notes)\n\n# Sort by date created\nnotes.sort(key=lambda n: project.Note.GetDateCreated(n))\nproject.Note.Reorder(entry, notes)",
-        "description": "Reorder notes for an object.",
-        "method": "Reorder",
-        "object_type": "general",
         "operation": "reorder",
         "source": "docstring"
       },

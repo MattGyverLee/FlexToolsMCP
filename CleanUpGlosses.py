@@ -4,7 +4,7 @@
 #
 #   Scans all glosses, finds periods between two letters and replaces them with spaces
 #
-#   API Target: flexlibs2
+#   API Target: flexicon
 #   Platforms: Python .NET and IronPython
 #
 

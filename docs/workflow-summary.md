@@ -20,7 +20,7 @@ A compact view of the six-stage workflow: what the user does, what it unlocks, a
 ## Stage 1 — Session Start
 
 ### Workflow
-User picks an `api_mode` (`flexlibs2` recommended) and optionally a project. `write_enabled` defaults to `False`.
+User picks an `api_mode` (`flexicon` recommended) and optionally a project. `write_enabled` defaults to `False`.
 
 ### Opportunity
 The session response is a **runtime primer** — five sections pushed proactively so the AI sees runtime invariants *before* writing code:
@@ -92,7 +92,7 @@ The AI assembles the module body from the building blocks gathered in stages 1�
 - **From Stage 3 — `get_object_api`** — the **`import_statement`** (verbatim) and the exact method signatures, parameter names, and return types for the entities being touched.
 - **From Stage 3 — `get_navigation_path`** — a code skeleton for entity-to-entity traversal, with null-safety and casts already in place.
 - **From Stage 3 — `find_examples`** — real CRUD snippets that anchor the call shape (argument order, paired calls, surrounding loop structure).
-- **From Stage 3 — `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexlibs2 or drop to liblcm.
+- **From Stage 3 — `resolve_property` / `find_wrappers_for_lcm`** — casting fixes and explicit `gaps[]` advisories that decide whether to stay in flexicon or drop to liblcm.
 
 The result is structured, concrete, compilable code where every method name traces back to an audit trail of lookups — not a plausible-sounding hallucination. If a needed call wasn't discovered, the AI is expected to go back to Stage 3 rather than guess; gate 6 enforces this structurally.
 
@@ -114,7 +114,7 @@ if not LexSenseOperations(p).GetGloss(s):                    # wrapper getters n
 | --- | --- |
 | Use a method you didn't discover | Gate 6 (empty discovery); Gate 10 (typos) |
 | Mutate without a guard | Gate 4 — even one unguarded mutation blocks |
-| Mix import flavors (`from flexlibs ...` in flexlibs2 mode) | Gate 9 — the silent-fail risk |
+| Mix import flavors (`from flexlibs ...` in flexicon mode) | Gate 9 — the silent-fail risk |
 | Polymorphic property access without a cast | Gate 5 — routes to `resolve_property` |
 | Partial module (`def Main` without `docs` + binding) | Gate 3 |
 

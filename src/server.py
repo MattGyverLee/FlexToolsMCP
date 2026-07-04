@@ -116,12 +116,12 @@ def _log_warning(msg: str) -> None:
         operations_logger.warning(msg)
 
 # ============================================================
-# FlexLibs2 Operations Contract
+# Flexicon Operations Contract
 # ============================================================
 # These constants are imported from server.constants
 # and are required by pre-commit hooks to verify runtime consistency
 
-# Exception classes used in flexlibs2 namespace
+# Exception classes used in flexicon namespace
 KNOWN_EXCEPTIONS = {
     # Standard exceptions
     "FP_AccessViolationException",
@@ -308,10 +308,10 @@ def _load_library_api_index(
     Args:
         index: APIIndex instance to populate
         index_dir: Parent index directory
-        library_name: Display name ('LibLCM', 'FlexLibs 2.0', etc.)
-        api_prefix: API file prefix ('liblcm_api', 'flexlibs2_api', etc.)
+        library_name: Display name ('LibLCM', 'Flexicon', etc.)
+        api_prefix: API file prefix ('liblcm_api', 'flexicon_api', etc.)
         version_detector: Callable that returns installed version
-        attr_name: APIIndex attribute name ('liblcm', 'flexlibs2', etc.)
+        attr_name: APIIndex attribute name ('liblcm', 'flexicon', etc.)
         version_attr: APIIndex version attribute name ('liblcm_version', etc.)
     """
     lib_dir = index_dir / "liblcm" if api_prefix == "liblcm_api" else index_dir / "flexlibs"
@@ -332,7 +332,7 @@ def _load_library_api_index(
     # Auto-refresh if still not found
     if not api_path:
         _log_info(f"No {library_name} API file found, attempting auto-refresh...")
-        library_key = "liblcm" if api_prefix == "liblcm_api" else ("flexlibs2" if api_prefix == "flexlibs2_api" else "flexlibs")
+        library_key = "liblcm" if api_prefix == "liblcm_api" else ("flexicon" if api_prefix == "flexicon_api" else "flexlibs")
         if auto_refresh_missing_api_file(library_key, api_prefix, lib_dir):
             if installed_version:
                 api_path = find_versioned_api_file(lib_dir, api_prefix, installed_version)
@@ -393,18 +393,18 @@ def _load_json_with_fallback(index_dir: Path, versioned_prefix: str, unversioned
 class APIIndex:
     """Holds the loaded API documentation indexes."""
     liblcm: dict | None = None
-    flexlibs2: dict | None = None
+    flexicon: dict | None = None
     flexlibs_stable: dict | None = None
     navigation_graph: dict | None = None
     casting_index: dict | None = None
     semantic_search: SemanticSearch | None = None
-    flexlibs2_lcm_bridge: dict | None = None
+    flexicon_lcm_bridge: dict | None = None
     flexlibs_stable_lcm_bridge: dict | None = None
     reverse_mapping: dict | None = None
 
     # Track loaded API versions for session logging
     liblcm_version: str | None = None
-    flexlibs2_version: str | None = None
+    flexicon_version: str | None = None
     flexlibs_stable_version: str | None = None
 
     @classmethod
@@ -412,7 +412,7 @@ class APIIndex:
         """Load API indexes at startup.
 
         Parallelizes library loading for 60% faster startup (~0.3s vs ~0.9s).
-        - FlexLibs 2.0, LibLCM, FlexLibs stable loaded concurrently
+        - Flexicon, LibLCM, FlexLibs stable loaded concurrently
         - Navigation/casting/semantic search loaded on-demand
         """
         from concurrent.futures import ThreadPoolExecutor
@@ -426,11 +426,11 @@ class APIIndex:
                 _load_library_api_index,
                 index,
                 index_dir,
-                "FlexLibs 2.0",
-                "flexlibs2_api",
-                get_installed_flexlibs2_version,
-                "flexlibs2",
-                "flexlibs2_version",
+                "Flexicon",
+                "flexicon_api",
+                get_installed_flexicon_version,
+                "flexicon",
+                "flexicon_version",
             )
 
             executor.submit(
@@ -555,12 +555,12 @@ class APIIndex:
             _log_error(f"Failed to load {library_label} LCM bridge: {e}")
             return None
 
-    def ensure_flexlibs2_bridge_loaded(self) -> None:
-        """Lazy-load FlexLibs 2.0 LCM bridge if not already loaded."""
-        if self.flexlibs2_lcm_bridge is not None:
+    def ensure_flexicon_bridge_loaded(self) -> None:
+        """Lazy-load Flexicon LCM bridge if not already loaded."""
+        if self.flexicon_lcm_bridge is not None:
             return
-        self.flexlibs2_lcm_bridge = self._load_lcm_bridge(
-            "FlexLibs 2.0", "flexlibs2_lcm_bridge", self.flexlibs2_version
+        self.flexicon_lcm_bridge = self._load_lcm_bridge(
+            "Flexicon", "flexicon_lcm_bridge", self.flexicon_version
         )
 
     def ensure_flexlibs_stable_bridge_loaded(self) -> None:
@@ -604,16 +604,16 @@ def get_installed_liblcm_version() -> Optional[str]:
         assembly_name="SIL.LCModel"
     )
 
-def get_installed_flexlibs2_version() -> Optional[str]:
-    """Detect the version of FlexLibs 2.0 currently installed.
+def get_installed_flexicon_version() -> Optional[str]:
+    """Detect the version of Flexicon currently installed.
 
     Returns:
         Version string (e.g., '2.1.0') or None if not detected
     """
     return detect_installed_library_version(
-        "FlexLibs 2.0",
-        import_path="flexlibs2",
-        package_name="flexlibs2"
+        "Flexicon",
+        import_path="flexicon",
+        package_name="pyflexicon"
     )
 
 def get_installed_flexlibs_version() -> Optional[str]:
@@ -635,7 +635,7 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
     """Auto-refresh a missing API file by running the analyzer.
 
     Args:
-        library_name: Name of library ('flexlibs', 'flexlibs2', 'liblcm')
+        library_name: Name of library ('flexlibs', 'flexicon', 'liblcm')
         prefix: File prefix for versioned files
         index_dir: Parent directory
 
@@ -659,8 +659,8 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
 
         if library_name == 'flexlibs':
             cmd.append("--flexlibs-only")
-        elif library_name == 'flexlibs2':
-            cmd.append("--flexlibs2-only")
+        elif library_name == 'flexicon':
+            cmd.append("--flexicon-only")
         elif library_name == 'liblcm':
             cmd.append("--liblcm-only")
         else:
@@ -823,12 +823,12 @@ async def main():
     else:
         _log_warning( "LibLCM index not found")
 
-    if api_index.flexlibs2:
-        version = api_index.flexlibs2_version or "unknown"
-        entities = len(api_index.flexlibs2.get('entities', {}))
-        _log_info( f"FlexLibs 2.0 v{version}: {entities} entities")
+    if api_index.flexicon:
+        version = api_index.flexicon_version or "unknown"
+        entities = len(api_index.flexicon.get('entities', {}))
+        _log_info( f"Flexicon v{version}: {entities} entities")
     else:
-        _log_warning( "FlexLibs 2.0 index not found")
+        _log_warning( "Flexicon index not found")
 
     if api_index.casting_index:
         props = len(api_index.casting_index.get("properties", {}))
@@ -851,9 +851,9 @@ async def main():
     if api_index.liblcm and api_index.liblcm_version:
         entities = len(api_index.liblcm.get('entities', {}))
         versions.append(f"LibLCM {api_index.liblcm_version} ({entities} entities)")
-    if api_index.flexlibs2 and api_index.flexlibs2_version:
-        entities = len(api_index.flexlibs2.get('entities', {}))
-        versions.append(f"FlexLibs2 {api_index.flexlibs2_version} ({entities} entities)")
+    if api_index.flexicon and api_index.flexicon_version:
+        entities = len(api_index.flexicon.get('entities', {}))
+        versions.append(f"Flexicon {api_index.flexicon_version} ({entities} entities)")
     if api_index.flexlibs_stable and api_index.flexlibs_stable_version:
         entities = len(api_index.flexlibs_stable.get('entities', {}))
         versions.append(f"FlexLibs {api_index.flexlibs_stable_version} ({entities} entities)")

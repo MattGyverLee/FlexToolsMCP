@@ -26,7 +26,7 @@ This presentation, given to an audience of programmers, discusses the background
 
 **Three ways to use it:**
 1. Generate legacy modules (FlexLibs stable)
-2. Generate modern modules (FlexLibs 2.0 with ~1,400 functions)
+2. Generate modern modules (Flexicon with ~1,400 functions)
 3. Run operations directly on FieldWorks databases using natural language queries
 
 **Example:** "Delete any sense with 'q' in the gloss" → AI generates, tests, and runs the operation automatically.
@@ -49,14 +49,11 @@ git clone https://github.com/MattGyverLee/FlexToolsMCP.git
 cd FlexToolsMCP
 pip install -r requirements.txt
 
-# Install FlexLibs 2.0
-cd ..
-git clone https://github.com/MattGyverLee/flexlibs.git flexlibs2
-pip install ./flexlibs2
+# Install Flexicon (pyflexicon package on PyPI)
+pip install pyflexicon
 
 # Test it works
-cd FlexToolsMCP
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexlibs2.get('entities', {})), 'FlexLibs2 entities')"
+python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
 ```
 
 ### 2. Connect to Your AI Assistant
@@ -100,7 +97,7 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 ### API Coverage
 - **LibLCM**: 2,295 C# entities
 - **FlexLibs Stable**: ~71 methods
-- **FlexLibs 2.0**: ~1,400 methods (99% documented, 82% with examples)
+- **Flexicon**: ~1,400 methods (99% documented, 82% with examples)
 
 ### Test-Proven Examples
 ```
@@ -144,7 +141,7 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 ### Limitations
 - Cannot control the FLEx GUI (filters, display, etc.)
 - Only manipulates data, not UI state
-- FlexLibs 2.0 still undergoing extensive testing
+- Flexicon still undergoing extensive testing
 - Some Scripture module edge cases recently fixed
 
 ## Architecture
@@ -154,7 +151,7 @@ User Request -> AI Assistant -> MCP Server -> Indexed APIs
                     |
             Generated FLExTools Script or Direct Execution
                     |
-            FLExTools (IronPython) or FlexLibs 2.0
+            FLExTools (IronPython) or Flexicon
                     |
             LibLCM (C# data model)
                     |

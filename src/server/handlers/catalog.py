@@ -28,18 +28,18 @@ except ImportError:
 try:
     from ..response_keys import (
         KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
-        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
+        KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
+        KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
     )
 except ImportError:
     from server.response_keys import (
         KEY_NAME, KEY_TYPE, KEY_DESCRIPTION, KEY_SUMMARY, KEY_CATEGORY,
-        KEY_FLEXLIBS2_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
+        KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_FLEXLIBS2, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
+        KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
     )
 
 try:
@@ -67,7 +67,7 @@ SUMMARY_MAX_LENGTH = 100
 # Maps a source name (as returned by active_sources_for_mode) to the response
 # count key emitted in list_categories / list_entities_in_category.
 _SOURCE_COUNT_KEY = {
-    "flexlibs2": KEY_FLEXLIBS2_COUNT,
+    "flexicon": KEY_FLEXICON_COUNT,
     "flexlibs_stable": KEY_FLEXLIBS_STABLE_COUNT,
     "liblcm": KEY_LIBLCM_COUNT,
 }
@@ -104,8 +104,8 @@ async def handle_list_categories(args: ListCategoriesInput) -> list[TextContent]
         if not count_key:
             continue
 
-        if source_name == "flexlibs2":
-            # flexlibs2 index has a top-level "categories" map with entity lists
+        if source_name == "flexicon":
+            # flexicon index has a top-level "categories" map with entity lists
             for cat_name, cat_data in index_data.get(KEY_CATEGORIES, {}).items():
                 categories[cat_name][count_key] = len(cat_data.get(KEY_ENTITIES, []))
         else:

@@ -3,7 +3,7 @@
 """
 Shared constants for API analyzers.
 
-Consolidates magic strings and enums used across flexlibs2_analyzer and
+Consolidates magic strings and enums used across flexicon_analyzer and
 liblcm_extractor to reduce duplication and prevent inconsistent categorization.
 """
 
@@ -106,7 +106,7 @@ ENTITY_PREFIX_TO_CATEGORY = {
     "IReversal": ENTITY_CATEGORY_REVERSAL,
 }
 
-# ---- Operation Types (from FlexLibs2) -------------------------------------------
+# ---- Operation Types (from Flexicon) -------------------------------------------
 
 OPERATION_TYPE_CREATE = "create"
 OPERATION_TYPE_READ = "read"

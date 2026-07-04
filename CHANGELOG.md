@@ -1,5 +1,16 @@
 # FlexToolsMCP Changelog
 
+## [2.3.2] - 2026-07-04
+
+### Documentation
+- Rewrote **SETUP.md** around the `uvx flextools-mcp` one-liner (source install
+  kept as a dev option); fixed **README** update instructions and anchor links.
+- Corrected commands and clarified the bundled-vs-`~/.flextoolsmcp/index` overlay
+  location in **docs/VERSIONING.md**.
+- Added an **INNOVATIONS.md** chapter on the zero-setup distribution and
+  self-healing index overlay.
+- Archived the historical v1.3.0 implementation plan to `docs/archive/`.
+
 ## [2.3.1] - 2026-07-04
 
 ### Packaging

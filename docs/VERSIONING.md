@@ -4,6 +4,14 @@
 
 The MCP server now supports versioned API indexes, allowing it to handle independent library updates (LibLCM, FlexLibs, Flexicon) that occur at different times.
 
+> **Where the index lives.** A baseline index ships inside the installed
+> package (read-only). When installed via `pip`/`uvx`, any index regenerated at
+> runtime is written to a user-writable overlay at **`~/.flextoolsmcp/index/`**,
+> and the server reads that overlay in preference to the bundled copy. In a
+> source checkout, the in-tree `src/flextoolsmcp/index/` is used directly so
+> regenerated files can be committed. The `index/...` paths in the examples
+> below refer to whichever of these applies to your install.
+
 ## How It Works
 
 ### 1. Version Detection
@@ -35,7 +43,7 @@ New:  flexlibs_api_v1.0.0.json
 
 ### 3. Refresh Behavior
 
-When running `python src/refresh.py`:
+When running `python -m flextoolsmcp.refresh`:
 
 1. **Version Detection**: Analyzer detects the current version of the library
 2. **File Check**: Looks for an existing file with that version
@@ -46,7 +54,7 @@ When running `python src/refresh.py`:
 
 ### 4. Server Initialization
 
-When the MCP server starts (`python src/server.py`):
+When the MCP server starts (`uvx flextools-mcp`, or `python -m flextoolsmcp` from source):
 
 1. **Version Detection**: Detects current version of each installed library
 2. **File Search**: Looks for the matching versioned API file
@@ -87,15 +95,15 @@ index/liblcm/
 #   Available: liblcm_api_v8.2.3.json
 
 # Option 1: Manual refresh
-python src/refresh.py --liblcm-only
+python -m flextoolsmcp.refresh --liblcm-only
 
 # Now index contains both:
 index/liblcm/
   liblcm_api_v8.2.3.json   (old version)
   liblcm_api_v8.3.0.json   (new version)
 
-# Option 2: Auto-refresh (server.py detects and refreshes automatically)
-python src/server.py
+# Option 2: Auto-refresh (the server detects the mismatch and refreshes automatically)
+uvx flextools-mcp
 # Logs: "[INFO] No matching LibLCM API file found for v8.3.0"
 # Logs: "[INFO] Auto-refreshing liblcm API index..."
 # Logs: "[OK] Successfully refreshed liblcm API index"
@@ -131,7 +139,7 @@ python src/server.py
 If you have existing non-versioned API files:
 
 1. They will be ignored by the new system
-2. Run `python src/refresh.py` to generate versioned files
+2. Run `python -m flextoolsmcp.refresh` to generate versioned files
 3. Old files can be safely deleted
 
 Example:

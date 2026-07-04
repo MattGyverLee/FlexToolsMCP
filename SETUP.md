@@ -1,144 +1,74 @@
 # Setup & Installation
 
+FLExToolsMCP is published on [PyPI](https://pypi.org/project/flextools-mcp/) as
+**`flextools-mcp`**. For normal use you do **not** clone this repo or install
+anything by hand — one command wires it into your AI assistant and pulls every
+dependency (including Flexicon) automatically.
+
 ## Prerequisites
 
-- Python 3.10+
-- FieldWorks 9.x installed (for LibLCM DLLs)
-- One or more of:
-  - [FlexLibs](https://github.com/cdfarrow/flexlibs) (stable, ~71 functions)
-  - [Flexicon](https://pypi.org/project/pyflexicon/) (`pip install pyflexicon`, comprehensive, ~1,400 methods)
+- **Windows** with **FieldWorks 9.x** installed (FLExTools automation needs the
+  FieldWorks/.NET runtime — this is a hard, Windows-only requirement).
+- **Python 3.10+** on your PATH.
+- **[uv](https://docs.astral.sh/uv/)** (provides the `uvx` runner). Install once:
+  ```powershell
+  powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+  ```
 
-### Recommended
-- Context7 MCP for improving and modernizing generated Python and C# code
-- FieldWorks and FLExTools repositories for examples of real-life code
+`pyflexicon` (the deep FieldWorks wrapper) is a declared dependency, so it is
+installed for you — no separate step.
 
-## Installation Steps
+### Recommended (optional)
+- Context7 MCP for improving/modernizing generated Python and C# code.
+- The FieldWorks and FLExTools repositories on hand for real-life code examples.
 
-### 1. Set up Python in Windows Path
-
-Install a current version of FLEx and FLExTools (with Python). Make sure Python paths (e.g. `C:\Program Files\Python311\Scripts\` and `C:\Program Files\Python311\`) are in your Windows Path. **Reboot after installing Python if this is your first Python installation.**
-
-### 2. Clone FLExToolsMCP
-
-```bash
-git clone https://github.com/MattGyverLee/FlexToolsMCP.git
-cd FlexToolsMCP
-```
-
-### 3. Install Dependencies
+## Quick install (recommended)
 
 ```bash
-pip install -r requirements.txt
+# Claude Code
+claude mcp add flextoolsmcp -- uvx flextools-mcp
 ```
 
-### 4. Install Flexicon
+`uvx` fetches `flextools-mcp` and its dependencies into an isolated cache and
+runs the server over stdio. The indexed API documentation ships inside the
+package, so there is nothing else to download or build.
 
-Flexicon is published on PyPI as `pyflexicon`. Install it with pip (it is no longer cloned as a sibling repo):
-
+Prefer a persistent install instead of on-demand? Either works:
 ```bash
-pip install pyflexicon
+uv tool install flextools-mcp      # installs the `flextools-mcp` command
+pip install flextools-mcp          # into the current environment
 ```
 
-### 5. Configure Paths
+## Connecting to AI assistants
 
-```bash
-cd FlexToolsMCP
-cp .env.example .env
-
-```
-
-### 6. Test the Installation
-
-```bash
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
-```
-
-If this succeeds, the MCP and Flexicon are installed correctly.
-
-## Updating FLExToolsMCP
-
-### Pull Latest Changes
-
-To get the latest version from main:
-
-```bash
-cd FlexToolsMCP
-git pull origin main
-```
-
-### Update to a Specific Release Version
-
-To see available versions:
-
-```bash
-git tag -l | sort -V
-```
-
-To switch to a specific version (e.g., v1.4.1):
-
-```bash
-git checkout v1.4.1
-```
-
-To go back to the latest main branch:
-
-```bash
-git checkout main
-```
-
-### Reinstall Dependencies (if needed)
-
-After updating, you may need to reinstall or upgrade packages:
-
-```bash
-pip install -r requirements.txt --upgrade
-pip install pyflexicon --upgrade
-```
-
-Then test that everything still works:
-
-```bash
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
-```
-
-## Connecting to AI Assistants
-
-**Note:** Indexes refresh automatically when you update FieldWorks or any of the libraries. You don't need to manually refresh.
+**Note:** Indexes ship with the package and also refresh automatically when your
+installed FieldWorks / library versions change. You don't need to refresh by hand.
 
 ### Claude Code
 
-Create a folder for experimenting with MCPs (e.g., `C:/Github/MCPlayground`), then open it in VSCode.
-
 ```bash
-# User-wide installation (available in all projects)
-claude mcp add flextools-mcp -s user python C:/Github/FlexToolsMCP/src/server.py
+# Project scope (from any project directory)
+claude mcp add flextoolsmcp -- uvx flextools-mcp
 
-# Or project-specific (from the FLExToolsMCP directory)
-claude mcp add flextools-mcp python src/server.py
+# User scope (available in all projects)
+claude mcp add flextoolsmcp -s user -- uvx flextools-mcp
 
-# List configured MCP servers
+# List / remove
 claude mcp list
-
-# Remove from user scope
-claude mcp remove flextools-mcp -s user
-
-# Remove from project scope
-claude mcp remove flextools-mcp -s project
-
-# Remove from all scopes
-claude mcp remove flextools-mcp -s user && claude mcp remove flextools-mcp -s project
+claude mcp remove flextoolsmcp -s user
 ```
 
-Alternatively, add this to your Claude Code config file (`.claude/mcp_servers.json` at user or project level):
+### Claude Desktop, Cursor, and other MCP tools
 
-```JSON
+Add this to the tool's MCP config (e.g. Claude Desktop's
+`claude_desktop_config.json`):
+
+```json
 {
   "mcpServers": {
-    "flextools-mcp": {
-      "command": "python",
-      "args": [
-        "C:/Github/FlexToolsMCP/src/server.py"
-      ]
+    "flextoolsmcp": {
+      "command": "uvx",
+      "args": ["flextools-mcp"]
     }
   }
 }
@@ -146,31 +76,69 @@ Alternatively, add this to your Claude Code config file (`.claude/mcp_servers.js
 
 ### Antigravity
 
-Create a folder for experimenting with MCPs (e.g., `C:/Github/MCPlayground`), then open it in Antigravity.
-
-Once open, click the `...` in the top-right of the chat window and choose `MCP Servers`. If FLExTools MCP isn't in the list, click the `Manage MCP Servers` link at the top.
-
-Click `View RAW Config` and add the following to your Antigravity configuration file (`.antigravity/config.json` or similar):
+Open the MCP settings (`...` menu -> `MCP Servers` -> `View RAW Config`) and add:
 
 ```json
 {
   "mcpServers": {
-    "flextools-mcp": {
-      "command": "python",
-      "args": [
-        "c://work//FlexToolsMCP//src//server.py",
-        "--transport=stdio"
-      ]
+    "flextoolsmcp": {
+      "command": "uvx",
+      "args": ["flextools-mcp"]
     }
   }
 }
 ```
 
-Adjust the path to match your FLExToolsMCP installation location.
+If `uvx` is not found by your tool, use its absolute path (run `where uvx` /
+`which uvx`) as the `command`.
 
-### Other MCP-Compatible Tools
+## Updating
 
-Configure the MCP server endpoint according to your tool's documentation.
+- **`uvx flextools-mcp`** (on-demand) picks up new releases automatically; pin
+  or force the latest with `uvx flextools-mcp@latest`.
+- **Persistent install:** `uv tool upgrade flextools-mcp` or
+  `pip install -U flextools-mcp`.
+
+Upgrading also re-resolves `pyflexicon` to its latest compatible version.
+
+## Where your data lives
+
+All user-writable state is under **`~/.flextoolsmcp/`** and persists across
+upgrades (it is never written into the installed package):
+
+- `logs/` — operation logs
+- `skeletons.jsonl` — saved module skeletons
+- `index/` — any indexes refreshed at runtime for your installed library versions
+- `hf/` — cached embedding model
+
+## Install from source (for development)
+
+Only needed if you want to modify FLExToolsMCP or regenerate the indexes.
+
+```bash
+git clone https://github.com/MattGyverLee/FlexToolsMCP.git
+cd FlexToolsMCP
+pip install -e ".[dev]"          # editable install with dev tools (pulls in Flexicon)
+cp .env.example .env             # configure paths for index regeneration
+
+# Sanity check
+python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
+```
+
+Point your AI tool at the source checkout by running the module directly:
+```json
+{
+  "mcpServers": {
+    "flextoolsmcp": {
+      "command": "python",
+      "args": ["-m", "flextoolsmcp"]
+    }
+  }
+}
+```
+
+Regenerating indexes and cutting releases are documented in
+[RELEASING.md](RELEASING.md) and [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Next Steps
 

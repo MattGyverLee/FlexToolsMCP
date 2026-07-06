@@ -2294,7 +2294,7 @@
         }
       ],
       "name": "FLExProject",
-      "namespace": "flexlibs2.code.FLExProject",
+      "namespace": "flexicon.code.FLExProject",
       "properties": [],
       "source_file": "FLExProject",
       "summary": "This class provides convenience methods for accessing a FieldWorks\nproject by hiding some of the complexity of LCM.",

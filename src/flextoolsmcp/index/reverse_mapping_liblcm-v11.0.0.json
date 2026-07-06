@@ -735,7 +735,7 @@
     },
     "PhonFeatureOperations": {
       "category": "grammar",
-      "method_count": 16,
+      "method_count": 18,
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedFeature",
@@ -756,7 +756,10 @@
       "wraps_interfaces": [
         "ICmObjectRepository",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IPhCode",
         "IPhCodeFactory",
         "IPhPhoneme",
@@ -2495,6 +2498,10 @@
         {
           "class": "PhonFeatureOperations",
           "methods": []
+        },
+        {
+          "class": "PhonemeOperations",
+          "methods": []
         }
       ],
       "flexlibs_stable": null
@@ -2507,6 +2514,10 @@
         },
         {
           "class": "PhonFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonemeOperations",
           "methods": []
         }
       ],
@@ -2558,6 +2569,10 @@
         },
         {
           "class": "PhonFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "PhonemeOperations",
           "methods": []
         }
       ],

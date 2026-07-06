@@ -25,11 +25,11 @@ from typing import Dict, List, Any, Set, Tuple, Optional
 if __package__:
     from .json_utils import sort_json_arrays
     from .server.versioning import find_latest_versioned_api_file
-    from .file_utils import get_project_root, load_json, save_json
+    from .file_utils import get_project_root, get_index_dir, load_json, save_json
 else:
     from json_utils import sort_json_arrays
     from server.versioning import find_latest_versioned_api_file
-    from file_utils import get_project_root, load_json, save_json
+    from file_utils import get_project_root, get_index_dir, load_json, save_json
 
 
 # ============================================================
@@ -392,8 +392,9 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
-    flexlibs_dir = root / "index" / "flexlibs"
-    liblcm_dir = root / "index" / "liblcm"
+    index_dir = get_index_dir()
+    flexlibs_dir = index_dir / "flexlibs"
+    liblcm_dir = index_dir / "liblcm"
 
     # Find latest versioned API files
     flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
@@ -416,7 +417,7 @@ def main():
     if version_match:
         liblcm_version = version_match.group(1)
         output_filename = f"reverse_mapping_liblcm-v{liblcm_version}.json"
-        output_path = root / "index" / output_filename
+        output_path = index_dir / output_filename
     else:
         output_path = root / args.output
 

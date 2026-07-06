@@ -20,8 +20,10 @@ from datetime import datetime, timezone
 
 if __package__:
     from .json_utils import sort_json_arrays
+    from .file_utils import get_index_dir
 else:
     from json_utils import sort_json_arrays
+    from file_utils import get_index_dir
 
 
 # ============================================================
@@ -244,7 +246,7 @@ def find_latest_liblcm(liblcm_dir: Path) -> Optional[Tuple[Path, str]]:
 
 def main():
     """Build and save the casting index."""
-    index_dir = Path(__file__).parent.parent / "index"
+    index_dir = get_index_dir()
     liblcm_dir = index_dir / "liblcm"
 
     # Find latest LibLCM version

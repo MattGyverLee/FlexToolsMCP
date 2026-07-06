@@ -21,10 +21,10 @@ from typing import Dict, List, Any, Set, Tuple, Optional
 
 if __package__:
     from .json_utils import sort_json_arrays
-    from .file_utils import get_project_root, load_json, save_json
+    from .file_utils import get_project_root, get_index_dir, load_json, save_json
 else:
     from json_utils import sort_json_arrays
-    from file_utils import get_project_root, load_json, save_json
+    from file_utils import get_project_root, get_index_dir, load_json, save_json
 
 
 # ============================================================
@@ -389,7 +389,8 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
-    liblcm_dir = root / "index" / "liblcm"
+    index_dir = get_index_dir()
+    liblcm_dir = index_dir / "liblcm"
 
     # Find latest LibLCM version
     liblcm_path, liblcm_version = find_latest_liblcm(liblcm_dir)
@@ -403,7 +404,7 @@ def main():
         output_path = root / args.output
     else:
         output_filename = f"navigation_graph_liblcm-v{liblcm_version}.json"
-        output_path = root / "index" / output_filename
+        output_path = index_dir / output_filename
 
     # Build navigation graph
     result = build_navigation_graph(liblcm_path)

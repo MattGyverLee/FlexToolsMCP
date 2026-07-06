@@ -67019,13 +67019,6 @@
       "name": "IDataReader",
       "namespace": "SIL.LCModel.Infrastructure",
       "properties": [],
-      "python_wrappers": {
-        "flexlibs_2": {
-          "class": "FLExProject",
-          "methods": []
-        },
-        "flexlibs_stable": null
-      },
       "relationships": [],
       "summary": "Interface for DataReader operations",
       "tags": [
@@ -69997,6 +69990,10 @@
           {
             "class": "PhonFeatureOperations",
             "methods": []
+          },
+          {
+            "class": "PhonemeOperations",
+            "methods": []
           }
         ],
         "flexlibs_stable": null
@@ -70042,6 +70039,10 @@
           },
           {
             "class": "PhonFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonemeOperations",
             "methods": []
           }
         ],
@@ -71663,6 +71664,10 @@
           },
           {
             "class": "PhonFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "PhonemeOperations",
             "methods": []
           }
         ],

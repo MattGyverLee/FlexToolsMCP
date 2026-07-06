@@ -1,5 +1,21 @@
 # FlexToolsMCP Changelog
 
+## [2.3.3] - 2026-07-06
+
+### Index
+- **Refreshed the Flexicon API index to v4.1.2** (v4.1.0 and v4.1.1 moved to
+  `index/flexlibs/archive/`); regenerated the matching `common_patterns` and
+  `flexicon_lcm_bridge` artifacts.
+- **Refreshed the LibLCM v11.0.0 index**: added `PhonemeOperations` wrapper
+  mappings and cleaned up stale `IDataReader` wrapper entries; regenerated the
+  LibLCM reverse-mapping index.
+
+### Internal
+- Build scripts (`build_casting_index`, `build_navigation_graph`,
+  `build_reverse_mapping`) now resolve their input/output locations via
+  `get_index_dir()` instead of hardcoded package-relative paths, so they honor
+  the user-overlay index directory.
+
 ## [2.3.2] - 2026-07-04
 
 ### Documentation

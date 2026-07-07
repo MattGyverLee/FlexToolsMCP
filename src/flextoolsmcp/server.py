@@ -408,6 +408,9 @@ class APIIndex:
     flexicon_version: str | None = None
     flexlibs_stable_version: str | None = None
 
+    # Stale lock warnings detected at startup (surfaced by flextools_health)
+    startup_lock_warnings: list = field(default_factory=list)
+
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
         """Load API indexes at startup.
@@ -826,6 +829,18 @@ async def main():
         from server.kernel import set_api_index, init_operations_logger
     set_api_index(api_index)
     init_operations_logger()
+
+    # Issue #57 (C): detect stale .fwdata.lock files at startup (log-only, no deletion).
+    if __package__:
+        from .server.project_discovery import sweep_stale_locks
+    else:
+        from server.project_discovery import sweep_stale_locks
+    _stale_lock_warnings = sweep_stale_locks()
+    # Store on api_index so flextools_health can surface them without re-scanning.
+    api_index.startup_lock_warnings = _stale_lock_warnings
+    if _stale_lock_warnings:
+        for _w in _stale_lock_warnings:
+            _log_warning(_w)
 
     _log_start = _time_module.time()
     if api_index.liblcm:

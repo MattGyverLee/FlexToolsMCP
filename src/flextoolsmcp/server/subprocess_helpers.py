@@ -8,8 +8,49 @@ which blocks the event loop.
 """
 
 import asyncio
+import logging
+import os
+import subprocess
 import sys
 from typing import Optional, Dict, Any
+
+_log = logging.getLogger(__name__)
+
+
+def _kill_process_tree(pid: int) -> None:
+    """Kill a process and all of its descendants.
+
+    Issue #57 (B): process.kill() on Windows terminates only the immediate
+    child process.  When the script spawns grandchildren (e.g. pythonnet /
+    FLExInit holding the .fwdata lock), those grandchildren become orphans and
+    keep the project locked indefinitely.
+
+    Strategy chosen: ``taskkill /T /F /PID`` on Windows (no extra deps);
+    ``os.killpg`` on POSIX (process group).  psutil is NOT added as a runtime
+    dep because neither requirements.txt nor pyproject.toml lists it.
+
+    The function is best-effort: errors are logged at WARNING level but never
+    re-raised so that callers always get a clean timeout response.
+    """
+    if sys.platform == "win32":
+        try:
+            # /T = terminate whole tree, /F = force, /PID = by process ID.
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(pid)],
+                capture_output=True,
+                timeout=10,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("taskkill failed for PID %d: %s", pid, exc)
+    else:
+        # POSIX: create_subprocess_exec gives us an OS-level child; try to
+        # kill the entire process group so grandchildren also receive SIGKILL.
+        try:
+            os.killpg(os.getpgid(pid), 9)  # 9 = SIGKILL
+        except ProcessLookupError:
+            pass  # already gone -- fine
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("killpg failed for PID %d: %s", pid, exc)
 
 
 async def run_script_async(
@@ -33,9 +74,15 @@ async def run_script_async(
         - timeout: Whether execution was terminated by timeout
 
     Raises:
-        asyncio.TimeoutError: If script exceeds timeout_seconds
         OSError: If script cannot be executed
     """
+    # On POSIX we set start_new_session so the child gets its own process
+    # group; that lets _kill_process_tree(pid) reach all grandchildren via
+    # os.killpg.  On Windows the kwarg is not accepted, so we omit it.
+    extra_kwargs: Dict[str, Any] = {}
+    if sys.platform != "win32":
+        extra_kwargs["start_new_session"] = True
+
     try:
         process = await asyncio.create_subprocess_exec(
             sys.executable,
@@ -44,6 +91,7 @@ async def run_script_async(
             stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.DEVNULL,
             env=env,
+            **extra_kwargs,
         )
 
         try:
@@ -58,10 +106,13 @@ async def run_script_async(
                 "timeout": False,
             }
         except asyncio.TimeoutError:
-            # Terminate the process if it exceeds timeout
-            process.kill()
+            # Kill the entire process tree (not just the direct child) so that
+            # grandchildren spawned by pythonnet / FLExInit cannot hold the
+            # .fwdata lock open after we return.  See issue #57 (B).
+            pid = process.pid
+            _kill_process_tree(pid)
             try:
-                await process.wait()
+                await asyncio.wait_for(process.wait(), timeout=5)
             except Exception:
                 pass
             return {

@@ -6,10 +6,15 @@ import sys
 from pathlib import Path
 import pytest
 
-# Add src to path (shared across all tests)
+# Add src and src/flextoolsmcp to path (shared across all tests).
+# Tests import both `from flextoolsmcp.xxx` (package form) and
+# `from server.xxx` (legacy bare form); both must resolve.
 src_path = str(Path(__file__).parent.parent / "src")
+pkg_path = str(Path(__file__).parent.parent / "src" / "flextoolsmcp")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
+if pkg_path not in sys.path:
+    sys.path.insert(0, pkg_path)
 
 
 @pytest.fixture

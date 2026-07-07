@@ -538,7 +538,7 @@ def get_index_dir() -> Path:
     checkouts and a user-writable overlay (~/.flextoolsmcp/index, seeded from
     the bundled index) for installed wheels.
     """
-    if __package__:
+    if __package__ and __package__.startswith("flextoolsmcp"):
         from ..file_utils import get_index_dir as _impl
     else:
         from file_utils import get_index_dir as _impl

@@ -274,6 +274,55 @@ def check_project_locked(project_name: str) -> Optional[Path]:
     return lock if lock.exists() else None
 
 
+def sweep_stale_locks() -> list:
+    """Issue #57 (C): scan for stale .fwdata.lock files at server startup.
+
+    Logs each stale lock at WARNING level and returns a list of warning
+    strings suitable for inclusion in the flextools_health response.
+
+    Design: detection only, no deletion.  A lock file that exists while no
+    FieldWorks or FLExTools process is running is almost certainly stale, but
+    we cannot be certain without inspecting the locking process.  Logging
+    surfaces the information for the user without risking data loss.
+
+    Returns:
+        List of human-readable warning strings (one per stale lock found).
+        Empty list if no locks found or the projects directory is unavailable.
+    """
+    import logging
+    _sweep_log = logging.getLogger(__name__)
+
+    warnings: list = []
+    dir_result = get_projects_directory()
+    if dir_result is None:
+        return warnings
+
+    projects_dir, _source = dir_result
+    try:
+        entries = os.listdir(projects_dir)
+    except OSError:
+        return warnings
+
+    for project_name in sorted(entries):
+        lock_path = Path(projects_dir) / project_name / (project_name + _FWDATA_EXT + ".lock")
+        if lock_path.exists():
+            try:
+                lock_stat = lock_path.stat()
+                age_seconds = time.time() - lock_stat.st_mtime
+                age_str = f"{age_seconds / 60:.0f} min" if age_seconds >= 60 else f"{age_seconds:.0f} s"
+            except OSError:
+                age_str = "unknown age"
+            msg = (
+                f"Stale lock detected: {lock_path} ({age_str} old). "
+                "Close FieldWorks (or delete the .lock file only if no FW process is running) "
+                "to allow write operations on this project."
+            )
+            _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)
+            warnings.append(msg)
+
+    return warnings
+
+
 def resolve_or_explain(project_name: str) -> tuple:
     """Resolve a project_name for handler use.
 

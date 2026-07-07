@@ -24,6 +24,67 @@
   abandoned groups, retry-loop trips, and a reject-by-error-code table with
   optional `--previous` trend diff.  `--json` flag for CI integration.
 
+### CI / Robustness (issue #57)
+- **Added `.github/workflows/test.yml`**: runs on every push and pull_request.
+  Windows-latest matrix over Python 3.10 and 3.12; steps are `pip install -e .[dev]`,
+  `python scripts/validate_integrity.py all`,
+  `pytest -m "not requires_flex" --cov=src/flextoolsmcp --cov=server --cov-fail-under=25`,
+  and `ruff check .`.  A second job `test-linux` runs on `ubuntu-latest`
+  (needs: test) with the same pytest surface.  Both jobs deselect
+  `requires_flex` because GitHub runners have no FieldWorks install or
+  generated Flexicon index.
+- **Added `pytest-cov` and `ruff` to `[project.optional-dependencies] dev`** in
+  `pyproject.toml` so `pip install -e .[dev]` sets up CI tooling in one step.
+- **Fixed `tests/conftest.py`** path setup: added `src/flextoolsmcp/` to `sys.path`
+  so legacy `from server.xxx import` statements resolve correctly alongside the
+  installed `flextoolsmcp` package form.
+- **Subprocess process-tree kill** (`server/subprocess_helpers.py`): on timeout,
+  `run_script_async` now kills the entire process tree (`taskkill /T /F /PID` on
+  Windows, `os.killpg` on POSIX) instead of only the immediate child.  Prevents
+  grandchildren spawned by pythonnet / FLExInit from orphaning and holding
+  `.fwdata` locks.  Regression test added: `tests/test_subprocess_tree_kill.py`
+  (Windows-only, no live FLEx required).
+- **Startup stale-lock sweep** (`server/project_discovery.sweep_stale_locks()`):
+  at server startup, all `.fwdata.lock` files under the FieldWorks projects
+  directory are logged at WARNING level and surfaced via `validate_server_state()`
+  warnings; the `flextools_run_module` preflight health check picks them up.
+  Detection only -- no deletion.  Tests in `tests/test_startup_lock_sweep.py`.
+- **Added `requires_flex` pytest marker** in `pytest.ini`, applied to
+  `test_script_certification.py` (needs a generated Flexicon index that CI
+  runners lack) so both CI jobs deselect it with `-m "not requires_flex"`.
+- **Fixed `src/flextoolsmcp/server/kernel.py` dual-import guard**: under the
+  bare-`server` layout `__package__ == "server"` (truthy) wrongly took the
+  relative-import branch, raising "attempted relative import beyond top-level
+  package" and failing `test_undo_wiring.py` in CI.  Guarded with
+  `__package__.startswith("flextoolsmcp")` so the relative branch is used only
+  when installed as the package.
+- **Repointed and un-quarantined `tests/test_mcp_tools.py`**: it loaded the
+  pre-src-layout `src/server.py` via importlib; repointed to
+  `src/flextoolsmcp/server.py` -- 18 tests now pass with no marker (the earlier
+  `requires_flex` mark was masking a stale path, not a FieldWorks dependency).
+- **Scoped ruff to fatal-only** via `[tool.ruff.lint] select = ["E9","F63","F7","F82"]`
+  in `pyproject.toml` (matches the pre-commit hook); the incremental
+  lint-widening in issue #57 part 2 broadens this set in follow-up PRs.
+- Added `.coverage` and `htmlcov/` to `.gitignore`.
+
+### Packaging / Policy (issue #57)
+- Added `src/flextoolsmcp/py.typed` marker (PEP 561) and registered it in
+  `[tool.setuptools.package-data]` so it ships inside the wheel.
+- Capped `pyflexicon` at `>=4.1,<5` in `pyproject.toml` and `requirements.txt`
+  to prevent silent breakage on a future major-version bump.
+- Added `.github/dependabot.yml` for monthly Dependabot checks on
+  `github-actions` and `pip` (dev dependencies).
+- Added `SECURITY.md`: supported-versions table, private-report contact via
+  GitHub Security Advisories, and explicit TRUST-MODEL statement clarifying
+  that `write_enabled` gating is a safety feature (not a security boundary)
+  and the server is intended for localhost/stdio use only.
+- Added `CONTRIBUTING.md`: dev setup (`pip install -e .[dev]`),
+  `pre-commit install`, refresh and test commands, and PR rules (CHANGELOG
+  entry required; extractor changes need index diff; payload-shape changes
+  need golden-file regen).
+- Appended ROLLBACK PROCEDURE and PRE-RELEASE CHECKLIST sections to
+  `RELEASING.md` (previously absent; flagged by STABILITY-SURVEY sec 5).
+
 ## [2.3.3] - 2026-07-06
 
 ### Index

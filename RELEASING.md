@@ -135,3 +135,57 @@ git push && git push --tags
 - The automated path (tag -> GitHub Action -> Trusted Publishing) is the
   preferred way to release; the manual steps above are the fallback and are
   also what the workflow runs internally.
+
+---
+
+## Pre-release Checklist
+
+Before tagging any release, verify:
+
+- [ ] `pytest` exits green with no failures or errors.
+- [ ] `python scripts/validate_integrity.py all` exits clean.
+- [ ] If indexes changed: review the index diff and confirm it reflects
+      the intended API surface changes.
+- [ ] Eval tier-2 numbers reviewed (pending: eval harness not yet landed;
+      note result as N/A until that feature ships).
+- [ ] `CHANGELOG.md` entry written for this version.
+- [ ] `VERSION` file bumped to the new version number.
+- [ ] TestPyPI dry-run completed and the uploaded package starts without
+      errors (`uvx --index https://test.pypi.org/simple/ flextools-mcp`).
+
+---
+
+## Rollback Procedure
+
+PyPI **does not allow re-uploading a yanked version** under the same
+version number. If a bad release reaches PyPI, follow these steps:
+
+### 1. Yank the bad release on PyPI
+
+Go to https://pypi.org/manage/project/flextools-mcp/releases/ and yank
+the affected version. A yanked release is hidden from `pip install` without
+an exact pin but is not deleted; existing pinned installs still resolve it
+(they receive a deprecation warning).
+
+### 2. Publish a replacement
+
+You have two options:
+
+- **Patch bump (preferred):** Fix the issue on `main`, bump to the next
+  patch version (e.g. 2.3.3 -> 2.3.4), and publish normally via tag push.
+- **Post-release:** If the code is correct but only metadata/packaging was
+  broken, you may publish a `.postN` release (e.g. `2.3.3.post1`) from the
+  same commit. Use this sparingly; prefer a patch bump for clarity.
+
+### 3. Document both events in CHANGELOG
+
+Add a note under the replacement version's entry:
+
+```
+### Packaging
+- Replaced yanked v2.3.3 (reason: <brief description>). PyPI yank applied
+  to v2.3.3; v2.3.4 is the safe replacement.
+```
+
+This ensures the history is auditable and users who read the changelog
+understand why the version sequence skipped or doubled.

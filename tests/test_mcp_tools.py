@@ -16,6 +16,8 @@ from functools import lru_cache
 from pathlib import Path
 from unittest import TestCase, main
 
+# Loads src/flextoolsmcp/server.py directly via importlib (no live FLEx needed).
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,7 +40,7 @@ def _get_srv():
     not in server/__init__.py. We load it directly via importlib.
     """
     import importlib.util
-    server_py = Path(__file__).parent.parent / "src" / "server.py"
+    server_py = Path(__file__).parent.parent / "src" / "flextoolsmcp" / "server.py"
     spec = importlib.util.spec_from_file_location("_server_module", str(server_py))
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load spec from {server_py}")

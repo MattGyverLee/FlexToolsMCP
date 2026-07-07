@@ -1,0 +1,82 @@
+name: Test
+
+# Runs on every push and pull_request.
+# Keeps main green without gating releases (publish.yml fires on tags only).
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Windows matrix — full test surface, ruff lint, coverage gate
+  # ---------------------------------------------------------------------------
+  test:
+    name: test (py${{ matrix.python-version }}, windows)
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and dev dependencies
+        run: pip install -e .[dev]
+
+      - name: Validate integrity (syntax / imports / tool count)
+        run: python scripts/validate_integrity.py all
+
+      - name: Run pytest with coverage
+        # --cov targets src/flextoolsmcp (the installed package source) AND
+        # server (bare-module path added by conftest for legacy imports).
+        # Floor = measured 27% - 2 = 25.  Never aspirational; re-measure and
+        # lower only if tests are intentionally removed.
+        # -m "not requires_flex": Windows CI has no FieldWorks install or
+        # generated flexicon index; mirrors Linux deselection.  Coverage floor
+        # still holds on the non-flex surface.
+        run: >
+          pytest
+          -m "not requires_flex"
+          --cov=src/flextoolsmcp
+          --cov=server
+          --cov-fail-under=25
+          --cov-report=term-missing
+          -q
+
+      - name: Lint with ruff
+        run: ruff check .
+
+  # ---------------------------------------------------------------------------
+  # Linux smoke job — verifies the pure-Python test surface passes without
+  # a live FieldWorks installation.  Per STABILITY-SURVEY sec 1: "All tests
+  # runnable without live FieldWorks (pure Python, mock-friendly)."
+  # Tests that require real FLEx data (test_script_certification, which loads
+  # a live flexicon index from index/flexlibs/) are deselected via the
+  # `requires_flex` marker; see pytest.ini for marker registration.
+  # ---------------------------------------------------------------------------
+  test-linux:
+    name: test (py3.12, ubuntu, no-flex)
+    runs-on: ubuntu-latest
+    # Only run when the Windows matrix passes — linux is a smoke gate, not
+    # a replacement.
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev dependencies
+        run: pip install -e .[dev]
+
+      - name: Run pytest (skip requires_flex tests)
+        # No coverage gate here — the Windows job owns the floor.
+        run: pytest -m "not requires_flex" -q

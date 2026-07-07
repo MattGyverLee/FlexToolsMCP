@@ -38,3 +38,7 @@ index/flexlibs/archive/
 
 user-logs/
 .flextoolsmcp/skeletons.jsonl
+
+# Coverage
+.coverage
+htmlcov/

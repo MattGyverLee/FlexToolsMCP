@@ -13,7 +13,7 @@ faiss-cpu>=1.7.4
 pythonnet>=3.0.0
 
 # FieldWorks wrapper the server generates scripts against
-pyflexicon>=4.1.0
+pyflexicon>=4.1,<5
 
 # Utilities
 pydantic>=2.0.0

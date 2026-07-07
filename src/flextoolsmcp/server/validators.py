@@ -210,6 +210,12 @@ def validate_server_state() -> dict:
             "Pattern tracker not initialized (pattern analysis will be unavailable)"
         ))
 
+    # Issue #57 (C): surface stale lock warnings detected at startup.
+    # The api_index stores them as startup_lock_warnings (set in server.main()).
+    startup_lock_warnings = getattr(api_index, "startup_lock_warnings", [])
+    for lock_msg in startup_lock_warnings:
+        issues.append(("warning", lock_msg))
+
     return {
         "is_healthy": len([i for i in issues if i[0] == "error"]) == 0,
         "issues": issues,

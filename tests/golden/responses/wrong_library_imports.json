@@ -1,0 +1,14 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "wrong_library_imports",
+  "message": "Imports are from the wrong library",
+  "wrong_imports": [],
+  "api_mode": "flexicon",
+  "error": {
+    "code": "wrong_library_imports",
+    "message": "Imports are from the wrong library",
+    "wrong_imports": [],
+    "api_mode": "flexicon"
+  }
+}

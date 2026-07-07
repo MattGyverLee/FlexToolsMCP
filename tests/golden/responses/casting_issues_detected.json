@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "casting_issues_detected",
+  "message": "LibLCM casting issues detected in code",
+  "casting_issues": [],
+  "error": {
+    "code": "casting_issues_detected",
+    "message": "LibLCM casting issues detected in code",
+    "casting_issues": []
+  }
+}

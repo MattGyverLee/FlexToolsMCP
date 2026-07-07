@@ -2,6 +2,27 @@
 
 ## [Unreleased] - 2026-07-07
 
+### Tool contract (issue #54)
+- **tool-responses/1.0 contract introduced**: all tool responses are now stamped
+  with `_contract: "tool-responses/1.0"` and a unique `op_id`. Success responses
+  carry a typed envelope; error responses carry flat canonical fields
+  (`error_code`, `message`, `hint`, `error_details`) plus a per-code `detail`
+  object validated against one of 16 Pydantic models.
+- **outputSchema exposure in list_tools()**: tools that declare an
+  `output_model` now emit a JSON Schema `outputSchema` field in `list_tools`
+  (Pydantic `by_alias` serialization). Covered tools: `run_module`,
+  `get_object_api`, `search_by_capability`.
+- **Dual-emit deprecation of nested `error{}` shape**: the legacy
+  `error: {code, message, hint}` sub-object is still emitted alongside the
+  new flat fields for backward compatibility. Scheduled for removal at
+  `tool-responses/2.0`.
+- New: `src/flextoolsmcp/server/response_models.py` (BaseEnvelope,
+  RejectionEnvelope, 3 success models, 16 detail models, AnyDetail union,
+  `validate_detail()`).
+- New: `tests/test_response_contract.py` (94+ tests), 16 golden fixtures in
+  `tests/golden/responses/`, `tests/make_golden.py` drift tooling.
+- New: `docs/TOOL-CONTRACT.md` — full contract reference.
+
 ### Telemetry
 - **First-pass-green metric now emitted** (issue #50): every `run_module`
   operation writes one JSONL line to `operations.jsonl` alongside the

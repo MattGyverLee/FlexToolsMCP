@@ -1,0 +1,10 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "syntax_error",
+  "message": "Invalid Python syntax at line 1: invalid syntax",
+  "error": {
+    "code": "syntax_error",
+    "message": "Invalid Python syntax at line 1: invalid syntax"
+  }
+}

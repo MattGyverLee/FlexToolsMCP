@@ -104,6 +104,8 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ### MCP Tools (16)
 
+Tool responses follow a versioned envelope contract. See [docs/TOOL-CONTRACT.md](docs/TOOL-CONTRACT.md) for the full shape (success and error envelopes, all 16 error codes, and the deprecation timeline for the nested `error` object).
+
 **Admin & Config:**
 - `flextools_start` - Initialize session, set project and API mode
 - `flextools_manage_config` - Get/set/delete persistent configuration

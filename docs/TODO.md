@@ -4,6 +4,18 @@ Open questions and follow-up work, tracked in the repo so they survive between s
 
 ---
 
+## Register TOOL-CONTRACT.md in docs/MANIFEST.md (issue #54 follow-up)
+
+**Status:** open  **Added:** 2026-07-07  **Ref:** closes #54
+
+`docs/TOOL-CONTRACT.md` was introduced in the tool-responses/1.0 contract commit but
+`docs/MANIFEST.md` does not exist in this repo, so the file is not registered
+in a manifest. Follow-up: either create `docs/MANIFEST.md` and register all
+significant docs files, or confirm the project does not use a manifest
+convention and close this item.
+
+---
+
 ## Re-evaluate: does `flextools_start_module` still earn its slot?
 
 **Status:** open · **Added:** 2026-05-01

@@ -1,0 +1,10 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "runtime_error",
+  "message": "Code raised an exception at runtime",
+  "error": {
+    "code": "runtime_error",
+    "message": "Code raised an exception at runtime"
+  }
+}

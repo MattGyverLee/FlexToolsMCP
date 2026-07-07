@@ -712,14 +712,15 @@ async def list_tools() -> list[Tool]:
     tools: list[Tool] = []
     for tool_def in TOOL_DEFINITIONS.values():
         schema = tool_def.get_schema()  # Uses cached schema if available
-        tools.append(
-            Tool(
-                name=tool_def.name,
-                description=tool_def.description,
-                annotations=tool_def.annotations,
-                inputSchema=schema,
-            )
-        )
+        kwargs: Dict[str, Any] = {
+            "name": tool_def.name,
+            "description": tool_def.description,
+            "annotations": tool_def.annotations,
+            "inputSchema": schema,
+        }
+        if tool_def.output_model is not None:
+            kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
+        tools.append(Tool(**kwargs))
 
     return tools
 

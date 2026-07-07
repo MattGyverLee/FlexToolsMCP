@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "project_locked",
+  "message": "FieldWorks project is locked by another process",
+  "guidance": "Close FieldWorks and try again",
+  "error": {
+    "code": "project_locked",
+    "message": "FieldWorks project is locked by another process",
+    "guidance": "Close FieldWorks and try again"
+  }
+}

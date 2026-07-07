@@ -1,0 +1,10 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "project_not_found",
+  "message": "FieldWorks project not found",
+  "error": {
+    "code": "project_not_found",
+    "message": "FieldWorks project not found"
+  }
+}

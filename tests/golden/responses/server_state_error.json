@@ -1,0 +1,18 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "server_state_error",
+  "message": "Server is not in a valid state",
+  "server_state": {
+    "is_healthy": false,
+    "issues": []
+  },
+  "error": {
+    "code": "server_state_error",
+    "message": "Server is not in a valid state",
+    "server_state": {
+      "is_healthy": false,
+      "issues": []
+    }
+  }
+}

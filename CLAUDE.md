@@ -108,6 +108,8 @@ The server exposes 6 tools:
 - `list_categories` - List API categories (lexicon, grammar, texts, etc.)
 - `list_entities_in_category` - List entities in a category
 
+Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md) for the envelope shape, all 16 error codes, and the deprecation timeline for the nested `error` object (drops at `tool-responses/2.0`).
+
 ## Refreshing Indexes
 
 When LibLCM, FlexLibs stable, or Flexicon changes, refresh the indexes:

@@ -1,0 +1,16 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "partial_module_structure",
+  "message": "Module is missing required structural elements",
+  "missing_elements": [
+    "docs"
+  ],
+  "error": {
+    "code": "partial_module_structure",
+    "message": "Module is missing required structural elements",
+    "missing_elements": [
+      "docs"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "undefined_variables",
+  "message": "Undefined variables detected",
+  "undefined_vars": [],
+  "error": {
+    "code": "undefined_variables",
+    "message": "Undefined variables detected",
+    "undefined_vars": []
+  }
+}

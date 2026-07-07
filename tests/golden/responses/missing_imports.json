@@ -1,0 +1,14 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "missing_imports",
+  "message": "Required imports are missing",
+  "missing_imports": [],
+  "api_mode": "flexicon",
+  "error": {
+    "code": "missing_imports",
+    "message": "Required imports are missing",
+    "missing_imports": [],
+    "api_mode": "flexicon"
+  }
+}

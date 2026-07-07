@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "invalid_api_chain",
+  "message": "Invalid API method chain detected",
+  "issues": [],
+  "error": {
+    "code": "invalid_api_chain",
+    "message": "Invalid API method chain detected",
+    "issues": []
+  }
+}

@@ -12,6 +12,8 @@ __all__ = [
     # Basic response fields
     'KEY_NAME', 'KEY_TYPE', 'KEY_MESSAGE', 'KEY_DESCRIPTION', 'KEY_SUMMARY',
     'KEY_ERROR', 'KEY_STATUS', 'KEY_SOURCE', 'KEY_CATEGORY',
+    # Contract / envelope fields
+    'KEY_ERROR_CODE', 'KEY_CONTRACT', 'KEY_OP_ID',
     # API-specific response fields
     'KEY_OBJECTS', 'KEY_METHODS', 'KEY_PROPERTIES', 'KEY_RETURN_TYPE',
     'KEY_PARAMETERS', 'KEY_SIGNATURE', 'KEY_EXAMPLE', 'KEY_EXAMPLES',
@@ -74,13 +76,21 @@ __all__ = [
 
 # ---- Response Field Names ---------------------------------------------------
 
+# Contract / envelope fields (issue #54)
+KEY_CONTRACT = "_contract"       # Top-level contract version stamp
+KEY_OP_ID = "op_id"             # Operation identifier threaded through all responses
+# Canonical (new) error discriminator key.  Used at top level of every rejection.
+KEY_ERROR_CODE = "error_code"
+# Deprecated nested-error key -- still emitted for transition window.
+# Drop at tool-responses/2.0.
+KEY_ERROR = "error"             # DEPRECATED: nested error object; use KEY_ERROR_CODE instead
+
 # Basic response fields
 KEY_NAME = "name"
 KEY_TYPE = "type"
 KEY_MESSAGE = "message"
 KEY_DESCRIPTION = "description"
 KEY_SUMMARY = "summary"
-KEY_ERROR = "error"
 KEY_STATUS = "status"
 KEY_SOURCE = "source"
 KEY_CATEGORY = "category"

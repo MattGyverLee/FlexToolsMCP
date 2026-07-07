@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "api_discovery_required",
+  "message": "API discovery required before running",
+  "detected_candidates": [],
+  "error": {
+    "code": "api_discovery_required",
+    "message": "API discovery required before running",
+    "detected_candidates": []
+  }
+}

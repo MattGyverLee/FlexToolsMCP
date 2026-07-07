@@ -8,9 +8,16 @@ descriptions, and annotations. This replaces the massive list_tools()
 function with a data-driven approach.
 """
 
-from typing import Type
+from typing import Optional, Type
 from pydantic import BaseModel
 from mcp.types import ToolAnnotations
+
+# Import response models for outputSchema wiring
+from .response_models import (
+    RunModuleSuccess,
+    GetObjectApiSuccess,
+    SearchByCapabilitySuccess,
+)
 
 # Import all Pydantic input models
 from .models import (
@@ -50,11 +57,13 @@ class ToolDef:
         description: str,
         input_model: Type[BaseModel],
         annotations: ToolAnnotations,
+        output_model: Optional[Type[BaseModel]] = None,
     ):
         self.name = name
         self.description = description
         self.input_model = input_model
         self.annotations = annotations
+        self.output_model = output_model
         self._cached_schema = None  # Cache for pre-generated schema
 
     def get_schema(self):
@@ -113,6 +122,7 @@ IMPORTANT: Each API result includes 'import_statement' showing exactly what to a
 Tip: Use summary_only=true first to explore large objects, then drill down into specific methods.""",
         input_model=GetObjectApiInput,
         annotations=READ_ONLY_SAFE,
+        output_model=GetObjectApiSuccess,
     ),
 
     "flextools_search_by_capability": ToolDef(
@@ -131,6 +141,7 @@ The search engine uses semantic understanding to find relevant APIs, including:
 - Navigation methods to move between related objects""",
         input_model=SearchCapabilityInput,
         annotations=READ_ONLY_SAFE,
+        output_model=SearchByCapabilitySuccess,
     ),
 
     "flextools_get_navigation_path": ToolDef(
@@ -260,6 +271,7 @@ the conversation. Skipping it is allowed but discouraged.""",
             idempotentHint=False,
             openWorldHint=False,
         ),
+        output_model=RunModuleSuccess,
     ),
 
     "flextools_get_operation_logs": ToolDef(

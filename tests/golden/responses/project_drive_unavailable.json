@@ -1,0 +1,10 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "project_drive_unavailable",
+  "message": "Project drive is not available",
+  "error": {
+    "code": "project_drive_unavailable",
+    "message": "Project drive is not available"
+  }
+}

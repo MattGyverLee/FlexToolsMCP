@@ -325,6 +325,8 @@ def _classify_code_source(code: str, code_tree: Optional[ast.AST]) -> str:
     """
     if code_tree is None:
         return "unknown"
+    if not isinstance(code_tree, ast.Module):
+        return "unknown"
     has_main = any(
         isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "Main"
         for n in code_tree.body
@@ -1742,6 +1744,19 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "is accessed via a chained or call-rooted receiver). Use "
                 "flextools_resolve_property to resolve manually."
             )
+        # Issue #54: enrich each casting issue with the #54-spec detail keys.
+        # correct_cast_expression is the ready-to-paste rewrite (issue #21
+        # already computes it as `rewrite`; we alias here rather than duplicate).
+        # base_type / concrete_type are derived from the existing keys.
+        for _ci in issues:
+            if "correct_cast_expression" not in _ci:
+                _ci["correct_cast_expression"] = _ci.get("rewrite")
+            if "base_type" not in _ci:
+                _missing = _ci.get("missing_on")
+                _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
+            if "concrete_type" not in _ci:
+                _ci["concrete_type"] = _ci.get("cast_interface")
+
         # Issue #28: wrap the rejection with the retry-loop detector so
         # repeated casting failures surface _assistance hints.
         return _attach_assistance_if_loop(
@@ -1923,12 +1938,26 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "wrong_library_imports",
             f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
         )
+        # Issue #54: populate affected_symbols -- the specific names imported
+        # from the wrong library module(s).  Parse from the code AST so the LLM
+        # sees exactly which symbols need to be re-imported under the right module.
+        _affected_symbols: List[str] = []
+        if code_tree:
+            _wrong_mods = set(wrong_imports_check.get("wrong_imports") or [])
+            for _node in ast.walk(code_tree):
+                if isinstance(_node, ast.ImportFrom):
+                    _mod = _node.module or ""
+                    if any(_mod == wm or _mod.startswith(wm + ".") for wm in _wrong_mods):
+                        _affected_symbols.extend(
+                            alias.name for alias in _node.names
+                        )
         return _attach_assistance_if_loop(
             error_response(
                 "wrong_library_imports",
                 wrong_imports_check["suggestion"],
                 wrong_imports=wrong_imports_check["wrong_imports"],
                 api_mode=api_mode,
+                affected_symbols=_affected_symbols or None,
                 guidance=f"Ensure all imports match your selected API mode. You selected '{api_mode}' mode.",
                 op_id=op_id,
             ),

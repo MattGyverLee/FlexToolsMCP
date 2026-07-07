@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "undiscovered_entity",
+  "message": "Undiscovered entity referenced in code",
+  "undiscovered": [],
+  "error": {
+    "code": "undiscovered_entity",
+    "message": "Undiscovered entity referenced in code",
+    "undiscovered": []
+  }
+}

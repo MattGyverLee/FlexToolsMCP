@@ -12,7 +12,11 @@ Provides:
 import json
 import functools
 import traceback
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
+
+# Issue #54: contract version for the tool-response envelope.
+# Increment to 2.0 when the deprecated nested-error shape is removed.
+CONTRACT_VERSION = "tool-responses/1.0"
 
 # Import MCP types for type hints
 try:
@@ -122,9 +126,10 @@ def tool_handler(func: Callable) -> Callable:
 
 
 def build_response_with_context(data: Dict[str, Any], include_session: bool = True) -> Dict[str, Any]:
-    """Add session context to tool response.
+    """Add session context and contract version stamp to tool response.
 
     If session is initialized, adds api_mode, write_enabled, and project to the response.
+    Always stamps _contract=CONTRACT_VERSION on the response (issue #54).
 
     Args:
         data: The response data dict
@@ -133,6 +138,9 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     Returns:
         The data dict, optionally with session_context added
     """
+    # Issue #54: stamp every success response with the contract version.
+    data.setdefault("_contract", CONTRACT_VERSION)
+
     # Import here to avoid circular imports. Package-relative when installed,
     # absolute for script runs (dual-mode guard, per repo convention).
     if __package__:
@@ -190,27 +198,55 @@ def error_response(error_code: str, message: str, **extra) -> List[Any]:
     """
     Format error as MCP TextContent response.
 
-    Consolidates repeated pattern of building error JSON response for tool handlers.
-    Ensures consistent error formatting across all handlers.
+    Issue #54: emits BOTH the canonical flat envelope (status/error_code at top
+    level) and the deprecated nested-error shape in the same payload for the
+    transition window.  Both shapes carry identical content so existing callers
+    reading ``data["error"]`` still work while new callers can read
+    ``data["error_code"]`` without a compatibility shim.
+
+    Canonical (new) top-level keys:
+        _contract, status="error", error_code, message, hint (if provided),
+        op_id (if provided), plus per-code detail keys spread at top level.
+
+    Deprecated (retained) nested key:
+        error: {code, message, ...same extras}
 
     Args:
-        error_code: Machine-readable error code (e.g., 'project_name_required')
+        error_code: Machine-readable error code (e.g., 'syntax_error')
         message: Human-readable error message
-        **extra: Additional fields to include in JSON response
+        **extra: Additional fields included in both canonical and deprecated shapes
 
     Returns:
         List with single TextContent object suitable for MCP tool return
-
-    Example:
-        >>> return error_response('invalid_code', 'Code parsing failed', hint='Check syntax')
-        [TextContent(type='text', text='{"error": "invalid_code", "message": "...", "hint": "..."}')]
     """
+    # Build canonical flat envelope.
+    data: Dict[str, Any] = {
+        "_contract": CONTRACT_VERSION,
+        "status": "error",
+        "error_code": error_code,
+        "message": message,
+    }
+    # Spread detail keys at top level for canonical consumers.
+    # Guard against clobbering canonical envelope keys.
+    _canonical_keys = {"_contract", "status", "error_code", "message", "error"}
+    collisions = _canonical_keys & extra.keys()
+    if collisions:
+        raise ValueError(
+            f"error_response() extra keys collide with canonical envelope keys: {collisions}"
+        )
+    data.update(extra)
+
+    # Deprecated nested shape -- retained for backward compat.
+    # Contains identical content so round-tripping is lossless.
+    nested: Dict[str, Any] = {"code": error_code, "message": message}
+    nested.update(extra)
+    # Avoid clobbering canonical "error_code" key with the nested object when
+    # extra happens to contain keys that overlap.  The nested key is always
+    # the plain string "error".
+    data["error"] = nested
+
     if TextContent is None:
         # Fallback if MCP not available (e.g., unit tests)
-        data = {"error": error_code, "message": message}
-        data.update(extra)
         return [{"type": "text", "text": format_result(data)}]
 
-    data = {"error": error_code, "message": message}
-    data.update(extra)
     return [TextContent(type="text", text=format_result(data))]

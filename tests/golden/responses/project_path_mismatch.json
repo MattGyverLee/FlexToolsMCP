@@ -1,0 +1,10 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "project_path_mismatch",
+  "message": "Project path does not match expected location",
+  "error": {
+    "code": "project_path_mismatch",
+    "message": "Project path does not match expected location"
+  }
+}

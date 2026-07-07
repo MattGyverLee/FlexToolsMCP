@@ -1,5 +1,29 @@
 # FlexToolsMCP Changelog
 
+## [Unreleased] - 2026-07-07
+
+### Telemetry
+- **First-pass-green metric now emitted** (issue #50): every `run_module`
+  operation writes one JSONL line to `operations.jsonl` alongside the
+  existing prose `operations.log`.  Fields include `ts`, `op_id`, `seq`,
+  `project`, `write_enabled`, `source_kind`, `user_intent`, `code_sha256`,
+  `code_bytes`, `code_lines`, `outcome` (ok / preflight_reject /
+  runtime_fail / timeout), `error_code`, `preflight_gate`, `duration_s`,
+  `auto_fixes_applied`, `auto_discovered`, `assistance_triggered`,
+  `info_count`, `warning_count`, `error_count`.
+- JSONL is written from inside the three close functions
+  (`_log_operation_end_success`, `_log_operation_failure`,
+  `_log_preflight_reject`) -- NOT at the ~12 individual call sites -- so the
+  prose log and JSONL file can never diverge.
+- `operations.jsonl` rotates at 10 000 lines to `operations.jsonl.1`.
+- `get_operation_logs` statistics block now includes `first_pass_green_rate`,
+  `turns_to_green_median`, and `rejects_by_error_code` (top 5) computed from
+  JSONL.
+- New CLI: `scripts/green_report.py` (stdlib only) -- reads one or more
+  JSONL files, computes first-pass green rate, turns-to-green (median + p90),
+  abandoned groups, retry-loop trips, and a reject-by-error-code table with
+  optional `--previous` trend diff.  `--json` flag for CI integration.
+
 ## [2.3.3] - 2026-07-06
 
 ### Index

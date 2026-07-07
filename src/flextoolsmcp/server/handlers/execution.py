@@ -97,6 +97,12 @@ from ..response_keys import (
     KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
 )
 
+# Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
+try:
+    from .op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics
+except ImportError:
+    from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics
+
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================
@@ -370,6 +376,22 @@ def _log_operation_start(
         f"Code fingerprint: sha256={fp['sha256_short']} bytes={fp['bytes']} lines={fp['lines']}"
     )
 
+    # Issue #50: stash metadata so the close functions can emit a JSONL line
+    # without receiving these fields as extra parameters.  The stash is drained
+    # (pop) exactly once, by whichever close function runs first.
+    _raw_bytes = code.encode("utf-8", errors="replace")
+    _full_sha256 = hashlib.sha256(_raw_bytes).hexdigest()
+    _stash_op_start(
+        op_id=op_id,
+        project=project_name,
+        write_enabled=write_enabled,
+        source_kind=source_kind,
+        user_intent=user_intent,
+        code_sha256=_full_sha256,
+        code_bytes=fp["bytes"],
+        code_lines=fp["lines"],
+    )
+
     if casting_check is not None:
         issue_count = len(casting_check.get("casting_issues") or [])
         tier = injection_tier or casting_check.get("injection_tier", "?")
@@ -558,6 +580,21 @@ def _log_operation_end_success(
     logger.info(f"Duration:        {duration_s:.3f}s")
     logger.info(f"=== Operation #{seq} End ({op_id}) ===")
 
+    # Issue #50: emit JSONL line (same code path as prose .log -- cannot diverge)
+    _write_jsonl_line(
+        op_id=op_id,
+        seq=seq,
+        outcome="ok",
+        duration_s=duration_s,
+        error_code=None,
+        preflight_gate=None,
+        info_count=info_count,
+        warning_count=warning_count,
+        error_count=error_count,
+        assistance_triggered=False,
+        log_dir_fn=get_log_dir,
+    )
+
 
 def _log_operation_failure(
     op_id: Optional[str] = None,
@@ -629,6 +666,28 @@ def _log_operation_failure(
     else:
         logger.info("=== Operation End ===")
 
+    # Issue #50: emit JSONL line.
+    # Timeout is distinguished from generic runtime_fail by error_type:
+    #   "TimeoutExpired" -> subprocess.TimeoutExpired catch block
+    #   "Timeout"        -> result["timeout"] True path (async runner)
+    # Any other error_type maps to "runtime_fail".
+    if op_id is not None and seq is not None:
+        _is_timeout = (error_type or "").lower() in ("timeout", "timeoutexpired")
+        _outcome = "timeout" if _is_timeout else "runtime_fail"
+        _write_jsonl_line(
+            op_id=op_id,
+            seq=seq,
+            outcome=_outcome,
+            duration_s=duration_s,
+            error_code=error_type or "runtime_error",
+            preflight_gate=None,
+            info_count=info_count,
+            warning_count=warning_count,
+            error_count=error_count,
+            assistance_triggered=False,
+            log_dir_fn=get_log_dir,
+        )
+
 
 def _log_preflight_reject(
     op_id: str,
@@ -656,6 +715,22 @@ def _log_preflight_reject(
             logger.warning(f"  {line}")
     logger.info(f"Duration:        {duration_s:.3f}s")
     logger.info(f"=== Operation #{seq} End ({op_id}) ===")
+
+    # Issue #50: emit JSONL line (written here, NOT at each of the ~12 call
+    # sites, so prose .log and JSONL can never diverge).
+    _write_jsonl_line(
+        op_id=op_id,
+        seq=seq,
+        outcome="preflight_reject",
+        duration_s=duration_s,
+        error_code=reason_code,
+        preflight_gate=reason_code,
+        info_count=0,
+        warning_count=0,
+        error_count=0,
+        assistance_triggered=False,
+        log_dir_fn=get_log_dir,
+    )
 
 
 def _attach_assistance_if_loop(
@@ -2763,16 +2838,27 @@ async def handle_get_operation_logs(args: dict) -> list[TextContent]:
             total_successes = sum(p["success_count"] for p in api_patterns.values())
             total_failures = sum(p["failure_count"] for p in api_patterns.values())
 
+            # Issue #50: merge JSONL-derived aggregates into the statistics block
+            jsonl_stats = compute_jsonl_statistics(get_log_dir())
             result["statistics"] = {
                 "total_operations": total_operations,
                 "total_successes": total_successes,
                 "total_failures": total_failures,
                 "success_rate": round(total_successes / total_operations * 100, 1) if total_operations > 0 else 0,
                 "unique_api_patterns": len(api_patterns),
-                "unique_error_patterns": len(tracker.patterns.get("error_patterns", {}))
+                "unique_error_patterns": len(tracker.patterns.get("error_patterns", {})),
+                # Structured telemetry aggregates (issue #50)
+                "first_pass_green_rate": jsonl_stats.get("first_pass_green_rate"),
+                "turns_to_green_median": jsonl_stats.get("turns_to_green_median"),
+                "rejects_by_error_code": jsonl_stats.get("rejects_by_error_code", []),
             }
         else:
             result["recommendations"] = {}
-            result["statistics"] = {}
+            jsonl_stats = compute_jsonl_statistics(get_log_dir())
+            result["statistics"] = {
+                "first_pass_green_rate": jsonl_stats.get("first_pass_green_rate"),
+                "turns_to_green_median": jsonl_stats.get("turns_to_green_median"),
+                "rejects_by_error_code": jsonl_stats.get("rejects_by_error_code", []),
+            }
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]

@@ -20,9 +20,84 @@ from pathlib import Path
 # Allow running from repo root or from tests/
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from flextoolsmcp.response_utils import error_response
+from flextoolsmcp.response_utils import error_response, CONTRACT_VERSION
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "responses"
+
+# ---------------------------------------------------------------------------
+# Issue #46: Auto-fix golden fixtures (success-shape, not error_response shape)
+# ---------------------------------------------------------------------------
+
+AUTO_FIX_GOLDEN_FIXTURES: dict[str, dict] = {
+    # (a) successful casting auto-fix applied (one concrete target)
+    "auto_fix_casting_applied": {
+        "status": "ok",
+        "_contract": CONTRACT_VERSION,
+        "success": True,
+        "messages": [],
+        "auto_fixes_applied": [
+            {
+                "kind": "casting",
+                "line": 3,
+                "original": "owner.HeadWord",
+                "replacement": "ILexEntry(owner).HeadWord",
+                "cast_interface": "ILexEntry",
+            }
+        ],
+        "auto_fix_note": (
+            "[AUTO-FIX] 1 safe rewrite(s) were applied to the in-memory copy of your code "
+            "before execution:\n\n"
+            "  Line 3 [CASTING]: 'owner.HeadWord' -> 'ILexEntry(owner).HeadWord' (cast to ILexEntry)\n\n"
+            "[ACTION REQUIRED] The fixes were applied only to the executed copy.\n"
+            "  Source: <submitted code>\n"
+            "  Update your source file at the line numbers listed above or you will\n"
+            "  see this auto-fix note every time you run this code."
+        ),
+    },
+    # (b) successful typo auto-fix applied (ratio>=0.9, single candidate)
+    "auto_fix_typo_applied": {
+        "status": "ok",
+        "_contract": CONTRACT_VERSION,
+        "success": True,
+        "messages": [],
+        "auto_fixes_applied": [
+            {
+                "kind": "typo",
+                "line": 2,
+                "col": 12,
+                "original": "LexEntries",
+                "replacement": "LexEntry",
+                "match_ratio": 0.92,
+            }
+        ],
+        "auto_fix_note": (
+            "[AUTO-FIX] 1 safe rewrite(s) were applied to the in-memory copy of your code "
+            "before execution:\n\n"
+            "  Line 2 [TYPO]: 'LexEntries' -> 'LexEntry' (92% match)\n\n"
+            "[ACTION REQUIRED] The fixes were applied only to the executed copy.\n"
+            "  Source: <submitted code>\n"
+            "  Update your source file at the line numbers listed above or you will\n"
+            "  see this auto-fix note every time you run this code."
+        ),
+    },
+    # (c) ambiguous casting correctly NOT auto-fixed (stays rejected, original payload)
+    "auto_fix_ambiguous_not_applied": {
+        "status": "error",
+        "_contract": CONTRACT_VERSION,
+        "error_code": "casting_issues_detected",
+        "message": "Found 1 polymorphic property access issue(s) that require casting.",
+        "casting_issues": [
+            {
+                "line": 5,
+                "property": "SenseRA",
+                "cast_interface": None,  # ambiguous -> not auto-fixed
+                "rewrite": None,
+                "severity": "error",
+            }
+        ],
+        # NO auto_fixes_applied or auto_fix_note key -- ambiguous stays rejected
+    },
+}
 
 # Canonical minimal payload for each of the 16 known error codes.
 # Keys must NOT overlap with canonical envelope keys (status, error_code,
@@ -102,6 +177,11 @@ def _build_fixture(code: str, extras: dict) -> dict:
     return json.loads(item.text)
 
 
+def _build_auto_fix_fixture(data: dict) -> dict:
+    """Auto-fix fixtures are pre-built dicts (not through error_response)."""
+    return dict(data)
+
+
 def _load_existing(path: Path) -> dict | None:
     if not path.exists():
         return None
@@ -130,6 +210,24 @@ def main(argv=None):
 
         if existing != fixture:
             stale.append(code)
+            if args.regen:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(fixture, f, indent=2, ensure_ascii=False)
+                    f.write("\n")
+                print(f"[REGEN] {path.name}")
+            else:
+                print(f"[STALE] {path.name}")
+        else:
+            print(f"[OK]    {path.name}")
+
+    # Issue #46: auto-fix scenario fixtures
+    for fixture_name, fixture_data in AUTO_FIX_GOLDEN_FIXTURES.items():
+        fixture = _build_auto_fix_fixture(fixture_data)
+        path = GOLDEN_DIR / f"{fixture_name}.json"
+        existing = _load_existing(path)
+
+        if existing != fixture:
+            stale.append(fixture_name)
             if args.regen:
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(fixture, f, indent=2, ensure_ascii=False)

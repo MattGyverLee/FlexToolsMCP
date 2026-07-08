@@ -4,6 +4,17 @@ Open questions and follow-up work, tracked in the repo so they survive between s
 
 ---
 
+## P3: auto_fix_note source_hint — surface originating filename (issue #46 follow-up)
+
+**Status:** open  **Added:** 2026-07-07  **Ref:** issue #46, deferred
+
+`auto_fix_note` currently always reports "<submitted code>" as the source and
+never names the originating file. Add a `source_hint` field that surfaces the
+filename (or a short label) so log readers and UI callers can trace which file
+the auto-fix was applied to without re-reading the full payload.
+
+---
+
 ## Register TOOL-CONTRACT.md in docs/MANIFEST.md (issue #54 follow-up)
 
 **Status:** open  **Added:** 2026-07-07  **Ref:** closes #54

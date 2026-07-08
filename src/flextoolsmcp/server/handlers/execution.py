@@ -65,6 +65,7 @@ try:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
+        _collect_all_imported_names,
     )
 except ImportError:
     from server.validators import (
@@ -74,6 +75,7 @@ except ImportError:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
+        _collect_all_imported_names,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -94,8 +96,15 @@ from ..response_keys import (
     KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
     KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
     KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
-    KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS
+    KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS,
+    KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
 )
+
+# Issue #46: auto-fix config
+try:
+    from ...config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
+except (ImportError, ValueError):
+    from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
 
 # Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
 try:
@@ -1458,6 +1467,246 @@ if __name__ == '__main__':
     })
 
 
+# ---------------------------------------------------------------------------
+# Issue #46: Safe auto-fix engine
+# ---------------------------------------------------------------------------
+
+_AUTO_FIX_CAP = 5  # Maximum auto-fixes per run before falling back to rejection
+
+
+def _try_auto_fix_casting(
+    code: str,
+    issues: List[Dict[str, Any]],
+    api_idx: Any,
+    code_tree: Optional[ast.AST],
+) -> Optional[Dict[str, Any]]:
+    """Attempt safe casting rewrites when all safety conditions are met.
+
+    Domain safety rules (HARD -- do not relax):
+    - cast_interface must be non-null and unambiguous (exactly one target).
+    - severity must be "error".
+    - rewrite must be non-null.
+    - Cap at _AUTO_FIX_CAP total fixes.
+
+    Returns a dict with:
+      - patched_code: str  (the rewritten source)
+      - fixes: list of fix records
+    Or None if any condition is not met (caller falls back to rejection).
+    """
+    fixable = [
+        i for i in issues
+        if i.get("severity") == "error"
+        and i.get("cast_interface") and isinstance(i.get("cast_interface"), str)
+        and i.get("rewrite")
+        and i.get("line") is not None
+    ]
+    # ALL fixable issues must qualify; if any error-severity issue is not
+    # fixable (null rewrite / ambiguous target), fall back to full rejection.
+    error_issues = [i for i in issues if i.get("severity") == "error"]
+    if len(fixable) != len(error_issues):
+        return None
+    if not fixable:
+        return None
+    if len(fixable) > _AUTO_FIX_CAP:
+        return None
+
+    # Apply fixes BOTTOM-UP (highest line number first) to preserve offsets.
+    fixable_sorted = sorted(fixable, key=lambda i: i["line"], reverse=True)
+    lines = code.splitlines(keepends=True)
+    fix_records = []
+
+    # Guard: detect two issues sharing the same (line, found_at) -- applying
+    # the second replace() would operate on already-patched text, producing a
+    # silent mis-patch.  Reject the entire batch when a collision is found.
+    _seen_line_found_at: set = set()
+    for issue in fixable_sorted:
+        _key = (issue["line"], issue.get("found_at") or issue.get("property"))
+        if _key in _seen_line_found_at:
+            return None  # Collision: two issues share (line, found_at) -> bail
+        _seen_line_found_at.add(_key)
+
+    for issue in fixable_sorted:
+        line_idx = issue["line"] - 1  # AST line numbers are 1-based
+        if line_idx < 0 or line_idx >= len(lines):
+            return None  # Line out of range -> bail
+        orig_line = lines[line_idx]
+        found_at = issue.get("found_at") or issue.get("property")
+        rewrite = issue["rewrite"]
+        if not found_at or found_at not in orig_line:
+            return None  # Can't locate the expression -> bail
+        new_line = orig_line.replace(found_at, rewrite, 1)
+        if new_line == orig_line:
+            return None  # Replace was a no-op -> bail
+        lines[line_idx] = new_line
+        fix_records.append({
+            "kind": "casting",
+            "line": issue["line"],
+            "original": found_at,
+            "replacement": rewrite,
+            "cast_interface": issue["cast_interface"],
+        })
+
+    patched = "".join(lines)
+
+    # Prepend deduplicated imports.
+    imports_needed: List[str] = []
+    seen_imports: set = set()
+    for issue in fixable:
+        for imp in (issue.get("imports_needed") or []):
+            if imp not in seen_imports:
+                seen_imports.add(imp)
+                imports_needed.append(imp)
+
+    if imports_needed:
+        existing = _collect_all_imported_names(patched) or set()
+        new_imports = []
+        for imp_stmt in imports_needed:
+            # Extract the imported name from "from X import Y"
+            parts = imp_stmt.split()
+            imported_name = parts[-1] if parts else ""
+            if imported_name and imported_name not in existing:
+                new_imports.append(imp_stmt)
+        if new_imports:
+            patched = "\n".join(new_imports) + "\n" + patched
+
+    return {"patched_code": patched, "fixes": fix_records}
+
+
+def _try_auto_fix_typos(
+    code: str,
+    issues: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Attempt safe typo correction when all safety conditions are met.
+
+    Domain safety rules (HARD -- do not relax):
+    - match_ratio >= 0.9
+    - Exactly ONE did_you_mean candidate.
+    - lineno must be present in the issue dict.
+    - Cap at _AUTO_FIX_CAP total fixes.
+
+    Returns a dict with:
+      - patched_code: str
+      - fixes: list of fix records
+    Or None if any condition is not met (caller falls back to rejection).
+    """
+    fixable = [
+        i for i in issues
+        if i.get("match_ratio", 0.0) >= 0.9
+        and len(i.get("did_you_mean") or []) == 1
+        and i.get("lineno") is not None
+        and i.get("typo_attr")
+    ]
+    # ALL issues must be fixable; partial fix = full rejection
+    if len(fixable) != len(issues):
+        return None
+    if not fixable:
+        return None
+    if len(fixable) > _AUTO_FIX_CAP:
+        return None
+
+    # Apply BOTTOM-UP by line number.
+    fixable_sorted = sorted(fixable, key=lambda i: i["lineno"], reverse=True)
+    lines = code.splitlines(keepends=True)
+    fix_records = []
+
+    for issue in fixable_sorted:
+        line_idx = issue["lineno"] - 1
+        if line_idx < 0 or line_idx >= len(lines):
+            return None
+        orig_line = lines[line_idx]
+        typo = issue["typo_attr"]
+        correction = issue["did_you_mean"][0]
+        if typo not in orig_line:
+            return None
+        new_line = orig_line.replace(typo, correction, 1)
+        if new_line == orig_line:
+            return None
+        lines[line_idx] = new_line
+        fix_records.append({
+            "kind": "typo",
+            "line": issue["lineno"],
+            "col": issue.get("col_offset"),
+            "original": typo,
+            "replacement": correction,
+            "match_ratio": issue["match_ratio"],
+        })
+
+    patched = "".join(lines)
+    return {"patched_code": patched, "fixes": fix_records}
+
+
+def _build_auto_fix_note(fix_records: List[Dict[str, Any]], source_hint: str = "<submitted code>") -> str:
+    """Build an actionable note referencing each fix by kind and line number.
+
+    IMPORTANT: Always warn the user to update their SOURCE FILE -- only the
+    executed copy was patched in memory.
+    """
+    lines_out = [
+        f"[AUTO-FIX] {len(fix_records)} safe rewrite(s) were applied to the "
+        f"in-memory copy of your code before execution:",
+        "",
+    ]
+    for rec in fix_records:
+        kind = rec.get("kind", "fix")
+        line_no = rec.get("line", "?")
+        orig = rec.get("original", "?")
+        replacement = rec.get("replacement", "?")
+        if kind == "casting":
+            lines_out.append(
+                f"  Line {line_no} [CASTING]: '{orig}' -> '{replacement}' "
+                f"(cast to {rec.get('cast_interface', '?')})"
+            )
+        elif kind == "typo":
+            ratio_pct = int(rec.get("match_ratio", 0) * 100)
+            lines_out.append(
+                f"  Line {line_no} [TYPO]: '{orig}' -> '{replacement}' "
+                f"({ratio_pct}% match)"
+            )
+        else:
+            lines_out.append(f"  Line {line_no} [{kind.upper()}]: '{orig}' -> '{replacement}'")
+
+    lines_out.extend([
+        "",
+        f"[ACTION REQUIRED] The fixes were applied only to the executed copy.",
+        f"  Source: {source_hint}",
+        f"  Update your source file at the line numbers listed above or you will",
+        f"  see this auto-fix note every time you run this code.",
+    ])
+    return "\n".join(lines_out)
+
+
+def _validate_patched_code(
+    patched_code: str,
+    api_idx: Any,
+    casting_index: Any,
+) -> bool:
+    """Re-parse and re-run the full preflight chain on patched code.
+
+    Returns True only if the patched code:
+    1. Parses cleanly (no SyntaxError).
+    2. Passes detect_casting_needs with zero NEW casting issues.
+    3. Passes detect_invalid_project_chains with no new typo issues.
+
+    Any failure returns False (caller falls back to original rejection payload).
+    """
+    try:
+        patched_tree = ast.parse(patched_code)
+    except SyntaxError:
+        return False
+
+    # Re-run casting check on patched code
+    patched_casting = detect_casting_needs(patched_code, casting_index, patched_tree)
+    if patched_casting.get("has_casting_issues"):
+        return False
+
+    # Re-run typo check on patched code
+    patched_typo = detect_invalid_project_chains(patched_tree, api_idx)
+    if patched_typo.get("has_invalid"):
+        return False
+
+    return True
+
+
 async def handle_run_module(args: dict) -> list[TextContent]:
     """Execute code (snippet or full module) against a FieldWorks project.
 
@@ -1493,6 +1742,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Issue #28: precompute code size for the retry-loop / size-oscillation
     # detector. Same byte count used at every rejection / runtime-failure site.
     _code_size_bytes = len(code.encode("utf-8", errors="replace")) if code else 0
+    # Issue #46: resolve effective auto_fix flag.
+    # Write runs ALWAYS skip auto-fix regardless of any flag (hard constraint).
+    _auto_fix_arg = args.get("auto_fix")  # None means use config default
+    _config_auto_fix = bool(config_get(AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT))
+    effective_auto_fix = bool(_auto_fix_arg if _auto_fix_arg is not None else _config_auto_fix)
+    # Write runs: force off unconditionally (hard constraint).
+    effective_auto_fix = effective_auto_fix and (not write_enabled)
+    # Accumulator for auto-fix records; populated when auto-fix succeeds.
+    _auto_fixes_applied: Optional[List[Dict[str, Any]]] = None
+    _auto_fix_note: Optional[str] = None
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging
@@ -1704,80 +1963,112 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 f"  casting: line={issue.get('line')} property={issue.get('property')} "
                 f"pattern={issue.get('pattern','')[:80]!r}"
             )
-        _log_preflight_reject(
-            op_id, seq, time.monotonic() - t_start,
-            "casting_issues_detected",
-            f"{len(issues)} polymorphic property access issue(s) require casting.",
-        )
-        # Issue #21: each issue carries an inline rewrite + imports_needed so
-        # the LLM doesn't need to call flextools_resolve_property to recover.
-        # Issue #22: retarget the hint at the inlined rewrite, not the tool.
-        has_any_rewrite = any(i.get("rewrite") for i in issues)
-        first_rewrite = next(
-            (i for i in issues if i.get("rewrite")), None
-        )
-        if has_any_rewrite and first_rewrite is not None:
-            how_to_fix = [
-                f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
-                f"`{first_rewrite['rewrite']}`",
-                "2. Add the imports listed in casting_issues[*].imports_needed",
-                "3. Re-run your code",
-            ]
-            hint_msg = (
-                "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
-                "expression) and `imports_needed` (the SIL.LCModel imports to add). "
-                "Apply them line-by-line and re-run."
-            )
-        else:
-            # Fall back to the old guidance when the AST-rewrite path didn't
-            # produce anything (e.g. chained receivers).
-            how_to_fix = [
-                "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
-                    issues[0]["property"],
-                    issues[0].get("context_entity", "ICmObject"),
-                ),
-                "2. Apply the suggested cast from the tool response",
-                "3. Re-run your code",
-            ]
-            hint_msg = (
-                "No automatic rewrite was emitted (likely because the property "
-                "is accessed via a chained or call-rooted receiver). Use "
-                "flextools_resolve_property to resolve manually."
-            )
-        # Issue #54: enrich each casting issue with the #54-spec detail keys.
-        # correct_cast_expression is the ready-to-paste rewrite (issue #21
-        # already computes it as `rewrite`; we alias here rather than duplicate).
-        # base_type / concrete_type are derived from the existing keys.
-        for _ci in issues:
-            if "correct_cast_expression" not in _ci:
-                _ci["correct_cast_expression"] = _ci.get("rewrite")
-            if "base_type" not in _ci:
-                _missing = _ci.get("missing_on")
-                _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
-            if "concrete_type" not in _ci:
-                _ci["concrete_type"] = _ci.get("cast_interface")
 
-        # Issue #28: wrap the rejection with the retry-loop detector so
-        # repeated casting failures surface _assistance hints.
-        return _attach_assistance_if_loop(
-            error_response(
+        # Issue #46: attempt safe auto-fix for read-only runs.
+        if effective_auto_fix:
+            _af_result = _try_auto_fix_casting(code, issues, api_idx, code_tree)
+            if _af_result is not None:
+                _patched = _af_result["patched_code"]
+                _fix_records = _af_result["fixes"]
+                if _validate_patched_code(_patched, api_idx, casting_index):
+                    # Telemetry: log both original and patched sha256
+                    _orig_sha = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
+                    _patched_sha = hashlib.sha256(_patched.encode("utf-8", errors="replace")).hexdigest()[:12]
+                    get_operations_logger().info(
+                        f"[AUTO-FIX] casting: applied {len(_fix_records)} rewrite(s). "
+                        f"original_sha256={_orig_sha} patched_sha256={_patched_sha}"
+                    )
+                    # Record success signal so the retry-loop detector resets.
+                    # (None error_code = success, resets the loop counter.)
+                    session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+                    # Replace code + tree with patched version and continue preflight
+                    code = _patched
+                    code_tree = ast.parse(code)
+                    casting_check = detect_casting_needs(code, casting_index, code_tree)
+                    _auto_fixes_applied = _fix_records
+                    _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
+                    # Proceed to rest of preflight with patched code
+                else:
+                    get_operations_logger().info(
+                        "[AUTO-FIX] casting: patch did not pass re-preflight; falling back to rejection"
+                    )
+
+        # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
+        if casting_check["has_casting_issues"]:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
                 "casting_issues_detected",
-                f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
-                severity=casting_check["severity"],
-                casting_issues=issues,  # canonical key matching validator output
-                issues=issues,           # back-compat alias
-                general_guidance={
-                    "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
-                    "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
-                    "how_to_fix": how_to_fix,
-                },
-                hint=hint_msg,
-                next_steps=hint_msg,
-                op_id=op_id,
-            ),
-            error_code="casting_issues_detected",
-            code_size_bytes=_code_size_bytes,
-        )
+                f"{len(issues)} polymorphic property access issue(s) require casting.",
+            )
+            # Issue #21: each issue carries an inline rewrite + imports_needed so
+            # the LLM doesn't need to call flextools_resolve_property to recover.
+            # Issue #22: retarget the hint at the inlined rewrite, not the tool.
+            has_any_rewrite = any(i.get("rewrite") for i in issues)
+            first_rewrite = next(
+                (i for i in issues if i.get("rewrite")), None
+            )
+            if has_any_rewrite and first_rewrite is not None:
+                how_to_fix = [
+                    f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
+                    f"`{first_rewrite['rewrite']}`",
+                    "2. Add the imports listed in casting_issues[*].imports_needed",
+                    "3. Re-run your code",
+                ]
+                hint_msg = (
+                    "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
+                    "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                    "Apply them line-by-line and re-run."
+                )
+            else:
+                # Fall back to the old guidance when the AST-rewrite path didn't
+                # produce anything (e.g. chained receivers).
+                how_to_fix = [
+                    "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                        issues[0]["property"],
+                        issues[0].get("context_entity", "ICmObject"),
+                    ),
+                    "2. Apply the suggested cast from the tool response",
+                    "3. Re-run your code",
+                ]
+                hint_msg = (
+                    "No automatic rewrite was emitted (likely because the property "
+                    "is accessed via a chained or call-rooted receiver). Use "
+                    "flextools_resolve_property to resolve manually."
+                )
+            # Issue #54: enrich each casting issue with the #54-spec detail keys.
+            # correct_cast_expression is the ready-to-paste rewrite (issue #21
+            # already computes it as `rewrite`; we alias here rather than duplicate).
+            # base_type / concrete_type are derived from the existing keys.
+            for _ci in issues:
+                if "correct_cast_expression" not in _ci:
+                    _ci["correct_cast_expression"] = _ci.get("rewrite")
+                if "base_type" not in _ci:
+                    _missing = _ci.get("missing_on")
+                    _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
+                if "concrete_type" not in _ci:
+                    _ci["concrete_type"] = _ci.get("cast_interface")
+
+            # Issue #28: wrap the rejection with the retry-loop detector so
+            # repeated casting failures surface _assistance hints.
+            return _attach_assistance_if_loop(
+                error_response(
+                    "casting_issues_detected",
+                    f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
+                    severity=casting_check["severity"],
+                    casting_issues=issues,  # canonical key matching validator output
+                    issues=issues,           # back-compat alias
+                    general_guidance={
+                        "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
+                        "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
+                        "how_to_fix": how_to_fix,
+                    },
+                    hint=hint_msg,
+                    next_steps=hint_msg,
+                    op_id=op_id,
+                ),
+                error_code="casting_issues_detected",
+                code_size_bytes=_code_size_bytes,
+            )
 
     # Require API discovery before executing code
     skip_api_check = args.get("skip_api_check", False)
@@ -1971,22 +2262,53 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # to runtime so we don't block valid direct-project methods we don't index.
     chain_check = detect_invalid_project_chains(code_tree, api_idx)
     if chain_check["has_invalid"]:
-        _log_preflight_reject(
-            op_id, seq, time.monotonic() - t_start,
-            "invalid_api_chain",
-            f"issues={chain_check.get('issues')}",
-        )
-        return _attach_assistance_if_loop(
-            error_response(
+        # Issue #46: attempt safe typo auto-fix for read-only runs.
+        if effective_auto_fix:
+            _af_typo = _try_auto_fix_typos(code, chain_check["issues"])
+            if _af_typo is not None:
+                _patched_typo = _af_typo["patched_code"]
+                _typo_fix_records = _af_typo["fixes"]
+                if _validate_patched_code(_patched_typo, api_idx, casting_index):
+                    _orig_sha_t = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
+                    _patched_sha_t = hashlib.sha256(_patched_typo.encode("utf-8", errors="replace")).hexdigest()[:12]
+                    get_operations_logger().info(
+                        f"[AUTO-FIX] typo: applied {len(_typo_fix_records)} correction(s). "
+                        f"original_sha256={_orig_sha_t} patched_sha256={_patched_sha_t}"
+                    )
+                    session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+                    code = _patched_typo
+                    code_tree = ast.parse(code)
+                    chain_check = detect_invalid_project_chains(code_tree, api_idx)
+                    # Merge with any prior casting auto-fixes for the final note
+                    _merged_fixes: List[Dict[str, Any]] = (
+                        (_auto_fixes_applied + _typo_fix_records)
+                        if _auto_fixes_applied is not None
+                        else _typo_fix_records
+                    )
+                    _auto_fixes_applied = _merged_fixes
+                    _auto_fix_note = _build_auto_fix_note(_merged_fixes, source_hint="<submitted code>")
+                else:
+                    get_operations_logger().info(
+                        "[AUTO-FIX] typo: patch did not pass re-preflight; falling back to rejection"
+                    )
+
+        if chain_check["has_invalid"]:
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
                 "invalid_api_chain",
-                chain_check["suggestion"],
-                issues=chain_check["issues"],
-                guidance="Replace each flagged expression with the suggested correct name and re-run.",
-                op_id=op_id,
-            ),
-            error_code="invalid_api_chain",
-            code_size_bytes=_code_size_bytes,
-        )
+                f"issues={chain_check.get('issues')}",
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "invalid_api_chain",
+                    chain_check["suggestion"],
+                    issues=chain_check["issues"],
+                    guidance="Replace each flagged expression with the suggested correct name and re-run.",
+                    op_id=op_id,
+                ),
+                error_code="invalid_api_chain",
+                code_size_bytes=_code_size_bytes,
+            )
 
     timeout_seconds = args.get("timeout_seconds", 300)
 
@@ -2752,6 +3074,20 @@ MODULE_CODE = {code}
             # into the skeleton closet so they survive across sessions.
             # Best-effort; failures here MUST NOT fail the op.
             _capture_skeletons_after_success(code, op_id, duration_s)
+            # Issue #46: attach auto-fix metadata when rewrites were applied.
+            # Both fields are written atomically via this helper so neither can
+            # be committed to the response without the other being set.
+            def _commit_auto_fix_to_result(fixes: List[Dict[str, Any]], note: str) -> None:
+                """Atomically attach auto-fix fields to execution_result."""
+                assert note is not None, "_auto_fix_note must not be None when committing fixes"
+                execution_result[KEY_AUTO_FIXES_APPLIED] = fixes
+                execution_result[KEY_AUTO_FIX_NOTE] = note
+
+            if _auto_fixes_applied:
+                assert _auto_fix_note is not None, (
+                    "_auto_fix_note must be set whenever _auto_fixes_applied is set"
+                )
+                _commit_auto_fix_to_result(_auto_fixes_applied, _auto_fix_note)
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

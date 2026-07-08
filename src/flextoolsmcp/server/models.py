@@ -427,3 +427,11 @@ class RunModuleInput(BaseModel):
                     "Pass 0 to disable the cap (return all info messages, no truncation). "
                     "Errors and warnings are NEVER capped -- they always survive intact."
     )
+    auto_fix: Optional[bool] = Field(
+        default=None,
+        description="Issue #46: opt-in to safe auto-apply of CASTING rewrites and TYPO "
+                    "corrections before execution. None (default) defers to the server-side "
+                    "config key 'auto_fix_enabled' (default: True for read-only runs). "
+                    "Overrides the config when explicitly set. Write runs ALWAYS skip "
+                    "auto-fix regardless of this flag."
+    )

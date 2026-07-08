@@ -262,20 +262,21 @@ class TestTypedChainSegmentBypass(unittest.TestCase):
         self.assertNotIn("Form", flagged)
         self.assertNotIn("BestVernacularAlternative", flagged)
 
-    def test_untyped_root_still_flags(self):
-        """The bypass keys off a TYPED chain root. A bare variable access like
-        `mstring.BestVernacularAlternative` (no cast in sight, no typed
-        receiver upstream) must still flag -- we don't know what `mstring` is,
-        so removing the warning would let real bugs through. Probe the
-        BestVernacularAlternative arm directly because the advanced loop's
-        regex consumes `.Form.` before reaching it in a longer chain.
+    def test_untyped_root_multistring_not_flagged(self):
+        """Issue #40 domain ruling: BestVernacularAlternative is an
+        IMultiString/IMultiUnicode VALUE accessor -- no cast is possible or
+        needed regardless of receiver type. The heuristic must never flag it,
+        even when the receiver variable is untyped (no cast_alias in scope).
         """
         code = (
             "def f(mstring):\n"
             "    return mstring.BestVernacularAlternative.Text\n"
         )
         flagged = self._flagged(detect_casting_needs(code, self.INDEX))
-        self.assertIn("BestVernacularAlternative", flagged)
+        self.assertNotIn("BestVernacularAlternative", flagged,
+            "BestVernacularAlternative is unconditionally whitelisted per #40 "
+            "domain ruling -- it lives on a typed value, not ICmObject."
+        )
 
     def test_untyped_root_chain_still_flags_first_segment(self):
         """And `obj.Form...` from an unknown root must still flag Form --

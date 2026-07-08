@@ -2,6 +2,29 @@
 
 ## [Unreleased] - 2026-07-07
 
+### Validator + auto-fix (issues #40, #46)
+- **#40 — Casting whitelist false-positive fix**: `detect_casting_needs()` no
+  longer over-rejects receivers whose var is a known cast-alias or a
+  multistring-value accessor (`BestAnalysisAlternative`/`BestVernacularAlternative`/`.Text`),
+  and never flags `project.*` wrapper calls. The advanced `casting_index` loop
+  now consults `cast_aliases.get(obj_var)` against
+  `_extract_interface_names(defined_on)` before flagging. Conditional-safe
+  members (`LexemeFormOA`/`AnalysesRS`/`Wordform`/`Form`/`FreeTranslation`)
+  pass only when a cast-alias proves the receiver type.
+- **#46 — Fix-and-run auto-apply**: on read-only runs with `auto_fix` on, the
+  preflight now auto-applies SAFE casting rewrites (exactly-one concrete target)
+  and single-candidate typo corrections (difflib ratio >= 0.9), re-parses +
+  re-runs the full preflight on the patched code, and executes in the same call,
+  returning `auto_fixes_applied` + `auto_fix_note`. Write runs keep the hard
+  rejection unconditionally. Cap of 5 fixes. New config kill switch
+  `auto_fix_enabled`; `RunModuleInput.auto_fix` per-call override. Collision
+  pre-pass rejects the whole fix set if any `(line, found_at)` key repeats.
+- +5 tests (374 passed, 21 deselected). New `tests/test_auto_fix.py` covers
+  re-parse-failure degradation, same-line collision rejection, and accumulator
+  cap. 3 new golden response fixtures for auto-fix applied/not-applied paths.
+  New `RunModuleSuccess` Optional keys (`auto_fixes_applied`, `auto_fix_note`)
+  compose with the #54 contract.
+
 ### Tool contract (issue #54)
 - **tool-responses/1.0 contract introduced**: all tool responses are now stamped
   with `_contract: "tool-responses/1.0"` and a unique `op_id`. Success responses

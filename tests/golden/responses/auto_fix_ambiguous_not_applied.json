@@ -1,0 +1,15 @@
+{
+  "status": "error",
+  "_contract": "tool-responses/1.0",
+  "error_code": "casting_issues_detected",
+  "message": "Found 1 polymorphic property access issue(s) that require casting.",
+  "casting_issues": [
+    {
+      "line": 5,
+      "property": "SenseRA",
+      "cast_interface": null,
+      "rewrite": null,
+      "severity": "error"
+    }
+  ]
+}

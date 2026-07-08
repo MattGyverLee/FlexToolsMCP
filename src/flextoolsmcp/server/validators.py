@@ -627,10 +627,18 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
             # Otherwise this might be a direct project method we don't enumerate.
             close = _suggest_attribute_matches(x, list(accessors), cutoff=0.7)
             if close:
+                # Compute actual ratio for the top candidate so auto-fix can
+                # enforce the >=0.9 threshold (issue #46).
+                import difflib as _dl
+                _ratio = _dl.SequenceMatcher(None, x.lower(), close[0].lower()).ratio()
                 issues.append({
                     "kind": "accessor",
                     "expr": f"project.{x}",
+                    "typo_attr": x,
+                    "lineno": node.lineno,
+                    "col_offset": node.col_offset,
                     "did_you_mean": close,
+                    "match_ratio": _ratio,
                     "suggestion": f"'project.{x}' is not a valid accessor. Did you mean: {', '.join('project.' + c for c in close)}?",
                 })
         # project.<X>.<Y>: node.value is Attribute(value=Name('project'), attr=X)
@@ -649,10 +657,16 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                 continue
             close = _suggest_attribute_matches(y, methods, cutoff=0.7)
             if close:
+                import difflib as _dl
+                _ratio = _dl.SequenceMatcher(None, y.lower(), close[0].lower()).ratio()
                 issues.append({
                     "kind": "method",
                     "expr": f"project.{x}.{y}",
+                    "typo_attr": y,
+                    "lineno": node.lineno,
+                    "col_offset": node.col_offset,
                     "did_you_mean": close,
+                    "match_ratio": _ratio,
                     "suggestion": f"'{y}' is not a method on {ops_class}. Did you mean: {', '.join(f'project.{x}.{c}' for c in close)}?",
                 })
 
@@ -1984,6 +1998,32 @@ _TYPED_RECEIVER_SUFFIXES = ("_obj", "_typed", "_cast")
 # session logs (e.g. `obj.Hvo`, `obj.Guid`) that forced needless rewrites.
 _CASTING_ALWAYS_SAFE_MEMBERS = frozenset({"Guid", "Hvo", "ClassID", "ClassName"})
 
+# Issue #40 (domain ruling): IMultiString/IMultiUnicode VALUE accessors.
+# BestAnalysisAlternative and BestVernacularAlternative are returned by
+# multistring value properties -- their receiver is already a typed
+# IMultiString/IMultiUnicode value, not an ICmObject, so no cast is possible or
+# needed. Likewise, chaining .Text off these is a plain string accessor. The
+# heuristic must never flag these; they were driving constant false-positive
+# rewrites in multilingual-field access patterns.
+_CASTING_MULTISTRING_VALUE_MEMBERS = frozenset({
+    "BestAnalysisAlternative",
+    "BestVernacularAlternative",
+    "Text",  # chained off the above; also safe on its own (str attribute)
+})
+
+# Issue #40 (domain ruling): conditional members -- safe ONLY when the
+# receiver's static declared type (cast_alias) proves it, otherwise keep
+# the flag. Maps member name -> set of interface names that declare it safely.
+# If the receiver has no cast_alias, the member is still flagged (no inference).
+_CASTING_CONDITIONAL_SAFE = {
+    "LexemeFormOA": {"ILexEntry"},
+    "AnalysesRS": {"ISegment"},
+    "Wordform": {"IWfiAnalysis", "IWfiGloss", "IAnalysisOccurrence"},
+    "Form": {"IMoForm", "IMoStemAllomorph", "IMoAffixAllomorph",
+             "IMoAffixProcess", "IMoStemName"},
+    "FreeTranslation": {"ISegment"},
+}
+
 
 def _pick_cast_interface(
     property_name: str,
@@ -2305,6 +2345,17 @@ def detect_casting_needs(
         for property_name, pattern_info in KNOWN_CASTING_PATTERNS.items():
             for pattern in pattern_info["pattern_sources"]:
                 if re.search(pattern, line_content):
+                    # Issue #40 (domain ruling): project.X is a Python wrapper
+                    # call; the casting gate must never fire when the receiver
+                    # is `project`. Check via the AST so we don't lose the
+                    # line-level pattern that already matched.
+                    _receiver_pre = _find_receiver_name(tree, line_num, property_name)
+                    if _receiver_pre == "project":
+                        break
+                    # Issue #40 (domain ruling): Best* accessors and .Text are
+                    # IMultiString/IMultiUnicode value members -- no cast needed.
+                    if property_name in _CASTING_MULTISTRING_VALUE_MEMBERS:
+                        break
                     # Issue #15: if the access on this line is rooted at a cast
                     # alias whose interface is listed in available_on, the cast
                     # already satisfies the requirement -- don't flag.
@@ -2319,7 +2370,7 @@ def detect_casting_needs(
                     # apply the cast without a second resolve_property call.
                     # Issue #21 follow-up: receiver-name signal disambiguates
                     # confidently-wrong tie-breaks (Form / Gloss / Name).
-                    receiver_name = _find_receiver_name(tree, line_num, property_name)
+                    receiver_name = _receiver_pre
                     cast_iface = _pick_cast_interface(
                         property_name,
                         pattern_info["available_on"],
@@ -2369,6 +2420,19 @@ def detect_casting_needs(
                 if prop_name in _CASTING_ALWAYS_SAFE_MEMBERS:
                     continue
 
+                # Issue #40 (domain ruling): project.X is a Python wrapper
+                # method, not C# interface navigation. The casting heuristic
+                # must NEVER fire when the receiver is `project`.
+                if obj_var == "project":
+                    continue
+
+                # Issue #40 (domain ruling): IMultiString/IMultiUnicode value
+                # accessors (BestAnalysisAlternative, BestVernacularAlternative,
+                # Text). The receiver of these is already a typed value object,
+                # not an ICmObject -- no cast is possible or needed.
+                if prop_name in _CASTING_MULTISTRING_VALUE_MEMBERS:
+                    continue
+
                 # Issue #40: a call on an Operations-class instance
                 # (segOps.IsLabel(seg)) is a flexicon wrapper method, not a
                 # polymorphic property access. The regex captures it because the
@@ -2387,6 +2451,17 @@ def detect_casting_needs(
                 # the heuristic where it was guessing.
                 if obj_var in typed_chain_segments.get(line_num, ()):
                     continue
+
+                # Issue #40 (domain ruling): conditional members -- safe ONLY
+                # when an explicit cast_alias proves the receiver's type. The
+                # detector has no flow-based type inference; receiver type is
+                # known solely from cast_aliases. If the alias proves a safe
+                # interface, skip; otherwise keep the flag.
+                if prop_name in _CASTING_CONDITIONAL_SAFE:
+                    safe_ifaces = _CASTING_CONDITIONAL_SAFE[prop_name]
+                    receiver_iface = cast_aliases.get(obj_var)
+                    if receiver_iface and receiver_iface in safe_ifaces:
+                        continue
 
                 # Check if this property is in the casting index and requires cast
                 if prop_name in casting_props:

@@ -167,5 +167,237 @@ class TestIssue44WriteabilityCount(unittest.TestCase):
         )
 
 
+class TestIssue40DomainRuling(unittest.TestCase):
+    """Issue #40 domain-constrained whitelist additions and conditional guards.
+
+    (a) project.* -- never flag; it's a Python wrapper, not C# navigation.
+    (a) BestAnalysisAlternative / BestVernacularAlternative / Text -- always
+        safe (IMultiString/IMultiUnicode value members).
+    (b) Conditional members (LexemeFormOA, AnalysesRS, Wordform, Form,
+        FreeTranslation) -- skipped only when cast_alias proves safe type;
+        still flagged for untyped receivers.
+    (c) SenseRA / MorphRA / CategoryRA still flag with a valid rewrite.
+    """
+
+    # Casting index that covers all members tested below.
+    INDEX = {
+        "properties": {
+            "LexemeFormOA": {
+                "defined_on": ["ILexEntry"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "AnalysesRS": {
+                "defined_on": ["ISegment"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "Wordform": {
+                "defined_on": ["IWfiAnalysis", "IWfiGloss"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "Form": {
+                "defined_on": ["IMoForm"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "FreeTranslation": {
+                "defined_on": ["ISegment"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "BestAnalysisAlternative": {
+                "defined_on": ["IMultiString"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "BestVernacularAlternative": {
+                "defined_on": ["IMultiString"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "SenseRA": {
+                "defined_on": ["IChkSense", "IWfiMorphBundle"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "MorphRA": {
+                "defined_on": ["IWfiMorphBundle"],
+                "requires_cast_from": ["ICmObject"],
+            },
+            "CategoryRA": {
+                "defined_on": ["IWfiAnalysis (raw LCM)"],
+                "requires_cast_from": ["ICmObject"],
+            },
+        },
+        "polymorphic_collections": {},
+    }
+
+    def _flagged(self, result):
+        return {issue["property"] for issue in result["casting_issues"]}
+
+    # --- (a) project.* never flags ---
+
+    def test_project_receiver_never_flags(self):
+        """project.X is a Python wrapper call; casting gate must never fire."""
+        code = (
+            "def f():\n"
+            "    x = project.LexEntry\n"
+            "    y = project.LexSense\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("LexEntry", flagged)
+        self.assertNotIn("LexSense", flagged)
+
+    def test_project_lexemeformoa_not_flagged(self):
+        """project.LexemeFormOA must not flag -- receiver is project."""
+        code = "lf = project.LexemeFormOA\n"
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("LexemeFormOA", flagged)
+
+    # --- (a) Best* and Text always safe ---
+
+    def test_best_analysis_alternative_not_flagged(self):
+        """BestAnalysisAlternative is unconditionally whitelisted."""
+        code = (
+            "def f(sense):\n"
+            "    return sense.Gloss.BestAnalysisAlternative.Text\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("BestAnalysisAlternative", flagged)
+
+    def test_best_vernacular_alternative_not_flagged(self):
+        """BestVernacularAlternative is unconditionally whitelisted."""
+        code = (
+            "def f(entry):\n"
+            "    return entry.LexemeFormOA.Form.BestVernacularAlternative.Text\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("BestVernacularAlternative", flagged)
+
+    def test_text_accessor_not_flagged(self):
+        """Chained .Text off a Best* accessor is not flagged."""
+        code = (
+            "def f(ms):\n"
+            "    return ms.BestAnalysisAlternative.Text\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("Text", flagged)
+
+    # --- (b) Conditional members: safe when cast_alias proves type ---
+
+    def test_lexemeformoa_safe_when_cast_alias_proves_ilexentry(self):
+        """LexemeFormOA must not flag when cast_alias proves ILexEntry."""
+        code = (
+            "from SIL.LCModel import ILexEntry\n"
+            "def f(entry):\n"
+            "    e = ILexEntry(entry)\n"
+            "    return e.LexemeFormOA\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("LexemeFormOA", flagged)
+
+    def test_lexemeformoa_flags_when_untyped(self):
+        """LexemeFormOA must still flag when receiver has no cast_alias."""
+        code = (
+            "def f(obj):\n"
+            "    return obj.LexemeFormOA\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertIn("LexemeFormOA", flagged)
+
+    def test_analysesr_safe_when_cast_alias_proves_isegment(self):
+        """AnalysesRS must not flag when receiver is ISegment cast_alias."""
+        code = (
+            "from SIL.LCModel import ISegment\n"
+            "def f(seg):\n"
+            "    s = ISegment(seg)\n"
+            "    return s.AnalysesRS\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("AnalysesRS", flagged)
+
+    def test_analysesr_flags_when_untyped(self):
+        """AnalysesRS must still flag when receiver has no cast_alias."""
+        code = (
+            "def f(obj):\n"
+            "    return obj.AnalysesRS\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertIn("AnalysesRS", flagged)
+
+    def test_form_safe_when_cast_alias_proves_imoform(self):
+        """Form must not flag when receiver is IMoForm cast_alias."""
+        code = (
+            "from SIL.LCModel import IMoForm\n"
+            "def f(mf):\n"
+            "    morph = IMoForm(mf)\n"
+            "    return morph.Form\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("Form", flagged)
+
+    def test_freetranslation_safe_when_cast_alias_proves_isegment(self):
+        """FreeTranslation must not flag when receiver is ISegment cast_alias."""
+        code = (
+            "from SIL.LCModel import ISegment\n"
+            "def f(seg):\n"
+            "    s = ISegment(seg)\n"
+            "    return s.FreeTranslation\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("FreeTranslation", flagged)
+
+    # --- (c) Genuinely polymorphic members still flag with valid rewrite ---
+
+    def test_sensera_still_flags_untyped(self):
+        """SenseRA is genuinely polymorphic (IChkSense + IWfiMorphBundle);
+        must still flag on an untyped receiver and emit a cast_interface."""
+        code = (
+            "def f(obj):\n"
+            "    return obj.SenseRA\n"
+        )
+        result = detect_casting_needs(code, self.INDEX)
+        flagged = self._flagged(result)
+        self.assertIn("SenseRA", flagged,
+            "SenseRA is genuinely polymorphic and must still flag")
+        # Verify the issue dict has a usable cast_interface or rewrite hint.
+        sense_issue = next(
+            (i for i in result["casting_issues"] if i["property"] == "SenseRA"), None
+        )
+        self.assertIsNotNone(sense_issue)
+        assert sense_issue is not None  # Pyright type narrowing
+        # At least one of cast_interface or fix must be non-empty.
+        has_guidance = bool(sense_issue.get("cast_interface")) or bool(sense_issue.get("fix"))
+        self.assertTrue(has_guidance,
+            "SenseRA issue must carry cast_interface or fix guidance")
+
+    def test_morphra_still_flags_untyped(self):
+        """MorphRA is genuinely polymorphic; must still flag."""
+        code = (
+            "def f(obj):\n"
+            "    return obj.MorphRA\n"
+        )
+        result = detect_casting_needs(code, self.INDEX)
+        flagged = self._flagged(result)
+        self.assertIn("MorphRA", flagged,
+            "MorphRA must still flag on an untyped receiver")
+
+    def test_categoryra_still_flags_untyped(self):
+        """CategoryRA is genuinely polymorphic; must still flag on untyped."""
+        code = (
+            "def f(obj):\n"
+            "    return obj.CategoryRA\n"
+        )
+        result = detect_casting_needs(code, self.INDEX)
+        flagged = self._flagged(result)
+        self.assertIn("CategoryRA", flagged,
+            "CategoryRA must still flag on an untyped receiver")
+
+    def test_categoryra_suppressed_when_cast_to_iwfianalysis(self):
+        """CategoryRA must NOT flag when receiver is IWfiAnalysis cast_alias."""
+        code = (
+            "from SIL.LCModel import IWfiAnalysis\n"
+            "def f(ana):\n"
+            "    wa = IWfiAnalysis(ana)\n"
+            "    return wa.CategoryRA\n"
+        )
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertNotIn("CategoryRA", flagged)
+
+
 if __name__ == "__main__":
     unittest.main()

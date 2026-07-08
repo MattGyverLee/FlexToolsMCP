@@ -1,0 +1,17 @@
+{
+  "status": "ok",
+  "_contract": "tool-responses/1.0",
+  "success": true,
+  "messages": [],
+  "auto_fixes_applied": [
+    {
+      "kind": "typo",
+      "line": 2,
+      "col": 12,
+      "original": "LexEntries",
+      "replacement": "LexEntry",
+      "match_ratio": 0.92
+    }
+  ],
+  "auto_fix_note": "[AUTO-FIX] 1 safe rewrite(s) were applied to the in-memory copy of your code before execution:\n\n  Line 2 [TYPO]: 'LexEntries' -> 'LexEntry' (92% match)\n\n[ACTION REQUIRED] The fixes were applied only to the executed copy.\n  Source: <submitted code>\n  Update your source file at the line numbers listed above or you will\n  see this auto-fix note every time you run this code."
+}

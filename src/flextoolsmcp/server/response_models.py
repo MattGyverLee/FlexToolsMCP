@@ -21,12 +21,12 @@ from pydantic import BaseModel, ConfigDict, Field
 try:
     from .response_keys import (
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
-        KEY_ERROR,
+        KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
     )
 except ImportError:
     from server.response_keys import (
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
-        KEY_ERROR,
+        KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
     )
 
 try:
@@ -57,6 +57,17 @@ class RunModuleSuccess(BaseEnvelope):
     """Successful run_module response envelope."""
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
     status: Literal["ok", "error"] = Field(alias=KEY_STATUS, default="ok")
+    # Issue #46: auto-fix fields (None when no auto-fix was applied)
+    auto_fixes_applied: Optional[list] = Field(
+        alias=KEY_AUTO_FIXES_APPLIED, default=None,
+        description="List of auto-fix records applied before execution (issue #46). "
+                    "None when no auto-fix was attempted."
+    )
+    auto_fix_note: Optional[str] = Field(
+        alias=KEY_AUTO_FIX_NOTE, default=None,
+        description="Actionable note about applied auto-fixes including source file:line "
+                    "references and a reminder to update the source file (issue #46)."
+    )
 
 
 class GetObjectApiSuccess(BaseEnvelope):

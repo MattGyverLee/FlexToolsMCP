@@ -19,6 +19,20 @@ from typing import Any, Dict, Optional
 CONFIG_DIR = Path.home() / ".flextoolsmcp"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
+# ---------------------------------------------------------------------------
+# Issue #46: Auto-fix kill switch
+#
+# auto_fix_enabled (dotted key "auto_fix_enabled") controls whether the server
+# will attempt safe auto-apply of CASTING rewrites and TYPO corrections on
+# read-only runs BEFORE rejecting the code.  Write runs ALWAYS skip auto-fix.
+#
+# Default: True (on for read-only runs as per issue #46 spec).
+# Override via: config_set("auto_fix_enabled", False)   # disable globally
+#               RunModuleInput.auto_fix=True/False        # per-call override
+# ---------------------------------------------------------------------------
+AUTO_FIX_ENABLED_KEY = "auto_fix_enabled"
+AUTO_FIX_ENABLED_DEFAULT = True  # on by default for read-only runs
+
 # In-memory cache (loaded on first call, cleared on flush)
 _config_cache: Optional[Dict[str, Any]] = None
 

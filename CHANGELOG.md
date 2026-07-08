@@ -2,6 +2,35 @@
 
 ## [Unreleased] - 2026-07-07
 
+### Session identity + read-only auto-discovery (issues #42, #47)
+- **#42 -- Session-state identity / discovery-state leak fixed**: `SessionState`
+  is a long-lived global singleton; without an identity key it leaked discovery
+  state across logical sessions. `session.py configure()` rewritten to branch on
+  explicit `session_id` kwarg / `new_session=True` / first-configure /
+  `project_name` change / else keep-current-no-wipe (project-anchored identity,
+  `auto-<project|uuid>` minting). Fixes the P0 where the production start path
+  minted a fresh uuid every call and wiped discovery on every `flextools_start`
+  (broke the supported mid-session restart flow, issue #9). `admin.py` removes
+  dead `session_state.session_id = ...` direct assignment; passes `project_name`
+  through; adds unknown-kwarg warning guard. New `TestProductionPathSessionContinuity`
+  covers the same-project-restart-preserves case that would have caught the P0.
+  `#42.2` (missing Operation End on writeability reject) was already correct --
+  locked with a regression test only.
+- **#47 -- Read-only auto-discovery**: introduces a separate
+  `auto_discovered_apis` set that the write gate never reads (write-gate
+  isolation -- `validators.py:851` reads only `validated_apis`; write never
+  auto-discovers). Resolve criterion uses the api_mode-specific entity table plus
+  accessor-to-ops map (rejects naive `f"{name}Operations"` fallback). Cap 5 on
+  read runs, 0 on write runs. Success path attaches Optional `auto_discovered` /
+  `_inline_discovery` / `discovery_note` on `RunModuleSuccess`. The
+  `KEY_INLINE_DISCOVERY = "_inline_discovery"` leading underscore is intentional:
+  matches existing reject-payload `_inline_discovery`/`_assistance` keys that
+  clients already parse.
+- `docs/TOOL-CONTRACT.md` updated with the 3 new `RunModuleSuccess` Optional
+  fields (`auto_discovered`, `_inline_discovery`, `discovery_note`).
+- +26 tests (400 passed, 21 deselected). New `tests/test_issue42_session_identity.py`
+  and `tests/test_issue47_auto_discovery.py`.
+
 ### Validator + auto-fix (issues #40, #46)
 - **#40 — Casting whitelist false-positive fix**: `detect_casting_needs()` no
   longer over-rejects receivers whose var is a known cast-alias or a

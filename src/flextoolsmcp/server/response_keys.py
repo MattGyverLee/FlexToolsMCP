@@ -69,6 +69,8 @@ __all__ = [
     'KEY_HAS_PROPERTY_ON', 'KEY_MISSING_FROM', 'KEY_GUIDANCE',
     # Auto-fix (issue #46)
     'KEY_AUTO_FIXES_APPLIED', 'KEY_AUTO_FIX_NOTE',
+    # Auto-discovery (issue #47)
+    'KEY_AUTO_DISCOVERED', 'KEY_INLINE_DISCOVERY', 'KEY_DISCOVERY_NOTE',
     # Equivalence / bridge tools
     'KEY_LIBRARY', 'KEY_METHOD', 'KEY_LCM_INTERNALS', 'KEY_ADVISORY',
     'KEY_LCM_NAME', 'KEY_COVERAGE', 'KEY_GAPS',
@@ -275,6 +277,11 @@ KEY_GUIDANCE = "guidance"
 # Auto-fix fields (issue #46)
 KEY_AUTO_FIXES_APPLIED = "auto_fixes_applied"
 KEY_AUTO_FIX_NOTE = "auto_fix_note"
+
+# Auto-discovery fields (issue #47)
+KEY_AUTO_DISCOVERED = "auto_discovered"
+KEY_INLINE_DISCOVERY = "_inline_discovery"
+KEY_DISCOVERY_NOTE = "discovery_note"
 
 # Equivalence / bridge tool fields
 KEY_LIBRARY = "library"

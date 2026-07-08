@@ -436,6 +436,84 @@ class TestValidateDetail:
 
 
 # ---------------------------------------------------------------------------
+# Issue #46: Auto-fix golden fixture tests
+# ---------------------------------------------------------------------------
+
+class TestAutoFixGoldenFixtures:
+    """Golden fixtures for auto-fix scenarios (issue #46)."""
+
+    def test_auto_fix_casting_applied_fixture_keys(self):
+        fixture_path = GOLDEN_DIR / "auto_fix_casting_applied.json"
+        assert fixture_path.exists(), "Missing auto_fix_casting_applied.json fixture"
+        with open(fixture_path) as f:
+            data = json.load(f)
+        assert data["status"] == "ok"
+        assert "auto_fixes_applied" in data
+        assert "auto_fix_note" in data
+        assert isinstance(data["auto_fixes_applied"], list)
+        assert len(data["auto_fixes_applied"]) >= 1
+        fix = data["auto_fixes_applied"][0]
+        assert fix["kind"] == "casting"
+        assert "line" in fix
+        assert "cast_interface" in fix
+        # Note must mention ACTION REQUIRED and source location
+        assert "[ACTION REQUIRED]" in data["auto_fix_note"]
+
+    def test_auto_fix_typo_applied_fixture_keys(self):
+        fixture_path = GOLDEN_DIR / "auto_fix_typo_applied.json"
+        assert fixture_path.exists(), "Missing auto_fix_typo_applied.json fixture"
+        with open(fixture_path) as f:
+            data = json.load(f)
+        assert data["status"] == "ok"
+        assert "auto_fixes_applied" in data
+        fix = data["auto_fixes_applied"][0]
+        assert fix["kind"] == "typo"
+        assert "match_ratio" in fix
+
+    def test_auto_fix_ambiguous_not_applied(self):
+        """Ambiguous casting (cast_interface=None) must stay rejected with original payload."""
+        fixture_path = GOLDEN_DIR / "auto_fix_ambiguous_not_applied.json"
+        assert fixture_path.exists(), "Missing auto_fix_ambiguous_not_applied.json fixture"
+        with open(fixture_path) as f:
+            data = json.load(f)
+        # Must be an error response, not success
+        assert data["status"] == "error"
+        assert data["error_code"] == "casting_issues_detected"
+        # Must NOT carry auto_fixes_applied
+        assert "auto_fixes_applied" not in data, (
+            "Ambiguous casting must NOT carry auto_fixes_applied -- it was not applied"
+        )
+        # Confirm cast_interface is None in the payload (ambiguous)
+        ci = data["casting_issues"][0]
+        assert ci.get("cast_interface") is None
+
+    def test_run_module_success_model_accepts_auto_fix_fields(self):
+        """RunModuleSuccess model must accept auto_fixes_applied + auto_fix_note."""
+        from flextoolsmcp.server.response_models import RunModuleSuccess
+        from flextoolsmcp.response_utils import CONTRACT_VERSION
+        data = {
+            "status": "ok",
+            "_contract": CONTRACT_VERSION,
+            "op_id": "op-test-001",
+            "auto_fixes_applied": [{"kind": "casting", "line": 3}],
+            "auto_fix_note": "[AUTO-FIX] 1 rewrite applied.\n[ACTION REQUIRED] Update source.",
+        }
+        m = RunModuleSuccess.model_validate(data, by_alias=True)
+        assert m.status == "ok"
+        assert m.auto_fixes_applied == [{"kind": "casting", "line": 3}]
+        assert "[ACTION REQUIRED]" in (m.auto_fix_note or "")
+
+    def test_run_module_success_model_none_when_no_fix(self):
+        """auto_fixes_applied and auto_fix_note default to None."""
+        from flextoolsmcp.server.response_models import RunModuleSuccess
+        from flextoolsmcp.response_utils import CONTRACT_VERSION
+        data = {"status": "ok", "_contract": CONTRACT_VERSION}
+        m = RunModuleSuccess.model_validate(data, by_alias=True)
+        assert m.auto_fixes_applied is None
+        assert m.auto_fix_note is None
+
+
+# ---------------------------------------------------------------------------
 # P1: collision guard in error_response()
 # ---------------------------------------------------------------------------
 

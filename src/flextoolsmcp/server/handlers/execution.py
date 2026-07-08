@@ -65,7 +65,7 @@ try:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
-        _collect_all_imported_names,
+        _collect_all_imported_names, _accessor_to_ops_map,
     )
 except ImportError:
     from server.validators import (
@@ -75,7 +75,7 @@ except ImportError:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
-        _collect_all_imported_names,
+        _collect_all_imported_names, _accessor_to_ops_map,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -98,6 +98,7 @@ from ..response_keys import (
     KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
     KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS,
     KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
+    KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
 )
 
 # Issue #46: auto-fix config
@@ -1078,6 +1079,69 @@ def _inline_discovery_docs(
             ),
         }
     return inlined
+
+
+# Issue #47: max entities auto-discovered per READ-ONLY run.
+_AUTO_DISCOVER_CAP = 5
+
+
+def _resolve_for_auto_discovery(
+    entity_names: List[str],
+    api_idx: Any,
+) -> List[str]:
+    """Filter entity_names to those that qualify for auto-discovery (#47).
+
+    Resolve criterion (all three must hold):
+    1. Entity name is a key in the ACTIVE api_mode entity table (flexicon
+       entities dict from the loaded index -- NOT a union across modes).
+    2. For accessor-form names (not ending in 'Operations'), the name must
+       resolve via _accessor_to_ops_map to a SINGLE non-ambiguous result that
+       is also a key in the entity table.
+    3. Entities that match ONLY via the naive f'{name}Operations' fallback
+       (i.e., _accessor_to_ops_map did NOT return a result for this name)
+       are REJECTED -- the fallback is known to produce wrong class names for
+       most project accessors.
+
+    Returns only the entities that pass all three criteria, preserving order,
+    capped at _AUTO_DISCOVER_CAP.
+
+    Write isolation: this function never touches session_state directly.
+    The caller records qualifying names in auto_discovered_apis (not
+    validated_apis) after this function returns.
+    """
+    if not entity_names or api_idx is None:
+        return []
+
+    flexicon = getattr(api_idx, "flexicon", None) or {}
+    entities = flexicon.get("entities") or {}
+    if not entities:
+        return []
+
+    accessor_map = _accessor_to_ops_map(api_idx)  # accessor -> OpsClass (index-derived)
+
+    qualifying: List[str] = []
+    for name in entity_names:
+        if len(qualifying) >= _AUTO_DISCOVER_CAP:
+            break
+
+        # An entity that already ends in 'Operations' just needs to be in the table.
+        if name.endswith("Operations"):
+            if name in entities:
+                qualifying.append(name)
+            continue
+
+        # Accessor form: MUST resolve via the index-derived map (not the naive fallback).
+        # If the accessor is NOT in accessor_map, we cannot safely infer the ops class.
+        if name not in accessor_map:
+            # Explicitly rejected: naive fallback is not allowed.
+            continue
+
+        ops_class = accessor_map[name]
+        # The resolved ops class must also be in the entity table.
+        if ops_class in entities:
+            qualifying.append(ops_class)  # Store canonical ops class name for inline docs
+
+    return qualifying
 
 
 def _entities_used_in_session(session_state_obj) -> List[str]:
@@ -2070,16 +2134,29 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
 
+    # Issue #47 accumulators: populated when read-only auto-discovery fires.
+    _auto_discovered_entities: Optional[List[str]] = None
+    _auto_discovery_inline: Optional[Dict[str, Any]] = None
+    _discovery_note: Optional[str] = None
+
     # Require API discovery before executing code
     skip_api_check = args.get("skip_api_check", False)
     if skip_api_check:
         # Audit the escape hatch so it shows up in operations logs.
         # Bypassing discovery is a real foot-gun; make every use visible.
-        get_operations_logger().warning(
+        _skip_msg = (
             "skip_api_check=True passed -- bypassing api_discovery_required and "
             "undiscovered_entity gates. This is an escape hatch; prefer calling "
             "flextools_get_object_api for each entity used."
         )
+        if not write_enabled:
+            # Issue #47: on read-only runs auto-discovery supersedes skip_api_check.
+            _skip_msg += (
+                " On READ-ONLY runs, skip_api_check is superseded by auto-discovery "
+                "(#47): undiscovered entities that qualify will be auto-granted without "
+                "requiring this flag."
+            )
+        get_operations_logger().warning(_skip_msg)
     if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
@@ -2139,42 +2216,137 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # validated via get_object_api. This is what catches the post-Op-1 drift
     # where the assistant pivots to POSOperations / project.Senses without
     # discovering them.
+    #
+    # Issue #47: on READ-ONLY runs, entities that pass the resolve criterion
+    # (active api_mode table + unambiguous accessor-to-ops mapping) are
+    # auto-discovered (added to auto_discovered_apis, NOT validated_apis) and
+    # we fall through to execution instead of rejecting.  On WRITE runs the
+    # hard gate fires unconditionally -- write isolation is non-negotiable.
     if not skip_api_check:
         undiscovered_check = detect_undiscovered_entities(code_tree, session_state, api_idx)
         if undiscovered_check["has_undiscovered"]:
-            _log_preflight_reject(
-                op_id, seq, time.monotonic() - t_start,
-                "undiscovered_entity",
-                f"undiscovered={undiscovered_check.get('undiscovered')}",
-            )
-            # Issue #20: inline get_object_api docs when the undiscovered
-            # entity is explicitly imported from flexicon. Single round-trip
-            # recovery -- the LLM sees the rejection AND the method/property
-            # shapes in the same payload, no second tool call needed.
-            extras: Dict[str, Any] = {
-                "undiscovered": undiscovered_check["undiscovered"],
-                "imported_undiscovered": undiscovered_check.get("imported_undiscovered", []),
-                "hint": "Call flextools_get_object_api for each listed entity, then re-run.",
-                "session": session_state.summary(),
-                "op_id": op_id,
-            }
-            inline = _inline_discovery_docs(
-                undiscovered_check.get("imported_undiscovered") or [],
-                api_idx,
-            )
-            if inline:
-                extras["_inline_discovery"] = inline
-            # Issue #28: wrap the rejection with the retry-loop detector so
-            # repeated undiscovered_entity failures surface _assistance hints.
-            return _attach_assistance_if_loop(
-                error_response(
+            undiscovered_list: List[str] = undiscovered_check.get("undiscovered") or []
+
+            if not write_enabled:
+                # READ-ONLY path: attempt auto-discovery for qualifying entities.
+                # Filter to entities not already auto-discovered this session
+                # (count==1: second read run should NOT re-fire).
+                new_undiscovered = [
+                    e for e in undiscovered_list
+                    if not session_state.was_auto_discovered(e)
+                ]
+                qualifying = _resolve_for_auto_discovery(new_undiscovered, api_idx)
+
+                # Also filter previously-auto-discovered entities -- they are
+                # already in auto_discovered_apis so satisfy the count==1 rule.
+                # The entity is considered "satisfied for this read run" if it
+                # was auto-discovered in a prior run OR qualifies now.
+                # Intentionally sticky for the session (count==1, issue #47):
+                # once an entity was auto-discovered on a prior read run it is
+                # considered satisfied for ALL subsequent read runs in this
+                # session, even if the index changes between runs.  Not
+                # re-qualified because re-qualification would violate the
+                # single-fire contract and could silently reopen a write gate
+                # for an entity whose docs the user has already seen.
+                previously_auto = [
+                    e for e in undiscovered_list
+                    if session_state.was_auto_discovered(e)
+                ]
+                # Entities that cannot be auto-discovered (not in entity table /
+                # accessor-map miss / cap exceeded) still need human discovery.
+                auto_granted = set(qualifying) | set(previously_auto)
+                still_undiscovered = [e for e in undiscovered_list if e not in auto_granted]
+
+                if not still_undiscovered:
+                    # All undiscovered entities were either already auto-discovered
+                    # or qualify for auto-discovery now.  Grant them, build inline
+                    # docs, and fall through.
+                    for entity in qualifying:
+                        session_state.record_auto_discovered_api(entity)
+                    if qualifying:
+                        _auto_discovered_entities = qualifying
+                        _auto_discovery_inline = _inline_discovery_docs(
+                            qualifying, api_idx, limit=_AUTO_DISCOVER_CAP
+                        )
+                        _discovery_note = (
+                            f"Auto-discovered {len(qualifying)} entity/entities on this "
+                            f"READ-ONLY run: {', '.join(qualifying)}. "
+                            f"These entities will re-trigger the undiscovered_entity gate "
+                            f"on the first WRITE run (write-gate isolation, issue #47). "
+                            f"Call flextools_get_object_api to promote them to validated_apis."
+                        )
+                        get_operations_logger().info(
+                            f"[AUTO-DISCOVER] read-only: granted {qualifying} (cap={_AUTO_DISCOVER_CAP})"
+                        )
+                    # Fall through to execution (no rejection).
+                else:
+                    # Some entities cannot be auto-discovered; hard reject as before.
+                    _log_preflight_reject(
+                        op_id, seq, time.monotonic() - t_start,
+                        "undiscovered_entity",
+                        f"undiscovered={still_undiscovered} (auto-discovery failed for these)",
+                    )
+                    _uc2 = dict(undiscovered_check)
+                    _uc2["undiscovered"] = still_undiscovered
+                    extras: Dict[str, Any] = {
+                        "undiscovered": still_undiscovered,
+                        "imported_undiscovered": undiscovered_check.get("imported_undiscovered", []),
+                        "hint": "Call flextools_get_object_api for each listed entity, then re-run.",
+                        "session": session_state.summary(),
+                        "op_id": op_id,
+                    }
+                    inline = _inline_discovery_docs(
+                        undiscovered_check.get("imported_undiscovered") or [],
+                        api_idx,
+                    )
+                    if inline:
+                        extras["_inline_discovery"] = inline
+                    return _attach_assistance_if_loop(
+                        error_response(
+                            "undiscovered_entity",
+                            undiscovered_check["suggestion"],
+                            **extras,
+                        ),
+                        error_code="undiscovered_entity",
+                        code_size_bytes=_code_size_bytes,
+                    )
+            else:
+                # WRITE path: hard gate -- no auto-discovery, no exceptions.
+                # This also fires for entities that were only auto-discovered on a
+                # prior read run (they are NOT in validated_apis by design).
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start,
                     "undiscovered_entity",
-                    undiscovered_check["suggestion"],
-                    **extras,
-                ),
-                error_code="undiscovered_entity",
-                code_size_bytes=_code_size_bytes,
-            )
+                    f"undiscovered={undiscovered_list}",
+                )
+                # Issue #20: inline get_object_api docs when the undiscovered
+                # entity is explicitly imported from flexicon. Single round-trip
+                # recovery -- the LLM sees the rejection AND the method/property
+                # shapes in the same payload, no second tool call needed.
+                extras: Dict[str, Any] = {
+                    "undiscovered": undiscovered_list,
+                    "imported_undiscovered": undiscovered_check.get("imported_undiscovered", []),
+                    "hint": "Call flextools_get_object_api for each listed entity, then re-run.",
+                    "session": session_state.summary(),
+                    "op_id": op_id,
+                }
+                inline = _inline_discovery_docs(
+                    undiscovered_check.get("imported_undiscovered") or [],
+                    api_idx,
+                )
+                if inline:
+                    extras["_inline_discovery"] = inline
+                # Issue #28: wrap the rejection with the retry-loop detector so
+                # repeated undiscovered_entity failures surface _assistance hints.
+                return _attach_assistance_if_loop(
+                    error_response(
+                        "undiscovered_entity",
+                        undiscovered_check["suggestion"],
+                        **extras,
+                    ),
+                    error_code="undiscovered_entity",
+                    code_size_bytes=_code_size_bytes,
+                )
 
     # Note: Output mechanism check removed - both print() and report.Info() work in unified runner
     # The SimpleReporter provides both mechanisms transparently
@@ -3088,6 +3260,14 @@ MODULE_CODE = {code}
                     "_auto_fix_note must be set whenever _auto_fixes_applied is set"
                 )
                 _commit_auto_fix_to_result(_auto_fixes_applied, _auto_fix_note)
+            # Issue #47: attach auto-discovery metadata when read-only auto-
+            # discovery fired.  All three fields are written atomically.
+            if _auto_discovered_entities:
+                execution_result[KEY_AUTO_DISCOVERED] = _auto_discovered_entities
+                if _auto_discovery_inline:
+                    execution_result[KEY_INLINE_DISCOVERY] = _auto_discovery_inline
+                if _discovery_note:
+                    execution_result[KEY_DISCOVERY_NOTE] = _discovery_note
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

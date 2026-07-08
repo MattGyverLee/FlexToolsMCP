@@ -350,12 +350,6 @@ async def handle_start(args: dict) -> list[TextContent]:
     )
     undoable = undoable and write_enabled
 
-    # Generate session ID (format: YYYYMMDD-HHMMSS)
-    session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    # Clear any previously discovered APIs for fresh session
-    session_state.clear_discovered_apis()
-
     # Build API versions dict from current APIIndex (more Pythonic)
     api_versions = {}
     if get_api_index():
@@ -366,8 +360,11 @@ async def handle_start(args: dict) -> list[TextContent]:
         if get_api_index().flexlibs_stable_version:
             api_versions["flexlibs_stable"] = get_api_index().flexlibs_stable_version
 
-    # Set session-wide settings (including session_id)
-    session_state.session_id = session_id
+    # Let configure() own session identity.  Passing project_name lets it
+    # detect genuine project changes (new session boundary) vs re-starts on
+    # the same project (session continuation -- discovery state preserved).
+    # Do NOT pass a per-call timestamp as session_id; that minted a fresh uuid
+    # on every restart and incorrectly wiped discovery state (P0 fix).
     session_state.configure(
         api_mode=api_mode,
         output_type="auto",
@@ -376,6 +373,7 @@ async def handle_start(args: dict) -> list[TextContent]:
         undoable=undoable,
         api_versions=api_versions
     )
+    session_id = session_state.session_id
 
     # Diagnostic for #10: record identity of the configured session_state so
     # the next "Session not initialized" log line can be compared against this.

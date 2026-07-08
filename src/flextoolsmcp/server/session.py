@@ -9,6 +9,7 @@ with undo/redo stack support (Feature 3).
 
 import re
 import logging
+import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -120,7 +121,7 @@ class SessionState:
     Set by the 'start' tool and respected by all other tools unless overridden.
     Also tracks operation history and undo/redo stacks (Feature 3).
     """
-    session_id: str = ""                   # Session ID (timestamp format: YYYYMMDD-HHMMSS)
+    session_id: str = ""                   # Session ID (uuid4 hex, stamped on configure())
     api_mode: str = "flexicon"            # API mode: flexicon, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
@@ -129,6 +130,10 @@ class SessionState:
     initialized: bool = False
     discovered_apis: set = field(default_factory=set)        # APIs discovered via search_by_capability
     validated_apis: set = field(default_factory=set)         # APIs validated via get_object_api
+    # Issue #47: auto-discovered entities on read-only runs.  Kept SEPARATE from
+    # validated_apis so the write gate (detect_undiscovered_entities reads
+    # validated_apis only) never sees auto-granted entities.
+    auto_discovered_apis: set = field(default_factory=set)   # Auto-granted on READ-ONLY runs only
     api_versions: dict = field(default_factory=dict)         # Track active API versions: {api_name: version}
 
     # Feature 3: Session History and Undo/Redo
@@ -153,7 +158,81 @@ class SessionState:
     )
 
     def configure(self, **kwargs) -> None:
-        """Configure session settings (called by start tool)."""
+        """Configure session settings (called by start tool).
+
+        Session identity rules (issue #42 + P0 fix):
+
+        A new session boundary is crossed -- and discovery state wiped -- only
+        when ONE of the following is true:
+          (a) An explicit ``session_id`` kwarg is passed AND it differs from
+              the currently stored session_id.
+          (b) ``project_name`` kwarg is passed and is non-empty AND it differs
+              from the currently stored project_name (project change).
+          (c) ``new_session=True`` is passed as an explicit override signal.
+
+        In all other cases (including the production re-start path where
+        admin.py calls configure() with NO session_id kwarg for the SAME
+        project) this is treated as a *continuation* of the current session
+        and discovery state is preserved.
+
+        A uuid4 fallback is used ONLY for the genuine first-configure case
+        where no session identity anchor exists yet (self.session_id is empty
+        and no kwarg provides one).
+
+        Within the same session discovery is preserved -- the count==1
+        requirement for auto-discovered entities (#47) depends on this.
+        """
+        explicit_session_id = kwargs.pop("session_id", None)
+        new_session_flag = kwargs.pop("new_session", False)
+        incoming_project = kwargs.get("project_name", None)
+
+        # Detect which kind of session boundary we have.
+        if explicit_session_id is not None:
+            # Caller supplied an explicit token (test path or future callers).
+            incoming_session_id = explicit_session_id
+            is_new_session = (incoming_session_id != self.session_id)
+        elif new_session_flag:
+            # Explicit override signal -- always a new session.
+            incoming_session_id = uuid.uuid4().hex
+            is_new_session = True
+        elif not self.session_id:
+            # First configure ever -- mint a uuid anchored to project if given.
+            anchor = incoming_project or uuid.uuid4().hex
+            incoming_session_id = f"auto-{anchor[:32]}"
+            is_new_session = True
+        elif (
+            incoming_project
+            and incoming_project != self.project_name
+        ):
+            # Project changed -- this IS a new logical session.
+            incoming_session_id = f"auto-{incoming_project[:32]}"
+            is_new_session = True
+        else:
+            # No session_id kwarg, same project (or no project yet) --
+            # continue current session; do NOT mint a new uuid.
+            incoming_session_id = self.session_id
+            is_new_session = False
+
+        if is_new_session:
+            logger.info(
+                f"New session detected (old={self.session_id!r} -> new={incoming_session_id!r}); "
+                f"clearing discovery state."
+            )
+            self.clear_discovered_apis()
+        self.session_id = incoming_session_id
+
+        # Warn on unrecognised kwargs to surface typos (e.g. write_enbled=True).
+        _known_kwargs = {
+            "api_mode", "output_type", "project_name", "write_enabled",
+            "undoable", "api_versions",
+        }
+        _unknown = set(kwargs) - _known_kwargs
+        if _unknown:
+            logger.warning(
+                f"configure() received unrecognised kwargs (possible typo?): "
+                f"{sorted(_unknown)!r} -- ignored."
+            )
+
         if "api_mode" in kwargs:
             self.api_mode = kwargs["api_mode"]
         if "output_type" in kwargs:
@@ -170,6 +249,7 @@ class SessionState:
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
         mode_info += f", write={self.write_enabled}, undoable={self.undoable}"
+        mode_info += f", session_id={self.session_id[:8]}..."
         if self.api_versions:
             versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
             mode_info += f", versions={{{versions_str}}}"
@@ -191,13 +271,32 @@ class SessionState:
         return api_key in self.discovered_apis or method in self.discovered_apis
 
     def clear_discovered_apis(self) -> None:
-        """Clear discovered APIs (for new session)."""
+        """Clear discovered APIs (for new session boundary).
+
+        Called from configure() when a new session_id is detected. Also clears
+        auto_discovered_apis (#47) because auto-grants are session-scoped.
+        """
         self.discovered_apis = set()
         self.validated_apis = set()
+        self.auto_discovered_apis = set()
 
     def record_validated_api(self, entity: str) -> None:
         """Record an API that was validated via get_object_api."""
         self.validated_apis.add(entity)
+
+    # --- Issue #47: auto-discovery set (read-only runs only) ---
+
+    def record_auto_discovered_api(self, entity: str) -> None:
+        """Record an entity auto-discovered on a READ-ONLY run.
+
+        Kept SEPARATE from validated_apis so the write gate continues to
+        re-trigger for these entities on the first WRITE run.
+        """
+        self.auto_discovered_apis.add(entity)
+
+    def was_auto_discovered(self, entity: str) -> bool:
+        """Return True if entity was already auto-discovered this session."""
+        return entity in self.auto_discovered_apis
 
     def get_unvalidated_apis(self) -> set:
         """Get APIs discovered but not yet validated via get_object_api."""

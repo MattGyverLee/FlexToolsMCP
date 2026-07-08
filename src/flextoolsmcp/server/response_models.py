@@ -22,11 +22,13 @@ try:
     from .response_keys import (
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
+        KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     )
 except ImportError:
     from server.response_keys import (
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
+        KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     )
 
 try:
@@ -67,6 +69,22 @@ class RunModuleSuccess(BaseEnvelope):
         alias=KEY_AUTO_FIX_NOTE, default=None,
         description="Actionable note about applied auto-fixes including source file:line "
                     "references and a reminder to update the source file (issue #46)."
+    )
+    # Issue #47: auto-discovery fields (None when no auto-discovery occurred)
+    auto_discovered: Optional[List[str]] = Field(
+        alias=KEY_AUTO_DISCOVERED, default=None,
+        description="Entity names auto-discovered on this READ-ONLY run (issue #47). "
+                    "These will re-trigger the undiscovered_entity gate on the first WRITE run."
+    )
+    inline_discovery: Optional[Dict[str, Any]] = Field(
+        alias=KEY_INLINE_DISCOVERY, default=None,
+        description="Inline API docs for auto-discovered entities (issue #47). "
+                    "Same compact shape as _inline_discovery from rejection payloads."
+    )
+    discovery_note: Optional[str] = Field(
+        alias=KEY_DISCOVERY_NOTE, default=None,
+        description="Advisory note about auto-discovered entities (issue #47). "
+                    "Explains write-gate re-trigger semantics."
     )
 
 

@@ -129,6 +129,24 @@ Both forms work today. The nested `error` block disappears at
 
 ---
 
+## RunModuleSuccess envelope (run_module tool)
+
+In addition to the base success keys, successful `run_module` responses may
+include the following optional fields when read-only auto-discovery occurred
+(issue #47). All three are `null` / absent when no auto-discovery took place.
+
+| Key | Type | Description |
+|---|---|---|
+| `auto_discovered` | list[string] or null | Entity names auto-discovered on this READ-ONLY run. These entities will re-trigger the `undiscovered_entity` gate on the first WRITE run (write-gate isolation via `validated_apis` vs `auto_discovered_apis`). |
+| `_inline_discovery` | object or null | Inline API docs for auto-discovered entities. Same compact shape as the `_inline_discovery` key present in `undiscovered_entity` and `api_discovery_required` rejection payloads. Leading underscore is intentional: consistent with `_inline_discovery` and `_assistance` reject-payload keys that clients already parse. |
+| `discovery_note` | string or null | Advisory note explaining write-gate re-trigger semantics for the auto-discovered entities. |
+
+These fields are defined in `RunModuleSuccess` (`response_models.py`) with
+aliases matching the key strings above. The `_inline_discovery` alias uses the
+`KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
+
+---
+
 ## Source of truth
 
 The models that enforce this contract are in:

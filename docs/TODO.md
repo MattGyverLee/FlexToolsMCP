@@ -4,6 +4,46 @@ Open questions and follow-up work, tracked in the repo so they survive between s
 
 ---
 
+## P1: Return structuredContent so outputSchema can be re-advertised (issue #54 follow-up / "Option B")
+
+**Status:** open  **Added:** 2026-07-08  **Ref:** issue #54, blocks re-enabling outputSchema
+
+**Background:** The tool-responses/1.0 work (ce98e51) wired `list_tools()` to advertise
+`outputSchema` for the three tools with an `output_model` (run_module, get_object_api,
+search_by_capability). But per MCP spec 2025-06-18, a tool advertising `outputSchema` MUST
+return `structuredContent` matching it, and spec-compliant clients (e.g. Claude Code)
+validate — and REJECT responses that advertise a schema but return text only. This server's
+`call_tool()` returns text-only (`json_response()` -> `[TextContent]`), so the three tools
+were broken for such clients.
+
+**Applied as immediate hotfix ("Option A"):** the `outputSchema` advertisement in
+`server.py list_tools()` is commented out (the `output_model` metadata on `ToolDef` is
+retained). `tests/test_response_contract.py::TestOutputSchema` now guards that NO tool
+advertises `outputSchema` until structured content is returned, and that the three tools
+keep their `output_model` metadata for this follow-up. Requires an MCP server restart to
+take effect (running process does not hot-reload).
+
+**Option B (this TODO):** return structured content so the schemas can be re-advertised.
+`mcp` 1.27.0's low-level `call_tool` accepts a handler returning `(list[ContentBlock], dict)`
+where the dict becomes `structuredContent` and is validated against the advertised schema.
+Handlers already build the response dict before JSON-dumping it, so return both. Work:
+1. Change `call_tool()` return type and the three structured handlers to return the tuple.
+2. **Critically**, confirm each handler's dict actually validates against
+   `GetObjectApiSuccess` / `SearchByCapabilitySuccess` / `RunModuleSuccess` — the #54
+   verification only checked the schema was EXPOSED, never that real responses conform.
+   Missing required fields / type mismatches would just move the breakage client-side.
+3. Re-enable the advertisement in `list_tools()` and flip `TestOutputSchema` back to
+   asserting the three tools expose a non-null `outputSchema` PLUS a new test that a real
+   handler response validates against its model.
+
+**Do NOT migrate to FastMCP for this.** FastMCP's high-level `@mcp.tool` would populate
+`structuredContent` automatically, but FastMCP was previously evaluated and found NOT a good
+fit for this server (per maintainer). Option B is deliberately scoped to the low-level `mcp`
+API's `(list[ContentBlock], dict)` tuple return, which requires no framework change. The
+unused FastMCP 2.14 dependency is incidental and should not be treated as the intended path.
+
+---
+
 ## P3: auto_fix_note source_hint — surface originating filename (issue #46 follow-up)
 
 **Status:** open  **Added:** 2026-07-07  **Ref:** issue #46, deferred

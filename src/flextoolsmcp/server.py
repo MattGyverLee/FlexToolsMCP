@@ -718,8 +718,17 @@ async def list_tools() -> list[Tool]:
             "annotations": tool_def.annotations,
             "inputSchema": schema,
         }
-        if tool_def.output_model is not None:
-            kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
+        # NOTE (issue #54 follow-up): outputSchema advertisement is intentionally
+        # DISABLED. Per MCP spec 2025-06-18, a tool that advertises outputSchema MUST
+        # return structuredContent matching it, and clients validate accordingly. This
+        # server's call_tool() currently returns text-only (json_response -> [TextContent]),
+        # so advertising the schema causes spec-compliant clients (e.g. Claude Code) to
+        # reject every response from run_module / get_object_api / search_by_capability.
+        # Re-enable ONLY together with returning structuredContent from call_tool() (the
+        # low-level mcp API supports returning (list[ContentBlock], dict)) AND after
+        # confirming the handler dicts validate against the *Success models. See docs/TODO.md.
+        # if tool_def.output_model is not None:
+        #     kwargs["outputSchema"] = tool_def.output_model.model_json_schema(by_alias=True)
         tools.append(Tool(**kwargs))
 
     return tools

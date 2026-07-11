@@ -361,7 +361,16 @@ class TestWrongLibraryAffectedSymbols:
 # ---------------------------------------------------------------------------
 
 class TestOutputSchema:
-    """At least 3 tools must expose a non-null outputSchema in list_tools()."""
+    """outputSchema advertisement is DISABLED (issue #54 follow-up).
+
+    Per MCP spec 2025-06-18, a tool advertising outputSchema MUST return
+    structuredContent matching it. call_tool() currently returns text-only, so
+    advertising the schema makes spec-compliant clients reject the response. Until
+    the structured-content response path lands (Option B), list_tools() must NOT
+    emit outputSchema for any tool. These tests guard that invariant so we do not
+    accidentally re-break clients. The output_model METADATA is retained on ToolDef
+    (checked below) so Option B has a live target to wire up.
+    """
 
     def _get_tools(self):
         """Load list_tools() output via the server module."""
@@ -381,34 +390,37 @@ class TestOutputSchema:
         finally:
             loop.close()
 
-    def test_at_least_three_tools_have_output_schema(self):
+    def test_no_tool_advertises_output_schema(self):
+        # Guard: advertising outputSchema without returning structuredContent
+        # breaks MCP-spec-compliant clients (issue #54 follow-up). Must stay empty
+        # until call_tool() returns structured content.
         tools = self._get_tools()
         tools_with_schema = [
-            t for t in tools
+            t.name for t in tools
             if getattr(t, "outputSchema", None) is not None
         ]
-        assert len(tools_with_schema) >= 3, (
-            f"Expected >=3 tools with outputSchema, got {len(tools_with_schema)}: "
-            f"{[t.name for t in tools_with_schema]}"
+        assert tools_with_schema == [], (
+            "No tool may advertise outputSchema until call_tool() returns "
+            f"structuredContent; found: {tools_with_schema}"
         )
 
-    def test_run_module_has_output_schema(self):
-        tools = self._get_tools()
-        tool = next((t for t in tools if t.name == "flextools_run_module"), None)
-        assert tool is not None, "flextools_run_module not found"
-        assert getattr(tool, "outputSchema", None) is not None
-
-    def test_get_object_api_has_output_schema(self):
-        tools = self._get_tools()
-        tool = next((t for t in tools if t.name == "flextools_get_object_api"), None)
-        assert tool is not None, "flextools_get_object_api not found"
-        assert getattr(tool, "outputSchema", None) is not None
-
-    def test_search_by_capability_has_output_schema(self):
-        tools = self._get_tools()
-        tool = next((t for t in tools if t.name == "flextools_search_by_capability"), None)
-        assert tool is not None, "flextools_search_by_capability not found"
-        assert getattr(tool, "outputSchema", None) is not None
+    def test_output_model_metadata_retained_for_followup(self):
+        # Option B target: the three tools still carry output_model metadata so the
+        # schemas can be re-advertised once structured content is returned.
+        from flextoolsmcp.server.tool_definitions import TOOLS
+        with_model = [
+            name for name, d in TOOLS.items()
+            if getattr(d, "output_model", None) is not None
+        ]
+        for expected in (
+            "flextools_run_module",
+            "flextools_get_object_api",
+            "flextools_search_by_capability",
+        ):
+            assert expected in with_model, (
+                f"{expected} lost its output_model metadata (needed for the "
+                f"structured-output follow-up); present: {with_model}"
+            )
 
 
 # ---------------------------------------------------------------------------

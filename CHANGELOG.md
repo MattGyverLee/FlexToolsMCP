@@ -1,6 +1,23 @@
 # FlexToolsMCP Changelog
 
-## [Unreleased] - 2026-07-07
+## [2.4.0] - 2026-07-11
+
+### MCP spec compliance — outputSchema (issue #54 follow-up)
+- **Disabled the `outputSchema` advertisement in `list_tools()`.** The
+  tool-responses/1.0 work wired `list_tools()` to advertise `outputSchema` for
+  the three tools carrying an `output_model`, but `call_tool()` returns text-only
+  (`json_response()` -> `[TextContent]`) and never populates `structuredContent`.
+  Per MCP spec 2025-06-18, a tool advertising `outputSchema` MUST return matching
+  `structuredContent`, and spec-compliant clients (e.g. Claude Code) reject
+  text-only responses — so `run_module` / `get_object_api` / `search_by_capability`
+  failed for those clients while all other tools worked. The advertisement is now
+  commented out; `output_model` metadata is retained for the follow-up.
+  `tests/test_response_contract.py::TestOutputSchema` inverted to guard that no
+  tool advertises `outputSchema` until structured content is returned.
+- **Operational note:** requires an MCP server **restart** to take effect (the
+  running process does not hot-reload). Returning `structuredContent` so the
+  schemas can be re-advertised is tracked in `docs/TODO.md` ("Option B"), scoped
+  to the low-level `mcp` tuple return — NOT a FastMCP migration.
 
 ### Session identity + read-only auto-discovery (issues #42, #47)
 - **#42 -- Session-state identity / discovery-state leak fixed**: `SessionState`
@@ -60,10 +77,12 @@
   carry a typed envelope; error responses carry flat canonical fields
   (`error_code`, `message`, `hint`, `error_details`) plus a per-code `detail`
   object validated against one of 16 Pydantic models.
-- **outputSchema exposure in list_tools()**: tools that declare an
-  `output_model` now emit a JSON Schema `outputSchema` field in `list_tools`
-  (Pydantic `by_alias` serialization). Covered tools: `run_module`,
-  `get_object_api`, `search_by_capability`.
+- **outputSchema exposure — DEFERRED** (see "MCP spec compliance" below): the
+  `output_model` metadata is retained on `ToolDef` for `run_module`,
+  `get_object_api`, and `search_by_capability`, but the `list_tools()`
+  advertisement of `outputSchema` is currently disabled. Advertising a schema
+  without returning matching `structuredContent` breaks spec-compliant clients;
+  re-enabling is tracked as a follow-up (docs/TODO.md, "Option B").
 - **Dual-emit deprecation of nested `error{}` shape**: the legacy
   `error: {code, message, hint}` sub-object is still emitted alongside the
   new flat fields for backward compatibility. Scheduled for removal at

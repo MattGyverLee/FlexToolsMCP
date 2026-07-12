@@ -67,6 +67,9 @@ __all__ = [
     'KEY_AVAILABLE_ON_CONCRETE_TYPES', 'KEY_POLYMORPHIC_COLLECTION_WARNING',
     'KEY_UNIQUE_PROPERTIES_BY_TYPE', 'KEY_PROPERTY_AVAILABILITY_IN_CONTEXT',
     'KEY_HAS_PROPERTY_ON', 'KEY_MISSING_FROM', 'KEY_GUIDANCE',
+    # Inline casting metadata on discovery (issue #48)
+    'KEY_CAST_TO', 'KEY_CAST_EXAMPLE', 'KEY_POLYMORPHIC', 'KEY_ITERATION_NOTE',
+    'KEY_CASTING_NOTES',
     # Auto-fix (issue #46)
     'KEY_AUTO_FIXES_APPLIED', 'KEY_AUTO_FIX_NOTE',
     # Auto-discovery (issue #47)
@@ -273,6 +276,13 @@ KEY_PROPERTY_AVAILABILITY_IN_CONTEXT = "property_availability_in_context"
 KEY_HAS_PROPERTY_ON = "has_property_on"
 KEY_MISSING_FROM = "missing_from"
 KEY_GUIDANCE = "guidance"
+
+# Inline casting metadata joined into get_object_api / discovery docs (issue #48)
+KEY_CAST_TO = "cast_to"
+KEY_CAST_EXAMPLE = "cast_example"
+KEY_POLYMORPHIC = "polymorphic"
+KEY_ITERATION_NOTE = "iteration_note"
+KEY_CASTING_NOTES = "casting_notes"
 
 # Auto-fix fields (issue #46)
 KEY_AUTO_FIXES_APPLIED = "auto_fixes_applied"

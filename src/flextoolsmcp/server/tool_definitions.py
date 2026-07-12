@@ -119,6 +119,8 @@ WARNING: Calling flextools_get_object_api is required BEFORE using an API in fle
 
 IMPORTANT: Each API result includes 'import_statement' showing exactly what to add at the top of your code. When you use LexEntryOperations, LexSenseOperations, or any Operations class in your code, you MUST include the import statement shown in the API response.
 
+CASTING: Properties that require a pythonnet cast are annotated inline (requires_cast, cast_to, cast_example) and polymorphic collections are flagged (polymorphic, iteration_note); a top-level casting_notes counter summarizes them. Write the cast_example as-is -- preflight rejects uncast access. You no longer need flextools_resolve_property on the happy path (keep it only for chained/ambiguous receivers).
+
 Tip: Use summary_only=true first to explore large objects, then drill down into specific methods.""",
         input_model=GetObjectApiInput,
         annotations=READ_ONLY_SAFE,
@@ -290,12 +292,12 @@ Returns: Recent log entries, errors, and AI-generated recommendations for fixing
 When you encounter "has no attribute" errors or need to know if a property requires casting,
 use this tool to get the full resolution path and casting instructions.
 
-When to use: Mostly redundant when the polymorphic-casting validator fires --
-the casting_issues_detected rejection now inlines the rewrite (the cast-wrapped
-expression) and imports_needed (the SIL.LCModel imports to add) directly in
-each casting_issues[*] entry. Use this tool for ad-hoc lookups when writing
-new code from scratch, or as a fallback when the preflight didn't catch the
-issue (e.g. chained or call-rooted receivers the inline rewriter skips).""",
+When to use: Off the happy path. flextools_get_object_api now inlines casting
+requirements at discovery time (requires_cast / cast_to / cast_example), and the
+casting_issues_detected rejection inlines the rewrite and imports_needed in each
+casting_issues[*] entry. Reach for this tool only for chained/ambiguous receivers
+where those paths emit no rewrite (rewrite: null), or as the debugging entry
+point for "has no attribute" errors on code you didn't discover through the gate.""",
         input_model=ResolvePropertyInput,
         annotations=READ_ONLY_SAFE,
     ),

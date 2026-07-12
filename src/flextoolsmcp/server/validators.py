@@ -2201,6 +2201,136 @@ def _build_cast_rewrite(
     return None
 
 
+# ============================================================
+# Issue #48: inline casting metadata into discovery-time docs.
+#
+# get_object_api (the discovery gate's required step) is reliably called;
+# resolve_property (#22) is not. Joining per-property casting requirements
+# into the discovery response teaches cast-correct code on the first draft.
+#
+# The guidance MUST be byte-identical to what a preflight rejection would
+# emit, so both paths route through the SAME generator: _pick_cast_interface
+# picks the interface and _build_cast_rewrite formats the single-site cast.
+# ============================================================
+
+_POLY_ITERATION_NOTE = (
+    "Items are heterogeneous; cast each item: "
+    "concrete = CastingOperations.cast_to_concrete(item)"
+)
+
+
+def build_property_cast_example(
+    property_name: str,
+    casting_index: Optional[Dict] = None,
+    receiver_name: str = "obj",
+) -> Optional[str]:
+    """Canonical single-site cast rewrite for ``receiver_name.property_name``.
+
+    Shared by the #21 preflight rejection path and the #48 discovery-time
+    annotation so the `cast_example` shown at discovery is byte-identical to
+    the `rewrite` a rejection would produce for the same access pattern.
+
+    Returns None when the interface can't be unambiguously resolved -- the
+    same "no confidently-wrong rewrite" rule enforced by _pick_cast_interface
+    (see the Dennis cascade-failure note).
+    """
+    if not casting_index or not property_name:
+        return None
+    info = (casting_index.get("properties") or {}).get(property_name) or {}
+    defined_on = info.get("defined_on", [])
+    cast_iface = _pick_cast_interface(
+        property_name, defined_on, casting_index, receiver_name=receiver_name
+    )
+    if not cast_iface:
+        return None
+    try:
+        tree = ast.parse(f"{receiver_name}.{property_name}")
+    except SyntaxError:
+        return None
+    return _build_cast_rewrite(tree, 1, property_name, cast_iface)
+
+
+def annotate_properties_with_casting(
+    properties: List[Dict[str, Any]],
+    casting_index: Optional[Dict] = None,
+    summary_only: bool = False,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """Join #48 casting metadata onto a property list.
+
+    Returns ``(properties_out, annotated_count)``. Properties absent from the
+    casting index are left untouched (the original dict object is reused), so a
+    property list where nothing matches comes back byte-for-byte identical --
+    the golden-test guarantee in the issue.
+
+    In ``summary_only`` mode (#11) per-item fields are suppressed: the caller
+    still learns how many properties need casting (for the top-level
+    ``casting_notes`` counter) but the compact summary shape stays lean.
+    """
+    if not casting_index or not properties:
+        return properties, 0
+
+    props_idx = casting_index.get("properties") or {}
+    poly_idx = casting_index.get("polymorphic_collections") or {}
+
+    annotated_count = 0
+    out: List[Dict[str, Any]] = []
+    for prop in properties:
+        name = prop.get("name")
+        info = props_idx.get(name) if name else None
+        poly = poly_idx.get(name) if name else None
+        if not info and not poly:
+            out.append(prop)  # untouched -> byte-identical
+            continue
+
+        # Mirror the rejection path's flow-independent skips (issue #40) so the
+        # two casting-guidance code paths never diverge: members that live on
+        # ICmObject itself (Guid/Hvo/ClassID/ClassName) and multistring value
+        # accessors never need a cast. Flagging them here would re-introduce the
+        # needless-rewrite false positives #40 removed. The receiver/flow-
+        # dependent skips (project.*, cast-alias conditionals, chain segments)
+        # have no analogue at discovery time and are intentionally not mirrored.
+        cast_safe = (
+            name in _CASTING_ALWAYS_SAFE_MEMBERS
+            or name in _CASTING_MULTISTRING_VALUE_MEMBERS
+        )
+        info_annotates = bool(info) and not cast_safe
+        if not info_annotates and not poly:
+            out.append(prop)  # nothing left to say -> byte-identical
+            continue
+
+        annotated_count += 1
+        if summary_only:
+            out.append(prop)  # count only; no per-item bloat in summary mode
+            continue
+
+        new_prop = dict(prop)
+        if info_annotates:
+            new_prop["requires_cast"] = True
+            new_prop["cast_to"] = [
+                d for d in info.get("defined_on", []) if isinstance(d, str)
+            ]
+            example = build_property_cast_example(name, casting_index)
+            if example:
+                new_prop["cast_example"] = example
+        if poly:
+            new_prop["polymorphic"] = True
+            new_prop["iteration_note"] = _POLY_ITERATION_NOTE
+        out.append(new_prop)
+
+    return out, annotated_count
+
+
+def build_casting_notes(annotated_count: int) -> Optional[str]:
+    """Top-level ``casting_notes`` counter string, or None when nothing needs it."""
+    if annotated_count <= 0:
+        return None
+    plural = "property requires" if annotated_count == 1 else "properties require"
+    return (
+        f"{annotated_count} {plural} casting before access. See requires_cast / "
+        "polymorphic markers. Preflight will reject uncast access."
+    )
+
+
 def detect_casting_needs(
     code: str,
     casting_index: Optional[Dict] = None,

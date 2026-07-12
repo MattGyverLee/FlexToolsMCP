@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "last_scan": "2026-07-12T05:08:50Z",
+  "last_scan_by": "lex-logscan",
+  "scanned_through": {
+    "operations_log_bytes": 2994063,
+    "max_log_date": "2026-07-11",
+    "operations_jsonl_lines": 49
+  },
+  "filed": {
+    "e3906b436990": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 224,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/224",
+      "signature": "AttributeError: 'ITsMultiString' object has no attribute 'BestAnalysisVernacularAlternative' in FLExProject.GetCustomFieldValue",
+      "first_seen": "2026-07-05T21:17:57Z",
+      "last_seen": "2026-07-08T00:05:33Z",
+      "occurrences": 2,
+      "state": "open"
+    },
+    "6b5226fcaea8": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 225,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/225",
+      "signature": "EnvironmentOperations.GetSyncableProperties AttributeError: 'ITsString' object has no attribute 'get_String' (audit gap on #222)",
+      "first_seen": "2026-07-06T12:21:09Z",
+      "last_seen": "2026-07-06T12:21:09Z",
+      "occurrences": 1,
+      "state": "open"
+    },
+    "b68be869d2c2": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 69,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69",
+      "signature": "invalid_api_chain low-confidence did-you-mean suggestion for project.LangProject accessor (match_ratio~0.15, suggests PossibilityLists/PossibilityList instead of project.lp)",
+      "first_seen": "2026-06-24T08:16:17Z",
+      "last_seen": "2026-07-10T23:36:42Z",
+      "occurrences": 2,
+      "state": "open"
+    },
+    "83105d5ecbd9": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 70,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/70",
+      "signature": "run_module Timeout: usm.Save()/CloseProject hang after AddCustomField 4-arg overload WsSelector=0 (150s)",
+      "first_seen": "2026-07-06T11:48:52Z",
+      "last_seen": "2026-07-06T11:48:52Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "needs-routing: raw SIL.LCModel calls bypass both flexicon and FlexToolsMCP wrappers; defect may actually live in LibLCM/FieldWorks."
+    },
+    "39a2f8c1d004": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 39,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/39",
+      "signature": "Preflight emits polymorphic-property hint (literal template text) but lets code execute anyway; PolymorphicAttributeError recurs (EntriesOC, InflectionFeature, GetInstance, BestAnalysisVernacularAlternative, ...)",
+      "first_seen": "2026-06-20T22:00:17Z",
+      "last_seen": "2026-07-11T14:56:59Z",
+      "occurrences": 12,
+      "state": "open",
+      "notes": "Not newly filed this scan; pre-existing open issue re-observed recurring in-window (2026-07-01, 07-05, 07-08, 07-11). Ledger entry added so future scans dedup against it without re-querying GitHub."
+    },
+    "48c9b7e2a115": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 48,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/48",
+      "signature": "casting_issues_detected preflight rejections recur at high frequency across nearly every session",
+      "first_seen": "2026-06-17T02:22:18Z",
+      "last_seen": "2026-07-11T20:01:37Z",
+      "occurrences": 60,
+      "state": "open",
+      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window at very high frequency. Approximate occurrence count from Reason code: casting_issues_detected tally in operations.log."
+    },
+    "53d4e6f0b229": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 53,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/53",
+      "signature": "api_discovery_required preflight rejections recur across sessions, including 4-deep in a single session before the AI gives up",
+      "first_seen": "2026-06-17T01:46:22Z",
+      "last_seen": "2026-07-11T20:01:53Z",
+      "occurrences": 30,
+      "state": "open",
+      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window. Notable case: 2026-07-09 10:57:05-10:57:35, 4 consecutive ops rejected (3x casting_issues_detected then api_discovery_required on a trivial report.Info('hello') smoke test)."
+    },
+    "222a1f9e6c73": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 222,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/222",
+      "signature": "PhonemeOperations.GetSyncableProperties AttributeError: 'ITsString' object has no attribute 'get_String'",
+      "first_seen": "2026-07-04T16:40:24Z",
+      "last_seen": "2026-07-06T12:20:38Z",
+      "occurrences": 3,
+      "state": "open",
+      "notes": "Not newly filed this scan; pre-existing open bug re-observed recurring in-window. Sibling EnvironmentOperations instance of the same defect shape filed separately this scan as fingerprint 6b5226fcaea8 (issue #225), since #222's body only covers Phoneme/PhonFeature Operations."
+    }
+  },
+  "history": [
+    {
+      "scan": "2026-07-12T05:08:50Z",
+      "new": 4,
+      "deduped": 4,
+      "regressions": 0,
+      "roadblocks": 0,
+      "excluded_as_noise": 1,
+      "anchor_issue": "flexicon#215 (created 2026-06-30T13:49:29Z) — latest issue whose evidence cited local session logs; used as scan-window lower bound",
+      "notes": "First-ever scan (no prior state file). Excluded-as-noise: 16 unprotected_writes rejections across logs/auto--P-ro/session_auto-Proj_*.log — automated test fixtures (empty project/intent, Proj_* names), not real user sessions."
+    }
+  ]
+}

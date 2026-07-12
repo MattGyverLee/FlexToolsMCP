@@ -66,6 +66,7 @@ try:
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         _collect_all_imported_names, _accessor_to_ops_map,
+        annotate_properties_with_casting, build_casting_notes,
     )
 except ImportError:
     from server.validators import (
@@ -76,6 +77,7 @@ except ImportError:
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         _collect_all_imported_names, _accessor_to_ops_map,
+        annotate_properties_with_casting, build_casting_notes,
     )
 
 # Import response utilities and HeadlessReport with fallback
@@ -1030,6 +1032,13 @@ def _inline_discovery_docs(
         return {}
     flexicon = getattr(api_index, "flexicon", None) or {}
     entities = flexicon.get("entities") or {}
+    # Issue #48: reuse the same casting-annotation path as get_object_api so the
+    # inlined discovery docs carry byte-identical cast guidance.
+    try:
+        api_index.ensure_casting_index_loaded()
+    except Exception:
+        pass
+    casting_index = getattr(api_index, "casting_index", None)
     inlined: Dict[str, Any] = {}
     for name in entity_names[:limit]:
         entity = entities.get(name)
@@ -1065,7 +1074,13 @@ def _inline_discovery_docs(
                 "return_type": p.get("return_type"),
                 "summary": (p.get("description") or "")[:120],
             })
-        inlined[name] = {
+        casting_notes = None
+        if casting_index:
+            prop_caps, annotated_count = annotate_properties_with_casting(
+                prop_caps, casting_index
+            )
+            casting_notes = build_casting_notes(annotated_count)
+        entity_doc = {
             "category": entity.get("category"),
             "namespace": entity.get("namespace"),
             "import_statement": entity.get("import_statement"),
@@ -1078,6 +1093,9 @@ def _inline_discovery_docs(
                 f"call flextools_get_object_api(object_type='{name}')."
             ),
         }
+        if casting_notes:
+            entity_doc["casting_notes"] = casting_notes
+        inlined[name] = entity_doc
     return inlined
 
 

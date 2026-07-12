@@ -39,6 +39,7 @@ try:
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
+        KEY_CASTING_NOTES,
         KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -67,6 +68,7 @@ except ImportError:
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
+        KEY_CASTING_NOTES,
         KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -423,8 +425,14 @@ def _match_canonical_intents(query: str, flexicon_index: dict | None) -> list:
     return rows
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon") -> dict:
-    """Apply pagination and filtering to an entity's methods and properties."""
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None) -> dict:
+    """Apply pagination and filtering to an entity's methods and properties.
+
+    Issue #48: when a ``casting_index`` is supplied, per-property casting
+    requirements are joined into the returned properties (and a top-level
+    ``casting_notes`` counter is added) so the model writes cast-correct code
+    from the discovery response instead of learning it via a rejection.
+    """
     try:
         from ..constants import OPERATIONS_CLASSES, KNOWN_OPERATIONS
     except ImportError:
@@ -517,6 +525,22 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     else:
         result[KEY_PROPERTIES] = properties
 
+    # Issue #48: join casting metadata onto the returned properties. Only fires
+    # for properties present in the casting index; entities with none come back
+    # byte-identical. summary_only keeps just the top-level counter (respects #11).
+    if casting_index:
+        try:
+            from ..validators import annotate_properties_with_casting, build_casting_notes
+        except ImportError:
+            from server.validators import annotate_properties_with_casting, build_casting_notes
+        annotated, annotated_count = annotate_properties_with_casting(
+            result[KEY_PROPERTIES], casting_index, summary_only=summary_only
+        )
+        result[KEY_PROPERTIES] = annotated
+        notes = build_casting_notes(annotated_count)
+        if notes:
+            result[KEY_CASTING_NOTES] = notes
+
     result[KEY_RETURNED_PROPERTIES] = len(result[KEY_PROPERTIES])
 
     return result
@@ -588,6 +612,11 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
     api_index = get_api_index()
     ensure_active_sources_loaded(api_index, mode)
 
+    # Issue #48: casting metadata is keyed by LCM property name, so load the
+    # casting index once here and hand it to paginate_entity for the join.
+    api_index.ensure_casting_index_loaded()
+    casting_index = api_index.casting_index
+
     sources = list(active_sources_for_mode(mode))
     # Legacy explicit opt-ins widen the surface (back-compat) but never bleed
     # other modes' content unless the caller asks for it.
@@ -615,7 +644,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
         if object_type in entities:
             result[source_key] = paginate_entity(
                 entities[object_type], summary_only, method_filter, limit, offset,
-                object_type=object_type, library=source_name,
+                object_type=object_type, library=source_name, casting_index=casting_index,
             )
             result[KEY_FOUND] = True
             continue

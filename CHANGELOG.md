@@ -1,5 +1,36 @@
 # FlexToolsMCP Changelog
 
+## [Unreleased]
+
+### Inline casting metadata into get_object_api (issue #48)
+- **Casting requirements now surface at discovery time.** Casting knowledge
+  previously lived only in `flextools_resolve_property`, a tool the model
+  reliably ignored (#22). `get_object_api` — the discovery gate's *required*
+  step — now joins each property against the loaded casting index: properties
+  that need a pythonnet cast gain `requires_cast` / `cast_to` / `cast_example`,
+  polymorphic collections gain `polymorphic` / `iteration_note`, and a
+  top-level `casting_notes` counter summarizes the entity. The model writes
+  cast-correct code on the first draft instead of learning it from a rejection.
+- **One vocabulary, taught earlier.** `cast_example` is produced by the same
+  `_pick_cast_interface` + `_build_cast_rewrite` generator that powers
+  `casting_issues[*].rewrite` (#21), so discovery-time guidance is
+  byte-identical to what a preflight rejection would emit. The new
+  `build_property_cast_example()` / `annotate_properties_with_casting()` helpers
+  in `validators.py` are the shared join, called from both `paginate_entity`
+  (get_object_api) and `_inline_discovery_docs` (discover-and-run rejections),
+  keeping the two paths consistent.
+- **No divergence, no bloat.** The annotation mirrors the rejection path's
+  flow-independent skips (`Guid`/`Hvo`/`ClassID`/`ClassName` and multistring
+  value accessors, #40) so it never re-introduces needless casts. Only
+  index-member properties are annotated (entities with none come back
+  byte-identical), and `summary_only` (#11) emits just the top-level counter.
+- **resolve_property drops off the happy path.** Tool descriptions updated:
+  `get_object_api` advertises the inline casting info; `resolve_property` is
+  now scoped to chained/ambiguous receivers (`rewrite: null` cases) and
+  debugging. New `tests/test_issue48_inline_casting.py` covers annotation,
+  golden byte-identity, summary mode, safe-member parity, and the
+  cast_example ↔ rewrite consistency contract.
+
 ## [2.4.0] - 2026-07-11
 
 ### MCP spec compliance — outputSchema (issue #54 follow-up)

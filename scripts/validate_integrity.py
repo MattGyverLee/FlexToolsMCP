@@ -359,6 +359,19 @@ def check_flexicon_contract(operations_classes, exception_classes):
     except ImportError:
         print("flexicon not installed — skipping runtime contract checks.")
         return [], []
+    except Exception as e:
+        # flexicon is installed but can't initialize in this environment. Its
+        # import runs FLExGlobals.InitialiseFWGlobals(), which raises a bare
+        # Exception ("64bit FieldWorks 9 not found") on any host without a
+        # FieldWorks install — e.g. headless CI runners. The static/consistency
+        # checks above don't need a live flexicon; only the runtime contract
+        # does, so skip it gracefully rather than failing the whole check.
+        print(
+            f"flexicon installed but not initializable "
+            f"(no FieldWorks environment: {e}) -- "
+            f"skipping runtime contract checks."
+        )
+        return [], []
 
     # Import the non-enumerable operations list from server constants
     try:

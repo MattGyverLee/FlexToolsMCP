@@ -182,7 +182,7 @@ language data), consent must be informed and the preview must be honest:
    - Machine/user names in paths stripped.
    - Project name: replaced with a stable hash by default; user may opt to
      include the real name.
-   - Offer an optional "scrub lexical content" toggle that masks the text
+   - Offer an optional **"anonymize data"** toggle (see 8.1) that masks the text
      payload of `report.Info`/`report.Error` lines (keeps structure, drops the
      headword/gloss strings). Default OFF given the "everything" choice, but
      one-keystroke available and surfaced in the offer.
@@ -192,6 +192,42 @@ language data), consent must be informed and the preview must be honest:
 5. **Consent is per-report.** Approving one report never implies standing
    consent. "Don't ask again" only suppresses *the offer* for that error
    signature; it never sends.
+
+### 8.1 The "anonymize data" option and its cost (confirmed)
+
+The user may choose to **anonymize** the report before sending. When enabled it
+masks the lexical/text payload — the actual headword, gloss, definition, and
+other language-data strings carried in `report.Info`/`report.Error` and echoed
+in code — while preserving structure, field names, types, error codes, casting
+decisions, and the shape of the data.
+
+**Claude must state the tradeoff at the moment of offering**, not bury it:
+
+> Anonymizing removes the actual words from your lexicon, which protects
+> unpublished language data — but it can make the bug **harder or impossible to
+> fix** when the bug depends on the specific data (e.g. a particular Unicode
+> sequence, an empty-vs-`***` multistring, a writing-system mismatch, a
+> diacritic or normalization edge case, an unusually long form). For
+> logic/API-shape bugs, anonymizing usually costs nothing.
+
+Design implications:
+- The toggle is presented with this caveat inline; it is not a silent switch.
+- **Graduated anonymization, not all-or-nothing.** Prefer masking that keeps
+  diagnostically useful invariants even while hiding meaning, e.g.:
+  - preserve string length, script/writing-system tag, and Unicode category
+    profile (has-combining-marks, has-astral, is-normalized) while replacing
+    glyphs with placeholders;
+  - keep the empty / `***` / non-empty distinction verbatim (it is itself a
+    frequent bug source per CLAUDE.md multistring notes);
+  - keep structural punctuation and whitespace.
+  This lets many data-dependent bugs still reproduce without shipping the words.
+- The report header records `anonymized: true|false` and, when true, *which*
+  masking profile was applied, so the maintainer knows what was withheld and can
+  ask the user to re-send un-anonymized (or with a narrower mask) if the masked
+  report proves insufficient.
+- Config default `report_default_anonymize` (default OFF, per the maintainer's
+  "everything with review" choice); an org/admin may flip the default ON for
+  sensitivity-first deployments.
 
 ## 9. Transport (confirmed: GitHub, email fallback)
 
@@ -228,7 +264,7 @@ send mail.
   auto-offer was suppressed/deduped, and so Claude can size the slice (section 5).
 - Config knobs in `.env` / config: `report_offers_enabled` (default on),
   `report_repo` (default `MattGyverLee/FlexToolsMCP`), `report_email`
-  (default maintainer), `report_default_scrub_lexical` (default off).
+  (default maintainer), `report_default_anonymize` (default off; §8.1).
 
 ## 11. Open questions for the crew
 
@@ -237,9 +273,10 @@ send mail.
    we infer it from error_code + a green follow-up? (lex-domain.)
 3. Should the prose slice reconstruct across the current session log only, or
    also stitch a turn that spans a session-log rotation boundary? (lex-programmer.)
-4. Redaction: is hashing the project name enough, or do headwords in
-   `report.Info` need default-on scrubbing regardless of the "everything"
-   choice? (lex-domain / privacy.)
+4. Anonymization (§8.1): which masking profile best preserves reproducibility
+   while hiding meaning? Is the length/script/empty-vs-`***`/Unicode-category
+   set sufficient, or are there bug classes that need more (or can tolerate
+   less)? Should any deployment default anonymize ON? (lex-domain / privacy.)
 5. Does the `diagnostic_report` advisory block (and the `user_request`
    passthrough arg) fit the frozen TOOL-CONTRACT envelope, or does either need a
    contract minor bump? (lex-doc / lex-qc.)
@@ -262,3 +299,7 @@ send mail.
   transport strings.
 - `gh`-present and `gh`-absent both yield a working GitHub path; email works with
   neither.
+- With anonymize ON, no lexical/text payload leaves the machine; the report
+  header records `anonymized: true` + the masking profile, and the
+  length/script/empty-vs-`***` invariants (§8.1) are preserved. Claude states
+  the fixability tradeoff at offer time.

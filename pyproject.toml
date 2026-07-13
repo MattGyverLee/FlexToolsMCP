@@ -79,5 +79,13 @@ where = ["src"]
 [tool.setuptools.package-data]
 flextoolsmcp = ["index/**/*", "VERSION", "py.typed"]
 
+# Archived old index versions are kept in the repo for local diffing but must
+# not bloat the installed wheel. The `index/**/*` glob above would otherwise
+# sweep them in; MANIFEST.in `prune` only trims the sdist, so exclude them from
+# the wheel's package data here too. Covers the top-level index/archive/ and
+# per-library archives (index/liblcm/archive/, index/python/archive/).
+[tool.setuptools.exclude-package-data]
+flextoolsmcp = ["index/archive/**", "index/**/archive/**"]
+
 [tool.ruff.lint]
 select = ["E9", "F63", "F7", "F82"]

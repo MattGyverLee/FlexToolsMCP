@@ -2,7 +2,60 @@
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-07-13
+
+### Handle installed API versions that don't match the shipped index
+- **Version mismatch now triggers a refresh-to-match, then a warned fallback.**
+  `_load_library_api_index` previously only auto-refreshed when the index dir
+  was *empty*; on a version mismatch it silently served the latest shipped
+  index, so a user whose LibLCM / Flexicon / FlexLibs was newer *or* older than
+  what shipped got a doc surface that didn't match their library, with no signal.
+  Now, when no exact-version index exists for the detected installed version, the
+  loader (1) attempts one refresh to regenerate a matching index from the
+  installed library, and (2) if that can't reproduce it, serves the nearest
+  shipped index but emits a WARNING naming the installed version, the served
+  version, and the mismatch direction (older/newer), with the exact
+  `python -m flextoolsmcp.refresh --<lib>-only` command to regenerate.
+- **Refresh is attempted at most once per library per process** (`_REFRESH_ATTEMPTED`
+  guard) so startup and repeated loads never shell out repeatedly when a user's
+  version simply isn't reproducible on their machine (e.g. no FieldWorks DLLs for
+  LibLCM). Refresh needs the extraction source — pyflexicon (always present),
+  FieldWorks DLLs (LibLCM), or flexlibs — so it degrades gracefully to the warned
+  fallback when the source is unreachable.
+- **Fixed a latent cache bug on the refresh path.** `find_versioned_api_file`
+  caches negative results, so the pre-existing "refresh then re-search" flow
+  could return a stale `None` and fail to load a just-written index. The new
+  `_try_refresh_once` clears the file-discovery cache after a successful refresh.
+- New `tests/test_version_mismatch.py` covers exact match (no refresh), installed
+  newer/older than shipped (both warning directions), refresh-regenerates-match,
+  missing-entirely, the once-per-process guard, and crash-proof version parsing.
+
+### Exclude index `archive/` from the built wheel (packaging)
+- `include-package-data=true` + the `index/**/*` package-data glob swept the
+  `archive/` subdirs (old index versions kept for local diffing) into the wheel;
+  MANIFEST.in `prune` only trims the sdist. Added
+  `[tool.setuptools.exclude-package-data]` so wheel and sdist both ship zero
+  archive files while all live indexes remain.
+
 ## [2.5.0] - 2026-07-13
+
+### Renamed the bundled Python-API index dir: `index/flexlibs` -> `index/python`
+- **The folder held both wrapper libraries, so its name was misleading.**
+  `src/flextoolsmcp/index/flexlibs/` contained the **Flexicon** index
+  (`flexicon_api_v*`, `flexicon_lcm_bridge_v*`) *and* the **FlexLibs-stable**
+  index (`flexlibs_api_v*`, `flexlibs_lcm_bridge_v*`). It is now
+  `index/python/`, mirroring the sibling `index/liblcm/` (C#) — the taxonomy is
+  now cleanly by source language: `python/` = the two Python wrappers, `liblcm/`
+  = the C# API. All path references updated in `server.py` (API + LCM bridge
+  loaders), `refresh.py`, `build_embeddings.py`, `build_reverse_mapping.py`,
+  `extract_patterns.py`, `archive_old_versions.py`, plus `.gitignore`,
+  `MANIFEST.in`, and the CI comment in `test.yml`.
+- **Fixed `test_script_certification` to resolve the index like production.**
+  It hardcoded the stale repo-root path `index/flexlibs/` (broken since the
+  `src/` layout move), so all 21 of its cases errored locally with
+  `FileNotFoundError` and were only green in CI because they're deselected via
+  the `requires_flex` marker. It now uses `get_index_dir() / "python"`; the full
+  suite is green locally (443 passed).
 
 ### Installation docs — uvx PATH troubleshooting
 - **Documented the "`claude mcp add` succeeded but the server won't start"

@@ -80,6 +80,7 @@ if __package__:
         detect_installed_library_version,
         find_versioned_api_file,
         find_latest_versioned_api_file,
+        clear_file_discovery_cache,
     )
 else:
     from json_utils import sort_json_arrays
@@ -97,6 +98,7 @@ else:
         detect_installed_library_version,
         find_versioned_api_file,
         find_latest_versioned_api_file,
+        clear_file_discovery_cache,
     )
 _local_imports_done = _time_module.time()
 
@@ -288,6 +290,83 @@ class SemanticSearch:
 
         return results
 
+# Libraries we've already tried to auto-refresh in this process. Refresh shells
+# out to refresh.py (seconds, and it needs the extraction source -- pyflexicon,
+# FieldWorks DLLs, or flexlibs -- which may be absent), so we attempt it at most
+# once per library per process to keep startup and repeated loads fast.
+_REFRESH_ATTEMPTED: set = set()
+
+
+def _library_key_for_prefix(api_prefix: str) -> str:
+    """Map an API file prefix to the refresh CLI library key."""
+    if api_prefix == "liblcm_api":
+        return "liblcm"
+    if api_prefix == "flexicon_api":
+        return "flexicon"
+    return "flexlibs"
+
+
+def _extract_file_version(api_path: Path) -> str | None:
+    """Extract the version from a versioned API filename.
+
+    Handles both naming patterns: ``prefix_vX.Y.Z.json`` and
+    ``prefix-vX.Y.Z.json``. Returns None if no version segment is present.
+    """
+    stem = api_path.stem
+    for sep in ("_v", "-v"):
+        if sep in stem:
+            return stem.split(sep)[-1]
+    return None
+
+
+def _version_tuple(version: str | None) -> tuple:
+    """Best-effort numeric key for older/newer comparison.
+
+    Splits on ``.`` and reads the leading digits of each component, so
+    ``11.0.0`` -> ``(11, 0, 0)``. Non-numeric or malformed components read as 0
+    rather than raising -- version comparison must never crash startup.
+    """
+    if not version:
+        return ()
+    parts = []
+    for chunk in str(version).split("."):
+        digits = ""
+        for ch in chunk:
+            if ch.isdigit():
+                digits += ch
+            else:
+                break
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
+def _mismatch_direction(shipped_version: str | None, installed_version: str | None) -> str:
+    """Describe how the served index version relates to the installed library."""
+    shipped, installed = _version_tuple(shipped_version), _version_tuple(installed_version)
+    if shipped and installed:
+        if shipped < installed:
+            return "older than your installed library"
+        if shipped > installed:
+            return "newer than your installed library"
+    return "a different version than your installed library"
+
+
+def _try_refresh_once(library_key: str, api_prefix: str, lib_dir: Path) -> bool:
+    """Auto-refresh a library at most once per process.
+
+    Returns True only if a refresh actually ran and reported success -- in which
+    case the file-discovery cache is cleared so files written by the refresh are
+    visible to the subsequent lookup (the cache stores negative results too).
+    """
+    if library_key in _REFRESH_ATTEMPTED:
+        return False
+    _REFRESH_ATTEMPTED.add(library_key)
+    if auto_refresh_missing_api_file(library_key, api_prefix, lib_dir):
+        clear_file_discovery_cache()
+        return True
+    return False
+
+
 def _load_library_api_index(
     index: "APIIndex",
     index_dir: Path,
@@ -317,37 +396,61 @@ def _load_library_api_index(
     """
     lib_dir = index_dir / "liblcm" if api_prefix == "liblcm_api" else index_dir / "python"
     installed_version = version_detector()
+    library_key = _library_key_for_prefix(api_prefix)
 
-    # Try exact version match
+    # 1. Exact match for the installed library version.
     api_path = None
     if installed_version:
         _log_info(f"Detected installed {library_name}: {installed_version}")
         api_path = find_versioned_api_file(lib_dir, api_prefix, installed_version)
 
-    # Fall back to latest if exact match not found
-    if not api_path:
-        if installed_version:
-            _log_info(f"No API file for {library_name} {installed_version}, falling back to latest")
-        api_path = find_latest_versioned_api_file(lib_dir, api_prefix)
+    # 2. No exact match, but we know the installed version (it may be newer OR
+    #    older than anything shipped). Try to regenerate an index that matches
+    #    the installed library before serving a non-matching shipped one.
+    #    Refresh is attempted at most once per process and needs the extraction
+    #    source (pyflexicon / FieldWorks DLLs / flexlibs), so it may not succeed
+    #    on every machine.
+    if not api_path and installed_version and library_key not in _REFRESH_ATTEMPTED:
+        _log_info(
+            f"No {library_name} index matching installed v{installed_version}; "
+            f"attempting refresh to regenerate it..."
+        )
+        if _try_refresh_once(library_key, api_prefix, lib_dir):
+            api_path = find_versioned_api_file(lib_dir, api_prefix, installed_version)
 
-    # Auto-refresh if still not found
+    # 3. Still no exact match: serve the nearest (latest) shipped index and warn
+    #    loudly that the documented API surface may not match the installed
+    #    library -- in either direction (missing new APIs, or showing APIs the
+    #    installed version lacks).
     if not api_path:
+        api_path = find_latest_versioned_api_file(lib_dir, api_prefix)
+        if api_path and installed_version:
+            shipped_version = _extract_file_version(api_path)
+            _log_warning(
+                f"{library_name}: no index for installed v{installed_version}; "
+                f"serving v{shipped_version or '?'}, which is "
+                f"{_mismatch_direction(shipped_version, installed_version)}. "
+                f"Documented APIs may not match -- some methods may be missing, or "
+                f"shown but absent in your version. Regenerate a matching index with "
+                f"'python -m flextoolsmcp.refresh --{library_key}-only'."
+            )
+
+    # 4. Nothing shipped at all: last-ditch refresh (skipped if step 2 already
+    #    tried this library).
+    if not api_path and library_key not in _REFRESH_ATTEMPTED:
         _log_info(f"No {library_name} API file found, attempting auto-refresh...")
-        library_key = "liblcm" if api_prefix == "liblcm_api" else ("flexicon" if api_prefix == "flexicon_api" else "flexlibs")
-        if auto_refresh_missing_api_file(library_key, api_prefix, lib_dir):
+        if _try_refresh_once(library_key, api_prefix, lib_dir):
             if installed_version:
                 api_path = find_versioned_api_file(lib_dir, api_prefix, installed_version)
             if not api_path:
                 api_path = find_latest_versioned_api_file(lib_dir, api_prefix)
 
-    # Load JSON and extract version
+    # 5. Load JSON and record the version actually served.
     if api_path:
         try:
             with open(api_path, "r", encoding="utf-8") as f:
                 setattr(index, attr_name, json.load(f))
-            # Extract version from filename (e.g., liblcm_api_v11.0.0.json -> 11.0.0)
-            parts = api_path.stem.split("_v")
-            extracted_version = parts[-1] if len(parts) >= 2 else None
+            extracted_version = _extract_file_version(api_path)
             setattr(index, version_attr, extracted_version)
             if installed_version:
                 _log_info(f"Loaded {library_name} {installed_version} from {api_path.name}")

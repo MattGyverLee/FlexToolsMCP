@@ -186,7 +186,10 @@ because scrubbing hurts fixability. Privacy is protected by *where it goes* and
    not reduce fixability. It is automatic, not an offered toggle.
 4. **Report file is written locally first** to
    `~/.flextoolsmcp/reports/report_<ts>.md`. Writing it transmits nothing; it is
-   the artifact the user reviews and then attaches/pastes.
+   the artifact the user reviews and then attaches/pastes. Because it is a plain
+   local file the user owns, they may hand-edit/redact it before sending if they
+   choose — but **the tool never offers, suggests, or performs anonymization**.
+   That remains entirely the user's own manual prerogative, out of scope here.
 5. **Consent is per-report.** Approving one report never implies standing
    consent. "Don't ask again" only suppresses *the offer* for that error
    signature; it never sends.

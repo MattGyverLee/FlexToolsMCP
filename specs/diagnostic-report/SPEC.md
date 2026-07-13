@@ -229,23 +229,41 @@ Design implications:
   "everything with review" choice); an org/admin may flip the default ON for
   sensitivity-first deployments.
 
-## 9. Transport (confirmed: GitHub, email fallback)
+## 9. Transport — sensitivity-aware routing (confirmed)
 
-Priority order:
+Transport is **not** a fixed GitHub-first order. The two channels have different
+privacy properties, and the choice follows the sensitivity of the payload:
 
-1. **GitHub via `gh` CLI**, if `gh` is installed and authenticated:
-   `gh issue create --repo MattGyverLee/FlexToolsMCP --title "..."
-   --body-file ~/.flextoolsmcp/reports/report_<ts>.md --label auto-report`.
-   Detected by probing `gh auth status`.
-2. **GitHub via prefilled issue URL** if `gh` is absent but a browser is:
-   `https://github.com/MattGyverLee/FlexToolsMCP/issues/new?title=<url-enc>&labels=auto-report`.
-   Issue-body-via-URL is length-capped (~8 KB practical), so the prefilled body
-   is a SHORT summary that instructs the user to drag/paste the local report
-   file into the issue. The full bundle rides in as an attachment/paste, not in
-   the URL.
-3. **Email fallback** (`mailto:matthew_lee@sil.org?subject=<url-enc>&body=<short>`)
-   for users with neither GitHub account nor `gh`. Same pattern: short body,
-   real payload is the attached local report file.
+| Channel | Trail | Best for |
+|---|---|---|
+| **GitHub issue** (public repo) | **Public, permanent** — indexed & cached even if later deleted | Anonymized or non-sensitive reports; trackable, dedupeable, part of the maintainer's normal triage |
+| **Email to maintainer** | **Private, no public trail** | Reports that still contain lexical / unpublished language data |
+
+**Routing rule (Claude applies at offer time):**
+- **Anonymized report (§8.1) → recommend GitHub.** Nothing sensitive leaves, and
+  the public issue is the most useful place for it.
+- **Un-anonymized report containing lexical data → recommend Email.** A public
+  GitHub issue would expose unpublished language data permanently; email to the
+  maintainer keeps it private. This is the maintainer's stated preference for
+  sensitive data.
+- The user can always override the recommendation; Claude states *why* it
+  recommended the channel it did (the trail difference above), so the choice is
+  informed.
+- GitHub is only *offered* as the primary path when the report is anonymized or
+  the user has explicitly accepted a public trail for this payload.
+
+Mechanisms per channel:
+
+- **GitHub via `gh` CLI** (if `gh auth status` succeeds):
+  `gh issue create --repo MattGyverLee/FlexToolsMCP --title "..."
+  --body-file ~/.flextoolsmcp/reports/report_<ts>.md --label auto-report`.
+- **GitHub via prefilled issue URL** (no `gh`, has browser):
+  `https://github.com/MattGyverLee/FlexToolsMCP/issues/new?title=<url-enc>&labels=auto-report`.
+  Body-via-URL is length-capped (~8 KB), so the prefilled body is a SHORT summary
+  instructing the user to drag/paste the local report file in.
+- **Email** (`mailto:matthew_lee@sil.org?subject=<url-enc>&body=<short>`): short
+  body; the real payload is the local report file the user attaches. Works with
+  no GitHub account at all, and is the recommended route for sensitive data.
 
 The MCP produces the command / URL / mailto string and the local file; Claude
 hands it to the user. The MCP does not itself invoke `gh`, open a browser, or
@@ -303,3 +321,7 @@ send mail.
   header records `anonymized: true` + the masking profile, and the
   length/script/empty-vs-`***` invariants (§8.1) are preserved. Claude states
   the fixability tradeoff at offer time.
+- Transport routing follows sensitivity (§9): an anonymized report recommends
+  GitHub; an un-anonymized report containing lexical data recommends Email (no
+  public trail). Claude states the trail difference so the user's override is
+  informed.

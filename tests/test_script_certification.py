@@ -10,7 +10,6 @@ using the is_mutating field from the index.
 import json
 import sys
 from functools import lru_cache
-from pathlib import Path
 
 import pytest
 
@@ -35,9 +34,12 @@ def load_api_index():
 
     Result is cached to avoid redundant file I/O across multiple tests.
     """
-    from server import APIIndex  # imported here to avoid pulling server.py at module load
+    from server import APIIndex, get_index_dir  # imported here to avoid pulling server.py at module load
 
-    index_dir = Path(__file__).parent.parent / "index" / "flexlibs"
+    # Resolve the packaged index dir the same way production does, so this test
+    # doesn't break when the package layout changes (previously hardcoded the
+    # stale repo-root path index/flexlibs/, which no longer exists).
+    index_dir = get_index_dir() / "python"
 
     # Find the latest flexicon API file
     flexicon_files = sorted(index_dir.glob("flexicon_api_v*.json"))

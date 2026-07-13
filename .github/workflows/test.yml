@@ -57,7 +57,7 @@ jobs:
   # a live FieldWorks installation.  Per STABILITY-SURVEY sec 1: "All tests
   # runnable without live FieldWorks (pure Python, mock-friendly)."
   # Tests that require real FLEx data (test_script_certification, which loads
-  # a live flexicon index from index/flexlibs/) are deselected via the
+  # a live flexicon index from index/python/) are deselected via the
   # `requires_flex` marker; see pytest.ini for marker registration.
   # ---------------------------------------------------------------------------
   test-linux:

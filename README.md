@@ -50,15 +50,22 @@ FieldWorks/FLExTools, which means **Windows + .NET**.
 
 ```bash
 # Claude Code
-claude mcp add flextoolsmcp -- uvx flextoolsmcp
+claude mcp add flextoolsmcp -- uvx flextools-mcp
 ```
 
 `uvx` (from [uv](https://docs.astral.sh/uv/)) fetches the package and all of its
 dependencies — including [Flexicon](https://pypi.org/project/pyflexicon/), the
 deep FieldWorks wrapper — into an isolated cache and runs the server. Nothing
 else to install. Upgrading FLExToolsMCP re-resolves to the latest compatible
-Flexicon. Prefer a persistent install? `uv tool install flextoolsmcp` or
-`pip install flextoolsmcp`.
+Flexicon. Prefer a persistent install? `uv tool install flextools-mcp` or
+`pip install flextools-mcp`.
+
+> **Install `uv` first, then open a new terminal and run `uvx --version` before
+> `claude mcp add`.** `claude mcp add` reports success even when `uvx` is
+> missing — the server just fails to launch later. After installing `uv` you
+> must start a fresh shell (or reboot) so `uvx` is on the PATH. See
+> [SETUP.md → Troubleshooting](SETUP.md#troubleshooting) if the server won't
+> start.
 
 **Manual MCP config** (Claude Desktop, Cursor, and other tools):
 
@@ -67,7 +74,7 @@ Flexicon. Prefer a persistent install? `uv tool install flextoolsmcp` or
   "mcpServers": {
     "flextoolsmcp": {
       "command": "uvx",
-      "args": ["flextoolsmcp"]
+      "args": ["flextools-mcp"]
     }
   }
 }

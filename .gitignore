@@ -29,12 +29,12 @@ build/
 # Archive directories (keep outdated versions locally, exclude from git)
 index/archive/
 index/liblcm/archive/
-index/flexlibs/archive/
+index/python/archive/
 
 # Large index files (regenerate with refresh.py)
 # Uncomment if you don't want to commit indexes:
 # index/liblcm/*.json
-# index/flexlibs/*.json
+# index/python/*.json
 
 user-logs/
 .flextoolsmcp/skeletons.jsonl

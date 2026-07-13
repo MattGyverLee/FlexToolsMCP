@@ -90,7 +90,7 @@ FlexToolsMCP is a mature, well-documented MCP server with thoughtful versioning 
 - `flexicon_api_v4.1.2.json` (current)
 - `liblcm_api_v11.0.0.json` (LibLCM)
 - `flexlibs_api_v1.2.8.json` (legacy)
-- Archive: `index/flexlibs/archive/flexicon_api_v4.1.0.json`
+- Archive: `index/python/archive/flexicon_api_v4.1.0.json`
 
 **Auto-refresh on version mismatch (`src/server.py:318-357`):**
 1. Detect installed version
@@ -306,7 +306,7 @@ Manual fallback:
 - No script to compare `flexicon_api_v4.1.1.json` vs `flexicon_api_v4.1.2.json`
 - No warning if a method is removed or renamed
 - No validation that entity count is increasing/consistent
-- Archive directory (`index/flexlibs/archive/`) is storage only, not comparison
+- Archive directory (`index/python/archive/`) is storage only, not comparison
 
 **What's needed but missing:**
 - Breaking-change detection: removed methods, renamed properties, type namespace changes

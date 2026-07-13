@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-13
+
+### Installation docs — uvx PATH troubleshooting
+- **Documented the "`claude mcp add` succeeded but the server won't start"
+  failure mode.** `claude mcp add` only *records* the launch command and reports
+  success even when `uvx` is missing or not yet on PATH; the failure surfaces
+  later, when the AI assistant tries to *launch* the server (it hangs, fails to
+  connect, or shows no `flextools_*` tools). SETUP.md gains a prerequisite step
+  to verify `uvx --version` in a **fresh** shell — the uv installer's PATH change
+  does not reach already-open terminals or GUI apps until a new shell or reboot —
+  an IMPORTANT callout at the quick-install step, and a Troubleshooting section
+  covering uvx-not-found, the absolute-path fallback, and a uvx-free
+  `pip install` + `python -m flextoolsmcp` alternative. README.md links to it.
+- **Normalized package vs. server-alias naming.** Fixed four spots in README.md
+  that passed the no-hyphen `flextoolsmcp` to `uvx`/`pip`/`uv tool`. The PyPI
+  package is `flextools-mcp` (hyphenated); `flextoolsmcp` (no hyphen) is only the
+  MCP server alias, the importable Python module, and the `~/.flextoolsmcp/` data
+  directory.
+
 ### Inline casting metadata into get_object_api (issue #48)
 - **Casting requirements now surface at discovery time.** Casting knowledge
   previously lived only in `flextools_resolve_property`, a tool the model

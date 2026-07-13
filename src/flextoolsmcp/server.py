@@ -315,7 +315,7 @@ def _load_library_api_index(
         attr_name: APIIndex attribute name ('liblcm', 'flexicon', etc.)
         version_attr: APIIndex version attribute name ('liblcm_version', etc.)
     """
-    lib_dir = index_dir / "liblcm" if api_prefix == "liblcm_api" else index_dir / "flexlibs"
+    lib_dir = index_dir / "liblcm" if api_prefix == "liblcm_api" else index_dir / "python"
     installed_version = version_detector()
 
     # Try exact version match
@@ -538,7 +538,7 @@ class APIIndex:
 
     def _load_lcm_bridge(self, library_label: str, prefix: str, version: str | None) -> dict | None:
         """Load an LCM bridge JSON file by library prefix, with version fallback."""
-        bridge_dir = get_index_dir() / "flexlibs"
+        bridge_dir = get_index_dir() / "python"
 
         bridge_path = None
         if version:

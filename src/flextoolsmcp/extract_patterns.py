@@ -266,10 +266,10 @@ def main():
     args = parser.parse_args()
 
     root = get_project_root()
-    flexlibs_dir = get_index_dir() / "flexlibs"
+    python_dir = get_index_dir() / "python"
 
     # Find latest Flexicon API file
-    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
+    flexicon_path = find_latest_versioned_api_file(python_dir, "flexicon_api")
     if not flexicon_path:
         print("[ERROR] Flexicon API file not found")
         return 1

@@ -183,7 +183,7 @@ def _refresh_library(
                 print(f"        Or uncomment {env_var_name} in .env")
                 return False
 
-    index_dir = get_index_dir() / "flexlibs"
+    index_dir = get_index_dir() / "python"
     index_dir.mkdir(parents=True, exist_ok=True)
     temp_output = index_dir / f"{output_prefix}_temp.json"
 

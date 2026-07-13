@@ -393,12 +393,12 @@ def main():
 
     root = get_project_root()
     index_dir = get_index_dir()
-    flexlibs_dir = index_dir / "flexlibs"
+    python_dir = index_dir / "python"
     liblcm_dir = index_dir / "liblcm"
 
     # Find latest versioned API files
-    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
-    flexlibs_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+    flexicon_path = find_latest_versioned_api_file(python_dir, "flexicon_api")
+    flexlibs_path = find_latest_versioned_api_file(python_dir, "flexlibs_api")
     liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 
     if not flexicon_path:

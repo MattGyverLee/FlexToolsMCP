@@ -118,7 +118,7 @@ def main():
             ("navigation_graph_liblcm-v*.json", "Navigation Graph"),
             ("reverse_mapping_liblcm-v*.json", "Reverse Mapping"),
         ],
-        index_dir / "flexlibs": [
+        index_dir / "python": [
             ("flexlibs_api_v*.json", "FlexLibs"),
             ("flexicon_api_v*.json", "Flexicon"),
             ("common_patterns_flexicon-v*.json", "Common Patterns"),

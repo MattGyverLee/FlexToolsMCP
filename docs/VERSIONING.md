@@ -146,13 +146,13 @@ Example:
 ```bash
 # Old files (will be ignored)
 index/liblcm/liblcm_api.json
-index/flexlibs/flexlibs_api.json
-index/flexlibs/flexicon_api.json
+index/python/flexlibs_api.json
+index/python/flexicon_api.json
 
 # New versioned files (automatically generated/detected)
 index/liblcm/liblcm_api_v8.2.3.json
-index/flexlibs/flexlibs_api_v1.0.0.json
-index/flexlibs/flexicon_api_v4.1.0.json
+index/python/flexlibs_api_v1.0.0.json
+index/python/flexicon_api_v4.1.0.json
 ```
 
 ## Future Enhancements

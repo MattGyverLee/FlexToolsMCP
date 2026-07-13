@@ -83,17 +83,17 @@ def _create_item_dict(
 def load_flexlibs_data() -> Tuple[Dict, Dict]:
     """Load FlexLibs stable and 2.0 API data."""
     index_dir = get_index_dir()
-    flexlibs_dir = index_dir / "flexlibs"
+    python_dir = index_dir / "python"
 
     flexlibs_stable = {}
     flexicon = {}
 
-    stable_path = find_latest_versioned_api_file(flexlibs_dir, "flexlibs_api")
+    stable_path = find_latest_versioned_api_file(python_dir, "flexlibs_api")
     if stable_path and stable_path.exists():
         with open(stable_path, "r", encoding="utf-8") as f:
             flexlibs_stable = json.load(f)
 
-    flexicon_path = find_latest_versioned_api_file(flexlibs_dir, "flexicon_api")
+    flexicon_path = find_latest_versioned_api_file(python_dir, "flexicon_api")
     if flexicon_path and flexicon_path.exists():
         with open(flexicon_path, "r", encoding="utf-8") as f:
             flexicon = json.load(f)

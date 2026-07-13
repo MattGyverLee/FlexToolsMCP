@@ -7,5 +7,5 @@ include README.md
 # Do not ship archived old index versions or caches.
 prune src/flextoolsmcp/index/archive
 prune src/flextoolsmcp/index/liblcm/archive
-prune src/flextoolsmcp/index/flexlibs/archive
+prune src/flextoolsmcp/index/python/archive
 global-exclude __pycache__ *.py[cod]

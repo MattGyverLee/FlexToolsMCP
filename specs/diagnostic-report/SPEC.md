@@ -228,29 +228,43 @@ Design implications:
 - Config default `report_default_anonymize` (default OFF, per the maintainer's
   "everything with review" choice); an org/admin may flip the default ON for
   sensitivity-first deployments.
+- **Anonymizing is not the only way to protect sensitive data.** Per §9, a user
+  who does not want to scrub (to preserve fixability) can instead send the full,
+  un-masked report privately by email, which leaves no public trail. Scrubbing
+  is the price of using the public GitHub channel, not a mandatory step.
 
-## 9. Transport — sensitivity-aware routing (confirmed)
+## 9. Transport — GitHub by default, email as the alternative to scrubbing (confirmed)
 
-Transport is **not** a fixed GitHub-first order. The two channels have different
-privacy properties, and the choice follows the sensitivity of the payload:
+**GitHub is the default and preferred channel.** It flows well: trackable,
+dedupeable, and part of the maintainer's normal triage. When there is nothing
+sensitive in the report, GitHub is simply the right answer — no reason to steer
+away from it.
 
-| Channel | Trail | Best for |
-|---|---|---|
-| **GitHub issue** (public repo) | **Public, permanent** — indexed & cached even if later deleted | Anonymized or non-sensitive reports; trackable, dedupeable, part of the maintainer's normal triage |
-| **Email to maintainer** | **Private, no public trail** | Reports that still contain lexical / unpublished language data |
+Sensitivity only introduces a fork, and the fork is between **two ways to
+protect the data**, not between two transports:
 
-**Routing rule (Claude applies at offer time):**
-- **Anonymized report (§8.1) → recommend GitHub.** Nothing sensitive leaves, and
-  the public issue is the most useful place for it.
-- **Un-anonymized report containing lexical data → recommend Email.** A public
-  GitHub issue would expose unpublished language data permanently; email to the
-  maintainer keeps it private. This is the maintainer's stated preference for
-  sensitive data.
-- The user can always override the recommendation; Claude states *why* it
-  recommended the channel it did (the trail difference above), so the choice is
-  informed.
-- GitHub is only *offered* as the primary path when the report is anonymized or
-  the user has explicitly accepted a public trail for this payload.
+| If the report is... | The user's options |
+|---|---|
+| **Not sensitive** | → **GitHub** (default; full-fidelity, public, flows well) |
+| **Sensitive** (contains lexical / unpublished language data) | **(a) Scrub, then GitHub** — anonymize per §8.1, then file publicly; or **(b) Email full-fidelity** — send un-scrubbed to the maintainer with **no public trail** |
+
+**Key framing (maintainer's):** *email is the alternative to scrubbing.* A user
+who does not want to anonymize — because scrubbing may hurt fixability (§8.1) —
+can instead keep the full, un-masked data and send it privately by email,
+avoiding a permanent public record. Conversely, a user who wants the tracking
+and flow of a GitHub issue can pay for it by scrubbing first. Both fully protect
+the data; they trade off differently:
+
+- **Scrub + GitHub:** public trail, best workflow, *possibly reduced fixability*.
+- **Full + Email:** private, *best fixability*, but manual and untracked.
+
+**Routing rule Claude applies at offer time:**
+- No sensitivity detected → offer **GitHub** directly.
+- Sensitivity detected → present both protections and their tradeoff (public+scrubbed
+  vs. private+full), and let the user choose. Do not silently downgrade fidelity
+  or silently publish sensitive data.
+- The user may always override; Claude states the trail + fixability implications
+  so the choice is informed.
 
 Mechanisms per channel:
 
@@ -262,8 +276,8 @@ Mechanisms per channel:
   Body-via-URL is length-capped (~8 KB), so the prefilled body is a SHORT summary
   instructing the user to drag/paste the local report file in.
 - **Email** (`mailto:matthew_lee@sil.org?subject=<url-enc>&body=<short>`): short
-  body; the real payload is the local report file the user attaches. Works with
-  no GitHub account at all, and is the recommended route for sensitive data.
+  body; the real payload is the local report file the user attaches. This is the
+  private, full-fidelity alternative to scrubbing — not a mere no-GitHub fallback.
 
 The MCP produces the command / URL / mailto string and the local file; Claude
 hands it to the user. The MCP does not itself invoke `gh`, open a browser, or

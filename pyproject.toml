@@ -42,6 +42,13 @@ dependencies = [
     # The deep FieldWorks wrapper the server generates scripts against. A floor
     # (not a pin) so upgrading FLExToolsMCP re-resolves to the latest Flexicon.
     "pyflexicon>=4.1,<5",
+    # The shallow/stable FieldWorks wrapper (cdfarrow/flexlibs). Small, and its
+    # only dependency (pythonnet) is already required, so we ship it too: this
+    # guarantees an exact-version flexlibs index out of the box (matching the
+    # bundled flexlibs_api_v1.2.8) and lets the runtime `--flexlibs-only` refresh
+    # regenerate when the installed flexlibs drifts from what shipped. Floor at
+    # the indexed version; cap at the next major.
+    "flexlibs>=1.2.8,<2",
 ]
 
 [project.optional-dependencies]

@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-07-13
+
+### Ship stable `flexlibs` as a runtime dependency
+- **`flexlibs` (the shallow/stable cdfarrow wrapper) is now a declared
+  dependency**, alongside `pyflexicon`. It is small and its only dependency
+  (`pythonnet`) was already required, so bundling it costs little and means the
+  stable-flexlibs index now matches the installed library out of the box (the
+  bundled index is `flexlibs_api_v1.2.8` and PyPI `flexlibs` is 1.2.8). It also
+  makes the runtime `--flexlibs-only` refresh path viable without a manual
+  install, so the 2.6.0 version-mismatch handling can regenerate a matching
+  index if the installed `flexlibs` ever drifts. Floor `>=1.2.8`, capped `<2`.
+  Verified conflict-free: `flexlibs` and `pyflexicon` both require
+  `pythonnet<3.1,>=3.0.3`, satisfied by our existing `pythonnet>=3.0.0`.
+  Mirrored in `requirements.txt`.
+
 ## [2.6.0] - 2026-07-13
 
 ### Handle installed API versions that don't match the shipped index

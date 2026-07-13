@@ -12,8 +12,11 @@ faiss-cpu>=1.7.4
 # .NET Interop (for LibLCM extraction)
 pythonnet>=3.0.0
 
-# FieldWorks wrapper the server generates scripts against
+# FieldWorks wrappers the server generates scripts against. pyflexicon is the
+# deep wrapper; flexlibs is the shallow/stable one -- small, pythonnet-only, and
+# shipped so the stable-flexlibs index matches out of the box and can refresh.
 pyflexicon>=4.1,<5
+flexlibs>=1.2.8,<2
 
 # Utilities
 pydantic>=2.0.0

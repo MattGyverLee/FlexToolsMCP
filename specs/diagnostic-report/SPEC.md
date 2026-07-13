@@ -163,110 +163,58 @@ session log is where the real context lives (section 3.2 confirms this is
 correct; `operations.jsonl` alone is insufficient). So the default bundle
 includes the full prose turn slice, NOT a structured-only subset.
 
-**This raises the redaction stakes** (section 8): the prose slice can contain
-lexical data (headwords, glosses, definitions) via `report.Info`. Because the
-default is "everything," the mandatory human-review preview is the primary
-safeguard and must be excellent.
+The prose slice can contain lexical data (headwords, glosses, definitions) via
+`report.Info`. **The report is always sent full-fidelity / unscrubbed** (see §8,
+§9) — there is no anonymization step. The safeguards are therefore the *choice
+of channel* and the *choice not to send at all*, backed by a human-review
+preview.
 
 ## 8. Privacy & consent model (the load-bearing part)
 
-Because the default payload includes full prose (which may contain unpublished
-language data), consent must be informed and the preview must be honest:
+The report always goes out **unscrubbed** — the maintainer wants the real data,
+because scrubbing hurts fixability. Privacy is protected by *where it goes* and
+*whether it goes*, not by masking content:
 
-1. **Never auto-send.** The MCP emits an offer; the human must act.
-2. **Mandatory full preview.** Before any send, the user is shown the *exact*
-   bytes that would leave their machine — the rendered report file — not a
-   summary of it. Claude presents it and asks explicitly.
-3. **Redaction pass applied before preview:**
-   - Home-dir absolute paths → `~`.
-   - Machine/user names in paths stripped.
-   - Project name: replaced with a stable hash by default; user may opt to
-     include the real name.
-   - Offer an optional **"anonymize data"** toggle (see 8.1) that masks the text
-     payload of `report.Info`/`report.Error` lines (keeps structure, drops the
-     headword/gloss strings). Default OFF given the "everything" choice, but
-     one-keystroke available and surfaced in the offer.
+1. **Never auto-send.** The MCP only writes a local file and prepares transport
+   strings; a human must take the send action. Nothing is transmitted from any
+   MCP code path (this is structural, not a policy promise — see §9).
+2. **Preview before send.** The user is shown the rendered report file — the
+   exact bytes that would leave the machine — before choosing a channel.
+3. **Machine-hygiene normalization only (not content scrubbing):** home-dir
+   absolute paths → `~` and the OS username stripped from paths. This protects
+   *the user's own machine identity*, touches no lexical/language data, and does
+   not reduce fixability. It is automatic, not an offered toggle.
 4. **Report file is written locally first** to
-   `~/.flextoolsmcp/reports/report_<ts>.md`. Nothing is transmitted by writing
-   it; it is the artifact the user reviews and then chooses to attach/paste.
+   `~/.flextoolsmcp/reports/report_<ts>.md`. Writing it transmits nothing; it is
+   the artifact the user reviews and then attaches/pastes.
 5. **Consent is per-report.** Approving one report never implies standing
    consent. "Don't ask again" only suppresses *the offer* for that error
    signature; it never sends.
 
-### 8.1 The "anonymize data" option and its cost (confirmed)
+## 9. Transport — three outcomes, user's choice (confirmed)
 
-The user may choose to **anonymize** the report before sending. When enabled it
-masks the lexical/text payload — the actual headword, gloss, definition, and
-other language-data strings carried in `report.Info`/`report.Error` and echoed
-in code — while preserving structure, field names, types, error codes, casting
-decisions, and the shape of the data.
+Given a prepared (unscrubbed) report, the user chooses exactly one of three
+outcomes. Claude presents them plainly:
 
-**Claude must state the tradeoff at the moment of offering**, not bury it:
-
-> Anonymizing removes the actual words from your lexicon, which protects
-> unpublished language data — but it can make the bug **harder or impossible to
-> fix** when the bug depends on the specific data (e.g. a particular Unicode
-> sequence, an empty-vs-`***` multistring, a writing-system mismatch, a
-> diacritic or normalization edge case, an unusually long form). For
-> logic/API-shape bugs, anonymizing usually costs nothing.
-
-Design implications:
-- The toggle is presented with this caveat inline; it is not a silent switch.
-- **Graduated anonymization, not all-or-nothing.** Prefer masking that keeps
-  diagnostically useful invariants even while hiding meaning, e.g.:
-  - preserve string length, script/writing-system tag, and Unicode category
-    profile (has-combining-marks, has-astral, is-normalized) while replacing
-    glyphs with placeholders;
-  - keep the empty / `***` / non-empty distinction verbatim (it is itself a
-    frequent bug source per CLAUDE.md multistring notes);
-  - keep structural punctuation and whitespace.
-  This lets many data-dependent bugs still reproduce without shipping the words.
-- The report header records `anonymized: true|false` and, when true, *which*
-  masking profile was applied, so the maintainer knows what was withheld and can
-  ask the user to re-send un-anonymized (or with a narrower mask) if the masked
-  report proves insufficient.
-- Config default `report_default_anonymize` (default OFF, per the maintainer's
-  "everything with review" choice); an org/admin may flip the default ON for
-  sensitivity-first deployments.
-- **Anonymizing is not the only way to protect sensitive data.** Per §9, a user
-  who does not want to scrub (to preserve fixability) can instead send the full,
-  un-masked report privately by email, which leaves no public trail. Scrubbing
-  is the price of using the public GitHub channel, not a mandatory step.
-
-## 9. Transport — GitHub by default, email as the alternative to scrubbing (confirmed)
-
-**GitHub is the default and preferred channel.** It flows well: trackable,
-dedupeable, and part of the maintainer's normal triage. When there is nothing
-sensitive in the report, GitHub is simply the right answer — no reason to steer
-away from it.
-
-Sensitivity only introduces a fork, and the fork is between **two ways to
-protect the data**, not between two transports:
-
-| If the report is... | The user's options |
-|---|---|
-| **Not sensitive** | → **GitHub** (default; full-fidelity, public, flows well) |
-| **Sensitive** (contains lexical / unpublished language data) | **(a) Scrub, then GitHub** — anonymize per §8.1, then file publicly; or **(b) Email full-fidelity** — send un-scrubbed to the maintainer with **no public trail** |
-
-**Key framing (maintainer's):** *email is the alternative to scrubbing.* A user
-who does not want to anonymize — because scrubbing may hurt fixability (§8.1) —
-can instead keep the full, un-masked data and send it privately by email,
-avoiding a permanent public record. Conversely, a user who wants the tracking
-and flow of a GitHub issue can pay for it by scrubbing first. Both fully protect
-the data; they trade off differently:
-
-- **Scrub + GitHub:** public trail, best workflow, *possibly reduced fixability*.
-- **Full + Email:** private, *best fixability*, but manual and untracked.
+| Outcome | When | Trail |
+|---|---|---|
+| **1. GitHub issue** (default) | No confidentiality concern with the data | Public, permanent — trackable, dedupeable, normal triage |
+| **2. Email to maintainer** | The report contains data the user does not want public (unpublished/sensitive language data) | Private, no public trail; full fidelity preserved |
+| **3. Don't send** | The user decides it isn't worth sharing, or is unsure | Nothing leaves the machine; local report file remains for later |
 
 **Routing rule Claude applies at offer time:**
-- No sensitivity detected → offer **GitHub** directly.
-- Sensitivity detected → present both protections and their tradeoff (public+scrubbed
-  vs. private+full), and let the user choose. Do not silently downgrade fidelity
-  or silently publish sensitive data.
-- The user may always override; Claude states the trail + fixability implications
-  so the choice is informed.
+- Default to **GitHub** — it flows well and is the right answer when nothing is
+  sensitive. Do not nag or over-warn on ordinary reports.
+- If the report carries substantial lexical data, Claude *flags* that a GitHub
+  issue is public and permanent, and offers **email** as the private
+  alternative — same full report, no public record. The user decides; this is
+  their confidentiality judgment, not the MCP's.
+- **Don't send** is always available and never penalized; the local file stays
+  put so the user can send later or hand it over by other means.
+- No scrubbing/anonymization is offered in any branch. Protection is channel
+  choice, not content masking.
 
-Mechanisms per channel:
+Mechanisms per channel (GitHub default):
 
 - **GitHub via `gh` CLI** (if `gh auth status` succeeds):
   `gh issue create --repo MattGyverLee/FlexToolsMCP --title "..."
@@ -276,8 +224,8 @@ Mechanisms per channel:
   Body-via-URL is length-capped (~8 KB), so the prefilled body is a SHORT summary
   instructing the user to drag/paste the local report file in.
 - **Email** (`mailto:matthew_lee@sil.org?subject=<url-enc>&body=<short>`): short
-  body; the real payload is the local report file the user attaches. This is the
-  private, full-fidelity alternative to scrubbing — not a mere no-GitHub fallback.
+  body; the real payload is the local report file the user attaches. Private,
+  full-fidelity — chosen when the user has a confidentiality concern.
 
 The MCP produces the command / URL / mailto string and the local file; Claude
 hands it to the user. The MCP does not itself invoke `gh`, open a browser, or
@@ -296,7 +244,7 @@ send mail.
   auto-offer was suppressed/deduped, and so Claude can size the slice (section 5).
 - Config knobs in `.env` / config: `report_offers_enabled` (default on),
   `report_repo` (default `MattGyverLee/FlexToolsMCP`), `report_email`
-  (default maintainer), `report_default_anonymize` (default off; §8.1).
+  (default maintainer). No anonymization knob — reports are always full-fidelity.
 
 ## 11. Open questions for the crew
 
@@ -305,10 +253,11 @@ send mail.
    we infer it from error_code + a green follow-up? (lex-domain.)
 3. Should the prose slice reconstruct across the current session log only, or
    also stitch a turn that spans a session-log rotation boundary? (lex-programmer.)
-4. Anonymization (§8.1): which masking profile best preserves reproducibility
-   while hiding meaning? Is the length/script/empty-vs-`***`/Unicode-category
-   set sufficient, or are there bug classes that need more (or can tolerate
-   less)? Should any deployment default anonymize ON? (lex-domain / privacy.)
+4. Sensitivity signalling (§9): should Claude *auto-detect* that a report
+   carries substantial lexical data (to prompt the GitHub-vs-email choice), or
+   leave the confidentiality judgment entirely to the user? If auto-detect, what
+   heuristic (presence of `report.Info` multistring content, writing-system
+   tags) without itself inspecting/leaking the data? (lex-domain / privacy.)
 5. Does the `diagnostic_report` advisory block (and the `user_request`
    passthrough arg) fit the frozen TOOL-CONTRACT envelope, or does either need a
    contract minor bump? (lex-doc / lex-qc.)
@@ -325,17 +274,12 @@ send mail.
   verbatim `user_request` when Claude supplied it.
 - The report slice honors an explicit LLM-supplied op selection / `steps_back`,
   falling back to the whole turn, bounded by `MAX_REPORT_OPS`.
-- Redaction removes home paths and machine/user names; project name is hashed by
-  default.
+- The report is always full-fidelity / unscrubbed; no anonymization path exists.
+  Machine-hygiene normalization (home paths → `~`, OS username stripped) is
+  applied automatically and touches no lexical data.
 - No transmission occurs from any MCP code path; only local file write + prepared
-  transport strings.
-- `gh`-present and `gh`-absent both yield a working GitHub path; email works with
-  neither.
-- With anonymize ON, no lexical/text payload leaves the machine; the report
-  header records `anonymized: true` + the masking profile, and the
-  length/script/empty-vs-`***` invariants (§8.1) are preserved. Claude states
-  the fixability tradeoff at offer time.
-- Transport routing follows sensitivity (§9): an anonymized report recommends
-  GitHub; an un-anonymized report containing lexical data recommends Email (no
-  public trail). Claude states the trail difference so the user's override is
-  informed.
+  transport strings (never-auto-send is structural).
+- The user is presented exactly three outcomes (§9): GitHub (default), email
+  (private, on confidentiality concern), or don't-send. `gh`-present and
+  `gh`-absent both yield a working GitHub path; email works with neither; the
+  local report file persists if the user declines to send.

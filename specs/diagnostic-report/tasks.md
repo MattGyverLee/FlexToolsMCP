@@ -41,26 +41,26 @@ full suite (487 tests) green.
 
 ## CP2 -- Reconstruction + normalization
 
-- [ ] Slice reconstruction: join `operations.jsonl` lines to session-log
+- [x] Slice reconstruction: join `operations.jsonl` lines to session-log
       `=== Operation #N Start/End (op_id) ===` blocks by `op_id`/`seq`
       (spec sections 3, 5).
-- [ ] Rotation stitching: resolve the target `op_id`/`seq` list from JSONL
+- [x] Rotation stitching: resolve the target `op_id`/`seq` list from JSONL
       first, then scan `session_<id>.log[.1/.2/.3]` for matching blocks and
       concatenate in `seq` order (JSONL-driven, not file-boundary-driven --
       resolved question Q3). Surface "history truncated by rotation" if a
       requested op was already recycled by `backupCount`.
-- [ ] `MAX_REPORT_OPS` (default 12) summarize-not-drop: excess ops in an
+- [x] `MAX_REPORT_OPS` (default 12) summarize-not-drop: excess ops in an
       LLM-sized slice are summarized, not silently dropped ("no silent
       caps" rule).
-- [ ] Path-scoped machine-hygiene normalization (spec section 8.3, decision
+- [x] Path-scoped machine-hygiene normalization (spec section 8.3, decision
       E2): home-dir / OS-username substitution anchored ONLY on
       path-shaped tokens (resolved `expanduser('~')` / `USERPROFILE` at the
       start of a path segment); MUST NOT be a document-wide find/replace
       of the username string (would corrupt lexical data that happens to
       contain the username as a substring).
-- [ ] Report rendering (spec section 7): header, request, interpretation,
+- [x] Report rendering (spec section 7): header, request, interpretation,
       what-was-tried, error, resolution, structured JSONL appendix.
-- [ ] Casting-recurrence signature precision (deferred P1 from cycle-2 QC,
+- [x] Casting-recurrence signature precision (deferred P1 from cycle-2 QC,
       `triggers.py:62-77` `casting_recurrence_signature`): the CP1 v1 fallback
       treats ANY two `casting_issues_detected` closes in the same turn as a
       recurrence when `casting_signature`/`preflight_gate` are both blank, so
@@ -70,7 +70,19 @@ full suite (487 tests) green.
       `casting_signature` into the JSONL schema and key recurrence on it, not on
       the bare code. Add a regression test for the two-unrelated-issues case.
 
-**Checkpoint:** not started.
+**Checkpoint:** CP2 landed 2026-07-13 (spurt 2, cycles 4-6). All six line-items
+green. Verification PASS (full suite 511 passed / 0 failed; +1 from the 510
+baseline, no regressions). Domain E2 privacy gate PASS. Cycle-2 casting-recurrence
+P1 CLOSED. A post-auto-fix stale-`issues` P1 found in cycle 5
+(`handlers/execution.py`) was fixed and verified in cycle 6 with a dedicated
+regression test (`test_partial_auto_fix_reports_only_residual_casting_issue`,
+confirmed failing pre-fix / passing post-fix). See
+`reviews/cycle5-*` and `reviews/cycle6-*`.
+
+**CP2 carryover (P2, non-blocking -- harden during CP3):**
+- `reconstruct.py` mismatched-`End` silent truncation.
+- `render.py` `_CODE_STOP_MARKERS` substring false-positive (tighten to a
+  boundary match).
 
 ## CP3 -- Surface + transport + guard
 

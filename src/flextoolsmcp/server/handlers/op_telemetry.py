@@ -132,6 +132,7 @@ def _write_jsonl_line(
     assistance_triggered: bool,
     *,
     log_dir_fn: Any,                  # callable -> Path, injected for testability
+    casting_signature: Optional[str] = None,
 ) -> None:
     """Pop the stash for op_id and append one JSONL line to operations.jsonl.
 
@@ -139,6 +140,19 @@ def _write_jsonl_line(
     one of the three close functions.  The stash pop() means a second call
     with the same op_id is a no-op (no stash entry -> base record only, no
     double write -- but this should never happen in normal operation).
+
+    `casting_signature` (diagnostic-report CP2, precision fix for the
+    deferred cycle-2 QC P1): an optional per-op signature computed from the
+    ACTUAL `casting_issues` list detected at preflight time
+    (`diagnostic.triggers.compute_casting_signature()`), passed only by
+    `_log_preflight_reject()` on a `casting_issues_detected` close.  Stored
+    verbatim (empty string when absent) so `diagnostic.triggers.
+    casting_recurrence_signature()` can key recurrence on the real failing
+    property/interface instead of the coarse "any repeat this turn"
+    fallback.  Older JSONL records written before this field existed simply
+    lack the key on load -- `dict.get("casting_signature")` returns None,
+    which the recurrence helper already treats as "fall through to the next
+    tier" (backward compatible, no schema migration needed).
     """
     stash = _OP_STASH.pop(op_id, {})
     try:
@@ -161,6 +175,7 @@ def _write_jsonl_line(
         "outcome": outcome,
         "error_code": error_code or "",
         "preflight_gate": preflight_gate or "",
+        "casting_signature": casting_signature or "",
         "duration_s": round(duration_s, 4) if duration_s is not None else None,
         "auto_fixes_applied": 0,      # placeholder; set by caller when available
         "auto_discovered": [],        # placeholder; set by caller when available

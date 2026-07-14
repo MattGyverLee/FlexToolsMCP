@@ -115,6 +115,15 @@ try:
 except ImportError:
     from server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line, compute_jsonl_statistics
 
+# Diagnostic-report CP2: precision casting-recurrence signature (deferred
+# cycle-2 QC P1). Pure function, no transmission -- see
+# server/diagnostic/__init__.py for the no-transmission guard this import
+# reaches into (one-way: execution.py -> diagnostic, never the reverse).
+try:
+    from ..diagnostic.triggers import compute_casting_signature
+except ImportError:
+    from server.diagnostic.triggers import compute_casting_signature
+
 # ============================================================
 # Constants (avoid stringly-typed code)
 # ============================================================
@@ -723,6 +732,8 @@ def _log_preflight_reject(
     duration_s: float,
     reason_code: str,
     detail: str,
+    *,
+    casting_signature: Optional[str] = None,
 ) -> None:
     """Close an operation that was rejected by a pre-flight validator.
 
@@ -733,6 +744,11 @@ def _log_preflight_reject(
     The [REJECT] marker, reason code, and detail lines are emitted at WARNING
     because the LLM's submission was blocked (worth surfacing in default-level
     filters); Duration and the Operation End marker stay at INFO as bookkeeping.
+
+    `casting_signature` (diagnostic-report CP2): only meaningful -- and only
+    ever passed -- on a `"casting_issues_detected"` reason_code close. See
+    `op_telemetry._write_jsonl_line`'s docstring for why this thread exists
+    (precision fix for the CP1 casting-recurrence fallback).
     """
     logger = get_operations_logger()
     logger.warning("[REJECT] Pre-flight validation blocked execution")
@@ -758,6 +774,7 @@ def _log_preflight_reject(
         error_count=0,
         assistance_triggered=False,
         log_dir_fn=get_log_dir,
+        casting_signature=casting_signature,
     )
 
 
@@ -2089,6 +2106,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     code = _patched
                     code_tree = ast.parse(code)
                     casting_check = detect_casting_needs(code, casting_index, code_tree)
+                    # CP2 fix: re-derive `issues` from the post-fix casting_check so
+                    # the still-has-issues branch below (signature, enrichment,
+                    # how_to_fix, error_response) reflects only the RESIDUAL issues,
+                    # not the stale pre-fix set captured at line 2077.
+                    issues = casting_check["casting_issues"]
                     _auto_fixes_applied = _fix_records
                     _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
                     # Proceed to rest of preflight with patched code
@@ -2099,10 +2121,19 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
         # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
         if casting_check["has_casting_issues"]:
+            # Diagnostic-report CP2: thread a real per-issue signature (built
+            # from property + missing-interface + cast-interface) into the
+            # JSONL record instead of leaving casting_signature blank. Without
+            # this, two UNRELATED casting issues in the same turn (e.g. a bad
+            # Gloss access, then later an unrelated bad Definition access)
+            # both fall through to the bare "casting_issues_detected" code and
+            # collapse into a single false recurrence.
+            _casting_sig = compute_casting_signature(issues)
             _log_preflight_reject(
                 op_id, seq, time.monotonic() - t_start,
                 "casting_issues_detected",
                 f"{len(issues)} polymorphic property access issue(s) require casting.",
+                casting_signature=_casting_sig,
             )
             # Issue #21: each issue carries an inline rewrite + imports_needed so
             # the LLM doesn't need to call flextools_resolve_property to recover.

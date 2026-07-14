@@ -24,6 +24,7 @@ closed list (discovery-flow codes, authoring mistakes, unprotected_writes,
 partial_module_structure, project/infra codes, server_state_error).
 """
 
+import hashlib
 from typing import Any, Dict, List, Optional, Set
 
 # ---------------------------------------------------------------------------
@@ -57,6 +58,51 @@ NON_REPORTABLE_CODES: frozenset = frozenset(
 # (not first occurrence) within a turn indicates a real coverage gap.
 _CASTING_CODE = "casting_issues_detected"
 _INVALID_CHAIN_CODE = "invalid_api_chain"
+
+
+def compute_casting_signature(issues: List[Dict[str, Any]]) -> str:
+    """Build a deterministic casting signature from a preflight
+    `detect_casting_needs()` issues list (`server/validators.py`).
+
+    CP2 precision fix for the deferred cycle-2 QC P1 (`triggers.py:62-77`):
+    the CP1 v1 fallback in `casting_recurrence_signature()` treated ANY two
+    `casting_issues_detected` closes in the same turn as a recurrence
+    whenever neither carried a per-issue signature (both `casting_signature`
+    and `preflight_gate` were blank/identical -- `preflight_gate` is always
+    stamped with the literal string `"casting_issues_detected"`, so it never
+    actually discriminated). That meant two UNRELATED casting issues (e.g.
+    a bad `Gloss` access on one line and an unrelated bad `Definition`
+    access reached on a later attempt) collapsed into a single "recurrence".
+
+    This function is called at the ACTUAL preflight-reject call site
+    (`handlers/execution.py`) with the real `casting_issues` list detected
+    for that op, and its result is threaded into the JSONL
+    `casting_signature` field (see `op_telemetry._write_jsonl_line`). Once
+    populated, `casting_recurrence_signature()` above prefers this real
+    value over the coarse fallback, so recurrence is keyed on the actual
+    failing property + missing-interface combination: two closes only count
+    as a recurrence when they name the SAME property/interface pair, not
+    merely "some casting issue happened again this turn".
+
+    Deterministic and order-independent (sorted before hashing) so the same
+    underlying set of issues always yields the same signature regardless of
+    detection order within a single preflight pass.
+    """
+    if not issues:
+        return ""
+    parts = []
+    for issue in issues:
+        prop = (issue.get("property") or "").strip()
+        missing_on = issue.get("missing_on") or []
+        if isinstance(missing_on, (list, tuple, set)):
+            missing_key = ",".join(sorted(str(m) for m in missing_on))
+        else:
+            missing_key = str(missing_on)
+        cast_iface = (issue.get("cast_interface") or "").strip()
+        parts.append(f"{prop}|{missing_key}|{cast_iface}")
+    parts.sort()
+    joined = ";".join(parts)
+    return hashlib.sha256(joined.encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
 def casting_recurrence_signature(record: Dict[str, Any]) -> str:

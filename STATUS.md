@@ -6,37 +6,50 @@ Checkpoint plan: `specs/diagnostic-report/tasks.md`.
 
 ## Where we are
 
-**CP1 -- Foundation: COMPLETE and green (2026-07-13).**
+**CP1 -- Foundation: COMPLETE and green (2026-07-13).** All six checklist items
+landed; both cycle-2 P1s resolved (`save_store` fail-open fixed in cycle 3;
+casting-recurrence heuristic deferred into CP2 and now closed there). See
+`specs/diagnostic-report/tasks.md` CP1 checkpoint for detail.
 
-All six CP1 checklist items landed: `user_request` plumbing, trigger predicate,
-inferred-workaround signal, code-independent signature, `offered.json` store,
-and unit tests. Verification returned PASS (0 P0, 0 P1); QC scored 89/100 and
-surfaced two P1s. Both are now resolved:
+**CP2 -- Reconstruction + normalization: COMPLETE and green (2026-07-13, spurt 2,
+cycles 4-6).**
 
-1. **`save_store` fail-open P1 -- FIXED (cycle 3).** `save_store()`'s `path_fn()`
-   call was inside the `except OSError` block, so a `RuntimeError` from the
-   default `Path.home()` chain could escape and crash the op path, violating the
-   module's fail-open contract. The fix pulls `path_fn()` into its own
-   `try/except Exception: return` step, mirroring `load_store()`. Added a
-   regression test (`test_save_store_path_fn_runtime_error_fails_open`) injecting
-   a `RuntimeError`-raising `path_fn` and asserting both `save_store` and
-   `record_offer` return without raising. See
-   `specs/diagnostic-report/reviews/cycle3-lex-programmer.md`.
+All six CP2 line-items landed: slice reconstruction, rotation stitching,
+`MAX_REPORT_OPS` summarize-not-drop, path-scoped machine-hygiene normalization,
+report rendering, and casting-recurrence signature precision. Gate results:
 
-2. **Casting-recurrence heuristic P1 -- DEFERRED to CP2 as a line-item.** The v1
-   fallback in `triggers.py:62-77` collapses two unrelated same-turn casting
-   issues into one "recurrence." Safe-by-construction for CP1 (only widens the
-   offer surface). Now a tracked CP2 task: thread the real `casting_signature`
-   into the JSONL schema and key recurrence on it.
+- **Verification PASS.** Full suite **511 passed / 0 failed** (+1 from the 510
+  baseline, no regressions). All six spec section-12 Reconstruction clauses are
+  test-backed; zero forbidden imports.
+- **Domain E2 privacy gate PASS** -- home-dir / OS-username substitution is
+  anchored on path-shaped tokens only, never a document-wide username
+  find/replace.
+- **Cycle-2 casting-recurrence P1 CLOSED** -- real `casting_signature` threaded
+  into the JSONL schema; recurrence keys on it, not the bare code.
+- **Cycle-6 post-auto-fix stale-`issues` P1 FIXED + verified.** Cycle 5 found
+  that `handlers/execution.py` left `issues` bound to the pre-auto-fix casting
+  set after the Issue #46 auto-fix reran `detect_casting_needs`, so a partial
+  auto-fix reported the stale (resolved+residual) set instead of only the
+  residual issue. Fixed by re-deriving `issues` right after the post-fix
+  `casting_check` reassignment; regression test
+  `test_partial_auto_fix_reports_only_residual_casting_issue` confirmed failing
+  pre-fix and passing post-fix. See `reviews/cycle5-*` and `reviews/cycle6-*`.
 
-Test state: 37/37 foundation tests green; full suite 487 tests green.
+**CP2 carryover (P2, non-blocking):** two P2s deferred to harden during CP3 --
+`reconstruct.py` mismatched-`End` silent truncation, and `render.py`
+`_CODE_STOP_MARKERS` substring false-positive.
 
 ## Next pickup
 
-**CP2 -- Reconstruction + normalization.** First task: slice reconstruction --
-join `operations.jsonl` lines to session-log `=== Operation #N Start/End
-(op_id) ===` blocks by `op_id`/`seq` (spec sections 3, 5). CP2 also carries the
-deferred casting-recurrence signature-precision fix. See `tasks.md` CP2 section.
+**CP3 -- Surface + transport + guard.** Implement the `flextools_prepare_report`
+tool (spec section 10; explicit `op_id`/`op_ids`/`steps_back`, defaults to the
+whole turn) and the `diagnostic_report` advisory block on `RunModuleSuccess`
+(additive optional field, no contract bump per Q5). CP3 also lands the three
+transports (`gh` CLI / prefilled issue URL / `mailto:`), the
+`likely_contains_lexical_data` code-shape flag (Q4), and the two-layer
+no-transmission guard (static AST scan + dynamic monkeypatch of
+`subprocess`/`gh`/`smtplib`/`webbrowser`/`urllib`/`socket`). See `tasks.md` CP3
+section. Fold the two CP2-carryover P2s into the CP3 rotation/render work.
 
 ## Housekeeping note (not part of diagnostic-report)
 

@@ -1,8 +1,8 @@
 {
   "feature": "diagnostic-report",
   "status": "in_progress",
-  "last_cycle": 3,
-  "spurts_completed": 1,
+  "last_cycle": 6,
+  "spurts_completed": 2,
   "tasks_done": [
     "CP1: user_request plumbing",
     "CP1: trigger predicate (6.1)",
@@ -10,9 +10,19 @@
     "CP1: code-independent signature (6.3)",
     "CP1: offered.json store (6.4)",
     "CP1: unit tests (test_diagnostic_report_foundation.py)",
-    "CP1: cycle-3 save_store fail-open P1 fix + regression test"
+    "CP1: cycle-3 save_store fail-open P1 fix + regression test",
+    "CP2: slice reconstruction (operations.jsonl <-> session-log op blocks by op_id/seq)",
+    "CP2: rotation stitching (JSONL-driven scan across session_<id>.log[.1/.2/.3])",
+    "CP2: MAX_REPORT_OPS summarize-not-drop",
+    "CP2: path-scoped machine-hygiene normalization (E2 privacy gate PASS)",
+    "CP2: report rendering (header/request/interpretation/tried/error/resolution/JSONL appendix)",
+    "CP2: casting-recurrence signature precision (cycle-2 P1 CLOSED) + cycle-6 post-auto-fix stale-issues P1 fix + regression test"
   ],
-  "next_checkpoint": "CP2 -- Reconstruction + normalization",
-  "next_entry": "Start CP2 slice reconstruction: join operations.jsonl lines to session-log '=== Operation #N Start/End (op_id) ===' blocks by op_id/seq (spec sections 3, 5). CP2 also carries the deferred casting-recurrence signature-precision P1.",
+  "next_checkpoint": "CP3 -- Surface + transport + guard",
+  "next_entry": "Start CP3: implement flextools_prepare_report tool (spec section 10, explicit op_id/op_ids/steps_back, defaults to whole turn) and the diagnostic_report advisory block on RunModuleSuccess (additive optional field, no contract bump per Q5). CP3 also lands the three transports (gh CLI / prefilled issue URL / mailto), the likely_contains_lexical_data code-shape flag (Q4), and the two-layer no-transmission guard (static AST scan + dynamic monkeypatch of subprocess/gh/smtplib/webbrowser/urllib/socket).",
+  "carryover_p2": [
+    "reconstruct.py mismatched-End silent truncation (non-blocking; harden during CP3 rotation/render work)",
+    "render.py _CODE_STOP_MARKERS substring false-positive (non-blocking; tighten to boundary match during CP3)"
+  ],
   "updated": "2026-07-13"
 }

@@ -227,6 +227,15 @@ The offer is surfaced in the tool response as a `diagnostic_report` advisory
 block (an additive optional field on `RunModuleSuccess`; see §10 and contract
 review Q5), which Claude relays to the user. The MCP never sends anything itself.
 
+**v1 limitation (accepted, 2026-07-13):** because the advisory lives only on
+`RunModuleSuccess`, the auto-offer surfaces only at a same-turn `ok` close. A
+turn that fails reportably (§6.1) and is then abandoned with no same-turn `ok`
+close is never auto-offered — this is a documented v1 limitation (maintainer
+decision, option (c)), not a code defect. Recovery is the explicit
+`flextools_prepare_report` tool (§10) plus Claude proactively offering it when
+it sees an un-actioned reportable failure. Tracked for a future revisit in
+[issue #72](https://github.com/MattGyverLee/FlexToolsMCP/issues/72).
+
 ## 7. Bundle contents
 
 Anchored on the failing slice (sections 4-5):
@@ -369,6 +378,8 @@ send mail.
 - Optional explicit tool `flextools_prepare_report(op_id=..., op_ids=[...],
   steps_back=N)` so a user can ask "report the last error" even when the
   auto-offer was suppressed/deduped, and so Claude can size the slice (section 5).
+  This tool is also the v1 recovery path for abandoned-turn reportable failures
+  that the auto-offer cannot reach (see §6.5; tracked in issue #72).
 - Config knobs in `.env` / config: `report_offers_enabled` (default on),
   `report_repo` (default `MattGyverLee/FlexToolsMCP`), `report_email`
   (default maintainer). No anonymization knob — reports are always full-fidelity.

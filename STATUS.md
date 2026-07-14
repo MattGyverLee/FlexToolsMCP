@@ -39,8 +39,8 @@ report rendering, and casting-recurrence signature precision. Gate results:
 `reconstruct.py` mismatched-`End` silent truncation, and `render.py`
 `_CODE_STOP_MARKERS` substring false-positive.
 
-**CP3 -- Surface + transport + guard: CODE COMPLETE and green, but NOT called
-done -- blocked on one human decision (2026-07-13, spurt 3, cycles 7-8).**
+**CP3 -- Surface + transport + guard: COMPLETE and green (2026-07-13, spurt 3,
+cycles 7-9; commit e5ef733).**
 
 All five CP3 line-items landed and are green: `flextools_prepare_report` tool,
 the `diagnostic_report` advisory block on `RunModuleSuccess`, the three
@@ -55,34 +55,31 @@ no-transmission guard. Cycle-8 gates:
 - **QC 92/100 APPROVE, 0 P0 / 0 P1.** Fail-open contract on
   `build_advisory_for_success_close` verified total. Five P2s recorded as CP3
   carryover in `tasks.md`.
-- **Domain 4/5 PASS.** Items 1-4 pass (sensitivity-by-shape, path-scoped
-  normalization, structural never-auto-send, preview fidelity).
+- **Domain 4/5 code-pass.** Items 1-4 pass (sensitivity-by-shape, path-scoped
+  normalization, structural never-auto-send, preview fidelity). Item 5 was the
+  abandoned-turn auto-offer gap below; now accepted as scope (documented v1
+  limitation), which `tasks.md` renders as 5/5 accepted-scope.
 
-## Next pickup -- HUMAN DECISION REQUIRED before CP3 closes
+**CP3 BLOCKER RESOLVED -- maintainer decision: option (c) (2026-07-13, cycle-9
+doc pass).** Domain item 5 (the `diagnostic_report` auto-offer attaches only at a
+same-turn `ok` close, so a reportably-failed-then-**abandoned** turn never
+auto-offers -- the canonical unreported-inconsistency case from §1) is **not a
+code defect**; it is the trigger-timing consequence of maintainer-resolved Q5
+(advisory on `RunModuleSuccess` only). The maintainer chose **option (c): accept
+it as a documented v1 limitation**, with recovery via the explicit
+`flextools_prepare_report` tool (plus Claude proactively offering it on an
+un-actioned reportable failure). Documented in **SPEC.md §6.5/§10** and
+`tasks.md` CP3; a future revisit is tracked in
+[issue #72](https://github.com/MattGyverLee/FlexToolsMCP/issues/72). Q5 itself is
+unchanged -- option (c) accepts the consequence rather than reopening the
+mechanism.
 
-**Domain item 5 FAIL (not a code defect -- a scope decision inside Q5).** The
-`diagnostic_report` auto-offer attaches only at a same-turn `ok` (success)
-close, never at the failing/reject close. So a turn that fails reportably (§6.1)
-then is **abandoned** (no same-turn `ok` close) never surfaces an automatic
-offer -- the canonical unreported-inconsistency case from §1. The bundle content
-already handles abandonment; only the surface can't reach it automatically.
-This is an implicit consequence of maintainer-resolved Q5 (advisory on
-`RunModuleSuccess` only), so the fix reopens/extends a maintainer-resolved spec
-question on the feature's central motivation -- a product call, not a lead call.
+## Next pickup -- CP4 (docs + demo)
 
-Pick one (full detail + file refs in `tasks.md` CP3 BLOCKER):
-  - (a) also attach a best-effort/fail-open/non-contract advisory on the failing
-    response (shifts trigger timing vs §6.2/§6.3; adds an off-contract surface);
-  - (b) add a `flextools_start` preceding-turn lookback (new mechanism, needs
-    spec + design);
-  - (c) accept as a documented v1 limitation and rely on the explicit
-    `flextools_prepare_report` tool as the recovery path (update SPEC.md
-    §6.5/§10 + `tasks.md`).
-
-Once decided: if (a)/(b), run a cycle-9 fix + re-verify, then close CP3 and move
-to CP4 (docs + demo). If (c), document and close CP3, move to CP4. The five QC
-P2s + one domain P2 (`_short_body_text` un-normalized `report_path`) are
-non-blocking carryover for CP4 or a follow-up -- see `tasks.md`.
+CP3 is closed; the feature is **not** complete. Next spurt starts **CP4 -- docs +
+demo** (see `tasks.md` CP4 line-items, currently "not started"). Fold the CP2+CP3
+P2 carryover (eight items, listed in `.crew-handoff.json` `carryover_p2` and in
+`tasks.md`) into CP4 or a follow-up as appropriate -- all non-blocking.
 
 ## Housekeeping note (not part of diagnostic-report)
 

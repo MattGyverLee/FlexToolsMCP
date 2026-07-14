@@ -90,9 +90,10 @@ confirmed failing pre-fix / passing post-fix). See
       `op_id`/`op_ids`/`steps_back`, defaults to the whole turn.
 - [x] `diagnostic_report` advisory block on `RunModuleSuccess` (spec
       section 10; additive optional field, no contract version bump per
-      resolved Q5). **See CP3 blocker below: the attach point is
-      success-close-only, so a reportably-failed-then-abandoned turn never
-      auto-offers.**
+      resolved Q5). **The attach point is success-close-only, so a
+      reportably-failed-then-abandoned turn never auto-offers; this is now
+      an ACCEPTED v1 limitation (maintainer decision, option (c), see CP3
+      resolution below), tracked in issue #72 -- not an open blocker.**
 - [x] Three transports -- `gh` CLI, prefilled GitHub issue URL, `mailto:`
       (spec section 9); "gh available" check is injectable for CI.
 - [x] `likely_contains_lexical_data` code-shape sensitivity flag (spec
@@ -107,21 +108,28 @@ confirmed failing pre-fix / passing post-fix). See
       monkeypatches those to raise and drives all three transport branches,
       asserting zero such invocations and exactly one local file write.
 
-**Checkpoint:** CP3 code landed 2026-07-13 (spurt 3, cycles 7-8). All five
-line-items implemented and green. Cycle-8 gates: Verification PASS (full suite
-577 passed / 0 failed, matches 511+66); QC 92/100 APPROVE (0 P0 / 0 P1, 5 P2);
-Domain 4/5 PASS. **CP3 is NOT yet called done -- blocked on one human decision
-(below).**
+**Checkpoint:** CP3 CLOSED 2026-07-13 (spurt 3, cycles 7-9; commit e5ef733).
+All five line-items implemented and green. Cycle-8 gates: Verification PASS
+(full suite 577 passed / 0 failed, matches 511+66); QC 92/100 APPROVE (0 P0 /
+0 P1, 5 P2); Domain now 5/5 PASS (item 5 downgraded from FAIL to
+accepted-scope by the human decision below). The last open item was closed by
+maintainer decision; no further gate re-run required.
 
-**CP3 BLOCKER (needs human decision -- domain item 5 FAIL):** the
-`diagnostic_report` auto-offer attaches only at a same-turn `ok` (success)
-close (`build_advisory_for_success_close`, wired at `execution.py:3300/3356`),
+**CP3 BLOCKER RESOLVED (2026-07-13, maintainer decision: option (c)):** accept
+the abandoned-turn auto-offer gap as a documented v1 limitation; recovery via
+`flextools_prepare_report`; tracked in
+[issue #72](https://github.com/MattGyverLee/FlexToolsMCP/issues/72). Domain
+item 5 downgraded from FAIL to accepted-scope. See SPEC.md §6.5/§10.
+
+Original blocker (for the record): the `diagnostic_report` auto-offer attaches
+only at a same-turn `ok` (success) close
+(`build_advisory_for_success_close`, wired at `execution.py:3300/3356`),
 never at the failing/reject close. So a turn that fails reportably (§6.1) and
 is then **abandoned** with no same-turn `ok` close never surfaces an automatic
 offer -- the canonical "real inconsistency that goes unreported" case from §1.
 This is an implicit consequence of maintainer-resolved Q5 (advisory lives on
 `RunModuleSuccess` only). Not a code defect (all implemented paths correct);
-it is a scope decision. Choose one:
+it was a scope decision. Options considered:
   - (a) also attach a best-effort, fail-open, non-contract `diagnostic_report`
     key on the `runtime_fail`/reject response at the failing close -- NOTE this
     shifts trigger timing (fires before the §6.2 workaround/resolution signal
@@ -130,9 +138,9 @@ it is a scope decision. Choose one:
   - (b) add a `flextools_start` preceding-turn lookback that offers on an
     un-actioned reportable failure from the just-ended turn -- a new mechanism,
     needs spec + design;
-  - (c) accept as a documented v1 limitation (defer abandoned-turn auto-offer;
-    update SPEC.md §6.5/§10 + this file), relying on the explicit
-    `flextools_prepare_report` tool as the recovery path.
+  - **(c) CHOSEN** -- accept as a documented v1 limitation (defer
+    abandoned-turn auto-offer; update SPEC.md §6.5/§10 + this file), relying on
+    the explicit `flextools_prepare_report` tool as the recovery path.
 
 **CP3 carryover (P2, non-blocking -- fold into CP4 or a follow-up):**
 - QC P2s: `transports.py` dead `_cap_bytes` + DRY inline truncation

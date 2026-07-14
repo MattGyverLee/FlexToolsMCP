@@ -147,6 +147,71 @@ aliases matching the key strings above. The `_inline_discovery` alias uses the
 
 ---
 
+## `diagnostic_report` advisory block (run_module tool)
+
+Successful `run_module` responses may additionally carry a `diagnostic_report`
+advisory block. It is an **additive optional field** on `RunModuleSuccess`
+(diagnostic-report feature, CP3; spec `specs/diagnostic-report/SPEC.md` §6.5,
+§10). Adding it did **not** bump the contract version — it follows the same
+additive-optional pattern as the `auto_discovered` / `_inline_discovery` /
+`discovery_note` fields above (resolved question Q5).
+
+| Key | Type | Description |
+|---|---|---|
+| `diagnostic_report` | object or null | Present only when this success close *resolves* an earlier same-turn reportable failure and the underlying failure signature has not been dedupe-suppressed. `null` / absent otherwise. |
+
+**When it fires.** The block is attached at the run_module **success close**
+(`outcome == "ok"`) when the *same turn* earlier contained a reportable failure
+(spec §6.1 — a `runtime_fail`, an `invalid_api_chain`, or a recurring
+`casting_issues_detected`) that this success appears to have worked around
+(spec §6.2). It fires at most **once per distinct failure signature** (spec
+§6.3–6.4); a signature the user marked "don't ask again" is suppressed across
+restarts.
+
+> **v1 limitation (accepted).** Because the advisory lives only on
+> `RunModuleSuccess`, a turn that fails reportably and is then *abandoned*
+> (no same-turn `ok` close) is never auto-offered. Recovery is the explicit
+> `flextools_prepare_report` tool. Tracked in
+> [issue #72](https://github.com/MattGyverLee/FlexToolsMCP/issues/72); see
+> SPEC.md §6.5/§10.
+
+**Shape.** When present, the object carries these keys (this is an advisory
+surface, not an `extra="forbid"` detail model — treat the list as descriptive,
+not exhaustive, and forward-compatible):
+
+| Key | Type | Description |
+|---|---|---|
+| `signature` | string | Stable, code-independent hash of the underlying inconsistency (spec §6.3). Keyed on `(exception-class, normalized failing symbol)` / offending chain / casting signature — **never** on `code_sha256`. The dedupe/"don't ask again" identity. |
+| `title` | string | Suggested issue/email title, e.g. `"[auto-report] PolymorphicAttributeError: <intent>"`. |
+| `summary` | string | Short human-readable outcome/error/intent summary. |
+| `report_path` | string | Absolute path to the local report file the MCP wrote (`~/.flextoolsmcp/reports/report_<ts>.md`). Writing it transmits nothing. |
+| `transports` | object | Prepared transport **strings only** (see below). |
+| `likely_contains_lexical_data` | boolean | Code-**shape** sensitivity flag (spec §9, Q4): true when the slice's code shape suggests lexical data (glosses/definitions/headwords) reaches `report.Info`. Drives only the email-vs-GitHub *framing* Claude presents — never the local file's fidelity and never the send decision. Detected from code shape, never from content. |
+| `error_code` | string | The anchor failure's `error_code` (may be empty). |
+
+The `transports` object carries three prepared artifacts plus an availability
+flag:
+
+| Key | Type | Description |
+|---|---|---|
+| `gh_available` | boolean | Whether a `gh` executable is on PATH (informs whether Claude should *prefer* the `gh` option). |
+| `gh` | object | `{"argv": [...], "display": "<shell string>"}` — the exact `gh issue create ... --body-file <report> --label auto-report` argv. |
+| `github_url` | object | `{"url", "body_text", "body_bytes", "url_bytes"}` — prefilled "new issue" URL; body is a short summary capped at ~8 KB. |
+| `mailto` | object | `{"uri", "body_text", "body_bytes"}` — `mailto:` URI with a short body; the full-fidelity payload is the local report file the user attaches. |
+
+**Hard guarantee — the MCP never transmits.** Every string in `transports` is
+*built, never invoked*. No `run_module` / diagnostic-report code path spawns
+`gh`, opens a browser, sends mail, or opens a socket — this is enforced
+structurally by a static AST scan and a dynamic monkeypatch test (spec §8.1/§12;
+`tests/test_diagnostic_no_transmission.py`). A human must take any send action.
+
+The field is defined in `RunModuleSuccess` (`response_models.py`) with alias
+`KEY_DIAGNOSTIC_REPORT = "diagnostic_report"` (`response_keys.py`). The block is
+built by `build_advisory_for_success_close()` in
+`handlers/diagnostic_report.py`.
+
+---
+
 ## Source of truth
 
 The models that enforce this contract are in:

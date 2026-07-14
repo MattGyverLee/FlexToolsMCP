@@ -156,10 +156,47 @@ it was a scope decision. Options considered:
 
 ## CP4 -- Docs + demo
 
-- [ ] `docs/TOOL-CONTRACT.md` patch documenting the `diagnostic_report`
-      advisory block on `RunModuleSuccess`.
-- [ ] Downstream demo: end-to-end walk-through (trigger -> offer -> prepare
-      -> preview -> gh/email/decline) against a real or fixture session
-      log.
+- [x] `docs/TOOL-CONTRACT.md` patch documenting the `diagnostic_report`
+      advisory block on `RunModuleSuccess`: new section covering when it
+      fires, its full shape (`signature`/`title`/`summary`/`report_path`/
+      `transports`/`likely_contains_lexical_data`/`error_code`), the
+      `transports` sub-shape, the additive-optional / no-version-bump note
+      (Q5), the v1 abandoned-turn limitation (issue #72), and the structural
+      no-transmission guarantee.
+- [x] Downstream demo: end-to-end walk-through against a FIXTURE session log,
+      delivered as BOTH a narrative doc
+      ([`docs/DIAGNOSTIC-REPORT-DEMO.md`](../../docs/DIAGNOSTIC-REPORT-DEMO.md))
+      and a CI-verified executable companion
+      (`tests/test_diagnostic_report_demo.py`, one test per stage, same
+      headings so the narrative cannot drift): trigger -> workaround signal
+      -> auto-offer -> prepare -> preview (E4 both artifacts) ->
+      gh/URL/email/decline -> dedupe. Drives the real pipeline (no diagnostic
+      mocks; only log-dir/session-log/reports-dir location shims).
 
-**Checkpoint:** not started.
+**CP3 carryover folded into CP4 (P2):**
+- [x] Domain P2 (privacy): `transports.py` `_short_body_text()` now runs the
+      assembled short body through `normalize.normalize_report_text()`, so the
+      embedded `report_path` no longer leaks the user's OS home path/username
+      into the GitHub-URL / mailto bodies -- the one transport string that had
+      skipped normalization. Regression tests added
+      (`TestTransportBodyPathNormalization`).
+- [x] QC P2: dead `_cap_bytes` removed; the two byte-for-byte-identical
+      URL/mailto truncation loops consolidated into one shared
+      `_shrink_body_to_fit()` helper (DRY).
+- [x] QC P2: `_extract_failing_symbol` non-`str` defensiveness gap closed
+      (skips non-str log lines, tolerates missing/None `log_lines`) + direct
+      unit tests added (`TestExtractFailingSymbol`).
+- [x] QC P2: `_quote_argv` Windows-shell quoting caveat documented (the
+      `argv` list is authoritative; `display` is a POSIX-shell approximation).
+- [x] QC P2: title-length assumption in the URL/mailto truncation loop
+      documented as a structural invariant (title bounded to 200 chars by
+      `_build_title`; label + base fixed) in `_shrink_body_to_fit`.
+- [n/a] CP2 carryover (`reconstruct.py` mismatched-`End`, `render.py`
+      `_CODE_STOP_MARKERS`): both were already fixed in CP2 (see
+      `reconstruct.py` `parse_log_text` `end_mismatches` handling and
+      `render.py` `_is_code_stop_marker` boundary match) -- verified, nothing
+      to do.
+
+**Checkpoint:** CP4 landed 2026-07-14. Full suite 597 passed / 0 failed
+(577 baseline + 20 new: 11 demo-walkthrough + 6 `_extract_failing_symbol` +
+3 transport-body path-normalization), no regressions. Feature complete.

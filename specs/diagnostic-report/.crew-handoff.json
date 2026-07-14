@@ -1,8 +1,8 @@
 {
   "feature": "diagnostic-report",
-  "status": "in_progress",
+  "status": "feature_complete",
   "last_cycle": 9,
-  "spurts_completed": 3,
+  "spurts_completed": 4,
   "tasks_done": [
     "CP1: user_request plumbing",
     "CP1: trigger predicate (6.1)",
@@ -22,7 +22,10 @@
     "CP3: three transports (gh CLI / prefilled issue URL / mailto)",
     "CP3: likely_contains_lexical_data code-shape flag (Q4)",
     "CP3: two-layer no-transmission guard (static AST scan + dynamic monkeypatch)",
-    "CP3: BLOCKER RESOLVED (domain item 5) -- maintainer chose option (c): abandoned-turn auto-offer gap accepted as documented v1 limitation; recovery via flextools_prepare_report; tracked in issue #72; doc-only close in SPEC.md 6.5/10 + tasks.md (cycle-9 lex-doc)"
+    "CP3: BLOCKER RESOLVED (domain item 5) -- maintainer chose option (c): abandoned-turn auto-offer gap accepted as documented v1 limitation; recovery via flextools_prepare_report; tracked in issue #72; doc-only close in SPEC.md 6.5/10 + tasks.md (cycle-9 lex-doc)",
+    "CP4: TOOL-CONTRACT.md diagnostic_report advisory-block section (shape, when-it-fires, transports sub-shape, additive/no-version-bump Q5, v1 limitation, no-transmission guarantee)",
+    "CP4: downstream demo -- docs/DIAGNOSTIC-REPORT-DEMO.md narrative + tests/test_diagnostic_report_demo.py (11 CI-verified stages, real pipeline, fixture session log)",
+    "CP4 carryover fold-in (P2): transports.py privacy fix (normalize report_path in URL/mailto short bodies) + regression tests; dead _cap_bytes removed + DRY _shrink_body_to_fit; _extract_failing_symbol non-str defensiveness + direct unit tests; _quote_argv Windows caveat + title-length invariant documented; CP2 carryover verified already-fixed"
   ],
   "cp3_gates": {
     "verification": "PASS -- full suite 577 passed / 0 failed (511 + 66 new, matches exactly)",
@@ -45,7 +48,13 @@
     "CP2 carryover: reconstruct.py mismatched-End silent truncation",
     "CP2 carryover: render.py _CODE_STOP_MARKERS substring false-positive (tighten to boundary match)"
   ],
-  "next_checkpoint": "CP4 -- docs + demo",
-  "next_entry": "Start CP4 (docs + demo). Read tasks.md CP4 line-items. Fold the CP2+CP3 P2 carryover (listed in carryover_p2) into CP4 or a follow-up as appropriate. Feature is NOT complete until CP4 lands green.",
-  "updated": "2026-07-13"
+  "next_checkpoint": "none -- feature complete",
+  "next_entry": "All four checkpoints (CP1-CP4) landed green. Full suite 597 passed / 0 failed. CP2+CP3 P2 carryover folded into CP4 (privacy normalize, dead-code/DRY, defensiveness+tests, doc caveats); CP2 carryover verified already-fixed. Remaining open item is the accepted v1 abandoned-turn limitation, tracked in issue #72 (not a blocker).",
+  "cp4_close": {
+    "checkpoint": "CP4 -- docs + demo",
+    "suite": "597 passed / 0 failed (577 baseline + 20 new)",
+    "docs": ["docs/TOOL-CONTRACT.md", "docs/DIAGNOSTIC-REPORT-DEMO.md"],
+    "tests": ["tests/test_diagnostic_report_demo.py"]
+  },
+  "updated": "2026-07-14"
 }

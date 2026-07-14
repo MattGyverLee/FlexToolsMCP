@@ -149,6 +149,44 @@ class TestMailto:
         assert result["body_bytes"] <= transports.MAX_MAILTO_TOTAL_BYTES
 
 
+class TestTransportBodyPathNormalization:
+    """CP3 carryover P2 (domain gate): the report_path embedded in the
+    URL/mailto short bodies must be run through path-scoped normalization,
+    so the user's OS home path / username never leaks into a transport
+    string. `_short_body_text` normalizes the whole assembled body; only the
+    path token is affected (path-scoped, not a document-wide replace)."""
+
+    def _fake_home(self, monkeypatch):
+        # Deterministic, cross-platform home/username for the assertion.
+        monkeypatch.setattr(transports.normalize, "get_home_path", lambda: "/home/bob")
+        monkeypatch.setattr(transports.normalize, "get_username", lambda: "bob")
+
+    def test_github_url_body_normalizes_home_path(self, monkeypatch):
+        self._fake_home(monkeypatch)
+        result = transports.build_github_issue_url(
+            "t", "summary", "/home/bob/.flextoolsmcp/reports/report_1.md",
+        )
+        assert "/home/bob" not in result["body_text"]
+        assert "~/.flextoolsmcp/reports/report_1.md" in result["body_text"]
+
+    def test_mailto_body_normalizes_home_path(self, monkeypatch):
+        self._fake_home(monkeypatch)
+        result = transports.build_mailto(
+            "t", "summary", "/home/bob/.flextoolsmcp/reports/report_1.md",
+        )
+        assert "/home/bob" not in result["body_text"]
+        assert "~/.flextoolsmcp/reports/report_1.md" in result["body_text"]
+
+    def test_normalization_leaves_summary_prose_untouched(self, monkeypatch):
+        """Path-scoped only: a summary that merely CONTAINS the username as a
+        substring (not a path token) is never rewritten."""
+        self._fake_home(monkeypatch)
+        result = transports.build_mailto(
+            "t", "bobcat headword gloss", "/home/bob/.flextoolsmcp/reports/report_1.md",
+        )
+        assert "bobcat headword gloss" in result["body_text"]
+
+
 class TestBuildTransportsPreviewFidelity:
     def test_all_three_present_simultaneously(self):
         """Preview fidelity (E4): all three transport strings are available
@@ -291,6 +329,38 @@ def _make_turn(tmp_path, *, code_fail="bad = sense.Owner.HeadWord",
 # ---------------------------------------------------------------------------
 # 3. prepare_report_bundle: signature/title/summary, offer_gate dedupe.
 # ---------------------------------------------------------------------------
+
+class TestExtractFailingSymbol:
+    """CP3 carryover P2: direct unit coverage for `_extract_failing_symbol`
+    (previously only exercised indirectly). Must be defensive: None op,
+    missing/None log_lines, and non-str lines all yield "" without raising."""
+
+    class _Op:
+        def __init__(self, log_lines):
+            self.log_lines = log_lines
+
+    def test_extracts_attribute_error_symbol(self):
+        op = self._Op(["  report.Error: 'ICmObject' object has no attribute 'HeadWord'"])
+        assert diagnostic_report._extract_failing_symbol(op) == "HeadWord"
+
+    def test_returns_empty_when_no_attribute_error(self):
+        op = self._Op(["everything is fine here"])
+        assert diagnostic_report._extract_failing_symbol(op) == ""
+
+    def test_none_op_returns_empty(self):
+        assert diagnostic_report._extract_failing_symbol(None) == ""
+
+    def test_missing_log_lines_returns_empty(self):
+        assert diagnostic_report._extract_failing_symbol(self._Op(None)) == ""
+
+    def test_non_str_lines_are_skipped_not_raised(self):
+        op = self._Op([None, 42, {"nope": 1}, "has no attribute 'Gloss'"])
+        assert diagnostic_report._extract_failing_symbol(op) == "Gloss"
+
+    def test_all_non_str_lines_returns_empty(self):
+        op = self._Op([None, 123, object()])
+        assert diagnostic_report._extract_failing_symbol(op) == ""
+
 
 class TestPrepareReportBundle:
     def test_anchors_on_the_reportable_failure_not_the_ok_close(self, tmp_path):

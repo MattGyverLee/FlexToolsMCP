@@ -90,9 +90,19 @@ _ATTR_ERROR_RE = re.compile(r"has no attribute ['\"]([A-Za-z_][A-Za-z0-9_]*)['\"
 
 
 def _extract_failing_symbol(anchor_op: Optional[Any]) -> str:
+    """Best-effort "failing symbol" pull from the anchor op's raw log lines.
+
+    Defensive by contract (CP3 carryover P2): `anchor_op` may be None (no op
+    matched the anchor record), `log_lines` may be missing/None, and an
+    individual line may not be a `str` (a malformed/hand-authored log record
+    could carry a non-string). Any of those must yield `""`, never raise --
+    this feeds signature computation on the fail-open success-close path.
+    """
     if anchor_op is None:
         return ""
-    for line in getattr(anchor_op, "log_lines", []) or []:
+    for line in getattr(anchor_op, "log_lines", None) or []:
+        if not isinstance(line, str):
+            continue
         m = _ATTR_ERROR_RE.search(line)
         if m:
             return m.group(1)

@@ -32,6 +32,18 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import quote
 
+# Path-scoped machine-hygiene normalization (spec section 8.3 / E2). Pure
+# string transforms, no I/O -- importing it keeps this module inside the
+# no-transmission guard. Used to strip the OS username / home path out of the
+# report_path embedded in the URL/mailto short bodies (CP3 carryover P2,
+# domain gate): these were the one transport string not run through
+# normalize_report_text(), so the user's local path (with their OS username)
+# leaked into the prefilled GitHub-URL and mailto: bodies.
+try:
+    from . import normalize
+except ImportError:  # pragma: no cover - script/relative-import fallback
+    from server.diagnostic import normalize
+
 DEFAULT_REPO = "MattGyverLee/FlexToolsMCP"
 DEFAULT_EMAIL = "matthew_lee@sil.org"
 DEFAULT_LABEL = "auto-report"
@@ -59,10 +71,22 @@ def default_gh_available() -> bool:
     return shutil.which("gh") is not None
 
 
+TRUNC_SUFFIX = "\n... [truncated]"
+
+
 def _quote_argv(arg: str) -> str:
-    """Shell-display quoting for the human-readable `display` string only.
-    The `argv` list itself is the authoritative, unquoted argument vector --
-    this is cosmetic, for showing the user the equivalent command line."""
+    """POSIX-shell display quoting for the human-readable `display` string
+    ONLY. The `argv` list is the authoritative, unquoted argument vector --
+    this string is cosmetic, for showing the user the equivalent command line.
+
+    Caveat (CP3 carryover P2): this uses POSIX double-quote escaping. On a
+    Windows `cmd.exe` prompt the escaping rules differ (`^` metacharacters,
+    no `\\"` escape inside double quotes), so the `display` string is a
+    readable approximation, not a guaranteed copy-paste-safe Windows command
+    line. Anyone actually executing the report transport should use the
+    `argv` list (passed to the process without a shell), never re-parse
+    `display`. `display` exists only to show the user roughly what would run.
+    """
     if arg == "":
         return '""'
     if any(c in arg for c in (" ", "\t", '"', "'")):
@@ -97,30 +121,68 @@ def build_gh_command(
     return {"argv": argv, "display": display}
 
 
-def _cap_bytes(text: str, max_bytes: int, *, suffix: str = "\n... [truncated]") -> str:
-    """Truncate `text` (on a UTF-8 byte budget) so it fits within
-    `max_bytes`, appending `suffix` when truncation occurred."""
-    raw = text.encode("utf-8", errors="replace")
-    if len(raw) <= max_bytes:
-        return text
-    budget = max(0, max_bytes - len(suffix.encode("utf-8", errors="replace")))
-    # Decode defensively in case the byte cut lands mid-codepoint.
-    truncated = raw[:budget].decode("utf-8", errors="ignore")
-    return truncated + suffix
-
-
 def _short_body_text(summary: str, report_path: "Path | str") -> str:
     """Shared short-body text for the URL and mailto transports (spec
     section 9): a short human summary plus an explicit instruction to
     attach/paste the full local report file, since the URL/mailto body is
     NOT the full-fidelity payload (only `gh --body-file` carries the whole
-    file)."""
-    return (
+    file).
+
+    The assembled body is run through `normalize.normalize_report_text()`
+    (spec section 8.3 / E2) before it is returned. This matters for the
+    embedded `report_path`: it is an absolute local path under the user's
+    home dir (e.g. `C:\\Users\\<name>\\.flextoolsmcp\\reports\\report_*.md`),
+    which would otherwise carry the user's OS username into the GitHub-URL /
+    mailto short body -- the one transport string that used to skip
+    normalization (CP3 carryover P2, domain gate). Normalization is
+    path-scoped (home dir -> `~`, username segment -> `<user>`), so the
+    human summary text is untouched.
+    """
+    body = (
         f"{summary}\n\n"
         f"Full details (full fidelity) are in the local report file:\n"
         f"{report_path}\n\n"
         f"Please attach or paste that file's contents into this report."
     )
+    return normalize.normalize_report_text(body)
+
+
+def _shrink_body_to_fit(
+    build_fn: Callable[[str], str],
+    body_text: str,
+    max_total_bytes: int,
+) -> "tuple[str, str]":
+    """Shrink `body_text` (in the PRE-encoding domain) in ~20% byte-budget
+    steps until `build_fn(body_text)` fits within `max_total_bytes` after
+    percent-encoding, then return `(built_string, final_body_text)`.
+
+    Shared by the GitHub-URL and mailto transports (CP3 carryover P2, DRY:
+    the two builders previously carried byte-for-byte identical shrink
+    loops). Percent-encoding only ever expands text, so cutting the
+    pre-encoded body reliably shrinks the encoded result.
+
+    Structural size invariant (CP3 carryover P2): the loop only ever shrinks
+    the BODY, never the title/labels/fixed prefix baked into `build_fn`. That
+    is sound because those are bounded upstream well under `max_total_bytes`
+    -- the title is capped at 200 chars by `_build_title()`, the label is a
+    short constant, and the base URL/mailto prefix is fixed -- so an
+    empty-body build always fits. The `if cut_to <= 0: break` guard is the
+    belt-and-suspenders backstop against a pathologically tiny
+    `max_total_bytes`: it guarantees termination rather than a valid result
+    in that (non-production) case.
+    """
+    built = build_fn(body_text)
+    while len(built.encode("utf-8", errors="replace")) > max_total_bytes and body_text:
+        # Cut the raw (pre-encoding) text -- percent-encoding only expands,
+        # so shrinking pre-encoding text reliably shrinks the encoded output.
+        cut_to = max(0, int(len(body_text) * 0.8))
+        if cut_to >= len(body_text):
+            cut_to = len(body_text) - 1
+        body_text = body_text[:cut_to] + TRUNC_SUFFIX
+        built = build_fn(body_text)
+        if cut_to <= 0:
+            break
+    return built, body_text
 
 
 def build_github_issue_url(
@@ -152,18 +214,7 @@ def build_github_issue_url(
         )
         return f"{base}?{params}"
 
-    url = _build(body_text)
-    # Shrink the body text (in byte-sized steps) until the whole URL fits.
-    while len(url.encode("utf-8", errors="replace")) > max_total_bytes and body_text:
-        # Cut the raw (pre-encoding) text -- percent-encoding only expands,
-        # so shrinking pre-encoding text reliably shrinks the encoded URL.
-        cut_to = max(0, int(len(body_text) * 0.8))
-        if cut_to >= len(body_text):
-            cut_to = len(body_text) - 1
-        body_text = body_text[:cut_to] + "\n... [truncated]"
-        url = _build(body_text)
-        if cut_to <= 0:
-            break
+    url, body_text = _shrink_body_to_fit(_build, body_text, max_total_bytes)
 
     return {
         "url": url,
@@ -192,15 +243,7 @@ def build_mailto(
             f"&body={quote(body, safe='')}"
         )
 
-    uri = _build(body_text)
-    while len(uri.encode("utf-8", errors="replace")) > max_total_bytes and body_text:
-        cut_to = max(0, int(len(body_text) * 0.8))
-        if cut_to >= len(body_text):
-            cut_to = len(body_text) - 1
-        body_text = body_text[:cut_to] + "\n... [truncated]"
-        uri = _build(body_text)
-        if cut_to <= 0:
-            break
+    uri, body_text = _shrink_body_to_fit(_build, body_text, max_total_bytes)
 
     return {
         "uri": uri,

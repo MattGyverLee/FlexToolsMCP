@@ -8,7 +8,7 @@ They replace raw JSON Schema dicts and provide automatic validation, type coerci
 and IDE autocomplete support.
 """
 
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, Any, List
 from pydantic import BaseModel, Field, field_validator
 from .constants import API_MODES, API_MODES_DEFAULT, normalize_api_mode
 
@@ -454,4 +454,42 @@ class RunModuleInput(BaseModel):
                     "config key 'auto_fix_enabled' (default: True for read-only runs). "
                     "Overrides the config when explicitly set. Write runs ALWAYS skip "
                     "auto-fix regardless of this flag."
+    )
+
+
+# ============================================================
+# Diagnostic-report tools (CP3)
+# ============================================================
+
+class PrepareReportInput(BaseModel):
+    """Explicitly prepare a diagnostic report bundle (spec sections 5, 10).
+
+    Lets a user/Claude ask "report the last error" even when the auto-offer
+    was suppressed/deduped, and lets Claude size the slice with steps_back /
+    include_from_op_id / op_ids instead of accepting the default whole-turn
+    boundary. This tool NEVER sends anything -- it writes ONE local report
+    file under ~/.flextoolsmcp/reports/ and returns prepared transport
+    strings (gh argv, GitHub issue URL, mailto: URI) for a human to act on.
+    """
+    op_id: Optional[str] = Field(
+        default=None,
+        description="Anchor op_id for the default whole-turn slice (spec section 5). "
+                    "Defaults to the most recent operation in operations.jsonl when omitted."
+    )
+    op_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Explicit list of op_ids to include verbatim, bypassing turn-boundary "
+                    "logic entirely. Takes precedence over op_id/steps_back/include_from_op_id."
+    )
+    steps_back: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Include this many ops before the anchor (op_id), through turn end. "
+                    "Use when the root cause was set up earlier in the turn than the "
+                    "immediately-failing op."
+    )
+    include_from_op_id: Optional[str] = Field(
+        default=None,
+        description="Include from this op_id (inclusive) through turn end. Alternative to "
+                    "steps_back when you know the exact starting op_id."
     )

@@ -86,26 +86,65 @@ confirmed failing pre-fix / passing post-fix). See
 
 ## CP3 -- Surface + transport + guard
 
-- [ ] `flextools_prepare_report` tool (spec section 10): accepts explicit
+- [x] `flextools_prepare_report` tool (spec section 10): accepts explicit
       `op_id`/`op_ids`/`steps_back`, defaults to the whole turn.
-- [ ] `diagnostic_report` advisory block on `RunModuleSuccess` (spec
+- [x] `diagnostic_report` advisory block on `RunModuleSuccess` (spec
       section 10; additive optional field, no contract version bump per
-      resolved Q5).
-- [ ] Three transports -- `gh` CLI, prefilled GitHub issue URL, `mailto:`
+      resolved Q5). **See CP3 blocker below: the attach point is
+      success-close-only, so a reportably-failed-then-abandoned turn never
+      auto-offers.**
+- [x] Three transports -- `gh` CLI, prefilled GitHub issue URL, `mailto:`
       (spec section 9); "gh available" check is injectable for CI.
-- [ ] `likely_contains_lexical_data` code-shape sensitivity flag (spec
+- [x] `likely_contains_lexical_data` code-shape sensitivity flag (spec
       section 9, resolved Q4): detected from code SHAPE (lexical-accessor
       calls feeding `report.Info`), never from content; drives only the
       email-vs-GitHub framing, never the local file's fidelity or the
       final send decision.
-- [ ] Two-layer no-transmission guard (spec section 8.1/12): static AST
+- [x] Two-layer no-transmission guard (spec section 8.1/12): static AST
       scan of the `diagnostic/` module tree fails the build on any
       `subprocess`/`gh`/`git issue create`, `smtplib`, `webbrowser.open`,
       `urllib`/`requests`/`http.client`, or raw `socket` call; dynamic test
       monkeypatches those to raise and drives all three transport branches,
       asserting zero such invocations and exactly one local file write.
 
-**Checkpoint:** not started.
+**Checkpoint:** CP3 code landed 2026-07-13 (spurt 3, cycles 7-8). All five
+line-items implemented and green. Cycle-8 gates: Verification PASS (full suite
+577 passed / 0 failed, matches 511+66); QC 92/100 APPROVE (0 P0 / 0 P1, 5 P2);
+Domain 4/5 PASS. **CP3 is NOT yet called done -- blocked on one human decision
+(below).**
+
+**CP3 BLOCKER (needs human decision -- domain item 5 FAIL):** the
+`diagnostic_report` auto-offer attaches only at a same-turn `ok` (success)
+close (`build_advisory_for_success_close`, wired at `execution.py:3300/3356`),
+never at the failing/reject close. So a turn that fails reportably (§6.1) and
+is then **abandoned** with no same-turn `ok` close never surfaces an automatic
+offer -- the canonical "real inconsistency that goes unreported" case from §1.
+This is an implicit consequence of maintainer-resolved Q5 (advisory lives on
+`RunModuleSuccess` only). Not a code defect (all implemented paths correct);
+it is a scope decision. Choose one:
+  - (a) also attach a best-effort, fail-open, non-contract `diagnostic_report`
+    key on the `runtime_fail`/reject response at the failing close -- NOTE this
+    shifts trigger timing (fires before the §6.2 workaround/resolution signal
+    is known; interacts with §6.3 dedupe) and adds an advisory to a response
+    surface not in TOOL-CONTRACT.md;
+  - (b) add a `flextools_start` preceding-turn lookback that offers on an
+    un-actioned reportable failure from the just-ended turn -- a new mechanism,
+    needs spec + design;
+  - (c) accept as a documented v1 limitation (defer abandoned-turn auto-offer;
+    update SPEC.md §6.5/§10 + this file), relying on the explicit
+    `flextools_prepare_report` tool as the recovery path.
+
+**CP3 carryover (P2, non-blocking -- fold into CP4 or a follow-up):**
+- QC P2s: `transports.py` dead `_cap_bytes` + DRY inline truncation
+  (`:100-109`/`:155-166`/`:195-203`); `_extract_failing_symbol` non-`str`
+  defensiveness gap (`diagnostic_report.py:92-99`); no direct unit test for
+  `_extract_failing_symbol`; `_quote_argv` Windows-shell quoting caveat
+  (`transports.py:62-71`); structurally-unenforced title-length assumption in
+  the URL/mailto truncation loop (`transports.py:157-166`/`196-203`).
+- Domain P2: `transports.py` `_short_body_text()` embeds the un-normalized
+  `report_path` (user's OS username in their local path) in the GitHub-URL and
+  mailto short bodies -- the one transport string not run through
+  `normalize_report_text()`.
 
 ## CP4 -- Docs + demo
 

@@ -41,6 +41,7 @@ from .models import (
     FindWrappersForLcmInput,
     ResolveTypeInput,
     ListSkeletonsInput,
+    PrepareReportInput,
 )
 
 
@@ -84,7 +85,8 @@ READ_ONLY_SAFE = ToolAnnotations(
 )
 
 # ============================================================
-# All Tools (15 total)
+# All Tools (21 total -- this count drifts; see dispatch.ALL_TOOL_NAMES
+# for the authoritative registered set)
 # ============================================================
 
 TOOLS: dict[str, ToolDef] = {
@@ -282,6 +284,37 @@ intent drifted since flextools_start (which already captures it per-turn).""",
             openWorldHint=False,
         ),
         output_model=RunModuleSuccess,
+    ),
+
+    "flextools_prepare_report": ToolDef(
+        name="flextools_prepare_report",
+        description="""Prepare a diagnostic report for the maintainer -- "send this to the maintainer" flow.
+
+Reconstructs the failing slice (request -> interpretation -> what-was-tried
+-> error -> resolution) from the session log + operations.jsonl, writes ONE
+local report file to ~/.flextoolsmcp/reports/report_<ts>.md, and returns
+prepared (but NOT sent) transport strings for three outcomes: a `gh issue
+create` command, a prefilled GitHub issue URL, and a `mailto:` link.
+
+This tool NEVER sends anything itself -- present the three outcomes to the
+user (GitHub default, email if `likely_contains_lexical_data` flags a
+confidentiality concern, or don't-send) and let them choose. Report is
+always full-fidelity/unscrubbed (no anonymization exists); privacy is
+protected by channel choice, never by content masking.
+
+Defaults to the WHOLE TURN (the contiguous run of ops sharing one
+user_intent) containing the most recent operation. Use op_id to anchor on a
+different op, steps_back/include_from_op_id to widen the slice backward, or
+op_ids for an explicit list (bypasses turn-boundary logic entirely). Useful
+even when the auto-offer on a run_module response was suppressed/deduped --
+this tool always produces a report on request.""",
+        input_model=PrepareReportInput,
+        annotations=ToolAnnotations(
+            readOnlyHint=False,   # writes one local report_<ts>.md file per call
+            destructiveHint=False,
+            idempotentHint=False,  # each call writes a NEW timestamped file
+            openWorldHint=False,
+        ),
     ),
 
     "flextools_get_operation_logs": ToolDef(

@@ -101,6 +101,7 @@ from ..response_keys import (
     KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS,
     KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
     KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
+    KEY_DIAGNOSTIC_REPORT,
 )
 
 # Issue #46: auto-fix config
@@ -123,6 +124,14 @@ try:
     from ..diagnostic.triggers import compute_casting_signature
 except ImportError:
     from server.diagnostic.triggers import compute_casting_signature
+
+# Diagnostic-report CP3: success-close advisory attach (spec sections 6.2,
+# 6.5, 10). One-way dependency (execution.py -> handlers.diagnostic_report),
+# fail-open by contract -- see build_advisory_for_success_close()'s docstring.
+try:
+    from .diagnostic_report import build_advisory_for_success_close
+except ImportError:
+    from server.handlers.diagnostic_report import build_advisory_for_success_close
 
 # ============================================================
 # Constants (avoid stringly-typed code)
@@ -3339,6 +3348,14 @@ MODULE_CODE = {code}
                     execution_result[KEY_INLINE_DISCOVERY] = _auto_discovery_inline
                 if _discovery_note:
                     execution_result[KEY_DISCOVERY_NOTE] = _discovery_note
+            # Diagnostic-report CP3 (spec sections 6.2, 6.5, 10): this success
+            # close may be the "workaround taken" resolution of an earlier
+            # same-turn reportable failure. build_advisory_for_success_close()
+            # is FAIL-OPEN by contract -- it never raises -- so no try/except
+            # is needed here; a None return means "nothing to attach".
+            _diagnostic_advisory = build_advisory_for_success_close(op_id)
+            if _diagnostic_advisory:
+                execution_result[KEY_DIAGNOSTIC_REPORT] = _diagnostic_advisory
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

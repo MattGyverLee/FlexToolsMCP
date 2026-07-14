@@ -86,6 +86,7 @@ EXPECTED_TOOL_NAMES = [
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
     "flextools_list_skeletons",
+    "flextools_prepare_report",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)

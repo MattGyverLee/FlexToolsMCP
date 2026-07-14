@@ -33,6 +33,7 @@ from .models import (
     FindWrappersForLcmInput,
     ResolveTypeInput,
     ListSkeletonsInput,
+    PrepareReportInput,
 )
 
 # ============================================================
@@ -62,6 +63,9 @@ TOOL_GET_OPERATION_LOGS = "flextools_get_operation_logs"
 
 # Execution tools
 TOOL_RUN_MODULE = "flextools_run_module"
+
+# Diagnostic-report tools (CP3)
+TOOL_PREPARE_REPORT = "flextools_prepare_report"
 
 # Property resolution tool
 TOOL_RESOLVE_PROPERTY = "flextools_resolve_property"
@@ -96,6 +100,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_FIND_WRAPPERS_FOR_LCM,
     TOOL_RESOLVE_TYPE,
     TOOL_LIST_SKELETONS,
+    TOOL_PREPARE_REPORT,
 ])
 
 # Import all handler functions
@@ -135,6 +140,9 @@ def _import_handlers():
             handle_get_wrapper_dependencies,
             handle_find_wrappers_for_lcm,
         )
+        from .handlers.diagnostic_report import (
+            handle_prepare_report,
+        )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
         from server.handlers.admin import (
@@ -169,6 +177,9 @@ def _import_handlers():
             handle_get_wrapper_dependencies,
             handle_find_wrappers_for_lcm,
         )
+        from server.handlers.diagnostic_report import (
+            handle_prepare_report,
+        )
 
     return {
         "handle_start": handle_start,
@@ -191,6 +202,7 @@ def _import_handlers():
         "handle_get_wrapper_dependencies": handle_get_wrapper_dependencies,
         "handle_find_wrappers_for_lcm": handle_find_wrappers_for_lcm,
         "handle_resolve_type": handle_resolve_type,
+        "handle_prepare_report": handle_prepare_report,
     }
 
 
@@ -215,6 +227,7 @@ handle_get_operation_logs = _handlers["handle_get_operation_logs"]
 handle_get_wrapper_dependencies = _handlers["handle_get_wrapper_dependencies"]
 handle_find_wrappers_for_lcm = _handlers["handle_find_wrappers_for_lcm"]
 handle_resolve_type = _handlers["handle_resolve_type"]
+handle_prepare_report = _handlers["handle_prepare_report"]
 
 
 # Type alias for tool handlers
@@ -260,6 +273,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
 
     # Skeleton storage closet (issue #24)
     TOOL_LIST_SKELETONS: (handle_list_skeletons, ListSkeletonsInput),
+
+    # Diagnostic-report tools (CP3)
+    TOOL_PREPARE_REPORT: (handle_prepare_report, PrepareReportInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

@@ -74,6 +74,8 @@ __all__ = [
     'KEY_AUTO_FIXES_APPLIED', 'KEY_AUTO_FIX_NOTE',
     # Auto-discovery (issue #47)
     'KEY_AUTO_DISCOVERED', 'KEY_INLINE_DISCOVERY', 'KEY_DISCOVERY_NOTE',
+    # Diagnostic-report advisory (CP3)
+    'KEY_DIAGNOSTIC_REPORT',
     # Equivalence / bridge tools
     'KEY_LIBRARY', 'KEY_METHOD', 'KEY_LCM_INTERNALS', 'KEY_ADVISORY',
     'KEY_LCM_NAME', 'KEY_COVERAGE', 'KEY_GAPS',
@@ -292,6 +294,11 @@ KEY_AUTO_FIX_NOTE = "auto_fix_note"
 KEY_AUTO_DISCOVERED = "auto_discovered"
 KEY_INLINE_DISCOVERY = "_inline_discovery"
 KEY_DISCOVERY_NOTE = "discovery_note"
+
+# Diagnostic-report advisory field (CP3, spec section 10) -- additive optional
+# field on RunModuleSuccess, same pattern as the #46/#47 fields above. No
+# tool-responses contract version bump (resolved Q5).
+KEY_DIAGNOSTIC_REPORT = "diagnostic_report"
 
 # Equivalence / bridge tool fields
 KEY_LIBRARY = "library"

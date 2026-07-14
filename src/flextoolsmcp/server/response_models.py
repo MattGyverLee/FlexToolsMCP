@@ -23,12 +23,14 @@ try:
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
+        KEY_DIAGNOSTIC_REPORT,
     )
 except ImportError:
     from server.response_keys import (
         KEY_STATUS, KEY_CONTRACT, KEY_OP_ID, KEY_ERROR_CODE, KEY_MESSAGE, KEY_HINT,
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
+        KEY_DIAGNOSTIC_REPORT,
     )
 
 try:
@@ -85,6 +87,19 @@ class RunModuleSuccess(BaseEnvelope):
         alias=KEY_DISCOVERY_NOTE, default=None,
         description="Advisory note about auto-discovered entities (issue #47). "
                     "Explains write-gate re-trigger semantics."
+    )
+    # Diagnostic-report feature (CP3, spec section 10): additive advisory
+    # block attached when this success close resolves a same-turn reportable
+    # failure (spec section 6.2 workaround-taken signal) and the underlying
+    # inconsistency signature has not been dedupe-suppressed (section 6.3-6.4).
+    # None when no offer fires this close. Same additive-optional pattern as
+    # the #46/#47 fields above -- no contract version bump (resolved Q5).
+    diagnostic_report: Optional[Dict[str, Any]] = Field(
+        alias=KEY_DIAGNOSTIC_REPORT, default=None,
+        description="Diagnostic-report offer (CP3): {signature, title, summary, "
+                    "report_path, transports, likely_contains_lexical_data, error_code}. "
+                    "The MCP never sends this itself -- transports are prepared strings "
+                    "only; a human must take the send action."
     )
 
 

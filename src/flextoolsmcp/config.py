@@ -33,6 +33,29 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 AUTO_FIX_ENABLED_KEY = "auto_fix_enabled"
 AUTO_FIX_ENABLED_DEFAULT = True  # on by default for read-only runs
 
+# ---------------------------------------------------------------------------
+# Diagnostic-report feature (spec section 10) -- config knobs
+#
+# report_offers_enabled  -- kill switch for the AUTO-OFFER advisory attached
+#                            to a run_module success close (spec section 6.5,
+#                            10). Default ON. Does NOT gate the explicit
+#                            flextools_prepare_report tool -- a user-initiated
+#                            "report the last error" request always works,
+#                            even when the auto-offer is disabled or a
+#                            signature is dedupe-suppressed (spec section 5).
+# report_repo            -- GitHub "owner/repo" the gh CLI / prefilled URL
+#                            transports target.
+# report_email           -- maintainer email the mailto: transport targets.
+# ---------------------------------------------------------------------------
+REPORT_OFFERS_ENABLED_KEY = "report_offers_enabled"
+REPORT_OFFERS_ENABLED_DEFAULT = True
+
+REPORT_REPO_KEY = "report_repo"
+REPORT_REPO_DEFAULT = "MattGyverLee/FlexToolsMCP"
+
+REPORT_EMAIL_KEY = "report_email"
+REPORT_EMAIL_DEFAULT = "matthew_lee@sil.org"
+
 # In-memory cache (loaded on first call, cleared on flush)
 _config_cache: Optional[Dict[str, Any]] = None
 

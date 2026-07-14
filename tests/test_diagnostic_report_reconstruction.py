@@ -757,3 +757,113 @@ def test_partial_auto_fix_reports_only_residual_casting_issue(monkeypatch, tmp_p
     lines = jsonl_path.read_text(encoding="utf-8").strip().splitlines()
     record = json.loads(lines[-1])
     assert record["casting_signature"] == expected_signature
+
+
+# ---------------------------------------------------------------------------
+# 8. CP3 line-item: CP2 carryover (P2) fixes.
+# ---------------------------------------------------------------------------
+
+def test_mismatched_end_marker_does_not_truncate_the_block(tmp_path):
+    """Regression for the CP2 carryover P2 (reconstruct.py's parse_log_text):
+    a `=== Operation #N End (op_id) ===` marker whose op_id does NOT match
+    the currently open block used to reset current_op_id/current_lines
+    unconditionally, silently swallowing every line between the bogus
+    mismatched End and the block's REAL End (they landed nowhere -- not in
+    the block, not as discovery lines). The fix keeps the block OPEN across
+    a mismatch and surfaces it via `end_mismatches` instead.
+    """
+    session_log = tmp_path / "session_mismatch.log"
+    lines = [
+        _fmt("INFO", "=== Operation #1 Start (op-1) ==="),
+        _fmt("INFO", "Project:         TestProject"),
+        _fmt("DEBUG", "Code:"),
+        _fmt("DEBUG", "line_before_mismatch = 1"),
+        # Bogus mismatched End marker -- op_id doesn't match the open block
+        # (e.g. rotation/interleaving artifact).
+        _fmt("INFO", "=== Operation #99 End (op-BOGUS) ==="),
+        # These lines used to be silently dropped (current_op_id had already
+        # been reset to None by the mismatch).
+        _fmt("DEBUG", "line_after_mismatch = 2"),
+        _fmt("INFO", "[OK] Operation completed successfully"),
+        _fmt("INFO", "Messages:        0 info, 0 warnings, 0 errors"),
+        _fmt("INFO", "Duration:        0.100s"),
+        _fmt("INFO", "=== Operation #1 End (op-1) ==="),
+    ]
+    session_log.write_text("\n".join(lines), encoding="utf-8")
+
+    records = [_jsonl_record("op-1", 1, outcome="ok")]
+    slice_obj = reconstruct.reconstruct_slice(records, session_log)
+
+    assert len(slice_obj.ops) == 1
+    op1 = slice_obj.ops[0]
+    assert op1.found_in_log is True
+    joined = "\n".join(op1.log_lines)
+    # The line after the bogus mismatch must NOT have been dropped.
+    assert "line_before_mismatch = 1" in joined
+    assert "line_after_mismatch = 2" in joined
+    assert "Operation #1 End (op-1)" in joined
+
+    # The mismatch is surfaced, not silently absorbed.
+    assert slice_obj.end_mismatches == [{"expected": "op-1", "found": "op-BOGUS"}]
+
+    rendered = render.render_report(slice_obj)
+    assert "mismatched End marker" in rendered
+    assert "op-1" in rendered and "op-BOGUS" in rendered
+
+
+def test_parse_log_text_end_mismatches_field_present_and_empty_when_clean(tmp_path):
+    """Sanity: a well-formed log (no mismatches) reports an empty list, not
+    a missing key or None."""
+    text = "\n".join(_op_block_lines("op-1", 1, close="ok"))
+    parsed = reconstruct.parse_log_text(text)
+    assert parsed["end_mismatches"] == []
+
+
+def test_code_stop_marker_substring_inside_code_does_not_truncate_block(tmp_path):
+    """Regression for the CP2 carryover P2 (render.py's _CODE_STOP_MARKERS):
+    the old `marker in line` substring test stopped the code block early
+    when a marker string legitimately appeared INSIDE a code line (e.g. a
+    print/string literal containing "Messages:"). The fix anchors on
+    `stripped_line.startswith(marker)` so only genuine logger-emitted stop
+    lines (always at column 0) trip the check.
+    """
+    session_log = tmp_path / "session_marker_substring.log"
+    lines = _op_block_lines(
+        "op-1", 1, close="ok",
+        code=(
+            "print(\"Log Messages: this line legitimately contains the "
+            "substring Messages: but is NOT the logger's summary line\")\n"
+            "x = 2"
+        ),
+    )
+    session_log.write_text("\n".join(lines), encoding="utf-8")
+
+    records = [_jsonl_record("op-1", 1, outcome="ok")]
+    slice_obj = reconstruct.reconstruct_slice(records, session_log)
+    rendered = render.render_report(slice_obj)
+
+    # Both code lines must survive -- the real stop marker ("Messages:        0
+    # info, ...", emitted by the logger at column 0) must NOT have been
+    # confused with the marker substring appearing mid-line in the print().
+    assert "Log Messages: this line legitimately contains" in rendered
+    assert "x = 2" in rendered
+
+
+def test_code_stop_marker_boundary_still_stops_on_real_stop_lines(tmp_path):
+    """Companion to the above: confirm the boundary-anchored fix doesn't
+    regress the REAL stop cases -- a genuine logger-emitted "Messages:" /
+    "[OK]" / "=== Operation" line (always at column 0 after prefix-strip)
+    must still terminate the code block."""
+    session_log = tmp_path / "session_real_stop.log"
+    lines = _op_block_lines("op-1", 1, code="a = 1\nb = 2", close="ok")
+    session_log.write_text("\n".join(lines), encoding="utf-8")
+
+    records = [_jsonl_record("op-1", 1, outcome="ok")]
+    slice_obj = reconstruct.reconstruct_slice(records, session_log)
+    op1 = slice_obj.ops[0]
+    code_lines = render._extract_code_block(op1.log_lines)
+
+    assert code_lines == ["a = 1", "b = 2"]
+    joined = "\n".join(code_lines)
+    assert "[OK]" not in joined
+    assert "Messages:" not in joined

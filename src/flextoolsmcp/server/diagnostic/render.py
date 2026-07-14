@@ -58,6 +58,24 @@ def _find_tool_call(ops: List[SliceOp], tool_name: str) -> Optional[Dict[str, Op
     return None
 
 
+def _is_code_stop_marker(line: str) -> bool:
+    """Boundary-anchored stop-marker check (CP2 carryover P2 fix).
+
+    The previous implementation used `marker in line` (an unanchored
+    substring test), which could stop a code block early when a marker
+    string legitimately appeared INSIDE a code line -- e.g. a print/string
+    literal containing the substring "Messages:" (`report.Info("Log
+    Messages: done")`) would falsely trip the same test that is meant to
+    detect the real `Messages:        N info, ...` summary line the logger
+    emits after the block. Every genuine stop line is emitted by the logger
+    at column 0 of the (prefix-stripped) log line, so anchoring on
+    ``stripped-line startswith marker`` keeps the real stop cases working
+    while no longer matching a marker that merely appears mid-line.
+    """
+    stripped = line.strip()
+    return any(stripped.startswith(marker) for marker in _CODE_STOP_MARKERS)
+
+
 def _extract_code_block(log_lines: List[str]) -> List[str]:
     """Pull the `Code:` ... block out of a reconstructed operation's raw
     log lines (spec section 3.2: `Code:` + code lines at DEBUG)."""
@@ -70,7 +88,7 @@ def _extract_code_block(log_lines: List[str]) -> List[str]:
         return []
     code_lines: List[str] = []
     for line in log_lines[start_idx + 1:]:
-        if any(marker in line for marker in _CODE_STOP_MARKERS):
+        if _is_code_stop_marker(line):
             break
         code_lines.append(line)
     return code_lines
@@ -165,6 +183,19 @@ def _render_what_was_tried(slice_obj: ReportSlice) -> str:
             "requested but their log block has already been recycled past "
             "the rotation backupCount and could not be recovered: "
             + ", ".join(slice_obj.rotation_truncated)
+        )
+
+    if slice_obj.end_mismatches:
+        lines.append(
+            "**Log parse warning -- mismatched End marker(s):** the session "
+            "log contained an `=== Operation End ===` marker whose op_id did "
+            "not match the currently open block (possible rotation/"
+            "interleaving artifact). The affected block was kept open rather "
+            "than truncated, but the boundary may be imprecise: "
+            + "; ".join(
+                f"expected {m['expected']}, found {m['found']}"
+                for m in slice_obj.end_mismatches
+            )
         )
 
     return "\n".join(lines)

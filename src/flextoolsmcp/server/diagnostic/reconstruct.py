@@ -97,6 +97,11 @@ class ReportSlice:
     rotation_truncated: List[str] = field(default_factory=list)
     boundary: str = "turn"  # "turn" | "explicit"
     session_header_lines: List[str] = field(default_factory=list)
+    # CP2 carryover (P2) fix: mismatched `=== Operation #N End (op_id) ===`
+    # markers encountered while parsing (see parse_log_text docstring) --
+    # surfaced here instead of being silently absorbed into a truncated
+    # block. Each entry: {"expected": op_id, "found": op_id}.
+    end_mismatches: List[Dict[str, str]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -233,19 +238,34 @@ def parse_log_text(text: str) -> Dict[str, Any]:
     """Parse a (possibly rotation-concatenated) session-log text blob into:
 
       {"blocks": {op_id: {"seq": int, "lines": [...], "discovery_lines": [...]}},
-       "session_header_lines": [...]}
+       "session_header_lines": [...],
+       "end_mismatches": [{"expected": op_id, "found": op_id}, ...]}
 
     `lines` are the full Start..End block content (prefix-stripped).
     `discovery_lines` are the `[TOOL CALL]` / `[TOOL ARGS]` lines that
     appeared between the PREVIOUS block's End marker (or start of stream)
     and this block's Start marker -- i.e. the discovery/interpretation
     calls that led up to this operation (spec section 7, item 3).
+
+    CP2 carryover (P2) fix: a `=== Operation #N End (op_id) ===` marker
+    whose `op_id` does NOT match the currently open block used to reset
+    `current_op_id`/`current_lines` unconditionally, regardless of the
+    mismatch. Because subsequent lines are only appended when
+    `current_op_id is not None`, that reset silently swallowed every line
+    between the bogus mismatched End and the block's REAL End marker (if
+    any) -- they landed nowhere (not attributed to the block, and not
+    `[TOOL CALL]`/`[TOOL ARGS]` discovery lines either). Per the "no silent
+    caps/drops" rule, a mismatch must be SURFACED, not used to truncate: the
+    open block now stays open (lines keep accumulating) and the mismatch is
+    recorded both on the block itself (`end_mismatches` key) and in the
+    top-level `end_mismatches` list so callers/rendering can flag it.
     """
     blocks: Dict[str, Dict[str, Any]] = {}
     pending_tool_lines: List[str] = []
     current_op_id: Optional[str] = None
     current_lines: List[str] = []
     session_header_lines: List[str] = []
+    end_mismatches: List[Dict[str, str]] = []
     in_session_header = False
 
     for raw_line in text.splitlines():
@@ -281,10 +301,16 @@ def parse_log_text(text: str) -> Dict[str, Any]:
             end_op_id = m_end.group(2)
             if current_op_id is not None:
                 current_lines.append(line)
-                if current_op_id in blocks and end_op_id == current_op_id:
+                if end_op_id == current_op_id:
                     blocks[current_op_id]["lines"] = current_lines
-            current_op_id = None
-            current_lines = []
+                    current_op_id = None
+                    current_lines = []
+                else:
+                    # Mismatch: surface it, but keep the block OPEN so later
+                    # lines (up to the real End, if it ever appears) are not
+                    # dropped on the floor.
+                    blocks[current_op_id].setdefault("end_mismatches", []).append(end_op_id)
+                    end_mismatches.append({"expected": current_op_id, "found": end_op_id})
             continue
 
         if current_op_id is not None:
@@ -292,7 +318,11 @@ def parse_log_text(text: str) -> Dict[str, Any]:
         elif "[TOOL CALL]" in line or "[TOOL ARGS]" in line:
             pending_tool_lines.append(line)
 
-    return {"blocks": blocks, "session_header_lines": session_header_lines}
+    return {
+        "blocks": blocks,
+        "session_header_lines": session_header_lines,
+        "end_mismatches": end_mismatches,
+    }
 
 
 def stitch_and_extract_blocks(session_log_path: Path) -> Dict[str, Any]:
@@ -359,6 +389,7 @@ def reconstruct_slice(
     parsed = stitch_and_extract_blocks(session_log_path)
     blocks = parsed["blocks"]
     session_header_lines = parsed["session_header_lines"]
+    end_mismatches = parsed.get("end_mismatches", [])
 
     ops: List[SliceOp] = []
     rotation_truncated: List[str] = []
@@ -403,4 +434,5 @@ def reconstruct_slice(
         rotation_truncated=rotation_truncated,
         boundary=boundary,
         session_header_lines=session_header_lines,
+        end_mismatches=end_mismatches,
     )

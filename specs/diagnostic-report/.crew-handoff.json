@@ -1,8 +1,8 @@
 {
   "feature": "diagnostic-report",
-  "status": "in_progress",
-  "last_cycle": 6,
-  "spurts_completed": 2,
+  "status": "needs_human",
+  "last_cycle": 8,
+  "spurts_completed": 3,
   "tasks_done": [
     "CP1: user_request plumbing",
     "CP1: trigger predicate (6.1)",
@@ -16,13 +16,28 @@
     "CP2: MAX_REPORT_OPS summarize-not-drop",
     "CP2: path-scoped machine-hygiene normalization (E2 privacy gate PASS)",
     "CP2: report rendering (header/request/interpretation/tried/error/resolution/JSONL appendix)",
-    "CP2: casting-recurrence signature precision (cycle-2 P1 CLOSED) + cycle-6 post-auto-fix stale-issues P1 fix + regression test"
+    "CP2: casting-recurrence signature precision (cycle-2 P1 CLOSED) + cycle-6 post-auto-fix stale-issues P1 fix + regression test",
+    "CP3: flextools_prepare_report tool (section 10)",
+    "CP3: diagnostic_report advisory block on RunModuleSuccess (Q5, no contract bump) -- attach point blocked on human decision, see blocker",
+    "CP3: three transports (gh CLI / prefilled issue URL / mailto)",
+    "CP3: likely_contains_lexical_data code-shape flag (Q4)",
+    "CP3: two-layer no-transmission guard (static AST scan + dynamic monkeypatch)"
   ],
-  "next_checkpoint": "CP3 -- Surface + transport + guard",
-  "next_entry": "Start CP3: implement flextools_prepare_report tool (spec section 10, explicit op_id/op_ids/steps_back, defaults to whole turn) and the diagnostic_report advisory block on RunModuleSuccess (additive optional field, no contract bump per Q5). CP3 also lands the three transports (gh CLI / prefilled issue URL / mailto), the likely_contains_lexical_data code-shape flag (Q4), and the two-layer no-transmission guard (static AST scan + dynamic monkeypatch of subprocess/gh/smtplib/webbrowser/urllib/socket).",
+  "cp3_gates": {
+    "verification": "PASS -- full suite 577 passed / 0 failed (511 + 66 new, matches exactly)",
+    "qc": "92/100 APPROVE -- 0 P0 / 0 P1 / 5 P2",
+    "domain": "4/5 PASS; item 5 (advisory attach point) FAIL -- scope decision, not code defect"
+  },
   "carryover_p2": [
-    "reconstruct.py mismatched-End silent truncation (non-blocking; harden during CP3 rotation/render work)",
-    "render.py _CODE_STOP_MARKERS substring false-positive (non-blocking; tighten to boundary match during CP3)"
+    "transports.py dead _cap_bytes + DRY inline truncation (:100-109/:155-166/:195-203)",
+    "_extract_failing_symbol non-str defensiveness gap (diagnostic_report.py:92-99)",
+    "no direct unit test for _extract_failing_symbol",
+    "_quote_argv Windows-shell quoting caveat (transports.py:62-71)",
+    "unenforced title-length assumption in URL/mailto truncation loop (transports.py:157-166/196-203)",
+    "transports.py _short_body_text embeds un-normalized report_path in gh-URL/mailto short bodies"
   ],
+  "next_checkpoint": "CP3 close (pending human decision) -> CP4 docs + demo",
+  "next_entry": "Resolve the CP3 BLOCKER (domain item 5): choose (a) attach advisory to failing/reject close, (b) flextools_start preceding-turn lookback, or (c) accept as documented v1 limitation. If (a)/(b): dispatch a cycle-9 lex-programmer fix + re-verify, then close CP3. If (c): document in SPEC.md 6.5/10 + tasks.md, close CP3. Then start CP4.",
+  "blocker": "Domain item 5 FAIL: diagnostic_report auto-offer attaches only at a same-turn ok (success) close, so a reportably-failed-then-abandoned turn (no same-turn ok close) never auto-offers -- the canonical unreported-inconsistency case (SPEC section 1). Implicit consequence of maintainer-resolved Q5 (advisory on RunModuleSuccess only). Not a code defect; a scope/product decision that reopens Q5. Choose (a) attach to failing close [shifts trigger timing vs 6.2/6.3, off-contract surface], (b) flextools_start lookback [new mechanism, needs spec], or (c) document as v1 limitation [rely on explicit flextools_prepare_report tool].",
   "updated": "2026-07-13"
 }

@@ -31,9 +31,24 @@ Checkpoint 2 (this checkpoint) ships reconstruction/normalization/rendering:
     fix for the deferred cycle-2 QC P1: recurrence now keys on the real
     per-issue casting signature, not a coarse same-turn fallback).
 
-Checkpoint 3 (tool surface/transports/no-transmission guard) lands in a
-later spurt as sibling modules in this same package (transports.py) --
-see specs/diagnostic-report/tasks.md.
+Checkpoint 3 ships the tool surface, transports, and the two-layer
+no-transmission guard:
+  - transports.py   : section 9 -- `gh` CLI argv, prefilled GitHub issue
+                      URL, and `mailto:` STRING builders. Never invokes
+                      anything; "gh available" is injectable (section 12,
+                      decision E6).
+  - sensitivity.py  : section 9 / resolved Q4 -- `likely_contains_lexical_data`,
+                      detected from code SHAPE via `ast`, never content.
+  - `../handlers/diagnostic_report.py` (a sibling handler module, NOT in
+    this package, because it performs local file I/O) orchestrates
+    reconstruct -> render -> write -> transports for both the explicit
+    `flextools_prepare_report` tool and the run_module success-close
+    auto-offer advisory. It is explicitly in scope for the no-transmission
+    guard (`tests/test_diagnostic_no_transmission.py` scans it too).
+
+Guard scope (section 8.1/12): the static AST scan and the dynamic
+monkeypatch-and-drive test both cover every module in this package PLUS
+`../handlers/diagnostic_report.py`.
 """
 
 __all__: list = []

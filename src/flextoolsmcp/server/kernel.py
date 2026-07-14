@@ -211,6 +211,36 @@ def rotate_logging_to_session(session_id: str) -> None:
     _emit_session_header(session_id)
 
 
+def get_current_session_log_path() -> Optional[Path]:
+    """Return the Path of the currently active PER-SESSION log file (NOT the
+    always-on cross-session ``operations.log``), by inspecting the live
+    ``operations_logger``'s handlers -- the same mechanism
+    `rotate_logging_to_session()` uses to decide which handler to keep/remove.
+
+    Diagnostic-report feature (CP3, spec sections 5/10): the
+    `flextools_prepare_report` tool and the run_module success-close
+    auto-offer both need the real on-disk session log path to reconstruct a
+    report slice from. Reading it off the live handler's `baseFilename`
+    avoids re-deriving the (possibly non-date-shaped) session_id -> directory
+    mapping that `rotate_logging_to_session()` computes internally.
+
+    Returns None if no per-session handler is attached yet (e.g.
+    `flextools_start` has not been called this process) -- callers must
+    fail open on None, never crash.
+    """
+    global operations_logger
+    if not operations_logger:
+        return None
+    for handler in operations_logger.handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            if getattr(handler, _CROSS_SESSION_HANDLER_FLAG, False):
+                continue
+            base = getattr(handler, "baseFilename", None)
+            if base:
+                return Path(base)
+    return None
+
+
 def _emit_session_header(session_id: str) -> None:
     """Write a one-time environment block to the session log.
 

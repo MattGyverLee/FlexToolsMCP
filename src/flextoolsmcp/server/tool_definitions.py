@@ -102,6 +102,11 @@ After calling flextools_start():
 
 Task and project_name can be set now or updated/provided later as needed.
 
+OPTIONAL: fill `user_request` with the VERBATIM text of what the human just asked
+(not a paraphrase) -- this is the turn-level slot for the diagnostic-report
+feature; it is carried through to any run_module ops this turn unless a given
+op overrides it with its own user_request.
+
 OPT-IN undoable mode (EXPERIMENTAL): pass undoable=True alongside write_enabled=True
 to open the project with LCM's persistent undo stack enabled (matches FLEx UI Ctrl+Z).
 Required if you want flextools_undo_last_operation to reverse a prior session's writes.
@@ -265,7 +270,10 @@ entity (see api_discovery_required / undiscovered_entity errors).
 When you call this, fill `user_intent` with a one-sentence summary of what the
 user asked you to do (under 200 chars). It is logged on the operation Start
 block so post-mortem readers can see the goal without scrolling back through
-the conversation. Skipping it is allowed but discouraged.""",
+the conversation. Skipping it is allowed but discouraged.
+
+OPTIONAL `user_request`: the VERBATIM human request text, only needed here if
+intent drifted since flextools_start (which already captures it per-turn).""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,

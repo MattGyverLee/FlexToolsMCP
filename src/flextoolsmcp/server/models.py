@@ -74,6 +74,17 @@ class FlexToolsStartInput(BaseModel):
                     "flextools_undo_last_operation to actually reverse a "
                     "prior session's writes. Only meaningful when write_enabled=True."
     )
+    user_request: Optional[str] = Field(
+        default=None,
+        max_length=4000,
+        description="Optional: the VERBATIM text of the human's request for this "
+                    "turn (not a paraphrase). Diagnostic-report feature (spec section 4): "
+                    "captured at the source because the MCP process never sees the raw "
+                    "conversation otherwise. Primary/turn-level placement -- "
+                    "flextools_run_module accepts an optional per-op override of the "
+                    "same field when intent drifts mid-turn. Absent user_request falls "
+                    "back to the user_intent paraphrase wherever it is logged."
+    )
 
 
 class ManageConfigInput(BaseModel):
@@ -417,6 +428,15 @@ class RunModuleInput(BaseModel):
                     "Logged on the operation start line so post-mortem readers can see the goal "
                     "without scrolling back through the conversation. "
                     "Example: 'List entries whose lexeme form starts with a vowel.'"
+    )
+    user_request: Optional[str] = Field(
+        default=None,
+        max_length=4000,
+        description="Optional: the VERBATIM text of the human's request, as an override "
+                    "of the turn-level user_request supplied to flextools_start when intent "
+                    "drifts mid-turn. Diagnostic-report feature (spec section 4). Logged on "
+                    "the operation start line next to user_intent; absent user_request "
+                    "falls back to the user_intent paraphrase."
     )
     max_info_messages: int = Field(
         default=100,

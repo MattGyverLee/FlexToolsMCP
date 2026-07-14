@@ -301,6 +301,10 @@ async def handle_start(args: dict) -> list[TextContent]:
     api_mode = args.get(KEY_API_MODE, "flexicon")
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
+    # Diagnostic-report feature (spec section 4): verbatim human request text,
+    # turn-level. Reset (not inherited) on every flextools_start call -- see
+    # session.SessionState.configure().
+    user_request = args.get("user_request") or ""
 
     # Fuzzy resolution: autocorrect case/whitespace-only typos, return a helpful
     # error (with suggestions) for bigger mismatches. Skipped when no name was
@@ -371,7 +375,8 @@ async def handle_start(args: dict) -> list[TextContent]:
         project_name=project_name,
         write_enabled=write_enabled,
         undoable=undoable,
-        api_versions=api_versions
+        api_versions=api_versions,
+        user_request=user_request,
     )
     session_id = session_state.session_id
 

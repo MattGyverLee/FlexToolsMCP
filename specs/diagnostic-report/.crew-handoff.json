@@ -1,0 +1,18 @@
+{
+  "feature": "diagnostic-report",
+  "status": "in_progress",
+  "last_cycle": 3,
+  "spurts_completed": 1,
+  "tasks_done": [
+    "CP1: user_request plumbing",
+    "CP1: trigger predicate (6.1)",
+    "CP1: inferred workaround signal (6.2)",
+    "CP1: code-independent signature (6.3)",
+    "CP1: offered.json store (6.4)",
+    "CP1: unit tests (test_diagnostic_report_foundation.py)",
+    "CP1: cycle-3 save_store fail-open P1 fix + regression test"
+  ],
+  "next_checkpoint": "CP2 -- Reconstruction + normalization",
+  "next_entry": "Start CP2 slice reconstruction: join operations.jsonl lines to session-log '=== Operation #N Start/End (op_id) ===' blocks by op_id/seq (spec sections 3, 5). CP2 also carries the deferred casting-recurrence signature-precision P1.",
+  "updated": "2026-07-13"
+}

@@ -366,6 +366,7 @@ def _log_operation_start(
     injection_tier: Optional[str] = None,
     helpers_needed: Optional[set] = None,
     user_intent: Optional[str] = None,
+    user_request: Optional[str] = None,
 ) -> None:
     """Emit the opening block of a per-operation log entry.
 
@@ -377,6 +378,12 @@ def _log_operation_start(
     supplied by the LLM. We log it (or "(not provided)") so post-mortem
     readers know what the op was TRYING to accomplish without scrolling back
     through the conversation.
+
+    `user_request` (diagnostic-report feature, spec section 4) is the
+    VERBATIM human request text -- Claude's compression-free source, not a
+    paraphrase. It is optional and, when absent, falls back to `user_intent`
+    for both the logged line and the stashed/JSONL value (same "(not
+    provided)" idiom already used for user_intent alone).
     """
     logger = get_operations_logger()
     fp = _code_fingerprint(code)
@@ -386,6 +393,12 @@ def _log_operation_start(
     logger.info(f"Source kind:     {source_kind}")
     intent_display = (user_intent or "").strip() or "(not provided)"
     logger.info(f"User intent:     {intent_display}")
+    # Effective user_request: explicit value if given, else fall back to
+    # user_intent (spec section 4: "absent user_request falls back to
+    # user_intent, same as user_intent already falls back to '(not provided)'").
+    effective_user_request = (user_request or "").strip() or (user_intent or "").strip()
+    request_display = effective_user_request or "(not provided)"
+    logger.info(f"User request:    {request_display}")
     logger.info(
         f"Code fingerprint: sha256={fp['sha256_short']} bytes={fp['bytes']} lines={fp['lines']}"
     )
@@ -401,6 +414,7 @@ def _log_operation_start(
         write_enabled=write_enabled,
         source_kind=source_kind,
         user_intent=user_intent,
+        user_request=effective_user_request,
         code_sha256=_full_sha256,
         code_bytes=fp["bytes"],
         code_lines=fp["lines"],
@@ -1817,6 +1831,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
     # the human's actual request. Logged on the Start block; never required.
     user_intent = args.get("user_intent")
+    # user_request (diagnostic-report feature, spec section 4): optional
+    # per-op VERBATIM override. Falls back to the turn-level value captured
+    # by flextools_start (session_state.get_user_request()) when this op
+    # didn't pass its own; _log_operation_start further falls back to
+    # user_intent when both are empty.
+    user_request = args.get("user_request") or session_state.get_user_request()
     # max_info_messages (issue #25): cap the number of report.Info messages
     # returned to the LLM. Default 100 (first 50 + last 50 + truncation marker).
     # 0 disables the cap. Warnings/errors are NEVER capped regardless.
@@ -1895,6 +1915,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         _log_operation_start(
             op_id, seq, project_name, write_enabled, code, source_kind,
             user_intent=user_intent,
+            user_request=user_request,
         )
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
@@ -1918,6 +1939,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     _log_operation_start(
         op_id, seq, project_name, write_enabled, code, source_kind,
         user_intent=user_intent,
+        user_request=user_request,
     )
 
     # === PREFLIGHT: Validate server state before attempting execution ===

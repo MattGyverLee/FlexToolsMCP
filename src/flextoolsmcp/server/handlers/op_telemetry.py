@@ -11,8 +11,8 @@ _OP_STASH: dict[op_id -> dict]  (module-level, bounded to _STASH_MAX)
 
 1. _stash_op_start(op_id, ...)  is called at _log_operation_start time.
    It stores the fields that the close functions don't receive: project,
-   write_enabled, source_kind, user_intent, code_sha256, code_bytes,
-   code_lines, and timestamps.
+   write_enabled, source_kind, user_intent, user_request, code_sha256,
+   code_bytes, code_lines, and timestamps.
 
 2. Each close function (success / failure / reject) calls
    _write_jsonl_line(op_id, ...) which pops the stash entry (drain),
@@ -60,6 +60,7 @@ def _stash_op_start(
     code_sha256: str,
     code_bytes: int,
     code_lines: int,
+    user_request: Optional[str] = None,
 ) -> None:
     """Store per-op metadata at operation-start time so close functions can read it.
 
@@ -67,6 +68,12 @@ def _stash_op_start(
     drainer.  The dict entry is popped (not just read) in _write_jsonl_line
     so memory is released exactly once per operation, even if somehow a close
     function is called twice (idempotent on second call -- no double-write).
+
+    `user_request` (diagnostic-report feature, spec section 4): verbatim
+    human request text. Callers are expected to have already applied the
+    user_intent fallback (see execution._log_operation_start) before
+    stashing, so the value here is the EFFECTIVE one that should round-trip
+    into the JSONL record -- not necessarily the raw per-op argument.
     """
     global _OP_STASH, _OP_STASH_ORDER
 
@@ -81,6 +88,7 @@ def _stash_op_start(
         "write_enabled": write_enabled,
         "source_kind": source_kind,
         "user_intent": user_intent or "",
+        "user_request": (user_request or "").strip() or (user_intent or "").strip(),
         "code_sha256": code_sha256,
         "code_bytes": code_bytes,
         "code_lines": code_lines,
@@ -146,6 +154,7 @@ def _write_jsonl_line(
         "write_enabled": stash.get("write_enabled", False),
         "source_kind": stash.get("source_kind", ""),
         "user_intent": stash.get("user_intent", ""),
+        "user_request": stash.get("user_request", ""),
         "code_sha256": stash.get("code_sha256", ""),
         "code_bytes": stash.get("code_bytes", 0),
         "code_lines": stash.get("code_lines", 0),
@@ -201,6 +210,46 @@ def _load_jsonl_records(log_dir: Path) -> List[Dict[str, Any]]:
     return records
 
 
+def group_records_by_intent(records: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    """Group consecutive records sharing the same user_intent into "attempt
+    session" / turn groups.
+
+    Each group ends when `user_intent` changes or is empty (an empty-intent
+    record is always its own standalone group of 1). This is the exact turn
+    boundary used by `compute_jsonl_statistics()`'s green-rate / turns-to-green
+    analytics; the diagnostic-report feature (spec section 5) reuses it
+    UNCHANGED so report slice boundaries match those shipped analytics
+    (decision E7: the grouping key stays `user_intent`, NOT the pair of
+    `(user_intent, user_request)` -- `user_request` is carried as payload
+    only and never redefines the slice boundary).
+    """
+    groups: List[List[Dict[str, Any]]] = []
+    current_intent: Optional[str] = None
+    current_group: List[Dict[str, Any]] = []
+
+    for r in records:
+        intent = (r.get("user_intent") or "").strip()
+        if not intent:
+            # No intent -> standalone group of 1
+            if current_group:
+                groups.append(current_group)
+                current_group = []
+                current_intent = None
+            groups.append([r])
+        elif intent != current_intent:
+            if current_group:
+                groups.append(current_group)
+            current_group = [r]
+            current_intent = intent
+        else:
+            current_group.append(r)
+
+    if current_group:
+        groups.append(current_group)
+
+    return groups
+
+
 def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     """Compute aggregates for the get_operation_logs statistics block.
 
@@ -228,31 +277,7 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     rejects_by_error_code = [{"error_code": k, "count": v} for k, v in top5]
 
     # --- intent grouping for green-rate / turns-to-green ---
-    # Group consecutive records sharing the same user_intent (non-empty) as one
-    # "attempt session".  Each intent-group ends when intent changes or is empty.
-    groups: List[List[Dict[str, Any]]] = []
-    current_intent: Optional[str] = None
-    current_group: List[Dict[str, Any]] = []
-
-    for r in records:
-        intent = (r.get("user_intent") or "").strip()
-        if not intent:
-            # No intent -> standalone group of 1
-            if current_group:
-                groups.append(current_group)
-                current_group = []
-                current_intent = None
-            groups.append([r])
-        elif intent != current_intent:
-            if current_group:
-                groups.append(current_group)
-            current_group = [r]
-            current_intent = intent
-        else:
-            current_group.append(r)
-
-    if current_group:
-        groups.append(current_group)
+    groups = group_records_by_intent(records)
 
     if not groups:
         return {

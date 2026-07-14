@@ -127,6 +127,11 @@ class SessionState:
     project_name: str = ""                 # FLEx project name (empty = prompt user)
     write_enabled: bool = False            # Write access: False = read-only/dry-run
     undoable: bool = False                 # #14: open project with undoable=True (LCM persistent undo)
+    # Diagnostic-report feature (spec section 4): verbatim human request text for
+    # the current turn, set by flextools_start. run_module falls back to this when
+    # its own per-op user_request override is absent. Reset (not inherited) on every
+    # configure() call because flextools_start marks a new turn boundary.
+    user_request: str = ""
     initialized: bool = False
     discovered_apis: set = field(default_factory=set)        # APIs discovered via search_by_capability
     validated_apis: set = field(default_factory=set)         # APIs validated via get_object_api
@@ -224,7 +229,7 @@ class SessionState:
         # Warn on unrecognised kwargs to surface typos (e.g. write_enbled=True).
         _known_kwargs = {
             "api_mode", "output_type", "project_name", "write_enabled",
-            "undoable", "api_versions",
+            "undoable", "api_versions", "user_request",
         }
         _unknown = set(kwargs) - _known_kwargs
         if _unknown:
@@ -245,6 +250,10 @@ class SessionState:
             self.undoable = kwargs["undoable"]
         if "api_versions" in kwargs:
             self.api_versions = kwargs["api_versions"]
+        if "user_request" in kwargs:
+            # Turn-level field: always reset to whatever this configure() call
+            # provided (including ""), never inherited from the prior turn.
+            self.user_request = kwargs["user_request"] or ""
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
@@ -317,6 +326,14 @@ class SessionState:
     def is_write_enabled(self) -> bool:
         """Get whether write access is enabled for the session."""
         return self.write_enabled
+
+    def get_user_request(self) -> str:
+        """Get the turn-level verbatim user_request set by flextools_start.
+
+        Diagnostic-report feature (spec section 4). Empty string if never set
+        or if the current turn's flextools_start call omitted it.
+        """
+        return self.user_request
 
     def is_undoable(self) -> bool:
         """Get whether the session opened the project with undoable=True.

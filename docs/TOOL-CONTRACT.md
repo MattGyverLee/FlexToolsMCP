@@ -24,6 +24,9 @@ Additional tool-specific data keys are spread at the top level alongside
 these envelope keys. Success models use `extra="ignore"` so unknown keys
 are forward-compatible.
 
+Success responses may also carry an optional top-level `update_notice`
+block — see [update_notice](#update_notice-advisory-block) below.
+
 ### Error envelope
 
 Every rejection emits **both** a flat (canonical) shape and a deprecated
@@ -209,6 +212,37 @@ The field is defined in `RunModuleSuccess` (`response_models.py`) with alias
 `KEY_DIAGNOSTIC_REPORT = "diagnostic_report"` (`response_keys.py`). The block is
 built by `build_advisory_for_success_close()` in
 `handlers/diagnostic_report.py`.
+
+---
+
+## `update_notice` advisory block
+
+Success responses may carry an optional top-level `update_notice` block when a
+newer `flextools-mcp` release is known to be available on PyPI (issue #79). It
+is an **additive optional field** — adding it did **not** bump the contract
+version, following the same additive-optional pattern as `diagnostic_report`
+and the `auto_discovered` / `_inline_discovery` fields. It is absent when no
+update is known, when the user has opted out
+(`FLEXTOOLSMCP_NO_UPDATE_CHECK=1`), for source/dev installs, and after it has
+already been emitted once in the current server process.
+
+| Key | Type | Description |
+|---|---|---|
+| `installed` | string | The currently running `flextools-mcp` version. |
+| `latest` | string | The newest version seen on PyPI (from a ~24h-cached check). |
+| `update_available` | boolean | Always `true` when the block is present. |
+| `message` | string | Human-readable summary for the assistant to relay. |
+| `upgrade_commands` | object | `{uvx, uv_tool, pip}` — the upgrade command for each install method (users are on mixed methods and the server can't reliably detect which). |
+
+**Behavior guarantees.** The version check is cached in
+`~/.flextoolsmcp/update-check.json` and the network is contacted at most once
+per ~24h on a background daemon thread — the tool-call path only *reads* the
+cache and never blocks on the network. Any failure (offline, timeout, malformed
+response, corrupt cache, unresolvable home) fails open to *no notice* and never
+raises into the op path. The block is emitted at most once per process.
+
+Built by `get_update_notice()` in `flextoolsmcp/update_check.py`, attached in
+`build_response_with_context()`.
 
 ---
 

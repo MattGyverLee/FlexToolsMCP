@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-07-20
+
+### Proactive update notice (issue #79)
+- **The server now tells users when a newer `flextools-mcp` is on PyPI.**
+  Neither `uvx`, `uv tool`, nor `pip` proactively notifies, so users got
+  silently stuck on old builds — a stale `uvx` cache served a pre-2.6.2 build
+  (Flexicon 4.1.2) even after 2.6.2 shipped, and a blanket `pip install -U`
+  upgraded Flexicon but left the MCP behind. The notice rides out on the
+  tool-response envelope as an optional `update_notice` block so the assistant
+  relays it, with the correct upgrade command for each install method
+  (`uvx flextools-mcp@latest` / `uv tool upgrade flextools-mcp` /
+  `pip install -U flextools-mcp`).
+- **Cheap and safe by construction.** The PyPI check is cached in
+  `~/.flextoolsmcp/update-check.json` (~24h TTL) and runs on a background daemon
+  thread; the tool-call path only reads the cache and never blocks on the
+  network. Any failure fails open to no notice and never raises into the op
+  path. Emitted at most once per process. Skipped for source/dev installs.
+- **Opt-out:** set `FLEXTOOLSMCP_NO_UPDATE_CHECK=1` to disable entirely (no
+  thread, no notice).
+- Additive-optional envelope field — does **not** bump the tool contract
+  (still `tool-responses/1.0`). Documented in
+  [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md#update_notice-advisory-block).
+
 ## [2.6.2] - 2026-07-20
 
 ### Raise the `pyflexicon` floor to 4.2.0

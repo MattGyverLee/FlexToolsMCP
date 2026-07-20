@@ -111,10 +111,14 @@ python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.l
 ```
 
 ### 3. Updating to New Versions
-`uvx flextools-mcp` picks up new releases automatically (force with
-`uvx flextools-mcp@latest`); for a persistent install run
-`uv tool upgrade flextools-mcp` or `pip install -U flextools-mcp`. See
-[SETUP.md](SETUP.md#updating) for details.
+The server tells you when a newer release is out — it adds an `update_notice` to
+its responses that your assistant relays. Then upgrade with the command for your
+install: **`uvx flextools-mcp@latest`** (plain `uvx flextools-mcp` reuses a
+cache and won't reliably update), `uv tool upgrade flextools-mcp`, or
+`pip install -U flextools-mcp` (name the package — a blanket `pip install -U`
+can leave the MCP behind). Disable update checks with
+`FLEXTOOLSMCP_NO_UPDATE_CHECK=1`. See [SETUP.md](SETUP.md#updating) for details,
+including how to clear a stale `uvx` cache.
 
 ### 4. Start Using
 See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.

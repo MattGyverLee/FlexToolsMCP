@@ -151,12 +151,33 @@ If `uvx` is not found by your tool, use its absolute path (run `where uvx` /
 
 ## Updating
 
-- **`uvx flextools-mcp`** (on-demand) picks up new releases automatically; pin
-  or force the latest with `uvx flextools-mcp@latest`.
-- **Persistent install:** `uv tool upgrade flextools-mcp` or
-  `pip install -U flextools-mcp`.
+The server itself will tell you when a newer release is out: when it detects a
+newer `flextools-mcp` on PyPI it adds an `update_notice` to its responses and
+your assistant relays it, with the right command for your install. (It checks
+PyPI at most once a day, in the background; disable with
+`FLEXTOOLSMCP_NO_UPDATE_CHECK=1`.)
 
-Upgrading also re-resolves `pyflexicon` to its latest compatible version.
+Use the command that matches how you installed it:
+
+- **On-demand `uvx`:** run **`uvx flextools-mcp@latest`**. Plain
+  `uvx flextools-mcp` does **not** reliably pick up new releases — `uvx` reuses
+  its cached tool environment and won't re-check PyPI on its own. To make the
+  MCP config always re-resolve, set the launch args to `flextools-mcp@latest`.
+- **Persistent install:** `uv tool upgrade flextools-mcp`.
+- **pip install:** `pip install -U flextools-mcp` — **name the package.** A
+  blanket `pip install -U` (or upgrading only `pyflexicon`) can leave the MCP
+  itself behind while bumping its dependencies; pip does not discover that a
+  newer MCP exists.
+
+Upgrading `flextools-mcp` also re-resolves `pyflexicon` to its latest
+compatible version.
+
+> [!TIP]
+> To confirm the version actually running, ask the assistant, or check the same
+> environment the server launches from: `pip show flextools-mcp pyflexicon`
+> (pip installs) or `uv tool list` (uv tool installs). If it's launched via
+> `uvx`, `pip show` won't find it — that itself tells you pip is not the lever
+> to upgrade with.
 
 ## Troubleshooting
 
@@ -193,6 +214,30 @@ PATH until they are restarted.**
    ```
 4. Fully quit and reopen your AI assistant (Claude Desktop / Antigravity /
    Cursor), or re-run `claude mcp add` for Claude Code, then reconnect.
+
+### The server runs an old version / wrong dependency (stale `uvx` cache)
+
+**Symptom:** you released or expected a newer `flextools-mcp` (or a newer
+`pyflexicon`), but the running server is still on an old build — e.g. it loads
+an older Flexicon than the current release requires.
+
+**Cause:** `uvx flextools-mcp` (no `@latest`) reuses uv's **cached** tool
+environment and does not re-check PyPI on every launch, so it can keep serving a
+build from before your last upgrade.
+
+**Fix:** force a re-resolve —
+
+```powershell
+uvx flextools-mcp@latest        # run the newest, re-resolving now
+# or, to clear just this tool's cache and rebuild on next launch:
+uv cache clean flextools-mcp
+```
+
+`@latest` re-resolves but still **reuses cached wheels** for anything unchanged,
+so this does not re-download the heavy stack (torch, faiss, pythonnet) unless
+those themselves changed version. Avoid `uvx --refresh` / `uv cache clean`
+(no args) for routine updates — those force a full re-download. To keep an MCP
+config always current, set its launch args to `flextools-mcp@latest`.
 
 ### `uvx --version` still fails after a reboot
 

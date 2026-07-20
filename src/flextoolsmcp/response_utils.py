@@ -141,6 +141,22 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
     # Issue #54: stamp every success response with the contract version.
     data.setdefault("_contract", CONTRACT_VERSION)
 
+    # Issue #79: attach a proactive update notice (at most once per process)
+    # when a newer flextools-mcp release is known from the cached PyPI check.
+    # Fully self-contained and fail-open -- it never hits the network on this
+    # path and never raises, so it can't break a tool response.
+    if "update_notice" not in data:
+        try:
+            if __package__:
+                from .update_check import get_update_notice
+            else:
+                from update_check import get_update_notice
+            notice = get_update_notice()
+            if notice:
+                data["update_notice"] = notice
+        except Exception:
+            pass
+
     # Import here to avoid circular imports. Package-relative when installed,
     # absolute for script runs (dual-mode guard, per repo convention).
     if __package__:

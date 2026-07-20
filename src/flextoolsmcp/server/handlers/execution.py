@@ -68,6 +68,7 @@ try:
         detect_candidate_entities, extract_python_did_you_mean,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
+        build_writeability_payload,
     )
 except ImportError:
     from server.validators import (
@@ -79,7 +80,14 @@ except ImportError:
         detect_candidate_entities, extract_python_did_you_mean,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
+        build_writeability_payload,
     )
+
+# Issue #55 (Rung 2): automatic pre-write backup.
+try:
+    from ..backup import perform_pre_write_backup
+except ImportError:
+    from server.backup import perform_pre_write_backup
 
 # Import response utilities and HeadlessReport with fallback
 try:
@@ -111,6 +119,18 @@ try:
     from ...config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
 except (ImportError, ValueError):
     from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
+
+# Issue #55: write-path safety ladder config knobs (backup + confirmation).
+try:
+    from ...config import (
+        BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT,
+        REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
+    )
+except (ImportError, ValueError):
+    from config import (
+        BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT,
+        REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
+    )
 
 # Issue #50: structured JSONL telemetry (one line per op, alongside prose .log)
 try:
@@ -1475,6 +1495,285 @@ def _run_validator(validator_func, code: str, check_key: str, error_code: str, *
     return None
 
 
+# ---------------------------------------------------------------------------
+# Issue #49: validate_only mode -- full preflight without execution.
+# ---------------------------------------------------------------------------
+
+def _log_validate_only_close(
+    op_id: str,
+    seq: int,
+    duration_s: float,
+    status: str,
+    fault_gates: List[str],
+) -> None:
+    """Close a validate_only operation with its own [VALIDATE] log block.
+
+    Deliberately NOT `_log_preflight_reject`: a validate_only call that comes
+    back `validation_failed` is the caller opting into red (asking "what's
+    wrong?"), not backtracking from a real attempt, so it must NOT be counted
+    as a preflight reject in green-rate statistics. Emits telemetry with
+    outcome="validate_only" instead, which the JSONL green-rate/reject
+    aggregates in op_telemetry.py already ignore.
+    """
+    logger = get_operations_logger()
+    logger.info(f"[VALIDATE] validate_only close: status={status}")
+    if fault_gates:
+        logger.info(f"  failing_gates={fault_gates}")
+    logger.info(f"Duration:        {duration_s:.3f}s")
+    logger.info(f"=== Operation #{seq} End ({op_id}) ===")
+
+    _write_jsonl_line(
+        op_id=op_id,
+        seq=seq,
+        outcome="validate_only",
+        duration_s=duration_s,
+        error_code=None,
+        preflight_gate=",".join(fault_gates) if fault_gates else None,
+        info_count=0,
+        warning_count=0,
+        error_count=0,
+        assistance_triggered=False,
+        log_dir_fn=get_log_dir,
+    )
+
+
+def _build_validate_only_checks(
+    *,
+    code: str,
+    code_tree: Optional[ast.AST],
+    syntax_error: Optional[SyntaxError],
+    api_idx: Any,
+    session_state_obj: Any,
+    write_enabled: bool,
+    api_mode: str,
+    skip_api_check: bool,
+    provenance_existing: bool,
+    skip_module_check: bool,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Run gates 1-11 (production order) WITHOUT short-circuiting, except that
+    a syntax failure blocks every AST-dependent gate after it (per spec).
+
+    Side-effect free: does NOT call session_state_obj.record_auto_discovered_api
+    or any other mutating method -- discovery gates REPORT here, they never
+    mark entities as discovered (issue #49).
+
+    Returns (checks, writeability) where `checks` is the ordered per-gate list
+    and `writeability` is the shared #49/#55 builder payload.
+    """
+    checks: List[Dict[str, Any]] = []
+
+    # --- Gate 1: syntax ---
+    if syntax_error is not None:
+        checks.append({
+            "gate": "syntax",
+            "passed": False,
+            "issues": [{"line": syntax_error.lineno, "message": syntax_error.msg}],
+        })
+        # AST-dependent gates 2-11 cannot run without a parse tree.
+        writeability = {
+            "is_mutating_script": False,
+            "mutations_detected": [],
+            "would_require": {"write_enabled": False, "project_lock": False},
+        }
+        return checks, writeability
+    checks.append({"gate": "syntax", "passed": True})
+
+    # --- Gate 2: server_state ---
+    server_health = validate_server_state()
+    if not server_health["is_healthy"]:
+        errors = [msg for sev, msg in server_health["issues"] if sev == "error"]
+        checks.append({"gate": "server_state", "passed": False, "issues": errors})
+    else:
+        checks.append({"gate": "server_state", "passed": True})
+
+    # --- Gate 3: partial_module_structure ---
+    if not skip_module_check:
+        partial_check = detect_partial_module_structure(code, code_tree)
+        if partial_check["is_partial_module"]:
+            checks.append({
+                "gate": "partial_module_structure",
+                "passed": False,
+                "issues": [partial_check["suggestion"]],
+                "missing_elements": partial_check.get("missing_elements"),
+            })
+        else:
+            checks.append({"gate": "partial_module_structure", "passed": True})
+    else:
+        checks.append({"gate": "partial_module_structure", "passed": True, "note": "skipped (skip_module_check=True)"})
+
+    # --- Gate 4: unprotected_writes (also feeds the writeability builder) ---
+    cud_info = detect_cud_operations(code)
+    cert = certify_script_readonly(code, api_idx, code_tree)
+    if not cert["is_certified_readonly"]:
+        guidance = get_unprotected_write_guidance(cert)
+        checks.append({
+            "gate": "unprotected_writes",
+            "passed": False,
+            "issues": guidance.get("mutations_found", []),
+            "guidance": guidance,
+        })
+    else:
+        checks.append({"gate": "unprotected_writes", "passed": True})
+
+    # --- Gate 5: casting ---
+    casting_index = getattr(api_idx, "casting_index", None) if api_idx else None
+    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    if casting_check["has_casting_issues"]:
+        checks.append({
+            "gate": "casting",
+            "passed": False,
+            "issues": casting_check["casting_issues"],
+            "severity": casting_check.get("severity"),
+        })
+    else:
+        checks.append({"gate": "casting", "passed": True})
+
+    # --- Gates 6+7: API discovery (REPORT ONLY -- no session mutation) ---
+    _skip_discovery_gates = skip_api_check or provenance_existing
+    if _skip_discovery_gates:
+        checks.append({"gate": "api_discovery_required", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
+        checks.append({"gate": "undiscovered_entity", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
+    else:
+        no_prior_discovery = len(session_state_obj.get_discovered_apis()) == 0
+        if no_prior_discovery and write_enabled:
+            checks.append({
+                "gate": "api_discovery_required",
+                "passed": False,
+                "issues": ["No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first."],
+            })
+        else:
+            checks.append({"gate": "api_discovery_required", "passed": True})
+
+        undiscovered_check = detect_undiscovered_entities(code_tree, session_state_obj, api_idx)
+        if undiscovered_check["has_undiscovered"]:
+            checks.append({
+                "gate": "undiscovered_entity",
+                "passed": False,
+                "issues": undiscovered_check.get("undiscovered") or [],
+            })
+        else:
+            checks.append({"gate": "undiscovered_entity", "passed": True})
+
+    # --- Gate 8: undefined_variables ---
+    undefined_check = detect_undefined_variables(code, code_tree)
+    if undefined_check["has_undefined"]:
+        checks.append({
+            "gate": "undefined_variables",
+            "passed": False,
+            "issues": undefined_check.get("undefined_vars") or [],
+        })
+    else:
+        checks.append({"gate": "undefined_variables", "passed": True})
+
+    # --- Gate 9: missing_imports ---
+    missing_ops_check = detect_missing_operations_imports(code, api_mode)
+    if missing_ops_check["has_missing"]:
+        checks.append({
+            "gate": "missing_imports",
+            "passed": False,
+            "issues": missing_ops_check.get("missing_imports") or [],
+        })
+    else:
+        checks.append({"gate": "missing_imports", "passed": True})
+
+    # --- Gate 10: wrong_library_imports ---
+    wrong_imports_check = detect_wrong_library_imports(code, api_mode)
+    if wrong_imports_check["has_wrong_imports"]:
+        checks.append({
+            "gate": "wrong_library_imports",
+            "passed": False,
+            "issues": wrong_imports_check.get("wrong_imports") or [],
+        })
+    else:
+        checks.append({"gate": "wrong_library_imports", "passed": True})
+
+    # --- Gate 11: invalid_api_chain ---
+    chain_check = detect_invalid_project_chains(code_tree, api_idx)
+    if chain_check["has_invalid"]:
+        checks.append({
+            "gate": "invalid_api_chain",
+            "passed": False,
+            "issues": chain_check.get("issues") or [],
+        })
+    else:
+        checks.append({"gate": "invalid_api_chain", "passed": True})
+
+    writeability = build_writeability_payload(code, api_idx, code_tree, cud_info=cud_info, cert=cert)
+    return checks, writeability
+
+
+async def _handle_validate_only(
+    *,
+    args: dict,
+    code: str,
+    project_name: str,
+    write_enabled: bool,
+    api_mode: str,
+    op_id: str,
+    seq: int,
+    t_start: float,
+) -> list[TextContent]:
+    """Issue #49: run the 11-gate preflight + a read-only lock probe, then STOP.
+
+    Never opens the project, never spawns the subprocess. Reports ALL faults
+    in one response (no short-circuit except syntax_error, which blocks the
+    AST-dependent gates after it).
+    """
+    try:
+        code_tree: Optional[ast.AST] = ast.parse(code)
+        syntax_error: Optional[SyntaxError] = None
+    except SyntaxError as e:
+        code_tree = None
+        syntax_error = e
+
+    api_idx = get_api_index()
+    checks, writeability = _build_validate_only_checks(
+        code=code,
+        code_tree=code_tree,
+        syntax_error=syntax_error,
+        api_idx=api_idx,
+        session_state_obj=session_state,
+        write_enabled=write_enabled,
+        api_mode=api_mode,
+        skip_api_check=bool(args.get("skip_api_check", False)),
+        provenance_existing=(args.get("source", "authored") == "existing"),
+        skip_module_check=bool(args.get("skip_module_check", False)),
+    )
+
+    # READ-ONLY project-lock probe -- never opens the project, just checks
+    # for a stale/live .fwdata.lock file next to it.
+    try:
+        from ..project_discovery import check_project_locked
+    except (ImportError, ValueError):
+        from server.project_discovery import check_project_locked
+    try:
+        _lock_path = check_project_locked(project_name) if project_name else None
+    except Exception:
+        _lock_path = None
+    project_lock = {"locked": _lock_path is not None}
+    if _lock_path is not None:
+        project_lock["lock_file"] = str(_lock_path)
+
+    all_passed = all(c.get("passed", False) for c in checks)
+    status = "validated" if all_passed else "validation_failed"
+    fault_gates = [c["gate"] for c in checks if not c.get("passed", False)]
+
+    duration_s = time.monotonic() - t_start
+    _log_validate_only_close(op_id, seq, duration_s, status, fault_gates)
+
+    data: Dict[str, Any] = {
+        KEY_STATUS: status,
+        "validate_only": True,
+        "checks": checks,
+        "writeability": writeability,
+        "project_lock": project_lock,
+        "op_id": op_id,
+        "session": session_state.summary(),
+    }
+    data = build_response_with_context(data, include_session=True)
+    return [TextContent(type="text", text=json.dumps(data, indent=2, ensure_ascii=False))]
+
+
 async def handle_start_module(args: dict) -> list[TextContent]:
     """Interactive wizard to start creating a new FlexTools module."""
     import platform
@@ -2128,6 +2427,29 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # visible in the .log so a "what did the LLM try" reconstruction is possible.
     seq, op_id = _next_op_id()
     t_start = time.monotonic()
+
+    # Issue #49: validate_only mode -- run the 11-gate preflight (plus a
+    # read-only project-lock probe) and STOP. Diverted here, before the
+    # normal ast.parse()/SyntaxError early-return below, because validate_only
+    # must surface a syntax failure as a `checks[]` entry (gate 1) rather than
+    # the standard syntax_error rejection -- and must never open the project
+    # or spawn the subprocess.
+    if args.get("validate_only", False):
+        _log_operation_start(
+            op_id, seq, project_name, write_enabled, code, "validate_only",
+            user_intent=user_intent,
+            user_request=user_request,
+        )
+        return await _handle_validate_only(
+            args=args,
+            code=code,
+            project_name=project_name,
+            write_enabled=write_enabled,
+            api_mode=api_mode,
+            op_id=op_id,
+            seq=seq,
+            t_start=t_start,
+        )
 
     # Parse AST early; we need it to classify the source kind on the Start line.
     code_tree: Optional[ast.AST]
@@ -3269,6 +3591,60 @@ MODULE_CODE = {code}
         is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
         needs_lock = write_enabled and is_mutating_script
 
+        # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
+        # BEFORE the project-lock probe / subprocess launch below so an
+        # unconfirmed mutating run executes NOTHING -- no lock taken, no
+        # subprocess spawned. Reuses the SAME writeability builder as #49's
+        # validate_only so the two payloads can never drift apart.
+        if needs_lock:
+            _require_confirmation = bool(
+                config_get(REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT)
+            )
+            if _require_confirmation and not args.get("confirmed", False):
+                _writeability = build_writeability_payload(
+                    code, api_idx, code_tree, cud_info=cud_info, cert=cert
+                )
+                _backup_would_run = (
+                    (
+                        args.get("backup_before_write")
+                        if args.get("backup_before_write") is not None
+                        else bool(config_get(BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT))
+                    )
+                    and not session_state.was_backed_up(project_name)
+                )
+                _mutation_count = len(_writeability["mutations_detected"])
+                _confirm_msg = (
+                    f"This run would mutate the database ({_mutation_count} mutation(s) "
+                    "detected) but confirmed=False. Review `mutations_detected`, then "
+                    "resubmit the SAME call with confirmed=True to execute."
+                )
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start,
+                    "confirmation_required",
+                    f"mutations={_mutation_count}",
+                )
+                return _attach_assistance_if_loop(
+                    error_response(
+                        "confirmation_required",
+                        _confirm_msg,
+                        writeability=_writeability,
+                        mutations_detected=_writeability["mutations_detected"],
+                        backup={
+                            "intent": bool(_backup_would_run),
+                            "note": (
+                                "A pre-write backup will be taken on the CONFIRMED "
+                                "execution, not on this preview."
+                                if _backup_would_run else
+                                "No new backup will be taken (already backed up this "
+                                "session for this project, or backup_before_write=False)."
+                            ),
+                        },
+                        op_id=op_id,
+                    ),
+                    error_code="confirmation_required",
+                    code_size_bytes=_code_size_bytes,
+                )
+
         # Issue #33: fail fast if a .fwdata.lock file exists AND we intend to mutate.
         # Read-only probes are allowed through to LCM, which permits shared-project
         # access when FLEx has the database open in shared mode. Only an exclusive
@@ -3296,6 +3672,27 @@ MODULE_CODE = {code}
                     ),
                     error_code="project_locked",
                     code_size_bytes=_code_size_bytes,
+                )
+
+        # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
+        # project). Runs AFTER the lock probe (so we don't back up a project
+        # FieldWorks currently has locked) and BEFORE the subprocess launch.
+        _backup_result: Optional[Dict[str, Any]] = None
+        if needs_lock and not session_state.was_backed_up(project_name):
+            _backup_arg = args.get("backup_before_write")
+            _backup_result = perform_pre_write_backup(project_name, backup_before_write=_backup_arg)
+            _bk_logger = get_operations_logger()
+            if _backup_result.get("created"):
+                session_state.record_backup(project_name)
+                _bk_logger.info(f"[BACKUP] '{project_name}' -> {_backup_result['path']}")
+            elif _backup_result.get("skipped_reason") == "insufficient_disk_space":
+                _bk_logger.warning(
+                    f"[BACKUP] SKIPPED for '{project_name}': insufficient free disk space "
+                    "(need >= 2x project size). Proceeding with the write WITHOUT a backup."
+                )
+            elif _backup_result.get("skipped_reason") not in (None, "backup_before_write=false"):
+                _bk_logger.warning(
+                    f"[BACKUP] SKIPPED for '{project_name}': {_backup_result.get('skipped_reason')}"
                 )
 
         if needs_lock:
@@ -3375,6 +3772,10 @@ MODULE_CODE = {code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["code"] = code
+        # Issue #55 (Rung 2): surface the pre-write backup outcome (if this run
+        # was the first mutating run for this (session, project)).
+        if _backup_result is not None:
+            execution_result["backup"] = _backup_result
 
         # Include write certification result
         execution_result["write_certification"] = {
@@ -3545,6 +3946,17 @@ MODULE_CODE = {code}
             # happens later in a subprocess, but the LLM-facing record of
             # "what's reversible from this session" lives here.
             if write_enabled and undoable:
+                # Issue #55 (Rung 1): document + surface checkpoint-cap rollover.
+                # deque(maxlen=500) silently evicts the OLDEST entry once full;
+                # WARN so this is visible in operations.log instead of being a
+                # silent memory-management detail (the underlying LCM undo
+                # stack itself is unaffected -- see session.py's field comment).
+                if len(session_state.undo_checkpoints) >= session_state.undo_checkpoints.maxlen:
+                    get_operations_logger().warning(
+                        f"[UNDO-CHECKPOINT] rollover: local checkpoint log at cap "
+                        f"({session_state.undo_checkpoints.maxlen}); oldest local "
+                        f"checkpoint evicted. The real LCM undo stack is unaffected."
+                    )
                 session_state.undo_checkpoints.append({
                     "op_id": op_id,
                     "seq": seq,

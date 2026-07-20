@@ -68,11 +68,18 @@ class FlexToolsStartInput(BaseModel):
     )
     undoable: bool = Field(
         default=False,
-        description="EXPERIMENTAL (opt-in): open project with undoable=True so "
-                    "writes go through LCM's persistent undo stack (matches "
-                    "FLEx UI Ctrl+Z behavior). Required for "
-                    "flextools_undo_last_operation to actually reverse a "
-                    "prior session's writes. Only meaningful when write_enabled=True."
+        description="Open project with undoable=True so writes go through LCM's "
+                    "persistent undo stack (matches FLEx UI Ctrl+Z behavior). "
+                    "Required for flextools_undo_last_operation to actually reverse "
+                    "a prior session's writes. Only meaningful when write_enabled=True. "
+                    "Issue #55: defaults to True whenever write_enabled=True unless "
+                    "you explicitly pass undoable=False -- matching FLEx UI Ctrl+Z "
+                    "behavior is now the default for mutating sessions, not an opt-in. "
+                    "The session-local checkpoint log (session_state.undo_checkpoints) "
+                    "is capped at 500 entries (deque maxlen); past that, the oldest "
+                    "checkpoint is silently evicted (FIFO rollover) -- this only "
+                    "affects the local 'what's reversible from this session' log, "
+                    "NOT the underlying LCM undo stack itself, which is unaffected."
     )
     user_request: Optional[str] = Field(
         default=None,
@@ -422,7 +429,45 @@ class RunModuleInput(BaseModel):
     )
     confirmed: bool = Field(
         default=False,
-        description="Required for CUD operations. Confirm understanding of risks."
+        description="Issue #55 (Rung 3): ENFORCED for mutating writes. When the "
+                    "script is certified mutating (see `writeability`) AND "
+                    "write_enabled=True, a call with confirmed=False is refused "
+                    "with error_code='confirmation_required' plus the mutation "
+                    "plan (mutations_detected[], affected entities, backup intent) "
+                    "-- nothing executes. Resubmit the SAME call with "
+                    "confirmed=True to actually run it. Ignored entirely on "
+                    "read-only runs (no mutating calls detected): confirmed has no "
+                    "effect there. Config key 'require_write_confirmation' (default "
+                    "True) can disable this gate server-wide for power users who "
+                    "accept the risk."
+    )
+    validate_only: bool = Field(
+        default=False,
+        description="Issue #49: run the full 11-gate preflight (syntax, server "
+                    "state, partial-module structure, unprotected writes, casting, "
+                    "API discovery x2, undefined vars, imports x2, invalid API "
+                    "chains) plus a READ-ONLY project-lock probe, then STOP -- the "
+                    "project is never opened and no subprocess is spawned. ALL "
+                    "gates are evaluated and reported in one response (no "
+                    "short-circuit, except that a syntax error blocks the "
+                    "AST-dependent gates after it). Returns status "
+                    "'validated'|'validation_failed', a `checks[]` array (one "
+                    "entry per gate), and a `writeability` block describing any "
+                    "mutations the script would make. Discovery gates REPORT but "
+                    "do NOT mark entities as discovered -- validation is "
+                    "side-effect-free. Use this to ask \"would this go green?\" "
+                    "before actually running, especially before a write."
+    )
+    backup_before_write: Optional[bool] = Field(
+        default=None,
+        description="Issue #55 (Rung 2): opt-out of the automatic pre-write "
+                    "backup. None (default) defers to the server-side config key "
+                    "'backup_before_write' (default True). Only relevant on the "
+                    "FIRST mutating run per (session, project) -- subsequent "
+                    "mutating runs in the same session/project reuse that backup "
+                    "and never re-copy. The backup is skipped (with a WARNING) "
+                    "when free disk space is under 2x the project's .fwdata size. "
+                    "Restore is manual -- see docs/RECOVERY.md."
     )
     skip_module_check: bool = Field(
         default=False,

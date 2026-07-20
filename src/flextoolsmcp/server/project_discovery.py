@@ -274,6 +274,20 @@ def check_project_locked(project_name: str) -> Optional[Path]:
     return lock if lock.exists() else None
 
 
+def get_project_fwdata_path(project_name: str) -> Optional[Path]:
+    """Issue #55 (Rung 2): resolve the on-disk .fwdata path for a project.
+
+    Returns the Path if it exists, else None. Used by the pre-write backup
+    step to locate the file to copy -- never opens it.
+    """
+    dir_result = get_projects_directory()
+    if dir_result is None:
+        return None
+    projects_dir, _ = dir_result
+    fwdata = Path(projects_dir) / project_name / (project_name + _FWDATA_EXT)
+    return fwdata if fwdata.is_file() else None
+
+
 def sweep_stale_locks() -> list:
     """Issue #57 (C): scan for stale .fwdata.lock files at server startup.
 

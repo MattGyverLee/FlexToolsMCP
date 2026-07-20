@@ -475,6 +475,55 @@ Fix by wrapping writes:
 
 ---
 
+## Validating Without Executing (validate_only)
+
+Before committing to a real run -- especially a write -- you can ask
+`flextools_run_module(validate_only=True)` to run the full 11-gate preflight
+(syntax, server state, partial-module structure, unprotected writes, casting,
+API discovery x2, undefined vars, imports x2, invalid API chains) plus a
+READ-ONLY project-lock probe, then stop. The project is never opened and no
+subprocess is spawned.
+
+The response reports EVERY gate (`checks[]`), not just the first failure, so
+you can fix all the problems in one pass instead of a fix-one-see-next loop.
+It also returns a `writeability` block describing exactly what the script
+would mutate if run for real -- use this to sanity-check a script before
+flipping `write_enabled=True`.
+
+`validate_only` is side-effect-free: discovery gates report undiscovered
+entities but do NOT mark them as discovered, so a validate_only call never
+changes what a subsequent real run is allowed to do.
+
+## Write-Path Safety Ladder
+
+Three layers protect a mutating run, in addition to the `if modifyAllowed:`
+guard checked above:
+
+1. **Undoable by default.** `flextools_start(write_enabled=True)` opens the
+   project with `undoable=True` (LCM's persistent undo stack, matching FLEx
+   UI Ctrl+Z) unless you explicitly pass `undoable=False`. This means
+   `flextools_undo_last_operation` can reverse a write from a later session.
+   The session-local checkpoint log is capped at 500 entries -- past that,
+   the oldest LOCAL checkpoint record is silently evicted (the real LCM undo
+   stack itself is unbounded and unaffected).
+
+2. **Automatic pre-write backup.** Before the FIRST mutating run per
+   (session, project), the server copies the project's `.fwdata` to
+   `~/.flextoolsmcp/backups/<project>/<UTC-timestamp>/`, keeping the newest 5.
+   The response's `backup` field reports `{path, created}`. Opt out with
+   `backup_before_write=False` or the `backup_before_write` config key.
+   Restore is manual -- see `docs/RECOVERY.md`.
+
+3. **Enforced confirmation.** A mutating run (`write_enabled=True` AND the
+   script is not certified read-only) with `confirmed=False` is refused with
+   `error_code="confirmation_required"` plus the mutation plan
+   (`mutations_detected[]`, `backup` intent) -- nothing executes, no project
+   lock is taken. Resubmit the SAME call with `confirmed=True` to execute.
+   Read-only runs never require confirmation. Power users can disable this
+   gate globally via the `require_write_confirmation` config key.
+
+---
+
 ## Feedback Loop
 
 The MCP server learns from patterns:

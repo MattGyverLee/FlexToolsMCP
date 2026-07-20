@@ -109,11 +109,14 @@ OPTIONAL: fill `user_request` with the VERBATIM text of what the human just aske
 feature; it is carried through to any run_module ops this turn unless a given
 op overrides it with its own user_request.
 
-OPT-IN undoable mode (EXPERIMENTAL): pass undoable=True alongside write_enabled=True
-to open the project with LCM's persistent undo stack enabled (matches FLEx UI Ctrl+Z).
-Required if you want flextools_undo_last_operation to reverse a prior session's writes.
+Undoable mode: undoable now DEFAULTS to True whenever write_enabled=True (issue #55)
+-- the project opens with LCM's persistent undo stack enabled (matches FLEx UI
+Ctrl+Z), so flextools_undo_last_operation can reverse a prior session's writes
+without any extra opt-in. Pass undoable=False explicitly to disable it.
 Both write_enabled and undoable are inherited from the prior session on re-init when
-not explicitly provided (per #9 fix).""",
+not explicitly provided (per #9 fix). The session-local checkpoint log is capped at
+500 entries (deque maxlen); past that the oldest local checkpoint record is silently
+evicted (the real LCM undo stack itself is unaffected -- see docs/RECOVERY.md).""",
         input_model=FlexToolsStartInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -275,7 +278,25 @@ block so post-mortem readers can see the goal without scrolling back through
 the conversation. Skipping it is allowed but discouraged.
 
 OPTIONAL `user_request`: the VERBATIM human request text, only needed here if
-intent drifted since flextools_start (which already captures it per-turn).""",
+intent drifted since flextools_start (which already captures it per-turn).
+
+VALIDATE WITHOUT EXECUTING (issue #49): pass validate_only=True to run the full
+11-gate preflight (plus a read-only project-lock probe) WITHOUT opening the
+project or spawning a subprocess. Returns status 'validated'|'validation_failed',
+a per-gate `checks[]` array (ALL gates reported, not just the first failure),
+and a `writeability` block describing any mutations the script would make.
+Use this to ask "would this go green?" before committing to a real (especially
+write) run.
+
+WRITE-PATH SAFETY LADDER (issue #55): a mutating run (write_enabled=True AND the
+script is not certified read-only) additionally requires `confirmed=True`.
+Submitting without it returns error_code='confirmation_required' plus the
+mutation plan (mutations_detected[], backup intent) and executes NOTHING --
+review the plan, then resubmit the same call with confirmed=True. Before the
+FIRST such confirmed mutating run per (session, project), an automatic backup
+of the project's .fwdata is taken (see the `backup` field in the response);
+opt out with backup_before_write=False. Read-only runs are unaffected by both
+`confirmed` and the backup step.""",
         input_model=RunModuleInput,
         annotations=ToolAnnotations(
             readOnlyHint=False,

@@ -1977,6 +1977,89 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     }
 
 
+def build_writeability_payload(
+    code: str,
+    api_index,
+    tree: ast.AST | None = None,
+    *,
+    cud_info: Optional[dict] = None,
+    cert: Optional[dict] = None,
+) -> dict:
+    """Build the shared `writeability` payload (issues #49 and #55, Rung 3).
+
+    Merges detect_cud_operations() and certify_script_readonly() findings into
+    a single ``mutations_detected`` list with a ``kind`` discriminator
+    ("wrapper" for Flexicon Operations-class calls, "raw_lcm" for unprotected
+    raw LibLCM writes). This closes #44's self-contradictory count (a raw
+    write surfacing in unprotected_liblcm_calls but NOT the flexicon-index
+    "mutating" total) by making both counters visible in one structure.
+
+    This is the SHARED builder: both the #49 validate_only response and the
+    #55 Rung 3 confirmation_required rejection call this same function so the
+    two payloads can never drift apart.
+
+    Args:
+        code: Python source being analyzed.
+        api_index: Loaded APIIndex (or None).
+        tree: Optional pre-parsed AST (avoids re-parsing when caller has one).
+        cud_info: Optional pre-computed detect_cud_operations() result (reuse
+            to avoid re-running the regex pass when the caller already has it).
+        cert: Optional pre-computed certify_script_readonly() result (reuse
+            for the same reason).
+
+    Returns:
+        {
+          "is_mutating_script": bool,
+          "mutations_detected": [
+              {"line": int|None, "call": str, "kind": "wrapper"|"raw_lcm"},
+              ...
+          ],
+          "would_require": {"write_enabled": bool, "project_lock": bool},
+        }
+    """
+    if cud_info is None:
+        cud_info = detect_cud_operations(code)
+    if cert is None:
+        cert = certify_script_readonly(code, api_index, tree)
+
+    mutations_detected: List[Dict[str, Any]] = []
+
+    for m in cert.get("mutating_calls", []) or []:
+        if not m.get("is_mutating"):
+            continue
+        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
+        mutations_detected.append({
+            "line": m.get("line"),
+            "call": call_name or m.get("method"),
+            "kind": "wrapper",
+        })
+
+    for c in cert.get("unprotected_liblcm_calls", []) or []:
+        mutations_detected.append({
+            "line": c.get("line"),
+            "call": c.get("method"),
+            "kind": "raw_lcm",
+        })
+
+    mutations_detected.sort(key=lambda m: (m.get("line") is None, m.get("line") or 0))
+
+    is_mutating_script = (
+        not cert.get("is_certified_readonly", True)
+    ) or bool(cud_info.get("is_cud"))
+
+    return {
+        "is_mutating_script": is_mutating_script,
+        "mutations_detected": mutations_detected,
+        "would_require": {
+            "write_enabled": True,
+            "project_lock": True,
+        } if is_mutating_script else {
+            "write_enabled": False,
+            "project_lock": False,
+        },
+    }
+
+
 # Issue #21 follow-up: receiver-name -> preferred interface tie-break.
 # When `defined_on` lists more than one candidate interface, an alphabetical
 # pick (the old behavior) produces confidently-wrong rewrites for the most

@@ -150,9 +150,26 @@ class SessionState:
     # successful run_module that wrote under undoable=True. Bounded so a
     # long-running session doesn't grow this without limit -- the actual
     # undo state lives in LCM's persistent stack, not here.
+    #
+    # Rollover semantics (issue #55, Rung 1): this is a deque(maxlen=500).
+    # Appending a 501st entry silently evicts the OLDEST checkpoint (FIFO).
+    # This ONLY affects the session-local "what's reversible from this
+    # session" bookkeeping log -- it does NOT touch the underlying LCM
+    # persistent undo stack, which is unbounded and unaffected by this cap.
+    # A session with >500 mutating ops will lose the local checkpoint record
+    # for its earliest ops, but flextools_undo_last_operation still walks the
+    # REAL LCM stack, so undo itself keeps working; only the "local
+    # checkpoints popped" bookkeeping in the response is affected for ops
+    # that predate the rollover. The handler logs a WARNING at rollover time
+    # so this is visible in operations.log.
     undo_checkpoints: Deque[Dict[str, Any]] = field(
         default_factory=lambda: deque(maxlen=_UNDO_CHECKPOINT_CAP)
     )
+
+    # Issue #55 (Rung 2): projects for which a pre-write backup has already
+    # been taken THIS session. Ensures the backup fires exactly once per
+    # (session, project) instead of on every mutating run.
+    backed_up_projects: set = field(default_factory=set)
 
     # Issue #28: Retry-loop / size-oscillation detector. Each entry is
     # (timestamp, error_code, code_size_bytes); only the last 5 ops are
@@ -288,6 +305,10 @@ class SessionState:
         self.discovered_apis = set()
         self.validated_apis = set()
         self.auto_discovered_apis = set()
+        # Issue #55 (Rung 2): a new session boundary means "no backup taken
+        # yet" for any project -- the prior session's backup is still on disk,
+        # but this session hasn't verified it applies to the current state.
+        self.backed_up_projects = set()
 
     def record_validated_api(self, entity: str) -> None:
         """Record an API that was validated via get_object_api."""
@@ -343,6 +364,16 @@ class SessionState:
         experimental phase.
         """
         return self.undoable
+
+    # --- Issue #55 (Rung 2): per-(session, project) backup tracking ---
+
+    def was_backed_up(self, project_name: str) -> bool:
+        """Return True if a pre-write backup already ran this session for project_name."""
+        return project_name in self.backed_up_projects
+
+    def record_backup(self, project_name: str) -> None:
+        """Mark project_name as backed-up for the remainder of this session."""
+        self.backed_up_projects.add(project_name)
 
     def summary(self) -> dict:
         """Return session state summary for tool responses."""

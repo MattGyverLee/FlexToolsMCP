@@ -56,6 +56,28 @@ REPORT_REPO_DEFAULT = "MattGyverLee/FlexToolsMCP"
 REPORT_EMAIL_KEY = "report_email"
 REPORT_EMAIL_DEFAULT = "matthew_lee@sil.org"
 
+# ---------------------------------------------------------------------------
+# Issue #55: Write-path safety ladder -- config knobs
+#
+# backup_before_write        -- automatic pre-write backup kill switch (Rung 2).
+#                                Default ON. Per-call override:
+#                                RunModuleInput.backup_before_write=True/False.
+# backup_retention           -- how many timestamped backups to keep per
+#                                project before pruning the oldest. Default 5.
+# require_write_confirmation -- enforce RunModuleInput.confirmed on mutating
+#                                writes (Rung 3). Default ON. Set False for
+#                                power users who accept the risk of unconfirmed
+#                                mutating runs.
+# ---------------------------------------------------------------------------
+BACKUP_BEFORE_WRITE_KEY = "backup_before_write"
+BACKUP_BEFORE_WRITE_DEFAULT = True
+
+BACKUP_RETENTION_KEY = "backup_retention"
+BACKUP_RETENTION_DEFAULT = 5
+
+REQUIRE_WRITE_CONFIRMATION_KEY = "require_write_confirmation"
+REQUIRE_WRITE_CONFIRMATION_DEFAULT = True
+
 # In-memory cache (loaded on first call, cleared on flush)
 _config_cache: Optional[Dict[str, Any]] = None
 

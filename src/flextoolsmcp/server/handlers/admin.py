@@ -418,12 +418,27 @@ async def handle_start(args: dict) -> list[TextContent]:
         _resolve_inherited_flag("write_enabled", args, user_provided, same_project)
     )
 
-    # #14 Phase 1: undoable opt-in. Coerced off when write is off because
-    # flexicon silently ignores undoable in that case -- coercing it here
-    # makes the effective value visible so the LLM can react.
-    undoable, _, _ = _resolve_inherited_flag(
-        "undoable", args, user_provided, same_project
-    )
+    # Issue #55 (Rung 1): undoable now DEFAULTS to True whenever write_enabled
+    # is True, unless the caller explicitly passes undoable=False. This
+    # matches FLEx UI Ctrl+Z behavior for mutating sessions instead of
+    # requiring an opt-in.
+    #
+    # _resolve_inherited_flag() can't express this directly: its `default`
+    # fallback only applies when the field is ABSENT from `args`, but
+    # Pydantic always populates `undoable` with its own default (False) even
+    # when the caller never set it, so args.get("undoable", default) would
+    # silently return False instead of our computed default. Bespoke logic
+    # instead:
+    #   - explicit undoable=<bool>       -> honored verbatim (True or False)
+    #   - same-project restart, implicit -> inherit the prior session value
+    #   - fresh start, implicit          -> True iff write_enabled else False
+    _undoable_explicit = "undoable" in user_provided
+    if _undoable_explicit:
+        undoable = bool(args.get("undoable", False))
+    elif same_project:
+        undoable = bool(getattr(session_state, "undoable", False))
+    else:
+        undoable = True if write_enabled else False
     undoable = undoable and write_enabled
 
     # Build API versions dict from current APIIndex (more Pythonic)
@@ -511,9 +526,11 @@ async def handle_start(args: dict) -> list[TextContent]:
         )
     if undoable:
         warnings.append(
-            "undoable=True (EXPERIMENTAL): writes go through LCM's persistent "
-            "undo stack. flextools_undo_last_operation can reverse them across "
-            "MCP sessions (matches FLEx UI Ctrl+Z)."
+            "undoable=True: writes go through LCM's persistent undo stack. "
+            "flextools_undo_last_operation can reverse them across MCP "
+            "sessions (matches FLEx UI Ctrl+Z). This is the default whenever "
+            "write_enabled=True (issue #55); pass undoable=False explicitly "
+            "to opt out."
         )
     if "undoable" in user_provided and args.get("undoable") and not write_enabled:
         warnings.append(

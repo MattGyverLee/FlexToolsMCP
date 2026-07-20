@@ -74,6 +74,8 @@ __all__ = [
     'KEY_AUTO_FIXES_APPLIED', 'KEY_AUTO_FIX_NOTE',
     # Auto-discovery (issue #47)
     'KEY_AUTO_DISCOVERED', 'KEY_INLINE_DISCOVERY', 'KEY_DISCOVERY_NOTE',
+    # Graceful discovery redirect (issue #80)
+    'KEY_DISCOVERY_REDIRECT', 'KEY_CAPABILITY_SUGGESTIONS', 'KEY_EXECUTED',
     # Diagnostic-report advisory (CP3)
     'KEY_DIAGNOSTIC_REPORT',
     # Equivalence / bridge tools
@@ -294,6 +296,14 @@ KEY_AUTO_FIX_NOTE = "auto_fix_note"
 KEY_AUTO_DISCOVERED = "auto_discovered"
 KEY_INLINE_DISCOVERY = "_inline_discovery"
 KEY_DISCOVERY_NOTE = "discovery_note"
+
+# Graceful discovery-redirect fields (issue #80). Emitted on a status: "ok"
+# response that did NOT execute -- a gentle "I looked these up, apply and
+# resubmit" nudge, so a turn-1/turn-2 run attempt reads as workflow guidance
+# rather than an error.
+KEY_DISCOVERY_REDIRECT = "discovery_redirect"       # structured advisory block
+KEY_CAPABILITY_SUGGESTIONS = "capability_suggestions"  # search_by_capability-backed hits
+KEY_EXECUTED = "executed"                            # False on a redirect (code not run)
 
 # Diagnostic-report advisory field (CP3, spec section 10) -- additive optional
 # field on RunModuleSuccess, same pattern as the #46/#47 fields above. No

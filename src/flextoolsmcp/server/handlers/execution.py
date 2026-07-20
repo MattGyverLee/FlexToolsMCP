@@ -22,6 +22,7 @@ from datetime import datetime
 import os
 import ast
 import hashlib
+import heapq
 import time
 import itertools
 from pathlib import Path
@@ -102,6 +103,7 @@ from ..response_keys import (
     KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
     KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     KEY_DIAGNOSTIC_REPORT,
+    KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
 )
 
 # Issue #46: auto-fix config
@@ -787,6 +789,105 @@ def _log_preflight_reject(
     )
 
 
+def _log_discovery_redirect(
+    op_id: str,
+    seq: int,
+    duration_s: float,
+    reason: str,
+    detail: str,
+) -> None:
+    """Close an operation that was gently redirected for discovery (issue #80).
+
+    A discovery redirect is NEITHER a success (the code did not run) NOR a
+    reject (it is not an error -- the workflow simply needs a discovery step
+    first). It gets its own [REDIRECT] .log block and a JSONL line with
+    outcome ``"discovery_redirect"`` so telemetry does not miscount it as a
+    preflight_reject in the green-rate / rejects-by-code stats. A redirect that
+    is later followed by an ``ok`` in the same intent-group still contributes to
+    turns-to-green; one that is never resubmitted reads as abandoned -- both
+    honest.
+    """
+    logger = get_operations_logger()
+    if logger is not None:
+        logger.info("[REDIRECT] Gentle discovery redirect (code not executed)")
+        logger.info(f"Reason:          {reason}")
+        if detail:
+            for line in detail.strip().splitlines()[:20]:
+                logger.info(f"  {line}")
+        logger.info(f"Duration:        {duration_s:.3f}s")
+        logger.info(f"=== Operation #{seq} End ({op_id}) ===")
+    _write_jsonl_line(
+        op_id=op_id,
+        seq=seq,
+        outcome="discovery_redirect",
+        duration_s=duration_s,
+        error_code=None,
+        preflight_gate=reason,
+        info_count=0,
+        warning_count=0,
+        error_count=0,
+        assistance_triggered=False,
+        log_dir_fn=get_log_dir,
+    )
+
+
+def _graceful_discovery_redirect(
+    *,
+    op_id: str,
+    seq: int,
+    duration_s: float,
+    reason: str,
+    message: str,
+    undiscovered: List[str],
+    inline: Dict[str, Any],
+    capability_suggestions: List[Dict[str, Any]],
+    code_size_bytes: int,
+) -> list[TextContent]:
+    """Build a status:"ok" advisory that redirects to discovery WITHOUT erroring.
+
+    Issue #80: on a READ-ONLY run, a turn-1/turn-2 attempt to run code before
+    the relevant APIs were discovered should nudge, not fail. The MCP still
+    PREFERS proactive discovery -- so this payload tells the model to apply the
+    inlined docs / capability suggestions and resubmit -- but it is not dressed
+    as an error. ``executed`` is False and ``discovery_redirect.needs_resubmit``
+    is True so a client cannot mistake it for a completed run.
+    """
+    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}")
+
+    prefer_tools = [
+        "flextools_get_object_api(object_type='...')",
+        "flextools_search_by_capability(query='...')",
+        "flextools_start(task='...')",
+    ]
+    data: Dict[str, Any] = {
+        KEY_STATUS: "ok",
+        KEY_EXECUTED: False,
+        "op_id": op_id,
+        KEY_MESSAGE: message,
+        "hint": (
+            "This is a workflow redirect, NOT an error -- your code was not run. "
+            "Apply the method/property shapes in _inline_discovery (and "
+            "capability_suggestions, if present), then resubmit the same run_module "
+            "call. Proactive discovery is still preferred: calling get_object_api / "
+            "search_by_capability first avoids this hop entirely."
+        ),
+        KEY_DISCOVERY_REDIRECT: {
+            "needs_resubmit": True,
+            "reason": reason,
+            "undiscovered": undiscovered,
+            "prefer_tools": prefer_tools,
+        },
+        "session": session_state.summary(),
+    }
+    if inline:
+        data[KEY_INLINE_DISCOVERY] = inline
+    if capability_suggestions:
+        data[KEY_CAPABILITY_SUGGESTIONS] = capability_suggestions
+
+    data = build_response_with_context(data, include_session=True)
+    return [TextContent(type="text", text=json.dumps(data, indent=2, ensure_ascii=False))]
+
+
 def _attach_assistance_if_loop(
     response: list[TextContent],
     error_code: str,
@@ -1137,6 +1238,95 @@ def _inline_discovery_docs(
             entity_doc["casting_notes"] = casting_notes
         inlined[name] = entity_doc
     return inlined
+
+
+def _build_capability_query(
+    code_tree: Optional[ast.AST],
+    undiscovered: List[str],
+    user_intent: Optional[str],
+) -> str:
+    """Build a free-text query for the capability-search injection (issue #80).
+
+    Blends the human's paraphrased intent (when supplied) with the undiscovered
+    entity names and any guessed method names pulled off the AST. The intent is
+    the strongest signal for "what were they trying to do", so it leads; entity
+    and method tokens sharpen it toward the right API surface.
+    """
+    parts: List[str] = []
+    if user_intent:
+        parts.append(user_intent.strip())
+    # Strip the noisy "Operations" suffix so "LexSenseOperations" contributes
+    # the useful token "LexSense".
+    for name in undiscovered[:5]:
+        parts.append(name[: -len("Operations")] if name.endswith("Operations") else name)
+    # Guessed method names: attribute accesses / calls rooted at project.* or an
+    # Operations class give a strong capability hint (e.g. GetSensePartOfSpeech).
+    if code_tree is not None:
+        method_tokens: List[str] = []
+        for node in ast.walk(code_tree):
+            if isinstance(node, ast.Attribute) and node.attr and node.attr[:1].isupper():
+                method_tokens.append(node.attr)
+        # De-dupe, keep order, cap.
+        seen: set = set()
+        for tok in method_tokens:
+            if tok not in seen:
+                seen.add(tok)
+                parts.append(tok)
+            if len(seen) >= 6:
+                break
+    return " ".join(p for p in parts if p).strip()
+
+
+def _search_capability_inline(query: str, api_index: Any, limit: int = 5) -> List[Dict[str, Any]]:
+    """Lightweight keyword capability-search over the flexicon index (issue #80).
+
+    A self-contained scorer -- deliberately NOT the full handle_search_by_capability
+    machinery (that is coupled to `args`, semantic search, and worked-example
+    augmentation). This returns just enough for a redirect nudge: the top method
+    hits with their entity, signature, summary, and import statement so the model
+    can find the RIGHT method for a guessed/nonexistent one in the same round-trip.
+
+    Fail-open: returns [] on any error or empty query -- capability suggestions
+    are an additive nudge, never load-bearing.
+    """
+    if not query or api_index is None:
+        return []
+    try:
+        flexicon = getattr(api_index, "flexicon", None) or {}
+        entities = flexicon.get("entities") or {}
+        if not entities:
+            return []
+        terms = {t for t in query.lower().split() if len(t) > 2}
+        if not terms:
+            return []
+        scored: List[Tuple[int, Dict[str, Any]]] = []
+        for entity_name, entity in entities.items():
+            for method in entity.get("methods", []) or []:
+                mname = method.get("name") or ""
+                if not mname:
+                    continue
+                name_lower = mname.lower()
+                summary = (method.get("description") or method.get("docstring") or "")
+                summary_lower = summary.lower()
+                score = 0
+                for term in terms:
+                    if term in name_lower:
+                        score += 3
+                    elif term in summary_lower:
+                        score += 1
+                if score > 0:
+                    scored.append((score, {
+                        "entity": entity_name,
+                        "name": mname,
+                        "signature": method.get("signature") or method.get("python_signature"),
+                        "summary": summary[:160],
+                        "import_statement": entity.get("import_statement"),
+                        "is_mutating": method.get("is_mutating", False),
+                    }))
+        top = heapq.nlargest(limit, scored, key=lambda pair: pair[0])
+        return [row for _score, row in top]
+    except Exception:
+        return []
 
 
 # Issue #47: max entities auto-discovered per READ-ONLY run.
@@ -1880,6 +2070,15 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Accumulator for auto-fix records; populated when auto-fix succeeds.
     _auto_fixes_applied: Optional[List[Dict[str, Any]]] = None
     _auto_fix_note: Optional[str] = None
+    # Issue #80: provenance. 'existing' code (from disk / pasted by the human)
+    # skips the two API-DISCOVERY gates -- verifying every API the model didn't
+    # author is expensive LLM work we don't need. This is a COST lever ONLY:
+    # write-safety (checked earlier, unconditionally) and casting injection are
+    # never affected, so a mislabeled 'existing' can at worst run un-discovered
+    # (possibly hallucinated) APIs that fail loudly at runtime -- it can never
+    # relax a safety gate.
+    source_provenance = args.get("source", "authored")
+    _provenance_existing = source_provenance == "existing"
 
     # Validate project_name is available BEFORE assigning an op_id -- without
     # both code and project the call isn't really an "operation" worth logging
@@ -2237,59 +2436,86 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "requiring this flag."
             )
         get_operations_logger().warning(_skip_msg)
-    if not skip_api_check and len(session_state.get_discovered_apis()) == 0:
-        _log_preflight_reject(
-            op_id, seq, time.monotonic() - t_start,
-            "api_discovery_required",
-            "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+
+    # Issue #80: provenance-driven gate skip. 'existing' code (from disk / pasted
+    # by the human) skips BOTH api-discovery gates -- re-verifying APIs the model
+    # didn't author is expensive LLM work we don't need. This is a COST lever
+    # only: write-safety (checked earlier, unconditionally) and casting injection
+    # are unaffected, so it can never relax a safety gate.
+    if _provenance_existing:
+        get_operations_logger().info(
+            "[DISCOVERY] source='existing' -- skipping api_discovery_required and "
+            "undiscovered_entity gates (issue #80). Write-safety + casting already "
+            "ran and are unaffected by provenance."
         )
-        # Issue #29: inline get_object_api for the top entities we can spot in
-        # the submitted code, so the LLM gets the real method shapes in the
-        # rejection itself and can recover in one round-trip instead of three.
-        candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
-        inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
-        if inline:
-            message = (
-                "Discovery required, but I ran get_object_api for the entities I "
-                "detected in your code -- see _inline_discovery. Use these "
-                "method/property shapes and resubmit.\n\n"
-                "(You can also call start(task='...'), get_object_api(object_type='...'), "
-                "or search_by_capability(query='...') for additional entities.)"
+    _skip_discovery_gates = skip_api_check or _provenance_existing
+
+    if not _skip_discovery_gates and len(session_state.get_discovered_apis()) == 0:
+        if write_enabled:
+            # WRITE path: hard gate -- discovery is required before any write.
+            # Write isolation is non-negotiable; issue #80 leaves this unchanged.
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "api_discovery_required",
+                "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+            )
+            # Issue #29: inline get_object_api for the top entities we can spot in
+            # the submitted code, so the LLM gets the real method shapes in the
+            # rejection itself and can recover in one round-trip instead of three.
+            candidates = detect_candidate_entities(code_tree, api_idx, limit=3)
+            inline = _inline_discovery_docs(candidates, api_idx) if candidates else {}
+            if inline:
+                message = (
+                    "Discovery required before a WRITE run, but I ran get_object_api "
+                    "for the entities I detected in your code -- see _inline_discovery. "
+                    "Use these method/property shapes and resubmit.\n\n"
+                    "(You can also call start(task='...'), get_object_api(object_type='...'), "
+                    "or search_by_capability(query='...') for additional entities.)"
+                )
+            else:
+                message = (
+                    "No APIs have been discovered yet. Before running WRITE code, you "
+                    "MUST use one of these tools first:\n"
+                    "1. start(task='...') - discovers relevant APIs automatically\n"
+                    "2. get_object_api(object_type='...') - get API for specific object\n"
+                    "3. search_by_capability(query='...') - search for APIs by description\n\n"
+                    "This prevents using incorrect/hallucinated method names."
+                )
+            extras: Dict[str, Any] = {
+                "hint": (
+                    "Apply the method/property shapes from _inline_discovery and resubmit."
+                    if inline else
+                    "Call get_object_api() for each object/operation you use "
+                    "(FLExProject, LexEntryOperations, etc.), then write code using "
+                    "those discovered APIs."
+                ),
+                "session": session_state.summary(),
+                "op_id": op_id,
+                "detected_candidates": candidates,
+            }
+            if inline:
+                extras["_inline_discovery"] = inline
+            # Issue #28: wrap the rejection with the retry-loop detector so
+            # repeated api_discovery_required failures surface _assistance hints.
+            return _attach_assistance_if_loop(
+                error_response(
+                    "api_discovery_required",
+                    message,
+                    **extras,
+                ),
+                error_code="api_discovery_required",
+                code_size_bytes=_code_size_bytes,
             )
         else:
-            message = (
-                "No APIs have been discovered yet. Before running code, you MUST "
-                "use one of these tools first:\n"
-                "1. start(task='...') - discovers relevant APIs automatically\n"
-                "2. get_object_api(object_type='...') - get API for specific object\n"
-                "3. search_by_capability(query='...') - search for APIs by description\n\n"
-                "This prevents using incorrect/hallucinated method names."
+            # READ-ONLY (issue #80): a turn-1 zero-discovery run is no longer a
+            # hard error. Fall through to the per-entity gate below, which
+            # auto-discovers qualifying entities (and executes) or emits a
+            # graceful discovery redirect for the residual -- a gentle nudge,
+            # not a failure.
+            get_operations_logger().info(
+                "[DISCOVERY] read-only run, zero prior discovery -- deferring to "
+                "per-entity auto-discovery/redirect instead of a hard reject (issue #80)."
             )
-        extras: Dict[str, Any] = {
-            "hint": (
-                "Apply the method/property shapes from _inline_discovery and resubmit."
-                if inline else
-                "Call get_object_api() for each object/operation you use "
-                "(FLExProject, LexEntryOperations, etc.), then write code using "
-                "those discovered APIs."
-            ),
-            "session": session_state.summary(),
-            "op_id": op_id,
-            "detected_candidates": candidates,
-        }
-        if inline:
-            extras["_inline_discovery"] = inline
-        # Issue #28: wrap the rejection with the retry-loop detector so
-        # repeated api_discovery_required failures surface _assistance hints.
-        return _attach_assistance_if_loop(
-            error_response(
-                "api_discovery_required",
-                message,
-                **extras,
-            ),
-            error_code="api_discovery_required",
-            code_size_bytes=_code_size_bytes,
-        )
 
     # Per-entity gate: even after some discovery has happened, reject code that
     # references Operations classes / project accessors the assistant never
@@ -2302,7 +2528,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # auto-discovered (added to auto_discovered_apis, NOT validated_apis) and
     # we fall through to execution instead of rejecting.  On WRITE runs the
     # hard gate fires unconditionally -- write isolation is non-negotiable.
-    if not skip_api_check:
+    if not _skip_discovery_gates:
         undiscovered_check = detect_undiscovered_entities(code_tree, session_state, api_idx)
         if undiscovered_check["has_undiscovered"]:
             undiscovered_list: List[str] = undiscovered_check.get("undiscovered") or []
@@ -2360,34 +2586,43 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         )
                     # Fall through to execution (no rejection).
                 else:
-                    # Some entities cannot be auto-discovered; hard reject as before.
-                    _log_preflight_reject(
-                        op_id, seq, time.monotonic() - t_start,
-                        "undiscovered_entity",
-                        f"undiscovered={still_undiscovered} (auto-discovery failed for these)",
-                    )
-                    _uc2 = dict(undiscovered_check)
-                    _uc2["undiscovered"] = still_undiscovered
-                    extras: Dict[str, Any] = {
-                        "undiscovered": still_undiscovered,
-                        "imported_undiscovered": undiscovered_check.get("imported_undiscovered", []),
-                        "hint": "Call flextools_get_object_api for each listed entity, then re-run.",
-                        "session": session_state.summary(),
-                        "op_id": op_id,
-                    }
+                    # Issue #80: some entities cannot be auto-discovered, but on a
+                    # READ-ONLY run this is a GENTLE REDIRECT, not an error. There is
+                    # no DB-safety risk; we simply couldn't resolve the API shapes
+                    # ourselves. Inline what docs we can, add capability-search hits
+                    # for any guessed methods, and ask the model to apply + resubmit.
+                    # (Grant the entities we DID resolve so a resubmit doesn't re-fire
+                    #  the gate for those.)
+                    for entity in qualifying:
+                        session_state.record_auto_discovered_api(entity)
                     inline = _inline_discovery_docs(
-                        undiscovered_check.get("imported_undiscovered") or [],
+                        list(dict.fromkeys(
+                            still_undiscovered
+                            + (undiscovered_check.get("imported_undiscovered") or [])
+                        )),
                         api_idx,
                     )
-                    if inline:
-                        extras["_inline_discovery"] = inline
-                    return _attach_assistance_if_loop(
-                        error_response(
-                            "undiscovered_entity",
-                            undiscovered_check["suggestion"],
-                            **extras,
+                    cap_query = _build_capability_query(
+                        code_tree, still_undiscovered, user_intent
+                    )
+                    capability_suggestions = _search_capability_inline(cap_query, api_idx)
+                    return _graceful_discovery_redirect(
+                        op_id=op_id,
+                        seq=seq,
+                        duration_s=time.monotonic() - t_start,
+                        reason="undiscovered_entity",
+                        message=(
+                            "I couldn't auto-resolve every API your code uses "
+                            f"({', '.join(still_undiscovered)}), so I looked up what I "
+                            "could -- see _inline_discovery"
+                            + (" and capability_suggestions" if capability_suggestions else "")
+                            + ". Apply those shapes and resubmit. Your code was NOT run "
+                            "(this is a workflow redirect, not an error). Calling "
+                            "get_object_api / search_by_capability first avoids this hop."
                         ),
-                        error_code="undiscovered_entity",
+                        undiscovered=still_undiscovered,
+                        inline=inline,
+                        capability_suggestions=capability_suggestions,
                         code_size_bytes=_code_size_bytes,
                     )
             else:

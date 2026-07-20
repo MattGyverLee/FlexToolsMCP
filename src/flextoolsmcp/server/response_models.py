@@ -24,6 +24,7 @@ try:
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
         KEY_DIAGNOSTIC_REPORT,
+        KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
     )
 except ImportError:
     from server.response_keys import (
@@ -31,6 +32,7 @@ except ImportError:
         KEY_ERROR, KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
         KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
         KEY_DIAGNOSTIC_REPORT,
+        KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
     )
 
 try:
@@ -100,6 +102,26 @@ class RunModuleSuccess(BaseEnvelope):
                     "report_path, transports, likely_contains_lexical_data, error_code}. "
                     "The MCP never sends this itself -- transports are prepared strings "
                     "only; a human must take the send action."
+    )
+    # Issue #80: graceful discovery-redirect fields. Present on a status:"ok"
+    # response that did NOT execute -- a gentle nudge to apply the inlined
+    # discovery and resubmit, so a turn-1/turn-2 run attempt is not an error.
+    executed: Optional[bool] = Field(
+        alias=KEY_EXECUTED, default=None,
+        description="Issue #80: False when the response is a graceful discovery "
+                    "redirect (code was NOT run). Absent/None on normal executed runs."
+    )
+    discovery_redirect: Optional[Dict[str, Any]] = Field(
+        alias=KEY_DISCOVERY_REDIRECT, default=None,
+        description="Issue #80: structured advisory block on a non-executed redirect: "
+                    "{needs_resubmit, reason, undiscovered, prefer_tools}. The model should "
+                    "apply the inlined discovery/capability suggestions and resubmit."
+    )
+    capability_suggestions: Optional[List[Dict[str, Any]]] = Field(
+        alias=KEY_CAPABILITY_SUGGESTIONS, default=None,
+        description="Issue #80: search_by_capability-backed method hits for guessed "
+                    "methods/capabilities, when the entity-shaped inline docs alone "
+                    "aren't the right lookup."
     )
 
 

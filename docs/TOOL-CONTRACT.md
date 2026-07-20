@@ -27,6 +27,32 @@ are forward-compatible.
 Success responses may also carry an optional top-level `update_notice`
 block — see [update_notice](#update_notice-advisory-block) below.
 
+#### Graceful discovery redirect (issue #80)
+
+`flextools_run_module` may return a **`status: "ok"`** response that did **not**
+execute the submitted code — a *gentle workflow redirect*, not an error. This
+happens on a READ-ONLY run when the referenced APIs weren't discovered yet and
+couldn't all be auto-resolved: the server inlines the API docs it could find
+and asks the caller to apply them and resubmit, rather than rejecting. Because
+it is a success envelope (not an error), it never trips error handling — but a
+consumer must not treat it as a completed run. Distinguishing keys:
+
+| Key | Type | Value |
+|---|---|---|
+| `status` | string | `"ok"` |
+| `executed` | bool | `false` (the code was **not** run) |
+| `discovery_redirect` | object | `{needs_resubmit: true, reason, undiscovered, prefer_tools}` |
+| `_inline_discovery` | object | inlined `get_object_api`-shaped docs to apply |
+| `capability_suggestions` | array | optional `search_by_capability`-backed method hits |
+
+Recovery: apply the inlined shapes and resubmit the same `run_module` call.
+Proactive discovery (`get_object_api` / `search_by_capability` first) avoids the
+hop entirely. In structured telemetry (`operations.jsonl`) this closes with
+`outcome: "discovery_redirect"` — counted as neither a green run nor a reject.
+Provenance note: passing `source: "existing"` (code from disk / pasted by the
+human) skips the discovery gates entirely — but write-safety and casting checks
+always run regardless, so `source` can never relax a safety gate.
+
 ### Error envelope
 
 Every rejection emits **both** a flat (canonical) shape and a deprecated

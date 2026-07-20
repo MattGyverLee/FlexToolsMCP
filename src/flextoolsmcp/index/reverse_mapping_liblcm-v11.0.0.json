@@ -992,7 +992,7 @@
     },
     "SegmentOperations": {
       "category": "texts",
-      "method_count": 23,
+      "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
         "ISegment",
@@ -1086,7 +1086,7 @@
     },
     "WfiAnalysisOperations": {
       "category": "texts",
-      "method_count": 26,
+      "method_count": 28,
       "methods": {},
       "wraps_interfaces": [
         "ICmAgent",

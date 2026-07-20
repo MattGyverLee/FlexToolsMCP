@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.1.0"
+    "version": "4.2.1"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -1624,7 +1624,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -1689,7 +1688,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -1732,7 +1730,9 @@
           ],
           "morphType": [
             "arg[0] of isinstance()",
-            "arg[0] of __IsStemType()"
+            "arg[0] of __IsStemType()",
+            "arg[1] of find_morph_type()",
+            "arg[0] of morph_type_not_found_error()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -1743,14 +1743,10 @@
         "properties_accessed": [
           "AlternateFormsOS (OwningSequence)",
           "Form",
-          "LexDbOA (OwningAtomic)",
           "LexemeFormOA",
           "LexemeFormOA (OwningAtomic)",
           "MorphTypeRA",
-          "MorphTypeRA (ReferenceAtomic)",
-          "MorphTypesOA (OwningAtomic)",
-          "PossibilitiesOS (OwningSequence)",
-          "SubPossibilitiesOS (OwningSequence)"
+          "MorphTypeRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -1789,7 +1785,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -1805,14 +1800,10 @@
       "properties_accessed": [
         "AlternateFormsOS (OwningSequence)",
         "Form",
-        "LexDbOA (OwningAtomic)",
         "LexemeFormOA",
         "LexemeFormOA (OwningAtomic)",
         "MorphTypeRA",
-        "MorphTypeRA (ReferenceAtomic)",
-        "MorphTypesOA (OwningAtomic)",
-        "PossibilitiesOS (OwningSequence)",
-        "SubPossibilitiesOS (OwningSequence)"
+        "MorphTypeRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -1856,7 +1847,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -1936,7 +1926,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2002,7 +1991,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2078,7 +2066,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2150,7 +2137,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2209,7 +2195,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2268,7 +2253,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2335,7 +2319,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2394,7 +2377,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2473,7 +2455,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2549,7 +2530,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2606,7 +2586,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -2646,7 +2625,6 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorphFactory",
@@ -22504,6 +22482,11 @@
             "type": "ws_default"
           },
           {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
             "description": "Converts to ITsString",
             "pattern": "ITsString",
             "type": "type_conversion"
@@ -33749,7 +33732,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -33814,7 +33796,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -33874,7 +33855,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -33968,7 +33948,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34053,7 +34032,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34119,7 +34097,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34165,7 +34142,8 @@
             "arg[0] of MakeString()"
           ],
           "morph_type_name": [
-            "arg[0] of __FindMorphType()"
+            "arg[0] of __FindMorphType()",
+            "arg[0] of morph_type_not_found_error()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -34228,7 +34206,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34289,7 +34266,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34395,7 +34371,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34485,7 +34460,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34566,7 +34540,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34626,7 +34599,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34687,7 +34659,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34759,7 +34730,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34822,7 +34792,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34891,7 +34860,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -34971,7 +34939,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35048,7 +35015,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35122,7 +35088,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35186,7 +35151,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35246,7 +35210,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35303,7 +35266,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35355,7 +35317,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35419,7 +35380,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35481,7 +35441,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35530,7 +35489,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35576,7 +35534,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35635,7 +35592,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35689,7 +35645,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35741,7 +35696,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35793,7 +35747,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35852,7 +35805,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -35931,7 +35883,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36005,7 +35956,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36083,7 +36033,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36145,7 +36094,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36211,7 +36159,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36284,7 +36231,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36345,7 +36291,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36411,7 +36356,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36470,7 +36414,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36538,7 +36481,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36612,7 +36554,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36680,7 +36621,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36746,7 +36686,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36806,7 +36745,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36870,7 +36808,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -36930,7 +36867,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37004,7 +36940,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37085,7 +37020,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37163,7 +37097,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37225,7 +37158,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37281,7 +37213,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37343,7 +37274,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37398,7 +37328,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37448,7 +37377,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37528,7 +37456,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37606,7 +37533,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37643,7 +37569,8 @@
           "morph_type_or_name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of isinstance()",
-            "arg[0] of __FindMorphType()"
+            "arg[0] of __FindMorphType()",
+            "arg[0] of morph_type_not_found_error()"
           ]
         },
         "properties_accessed": [
@@ -37677,7 +37604,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37752,7 +37678,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37826,7 +37751,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37885,7 +37809,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -37930,7 +37853,6 @@
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "IMoForm",
-        "MoMorphTypeTags",
         "ILexEntryRef",
         "ILexEntryRefFactory",
         "LexEntryRefTags",
@@ -39411,7 +39333,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39472,7 +39393,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39566,7 +39486,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39674,7 +39593,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39744,7 +39662,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39805,7 +39722,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39882,7 +39798,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -39945,7 +39860,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40031,7 +39945,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40131,7 +40044,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40197,7 +40109,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40284,7 +40195,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40362,7 +40272,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40425,7 +40334,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40487,7 +40395,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40547,7 +40454,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40607,7 +40513,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40679,7 +40584,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40750,7 +40654,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40825,7 +40728,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40883,7 +40785,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -40967,7 +40868,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41053,7 +40953,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41127,7 +41026,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41189,7 +41087,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41261,7 +41158,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41323,7 +41219,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41390,7 +41285,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41461,7 +41355,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41544,7 +41437,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41617,7 +41509,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41683,7 +41574,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41745,7 +41635,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41795,7 +41684,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41853,7 +41741,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41911,7 +41798,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -41973,7 +41859,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42033,7 +41918,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42085,7 +41969,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42156,7 +42039,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42218,7 +42100,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42285,7 +42166,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42356,7 +42236,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42416,7 +42295,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42489,7 +42367,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42537,7 +42414,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42602,7 +42478,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42673,7 +42548,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42733,7 +42607,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42802,7 +42675,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42873,7 +42745,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42923,7 +42794,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -42992,7 +42862,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43059,7 +42928,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43124,7 +42992,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43195,7 +43062,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43256,7 +43122,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43323,7 +43188,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43398,7 +43262,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43460,7 +43323,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43520,7 +43382,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43592,7 +43453,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43658,7 +43518,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43718,7 +43577,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43781,7 +43639,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43849,7 +43706,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -43925,7 +43781,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44000,7 +43855,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44079,7 +43933,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44163,7 +44016,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44238,7 +44090,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44313,7 +44164,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44388,7 +44238,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44472,7 +44321,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44547,7 +44395,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44606,7 +44453,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44668,7 +44514,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44762,7 +44607,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44839,7 +44683,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44914,7 +44757,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -44978,7 +44820,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45049,7 +44890,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45108,7 +44948,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45181,7 +45020,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45245,7 +45083,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45300,7 +45137,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -45343,7 +45179,6 @@
         "ICmTranslationFactory",
         "IReversalIndexEntry",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ITsString",
         "TsStringUtils",
         "ReflectionHelper"
@@ -47360,7 +47195,6 @@
         ],
         "param_usage": {
           "pos": [
-            "arg[0] of _ValidateParam()",
             "arg[0] of __Resolve()"
           ],
           "sense": [
@@ -47378,6 +47212,10 @@
             "default": "None",
             "param": "slots",
             "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
           }
         ],
         "utilities_used": []
@@ -47419,7 +47257,6 @@
         "methods_called": [],
         "param_usage": {
           "pos": [
-            "arg[0] of _ValidateParam()",
             "arg[0] of __Resolve()"
           ],
           "sense": [
@@ -47431,7 +47268,12 @@
           "MainPOS (OwningSequence)"
         ],
         "repositories_used": [],
-        "transformations": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -47468,7 +47310,6 @@
         "methods_called": [],
         "param_usage": {
           "pos": [
-            "arg[0] of _ValidateParam()",
             "arg[0] of __Resolve()"
           ],
           "sense": [
@@ -47480,7 +47321,12 @@
           "MainPOS (OwningSequence)"
         ],
         "repositories_used": [],
-        "transformations": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -47738,7 +47584,8 @@
             "arg[0] of Create()"
           ],
           "internal_subdir": [
-            "arg[1] of join()"
+            "arg[1] of join()",
+            "arg[0] of join()"
           ],
           "label": [
             "arg[1] of Create()"
@@ -47803,12 +47650,14 @@
         ],
         "mapping_type": "composite",
         "methods_called": [
+          ".Add()",
           ".Create()",
           ".set_String()"
         ],
         "param_usage": {
           "file_path": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetOrCreateMediaFolder()"
           ],
           "label": [
             "arg[0] of MakeString()"
@@ -47819,7 +47668,9 @@
             "arg[0] of set_String()"
           ]
         },
-        "properties_accessed": [],
+        "properties_accessed": [
+          "FilesOC (OwningCollection)"
+        ],
         "repositories_used": [],
         "transformations": [
           {
@@ -47859,10 +47710,13 @@
       "mapping_type": "composite",
       "method": "Create",
       "methods_called": [
+        ".Add()",
         ".Create()",
         ".set_String()"
       ],
-      "properties_accessed": [],
+      "properties_accessed": [
+        "FilesOC (OwningCollection)"
+      ],
       "repositories_used": [],
       "utilities_used": [
         "TsStringUtils.MakeString"
@@ -49334,6 +49188,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "True",
+            "param": "deep",
             "type": "default_value"
           },
           {
@@ -57003,6 +56862,66 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "PhonFeatureOperations.ApplySyncableProperties": {
+      "class": "PhonFeatureOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()",
+            "arg[3] of __ApplyValues()"
+          ],
+          "item": [
+            "arg[0] of __ResolveObject()"
+          ],
+          "props": [
+            "arg[0] of isinstance()",
+            "arg[0] of type()"
+          ],
+          "ws_map": [
+            "arg[2] of ApplySyncableProperties()",
+            "arg[2] of __ApplyValues()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
+            "type": "default_value"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ApplySyncableProperties",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "PhonFeatureOperations.Create": {
       "class": "PhonFeatureOperations",
       "factories_used": [
@@ -57621,6 +57540,55 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "PhonFeatureOperations.GetSyncableProperties": {
+      "class": "PhonFeatureOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "item": [
+            "arg[0] of __ResolveObject()"
+          ]
+        },
+        "properties_accessed": [
+          "Guid",
+          "ValuesOC (OwningCollection)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to str",
+            "pattern": "str",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IFsClosedFeature",
+        "IFsClosedFeatureFactory",
+        "IFsSymFeatVal",
+        "IFsSymFeatValFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "GetSyncableProperties",
+      "methods_called": [],
+      "properties_accessed": [
+        "Guid",
+        "ValuesOC (OwningCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "PhonFeatureOperations.GetValues": {
       "class": "PhonFeatureOperations",
       "factories_used": [],
@@ -58030,7 +57998,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58060,16 +58031,20 @@
         "methods_called": [],
         "param_usage": {
           "fill_gaps": [
-            "fill_gaps= of ApplySyncableProperties()"
+            "fill_gaps= of ApplySyncableProperties()",
+            "arg[3] of __ApplyBasicIPASymbol()",
+            "arg[2] of __ApplyFeatures()"
           ],
           "item": [
-            "arg[0] of ApplySyncableProperties()"
+            "arg[0] of __GetPhonemeObject()"
           ],
           "props": [
-            "arg[1] of ApplySyncableProperties()"
+            "arg[0] of isinstance()",
+            "arg[0] of type()"
           ],
           "ws_map": [
-            "arg[2] of ApplySyncableProperties()"
+            "arg[2] of ApplySyncableProperties()",
+            "arg[2] of __ApplyBasicIPASymbol()"
           ]
         },
         "properties_accessed": [],
@@ -58094,7 +58069,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58149,7 +58127,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58230,7 +58211,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58285,7 +58269,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58361,7 +58348,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58418,7 +58408,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58490,7 +58483,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58564,7 +58560,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58610,7 +58609,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58682,7 +58684,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58739,7 +58744,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58810,7 +58818,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58861,7 +58872,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58932,7 +58946,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -58953,25 +58970,21 @@
         "calls_ensure_write_enabled": false,
         "factories_used": [],
         "mapping_type": "convenience",
-        "methods_called": [
-          ".get_String()"
-        ],
+        "methods_called": [],
         "param_usage": {
           "item": [
             "arg[0] of __GetPhonemeObject()"
           ]
         },
         "properties_accessed": [
+          "FeatureRA (ReferenceAtomic)",
+          "FeatureSpecsOC (OwningCollection)",
           "FeaturesOA (OwningAtomic)",
-          "Guid"
+          "Guid",
+          "ValueRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          },
           {
             "description": "Converts to str",
             "pattern": "str",
@@ -58980,11 +58993,6 @@
           {
             "description": "Converts to list",
             "pattern": "list",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -58996,19 +59004,23 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
       "mapping_type": "convenience",
       "method": "GetSyncableProperties",
-      "methods_called": [
-        ".get_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [
+        "FeatureRA (ReferenceAtomic)",
+        "FeatureSpecsOC (OwningCollection)",
         "FeaturesOA (OwningAtomic)",
-        "Guid"
+        "Guid",
+        "ValueRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -59079,7 +59091,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59149,7 +59164,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59216,7 +59234,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59274,7 +59295,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59334,7 +59358,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59393,7 +59420,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59458,7 +59488,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59523,7 +59556,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -59563,7 +59599,10 @@
         "IPhCode",
         "IPhCodeFactory",
         "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IFsClosedFeature",
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
         "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
@@ -71596,6 +71635,54 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "SegmentOperations.GetGloss": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of isinstance()",
+            "arg[0] of Object()"
+          ],
+          "wsHandle": [
+            "arg[1] of GetForm()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetGloss",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "SegmentOperations.GetLiteralTranslation": {
       "class": "SegmentOperations",
       "factories_used": [],
@@ -78136,6 +78223,71 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "WfiAnalysisOperations.GetCategoryAbbrev": {
+      "class": "WfiAnalysisOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveOwningAnalysis()"
+          ],
+          "wsHandle": [
+            "arg[1] of GetAbbreviation()"
+          ]
+        },
+        "properties_accessed": [
+          "CategoryRA (ReferenceAtomic)",
+          "POS (OwningSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "description": "Returns empty string instead of None",
+            "pattern": "or ''",
+            "type": "null_coalesce"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IWfiAnalysis",
+        "IWfiAnalysisFactory",
+        "IWfiAnalysisRepository",
+        "IWfiWordform",
+        "IWfiGlossFactory",
+        "IWfiMorphBundleFactory",
+        "IPartOfSpeech",
+        "ICmAgentEvaluation",
+        "ICmAgent",
+        "ITsString",
+        "TsStringUtils",
+        "Opinions"
+      ],
+      "mapping_type": "direct",
+      "method": "GetCategoryAbbrev",
+      "methods_called": [],
+      "properties_accessed": [
+        "CategoryRA (ReferenceAtomic)",
+        "POS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "WfiAnalysisOperations.GetEvaluations": {
       "class": "WfiAnalysisOperations",
       "factories_used": [],
@@ -78502,6 +78654,56 @@
       ],
       "mapping_type": "direct",
       "method": "GetMorphBundles",
+      "methods_called": [],
+      "properties_accessed": [
+        "MorphBundlesOS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "WfiAnalysisOperations.GetMorphemeBundles": {
+      "class": "WfiAnalysisOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveOwningAnalysis()"
+          ]
+        },
+        "properties_accessed": [
+          "MorphBundlesOS (OwningSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IWfiAnalysis",
+        "IWfiAnalysisFactory",
+        "IWfiAnalysisRepository",
+        "IWfiWordform",
+        "IWfiGlossFactory",
+        "IWfiMorphBundleFactory",
+        "IPartOfSpeech",
+        "ICmAgentEvaluation",
+        "ICmAgent",
+        "ITsString",
+        "TsStringUtils",
+        "Opinions"
+      ],
+      "mapping_type": "direct",
+      "method": "GetMorphemeBundles",
       "methods_called": [],
       "properties_accessed": [
         "MorphBundlesOS (OwningSequence)"
@@ -79015,8 +79217,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ],
           "target_analysis_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -79168,8 +79369,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79224,8 +79424,7 @@
         "param_usage": {
           "item_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79460,8 +79659,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79518,8 +79716,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79620,8 +79817,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -79690,8 +79886,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79739,8 +79934,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ]
         },
         "properties_accessed": [
@@ -79832,8 +80026,7 @@
         "param_usage": {
           "gloss_or_hvo": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of isinstance()",
-            "arg[0] of Object()"
+            "arg[0] of __ResolveGloss()"
           ],
           "text": [
             "arg[0] of _ValidateParam()",

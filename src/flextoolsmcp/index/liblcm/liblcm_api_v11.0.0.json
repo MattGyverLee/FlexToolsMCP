@@ -5970,6 +5970,26 @@
           "description": "Property of type Boolean",
           "is_multistring": false,
           "kind": "property",
+          "name": "IncludeSendReceiveData",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "pythonic_name": "IncludeSendReceiveData",
+          "relationship": "property",
+          "target_type": null,
+          "type": "Boolean"
+        },
+        {
+          "can_read": true,
+          "can_write": true,
+          "description": "Property of type Boolean",
+          "is_multistring": false,
+          "kind": "property",
           "name": "IncludeSpellCheckAdditions",
           "output_behavior": {
             "empty": null,
@@ -6433,6 +6453,26 @@
             }
           },
           "pythonic_name": "IncludeLinkedFiles",
+          "relationship": "property",
+          "target_type": null,
+          "type": "Boolean"
+        },
+        {
+          "can_read": true,
+          "can_write": true,
+          "description": "Property of type Boolean",
+          "is_multistring": false,
+          "kind": "property",
+          "name": "IncludeSendReceiveData",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "pythonic_name": "IncludeSendReceiveData",
           "relationship": "property",
           "target_type": null,
           "type": "Boolean"
@@ -49332,6 +49372,26 @@
           "description": "Property of type Boolean",
           "is_multistring": false,
           "kind": "property",
+          "name": "IncludeSendReceiveData",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "pythonic_name": "IncludeSendReceiveData",
+          "relationship": "property",
+          "target_type": null,
+          "type": "Boolean"
+        },
+        {
+          "can_read": true,
+          "can_write": false,
+          "description": "Property of type Boolean",
+          "is_multistring": false,
+          "kind": "property",
           "name": "IncludeSpellCheckAdditions",
           "output_behavior": {
             "empty": null,
@@ -82220,6 +82280,32 @@
           ],
           "return_type": "List",
           "signature": "CollectHomographs(String sForm, IMoMorphType morphType)"
+        },
+        {
+          "category": "operation",
+          "description": "Performs operation CorrectHomographNumbers",
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "CorrectHomographNumbers",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "entry",
+              "type": "ILexEntry"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "CorrectHomographNumbers(ILexEntry entry)"
         },
         {
           "category": "retrieval",
@@ -153628,6 +153714,32 @@
           ],
           "return_type": "List",
           "signature": "CollectHomographs(String sForm, Int32 hvo, List entries, IMoMorphType morphType)"
+        },
+        {
+          "category": "operation",
+          "description": "Performs operation CorrectHomographNumbers",
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "CorrectHomographNumbers",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "entry",
+              "type": "ILexEntry"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "CorrectHomographNumbers(ILexEntry entry)"
         },
         {
           "category": "retrieval",
@@ -249101,8 +249213,8 @@
     "total_classes": 1161,
     "total_enums": 64,
     "total_interfaces": 660,
-    "total_methods": 2923,
-    "total_properties": 4174,
+    "total_methods": 2925,
+    "total_properties": 4177,
     "total_relationships": 911,
     "total_types": 1885
   },

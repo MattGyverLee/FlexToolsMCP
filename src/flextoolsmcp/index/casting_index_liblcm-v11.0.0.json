@@ -14808,6 +14808,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "IncludeSendReceiveData": {
+      "available_on": [
+        "IBackupInfo",
+        "IBackupSettings"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "IncludeSpellCheckAdditions": {
       "available_on": [
         "IBackupInfo",

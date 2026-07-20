@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.1.2"
+    "version": "4.2.1"
   },
   "categories": {
     "discourse": {
@@ -3386,7 +3386,6 @@
         "IMoStemAllomorphFactory",
         "IPhEnvironment",
         "ITsString",
-        "MoMorphTypeTags",
         "TsStringUtils"
       ],
       "methods": [
@@ -13108,7 +13107,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all constituent charts in the project.\n\nThis method returns an iterator over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
+          "description": "Get all constituent charts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
           "example": "            >>> for chart in project.ConstCharts.GetAll():\n            ...     name = project.ConstCharts.GetName(chart)\n            ...     row_count = chart.RowsOS.Count\n            ...     print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -28890,336 +28889,6 @@
           "signature": "ConstChartClauseMarkers()",
           "summary": "Access to clause marker operations for constituent chart rows.",
           "usage_hint": null
-        },
-        {
-          "description": "Alias for Agents (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "Agent",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "Agent()",
-          "summary": "Alias for Agents (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for PossibilityLists (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "PossibilityList",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "PossibilityList()",
-          "summary": "Alias for PossibilityLists (singular form for backward compatibility).",
-          "usage_hint": "enumeration"
-        },
-        {
-          "description": "Alias for WritingSystems (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "WritingSystem",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "WritingSystem()",
-          "summary": "Alias for WritingSystems (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for Overlays (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "Overlay",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "Overlay()",
-          "summary": "Alias for Overlays (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for Publications (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "Publication",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "Publication()",
-          "summary": "Alias for Publications (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for TranslationTypes (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "TranslationType",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "TranslationType()",
-          "summary": "Alias for TranslationTypes (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for Notes (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "Note",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "Note()",
-          "summary": "Alias for Notes (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for AnnotationDefs (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "AnnotationDef",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "AnnotationDef()",
-          "summary": "Alias for AnnotationDefs (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for Checks (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "Check",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "Check()",
-          "summary": "Alias for Checks (singular form for backward compatibility).",
-          "usage_hint": null
-        },
-        {
-          "description": "Alias for CustomFields (singular form for backward compatibility).",
-          "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": true,
-          "is_staticmethod": false,
-          "lcm_mapping": {
-            "calls_ensure_write_enabled": false,
-            "factories_used": [],
-            "mapping_type": "pure_python",
-            "methods_called": [],
-            "param_usage": {},
-            "properties_accessed": [],
-            "repositories_used": [],
-            "transformations": [],
-            "utilities_used": []
-          },
-          "name": "CustomField",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "CustomField()",
-          "summary": "Alias for CustomFields (singular form for backward compatibility).",
-          "usage_hint": null
         }
       ],
       "source_file": "FLExProject",
@@ -32841,7 +32510,6 @@
         "IMoStemAllomorphFactory",
         "ITsString",
         "LexEntryRefTags",
-        "MoMorphTypeTags",
         "TsStringUtils"
       ],
       "methods": [
@@ -33399,7 +33067,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all lexical entries in the project.\n\nThis method returns an iterator over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
+          "description": "Get all lexical entries in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
           "example": "            >>> for entry in project.LexEntry.GetAll():\n            ...     headword = project.LexEntry.GetHeadword(entry)\n            ...     senses = project.LexEntry.GetSenseCount(entry)\n            ...     print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -36210,7 +35878,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all lexical relation types in the project.\n\nThis method returns an iterator over all ILexRefType objects that\ndefine the types of lexical relations available in the project, such\nas Synonym, Antonym, Part-Whole, etc.\n",
+          "description": "Get all lexical relation types in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all ILexRefType objects that define the\ntypes of lexical relations available in the project, such as\nSynonym, Antonym, Part-Whole, etc.\n",
           "example": "            >>> for ref_type in project.LexReferences.GetAllTypes():\n            ...     name = project.LexReferences.GetTypeName(ref_type)\n            ...     mapping = project.LexReferences.GetMappingType(ref_type)\n            ...     count = len(list(ref_type.MembersOC))\n            ...     print(f\"{name} ({mapping}): {count} references\")\n            Synonym (Symmetric): 15 references\n            Antonym (Symmetric): 8 references\n            Part-Whole (Tree): 22 references\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -36962,7 +36630,6 @@
         "IReversalIndexEntry",
         "ITsString",
         "LexEntryTags",
-        "MoMorphTypeTags",
         "ReflectionHelper",
         "TsStringUtils"
       ],
@@ -42724,7 +42391,7 @@
             },
             {
               "default": null,
-              "description": "An IPartOfSpeech -- the category this affix inflects.",
+              "description": "An IPartOfSpeech -- the category this affix inflects, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"category not yet specified\": an inflectional affix MSA may legitimately carry a blank category cell in FLEx. Mirrors CreateStem's / CreateUnclassifiedAffix's pos=None support.",
               "name": "pos",
               "type": ""
             },
@@ -42775,7 +42442,7 @@
             },
             {
               "default": null,
-              "description": "An IPartOfSpeech (or HVO) -- the grammatical category.",
+              "description": "An IPartOfSpeech (or HVO) -- the grammatical category, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"grammatical category not specified\" -- a very common state for stem entries in FLEx (the category cell is blank). BEHAVIOR CHANGE (issue: null-category stems): previously a None pos raised FP_NullParameterError, which made it impossible to round-trip a legitimately category-less stem MSA. This mirrors CreateDerivAff's to_pos=None \"unset\" precedent.",
               "name": "pos",
               "type": ""
             }
@@ -42817,7 +42484,7 @@
             },
             {
               "default": null,
-              "description": "An IPartOfSpeech (or HVO) -- the grammatical category.",
+              "description": "An IPartOfSpeech (or HVO) -- the grammatical category, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"category not specified\" -- an unclassified affix legitimately may carry no grammatical category (that is what \"unclassified\" means). Mirrors CreateStem's / CreateDerivAff's pos=None support.",
               "name": "pos",
               "type": ""
             }
@@ -43020,7 +42687,7 @@
         },
         {
           "description": "Copy an external file into the project's LinkedFiles directory\nand create a media reference.\n",
-          "example": "            >>> # Import an external audio file\n            >>> media = project.Media.CopyToProject(\n            ...     \"/home/user/recordings/audio.wav\",\n            ...     internal_subdir=\"AudioVisual\",\n            ...     label=\"Speaker 1\"\n            ... )\n            >>> print(project.Media.GetInternalPath(media))\n            LinkedFiles/AudioVisual/audio.wav\n\n            >>> # Import an image\n            >>> photo = project.Media.CopyToProject(\n            ...     \"/home/user/photos/item.jpg\",\n            ...     internal_subdir=\"Pictures\"\n            ... )\n",
+          "example": "            >>> # Import an external audio file\n            >>> media = project.Media.CopyToProject(\n            ...     \"/home/user/recordings/audio.wav\",\n            ...     internal_subdir=\"AudioVisual\",\n            ...     label=\"Speaker 1\"\n            ... )\n            >>> print(project.Media.GetInternalPath(media))\n            AudioVisual/audio.wav\n\n            >>> # Import an image\n            >>> photo = project.Media.CopyToProject(\n            ...     \"/home/user/photos/item.jpg\",\n            ...     internal_subdir=\"Pictures\"\n            ... )\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -43326,7 +42993,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an iterator over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
+          "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
           "example": "            >>> for media in project.Media.GetAll():\n            ...     path = project.Media.GetInternalPath(media)\n            ...     label = project.Media.GetLabel(media, \"en\")\n            ...     print(f\"{label}: {path}\")\n            Recording1: audio/recording1.wav\n            Video1: videos/intro.mp4\n            Photo1: images/photo1.jpg\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -44625,6 +44292,12 @@
               "description": "If True (default), insert after the source. If False, insert at end of collection.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": true,
+              "description": "If True (default), copy reference sequences (slot assignments for affix templates). If False, only copy simple properties.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -44634,7 +44307,7 @@
           ],
           "return_type": "",
           "returns": "The newly created duplicate with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
           "summary": "Duplicate a morphological rule or template, creating a copy with a new GUID.",
           "usage_hint": null
         },
@@ -49577,7 +49250,7 @@
           "usage_hint": null
         },
         {
-          "description": "Get all paragraphs in a text.\n\nReturns a generator that yields all paragraph objects in the text's\nparagraph collection in order.\n",
+          "description": "Get all paragraphs in a text.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily\nmaterialized) over all paragraph objects in the text's paragraph\ncollection, in order.\n",
           "example": "            >>> # Iterate over all paragraphs\n            >>> text = project.Texts.Find(\"Genesis\")\n            >>> for para in project.Paragraphs.GetAll(text):\n            ...     text = project.Paragraphs.GetText(para)\n            ...     print(f\"Paragraph: {text[:50]}...\")\n\n            >>> # Get as list\n            >>> all_paras = list(project.Paragraphs.GetAll(text))\n            >>> print(f\"Total paragraphs: {len(all_paras)}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -50566,7 +50239,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all people in the project.\n\nThis method returns an iterator over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
+          "description": "Get all people in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
           "example": "            >>> for person in project.Person.GetAll():\n            ...     name = project.Person.GetName(person)\n            ...     email = project.Person.GetEmail(person)\n            ...     print(f\"{name}: {email}\")\n            John Smith: john.smith@example.com\n            Maria Garcia: maria.garcia@example.com\n            Ahmed Hassan: ahmed.hassan@example.com\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -63376,7 +63049,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all Scripture books in the project.\n\nThis method returns an iterator over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
+          "description": "Get all Scripture books in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
           "example": "            >>> for book in project.ScrBooks.GetAll():\n            ...     title = project.ScrBooks.GetTitle(book)\n            ...     num = project.ScrBooks.GetCanonicalNum(book)\n            ...     print(f\"{num}: {title}\")\n            1: Genesis\n            2: Exodus\n            40: Matthew\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -63800,7 +63473,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all Scripture drafts in the project.\n\nThis method returns an iterator over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
+          "description": "Get all Scripture drafts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
           "example": "            >>> for draft in project.ScrDrafts.GetAll():\n            ...     desc = project.ScrDrafts.GetDescription(draft)\n            ...     print(f\"Draft: {desc}\")\n            Draft: First Draft - January 2025\n            Draft: Consultant Check - February 2025\n            Draft: Final Version - March 2025\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65952,6 +65625,56 @@
           "returns": "str: The free translation text, or empty string if not set. ",
           "signature": "GetFreeTranslation(segment_or_hvo, wsHandle=None)",
           "summary": "Get the free translation for a segment.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Returns the gloss (translation, meaning) for a sense in a specific writing system.\n\nGet the gloss text for a segment analysis token of any type.\n\n``GetAnalyses()`` returns polymorphic ``IAnalysis`` objects -- a mix of\n``IWfiWordform`` (unanalyzed), ``IWfiAnalysis`` (analyzed, no chosen\ngloss), ``IWfiGloss`` (fully glossed), and ``IPunctuationForm``. Only\n``IWfiGloss`` tokens carry a chosen word gloss; reading it off the wrong\nsubtype (or off an un-cast ``IAnalysis`` reference) silently yields ''\n(issue #212). This helper dispatches on the concrete type so callers\nstop hand-rolling ``IWfiGloss(tok)`` casts in interlinear loops.\n",
+          "example": "            >>> for tok in project.Segments.GetAnalyses(segment):\n            ...     gloss = project.Segments.GetGloss(tok, eng_ws)   # no cast!\n            ...     print(gloss)\n\n        See Also:\n            GetAnalyses, WfiAnalyses.GetCategoryAbbrev, WfiAnalyses.GetMorphemeBundles",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetGloss",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If analysis_or_hvo is None."
+              }
+            ],
+            "notes": [
+              "Flexicon handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: The gloss text for an IWfiGloss token; '' for token types that carry no chosen word gloss (wordform, bare analysis, punctuation).",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IAnalysis token (from GetAnalyses) or its HVO.",
+              "name": "analysis_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If analysis_or_hvo is None."
+          ],
+          "return_type": "str",
+          "returns": "str: The gloss text for an IWfiGloss token; '' for token types that carry no chosen word gloss (wordform, bare analysis, punctuation). ",
+          "signature": "GetGloss(analysis_or_hvo, wsHandle=None)",
+          "summary": "Returns the gloss (translation, meaning) for a sense in a specific writing system.",
           "usage_hint": "retrieval"
         },
         {
@@ -68961,7 +68684,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Get all texts in the project.\n\nReturns a generator that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
+          "description": "Get all texts in the project.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
           "example": "            >>> # Iterate over all texts\n            >>> for text in project.Texts.GetAll():\n            ...     name = text.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Text: {name}\")\n\n            >>> # Get as list\n            >>> all_texts = list(project.Texts.GetAll())\n            >>> print(f\"Total texts: {len(all_texts)}\")\n\n        See Also:\n            Create, Delete, Exists, project.TextsGetAll()",
           "is_classmethod": false,
           "is_mutating": false,
@@ -71721,6 +71444,56 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Get the category (POS) abbreviation for any analysis token.\n\nOwner-resolving convenience wrapper over :meth:`GetCategory` +\n``project.POS.GetAbbreviation`` that accepts the polymorphic\n``IAnalysis`` tokens from ``SegmentOperations.GetAnalyses`` -- an\n``IWfiGloss`` resolves to its owning ``IWfiAnalysis`` automatically.\nSaves interlinear loops from hand-rolling the\n``gloss -> Owner -> WfiAnalysis -> CategoryRA -> Abbreviation`` chase\n(issue #212).\n",
+          "example": "            >>> for tok in project.Segments.GetAnalyses(segment):\n            ...     abbr = project.WfiAnalyses.GetCategoryAbbrev(tok)\n            ...     print(abbr)\n\n        See Also:\n            GetCategory, GetMorphemeBundles, SegmentOperations.GetGloss",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetCategoryAbbrev",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty string when field is not set",
+              "value": "\"\""
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If analysis_or_hvo is None."
+              }
+            ],
+            "notes": [
+              "Flexicon handles '***' placeholder automatically, returns ''"
+            ],
+            "success": {
+              "description": "str: The POS abbreviation (e.g. \"V\", \"N\"), or '' when the token has no owning analysis or no category assigned.",
+              "type": "str"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IAnalysis token or its HVO.",
+              "name": "analysis_or_hvo",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "name": "wsHandle",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If analysis_or_hvo is None."
+          ],
+          "return_type": "str",
+          "returns": "str: The POS abbreviation (e.g. \"V\", \"N\"), or '' when the token has no owning analysis or no category assigned. ",
+          "signature": "GetCategoryAbbrev(analysis_or_hvo, wsHandle=None)",
+          "summary": "Get the category (POS) abbreviation for any analysis token.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get all agent evaluations for an analysis.\n\nRetrieves all ICmAgentEvaluation objects from the analysis's\nEvaluationsRC (Reference Collection). This is a read-only property\nthat returns evaluations created by both human linguists and automated\nagents (e.g., morphological parser).\n",
           "example": "            >>> analysis = analyses[0]\n            >>> evaluations = project.WfiAnalyses.GetEvaluations(analysis)\n            >>> for evaluation in evaluations:\n            ...     if hasattr(evaluation, 'Agent') and evaluation.Agent:\n            ...         agent_name = evaluation.Agent.Name.BestAnalysisAlternative.Text\n            ...         is_accepted = evaluation.Accepted if hasattr(evaluation, 'Accepted') else None\n            ...         print(f\"Agent: {agent_name}, Accepted: {is_accepted}\")\n",
           "is_classmethod": false,
@@ -72038,6 +71811,48 @@
           "returns": "list: List of IWfiMorphBundle objects in sequence order ",
           "signature": "GetMorphBundles(analysis_or_hvo)",
           "summary": "Get all morpheme bundles for an analysis.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get morpheme bundles for any segment analysis token (owner-resolving).\n\nUnlike :meth:`GetMorphBundles` (which requires a concrete\n``IWfiAnalysis``), this accepts the polymorphic ``IAnalysis`` tokens\nthat ``SegmentOperations.GetAnalyses`` returns and resolves the owning\n``IWfiAnalysis`` automatically. This is the traversal helper interlinear\nloops kept hand-rolling (issue #212).\n",
+          "example": "            >>> for tok in project.Segments.GetAnalyses(segment):\n            ...     for mb in project.WfiAnalyses.GetMorphemeBundles(tok):\n            ...         ...  # no manual IWfiGloss -> Owner -> WfiAnalysis chase\n\n        See Also:\n            GetMorphBundles, GetCategoryAbbrev, SegmentOperations.GetGloss",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetMorphemeBundles",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If analysis_or_hvo is None."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list: The IWfiMorphBundle objects for the owning analysis, in sequence order. Empty list for token types with no owning analysis (unanalyzed wordform, punctuation).",
+              "type": "list"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IAnalysis token (IWfiGloss / IWfiAnalysis / IWfiWordform / IPunctuationForm) or its HVO.",
+              "name": "analysis_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If analysis_or_hvo is None."
+          ],
+          "return_type": "list",
+          "returns": "list: The IWfiMorphBundle objects for the owning analysis, in sequence order. Empty list for token types with no owning analysis (unanalyzed wordform, punctuation). ",
+          "signature": "GetMorphemeBundles(analysis_or_hvo)",
+          "summary": "Get morpheme bundles for any segment analysis token (owner-resolving).",
           "usage_hint": "retrieval"
         },
         {
@@ -72856,7 +72671,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an iterator over all IWfiGloss objects associated with\nthe specified analysis, allowing iteration over all meaning glosses.\n",
+          "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all IWfiGloss objects associated with the\nspecified analysis, allowing iteration over all meaning glosses.\n",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.Wordforms.GetAnalyses(wf)\n            >>> if analyses:\n            ...     for gloss in project.WfiGlosses.GetAll(analyses[0]):\n            ...         form = project.WfiGlosses.GetForm(gloss)\n            ...         print(form)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -74777,7 +74592,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an iterator over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
+          "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
           "example": "            >>> for wordform in project.Wordforms.GetAll():\n            ...     form = project.Wordforms.GetForm(wordform)\n            ...     print(form)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -76678,7 +76493,7 @@
     "wrap_enumerable": {
       "base_classes": [],
       "category": "general",
-      "description": "Descriptor to automatically wrap IEnumerable return values.\n\nWraps methods that return C# IEnumerable collections to make them\nPythonic with .Count property and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!",
+      "description": "Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!",
       "example": "",
       "id": "wrap_enumerable",
       "lcm_dependencies": [
@@ -76719,7 +76534,7 @@
       "namespace": "flexicon.code.BaseOperations",
       "properties": [],
       "source_file": "BaseOperations",
-      "summary": "Descriptor to automatically wrap IEnumerable return values.",
+      "summary": "Descriptor to automatically wrap IEnumerable/iterator return values.",
       "tags": [
         "general"
       ],
@@ -76941,7 +76756,6 @@
       "LexRefTypeTags",
       "LexSenseTags",
       "MoFormTags",
-      "MoMorphTypeTags",
       "MsaType",
       "Opinions",
       "PartOfSpeechTags",
@@ -76962,12 +76776,12 @@
     "mapping_types": {
       "composite": 114,
       "convenience": 210,
-      "direct": 594,
-      "pure_python": 586
+      "direct": 596,
+      "pure_python": 587
     },
-    "methods_with_return_type": 886,
+    "methods_with_return_type": 889,
     "total_classes": 116,
-    "total_methods": 1504,
-    "total_properties": 161
+    "total_methods": 1507,
+    "total_properties": 151
   }
 }

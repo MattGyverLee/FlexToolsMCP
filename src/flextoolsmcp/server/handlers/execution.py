@@ -409,6 +409,7 @@ def _log_operation_start(
     helpers_needed: Optional[set] = None,
     user_intent: Optional[str] = None,
     user_request: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> None:
     """Emit the opening block of a per-operation log entry.
 
@@ -426,6 +427,12 @@ def _log_operation_start(
     paraphrase. It is optional and, when absent, falls back to `user_intent`
     for both the logged line and the stashed/JSONL value (same "(not
     provided)" idiom already used for user_intent alone).
+
+    `session_id` (issue #62): the stable session-identity anchor from
+    `SessionState.configure()`. Stashed alongside the other per-op metadata
+    so the JSONL record carries a grouping key that does not change when the
+    LLM edits its `user_intent` string mid-session (see
+    `op_telemetry.group_records_by_session`).
     """
     logger = get_operations_logger()
     fp = _code_fingerprint(code)
@@ -460,6 +467,7 @@ def _log_operation_start(
         code_sha256=_full_sha256,
         code_bytes=fp["bytes"],
         code_lines=fp["lines"],
+        session_id=session_id,
     )
 
     if casting_check is not None:
@@ -639,8 +647,19 @@ def _log_operation_end_success(
     warning_count: int,
     error_count: int,
     messages: Optional[List[Dict[str, Any]]] = None,
+    *,
+    log_dir_fn: Optional[Any] = None,
 ) -> None:
-    """Close a successful operation block."""
+    """Close a successful operation block.
+
+    `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, threaded
+    through to `_write_jsonl_line` so tests can inject a tmp path instead of
+    silently writing synthetic rows into the real `operations.jsonl`. Defaults
+    to `None`, which resolves to the module-level `get_log_dir` AT CALL TIME
+    (not baked into the signature) so tests that monkeypatch
+    `execution.get_log_dir` directly (the pre-existing pattern) keep working
+    unchanged alongside tests that pass `log_dir_fn` explicitly.
+    """
     logger = get_operations_logger()
     # Always replay warnings/errors even when overall result was success --
     # report.Warning() doesn't fail the run but the user wants visibility.
@@ -662,7 +681,7 @@ def _log_operation_end_success(
         warning_count=warning_count,
         error_count=error_count,
         assistance_triggered=False,
-        log_dir_fn=get_log_dir,
+        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
     )
 
 
@@ -679,8 +698,14 @@ def _log_operation_failure(
     messages: Optional[List[Dict[str, Any]]] = None,
     traceback_text: Optional[str] = None,
     polymorphic_hint: Optional[Dict[str, Any]] = None,
+    *,
+    log_dir_fn: Optional[Any] = None,
 ) -> None:
     """Emit the [FAIL] / Messages / Operation End block with diagnostic detail.
+
+    `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, see
+    `_log_operation_end_success` for rationale (None default, resolved at
+    call time so monkeypatching `execution.get_log_dir` still works).
 
     On failure we dump *everything* useful for reconstruction:
     - [FAIL] marker, error type, first error line at ERROR (the operation
@@ -755,7 +780,7 @@ def _log_operation_failure(
             warning_count=warning_count,
             error_count=error_count,
             assistance_triggered=False,
-            log_dir_fn=get_log_dir,
+            log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
         )
 
 
@@ -767,6 +792,7 @@ def _log_preflight_reject(
     detail: str,
     *,
     casting_signature: Optional[str] = None,
+    log_dir_fn: Optional[Any] = None,
 ) -> None:
     """Close an operation that was rejected by a pre-flight validator.
 
@@ -782,6 +808,14 @@ def _log_preflight_reject(
     ever passed -- on a `"casting_issues_detected"` reason_code close. See
     `op_telemetry._write_jsonl_line`'s docstring for why this thread exists
     (precision fix for the CP1 casting-recurrence fallback).
+
+    `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, threaded
+    through to `_write_jsonl_line` so tests calling `_log_preflight_reject`
+    directly can inject a tmp path instead of silently writing synthetic
+    `test-op-*` rows into the real `operations.jsonl`. Defaults to `None`,
+    resolved to the module-level `get_log_dir` AT CALL TIME (not baked into
+    the signature) -- existing callers, including tests that monkeypatch
+    `execution.get_log_dir` directly, are unaffected.
     """
     logger = get_operations_logger()
     logger.warning("[REJECT] Pre-flight validation blocked execution")
@@ -806,7 +840,7 @@ def _log_preflight_reject(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=get_log_dir,
+        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
         casting_signature=casting_signature,
     )
 
@@ -817,6 +851,8 @@ def _log_discovery_redirect(
     duration_s: float,
     reason: str,
     detail: str,
+    *,
+    log_dir_fn: Optional[Any] = None,
 ) -> None:
     """Close an operation that was gently redirected for discovery (issue #80).
 
@@ -828,6 +864,10 @@ def _log_discovery_redirect(
     is later followed by an ``ok`` in the same intent-group still contributes to
     turns-to-green; one that is never resubmitted reads as abandoned -- both
     honest.
+
+    `log_dir_fn` (issue #74): overridable JSONL log-dir resolver, see
+    `_log_operation_end_success` for rationale (None default, resolved at
+    call time so monkeypatching `execution.get_log_dir` still works).
     """
     logger = get_operations_logger()
     if logger is not None:
@@ -849,7 +889,7 @@ def _log_discovery_redirect(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=get_log_dir,
+        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
     )
 
 
@@ -2465,6 +2505,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, project_name, write_enabled, code, source_kind,
             user_intent=user_intent,
             user_request=user_request,
+            session_id=getattr(session_state, "session_id", "") or "",
         )
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
@@ -2489,6 +2530,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         op_id, seq, project_name, write_enabled, code, source_kind,
         user_intent=user_intent,
         user_request=user_request,
+        session_id=getattr(session_state, "session_id", "") or "",
     )
 
     # === PREFLIGHT: Validate server state before attempting execution ===

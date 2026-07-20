@@ -12,11 +12,13 @@ Tests validation functions for static analysis of FLExTools scripts:
 """
 
 import unittest
+from types import SimpleNamespace
 from server.validators import (
     detect_cud_operations,
     detect_module_structure,
     detect_partial_module_structure,
     detect_polymorphic_error,
+    detect_overload_resolution_error,
     detect_missing_operations_imports,
     detect_wrong_library_imports,
     detect_undefined_variables,
@@ -161,6 +163,127 @@ class TestPolymorphicError(unittest.TestCase):
         error = "some random error"
         result = detect_polymorphic_error(error)
         self.assertIn("is_polymorphic_error", result)
+
+
+def _fake_api_index_for_overloads():
+    """Minimal fake APIIndex exposing two overloads of 'Create' on
+    IPartOfSpeechFactory (mirrors the real liblcm index shape) plus a
+    single-overload 'GetFields' on IFwMetaDataCacheManaged, so tests don't
+    depend on the real (large, version-pinned) index file.
+    """
+    liblcm = {
+        "entities": {
+            "IPartOfSpeechFactory": {
+                "methods": [
+                    {
+                        "name": "Create",
+                        "signature": "Create(Guid guid, ICmPossibilityList owner)",
+                        "parameters": [
+                            {"name": "guid", "type": "Guid"},
+                            {"name": "owner", "type": "ICmPossibilityList"},
+                        ],
+                    },
+                    {
+                        "name": "Create",
+                        "signature": "Create(Guid guid, IPartOfSpeech owner)",
+                        "parameters": [
+                            {"name": "guid", "type": "Guid"},
+                            {"name": "owner", "type": "IPartOfSpeech"},
+                        ],
+                    },
+                ],
+            },
+            "IFwMetaDataCacheManaged": {
+                "methods": [
+                    {
+                        "name": "GetFields",
+                        "signature": "GetFields()",
+                        "parameters": [],
+                    },
+                ],
+            },
+        }
+    }
+    return SimpleNamespace(liblcm=liblcm, flexicon=None, flexlibs_stable=None)
+
+
+class TestOverloadResolutionError(unittest.TestCase):
+    """Tests for detect_overload_resolution_error() (issue #75)."""
+
+    def test_detects_known_method_and_lists_candidates(self):
+        """A recognized 'No method matches given arguments' message for a known
+        method surfaces candidate overloads with their argument types."""
+        error = (
+            "TypeError: No method matches given arguments for Create: "
+            "(<class 'System.Guid'>, <class 'NoneType'>)"
+        )
+        result = detect_overload_resolution_error(error, _fake_api_index_for_overloads())
+
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["method_name"], "Create")
+        self.assertEqual(result["given_arg_types"], ["System.Guid", "NoneType"])
+        self.assertEqual(result["total_candidates_found"], 2)
+
+        signatures = {c["signature"] for c in result["candidates"]}
+        self.assertIn("Create(Guid guid, ICmPossibilityList owner)", signatures)
+        self.assertIn("Create(Guid guid, IPartOfSpeech owner)", signatures)
+        self.assertIn("IPartOfSpeechFactory", result["suggestion"])
+        self.assertIn("Create(Guid guid, ICmPossibilityList owner)", result["suggestion"])
+
+    def test_detects_message_without_arg_types(self):
+        """The method name is still extracted when pythonnet's message omits
+        the trailing ': (<arg types>)' portion."""
+        error = "No method matches given arguments for GetFields"
+        result = detect_overload_resolution_error(error, _fake_api_index_for_overloads())
+
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["method_name"], "GetFields")
+        self.assertEqual(result["given_arg_types"], [])
+        self.assertEqual(result["total_candidates_found"], 1)
+        self.assertEqual(result["candidates"][0]["entity"], "IFwMetaDataCacheManaged")
+
+    def test_entity_hint_narrows_candidates(self):
+        """entity_hint restricts candidates to a single entity even when the
+        method name is shared across multiple entities."""
+        error = "No method matches given arguments for Create: (<class 'Guid'>,)"
+        result = detect_overload_resolution_error(
+            error, _fake_api_index_for_overloads(), entity_hint="IPartOfSpeechFactory"
+        )
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["total_candidates_found"], 2)
+        for c in result["candidates"]:
+            self.assertEqual(c["entity"], "IPartOfSpeechFactory")
+
+    def test_no_candidates_found_still_reports_error(self):
+        """When the method has no indexed overloads, the error is still
+        recognized and a fallback suggestion is returned (no crash)."""
+        error = "No method matches given arguments for TotallyUnknownMethod"
+        result = detect_overload_resolution_error(error, _fake_api_index_for_overloads())
+
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["method_name"], "TotallyUnknownMethod")
+        self.assertEqual(result["candidates"], [])
+        self.assertEqual(result["total_candidates_found"], 0)
+        self.assertTrue(result["suggestion"])
+
+    def test_none_api_index_does_not_crash(self):
+        """No api_index available (e.g. not yet loaded): still recognized,
+        no candidates, no exception."""
+        error = "No method matches given arguments for Create"
+        result = detect_overload_resolution_error(error, api_index=None)
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["candidates"], [])
+
+    def test_unrelated_error_not_flagged(self):
+        """Unrelated errors (including the existing polymorphic-attribute
+        error class) are left alone -- is_overload_error is False."""
+        for error in (
+            "'ILexEntry' object has no attribute 'HeadWord'",
+            "name 'foo' is not defined",
+            "",
+        ):
+            result = detect_overload_resolution_error(error)
+            self.assertFalse(result["is_overload_error"])
 
 
 class TestImportValidation(unittest.TestCase):

@@ -1046,6 +1046,156 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
     return {"is_polymorphic_error": False}
 
 
+# Issue #75: pythonnet overload-resolution failures ("No method matches given
+# arguments") are a DIFFERENT failure class from the polymorphic-cast gates
+# above (#39/#48, PolymorphicAttributeError / casting_issues_detected). Those
+# gates fire when an attribute/property genuinely doesn't exist on an
+# interface; this fires when pythonnet can't match a call's argument SHAPE
+# (count/types/order) to any overload of a real .NET method that DOES exist.
+# Observed at IFwMetaDataCache.GetFields and IPartOfSpeechFactory.Create.
+#
+# pythonnet's message format (observed across versions): the method name
+# always follows "for", and is often (not always) followed by a colon and a
+# parenthesized tuple of the Python types pythonnet was given, e.g.:
+#   "No method matches given arguments for Create: (<class 'System.Guid'>, <class 'NoneType'>)"
+_PATTERN_NO_METHOD_MATCHES = re.compile(
+    r"No method matches given arguments for\s+([\w\.]+)(?:\s*:\s*\(([^)]*)\))?"
+)
+
+
+def _find_method_overloads(
+    method_name: str, api_index: Optional[Any], entity_hint: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Search all loaded API sources for every overload of `method_name`.
+
+    Returns a list of {entity, signature, parameters, source} dicts, one per
+    overload found. Searched in liblcm -> flexicon -> flexlibs_stable order
+    (liblcm is the most likely source of raw pythonnet overload errors, since
+    those come from direct SIL.LCModel/.NET calls). When entity_hint is given,
+    only that entity's overloads are returned.
+    """
+    if api_index is None:
+        return []
+
+    candidates: List[Dict[str, Any]] = []
+    for attr in ("liblcm", "flexicon", "flexlibs_stable"):
+        source_data = getattr(api_index, attr, None)
+        if not source_data:
+            continue
+        entities = source_data.get("entities", {}) or {}
+        for entity_name, entity in entities.items():
+            if entity_hint and entity_name != entity_hint:
+                continue
+            for m in entity.get("methods", []) or []:
+                if m.get("name") == method_name:
+                    candidates.append({
+                        "entity": entity_name,
+                        "signature": m.get("signature") or method_name,
+                        "parameters": m.get("parameters", []) or [],
+                        "source": attr,
+                    })
+    return candidates
+
+
+def detect_overload_resolution_error(
+    error_msg: str,
+    api_index: Optional[Any] = None,
+    entity_hint: Optional[str] = None,
+    max_candidates: int = 15,
+) -> dict:
+    """Detect pythonnet overload-resolution failures and surface candidates.
+
+    Recognizes pythonnet's "No method matches given arguments for <Method>"
+    message and, using the indexed API docs, lists the candidate overload
+    signatures (with parameter types) for that method name -- instead of
+    leaving the AI to flail on raw argument-shape guessing (#75).
+
+    Args:
+        error_msg: the raw error text (e.g. execution_result["error"]).
+        api_index: the loaded APIIndex (or compatible object with .liblcm /
+            .flexicon / .flexlibs_stable attributes); when None, no candidates
+            can be looked up but the error is still recognized/parsed.
+        entity_hint: optional interface/class name (e.g. "IPartOfSpeechFactory")
+            to narrow the search to a single entity. Without it, common method
+            names (Create, GetFields, ...) can match dozens of unrelated
+            entities, so results are additionally narrowed by argument arity
+            when the message includes given argument types.
+        max_candidates: cap on the number of candidate signatures surfaced.
+
+    Returns dict with:
+      - is_overload_error: bool
+      - method_name: str | None - the method pythonnet failed to resolve
+      - given_arg_types: list[str] - argument types pythonnet reports it was
+        given (best-effort; empty if the message doesn't include them)
+      - candidates: list[dict] - {entity, signature, parameters, source} for
+        overloads of method_name found in the indexed API docs (capped, and
+        arity-filtered first when given_arg_types is known)
+      - total_candidates_found: int - count before capping
+      - suggestion: str - human-readable hint listing candidate signatures
+    """
+    if not error_msg:
+        return {"is_overload_error": False}
+
+    match = _PATTERN_NO_METHOD_MATCHES.search(error_msg)
+    if not match:
+        return {"is_overload_error": False}
+
+    method_name = match.group(1).rsplit(".", 1)[-1]
+    given_types_raw = match.group(2) or ""
+    given_arg_types = [
+        t.strip().replace("<class '", "").rstrip("'>").strip("'")
+        for t in given_types_raw.split(",") if t.strip()
+    ]
+
+    all_candidates = _find_method_overloads(method_name, api_index, entity_hint)
+
+    given_arity = len(given_arg_types) if given_arg_types else None
+    if given_arity is not None and all_candidates:
+        arity_matched = [c for c in all_candidates if len(c["parameters"]) == given_arity]
+        arity_mismatched = [c for c in all_candidates if len(c["parameters"]) != given_arity]
+        ordered = arity_matched + arity_mismatched
+    else:
+        ordered = all_candidates
+
+    result: Dict[str, Any] = {
+        "is_overload_error": True,
+        "method_name": method_name,
+        "given_arg_types": given_arg_types,
+        "candidates": ordered[:max_candidates],
+        "total_candidates_found": len(all_candidates),
+    }
+
+    if ordered:
+        lines = [
+            f"- {c['entity']}.{c['signature']}" for c in ordered[:max_candidates]
+        ]
+        given_str = (
+            f" Given argument types: ({', '.join(given_arg_types)})."
+            if given_arg_types else ""
+        )
+        truncated_note = (
+            f"\n(showing {max_candidates} of {len(all_candidates)} candidates found)"
+            if len(all_candidates) > max_candidates else ""
+        )
+        result["suggestion"] = (
+            f"pythonnet could not match your call to any overload of '{method_name}'."
+            f"{given_str} Candidate overload signatures from the indexed API docs:\n"
+            + "\n".join(lines) + truncated_note +
+            "\nMatch your call's argument count, types, and order to one of these "
+            "signatures. If none fit, call flextools_get_object_api on the "
+            "containing interface to double-check."
+        )
+    else:
+        result["suggestion"] = (
+            f"pythonnet could not match your call to any overload of '{method_name}', "
+            f"and no candidate signatures were found in the indexed API docs. "
+            f"Double-check the argument count/types/order against the LibLCM source, "
+            f"or call flextools_get_object_api to inspect the containing interface."
+        )
+
+    return result
+
+
 def _collect_all_imported_names(code: str) -> Optional[Set[str]]:
     """Collect every name bound by an import in `code` via AST.
 

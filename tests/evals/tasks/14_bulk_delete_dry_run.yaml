@@ -1,0 +1,4 @@
+task: "Identify (but do NOT delete) entries with an empty lexeme form, as a dry-run report of what a cleanup pass would remove"
+project: Sena3-test
+max_turns: 6
+success_check: "output lists candidate entries (or 'none found') as a READ-ONLY report -- no write/delete call should actually execute -- and no ERROR"

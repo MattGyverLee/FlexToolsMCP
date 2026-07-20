@@ -1,0 +1,27 @@
+intent: "Guarded project.<accessor>.Create(...) must not falsely reject (issue #7)"
+api_mode: flexicon
+write_enabled: true
+session:
+  discovered_apis: ["LexEntryOperations.Create"]
+code: |
+  from flexicon import LexEntryOperations
+
+  def Main(project, report, modifyAllowed):
+      if modifyAllowed:
+          project.LexEntry.Create("citationForm", "gloss")
+      report.Info("done")
+
+  docs = {"FTM_Name": "x", "FTM_Synopsis": "x", "FTM_ModifiesDB": True, "FTM_Description": "x"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #7: the canonical flextools template's
+  `if modifyAllowed: project.LexEntry.Create(...)` shape was previously
+  rejected with the contradictory "Found 0 unprotected mutation(s)"
+  message. certify_script_readonly()'s line-aware raw-LCM pattern
+  (`project\.\w+\.Create\(`) now correctly recognizes the modifyAllowed
+  guard and does not flag it.
+issue: 7

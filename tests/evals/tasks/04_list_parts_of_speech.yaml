@@ -1,0 +1,4 @@
+task: "List every part-of-speech category defined in the project, with a count of how many senses use each"
+project: Sena3-test
+max_turns: 5
+success_check: "output contains at least one 'POS: count' line and no ERROR"

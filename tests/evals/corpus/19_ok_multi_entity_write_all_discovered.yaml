@@ -1,0 +1,25 @@
+intent: "Iterate entries and senses in a write-enabled module, all entities discovered"
+api_mode: flexicon
+write_enabled: true
+session:
+  discovered_apis: ["LexEntryOperations.GetAll", "LexSenseOperations.GetGloss"]
+code: |
+  from flexicon import LexEntryOperations, LexSenseOperations
+
+  def Main(project, report, modifyAllowed):
+      for entry in LexEntryOperations(project).GetAll():
+          for sense in project.Senses.GetAll():
+              g = project.Senses.GetGloss(sense)
+              report.Info(g)
+
+  docs = {"FTM_Name": "x", "FTM_Synopsis": "x", "FTM_ModifiesDB": False, "FTM_Description": "x"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Multi-entity coverage for the write-path discovery gates: mixes the
+  ClassName(project) call form and the project.<accessor> form for a
+  second entity (Senses -> LexSenseOperations), both satisfied via
+  session.discovered_apis.

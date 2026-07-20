@@ -1,0 +1,4 @@
+task: "Add an IPA pronunciation field value '/spɹɪnt/' to the entry whose headword is 'sprint', guarded by a write confirmation"
+project: Sena3-test
+max_turns: 6
+success_check: "output confirms the pronunciation was added (or a clear 'entry not found' message), write was certified/guarded, and no ERROR"

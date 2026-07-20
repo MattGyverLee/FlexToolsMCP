@@ -1,0 +1,21 @@
+intent: "Casting rewrite quality for _obj/_typed/_cast-suffixed receiver names (issue #30)"
+api_mode: flexicon
+write_enabled: false
+skip: true
+skip_reason: >
+  Issue #30 is about which CAST INTERFACE a casting_issues_detected rewrite
+  suggests for an _obj-suffixed receiver name (_RECEIVER_NAME_TO_INTERFACE
+  lookup quality), not whether the preflight gate fires or not. This Tier-1
+  corpus runner only asserts expect.outcome / expect.error_code (a pass/fail
+  gate decision), so it structurally cannot distinguish a correct vs
+  incorrect *rewrite suggestion* for an issue that already fires
+  casting_issues_detected either way. Covered instead by the receiver-name
+  disambiguation unit tests in tests/test_validator_casting_chains.py.
+code: |
+  seg_obj = ISegment(seg)
+  hw = seg_obj.BaselineText
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+issue: 30

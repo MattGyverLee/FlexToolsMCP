@@ -1,0 +1,16 @@
+intent: "Access LexemeForm on a raw (uncast) entry object"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  for entry in LexEntryOperations(project).GetAll():
+      form = entry.LexemeForm
+      report.Info(str(form))
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+notes: >
+  Negative control for issue15_cast_alias_satisfies_chain.yaml: the SAME
+  property (LexemeForm) IS flagged when there is no prior explicit
+  ILexEntry cast establishing the receiver's type.

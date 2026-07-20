@@ -1,0 +1,17 @@
+intent: "Negative control: CategoryRA WITHOUT a prior cast must still be rejected"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  for ana in LexEntryOperations(project).GetAll():
+      cat3 = ana.CategoryRA
+      report.Info(str(cat3))
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+notes: >
+  Negative control for issue40_cast_alias_category_not_reflagged.yaml:
+  proves the casting_index-driven advanced loop is genuinely active (not
+  silently disabled) by confirming the SAME property (CategoryRA) IS
+  flagged when there is no prior cast establishing the receiver's type.

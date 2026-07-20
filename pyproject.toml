@@ -58,6 +58,10 @@ dev = [
     "pytest-cov>=4.0.0",
     "ruff>=0.4.0",
     "pre-commit>=4.0.0",
+    # Eval harness (issue #51): tests/evals/corpus/*.yaml + tests/evals/tasks/*.yaml.
+    # Already present transitively via other deps in most environments, but the
+    # corpus loader imports it directly so it must be an explicit dev dep.
+    "pyyaml>=6.0",
 ]
 
 [project.urls]

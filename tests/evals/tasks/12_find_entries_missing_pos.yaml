@@ -1,0 +1,4 @@
+task: "Find lexical entries whose senses have no part-of-speech category assigned"
+project: Sena3-test
+max_turns: 6
+success_check: "output lists headwords missing a POS (or an explicit 'none found' message) and no ERROR"

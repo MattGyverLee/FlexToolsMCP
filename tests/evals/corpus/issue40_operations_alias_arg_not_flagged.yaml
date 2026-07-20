@@ -1,0 +1,20 @@
+intent: "An argument passed into a flexicon Operations method must not be misread as a polymorphic property access (issue #40)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import SegmentOperations
+  segOps = SegmentOperations(project)
+  label = segOps.IsLabel(seg)
+  report.Info(str(label))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #40 (item 2): `seg_ops.IsLabel(seg)` was previously
+  misclassified by the advanced casting_index-driven regex loop as a
+  polymorphic property access on `seg_ops` requiring a cast, when it's
+  really a flexicon wrapper method call. detect_casting_needs() now skips
+  CamelCase-looking calls when the receiver is a known Operations-class
+  alias (`segOps in operations_aliases`).
+issue: 40

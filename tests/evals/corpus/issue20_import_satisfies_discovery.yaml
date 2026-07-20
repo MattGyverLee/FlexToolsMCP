@@ -1,0 +1,32 @@
+intent: "Explicitly importing an Operations class satisfies the discovery gate (issue #20 -> superseded by #31)"
+api_mode: flexicon
+write_enabled: true
+session:
+  discovered_apis: ["SegmentOperations.GetAll"]
+code: |
+  from flexicon import SegmentOperations
+
+  def Main(project, report, modifyAllowed):
+      segs = SegmentOperations(project).GetAll()
+      report.Info(str(len(segs)))
+
+  docs = {"FTM_Name": "x", "FTM_Synopsis": "x", "FTM_ModifiesDB": False, "FTM_Description": "x"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Historical context: issue #20 originally reported that the
+  undiscovered_entity gate rejected code even after an explicit
+  `from flexlibs2 import SegmentOperations`, with a confusing error message
+  that didn't explain "import != discovery". Issue #31 later changed the
+  DESIGN intentionally: `_collect_flexicon_imports()` now treats an explicit
+  `from flexicon import XOperations` as implicit discovery outright, since
+  the import statement itself proves deliberate intent to use that API
+  surface. This entry locks in the CURRENT (post-#31) behavior: importing
+  SegmentOperations is sufficient even without a matching validated_apis
+  entry (session.discovered_apis is populated here only to satisfy the
+  separate, write-only api_discovery_required hard gate, which checks
+  presence, not per-entity coverage).
+issue: 20

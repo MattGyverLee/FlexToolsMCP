@@ -1,0 +1,23 @@
+intent: "A property already satisfied by an explicit prior cast must not be re-flagged, even via the casting_index-driven path (issue #40)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from SIL.LCModel import IWfiAnalysis
+  wa = IWfiAnalysis(ana)
+  cat = wa.CategoryRA
+  report.Info(str(cat))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #40 (item 3): `wa.CategoryRA` after
+  `wa = IWfiAnalysis(ana)` was previously re-flagged even though the
+  explicit cast on the prior line already proves `wa` is IWfiAnalysis
+  (CategoryRA's defined_on interface). This exercises the casting_index-
+  driven advanced loop's cast-alias check specifically (as opposed to
+  issue15_cast_alias_satisfies_chain.yaml, which exercises the same
+  cast-alias logic via the hardcoded KNOWN_CASTING_PATTERNS path instead).
+  See issue40_negative_control_uncast_category_rejected.yaml for the
+  matching negative control (same property, no prior cast -> rejected).
+issue: 40

@@ -1,0 +1,16 @@
+intent: "Code accidentally references an internal MCP-looking variable name"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  entries = LexEntryOperations(project).GetAll()
+  mode = API_MODE_IMPORTS
+  report.Info(str(mode))
+expect:
+  outcome: preflight_reject
+  error_code: undefined_variables
+  auto_fixes: 0
+notes: >
+  detect_undefined_variables()'s narrow "suspicious" heuristic (names
+  starting with API_, all-uppercase, or Capitalized+'Operations') catches
+  API_MODE_IMPORTS as a hallucinated/internal-looking name.

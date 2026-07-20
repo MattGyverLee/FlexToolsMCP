@@ -1,0 +1,14 @@
+intent: "List each entry's headword"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  for entry in LexEntryOperations(project).GetAll():
+      report.Info(entry)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Baseline "ok" bare-snippet corpus entry: a straightforward read-only
+  iteration over LexEntryOperations. No gate should fire.

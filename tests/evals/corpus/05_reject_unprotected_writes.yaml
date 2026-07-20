@@ -1,0 +1,12 @@
+intent: "Create a lexical entry with no modifyAllowed guard"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  entries = LexEntryOperations(project).GetAll()
+  LexEntryOperations(project).Create("test")
+expect:
+  outcome: preflight_reject
+  error_code: unprotected_writes
+  auto_fixes: 0
+notes: "Baseline write-safety gate: an unguarded Create() must be blocked."

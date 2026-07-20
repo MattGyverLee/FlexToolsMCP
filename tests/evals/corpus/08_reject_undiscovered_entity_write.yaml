@@ -1,0 +1,24 @@
+intent: "A write-enabled module discovers one entity but drifts to a second, undiscovered one"
+api_mode: flexicon
+write_enabled: true
+session:
+  discovered_apis: ["LexEntryOperations.GetAll"]
+code: |
+  from flexicon import LexEntryOperations
+
+  def Main(project, report, modifyAllowed):
+      entries = LexEntryOperations(project).GetAll()
+      pos_list = POSOperations(project).GetAll()
+      report.Info("done")
+
+  docs = {"FTM_Name": "x", "FTM_Synopsis": "x", "FTM_ModifiesDB": False, "FTM_Description": "x"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: preflight_reject
+  error_code: undiscovered_entity
+  auto_fixes: 0
+notes: >
+  Per-entity discovery gate: the session has discovered LexEntryOperations
+  but the code also pivots to POSOperations (imported nowhere, never
+  discovered) -- this is the "post-Op-1 drift" pattern the gate exists to
+  catch (see detect_undiscovered_entities docstring).

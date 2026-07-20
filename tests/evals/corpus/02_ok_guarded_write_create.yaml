@@ -1,0 +1,25 @@
+intent: "Create a new lexical entry, guarded by modifyAllowed"
+api_mode: flexicon
+write_enabled: true
+session:
+  discovered_apis: ["LexEntryOperations.Create"]
+code: |
+  from flexicon import LexEntryOperations
+
+  def Main(project, report, modifyAllowed):
+      if modifyAllowed:
+          LexEntryOperations(project).Create("test")
+      report.Info("done")
+
+  docs = {"FTM_Name": "Test", "FTM_Synopsis": "test", "FTM_ModifiesDB": True, "FTM_Description": "test"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  A properly-guarded write (Create() under `if modifyAllowed:`) must NOT be
+  falsely rejected. Baseline write-path "ok" entry; closely related to the
+  issue #7 regression entry (issue07_guarded_project_accessor_create.yaml),
+  which covers the project.<accessor>.Create(...) shape instead of the
+  Operations(project).Create(...) shape used here.

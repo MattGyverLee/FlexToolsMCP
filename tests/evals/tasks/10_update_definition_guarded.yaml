@@ -1,0 +1,4 @@
+task: "Update the definition of the first sense of the entry 'house' to 'a building for human habitation', keeping the change reversible/guarded"
+project: Sena3-test
+max_turns: 6
+success_check: "output confirms the definition was updated (or a clear 'entry not found' message), write was certified/guarded, and no ERROR"

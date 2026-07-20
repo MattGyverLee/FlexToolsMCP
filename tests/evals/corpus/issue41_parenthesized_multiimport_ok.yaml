@@ -1,0 +1,26 @@
+intent: "Parenthesized multi-line 'from flexicon import (...)' must be parsed correctly (issue #41)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import (
+      SegmentOperations,
+      WordformOperations,
+  )
+
+  segs = SegmentOperations(project).GetAll()
+  words = WordformOperations(project).GetAll()
+  report.Info(str(len(segs) + len(words)))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #41: the original single-line-only import regex
+  (`from \w+ import ([^#\n]+)`) failed to see names inside a parenthesized,
+  multi-line import statement, so both the missing_imports and
+  undiscovered_entity gates false-rejected valid code (the AI's workaround
+  was to reformat into one-import-per-line). _collect_all_imported_names()
+  now uses AST parsing, which normalizes all import shapes (parenthesized,
+  multi-line, aliased) into one name list -- both SegmentOperations and
+  WordformOperations are correctly recognized as imported.
+issue: 41

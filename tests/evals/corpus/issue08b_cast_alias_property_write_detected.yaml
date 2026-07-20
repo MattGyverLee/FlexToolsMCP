@@ -1,0 +1,19 @@
+intent: "An unguarded property write through a cast alias must still be caught (issue #8)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from SIL.LCModel import ILexSense
+  s_typed = ILexSense(sense)
+  s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos
+expect:
+  outcome: preflight_reject
+  error_code: unprotected_writes
+  auto_fixes: 0
+notes: >
+  Second regression shape from issue #8: after casting
+  (`s_typed = ILexSense(sense)`), a property write through the cast alias
+  (`s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos`) was invisible to
+  the naming-prefix-based regex (which only recognized receiver names like
+  entry/sense/wordform/...). _find_cast_alias_property_writes() now walks
+  cast-alias assignments via AST regardless of the receiver's local name.
+issue: 8

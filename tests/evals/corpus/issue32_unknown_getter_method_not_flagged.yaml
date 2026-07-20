@@ -1,0 +1,19 @@
+intent: "A Get*/Find*-prefixed method not yet in the API index must not false-positive as a mutation (issue #32)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  entries = LexEntryOperations(project).GetHeadwordAndCategory()
+  report.Info(str(entries))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #32: when a class IS in the API index but the called
+  method is NOT (e.g. a newly-added getter that hasn't been re-indexed),
+  certify_script_readonly() used to conservatively classify it as mutating.
+  The read-only prefix allowlist (Get/Find/Is/Has/Count/Contains) now
+  classifies GetHeadwordAndCategory as read-only even though it is absent
+  from the (fake, in this runner) index's LexEntryOperations method list.
+issue: 32

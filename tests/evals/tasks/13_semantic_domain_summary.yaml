@@ -1,0 +1,4 @@
+task: "Summarize how many senses are tagged under each top-level semantic domain"
+project: Sena3-test
+max_turns: 6
+success_check: "output contains at least one 'domain: count' line and no ERROR"

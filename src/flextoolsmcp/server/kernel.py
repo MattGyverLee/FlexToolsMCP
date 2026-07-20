@@ -16,6 +16,7 @@ import json
 import logging
 import logging.handlers
 import re
+import time
 import asyncio
 from pathlib import Path
 from datetime import datetime
@@ -119,12 +120,168 @@ def _make_file_handler(log_file: Path):
     return handler
 
 
+def _sanitize_session_id(session_id: str) -> str:
+    """Make a session_id safe to embed in a filename.
+
+    Since issue #42 the session_id is a semantic anchor (e.g.
+    ``auto-<project name>``) that can contain spaces or path separators.
+    Collapse anything outside [A-Za-z0-9._-] to an underscore so the log
+    filename is always well-formed on every platform.
+    """
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", session_id).strip("_")
+    return cleaned or "session"
+
+
+def _build_session_log_path(session_id: str) -> Path:
+    """Return the on-disk path for a per-session log file.
+
+    The dated folder and time component are taken from the WALL CLOCK, not
+    from ``session_id``. Before issue #42 the session_id was itself a
+    ``YYYYMMDD-HHMMSS`` timestamp, so this code sliced ``session_id[:8]`` to
+    build the ``logs/YYYY-MM-DD/`` folder. Issue #42 changed session_id into a
+    semantic identity anchor (``auto-<project>`` / uuid4 hex), which made that
+    slice produce junk ``auto*`` folders and dropped the date/time stamp from
+    the filename. Deriving date and time from the clock restores the stamped
+    layout while keeping the semantic id as a human-readable label:
+
+        logs/YYYY-MM-DD/session_HHMMSS_<session_id>.log
+    """
+    now = time.localtime()
+    dated_dir = get_log_dir() / time.strftime("%Y-%m-%d", now)
+    dated_dir.mkdir(parents=True, exist_ok=True)
+    time_part = time.strftime("%H%M%S", now)
+    return dated_dir / f"session_{time_part}_{_sanitize_session_id(session_id)}.log"
+
+
+# --- Legacy log-folder migration -------------------------------------------
+
+# A well-formed dated folder is exactly YYYY-MM-DD. Anything else at the log
+# root (e.g. the pre-fix 'auto--M-yP' junk folders) is a migration candidate.
+_DATE_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Matches 'session_<id>.log' plus optional rotating-backup suffix '.1'/'.2'/...
+_LEGACY_LOG_RE = re.compile(r"^session_(?P<id>.+?)\.log(?:\.(?P<backup>\d+))?$")
+
+
+def _infer_log_datetime(path: Path) -> Tuple[str, str]:
+    """Best-effort ``(YYYY-MM-DD, HHMMSS)`` for a legacy session log file.
+
+    Prefer the first line's timestamp (our formatter writes
+    ``%Y-%m-%d %H:%M:%S | ...``); fall back to the file's mtime, then to the
+    current wall clock so the file always lands in a sane dated folder.
+    """
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            first = fh.readline()
+        m = re.match(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})", first)
+        if m:
+            return f"{m.group(1)}-{m.group(2)}-{m.group(3)}", f"{m.group(4)}{m.group(5)}{m.group(6)}"
+    except OSError:
+        pass
+    try:
+        lt = time.localtime(path.stat().st_mtime)
+        return time.strftime("%Y-%m-%d", lt), time.strftime("%H%M%S", lt)
+    except OSError:
+        lt = time.localtime()
+        return time.strftime("%Y-%m-%d", lt), time.strftime("%H%M%S", lt)
+
+
+def _unique_migration_target(target: Path) -> Path:
+    """Return ``target`` or, if it exists, a ``..._dupN`` variant so migration
+    never overwrites an already-present log (preserving any '.N' backup suffix)."""
+    if not target.exists():
+        return target
+    m = re.match(r"^(?P<head>.+?\.log)(?P<suffix>\.\d+)?$", target.name)
+    head = m.group("head") if m else target.name
+    suffix = (m.group("suffix") if m else None) or ""
+    stem = head[:-4] if head.endswith(".log") else head
+    n = 1
+    while True:
+        cand = target.with_name(f"{stem}_dup{n}.log{suffix}")
+        if not cand.exists():
+            return cand
+        n += 1
+
+
+def migrate_legacy_session_logs(log_dir: Optional[Path] = None) -> List[Tuple[Path, Path]]:
+    """Relocate pre-fix per-session logs into proper dated folders.
+
+    The pre-#42-aware logging code sliced a semantic session_id as if it were a
+    timestamp, creating malformed folders like ``auto--M-yP`` with stamp-less
+    ``session_<id>.log`` files inside. This walks the log root and, for every
+    ``session_*.log[.N]`` file living OUTSIDE a real ``YYYY-MM-DD`` folder,
+    moves it into ``logs/<inferred-date>/`` with the corrected
+    ``session_HHMMSS_<id>.log`` name (date/time inferred via
+    ``_infer_log_datetime``). Emptied malformed folders are removed.
+
+    Best-effort and idempotent: never raises, never overwrites, and skips the
+    always-on ``operations.log`` family. Returns the ``(src, dest)`` pairs moved.
+    """
+    root = log_dir or get_log_dir()
+    moved: List[Tuple[Path, Path]] = []
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return moved
+
+    for entry in entries:
+        # Real dated folders are already correct.
+        if entry.is_dir() and _DATE_DIR_RE.match(entry.name):
+            continue
+
+        if entry.is_dir():
+            try:
+                candidates = [f for f in entry.iterdir() if f.is_file()]
+            except OSError:
+                continue
+        elif entry.is_file() and not entry.name.startswith("operations.log"):
+            candidates = [entry]  # a stray session log loose at the root
+        else:
+            continue
+
+        for src in candidates:
+            m = _LEGACY_LOG_RE.match(src.name)
+            if not m:
+                continue
+            date_str, time_str = _infer_log_datetime(src)
+            dest_dir = root / date_str
+            try:
+                dest_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                continue
+            name = f"session_{time_str}_{_sanitize_session_id(m.group('id'))}.log"
+            if m.group("backup"):
+                name = f"{name}.{m.group('backup')}"
+            target = _unique_migration_target(dest_dir / name)
+            try:
+                src.replace(target)  # atomic within the same filesystem
+                moved.append((src, target))
+            except OSError:
+                continue
+
+        # Drop the malformed folder if migration emptied it.
+        if entry.is_dir():
+            try:
+                next(entry.iterdir())
+            except StopIteration:
+                try:
+                    entry.rmdir()
+                except OSError:
+                    pass
+            except OSError:
+                pass
+
+    return moved
+
+
 def setup_logging(session_id: str = ""):
     """Configure file and console logging for operations.
 
     Args:
-        session_id: Optional session ID (format: YYYYMMDD-HHMMSS) for organizing logs by date/session
-                   If provided, logs are stored in logs/YYYY-MM-DD/session_ID.log
+        session_id: Optional session identity anchor (since issue #42 this is a
+                   semantic id such as ``auto-<project>`` or a uuid4 hex, NOT a
+                   timestamp). If provided, logs are stored in
+                   logs/YYYY-MM-DD/session_HHMMSS_<session_id>.log where the
+                   date and time come from the wall clock at attach time.
                    If not provided, logs go to logs/operations.log for backward compatibility
 
     The cross-session handler (operations.log) is always attached and marked
@@ -148,16 +305,24 @@ def setup_logging(session_id: str = ""):
         setattr(cross_handler, _CROSS_SESSION_HANDLER_FLAG, True)
         logger.addHandler(cross_handler)
 
+        # One-time heal of pre-fix malformed 'auto*' log folders left by builds
+        # that sliced the session_id as a timestamp. Best-effort; startup must
+        # never fail because a log file couldn't be moved.
+        try:
+            healed = migrate_legacy_session_logs(log_dir)
+            if healed:
+                logger.info(
+                    f"Migrated {len(healed)} legacy session log file(s) into dated folders."
+                )
+        except Exception:
+            pass
+
         # If a session_id was provided at startup, also attach the per-session
         # handler immediately. (Normal flow: setup_logging() is called without
         # session_id at process start; rotate_logging_to_session() adds the
         # per-session handler later when flextools_start fires.)
         if session_id:
-            date_part = session_id[:8]
-            year, month, day = date_part[:4], date_part[4:6], date_part[6:8]
-            dated_dir = log_dir / f"{year}-{month}-{day}"
-            dated_dir.mkdir(parents=True, exist_ok=True)
-            session_log = dated_dir / f"session_{session_id}.log"
+            session_log = _build_session_log_path(session_id)
             logger.addHandler(_make_file_handler(session_log))
 
     return logger
@@ -180,7 +345,9 @@ def rotate_logging_to_session(session_id: str) -> None:
          AND the new per-session log.
 
     Args:
-        session_id: Session ID (format: YYYYMMDD-HHMMSS)
+        session_id: Session identity anchor (since issue #42 a semantic id such
+            as ``auto-<project>`` or a uuid4 hex, NOT a timestamp). The dated
+            folder and time stamp in the filename come from the wall clock.
     """
     global operations_logger
 
@@ -195,19 +362,13 @@ def rotate_logging_to_session(session_id: str) -> None:
             operations_logger.removeHandler(handler)
             handler.close()
 
-    # Create dated directory structure
-    log_dir = get_log_dir()
-    date_part = session_id[:8]  # YYYYMMDD
-    year = date_part[:4]
-    month = date_part[4:6]
-    day = date_part[6:8]
-    dated_dir = log_dir / f"{year}-{month}-{day}"
-    dated_dir.mkdir(parents=True, exist_ok=True)
-    log_file = dated_dir / f"session_{session_id}.log"
+    # Build the dated/timestamped path from the wall clock (NOT from
+    # session_id -- see _build_session_log_path for why).
+    log_file = _build_session_log_path(session_id)
 
     # Add new file handler for the session
     operations_logger.addHandler(_make_file_handler(log_file))
-    operations_logger.info(f"Switched to session log: session_{session_id}.log")
+    operations_logger.info(f"Switched to session log: {log_file.name}")
     _emit_session_header(session_id)
 
 

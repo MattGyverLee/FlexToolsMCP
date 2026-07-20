@@ -13,6 +13,7 @@ These tests pin the new behavior:
 """
 import logging
 import logging.handlers
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -120,10 +121,15 @@ def test_tool_call_lines_survive_rotation(isolated_logger):
 def test_per_session_log_also_receives_records(isolated_logger):
     """Sanity: the per-session log file gets the post-rotation records too,
     i.e. the cross-session log is ADDITIVE not REPLACEMENT."""
-    from server.kernel import rotate_logging_to_session
+    from server.kernel import (
+        rotate_logging_to_session,
+        get_current_session_log_path,
+    )
 
     logger, log_dir = isolated_logger
-    session_id = "20260529-130000"
+    # Since issue #42 the session_id is a semantic anchor, not a timestamp;
+    # the dated folder + HHMMSS filename stamp come from the wall clock.
+    session_id = "auto-MyProject"
 
     rotate_logging_to_session(session_id)
     logger.info("[TOOL CALL] flextools_search_by_capability")
@@ -131,10 +137,17 @@ def test_per_session_log_also_receives_records(isolated_logger):
     for h in logger.handlers:
         h.flush()
 
-    # Per-session log lives under logs/YYYY-MM-DD/session_<id>.log
-    date_dir = log_dir / "2026-05-29"
-    session_log = date_dir / f"session_{session_id}.log"
+    # Per-session log lives under logs/YYYY-MM-DD/session_HHMMSS_<id>.log.
+    # Resolve the real path off the live handler rather than reconstructing it.
+    session_log = get_current_session_log_path()
+    assert session_log is not None, "No per-session log handler attached"
     assert session_log.exists(), f"Per-session log {session_log} not created"
+    assert session_log.name.startswith("session_"), session_log.name
+    assert session_log.name.endswith("_auto-MyProject.log"), session_log.name
+    # The dated folder must be a real YYYY-MM-DD directory, not a slice of the id.
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", session_log.parent.name), (
+        f"Expected a dated folder, got {session_log.parent.name!r}"
+    )
 
     contents = _read(session_log)
     assert contents.count("[TOOL CALL]") == 1, (
@@ -169,3 +182,50 @@ def test_rotation_does_not_stack_per_session_handlers(isolated_logger):
         f"Expected 1 per-session handler after two rotates, got "
         f"{len(session_handlers)}; stale handles would leak file descriptors."
     )
+
+
+def test_migrate_legacy_session_logs(tmp_path):
+    """Pre-fix malformed 'auto*' folders are moved into real dated folders,
+    with the date inferred from the log's first timestamped line."""
+    from server.kernel import migrate_legacy_session_logs, _DATE_DIR_RE
+
+    log_root = tmp_path / "logs"
+    log_root.mkdir()
+
+    # A malformed folder as produced by the pre-fix slice of "auto-MyProject".
+    junk = log_root / "auto--M-yP"
+    junk.mkdir()
+    legacy = junk / "session_auto-MyProject.log"
+    legacy.write_text(
+        "2026-05-29 12:00:00 | INFO    | === Session Environment ===\n"
+        "2026-05-29 12:00:01 | INFO    | [TOOL CALL] flextools_start\n",
+        encoding="utf-8",
+    )
+    # A rotating backup should ride along with its '.1' suffix preserved.
+    (junk / "session_auto-MyProject.log.1").write_text(
+        "2026-05-29 11:00:00 | INFO    | older\n", encoding="utf-8"
+    )
+    # The always-on cross-session log at the root must NOT be touched.
+    (log_root / "operations.log").write_text("keep me\n", encoding="utf-8")
+
+    moved = migrate_legacy_session_logs(log_root)
+
+    assert len(moved) == 2, f"Expected 2 files moved, got {moved}"
+    # Date came from the first log line, not the wall clock.
+    dated = log_root / "2026-05-29"
+    assert dated.is_dir(), "Inferred dated folder not created"
+    main_logs = list(dated.glob("session_*_auto-MyProject.log"))
+    assert len(main_logs) == 1, list(dated.iterdir())
+    assert main_logs[0].name.startswith("session_120000_"), main_logs[0].name
+    backups = list(dated.glob("session_*_auto-MyProject.log.1"))
+    assert len(backups) == 1, list(dated.iterdir())
+
+    # Malformed folder removed; cross-session log preserved; no stray junk dirs.
+    assert not junk.exists(), "Emptied malformed folder should be removed"
+    assert (log_root / "operations.log").exists(), "operations.log must survive"
+    assert all(
+        _DATE_DIR_RE.match(p.name) for p in log_root.iterdir() if p.is_dir()
+    ), "Only dated folders should remain after migration"
+
+    # Idempotent: a second run moves nothing.
+    assert migrate_legacy_session_logs(log_root) == []

@@ -44,6 +44,30 @@ unused FastMCP 2.14 dependency is incidental and should not be treated as the in
 
 ---
 
+## P3: Remove legacy log-folder migration in the next major version
+
+**Status:** open  **Added:** 2026-07-20  **Ref:** log-folder naming fix (session_id no longer sliced as a timestamp)
+
+`kernel.migrate_legacy_session_logs()` (plus its helpers `_infer_log_datetime`
+and `_unique_migration_target`, and the `_LEGACY_LOG_RE` / `_DATE_DIR_RE`
+patterns) is a one-time healer for the malformed `auto*` log folders produced by
+pre-fix builds that sliced a semantic `session_id` as if it were a
+`YYYYMMDD-HHMMSS` timestamp. It runs best-effort on every startup via
+`setup_logging()`.
+
+Once the next major version ships, every active install will have started at
+least once under the fixed code, so the malformed folders will already be gone
+and the migration is dead weight. Remove:
+1. `migrate_legacy_session_logs`, `_infer_log_datetime`, `_unique_migration_target`,
+   `_LEGACY_LOG_RE`, `_DATE_DIR_RE` from `src/flextoolsmcp/server/kernel.py`.
+2. The best-effort call block inside `setup_logging()`.
+3. `test_migrate_legacy_session_logs` in `tests/test_cross_session_logging.py`.
+
+Keep `_build_session_log_path` / `_sanitize_session_id` — those are the
+permanent path builders, not migration code.
+
+---
+
 ## P3: auto_fix_note source_hint — surface originating filename (issue #46 follow-up)
 
 **Status:** open  **Added:** 2026-07-07  **Ref:** issue #46, deferred

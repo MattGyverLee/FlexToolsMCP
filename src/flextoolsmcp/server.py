@@ -836,6 +836,15 @@ async def list_tools() -> list[Tool]:
 
     return tools
 
+# Tools that may run before flextools_start() -- they touch neither the session
+# state nor the LCM cache. flextools_start initializes the session; list_projects
+# is a read-only directory scan the user typically runs first to pick a project.
+_SESSION_INDEPENDENT_TOOLS = frozenset({
+    "flextools_start",
+    "flextools_list_projects",
+})
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
@@ -848,8 +857,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         operations_logger.info(f"[TOOL ARGS] {name}: {json.dumps(arguments, default=str)[:500]}")
 
     # api_index is pre-loaded in main() at startup, no lazy loading needed
-    # Session initialization gate: flextools_start is the only tool that doesn't require it
-    if name != "flextools_start" and not session_state.initialized:
+    # Session initialization gate. Exempt tools that need neither the session
+    # nor the LCM cache: flextools_start (the initializer itself) and
+    # flextools_list_projects (a read-only directory scan -- see
+    # handle_list_projects). Listing projects BEFORE start() is the natural
+    # first step when the user hasn't named a project yet, so forcing a session
+    # (and API discovery) ahead of it is backwards. The discovery gate that
+    # matters -- api_discovery_required in run_module -- is unaffected.
+    if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
         # Diagnostic context for #10 (Session-not-initialized between consecutive
         # run_module calls). Static analysis found no code path that resets
         # `initialized` to False, so we log identity info every time this gate

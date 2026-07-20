@@ -33,8 +33,9 @@ data in .1 is still counted.
 
 import json
 import time
+from collections import deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ _STASH_MAX: int = 512            # evict oldest entry when exceeded (FIFO)
 # Per-op-id stash (module-level singleton)
 # ---------------------------------------------------------------------------
 _OP_STASH: Dict[str, Dict[str, Any]] = {}      # op_id -> metadata dict
-_OP_STASH_ORDER: List[str] = []                # insertion order for FIFO eviction
+_OP_STASH_ORDER: Deque[str] = deque()          # insertion order for O(1) FIFO eviction
 
 
 def _stash_op_start(
@@ -77,9 +78,9 @@ def _stash_op_start(
     """
     global _OP_STASH, _OP_STASH_ORDER
 
-    # Evict oldest when at capacity
+    # Evict oldest when at capacity (deque.popleft is O(1))
     while len(_OP_STASH_ORDER) >= _STASH_MAX:
-        oldest = _OP_STASH_ORDER.pop(0)
+        oldest = _OP_STASH_ORDER.popleft()
         _OP_STASH.pop(oldest, None)
 
     _OP_STASH[op_id] = {
@@ -109,8 +110,17 @@ def _rotate_if_needed(jsonl_path: Path) -> None:
     if not jsonl_path.exists():
         return
     try:
-        with open(jsonl_path, "r", encoding="utf-8", errors="replace") as fh:
-            count = sum(1 for _ in fh)
+        # Count newlines in fixed-size binary chunks instead of decoding the
+        # whole file into memory. Stops early once the threshold is crossed.
+        count = 0
+        with open(jsonl_path, "rb") as fh:
+            while True:
+                chunk = fh.read(1 << 20)  # 1 MiB
+                if not chunk:
+                    break
+                count += chunk.count(b"\n")
+                if count >= _ROTATION_LINES:
+                    break
         if count < _ROTATION_LINES:
             return
         rotated = Path(str(jsonl_path) + ".1")
@@ -271,13 +281,19 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     Returns a dict with:
       first_pass_green_rate  - float 0-1 or None (no data)
       turns_to_green_median  - float or None
+      turns_to_green_p90     - float or None
       rejects_by_error_code  - list[{error_code, count}] top-5
+
+    The turns-to-green metric set (median + p90) is kept field-for-field
+    consistent with scripts/green_report.py so the in-server stats block and
+    the CLI report agree on names and values for the same JSONL input (#66).
     """
     records = _load_jsonl_records(log_dir)
     if not records:
         return {
             "first_pass_green_rate": None,
             "turns_to_green_median": None,
+            "turns_to_green_p90": None,
             "rejects_by_error_code": [],
         }
 
@@ -298,6 +314,7 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
         return {
             "first_pass_green_rate": None,
             "turns_to_green_median": None,
+            "turns_to_green_p90": None,
             "rejects_by_error_code": rejects_by_error_code,
         }
 
@@ -327,12 +344,17 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
         mid = n // 2
         median = sorted_turns[mid] if n % 2 else (sorted_turns[mid - 1] + sorted_turns[mid]) / 2
         turns_to_green_median = float(median)
+        # p90 uses the same index formula as scripts/green_report.py (#66).
+        p90_idx = int(n * 0.9)
+        turns_to_green_p90 = float(sorted_turns[min(p90_idx, n - 1)])
     else:
         turns_to_green_median = None
+        turns_to_green_p90 = None
 
     return {
         "first_pass_green_rate": first_pass_green_rate,
         "turns_to_green_median": turns_to_green_median,
+        "turns_to_green_p90": turns_to_green_p90,
         "rejects_by_error_code": rejects_by_error_code,
         "abandoned_groups": abandoned,
     }

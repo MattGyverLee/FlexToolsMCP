@@ -211,6 +211,15 @@ def render_ascii(
         f"  First-pass green : {_pct(metrics['first_pass_green_rate'])}"
         f"  ({metrics['first_pass_green']}/{metrics['total_groups']} groups)"
     )
+    lines.append(
+        "  NOTE: 'green'/'ok' means the op executed without preflight-reject or"
+    )
+    lines.append(
+        "        crash -- NOT that its output is domain-correct. A dry/read-only"
+    )
+    lines.append(
+        "        run can be green while producing logically wrong results."
+    )
     ttg_med = metrics["turns_to_green_median"]
     ttg_p90 = metrics["turns_to_green_p90"]
     lines.append(
@@ -219,6 +228,9 @@ def render_ascii(
     )
     lines.append(sep)
     lines.append("  Rejects by error code" + (f" (top {top_n})" if top_n else "") + ":")
+    if trend is not None and prev_paths:
+        baseline = ", ".join(str(p) for p in prev_paths)
+        lines.append(f"  Compared to: {baseline}")
     lines.append(
         f"  {'ERROR CODE':<35} {'COUNT':>6}"
         + (f"  {'TREND':>7}" if trend is not None else "")

@@ -124,6 +124,16 @@ class UndoLastOperationInput(BaseModel):
 
 class GetModuleTemplateInput(BaseModel):
     """Get the official FlexTools module template."""
+    # Declared as a plain str (not Literal) on purpose: an unknown flavor must
+    # reach the handler so it can return the structured `invalid_flavor` error
+    # (available_flavors + recommended) instead of a generic Pydantic 422. If
+    # this field is omitted, model_dump() drops the caller's `flavor` as an
+    # unknown extra and the handler silently falls back to 'flexicon' (issue #78).
+    flavor: str = Field(
+        default="flexicon",
+        description="Template flavor: 'flexicon' (recommended), 'flexlibs_stable', or "
+                    "'liblcm'. Aliases 'stable', 'advanced', and 'flexlibs2' are accepted."
+    )
     module_name: Optional[str] = Field(
         default=None,
         description="Name for the new module (e.g., 'Export Custom Data')"
@@ -454,6 +464,19 @@ class RunModuleInput(BaseModel):
                     "config key 'auto_fix_enabled' (default: True for read-only runs). "
                     "Overrides the config when explicitly set. Write runs ALWAYS skip "
                     "auto-fix regardless of this flag."
+    )
+    source: Literal["authored", "existing"] = Field(
+        default="authored",
+        description="Issue #80: provenance of this code, a COST lever (never a safety lever). "
+                    "'authored' (default): you wrote this code this session -- full API "
+                    "discovery verification applies (call get_object_api/search_by_capability "
+                    "first, or accept the graceful read-only auto-discovery). "
+                    "'existing': the code came from disk or the human pasted it -- the "
+                    "API-discovery gates (api_discovery_required, undiscovered_entity) are "
+                    "SKIPPED to avoid expensive re-verification of code you did not author. "
+                    "Write-safety (CUD detection, unprotected-write guard) and casting "
+                    "injection ALWAYS run regardless of this flag -- provenance can never "
+                    "relax a safety gate. CUD still requires confirmed=True."
     )
 
 

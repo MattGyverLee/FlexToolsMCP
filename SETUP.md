@@ -10,20 +10,53 @@ dependency (including Flexicon) automatically.
 - **Windows** with **FieldWorks 9.x** installed (FLExTools automation needs the
   FieldWorks/.NET runtime — this is a hard, Windows-only requirement).
 - **Python 3.10+** on your PATH.
-- **[uv](https://docs.astral.sh/uv/)** (provides the `uvx` runner). Install once:
-  ```powershell
-  powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
-  **Then open a new terminal (or reboot) and confirm `uvx` is on your PATH
-  before continuing:**
-  ```powershell
-  uvx --version
-  ```
-  This must print a version. The uv installer adds `uvx` to your PATH, but the
-  change does **not** apply to terminals that were already open — you must start
-  a fresh shell (or reboot) first. If `uvx --version` fails with
-  "not recognized" / "command not found", skip ahead to
-  [Troubleshooting](#troubleshooting) before running `claude mcp add`.
+
+### Step 1 — Install `uv` (all users, every AI tool)
+
+Every supported AI assistant launches FLExToolsMCP the same way: with `uvx`
+(from [uv](https://docs.astral.sh/uv/)). Install it first, before touching any
+tool config:
+
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Then log off and back on — or reboot — so Windows picks up the new PATH.**
+The uv installer adds `uvx` to your PATH, but that change does **not** reach
+terminals or GUI apps that were already running, and on Windows it often does
+not fully settle until you start a fresh login session. A quick "open a new
+terminal" sometimes works, but a **log off / reboot is the reliable fix** and
+is what we recommend.
+
+After logging back on, confirm `uvx` resolves:
+
+```powershell
+uvx --version
+```
+
+This must print a version. If it fails with "not recognized" /
+"command not found", skip ahead to [Troubleshooting](#troubleshooting) before
+wiring anything up.
+
+### Step 2 — Pre-warm the cache (recommended, all users)
+
+Run the server once from a plain terminal so `uvx` downloads and caches
+`flextools-mcp` and its dependencies **outside** your AI tool:
+
+```powershell
+uvx flextools-mcp
+```
+
+Let it start up (it will print startup logs and wait on stdio — press
+`Ctrl+C` to stop it once you see it running), then continue to
+[Connecting to AI assistants](#connecting-to-ai-assistants).
+
+Do this even though the tool config below could trigger the same download on
+first launch. Letting a GUI assistant (e.g. Antigravity) perform that initial
+download inline is where things go wrong — the large first-run download
+(`pyflexicon`, the .NET interop, and the semantic-search stack) frequently
+surfaces as confusing load/connection errors inside the tool. Priming the cache
+in a terminal first makes the tool's launch instant and clean.
 
 `pyflexicon` (the deep FieldWorks wrapper) is a declared dependency, so it is
 installed for you — no separate step.
@@ -109,6 +142,13 @@ Open the MCP settings (`...` menu -> `MCP Servers` -> `View RAW Config`) and add
 If `uvx` is not found by your tool, use its absolute path (run `where uvx` /
 `which uvx`) as the `command`.
 
+> [!IMPORTANT]
+> Make sure you completed **[Step 2 — Pre-warm the cache](#step-2--pre-warm-the-cache-recommended-all-users)**
+> before adding the server here. If Antigravity is the first thing to run
+> `uvx flextools-mcp`, it does the large first-run download inline, which
+> commonly shows up as weird load/connection errors in the tool. Running
+> `uvx flextools-mcp` once in a terminal first avoids this entirely.
+
 ## Updating
 
 - **`uvx flextools-mcp`** (on-demand) picks up new releases automatically; pin
@@ -140,10 +180,12 @@ PATH until they are restarted.**
    ```powershell
    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
-2. **Start a brand-new terminal, or reboot.** This is the step most people
-   miss — the new PATH does not reach programs that were already running.
-   (A reboot is the surest fix because it also refreshes GUI apps like Claude
-   Desktop and Antigravity, which inherit PATH from when they launched.)
+2. **Log off and back on, or reboot.** This is the step most people miss — the
+   new PATH does not reach programs that were already running, and on Windows it
+   often does not fully settle until a fresh login session. A brand-new terminal
+   sometimes suffices, but a log off / reboot is the reliable fix because it also
+   refreshes GUI apps like Claude Desktop and Antigravity, which inherit PATH
+   from when they launched.
 3. Confirm `uvx` is now resolvable:
    ```powershell
    uvx --version        # must print a version

@@ -55,17 +55,29 @@ claude mcp add flextoolsmcp -- uvx flextools-mcp
 
 `uvx` (from [uv](https://docs.astral.sh/uv/)) fetches the package and all of its
 dependencies — including [Flexicon](https://pypi.org/project/pyflexicon/), the
-deep FieldWorks wrapper — into an isolated cache and runs the server. Nothing
-else to install. Upgrading FLExToolsMCP re-resolves to the latest compatible
-Flexicon. Prefer a persistent install? `uv tool install flextools-mcp` or
-`pip install flextools-mcp`.
+deep FieldWorks wrapper — into an isolated cache and runs the server. Every
+supported AI tool launches it the same way, via `uvx`. Nothing else to install.
+Upgrading FLExToolsMCP re-resolves to the latest compatible Flexicon.
 
-> **Install `uv` first, then open a new terminal and run `uvx --version` before
-> `claude mcp add`.** `claude mcp add` reports success even when `uvx` is
-> missing — the server just fails to launch later. After installing `uv` you
-> must start a fresh shell (or reboot) so `uvx` is on the PATH. See
-> [SETUP.md → Troubleshooting](SETUP.md#troubleshooting) if the server won't
-> start.
+**Before wiring it into any tool, do these two things** (details in
+[SETUP.md](SETUP.md#prerequisites)):
+
+1. **Install `uv`, then log off and back on — or reboot.** The uv installer adds
+   `uvx` to your PATH, but on Windows that change doesn't reach already-running
+   terminals or GUI apps and often doesn't settle until a fresh login. Confirm
+   with `uvx --version` (it must print a version) before continuing.
+2. **Pre-warm the cache: run `uvx flextools-mcp` once in a terminal** (Ctrl+C to
+   stop once it's up). This downloads and caches everything *outside* your AI
+   tool. Letting a GUI assistant (e.g. Antigravity) do that first-run download
+   inline is where the weird load/connection errors come from.
+
+> **`claude mcp add` reports success even when `uvx` is missing** — the server
+> just fails to launch later. Always confirm `uvx --version` in a fresh shell
+> first. See [SETUP.md → Troubleshooting](SETUP.md#troubleshooting) if the
+> server won't start.
+
+Prefer a persistent install over on-demand `uvx`? `uv tool install flextools-mcp`
+or `pip install flextools-mcp` also work.
 
 **Manual MCP config** (Claude Desktop, Cursor, and other tools):
 

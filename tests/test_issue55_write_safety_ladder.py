@@ -258,7 +258,6 @@ class TestRung3ConfirmationEnforcement:
     def test_confirmed_true_executes(self, monkeypatch, tmp_path):
         _stub_mutating_write_env(monkeypatch, tmp_path)
 
-        import asyncio as _asyncio
 
         class _FakeLock:
             async def __aenter__(self):

@@ -8,11 +8,9 @@ enabling natural language search queries.
 """
 
 import json
-import re
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple
 import numpy as np
 
 if __package__:

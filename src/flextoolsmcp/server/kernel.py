@@ -11,7 +11,6 @@ Manages:
 - Lazy module loading for optional dependencies (Feature 4)
 """
 
-import sys
 import json
 import logging
 import logging.handlers

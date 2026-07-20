@@ -25,7 +25,7 @@ Usage:
     headword = entry_concrete.HeadWord.Text
 """
 
-from typing import Any, Optional, List, Type
+from typing import Any, Optional, Type
 import inspect
 import textwrap
 

@@ -8,9 +8,7 @@ acceptance criteria under "Reconstruction" and "Privacy / normalization".
 
 import asyncio
 import json
-from pathlib import Path
 
-import pytest
 
 from flextoolsmcp.server.diagnostic import reconstruct, normalize, render, triggers
 from flextoolsmcp.server.handlers import op_telemetry as tel

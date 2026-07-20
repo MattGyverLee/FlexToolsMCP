@@ -100,5 +100,37 @@ flextoolsmcp = ["index/**/*", "templates/**/*", "VERSION", "py.typed"]
 [tool.setuptools.exclude-package-data]
 flextoolsmcp = ["index/archive/**", "index/**/archive/**"]
 
+# Non-package demonstration/example code is excluded from linting: the FlexTools
+# module templates intentionally show unused imports (they are copy-paste
+# starting points), and the root example scripts / .claude helpers are not part
+# of the shipped package. (Issue #68.)
+[tool.ruff]
+extend-exclude = [
+    ".claude",
+    "CleanUpGlosses.py",
+    "test_casting_detection.py",
+    "src/flextoolsmcp/templates",
+]
+
+# Lint-widening step 1 (issue #67): full F (pyflakes) + E4/E7 on top of the
+# fatal-only floor. E9/F63/F7/F82 remain a subset, so pre-commit's fatal-only
+# gate still matches. Bugbear (B) is deferred to step 2.
 [tool.ruff.lint]
-select = ["E9", "F63", "F7", "F82"]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# __init__.py modules re-export the package's public API for backward-compat
+# imports; the "unused" imports are the exports (some lazy-loaded, so not all
+# are listed in __all__). See src/flextoolsmcp/server/__init__.py.
+"**/__init__.py" = ["F401"]
+# server.py deliberately orders some imports after runtime setup (lazy-import
+# ordering); E402 there is intentional, not a defect. (Issue #68 note.)
+"src/flextoolsmcp/server.py" = ["E402"]
+# execution.py imports response-key constants after its dual-mode (package vs
+# script) try/except import blocks; ruff counts those blocks as code, so the
+# later import trips E402. The ordering is required by the dual-import pattern.
+"src/flextoolsmcp/server/handlers/execution.py" = ["E402"]
+# Test modules favor readable intent over these style rules: lambda stubs
+# (E731), single-letter loop vars (E741), sys.path setup before imports (E402),
+# compact setup one-liners (E702), and scratch/scaffolding locals (F841).
+"tests/**" = ["E402", "E702", "E731", "E741", "F841"]

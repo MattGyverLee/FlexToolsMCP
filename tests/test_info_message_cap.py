@@ -5,7 +5,6 @@ flooding the LLM's context with no semantic gain. We cap info messages
 at a configurable limit (default 100) using a "keep first cap//2 + last
 cap//2 + truncation marker" slice. Warnings and errors are NEVER capped.
 """
-import pytest
 
 
 def _make_info(i):

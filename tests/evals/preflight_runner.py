@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from server.validators import (
     validate_server_state,

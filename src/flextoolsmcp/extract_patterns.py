@@ -12,20 +12,16 @@ Usage:
 """
 
 import argparse
-import json
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Set, Optional
+from typing import Dict, Any
 
 if __package__:
-    from .json_utils import sort_json_arrays
     from .server.versioning import find_latest_versioned_api_file
     from .file_utils import get_project_root, get_index_dir, load_json, save_json
     from .curated_recipes import CURATED_RECIPES
 else:
-    from json_utils import sort_json_arrays
     from server.versioning import find_latest_versioned_api_file
     from file_utils import get_project_root, get_index_dir, load_json, save_json
     from curated_recipes import CURATED_RECIPES

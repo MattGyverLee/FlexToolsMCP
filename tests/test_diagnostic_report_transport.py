@@ -13,12 +13,10 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import pytest
 
-from flextoolsmcp.server.diagnostic import transports, sensitivity, offered_store, reconstruct
+from flextoolsmcp.server.diagnostic import transports, sensitivity, offered_store
 from flextoolsmcp.server.handlers import diagnostic_report
 from flextoolsmcp.server.handlers import execution as execution_mod
-from flextoolsmcp.server.handlers import op_telemetry as tel
 from flextoolsmcp.server import kernel, project_discovery
 from flextoolsmcp.server.response_models import RunModuleSuccess
 from flextoolsmcp.response_utils import CONTRACT_VERSION

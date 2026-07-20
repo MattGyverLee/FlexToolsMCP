@@ -15,8 +15,6 @@ from mcp.types import TextContent
 from ._import_helper import safe_import_api_index
 from ..models import (
     ListCategoriesInput,
-    ListEntitiesInCategoryInput,
-    ListProjectsInput,
     ListSkeletonsInput,
 )
 
@@ -31,7 +29,7 @@ try:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
+        KEY_API_MODE,
     )
 except ImportError:
     from server.response_keys import (
@@ -39,7 +37,7 @@ except ImportError:
         KEY_FLEXICON_COUNT, KEY_LIBLCM_COUNT, KEY_FLEXLIBS_STABLE_COUNT,
         KEY_METHODS_COUNT,
         KEY_CATEGORIES, KEY_ENTITIES, KEY_COUNTS, KEY_TOTAL_CATEGORIES,
-        KEY_FLEXICON, KEY_LIBLCM, KEY_FLEXLIBS_STABLE, KEY_API_MODE,
+        KEY_API_MODE,
     )
 
 try:

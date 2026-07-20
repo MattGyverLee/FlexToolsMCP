@@ -8,7 +8,7 @@ validate input against models, and handle type conversions.
 """
 
 from typing import Type, Any, Dict
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 
 def model_to_tool_schema(model: Type[BaseModel]) -> Dict[str, Any]:

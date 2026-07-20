@@ -1917,7 +1917,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
         if operations_aliases:
             aliased_calls = _find_aliased_operations_calls(ast_calls, operations_aliases)
-            existing = {(c, m, l) for c, m, l in operations_calls_with_lines}
+            existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
             for triple in aliased_calls:
                 if triple not in existing:
                     operations_calls_with_lines.append(triple)
@@ -2790,7 +2790,7 @@ def detect_casting_needs(
     # If casting_index is provided, do advanced lookup for other properties
     if casting_index and isinstance(casting_index, dict):
         casting_props = casting_index.get("properties", {})
-        polymorphic_colls = casting_index.get("polymorphic_collections", {})
+        casting_index.get("polymorphic_collections", {})
 
         # Look for property access that might need casting
         # Pattern: obj.PropertyName or obj.PropertyName()

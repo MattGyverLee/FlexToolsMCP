@@ -23,7 +23,6 @@ import os
 import sys
 import re
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -48,17 +47,8 @@ if __package__:
         METHOD_CATEGORY_VALIDATION,
         METHOD_CATEGORY_OPERATION,
         METHOD_CATEGORY_DESCRIPTIONS,
-        ENTITY_CATEGORY_LEXICON,
-        ENTITY_CATEGORY_MORPHOLOGY,
-        ENTITY_CATEGORY_WORDFORM,
         ENTITY_CATEGORY_SCRIPTURE,
-        ENTITY_CATEGORY_NOTEBOOK,
         ENTITY_CATEGORY_TEXT,
-        ENTITY_CATEGORY_FEATURE_STRUCTURE,
-        ENTITY_CATEGORY_PHONOLOGY,
-        ENTITY_CATEGORY_CORE,
-        ENTITY_CATEGORY_DISCOURSE,
-        ENTITY_CATEGORY_REVERSAL,
         ENTITY_CATEGORY_GENERAL,
         ENTITY_CATEGORY_REPOSITORY,
         ENTITY_CATEGORY_FACTORY,
@@ -87,17 +77,8 @@ else:
         METHOD_CATEGORY_VALIDATION,
         METHOD_CATEGORY_OPERATION,
         METHOD_CATEGORY_DESCRIPTIONS,
-        ENTITY_CATEGORY_LEXICON,
-        ENTITY_CATEGORY_MORPHOLOGY,
-        ENTITY_CATEGORY_WORDFORM,
         ENTITY_CATEGORY_SCRIPTURE,
-        ENTITY_CATEGORY_NOTEBOOK,
         ENTITY_CATEGORY_TEXT,
-        ENTITY_CATEGORY_FEATURE_STRUCTURE,
-        ENTITY_CATEGORY_PHONOLOGY,
-        ENTITY_CATEGORY_CORE,
-        ENTITY_CATEGORY_DISCOURSE,
-        ENTITY_CATEGORY_REVERSAL,
         ENTITY_CATEGORY_GENERAL,
         ENTITY_CATEGORY_REPOSITORY,
         ENTITY_CATEGORY_FACTORY,
@@ -216,7 +197,7 @@ def init_pythonnet():
     global PYTHONNET_AVAILABLE, Assembly, BindingFlags, DotNetType
 
     try:
-        import clr
+        import clr  # noqa: F401  # availability probe: raises ImportError if pythonnet is absent
         from System.Reflection import Assembly as Asm, BindingFlags as BF
         from System import Type as DT
 
@@ -1072,7 +1053,7 @@ Examples:
 
         # Print summary
         if not args.quiet:
-            print(f"\n[DONE] LibLCM Extraction Complete")
+            print("\n[DONE] LibLCM Extraction Complete")
             print(f"  Output: {output_path}")
             print(f"  Types: {api_doc['metadata']['total_types']}")
             print(f"  Interfaces: {api_doc['metadata']['total_interfaces']}")
@@ -1080,7 +1061,7 @@ Examples:
             print(f"  Methods: {api_doc['metadata']['total_methods']}")
             print(f"  Properties: {api_doc['metadata']['total_properties']}")
             print(f"  Relationships: {api_doc['metadata']['total_relationships']}")
-            print(f"\n  Categories:")
+            print("\n  Categories:")
             for cat, count in sorted(api_doc['metadata']['categories'].items()):
                 print(f"    {cat}: {count} types")
 

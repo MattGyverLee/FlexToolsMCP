@@ -12,18 +12,14 @@ Usage:
 """
 
 import argparse
-import json
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple, Optional
+from typing import Dict, List, Any, Optional
 
 if __package__:
-    from .json_utils import sort_json_arrays
     from .file_utils import get_project_root, get_index_dir, load_json, save_json
 else:
-    from json_utils import sort_json_arrays
     from file_utils import get_project_root, get_index_dir, load_json, save_json
 
 

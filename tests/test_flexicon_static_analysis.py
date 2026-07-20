@@ -15,11 +15,10 @@ Run with: python tests/test_flexicon_static_analysis.py
 import ast
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple, Optional
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
 from enum import Enum
 import re
-from functools import lru_cache
 
 class IssueLevel(Enum):
     INFO = "INFO"
@@ -330,10 +329,10 @@ class FlexiconStaticAnalyzer:
         print("="*70)
         print(f"Files Analyzed: {summary['files_analyzed']}")
         print(f"Total Issues: {summary['total_issues']}")
-        print(f"\nIssues by Level:")
+        print("\nIssues by Level:")
         for level, count in summary['issues_by_level'].items():
             print(f"  {level}: {count}")
-        print(f"\nIssues by Check Type:")
+        print("\nIssues by Check Type:")
         for check, count in sorted(summary['issues_by_check'].items(), key=lambda x: -x[1]):
             print(f"  {check}: {count}")
         print("="*70 + "\n")

@@ -16,7 +16,6 @@ import re
 from pathlib import Path
 from typing import Optional, Tuple
 from collections import defaultdict
-from datetime import datetime, timezone
 
 if __package__:
     from .json_utils import sort_json_arrays
@@ -220,7 +219,7 @@ def build_casting_index(liblcm_path: Path) -> dict:
         if base_type in interface_children:
             casting_index[KEY_HIERARCHY][base_type] = {
                 "derived_interfaces": sorted(interface_children[base_type]),
-                "common_pattern": f"Check obj.ClassName then cast: Interface(obj)",
+                "common_pattern": "Check obj.ClassName then cast: Interface(obj)",
             }
 
     return casting_index

@@ -13,14 +13,9 @@ _startup_begin = _time_module.time()
 import json
 import asyncio
 import sys
-import subprocess
-import tempfile
 import os
-import logging
-import re
 import warnings
 from pathlib import Path
-from datetime import datetime
 from typing import Any, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 import io
@@ -65,17 +60,12 @@ _mcp_import_done = _time_module.time()
 
 _local_imports_begin = _time_module.time()
 if __package__:
-    from .json_utils import sort_json_arrays
     from .server.kernel import (
-        get_log_dir,
-        setup_logging,
         operations_logger,
         session_state,
     )
-    from .server.utils import model_to_tool_schema
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from .server.dispatch import get_tool_handler
-    from .server.constants import KNOWN_OPERATIONS, OPERATIONS_CLASSES
     from .server.versioning import (
         detect_installed_library_version,
         find_versioned_api_file,
@@ -84,17 +74,12 @@ if __package__:
     )
     from .server.startup_notices import record_index_refresh_failure
 else:
-    from json_utils import sort_json_arrays
     from server.kernel import (
-        get_log_dir,
-        setup_logging,
         operations_logger,
         session_state,
     )
-    from server.utils import model_to_tool_schema
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
     from server.dispatch import get_tool_handler
-    from server.constants import KNOWN_OPERATIONS, OPERATIONS_CLASSES
     from server.versioning import (
         detect_installed_library_version,
         find_versioned_api_file,
@@ -162,17 +147,13 @@ from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool,
     TextContent,
-    CallToolResult,
-    ToolAnnotations,
 )
 
 # Optional imports for semantic search - DEFERRED to on-demand loading
 # These imports are intentionally NOT done at module level to avoid 14+ second
 # startup penalty. They are imported lazily when semantic search is actually used.
 if TYPE_CHECKING:
-    import numpy as np
-    import faiss
-    from sentence_transformers import SentenceTransformer
+    pass
 
 SEMANTIC_SEARCH_AVAILABLE = False  # Will be determined at runtime
 
@@ -773,7 +754,6 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
     try:
         # Import refresh functions
         import sys
-        from pathlib import Path as PathlibPath
 
         refresh_script = Path(__file__).parent / "refresh.py"
         if not refresh_script.exists():
@@ -969,7 +949,6 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 async def main():
     """Run the MCP server."""
     global api_index
-    import time
 
     _main_start = _time_module.time()
     _module_init_elapsed = _main_start - _startup_begin

@@ -11,15 +11,13 @@ These handlers manage session configuration and provide admin tools:
 - get_module_template: Return the official FlexTools module template
 """
 
-import json
-from datetime import datetime
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps, safe_import_session_state, safe_import_logging_helpers
 from ..response_keys import (
     KEY_MESSAGE, KEY_STATUS, KEY_SESSION, KEY_ERROR, KEY_SOURCE,
     KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED, KEY_HISTORY,
-    KEY_TEMPLATE, KEY_WARNINGS, KEY_ENTITIES, KEY_CATEGORIES, KEY_CATEGORY
+    KEY_TEMPLATE, KEY_WARNINGS
 )
 
 try:

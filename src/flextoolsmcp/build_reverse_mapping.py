@@ -15,19 +15,15 @@ Usage:
 """
 
 import argparse
-import json
 import re
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple, Optional
+from typing import Dict, List, Any
 
 if __package__:
-    from .json_utils import sort_json_arrays
     from .server.versioning import find_latest_versioned_api_file
     from .file_utils import get_project_root, get_index_dir, load_json, save_json
 else:
-    from json_utils import sort_json_arrays
     from server.versioning import find_latest_versioned_api_file
     from file_utils import get_project_root, get_index_dir, load_json, save_json
 
@@ -192,7 +188,7 @@ def build_reverse_mapping(
 
     flexicon = load_json(flexicon_path)
     flexlibs = load_json(flexlibs_path) if flexlibs_path and flexlibs_path.exists() else None
-    liblcm = load_json(liblcm_path) if liblcm_path and liblcm_path.exists() else None
+    load_json(liblcm_path) if liblcm_path and liblcm_path.exists() else None
 
     # Initialize result structure
     result = {

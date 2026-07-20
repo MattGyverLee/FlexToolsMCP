@@ -31,7 +31,7 @@ this module lives under.
 
 import ast
 import re
-from typing import TYPE_CHECKING, Iterable, List
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .reconstruct import ReportSlice

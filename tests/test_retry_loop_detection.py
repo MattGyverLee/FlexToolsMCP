@@ -15,7 +15,6 @@ A success in between must reset the detector.
 """
 from datetime import datetime, timedelta
 
-import pytest
 
 
 def _new_state():

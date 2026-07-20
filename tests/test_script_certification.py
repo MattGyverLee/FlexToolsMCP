@@ -102,7 +102,7 @@ def test_delete_operation():
 
     cert = certify_script_readonly(code, api_index)
     assert not cert["is_certified_readonly"], f"Should NOT be certified readonly, got: {cert}"
-    assert len(cert["mutating_calls"]) > 0, f"Should detect mutating calls"
+    assert len(cert["mutating_calls"]) > 0, "Should detect mutating calls"
 
     print("[OK] Delete operation detected correctly")
 
@@ -118,14 +118,14 @@ def test_mixed_operations():
     """
 
     cert = certify_script_readonly(code, api_index)
-    assert not cert["is_certified_readonly"], f"Should NOT be certified readonly"
+    assert not cert["is_certified_readonly"], "Should NOT be certified readonly"
 
     # Should have readonly calls (GetAll) and mutating calls (Create)
     readonly = [m for m in cert["readonly_calls"] if not m.get("is_mutating")]
     mutating = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
 
-    assert len(readonly) > 0, f"Should detect readonly calls"
-    assert len(mutating) > 0, f"Should detect mutating calls"
+    assert len(readonly) > 0, "Should detect readonly calls"
+    assert len(mutating) > 0, "Should detect mutating calls"
 
     print("[OK] Mixed operations detected correctly")
 
@@ -159,7 +159,7 @@ def test_confidence_levels():
     # No confidence needed for empty code
     code2 = "x = 1 + 2"
     cert2 = certify_script_readonly(code2, api_index)
-    assert cert2["confidence"] == "high", f"Empty code should be high confidence"
+    assert cert2["confidence"] == "high", "Empty code should be high confidence"
 
     print("[OK] Confidence levels assigned correctly")
 

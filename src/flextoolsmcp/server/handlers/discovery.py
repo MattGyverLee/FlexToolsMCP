@@ -10,7 +10,6 @@ These handlers provide navigation and discovery of API relationships:
 
 import json
 from collections import deque
-from typing import List, Dict
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
@@ -20,9 +19,8 @@ from ..response_keys import (
     KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
     KEY_COMMON_PATHS, KEY_GRAPH, KEY_ENTITIES, KEY_CHILDREN, KEY_TARGET,
     KEY_POLYMORPHIC_COLLECTIONS, KEY_BASE_TYPE, KEY_CONCRETE_TYPES,
-    KEY_CASTING_WARNINGS, KEY_CASTING_ISSUES, KEY_CASTING_HINT,
-    KEY_APPLIES_TO, KEY_REACHABLE_FROM_SOURCE, KEY_API_TARGET, KEY_SYNOPSIS,
-    KEY_QUESTIONS, KEY_QUESTION, KEY_WHY, KEY_NEEDS_INPUT, KEY_PROVIDED
+    KEY_CASTING_WARNINGS, KEY_CASTING_HINT,
+    KEY_REACHABLE_FROM_SOURCE
 )
 from .utils import normalize_object_name
 

@@ -9,7 +9,7 @@ Ensures:
 - Sequence arrays (examples, steps, code snippets) maintain order
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 
 # Arrays that should be sorted (inventory/lookup lists)

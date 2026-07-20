@@ -8,11 +8,10 @@ Provides read-only API discovery tools:
 - resolve_property: Resolve pythonic property names to LibLCM equivalents
 """
 
-import json
 import heapq
 import re
 from mcp.types import TextContent
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any
 
 # Import kernel and config (with fallback for both package and script modes)
 try:
@@ -268,13 +267,6 @@ SEARCH_SYNONYMS = {
 }
 
 
-# ============================================================
-# Imports for helpers (after constants)
-# ============================================================
-try:
-    from .utils import normalize_object_name
-except ImportError:
-    from utils import normalize_object_name
 
 
 # ============================================================
@@ -831,7 +823,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
             for entity_name, entity in index_data.get("entities", {}).items():
                 # Cache lowercased entity name for reuse in properties loop
-                entity_name_lower = entity_name.lower()
+                entity_name.lower()
                 # Cache namespace + import_statement so every hit on this entity
                 # carries them out -- without this, the assistant gets an entity
                 # name but no way to import it, which was the root cause of #12.

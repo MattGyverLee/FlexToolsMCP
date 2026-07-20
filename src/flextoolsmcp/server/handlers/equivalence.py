@@ -25,7 +25,6 @@ try:
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
-        KEY_FLEXICON, KEY_FLEXLIBS_STABLE,
     )
 except ImportError:
     from server.kernel import get_api_index, session_state
@@ -33,7 +32,6 @@ except ImportError:
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
-        KEY_FLEXICON, KEY_FLEXLIBS_STABLE,
     )
 
 

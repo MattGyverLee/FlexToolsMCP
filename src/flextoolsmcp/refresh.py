@@ -219,7 +219,7 @@ def _refresh_library(
         except Exception as e:
             print(f"[WARN] Failed to move LCM bridge file: {e}")
     else:
-        print(f"[INFO] No LCM bridge temp file produced (older analyzer?), skipping")
+        print("[INFO] No LCM bridge temp file produced (older analyzer?), skipping")
 
     return True
 

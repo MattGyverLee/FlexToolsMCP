@@ -29,7 +29,7 @@ module lives under.
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 try:
     from . import normalize

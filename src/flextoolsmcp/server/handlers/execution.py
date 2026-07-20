@@ -14,7 +14,6 @@ These handlers manage module and operation execution:
 """
 
 import json
-import asyncio
 import sys
 import subprocess
 import tempfile
@@ -25,7 +24,6 @@ import hashlib
 import heapq
 import time
 import itertools
-from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from mcp.types import TextContent
 
@@ -61,7 +59,7 @@ except ImportError:
 try:
     from ..validators import (
         detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
-        detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
+        detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
@@ -74,8 +72,7 @@ try:
 except ImportError:
     from server.validators import (
         detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
-        detect_missing_operations_imports, detect_wrong_library_imports, format_cud_warning,
-        certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
+        detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
@@ -94,22 +91,14 @@ except ImportError:
 # Import response utilities and HeadlessReport with fallback
 try:
     from ...response_utils import build_response_with_context, error_response
-    from ..headless_report import HeadlessReport
 except (ImportError, ValueError):
     from response_utils import build_response_with_context, error_response
-    from server.headless_report import HeadlessReport
 
 # Import response field constants
 from ..response_keys import (
-    KEY_STATUS, KEY_ERROR, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
-    KEY_MODULE_NAME, KEY_SYNOPSIS, KEY_API_TARGET, KEY_INCLUDE_DRY_RUN,
-    KEY_MODIFIES_DB, KEY_QUESTIONS, KEY_QUESTION, KEY_EXAMPLE, KEY_PROVIDED,
-    KEY_SESSION, KEY_SUMMARY, KEY_WARNINGS, KEY_RAW_OUTPUT, KEY_STDERR,
-    KEY_EXIT_CODE, KEY_WRITE_CERTIFICATION, KEY_IS_CERTIFIED_READONLY,
-    KEY_MUTATING_CALLS_DETECTED, KEY_CASTING_ISSUES, KEY_SEVERITY,
-    KEY_HAS_CASTING_ISSUES, KEY_WHY, KEY_APPLIES_TO, KEY_HOW_TO_FIX,
-    KEY_SUGGESTIONS, KEY_SUCCESS, KEY_PROJECT, KEY_WRITE_ENABLED,
-    KEY_MESSAGES, KEY_TEMPLATE, KEY_CONFIDENCE, KEY_NEXT_STEPS,
+    KEY_STATUS, KEY_MESSAGE, KEY_NEEDS_INPUT, KEY_COMPLETE,
+    KEY_QUESTIONS, KEY_PROVIDED,
+    KEY_TEMPLATE, KEY_NEXT_STEPS,
     KEY_AUTO_FIXES_APPLIED, KEY_AUTO_FIX_NOTE,
     KEY_AUTO_DISCOVERED, KEY_INLINE_DISCOVERY, KEY_DISCOVERY_NOTE,
     KEY_DIAGNOSTIC_REPORT,
@@ -191,7 +180,7 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
 
     elif api_mode == "flexlibs_stable":
         try:
-            import flexlibs  # type: ignore
+            import flexlibs  # type: ignore  # noqa: F401  # availability probe
             return True, ""
         except ImportError as e:
             return False, f"flexlibs not found: {e}"
@@ -561,8 +550,8 @@ def _cap_info_messages(
 
     head_count = cap // 2
     tail_count = cap - head_count  # honors odd cap values
-    keep_head = set(info_indices[:head_count])
-    keep_tail = set(info_indices[-tail_count:]) if tail_count else set()
+    set(info_indices[:head_count])
+    set(info_indices[-tail_count:]) if tail_count else set()
     drop_indices = set(info_indices[head_count:-tail_count]) if tail_count \
         else set(info_indices[head_count:])
     dropped_count = len(drop_indices)
@@ -2320,10 +2309,10 @@ def _build_auto_fix_note(fix_records: List[Dict[str, Any]], source_hint: str = "
 
     lines_out.extend([
         "",
-        f"[ACTION REQUIRED] The fixes were applied only to the executed copy.",
+        "[ACTION REQUIRED] The fixes were applied only to the executed copy.",
         f"  Source: {source_hint}",
-        f"  Update your source file at the line numbers listed above or you will",
-        f"  see this auto-fix note every time you run this code.",
+        "  Update your source file at the line numbers listed above or you will",
+        "  see this auto-fix note every time you run this code.",
     ])
     return "\n".join(lines_out)
 
@@ -4120,7 +4109,7 @@ MODULE_CODE = {code}
         # Clean up temporary file
         try:
             os.unlink(temp_script_path)
-        except:
+        except Exception:
             pass
 
 
@@ -4146,7 +4135,7 @@ async def handle_get_operation_logs(args: dict) -> list[TextContent]:
 
             # Filter to errors only if requested
             if errors_only:
-                lines = [l for l in lines if '| ERROR' in l or '| FAIL' in l or '[FAIL]' in l]
+                lines = [line for line in lines if '| ERROR' in line or '| FAIL' in line or '[FAIL]' in line]
 
             # Get last N lines
             recent = lines[-log_lines:] if len(lines) > log_lines else lines

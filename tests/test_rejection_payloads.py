@@ -13,12 +13,9 @@ MCP entrypoint (the same path the LLM hits).
 """
 
 import ast
-import asyncio
-import json
 import sys
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 

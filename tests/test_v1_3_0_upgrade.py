@@ -12,8 +12,6 @@ and AFTER modularization (against modularized structure).
 
 import sys
 import json
-import tempfile
-import asyncio
 from pathlib import Path
 from unittest import TestCase, main
 

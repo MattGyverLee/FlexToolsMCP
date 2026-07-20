@@ -7,12 +7,10 @@ Consolidates version detection for multiple library types (C# assemblies, Python
 and provides efficient, cached file discovery for versioned API indexes.
 """
 
-import json
 import re
 import logging
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Callable
-from functools import lru_cache
+from typing import Optional, Tuple, Dict
 
 try:
     from .kernel import operations_logger

@@ -24,7 +24,7 @@ def reset_session_state():
     Consolidates duplicate session reset patterns from multiple test files.
     Usage: add 'reset_session_state' parameter to test function.
     """
-    from server import reset_session, get_session_state
+    from server import reset_session
     reset_session()
     yield
     # Cleanup after test

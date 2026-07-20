@@ -16,7 +16,6 @@ import os
 import sys
 import re
 from pathlib import Path
-from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
 if __package__:
@@ -826,7 +825,7 @@ def _extract_default_transformations(node) -> List[Dict[str, str]]:
 
     args = node.args
     defaults = args.defaults
-    kw_defaults = args.kw_defaults if hasattr(args, 'kw_defaults') else []
+    args.kw_defaults if hasattr(args, 'kw_defaults') else []
 
     # Calculate offset for defaults (defaults align to end of args)
     num_args = len(args.args)
@@ -1016,7 +1015,7 @@ def extract_lcm_calls(node, lcm_imports: List[Dict[str, str]]) -> Dict[str, Any]
         result["transformations"].extend(defaults_info)
 
     # Build set of imported LCM names for faster lookup
-    imported_lcm_names = {imp["name"] for imp in lcm_imports}
+    {imp["name"] for imp in lcm_imports}
 
     # Walk the method body AST
     for child in ast.walk(node):
@@ -1127,7 +1126,7 @@ def _classify_mapping_type(lcm_data: Dict[str, Any]) -> str:
     """
     num_factories = len(lcm_data["factories_used"])
     num_repos = len(lcm_data["repositories_used"])
-    num_props = len(lcm_data["properties_accessed"])
+    len(lcm_data["properties_accessed"])
     num_methods = len(lcm_data["methods_called"])
     num_utils = len(lcm_data["utilities_used"])
 
@@ -1715,7 +1714,6 @@ def cross_reference_liblcm(flexlibs_data: Dict[str, Any], liblcm_path: str | Non
     # Collect all referenced LCM entities
     all_factories = set()
     all_repos = set()
-    all_interfaces = set()
 
     for entity_name, entity in flexlibs_data.get("entities", {}).items():
         for method in entity.get("methods", []):
@@ -1776,12 +1774,12 @@ def print_summary(api_data: Dict[str, Any], version: str):
     print(f"  Properties: {api_data['metadata']['total_properties']}")
     print(f"  Files analyzed: {api_data['metadata']['files_analyzed']}")
     print(f"  LCM interfaces referenced: {len(api_data['metadata']['lcm_interfaces_used'])}")
-    print(f"\n  LibLCM Mapping Types:")
+    print("\n  LibLCM Mapping Types:")
     total = api_data['metadata']['total_methods']
     for mtype, count in sorted(api_data['metadata']['mapping_types'].items()):
         pct = (count / total * 100) if total else 0
         print(f"    {mtype}: {count} ({pct:.1f}%)")
-    print(f"\n  Categories:")
+    print("\n  Categories:")
     for cat, count in sorted(api_data['metadata']['categories'].items()):
         print(f"    {cat}: {count} classes")
 

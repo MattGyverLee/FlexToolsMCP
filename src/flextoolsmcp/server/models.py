@@ -561,3 +561,24 @@ class PrepareReportInput(BaseModel):
         description="Include from this op_id (inclusive) through turn end. Alternative to "
                     "steps_back when you know the exact starting op_id."
     )
+
+
+# ============================================================
+# Diagnostics tool (issue #56)
+# ============================================================
+
+class FlexToolsHealthInput(BaseModel):
+    """Composed diagnostic snapshot: versions, index match state, session, logs.
+
+    Read-only. Composes existing detectors (installed-library detection,
+    versioned-index file discovery, session state, stale-lock sweep) into a
+    single answer for "why is this API missing?" / "which versions am I
+    actually running?" -- previously answerable only by reading server logs.
+    """
+    verbose: bool = Field(
+        default=False,
+        description="When true, adds project lock status, FLExInit/pythonnet "
+                    "importability, and the last 5 operation outcomes from the "
+                    "telemetry JSONL. Slower (probes imports and reads a log file); "
+                    "leave false for a quick check."
+    )

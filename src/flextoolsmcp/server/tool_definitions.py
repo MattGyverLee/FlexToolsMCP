@@ -42,6 +42,7 @@ from .models import (
     ResolveTypeInput,
     ListSkeletonsInput,
     PrepareReportInput,
+    FlexToolsHealthInput,
 )
 
 
@@ -388,6 +389,27 @@ Actions:
 
 Returns: List of operations performed, current undo stack, and next operation to undo.""",
         input_model=GetSessionHistoryInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_health": ToolDef(
+        name="flextools_health",
+        description="""[DIAGNOSTICS] Composed health/version snapshot -- call this when something smells wrong.
+
+Answers "which versions am I actually running?" and "why is this API missing?"
+without reading server logs: installed-vs-indexed version for flexicon/liblcm/
+flexlibs_stable (match: exact | fallback_latest | missing), FieldWorks install
+detection, loaded index files (schema + entity counts), current session state,
+log file paths, and any active warnings (stale index fallback, stale project
+locks).
+
+Read-only, no side effects -- safe to call at any point, including when a
+session isn't initialized yet or a run_module call just failed mysteriously.
+
+Pass verbose=True to add: project lock status for the session's project,
+whether FLExInitialize/pythonnet are importable, and the last 5 operation
+outcomes from the telemetry log.""",
+        input_model=FlexToolsHealthInput,
         annotations=READ_ONLY_SAFE,
     ),
 

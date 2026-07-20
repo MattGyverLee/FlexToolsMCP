@@ -19,12 +19,13 @@ groups operations into intent-sessions, and computes:
   rejects_by_error_code  - counts per error_code, with optional trend
   retry_loop_trips       - ops where assistance_triggered == true
 
-Intent-grouping
----------------
-Records sharing the same non-empty user_intent (in file order) form one
-group.  When user_intent is missing or blank, each record becomes its own
-standalone group (one op per group) -- by design.  Each file is treated as
-one "session"; the same intent in two different files -> two separate groups.
+Session-grouping (#62)
+----------------------
+Records sharing the same non-empty `session_id` (a stable identity anchor,
+NOT the free-text `user_intent` label) form one group. Records with no
+`session_id` (older JSONL) fall back to the legacy rule: consecutive records
+sharing the same non-empty user_intent form one group; a missing/blank
+user_intent is always a standalone group of 1.
 
 Malformed lines (not valid JSON) are skipped and counted.
 
@@ -70,39 +71,71 @@ def load_jsonl(paths: List[Path]) -> Tuple[List[Dict[str, Any]], int]:
 # ---------------------------------------------------------------------------
 
 def _group_records(records: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
-    """Group records into intent-sessions.
+    """Group records into attempt-sessions keyed by stable `session_id` (#62).
 
-    Rules (applied per source file / in insertion order):
-    1. Non-empty user_intent: consecutive records sharing the same intent form
-       one group; a change in intent starts a new group.
-    2. Empty user_intent: each record is a standalone group (one op per group
-       by design -- difflib-based similarity grouping was considered and
-       rejected because code text is not stored in the JSONL).
+    `session_id` (stamped by `SessionState.configure()` and threaded into the
+    JSONL record at op-start time) is the grouping key, NOT `user_intent`.
+    `user_intent` is a natural-language label the LLM can rewrite between
+    calls, so grouping by it (the old behavior) produced two failure modes:
+
+      - One authoring session split across an intent-string edit became two
+        groups (inflated group count, understated turns-to-green).
+      - Two unrelated scripts sharing a generic intent string (e.g. both say
+        "fix the bug") merged into one group (inflated turns-to-green).
+
+    Rules:
+    1. Records sharing a non-empty `session_id` are grouped together (not
+       required to be consecutive), in first-appearance order.
+    2. Records with no `session_id` (JSONL written before this field existed,
+       or any other code path lacking session identity) fall back to the
+       legacy rule: consecutive records sharing the same non-empty
+       `user_intent` form one group; an empty `user_intent` is always a
+       standalone group of 1.
+
+    This mirrors `op_telemetry.group_records_by_session()` field-for-field so
+    the in-server stats block and this CLI report agree (#66).
     """
     groups: List[List[Dict[str, Any]]] = []
-    current_intent: Optional[str] = None
-    current_group: List[Dict[str, Any]] = []
+    session_group_index: Dict[str, int] = {}
+    legacy_intent: Optional[str] = None
+    legacy_group: Optional[List[Dict[str, Any]]] = None
 
     for r in records:
+        sid = (r.get("session_id") or "").strip()
+        if sid:
+            if legacy_group:
+                groups.append(legacy_group)
+            legacy_group = None
+            legacy_intent = None
+
+            idx = session_group_index.get(sid)
+            if idx is None:
+                groups.append([])
+                idx = len(groups) - 1
+                session_group_index[sid] = idx
+            groups[idx].append(r)
+            continue
+
+        # Legacy fallback: no session_id on this record.
         intent = (r.get("user_intent") or "").strip()
         if intent:
-            if intent != current_intent:
-                if current_group:
-                    groups.append(current_group)
-                current_group = [r]
-                current_intent = intent
+            if legacy_group is not None and intent == legacy_intent:
+                legacy_group.append(r)
             else:
-                current_group.append(r)
+                if legacy_group:
+                    groups.append(legacy_group)
+                legacy_group = [r]
+                legacy_intent = intent
         else:
-            # No intent: flush ongoing group, add standalone
-            if current_group:
-                groups.append(current_group)
-                current_group = []
-                current_intent = None
+            # No intent: flush ongoing legacy group, add standalone
+            if legacy_group:
+                groups.append(legacy_group)
+                legacy_group = None
+                legacy_intent = None
             groups.append([r])
 
-    if current_group:
-        groups.append(current_group)
+    if legacy_group:
+        groups.append(legacy_group)
 
     return groups
 

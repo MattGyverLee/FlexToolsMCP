@@ -120,8 +120,13 @@ class TestWriteabilityRejectOperationEnd:
     calls made to the returned mock logger object.
     """
 
-    def test_preflight_reject_emits_operation_end(self):
-        """_log_preflight_reject passes '=== Operation #{N} End ===' to logger.info."""
+    def test_preflight_reject_emits_operation_end(self, tmp_path):
+        """_log_preflight_reject passes '=== Operation #{N} End ===' to logger.info.
+
+        Issue #74: pass an explicit `log_dir_fn` pointing at a pytest tmp_path
+        so this test does not write a synthetic `test-op-*` row into the real
+        `operations.jsonl`.
+        """
         from unittest.mock import MagicMock, patch
         from flextoolsmcp.server.handlers import execution as exec_mod
 
@@ -133,6 +138,7 @@ class TestWriteabilityRejectOperationEnd:
                 duration_s=0.012,
                 reason_code="unprotected_writes",
                 detail="mutating_calls=['SetGloss']",
+                log_dir_fn=lambda: tmp_path,
             )
 
         # Collect all string args passed to logger.info(...)
@@ -143,8 +149,13 @@ class TestWriteabilityRejectOperationEnd:
         )
         assert "test-op-001" in combined
 
-    def test_preflight_reject_emits_reject_marker(self):
-        """_log_preflight_reject passes [REJECT] to logger.warning."""
+    def test_preflight_reject_emits_reject_marker(self, tmp_path):
+        """_log_preflight_reject passes [REJECT] to logger.warning.
+
+        Issue #74: pass an explicit `log_dir_fn` pointing at a pytest tmp_path
+        so this test does not write a synthetic `test-op-*` row into the real
+        `operations.jsonl`.
+        """
         from unittest.mock import MagicMock, patch
         from flextoolsmcp.server.handlers import execution as exec_mod
 
@@ -156,6 +167,7 @@ class TestWriteabilityRejectOperationEnd:
                 duration_s=0.005,
                 reason_code="unprotected_writes",
                 detail="mutating_calls=['Delete']",
+                log_dir_fn=lambda: tmp_path,
             )
 
         warning_calls = [str(c.args[0]) for c in mock_logger.warning.call_args_list]

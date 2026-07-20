@@ -384,8 +384,143 @@ def test_top2_reject_codes():
 
 
 # ---------------------------------------------------------------------------
-# T11 - stash drain: second call with same op_id does NOT write a second line
+# Issue #62 - group_records_by_session: stable session_id grouping,
+# NOT consecutive user_intent matching.
 # ---------------------------------------------------------------------------
+
+def test_session_grouping_survives_intent_edit_mid_session():
+    """One session, intent string changes mid-session -> still ONE group.
+
+    This is the first failure mode named in #62: editing user_intent between
+    calls within a single authoring session must NOT split the group.
+    """
+    from flextoolsmcp.server.handlers import op_telemetry as tel
+
+    records = [
+        {"op_id": "a", "seq": 1, "session_id": "sess-1", "user_intent": "fix the bug",
+         "outcome": "preflight_reject", "error_code": "missing_imports",
+         "assistance_triggered": False},
+        {"op_id": "b", "seq": 2, "session_id": "sess-1", "user_intent": "fix the gloss bug",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+    ]
+    groups = tel.group_records_by_session(records)
+    assert len(groups) == 1, f"Same session_id should form 1 group despite intent edit, got {len(groups)}"
+    assert len(groups[0]) == 2
+
+
+def test_session_grouping_does_not_merge_unrelated_sessions_same_intent():
+    """Two different sessions sharing a generic same user_intent -> two groups.
+
+    This is the second failure mode named in #62: a shared generic intent
+    string must NOT merge unrelated sessions.
+    """
+    from flextoolsmcp.server.handlers import op_telemetry as tel
+
+    records = [
+        {"op_id": "a", "seq": 1, "session_id": "sess-A", "user_intent": "fix the bug",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+        {"op_id": "b", "seq": 2, "session_id": "sess-B", "user_intent": "fix the bug",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+    ]
+    groups = tel.group_records_by_session(records)
+    assert len(groups) == 2, f"Different session_ids should form 2 groups, got {len(groups)}"
+
+
+def test_session_grouping_not_restricted_to_consecutive_records():
+    """Records for the same session_id are grouped together even if another
+    session's record is interleaved between them."""
+    from flextoolsmcp.server.handlers import op_telemetry as tel
+
+    records = [
+        {"op_id": "a", "seq": 1, "session_id": "sess-1", "user_intent": "x",
+         "outcome": "preflight_reject", "error_code": "missing_imports",
+         "assistance_triggered": False},
+        {"op_id": "b", "seq": 2, "session_id": "sess-2", "user_intent": "y",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+        {"op_id": "c", "seq": 3, "session_id": "sess-1", "user_intent": "x",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+    ]
+    groups = tel.group_records_by_session(records)
+    assert len(groups) == 2
+    sess1_group = next(g for g in groups if g[0]["session_id"] == "sess-1")
+    assert len(sess1_group) == 2
+    assert [r["op_id"] for r in sess1_group] == ["a", "c"]
+
+
+def test_session_grouping_legacy_fallback_for_missing_session_id():
+    """Records with no session_id at all fall back to the legacy
+    consecutive-user_intent rule among themselves (backward compatibility
+    with JSONL written before #62)."""
+    from flextoolsmcp.server.handlers import op_telemetry as tel
+
+    records = [
+        {"op_id": "a", "seq": 1, "user_intent": "list entries", "outcome": "preflight_reject",
+         "error_code": "missing_imports", "assistance_triggered": False},
+        {"op_id": "b", "seq": 2, "user_intent": "list entries", "outcome": "ok",
+         "error_code": "", "assistance_triggered": False},
+        {"op_id": "c", "seq": 3, "user_intent": "export to csv", "outcome": "ok",
+         "error_code": "", "assistance_triggered": False},
+    ]
+    groups = tel.group_records_by_session(records)
+    assert len(groups) == 2
+    assert len(groups[0]) == 2
+    assert len(groups[1]) == 1
+
+
+def test_group_records_by_intent_is_unchanged():
+    """group_records_by_intent (used by diagnostic-report reconstruction,
+    decision E7) keeps its original consecutive-user_intent semantics and is
+    NOT touched by the #62 session-grouping fix."""
+    from flextoolsmcp.server.handlers import op_telemetry as tel
+
+    records = [
+        {"op_id": "a", "seq": 1, "session_id": "sess-1", "user_intent": "fix the bug",
+         "outcome": "preflight_reject", "error_code": "missing_imports",
+         "assistance_triggered": False},
+        {"op_id": "b", "seq": 2, "session_id": "sess-1", "user_intent": "fix the gloss bug",
+         "outcome": "ok", "error_code": "", "assistance_triggered": False},
+    ]
+    # Intent changed between the two records -> group_records_by_intent still
+    # splits them into two groups, even though they share one session_id.
+    groups = tel.group_records_by_intent(records)
+    assert len(groups) == 2
+
+
+def test_stash_op_start_threads_session_id_into_jsonl_record(tmp_path):
+    """_stash_op_start's session_id round-trips into the written JSONL record."""
+    from flextoolsmcp.server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line
+
+    _stash_op_start(
+        op_id="op-sess-020",
+        project="TestProject",
+        write_enabled=False,
+        source_kind="bare_snippet",
+        user_intent="list entries",
+        code_sha256="f" * 64,
+        code_bytes=100,
+        code_lines=5,
+        session_id="sess-xyz",
+    )
+
+    _write_jsonl_line(
+        op_id="op-sess-020",
+        seq=20,
+        outcome="ok",
+        duration_s=1.0,
+        error_code=None,
+        preflight_gate=None,
+        info_count=0,
+        warning_count=0,
+        error_count=0,
+        assistance_triggered=False,
+        log_dir_fn=lambda: tmp_path,
+    )
+
+    jsonl_path = tmp_path / "operations.jsonl"
+    lines = jsonl_path.read_text(encoding="utf-8").strip().splitlines()
+    record = json.loads(lines[0])
+    assert record["session_id"] == "sess-xyz"
+
 
 def test_stash_drain_no_double_write(tmp_path):
     from flextoolsmcp.server.handlers.op_telemetry import _stash_op_start, _write_jsonl_line

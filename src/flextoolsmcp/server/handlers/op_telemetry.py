@@ -62,6 +62,7 @@ def _stash_op_start(
     code_bytes: int,
     code_lines: int,
     user_request: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> None:
     """Store per-op metadata at operation-start time so close functions can read it.
 
@@ -75,6 +76,16 @@ def _stash_op_start(
     user_intent fallback (see execution._log_operation_start) before
     stashing, so the value here is the EFFECTIVE one that should round-trip
     into the JSONL record -- not necessarily the raw per-op argument.
+
+    `session_id` (issue #62): the stable session-identity anchor stamped by
+    ``SessionState.configure()``. Unlike ``user_intent`` (a free-text NL
+    label the LLM can rewrite between calls), ``session_id`` does not change
+    across ops within one authoring session, which makes it the correct key
+    for green-rate / turns-to-green grouping (see
+    ``group_records_by_session`` in this module). ``user_intent`` remains a
+    display label only and keeps its existing (unchanged) role in
+    ``group_records_by_intent`` for the diagnostic-report turn boundary
+    (decision E7 -- that reconstruction path is intentionally untouched).
     """
     global _OP_STASH, _OP_STASH_ORDER
 
@@ -93,6 +104,7 @@ def _stash_op_start(
         "code_sha256": code_sha256,
         "code_bytes": code_bytes,
         "code_lines": code_lines,
+        "session_id": (session_id or "").strip(),
     }
     _OP_STASH_ORDER.append(op_id)
 
@@ -179,6 +191,7 @@ def _write_jsonl_line(
         "source_kind": stash.get("source_kind", ""),
         "user_intent": stash.get("user_intent", ""),
         "user_request": stash.get("user_request", ""),
+        "session_id": stash.get("session_id", ""),
         "code_sha256": stash.get("code_sha256", ""),
         "code_bytes": stash.get("code_bytes", 0),
         "code_lines": stash.get("code_lines", 0),
@@ -275,6 +288,87 @@ def group_records_by_intent(records: List[Dict[str, Any]]) -> List[List[Dict[str
     return groups
 
 
+def group_records_by_session(records: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    """Group ops into "attempt session" / turn groups by stable ``session_id``.
+
+    Issue #62: ``group_records_by_intent`` (above) groups CONSECUTIVE records
+    sharing the same ``user_intent`` -- a mis-model, because ``user_intent``
+    is a natural-language label the LLM can rewrite between calls, not a
+    stable session identifier. That produces two failure modes:
+
+      - One authoring session split across an intent-string edit becomes two
+        groups (inflates group count, understates turns-to-green).
+      - Two unrelated scripts that happen to share a generic intent string
+        (e.g. both say "fix the bug") merge into one group (inflates
+        turns-to-green).
+
+    This function groups by ``session_id`` instead -- the identity anchor
+    stamped by ``SessionState.configure()`` and threaded into the JSONL
+    record at op-start time (see ``_stash_op_start``). ``session_id`` does
+    not change when the LLM edits its intent string mid-session, and two
+    different sessions never share one, so both failure modes above are
+    fixed. Grouping is NOT restricted to consecutive records: all records
+    sharing one non-empty ``session_id`` are collected together, in first-
+    appearance order, regardless of interleaving.
+
+    Records written before this field existed (or from any code path with no
+    session identity available) have an empty ``session_id``. Those records
+    fall back to the legacy consecutive-user_intent grouping AMONG
+    THEMSELVES (same rules as ``group_records_by_intent``), so historical /
+    mixed old+new JSONL data still produces sane groups instead of being
+    silently dropped or merged into unrelated sessions.
+
+    This grouping is used ONLY for the green-rate / turns-to-green stats
+    (``compute_jsonl_statistics`` here and ``scripts/green_report.py``'s
+    ``_group_records``). It intentionally does NOT replace
+    ``group_records_by_intent``, which the diagnostic-report turn-boundary
+    reconstruction (``diagnostic/reconstruct.py``, decision E7) still relies
+    on unchanged.
+    """
+    groups: List[List[Dict[str, Any]]] = []
+    session_group_index: Dict[str, int] = {}
+    legacy_intent: Optional[str] = None
+    legacy_group: Optional[List[Dict[str, Any]]] = None
+
+    for r in records:
+        sid = (r.get("session_id") or "").strip()
+        if sid:
+            # A sessioned record ends any in-progress legacy run.
+            if legacy_group:
+                groups.append(legacy_group)
+            legacy_group = None
+            legacy_intent = None
+
+            idx = session_group_index.get(sid)
+            if idx is None:
+                groups.append([])
+                idx = len(groups) - 1
+                session_group_index[sid] = idx
+            groups[idx].append(r)
+            continue
+
+        # Legacy fallback: no session_id on this record.
+        intent = (r.get("user_intent") or "").strip()
+        if not intent:
+            if legacy_group:
+                groups.append(legacy_group)
+            legacy_group = None
+            legacy_intent = None
+            groups.append([r])
+        elif legacy_group is not None and intent == legacy_intent:
+            legacy_group.append(r)
+        else:
+            if legacy_group:
+                groups.append(legacy_group)
+            legacy_group = [r]
+            legacy_intent = intent
+
+    if legacy_group:
+        groups.append(legacy_group)
+
+    return groups
+
+
 def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     """Compute aggregates for the get_operation_logs statistics block.
 
@@ -307,8 +401,8 @@ def compute_jsonl_statistics(log_dir: Path) -> Dict[str, Any]:
     top5 = sorted(reject_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     rejects_by_error_code = [{"error_code": k, "count": v} for k, v in top5]
 
-    # --- intent grouping for green-rate / turns-to-green ---
-    groups = group_records_by_intent(records)
+    # --- session grouping for green-rate / turns-to-green (issue #62) ---
+    groups = group_records_by_session(records)
 
     if not groups:
         return {

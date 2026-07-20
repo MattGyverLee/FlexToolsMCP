@@ -24,66 +24,104 @@ else:
     from file_utils import get_index_dir
 
 
+# Version token in an index filename: '_v4.2.1' or '-v11.0.0'. The separator is
+# '_' (e.g. flexicon_api_v4.2.1.json) or '-' (e.g. common_patterns_flexicon-v4.1.2.json).
+_VERSION_RE = re.compile(r'[-_]v(\d+)\.(\d+)\.(\d+)')
+
+# Subdirectories under the index root that never hold live versioned files.
+_SKIP_DIRS = {"archive", "embeddings"}
+
+
 def parse_version(filename: str) -> Tuple[int, int, int]:
     """Extract version tuple from filename like 'liblcm_api_v11.0.0.json'."""
-    match = re.search(r'v(\d+)\.(\d+)\.(\d+)', filename)
+    match = _VERSION_RE.search(filename)
     if match:
         major, minor, patch = match.groups()
         return (int(major), int(minor), int(patch))
     return (0, 0, 0)
 
 
+def version_group_key(filename: str) -> str:
+    """Strip the version token so all versions of one index share a key.
+
+    'flexicon_api_v4.2.1.json'             -> 'flexicon_api'
+    'common_patterns_flexicon-v4.1.2.json' -> 'common_patterns_flexicon'
+    'casting_index_liblcm-v11.0.0.json'    -> 'casting_index_liblcm'
+    """
+    return _VERSION_RE.sub('', Path(filename).stem)
+
+
+def _index_directories(index_dir: Path) -> List[Path]:
+    """Directories that may hold live versioned files: the index root plus each
+    immediate subdirectory, excluding archive/ and embeddings/.
+
+    Discovering directories (rather than hardcoding them) keeps archiving correct
+    when the index folder layout changes -- files are grouped by naming
+    convention wherever they live, so a relocated or newly added index type is
+    archived automatically instead of being silently skipped.
+    """
+    dirs = [index_dir]
+    if index_dir.exists():
+        for child in sorted(index_dir.iterdir()):
+            if child.is_dir() and child.name not in _SKIP_DIRS:
+                dirs.append(child)
+    return dirs
+
+
 def archive_versions_in_directory(
     directory: Path,
-    pattern: str,
     keep_count: int = 1
 ) -> Dict[str, List[str]]:
-    """Archive old versions in a directory.
+    """Archive old versions of every version-group of files in `directory`.
+
+    Files are grouped by name-without-version (see version_group_key), so all
+    versioned index files in the directory are handled -- no per-type glob
+    pattern needed. archive/ and embeddings/ subdirectories are never recursed
+    into (only files directly in `directory` are considered).
 
     Args:
         directory: Directory containing versioned files
-        pattern: Glob pattern like "liblcm_api_v*.json"
-        keep_count: Number of latest versions to keep in main directory
+        keep_count: Number of latest versions to keep per group
 
     Returns:
-        Dict with 'archived' and 'kept' file lists
+        Dict with 'archived' and 'kept' file-name lists (across all groups)
     """
     if not directory.exists():
         return {"archived": [], "kept": []}
 
-    # Find all versioned files
-    files = sorted(directory.glob(pattern))
-    if len(files) <= keep_count:
-        return {"archived": [], "kept": [f.name for f in files]}
+    # Group versioned files by their non-version stem.
+    groups: Dict[str, List[Path]] = {}
+    for f in directory.glob("*.json"):
+        if not _VERSION_RE.search(f.name):
+            continue
+        groups.setdefault(version_group_key(f.name), []).append(f)
 
-    # Sort by version (descending, so latest first)
-    files_with_versions = [(f, parse_version(f.name)) for f in files]
-    files_with_versions.sort(key=lambda x: x[1], reverse=True)
+    archived: List[str] = []
+    kept: List[str] = []
 
-    # Keep latest N, archive the rest
-    keep_files = [f for f, _ in files_with_versions[:keep_count]]
-    archive_files = [f for f, _ in files_with_versions[keep_count:]]
+    for files in groups.values():
+        # Sort by version, latest first.
+        files.sort(key=lambda f: parse_version(f.name), reverse=True)
+        if len(files) <= keep_count:
+            kept.extend(f.name for f in files)
+            continue
 
-    # Create archive directory
-    archive_dir = directory / "archive"
-    archive_dir.mkdir(exist_ok=True)
+        keep_files = files[:keep_count]
+        archive_files = files[keep_count:]
+        kept.extend(f.name for f in keep_files)
 
-    # Move old files to archive
-    archived = []
-    for old_file in archive_files:
-        try:
-            archive_path = archive_dir / old_file.name
-            shutil.move(str(old_file), str(archive_path))
-            archived.append(old_file.name)
-            print(f"  [ARCHIVE] {old_file.name} -> archive/")
-        except FileNotFoundError:
-            # File already gone - skip it
-            pass
+        archive_dir = directory / "archive"
+        archive_dir.mkdir(exist_ok=True)
+        for old_file in archive_files:
+            try:
+                shutil.move(str(old_file), str(archive_dir / old_file.name))
+                archived.append(old_file.name)
+                print(f"  [ARCHIVE] {old_file.name} -> {directory.name}/archive/")
+            except FileNotFoundError:
+                # File already gone - skip it
+                pass
 
-    return {
-        "archived": archived,
-        "kept": [f.name for f in keep_files]
-    }
+    return {"archived": archived, "kept": kept}
 
 
 def main():
@@ -109,43 +147,21 @@ def main():
     print("[INFO] Archiving old API versions...")
     print(f"  Keeping {args.keep} latest version(s)")
 
-    # Archive patterns by directory
-    # Note: patterns are defined only in their canonical locations to avoid duplication
-    patterns = {
-        index_dir / "liblcm": [
-            ("liblcm_api_v*.json", "LibLCM"),
-            ("casting_index_liblcm-v*.json", "Casting Index"),
-            ("navigation_graph_liblcm-v*.json", "Navigation Graph"),
-            ("reverse_mapping_liblcm-v*.json", "Reverse Mapping"),
-        ],
-        index_dir / "python": [
-            ("flexlibs_api_v*.json", "FlexLibs"),
-            ("flexicon_api_v*.json", "Flexicon"),
-            ("common_patterns_flexicon-v*.json", "Common Patterns"),
-        ],
-    }
-
     total_archived = 0
     total_kept = 0
 
-    for directory, file_patterns in patterns.items():
-        if not directory.exists():
-            continue
-
-        for pattern, label in file_patterns:
-            result = archive_versions_in_directory(
-                directory,
-                pattern,
-                keep_count=args.keep
-            )
-
-            archived_count = len(result["archived"])
-            kept_count = len(result["kept"])
-
-            if archived_count > 0:
-                print(f"[OK] {label}: Archived {archived_count}, Keeping {kept_count}")
-                total_archived += archived_count
-                total_kept += kept_count
+    # Discover every directory that may hold versioned files and archive by
+    # naming convention. No hardcoded directory->pattern map to drift when the
+    # index layout changes.
+    for directory in _index_directories(index_dir):
+        result = archive_versions_in_directory(directory, keep_count=args.keep)
+        archived_count = len(result["archived"])
+        if archived_count > 0:
+            rel = directory.name if directory != index_dir else "index root"
+            print(f"[OK] {rel}: Archived {archived_count}, "
+                  f"Keeping {len(result['kept'])}")
+            total_archived += archived_count
+            total_kept += len(result["kept"])
 
     if not args.quiet:
         print(f"\n[DONE] Archived {total_archived} old versions")

@@ -27,9 +27,11 @@ build/
 *.egg-info/
 
 # Archive directories (keep outdated versions locally, exclude from git)
-index/archive/
-index/liblcm/archive/
-index/python/archive/
+# The index tree lives under src/flextoolsmcp/index/; the `**/archive/` form
+# matches archive dirs at the index root and in any subdirectory so new index
+# folders are covered automatically.
+src/flextoolsmcp/index/archive/
+src/flextoolsmcp/index/**/archive/
 
 # Large index files (regenerate with refresh.py)
 # Uncomment if you don't want to commit indexes:

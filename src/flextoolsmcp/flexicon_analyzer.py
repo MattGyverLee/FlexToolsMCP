@@ -84,62 +84,84 @@ def _detect_version_from_files(base_path: Path,
     return "0.0.0"
 
 
-def detect_flexlibs_version(flexlibs_path: str) -> str:
-    """Detect FlexLibs stable version from source code or installed package."""
-    base_path = Path(flexlibs_path) / "flexlibs"
-    version_pattern = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
+_VERSION_PATTERN = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
 
-    # Try to detect from files
-    version = _detect_version_from_files(
-        base_path,
-        ["__init__.py", "setup.py", "pyproject.toml"],
-        {
-            "__init__.py": version_pattern,
-            "setup.py": version_pattern,
-            "pyproject.toml": version_pattern
-        }
+
+def _detect_package_version(repo_root: str, package_dirname: str, import_name: str) -> str:
+    """Detect a library's version, preferring the packaging-canonical source.
+
+    Assumed layout (sibling repo or editable install -- what refresh passes,
+    since it resolves `library_path` to `module.__file__.parent.parent`):
+
+        <repo_root>/pyproject.toml                    <- [project].version
+        <repo_root>/<package_dirname>/__init__.py     <- version = "X.Y.Z"
+
+    Priority:
+      1. pyproject.toml [project].version at the repo root (release-canonical)
+      2. <package>/__init__.py  version = "..."  (source attribute)
+      3. setup.py at the repo root
+      4. installed-package `.version` attribute (import fallback)
+
+    Why pyproject wins over __init__.py: a release cut bumps
+    pyproject.toml's [project].version but the in-package `__init__.py`
+    string is easy to forget (flexicon 4.2.0 shipped with pyproject=4.2.0
+    but __init__.py still at 4.1.2). The old detector looked for
+    pyproject.toml *inside the package dir* (where it never lives) and only
+    ever found the stale __init__.py, silently mislabeling the index. When
+    the two disagree we emit a WARN so the drift is never invisible again.
+    """
+    root = Path(repo_root)
+    pkg_dir = root / package_dirname
+
+    pyproject_version = _detect_version_from_files(
+        root, ["pyproject.toml"], {"pyproject.toml": _VERSION_PATTERN}
     )
-    if version != "0.0.0":
-        return version
+    init_version = _detect_version_from_files(
+        pkg_dir, ["__init__.py"], {"__init__.py": _VERSION_PATTERN}
+    )
 
-    # Fallback: try to import installed flexlibs package
+    if (
+        pyproject_version != "0.0.0"
+        and init_version != "0.0.0"
+        and pyproject_version != init_version
+    ):
+        print(
+            f"[WARN] {import_name} version drift: pyproject.toml="
+            f"{pyproject_version} but {package_dirname}/__init__.py="
+            f"{init_version}; using {pyproject_version} (pyproject is "
+            f"release-canonical). Bump {package_dirname}/__init__.py to match.",
+            file=sys.stderr,
+        )
+
+    for candidate in (pyproject_version, init_version):
+        if candidate != "0.0.0":
+            return candidate
+
+    setup_version = _detect_version_from_files(
+        root, ["setup.py"], {"setup.py": _VERSION_PATTERN}
+    )
+    if setup_version != "0.0.0":
+        return setup_version
+
+    # Fallback: import the installed package and read its .version attribute.
     try:
-        import flexlibs
-        if hasattr(flexlibs, 'version'):
-            return flexlibs.version
+        module = __import__(import_name)
+        if hasattr(module, "version"):
+            return module.version
     except ImportError:
         pass
 
     return "0.0.0"
+
+
+def detect_flexlibs_version(flexlibs_path: str) -> str:
+    """Detect FlexLibs stable version from source code or installed package."""
+    return _detect_package_version(flexlibs_path, "flexlibs", "flexlibs")
 
 
 def detect_flexicon_version(flexicon_path: str) -> str:
     """Detect Flexicon version from source code or installed package."""
-    base_path = Path(flexicon_path) / "flexicon"
-    version_pattern = r'version\s*=\s*["\']([0-9]+\.[0-9]+\.[0-9]+)["\']'
-
-    # Try to detect from files
-    version = _detect_version_from_files(
-        base_path,
-        ["__init__.py", "setup.py", "pyproject.toml"],
-        {
-            "__init__.py": version_pattern,
-            "setup.py": version_pattern,
-            "pyproject.toml": version_pattern
-        }
-    )
-    if version != "0.0.0":
-        return version
-
-    # Fallback: try to import installed flexicon package
-    try:
-        import flexicon
-        if hasattr(flexicon, 'version'):
-            return flexicon.version
-    except ImportError:
-        pass
-
-    return "0.0.0"
+    return _detect_package_version(flexicon_path, "flexicon", "flexicon")
 
 
 # Description enrichment: adds common search terms to method descriptions

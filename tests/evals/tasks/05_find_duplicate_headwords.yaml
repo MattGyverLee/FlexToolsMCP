@@ -1,0 +1,4 @@
+task: "Find any lexical entries that share the exact same headword and report the duplicate groups"
+project: Sena3-test
+max_turns: 6
+success_check: "output contains either a duplicate-group listing or an explicit 'no duplicates found' message, and no ERROR"

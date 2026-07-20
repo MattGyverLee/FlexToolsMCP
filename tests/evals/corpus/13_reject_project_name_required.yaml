@@ -1,0 +1,14 @@
+intent: "Run code with no project name set"
+api_mode: flexicon
+write_enabled: false
+project_name: ""
+code: |
+  x = 1
+expect:
+  outcome: preflight_reject
+  error_code: project_name_required
+  auto_fixes: 0
+notes: >
+  Checked before any code parsing/AST work in the real handler -- an empty
+  project_name (not set in start() and not passed directly) short-circuits
+  immediately.

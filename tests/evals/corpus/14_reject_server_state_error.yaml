@@ -1,0 +1,16 @@
+intent: "Server-side kernel state is not initialized (operations logger missing)"
+api_mode: flexicon
+write_enabled: false
+force_server_unhealthy: true
+code: |
+  x = 1
+expect:
+  outcome: preflight_reject
+  error_code: server_state_error
+  auto_fixes: 0
+notes: >
+  `force_server_unhealthy` is a preflight_runner-only test hook (see
+  preflight_runner.py) that simulates the operations logger not being
+  initialized, mirroring validate_server_state()'s real "error" severity
+  path. Not otherwise reachable in a normal running server, which always
+  initializes the logger at startup.

@@ -1,0 +1,20 @@
+intent: "An unguarded mutation via a local-variable alias must still be caught (issue #8)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import POSOperations
+  posOps = POSOperations(project)
+  posOps.Create("Noun", "n")
+expect:
+  outcome: preflight_reject
+  error_code: unprotected_writes
+  auto_fixes: 0
+notes: >
+  Regression for issue #8: aliasing an Operations object via a local
+  variable (`posOps = POSOperations(project)`) used to be invisible to the
+  line-based regex mutation detector, silently letting an unguarded write
+  through. certify_script_readonly()'s AST-based alias tracking
+  (_resolve_alias_maps / _find_aliased_operations_calls) now resolves the
+  alias back to POSOperations.Create and flags it as an unprotected
+  mutation.
+issue: 8

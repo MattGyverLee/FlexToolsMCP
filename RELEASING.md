@@ -142,16 +142,73 @@ git push && git push --tags
 
 Before tagging any release, verify:
 
-- [ ] `pytest` exits green with no failures or errors.
+- [ ] `pytest` exits green with no failures or errors (this includes the
+      Tier-1 eval corpus under `tests/evals/corpus/` -- it runs as part of
+      the normal suite and is a hard CI gate; see [Eval harness](#eval-harness)
+      below).
 - [ ] `python scripts/validate_integrity.py all` exits clean.
 - [ ] If indexes changed: review the index diff and confirm it reflects
       the intended API surface changes.
-- [ ] Eval tier-2 numbers reviewed (pending: eval harness not yet landed;
-      note result as N/A until that feature ships).
+- [ ] **Tier-2 live evals run and headline numbers pasted into CHANGELOG**
+      (see [Eval harness](#eval-harness) below). Manual, pre-release only --
+      never CI-required. Report medians over 2 runs; note as N/A only if
+      skipped for a patch release with no assistant-facing changes (tool
+      descriptions, preflight gates, or index content).
 - [ ] `CHANGELOG.md` entry written for this version.
 - [ ] `VERSION` file bumped to the new version number.
 - [ ] TestPyPI dry-run completed and the uploaded package starts without
       errors (`uvx --index https://test.pypi.org/simple/ flextools-mcp`).
+
+---
+
+## Eval harness
+
+Issue #51 added a two-tier eval harness under `tests/evals/` to catch
+first-pass-green regressions before they reach users (motivated by #26 --
+zero modules saved in 13 sessions -- and #29 -- 7/13 sessions rejected on
+op #1 -- both only caught after the fact by reading production logs).
+
+### Tier 1 -- replay corpus (automatic, CI-gated)
+
+`tests/evals/corpus/*.yaml` holds ~30 scripts with expected preflight gate
+outcomes (`expect.outcome: ok | preflight_reject` + `expect.error_code`).
+`tests/evals/test_corpus.py` drives the preflight validator chain directly
+(no LLM, no FieldWorks project, no subprocess) via
+`tests/evals/preflight_runner.py`. It runs as part of the normal `pytest`
+invocation -- nothing extra to do at release time beyond making sure the
+suite is green.
+
+**If a PR changes gate behavior** (a corpus entry's `expect.outcome` flips),
+the YAML must be updated in the same PR -- that diff IS the review artifact
+for the gate-behavior change, same philosophy as the index-diff gate above.
+
+### Tier 2 -- live LLM task evals (manual, pre-release only)
+
+`tests/evals/tasks/*.yaml` holds ~15 task prompts (intent only, no code) --
+e.g. "Find all entries whose citation form differs from lexeme form and
+report them". `tests/evals/tier2_runner_skeleton.py` documents the shape of
+a runner that would drive a real assistant session against the MCP server
+and emit the same JSONL schema as production telemetry (so
+`scripts/green_report.py`-style tooling can render it) -- **the skeleton is
+not wired to a live LLM**; it's a documented harness contract for whoever
+runs Tier 2 by hand (or automates it later) to fill in.
+
+Run before each release:
+
+1. Opt in: `FLEXTOOLSMCP_LIVE_EVALS=1`
+2. Drive each task in `tests/evals/tasks/*.yaml` against a real assistant
+   session connected to this MCP server, using a real (test/sample)
+   FieldWorks project matching the task's `project` field.
+3. Record turns-to-green per task against `success_check`.
+4. Paste headline numbers into `CHANGELOG.md`, e.g.:
+
+   ```
+   eval: 13/15 tasks green, median 1 turn, was 11/15
+   ```
+
+Cost control: Tier 2 is opt-in and manual -- **never** made a CI-required
+gate. Report medians over 2 runs rather than a single run (turn count is
+somewhat noisy across sessions).
 
 ---
 

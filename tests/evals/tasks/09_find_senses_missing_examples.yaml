@@ -1,0 +1,4 @@
+task: "Find senses that have a gloss but no example sentences, and report the first 20"
+project: Sena3-test
+max_turns: 6
+success_check: "output lists sense/gloss pairs (or an explicit 'none found' message) and no ERROR"

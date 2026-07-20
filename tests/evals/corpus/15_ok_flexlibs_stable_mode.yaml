@@ -1,0 +1,19 @@
+intent: "Read-only iteration using the stable flexlibs API mode"
+api_mode: flexlibs_stable
+write_enabled: false
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  from flexlibs import LexEntryOperations
+  entries = LexEntryOperations(project).GetAll()
+  report.Info(str(len(entries)))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  API-mode coverage: flexlibs_stable is a first-class api_mode alongside
+  flexicon. Note the "import satisfies discovery" rule (issue #31) only
+  covers imports from the flexicon/flexlibs2 roots, not plain flexlibs, so
+  session.validated_apis is populated here to satisfy the undiscovered_entity
+  gate for the stable-mode import shape.

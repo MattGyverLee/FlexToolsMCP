@@ -1,0 +1,15 @@
+intent: "A module-shaped snippet (has Main) missing docs/FlexToolsModule scaffolding"
+api_mode: flexicon
+write_enabled: false
+code: |
+  def Main(project, report, modifyAllowed):
+      report.Info("hello")
+expect:
+  outcome: preflight_reject
+  error_code: partial_module_structure
+  auto_fixes: 0
+notes: >
+  Dennis's case (see validators.py detect_partial_module_structure
+  docstring): def Main present but docs dict / FlexToolsModule binding
+  absent. Mirrors tests/test_validators.py's
+  TestPartialModuleStructure.test_main_without_scaffolding_is_partial.

@@ -1,0 +1,16 @@
+intent: "Read a headword via the polymorphic Owner.HeadWord chain without casting"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  for entry in LexEntryOperations(project).GetAll():
+      hw = entry.Owner.HeadWord
+      report.Info(hw)
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+notes: >
+  Baseline casting gate: `.Owner.HeadWord` is one of the hardcoded
+  KNOWN_CASTING_PATTERNS entries in detect_casting_needs() and always
+  requires an explicit ILexEntry cast. Related context: issue #15.

@@ -1,0 +1,11 @@
+intent: "Deliberately malformed Python to exercise the syntax_error gate"
+api_mode: flexicon
+write_enabled: false
+code: |
+  def Main(:
+      pass
+expect:
+  outcome: preflight_reject
+  error_code: syntax_error
+  auto_fixes: 0
+notes: "Gate 1 of the ordered preflight chain: ast.parse() failure."

@@ -1,0 +1,27 @@
+intent: "ApplySyncableProperties must be recognized as a valid indexed method (issue #38)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import POSOperations
+
+  def Main(project, report, modifyAllowed):
+      if modifyAllowed:
+          project.POS.ApplySyncableProperties(entity, {})
+      report.Info("done")
+
+  docs = {"FTM_Name": "x", "FTM_Synopsis": "x", "FTM_ModifiesDB": True, "FTM_Description": "x"}
+  FlexToolsModule = FlexToolsModuleClass(Main, docs)
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #38: ApplySyncableProperties was entirely absent from
+  the generated flexicon API index (0 occurrences despite being defined on
+  13+ Operations classes), so the project.<accessor>.<method> chain check in
+  detect_invalid_project_chains() rejected valid code with
+  `did_you_mean: [GetSyncableProperties]`. This runner's fake index includes
+  ApplySyncableProperties on POSOperations (mirroring the real fix to the
+  index generator), so the two-level chain check now finds the method and
+  does not flag it.
+issue: 38

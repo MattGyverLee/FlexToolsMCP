@@ -1,0 +1,14 @@
+intent: "Import from stable flexlibs while api_mode is flexicon"
+api_mode: flexicon
+write_enabled: false
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  from flexlibs import LexEntryOperations
+  entries = LexEntryOperations(project).GetAll()
+  report.Info(str(len(entries)))
+expect:
+  outcome: preflight_reject
+  error_code: wrong_library_imports
+  auto_fixes: 0
+notes: "api_mode=flexicon but the import is from flexlibs (stable), not flexicon."

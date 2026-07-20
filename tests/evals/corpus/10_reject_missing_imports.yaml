@@ -1,0 +1,28 @@
+intent: "Use an Operations class name without importing it"
+api_mode: flexicon
+write_enabled: false
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  class LexEntryOperations:
+      pass
+
+  entries = LexEntryOperations(project).GetAll()
+  report.Info(str(len(entries)))
+expect:
+  outcome: preflight_reject
+  error_code: missing_imports
+  auto_fixes: 0
+notes: >
+  Isolating this gate deliberately: given the real handler's gate ORDER,
+  bare-referencing an unimported `<Name>Operations` symbol trips
+  undefined_variables (gate 8) before missing_imports (gate 9) ever runs --
+  the two gates overlap for this shape and undefined_variables wins in
+  practice for typical hallucinated code. The local class stub here exists
+  purely to satisfy undefined_variables' AST name-definition check (so the
+  name is no longer "undefined") while remaining absent from any import
+  statement, isolating and exercising the missing_imports gate on its own.
+  Not representative user code -- see preflight_runner.py docstring for the
+  broader "these two gates can mask each other" note. `session.validated_apis`
+  is set so the undiscovered_entity gate (which runs before both) also
+  doesn't fire first.

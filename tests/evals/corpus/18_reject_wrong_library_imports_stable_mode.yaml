@@ -1,0 +1,14 @@
+intent: "Import from flexicon while api_mode is flexlibs_stable"
+api_mode: flexlibs_stable
+write_enabled: false
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  from flexicon import LexEntryOperations
+  entries = LexEntryOperations(project).GetAll()
+  report.Info(str(len(entries)))
+expect:
+  outcome: preflight_reject
+  error_code: wrong_library_imports
+  auto_fixes: 0
+notes: "Mirror image of 11_reject_wrong_library_imports.yaml for the other api_mode direction."

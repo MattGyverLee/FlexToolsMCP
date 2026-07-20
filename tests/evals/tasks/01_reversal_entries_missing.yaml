@@ -1,0 +1,4 @@
+task: "List every entry that has senses with no reversal entries in the reversal index"
+project: Sena3-test
+max_turns: 6
+success_check: "output contains at least one headword line, or an explicit 'none found' message, and no ERROR"

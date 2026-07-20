@@ -1,0 +1,4 @@
+task: "Report how many lexical entries exist for each vernacular writing system configured in the project"
+project: Sena3-test
+max_turns: 5
+success_check: "output contains at least one 'writing system: count' line and no ERROR"

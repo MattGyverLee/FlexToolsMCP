@@ -1,0 +1,14 @@
+intent: "Delete an entry with no modifyAllowed guard"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  project.LexEntry.Delete(some_entry)
+expect:
+  outcome: preflight_reject
+  error_code: unprotected_writes
+  auto_fixes: 0
+notes: >
+  DELETE-operation counterpart to 05_reject_unprotected_writes.yaml, using
+  the project.<accessor>.Delete(...) raw-LCM-mutable-pattern path rather
+  than the ClassName(project).Method() form.

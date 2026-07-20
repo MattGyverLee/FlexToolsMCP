@@ -1,0 +1,4 @@
+task: "Add the English gloss 'to run quickly' to the first sense of the entry whose headword is 'sprint'"
+project: Sena3-test
+max_turns: 6
+success_check: "output confirms the gloss was written (or a clear 'entry not found' message), write was certified/guarded, and no ERROR"

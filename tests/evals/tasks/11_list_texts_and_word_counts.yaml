@@ -1,0 +1,4 @@
+task: "List every interlinear text in the project along with its approximate word count"
+project: Sena3-test
+max_turns: 5
+success_check: "output contains at least one 'text name: word count' line and no ERROR"

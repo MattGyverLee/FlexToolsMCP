@@ -1,0 +1,28 @@
+intent: "A Lexicon*-prefixed direct-project-method typo (issue #34)"
+api_mode: flexicon
+write_enabled: false
+skip: true
+skip_reason: >
+  Verified empirically against the current validators.py: the single-level
+  `project.<X>` branch of detect_invalid_project_chains() only fuzzy-matches
+  X against the ACCESSOR set (_project_accessors(), short entity names like
+  LexEntry/POS/Senses), never against enumerated Lexicon* METHOD names
+  (known_lexicon_methods is used only as a skip-set, not a fuzzy-match
+  target -- see validators.py around line 640-663). So
+  `project.LexiconGetSenses` (typo for `LexiconGetSense`) is NOT rejected by
+  this gate today; it currently slips through preflight and would only
+  surface at runtime via Python's own "Did you mean" AttributeError hint
+  (detect_unknown_attribute_error / extract_python_did_you_mean), which this
+  Tier-1 corpus (preflight-only, no execution) cannot exercise. Marking
+  skip rather than asserting an incorrect expectation; tracked as a
+  known gap for a follow-up validator fix, not something to paper over here.
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  entries = project.LexiconGetSenses(some_entry)
+  report.Info(str(entries))
+expect:
+  outcome: preflight_reject
+  error_code: invalid_api_chain
+  auto_fixes: 0
+issue: 34

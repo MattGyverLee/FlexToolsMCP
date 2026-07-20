@@ -1,0 +1,4 @@
+task: "Find all entries whose citation form differs from lexeme form and report them"
+project: Sena3-test
+max_turns: 6
+success_check: "output contains at least one headword line and no ERROR"

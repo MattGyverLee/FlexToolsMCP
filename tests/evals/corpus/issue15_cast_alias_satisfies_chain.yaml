@@ -1,0 +1,23 @@
+intent: "A property already satisfied by an explicit prior cast must not be re-flagged (issue #15)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  from SIL.LCModel import ILexEntry
+  for entry in LexEntryOperations(project).GetAll():
+      e = ILexEntry(entry)
+      form = e.LexemeForm
+      report.Info(str(form))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+notes: >
+  Regression for issue #15: idiomatic type-narrowing chains (cast on one
+  line, property access on the next) used to re-trigger casting_issues_detected
+  on every subsequent line even though the earlier explicit cast
+  (`e = ILexEntry(entry)`) already satisfies the property's requirement.
+  detect_casting_needs()'s cast-alias tracking (_alias_satisfies) now
+  recognizes that `e.LexemeForm` is safe because `e` was explicitly cast to
+  ILexEntry, which is in LexemeForm's `available_on` set.
+issue: 15

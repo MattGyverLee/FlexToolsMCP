@@ -1,0 +1,4 @@
+task: "Create a new lexical entry with lexeme form 'testword' and gloss 'a word used for testing'"
+project: Sena3-test
+max_turns: 6
+success_check: "output confirms the new entry was created (with a GotoURL or entry reference), write was certified/guarded, and no ERROR"

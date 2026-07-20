@@ -1,0 +1,16 @@
+intent: "Typo'd project accessor name"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  entries = project.LexEntrie.GetAll()
+  report.Info(str(len(entries)))
+expect:
+  outcome: preflight_reject
+  error_code: invalid_api_chain
+  auto_fixes: 0
+notes: >
+  `project.LexEntrie` (typo for `project.LexEntry`) is a high-confidence
+  difflib match (~0.96) against the known accessor set, above the 0.7
+  cutoff -- detect_invalid_project_chains() rejects it pre-flight instead
+  of letting it fail at runtime.

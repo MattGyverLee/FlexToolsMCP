@@ -1,0 +1,4 @@
+task: "Export every entry's headword and first-sense gloss to a CSV-formatted report"
+project: Sena3-test
+max_turns: 6
+success_check: "output contains comma-separated headword,gloss lines (or a written CSV file reference) and no ERROR"

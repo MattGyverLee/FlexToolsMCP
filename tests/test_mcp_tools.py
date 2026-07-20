@@ -290,6 +290,17 @@ class TestWorkflowGates(TestCase):
         data = self._parse_response(result)
         self.assertIn("error", data)
 
+    def test_list_projects_before_start_is_allowed(self):
+        """flextools_list_projects is session-independent: it must NOT be blocked
+        by the init gate, since listing projects is the natural first step before
+        choosing one to start() with (it scans the directory, never loads the LCM)."""
+        result = call_tool("flextools_list_projects", {})
+        data = self._parse_response(result)
+        # Should reach the real handler (returns a projects payload), not the
+        # "Session not initialized" gate error.
+        self.assertNotIn("not initialized", str(data.get("error", "")).lower())
+        self.assertIn("projects", data)
+
 
 # ---------------------------------------------------------------------------
 # Error Handling Tests
@@ -376,6 +387,155 @@ class TestDescriptionReferences(ToolsTestBase):
                             f"  ...{desc[max(0,pos-30):pos+len(old_ref)+10]}..."
                         )
                         idx = pos + 1
+
+
+class TestModuleTemplateLoading(TestCase):
+    """Regression tests for flextools_get_module_template (issue #77).
+
+    The templates used to live at the repo root and were resolved via a
+    parents[3] walk, so they were absent from the wheel and unreachable once
+    the code was installed under site-packages (uvx / pip). They now ship as
+    package data inside flextoolsmcp/templates and resolve package-relative.
+    """
+
+    ALL_FLAVORS = [
+        "flexicon", "flexlibs_stable", "liblcm",
+        "stable", "advanced", "flexlibs2",
+    ]
+
+    def test_bundled_templates_dir_exists(self):
+        from flextoolsmcp.file_utils import get_bundled_templates_dir
+        d = get_bundled_templates_dir()
+        self.assertTrue(
+            d.exists(),
+            f"Bundled templates dir missing: {d}. It must live inside the "
+            f"package so uvx/pip installs can find it (issue #77).",
+        )
+
+    @staticmethod
+    def _fetch(flavor):
+        from flextoolsmcp.server.handlers.admin import handle_get_module_template
+        result = run_async(handle_get_module_template({"flavor": flavor}))
+        return json.loads(result[0].text)
+
+    def test_every_flavor_returns_a_template(self):
+        for flavor in self.ALL_FLAVORS:
+            payload = self._fetch(flavor)
+            self.assertNotEqual(
+                payload.get("error"), "template_not_found",
+                f"Flavor '{flavor}' failed to load its template: {payload}",
+            )
+            self.assertEqual(payload.get("status"), "success", payload)
+            self.assertTrue(
+                payload.get("template", "").strip(),
+                f"Flavor '{flavor}' returned an empty template.",
+            )
+
+    def test_unknown_flavor_reports_invalid_flavor(self):
+        payload = self._fetch("nope")
+        self.assertEqual(payload.get("error"), "invalid_flavor", payload)
+
+
+class TestToolOutcomeLogging(TestCase):
+    """Every tool call must leave an outcome trace in the operations log.
+
+    A failing tool used to leave only the [TOOL CALL] marker (INFO) while the
+    failure itself was DEBUG-only, so failures were invisible at the default
+    level. call_tool now emits [TOOL OK] (INFO) / [TOOL ERROR] (WARNING) for
+    every dispatch. This is what makes a template_not_found (issue #77) or any
+    other tool failure show up in the logs.
+    """
+
+    def _capture(self, tool, args, initialized=False):
+        import logging as _logging
+        srv = _get_srv()
+        # call_tool logs through the module-level `operations_logger`; make sure
+        # one exists and capture what it emits.
+        ops = srv.operations_logger
+        if ops is None:
+            ops = _logging.getLogger("flextoolsmcp.operations")
+            srv.operations_logger = ops
+        records = []
+
+        class _Capture(_logging.Handler):
+            def emit(self, record):
+                records.append((record.levelno, record.getMessage()))
+
+        h = _Capture()
+        ops.addHandler(h)
+        prev_level = ops.level
+        ops.setLevel(_logging.DEBUG)
+        # Optionally slip past the session gate to reach the dispatch/outcome
+        # path (the gate itself already logs [BLOCKED] at WARNING).
+        prev_init = srv.session_state.initialized
+        if initialized:
+            srv.session_state.initialized = True
+        try:
+            run_async(srv.call_tool(tool, args))
+        finally:
+            srv.session_state.initialized = prev_init
+            ops.removeHandler(h)
+            ops.setLevel(prev_level)
+        return records
+
+    def test_blocked_tool_leaves_a_warning_trace(self):
+        import logging as _logging
+        # Session-gated tool without a session: the gate itself must leave a
+        # visible (WARNING) trace, not a silent return.
+        records = self._capture("flextools_get_module_template", {"flavor": "flexicon"})
+        self.assertTrue(
+            any(lvl == _logging.WARNING and "[BLOCKED] flextools_get_module_template" in m
+                for lvl, m in records),
+            f"blocked tool left no WARNING trace: {[m for _, m in records]}",
+        )
+
+    def test_handler_error_emits_tool_error_at_warning(self):
+        import logging as _logging
+        srv = _get_srv()
+        # A handler that returns an error payload (top-level "error" key) must
+        # surface as [TOOL ERROR] at WARNING -- previously DEBUG-only. Swap in a
+        # stub handler for one tool for the duration of the call so we don't
+        # depend on any tool's live error state.
+        from mcp.types import TextContent as _TC
+        real_route = srv.get_tool_handler("flextools_get_module_template")
+        _, input_model = real_route
+
+        async def _boom(_args):
+            return [_TC(type="text", text=json.dumps({"error": "kaboom"}))]
+
+        records = []
+
+        class _Capture(_logging.Handler):
+            def emit(self, record):
+                records.append((record.levelno, record.getMessage()))
+
+        ops = srv.operations_logger or _logging.getLogger("flextoolsmcp.operations")
+        srv.operations_logger = ops
+        h = _Capture(); ops.addHandler(h); ops.setLevel(_logging.DEBUG)
+        prev_init = srv.session_state.initialized
+        srv.session_state.initialized = True
+        orig = srv.get_tool_handler
+        srv.get_tool_handler = lambda n: (_boom, input_model) if n == "flextools_get_module_template" else orig(n)
+        try:
+            run_async(srv.call_tool("flextools_get_module_template", {"flavor": "flexicon"}))
+        finally:
+            srv.get_tool_handler = orig
+            srv.session_state.initialized = prev_init
+            ops.removeHandler(h)
+
+        err = [(lvl, m) for lvl, m in records if "[TOOL ERROR]" in m]
+        self.assertTrue(err, f"expected a [TOOL ERROR] trace: {[m for _, m in records]}")
+        self.assertEqual(err[0][0], _logging.WARNING)
+        self.assertIn("kaboom", err[0][1])
+
+    def test_handler_success_emits_tool_ok_at_info(self):
+        import logging as _logging
+        records = self._capture(
+            "flextools_get_module_template", {"flavor": "flexicon"}, initialized=True
+        )
+        ok = [(lvl, m) for lvl, m in records if "[TOOL OK]" in m]
+        self.assertTrue(ok, f"expected a [TOOL OK] trace: {[m for _, m in records]}")
+        self.assertEqual(ok[0][0], _logging.INFO)
 
 
 if __name__ == "__main__":

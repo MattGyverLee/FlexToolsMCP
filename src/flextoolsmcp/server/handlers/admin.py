@@ -12,7 +12,6 @@ These handlers manage session configuration and provide admin tools:
 """
 
 import json
-from pathlib import Path
 from datetime import datetime
 from mcp.types import TextContent
 
@@ -27,6 +26,25 @@ try:
     from ...response_utils import error_response
 except (ImportError, ValueError):
     from response_utils import error_response
+
+try:
+    from ...file_utils import get_bundled_templates_dir
+except (ImportError, ValueError):
+    from file_utils import get_bundled_templates_dir
+
+
+def _ops_logger():
+    """Return the shared operations logger (or None before init).
+
+    Routes template-resolution diagnostics into the same operations.log /
+    per-session trace as [TOOL CALL] records, instead of a detached
+    module-level logger that would never reach those file handlers.
+    """
+    try:
+        from ..kernel import get_operations_logger
+    except ImportError:
+        from server.kernel import get_operations_logger
+    return get_operations_logger()
 
 try:
     from ..project_discovery import resolve_or_explain
@@ -204,9 +222,6 @@ RUNTIME_PRIMER = {
     },
 }
 
-# Project root for template path resolution
-PROJECT_ROOT = Path(__file__).parents[3]
-
 # Template cache (loaded once at module init, not per request)
 _TEMPLATE_CACHE: dict[str, str] = {}
 
@@ -245,10 +260,17 @@ def _get_template(flavor: str) -> str | None:
     if flavor not in TEMPLATE_MAP:
         return None
 
-    templates_dir = PROJECT_ROOT / "templates"
+    templates_dir = get_bundled_templates_dir()
     template_file = templates_dir / TEMPLATE_MAP[flavor]
 
+    _log = _ops_logger()
     if not template_file.exists():
+        if _log:
+            _log.warning(
+                "[TEMPLATE MISS] flavor='%s' not found on disk: %s "
+                "(bundled templates dir: %s, exists=%s)",
+                flavor, template_file, templates_dir, templates_dir.exists(),
+            )
         return None
 
     try:
@@ -257,6 +279,8 @@ def _get_template(flavor: str) -> str | None:
         _TEMPLATE_CACHE[flavor] = content
         return content
     except Exception:
+        if _log:
+            _log.exception("[TEMPLATE READ ERROR] %s", template_file)
         return None
 
 
@@ -691,12 +715,23 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
     template_content = _get_template(flavor)
 
     if template_content is None:
-        templates_dir = PROJECT_ROOT / "templates"
+        templates_dir = get_bundled_templates_dir()
         template_file = templates_dir / TEMPLATE_MAP[flavor]
+        _log = _ops_logger()
+        if _log:
+            _log.error(
+                "[TEMPLATE NOT FOUND] flavor=%s expected bundled file at %s "
+                "(dir exists=%s)",
+                flavor, template_file, templates_dir.exists(),
+            )
         return json_response({
             KEY_ERROR: "template_not_found",
             KEY_MESSAGE: f"Template file not found: {template_file}",
-            "hint": "Templates should be in the root/templates/ directory"
+            "hint": (
+                "Templates ship as package data inside flextoolsmcp/templates. "
+                "If this is a pip/uvx install, the wheel may be missing the "
+                "bundled templates (reinstall or upgrade flextools-mcp)."
+            ),
         })
 
     # Get guidance using helper (handles aliases cleanly)

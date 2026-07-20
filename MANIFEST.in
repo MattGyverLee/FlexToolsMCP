@@ -1,5 +1,7 @@
 # Ship the indexed API documentation and the version file inside the package.
 graft src/flextoolsmcp/index
+# Ship the FlexTools module templates (back flextools_get_module_template).
+graft src/flextoolsmcp/templates
 include VERSION
 include LICENSE
 include README.md

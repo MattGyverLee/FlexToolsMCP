@@ -911,12 +911,27 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         dumped["_user_provided_keys"] = validated_args.model_fields_set
     result = await handler(dumped)
     if operations_logger:
-        # Log result summary for reproducibility (first 1000 chars)
-        if result:
-            result_text = result[0].text if result else ""
-            result_preview = result_text[:1000] if result_text else "(empty)"
-            operations_logger.debug(f"[OUT] {name}: {result_preview}")
-        operations_logger.debug(f"[COMPLETED] {name}")
+        result_text = result[0].text if result else ""
+        # Log the OUTCOME at a level that survives the default cutoff, so every
+        # tool leaves a visible trace -- and failures especially are never
+        # silent. A handler signals a tool-level failure by returning a JSON
+        # payload with a top-level "error" key (e.g. template_not_found); those
+        # go to WARNING, successes to INFO. The verbose body stays at DEBUG.
+        err_code = None
+        if result_text:
+            try:
+                parsed = json.loads(result_text)
+                if isinstance(parsed, dict):
+                    err_code = parsed.get("error")
+            except (ValueError, TypeError):
+                err_code = None
+        if err_code:
+            operations_logger.warning(f"[TOOL ERROR] {name}: {err_code}")
+        else:
+            operations_logger.info(f"[TOOL OK] {name}")
+        # Full result body for reproducibility (first 1000 chars), DEBUG only.
+        result_preview = result_text[:1000] if result_text else "(empty)"
+        operations_logger.debug(f"[OUT] {name}: {result_preview}")
     return result
 
 async def main():

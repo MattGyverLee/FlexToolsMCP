@@ -1963,12 +1963,12 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
             "after": "if modifyAllowed:\n    project.LexEntry.SetLexemeForm(entry, 'new_form')\n    report.Info('Updated entry')\nelse:\n    report.Info('(Would update entry to: new_form)')"
         },
         "templates_to_review": [
-            "templates/2-flexicon-template.py (recommended - best documented)",
-            "templates/1-flexlibs-stable-template.py (for FieldWorks < 9.0)",
-            "templates/3-liblcm-template.py (for advanced use cases)"
+            "flextools_get_module_template(flavor='flexicon') (recommended - best documented)",
+            "flextools_get_module_template(flavor='flexlibs_stable') (for FieldWorks < 9.0)",
+            "flextools_get_module_template(flavor='liblcm') (for advanced use cases)"
         ],
         "next_steps": [
-            "1. Open a template above to see the if modifyAllowed: pattern in context",
+            "1. Fetch a template above to see the if modifyAllowed: pattern in context",
             "2. Update your code to wrap all mutations with: if modifyAllowed:",
             "3. Move read-only logic before the if block",
             "4. Add else block to preview what would be changed",

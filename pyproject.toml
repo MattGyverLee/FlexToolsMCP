@@ -81,10 +81,12 @@ version = { file = "VERSION" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# The indexed API documentation is bundled as package data so it is available
-# after `pip install` / `uvx` with no separate download.
+# The indexed API documentation and the FlexTools module templates are bundled
+# as package data so they are available after `pip install` / `uvx` with no
+# separate download. (Templates back flextools_get_module_template; without this
+# they are absent from the wheel and the tool 500s -- see issue #77.)
 [tool.setuptools.package-data]
-flextoolsmcp = ["index/**/*", "VERSION", "py.typed"]
+flextoolsmcp = ["index/**/*", "templates/**/*", "VERSION", "py.typed"]
 
 # Archived old index versions are kept in the repo for local diffing but must
 # not bloat the installed wheel. The `index/**/*` glob above would otherwise

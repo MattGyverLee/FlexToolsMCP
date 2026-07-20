@@ -45,6 +45,18 @@ def get_bundled_index_dir() -> Path:
     return Path(__file__).parent / "index"
 
 
+def get_bundled_templates_dir() -> Path:
+    """Get the FlexTools module templates that ship inside the package.
+
+    Lives at ``flextoolsmcp/templates`` (next to this module) and is packaged
+    into the wheel as package data, so ``get_module_template`` works from a
+    source checkout and from a ``pip``/``uvx`` install alike. Resolving relative
+    to this module -- not to a repo-root ``parents[N]`` walk -- is what keeps it
+    correct once the code is installed into ``site-packages``.
+    """
+    return Path(__file__).parent / "templates"
+
+
 def get_user_index_dir() -> Path:
     """Get the user-writable index overlay (``~/.flextoolsmcp/index``)."""
     return USER_DATA_DIR / "index"

@@ -502,8 +502,9 @@ If you discover a new pattern or best practice:
 
 ## See Also
 
-- `templates/00-FLAVOR-GUIDE.md` - Flavor comparison and when to use each
-- `templates/1-flexlibs-stable-template.py` - Stable flexlibs examples
-- `templates/2-flexicon-template.py` - Flexicon examples (RECOMMENDED)
-- `templates/3-liblcm-template.py` - LibLCM examples
+- `src/flextoolsmcp/templates/00-FLAVOR-GUIDE.md` - Flavor comparison and when to use each
+- `src/flextoolsmcp/templates/1-flexlibs-stable-template.py` - Stable flexlibs examples
+- `src/flextoolsmcp/templates/2-flexicon-template.py` - Flexicon examples (RECOMMENDED)
+- `src/flextoolsmcp/templates/3-liblcm-template.py` - LibLCM examples
+  (bundled as package data; also served by `flextools_get_module_template`)
 - `CLAUDE.md` - Overall project guidelines

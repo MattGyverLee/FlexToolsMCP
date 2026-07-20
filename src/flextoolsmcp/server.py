@@ -82,6 +82,7 @@ if __package__:
         find_latest_versioned_api_file,
         clear_file_discovery_cache,
     )
+    from .server.startup_notices import record_index_refresh_failure
 else:
     from json_utils import sort_json_arrays
     from server.kernel import (
@@ -100,6 +101,7 @@ else:
         find_latest_versioned_api_file,
         clear_file_discovery_cache,
     )
+    from server.startup_notices import record_index_refresh_failure
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -433,6 +435,16 @@ def _load_library_api_index(
                 f"Documented APIs may not match -- some methods may be missing, or "
                 f"shown but absent in your version. Regenerate a matching index with "
                 f"'python -m flextoolsmcp.refresh --{library_key}-only'."
+            )
+            # The library IS installed but auto-refresh (step 2) could not
+            # produce a matching index, so we are serving a ballpark shipped
+            # index. Stash a notice so flextools_start can offer the user a
+            # prefilled bug report (refresh is not yet 100% bulletproof).
+            record_index_refresh_failure(
+                library_name=library_name,
+                library_key=library_key,
+                installed_version=installed_version,
+                served_version=shipped_version,
             )
 
     # 4. Nothing shipped at all: last-ditch refresh (skipped if step 2 already

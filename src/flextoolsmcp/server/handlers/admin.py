@@ -51,6 +51,16 @@ try:
 except (ImportError, ValueError):
     from server.project_discovery import resolve_or_explain
 
+try:
+    from ..startup_notices import get_index_refresh_failures
+except (ImportError, ValueError):
+    from server.startup_notices import get_index_refresh_failures
+
+try:
+    from ..diagnostic import transports as _transports
+except (ImportError, ValueError):
+    from server.diagnostic import transports as _transports
+
 # Import kernel dependencies with fallback support
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 rotate_logging_to_session, _ = safe_import_logging_helpers()
@@ -311,6 +321,44 @@ def _resolve_inherited_flag(
     return value, inherited, downgraded
 
 
+def _build_index_health_offers() -> list[dict]:
+    """Turn stashed index-refresh-failure notices into user-facing bug-report offers.
+
+    Each offer carries a plain-language explanation plus prefilled GitHub and
+    mailto links (built with the diagnostic transport helpers, so encoding,
+    size-capping, and path normalization stay consistent). Empty list when the
+    installed libraries all had a matching index -- the common case.
+    """
+    offers = []
+    for note in get_index_refresh_failures():
+        lib = note["library_name"]
+        key = note["library_key"]
+        installed = note["installed_version"]
+        served = note["served_version"] or "unknown"
+        title = f"[index] {lib} v{installed} installed but no matching index (serving v{served})"
+        summary = (
+            f"{lib} v{installed} is installed, but the MCP has no index for that "
+            f"version and auto-refresh could not generate one, so it is serving the "
+            f"shipped v{served} index as a fallback. Documented APIs may not match "
+            f"the installed library.\n\n"
+            f"To help fix this, please include: your OS, how {lib} is installed "
+            f"(pip/uvx/repo), and the output of "
+            f"`python -m flextoolsmcp.refresh --{key}-only`."
+        )
+        github = _transports.build_github_issue_url(title, summary)
+        mailto = _transports.build_mailto(title, summary)
+        offers.append({
+            "library": lib,
+            "installed_version": installed,
+            "served_version": note["served_version"],
+            "message": summary,
+            "report_github_url": github.get("url"),
+            "report_mailto": mailto.get("uri"),
+            "refresh_command": f"python -m flextoolsmcp.refresh --{key}-only",
+        })
+    return offers
+
+
 async def handle_start(args: dict) -> list[TextContent]:
     """Initialize a FlexTools MCP session with mode and project settings.
 
@@ -472,6 +520,21 @@ async def handle_start(args: dict) -> list[TextContent]:
             "undoable=True was requested but coerced to False because "
             "write_enabled=False (flexicon ignores undoable in read-only mode)."
         )
+
+    # Index/version health: an installed library with no matching index that
+    # auto-refresh could not regenerate. Surface a bug-report offer so the user
+    # can report it (refresh is not yet fully reliable across environments).
+    index_offers = _build_index_health_offers()
+    for offer in index_offers:
+        warnings.append(
+            f"{offer['library']} v{offer['installed_version']}: no matching index "
+            f"and auto-refresh failed; serving shipped v"
+            f"{offer['served_version'] or '?'} (ballpark). Re-run "
+            f"`{offer['refresh_command']}`, or report it: "
+            f"{offer['report_github_url']} (or email: {offer['report_mailto']})."
+        )
+    if index_offers:
+        result["index_health"] = index_offers
 
     if warnings:
         result[KEY_WARNINGS] = warnings

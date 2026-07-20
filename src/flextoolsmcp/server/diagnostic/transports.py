@@ -121,7 +121,7 @@ def build_gh_command(
     return {"argv": argv, "display": display}
 
 
-def _short_body_text(summary: str, report_path: "Path | str") -> str:
+def _short_body_text(summary: str, report_path: "Path | str | None" = None) -> str:
     """Shared short-body text for the URL and mailto transports (spec
     section 9): a short human summary plus an explicit instruction to
     attach/paste the full local report file, since the URL/mailto body is
@@ -138,12 +138,17 @@ def _short_body_text(summary: str, report_path: "Path | str") -> str:
     path-scoped (home dir -> `~`, username segment -> `<user>`), so the
     human summary text is untouched.
     """
-    body = (
-        f"{summary}\n\n"
-        f"Full details (full fidelity) are in the local report file:\n"
-        f"{report_path}\n\n"
-        f"Please attach or paste that file's contents into this report."
-    )
+    if report_path:
+        body = (
+            f"{summary}\n\n"
+            f"Full details (full fidelity) are in the local report file:\n"
+            f"{report_path}\n\n"
+            f"Please attach or paste that file's contents into this report."
+        )
+    else:
+        # No local report file (e.g. a startup index/version-mismatch offer):
+        # the summary itself carries the detail, so skip the attach-file line.
+        body = summary
     return normalize.normalize_report_text(body)
 
 
@@ -188,7 +193,7 @@ def _shrink_body_to_fit(
 def build_github_issue_url(
     title: str,
     summary: str,
-    report_path: "Path | str",
+    report_path: "Path | str | None" = None,
     *,
     repo: str = DEFAULT_REPO,
     label: str = DEFAULT_LABEL,
@@ -227,7 +232,7 @@ def build_github_issue_url(
 def build_mailto(
     title: str,
     summary: str,
-    report_path: "Path | str",
+    report_path: "Path | str | None" = None,
     *,
     email: str = DEFAULT_EMAIL,
     max_total_bytes: int = MAX_MAILTO_TOTAL_BYTES,

@@ -23,10 +23,12 @@ if __package__:
     from .json_utils import sort_json_arrays
     from .server.versioning import find_latest_versioned_api_file
     from .file_utils import get_project_root, get_index_dir, load_json, save_json
+    from .curated_recipes import CURATED_RECIPES
 else:
     from json_utils import sort_json_arrays
     from server.versioning import find_latest_versioned_api_file
     from file_utils import get_project_root, get_index_dir, load_json, save_json
+    from curated_recipes import CURATED_RECIPES
 
 
 def classify_operation(method_name: str, example: str) -> str:
@@ -170,7 +172,12 @@ def extract_patterns(flexicon_path: Path) -> Dict[str, Any]:
         unique_patterns_by_object[obj_type] = unique[:MAX_PATTERNS_PER_OBJECT]
 
     result = {
-        "_schema": "common-patterns/1.0",
+        # Issue #52: bumped from common-patterns/1.0. The 2.0 schema adds a
+        # top-level "recipes" section (intent-keyed, runnable, bare-snippet
+        # code) served through search_by_capability / find_examples. The
+        # by_object/by_operation aggregate sections are unchanged -- 2.0 is
+        # additive, not a breaking rewrite.
+        "_schema": "common-patterns/2.0",
         "by_object": unique_patterns_by_object,
         "by_operation": {
             op: patterns[:MAX_PATTERNS_PER_OPERATION] for op, patterns in patterns_by_operation.items()
@@ -180,7 +187,13 @@ def extract_patterns(flexicon_path: Path) -> Dict[str, Any]:
             "unique_patterns": sum(len(p) for p in unique_patterns_by_object.values()),
             "objects_covered": len(unique_patterns_by_object),
             "operations": list(patterns_by_operation.keys())
-        }
+        },
+        # Curated seed recipes (source of truth: curated_recipes.py). Mined
+        # candidates (--mine-operations-log) are NEVER merged in here
+        # automatically -- they land in a separate review file and only
+        # join CURATED_RECIPES (and thus this section) after a human flips
+        # their `source` to "curated".
+        "recipes": CURATED_RECIPES,
     }
 
     return result
@@ -248,6 +261,95 @@ def print_summary(result: Dict):
         print(f"  {obj}: {len(patterns)} patterns")
 
 
+def _normalize_intent(intent: str) -> str:
+    """Lowercase + collapsed-whitespace form used to cluster user_intent strings."""
+    return re.sub(r"\s+", " ", intent.strip().lower())
+
+
+def mine_operations_log(log_dir: Path) -> Dict[str, Any]:
+    """Cluster successful, intent-tagged operations into mined recipe candidates.
+
+    Reads ``operations.jsonl`` (+ rotated ``.1``) for records with
+    ``outcome == "ok"`` and a non-empty ``user_intent``, clusters them by
+    normalized intent text, and returns a review payload -- never a
+    ship-ready recipe. ``operations.jsonl`` intentionally does not retain
+    the executed code (only ``code_sha256``/``code_bytes``, for privacy and
+    size reasons), so each cluster carries the evidence (count, op_ids,
+    sha256 samples) a human reviewer needs to go find the real code (e.g.
+    via the session log or the skeleton closet) and hand-author or bless a
+    recipe -- it does NOT fabricate a ``code`` field.
+
+    Every emitted entry has ``source: "mined"`` and ``requires_human_review:
+    True``. Promoting a cluster to a shipped recipe means hand-writing (or
+    verifying) a ``curated_recipes.CURATED_RECIPES`` entry and flipping
+    ``source`` to ``"curated"`` -- this function never writes to that file.
+    """
+    if __package__:
+        from .server.handlers.op_telemetry import _load_jsonl_records
+    else:
+        from server.handlers.op_telemetry import _load_jsonl_records
+
+    records = _load_jsonl_records(log_dir)
+
+    clusters: Dict[str, Dict[str, Any]] = {}
+    for record in records:
+        if record.get("outcome") != "ok":
+            continue
+        intent = (record.get("user_intent") or "").strip()
+        if not intent:
+            continue
+        key = _normalize_intent(intent)
+        cluster = clusters.setdefault(key, {
+            "intent": intent,
+            "count": 0,
+            "op_ids": [],
+            "code_sha256_samples": [],
+        })
+        cluster["count"] += 1
+        if len(cluster["op_ids"]) < 10:
+            cluster["op_ids"].append(record.get("op_id", ""))
+        sha = record.get("code_sha256", "")
+        if sha and sha not in cluster["code_sha256_samples"] and len(cluster["code_sha256_samples"]) < 10:
+            cluster["code_sha256_samples"].append(sha)
+
+    # Sort clusters by frequency -- the busiest intents are the best mining
+    # candidates for a human to turn into a curated recipe next.
+    ordered = sorted(clusters.values(), key=lambda c: -c["count"])
+
+    candidates = {}
+    for i, cluster in enumerate(ordered):
+        candidate_id = f"mined-{i + 1:03d}"
+        candidates[candidate_id] = {
+            "intent": cluster["intent"],
+            "match_terms": [],
+            "entities": [],
+            "operations": [],
+            "requires_write": None,  # unknown until a human inspects the code
+            "code": None,  # NOT retained in operations.jsonl -- see docstring
+            "notes": (
+                f"Mined from {cluster['count']} outcome=ok operation(s) sharing this "
+                "user_intent. Code was NOT retained in telemetry (only "
+                "code_sha256/code_bytes) -- cross-reference op_ids against the "
+                "session log or skeleton closet to recover the actual code before "
+                "authoring a recipe."
+            ),
+            "source": "mined",
+            "requires_human_review": True,
+            "evidence": {
+                "occurrence_count": cluster["count"],
+                "op_ids": cluster["op_ids"],
+                "code_sha256_samples": cluster["code_sha256_samples"],
+            },
+        }
+
+    return {
+        "_schema": "mined-recipe-candidates/1.0",
+        "generated_from": str(log_dir),
+        "candidate_count": len(candidates),
+        "candidates": candidates,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract common patterns from FlexLibs docstrings"
@@ -262,8 +364,43 @@ def main():
         action="store_true",
         help="Also update Flexicon index with common_patterns field"
     )
+    parser.add_argument(
+        "--mine-operations-log",
+        action="store_true",
+        help=(
+            "Instead of extracting docstring patterns, read operations.jsonl "
+            "telemetry for outcome=ok ops with a user_intent, cluster by "
+            "intent, and write candidate recipes (source: mined) to a review "
+            "file. Never ships automatically -- see --mined-output."
+        ),
+    )
+    parser.add_argument(
+        "--mined-output",
+        default="mined_recipes_review.json",
+        help="Output path for --mine-operations-log's review file (relative to index dir unless absolute)",
+    )
 
     args = parser.parse_args()
+
+    if args.mine_operations_log:
+        if __package__:
+            from .server.kernel import get_log_dir
+        else:
+            from server.kernel import get_log_dir
+
+        log_dir = get_log_dir()
+        mined = mine_operations_log(log_dir)
+
+        mined_output_path = Path(args.mined_output)
+        if not mined_output_path.is_absolute():
+            mined_output_path = get_index_dir() / mined_output_path
+        mined_output_path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(mined, mined_output_path)
+
+        print(f"[INFO] Mined {mined['candidate_count']} candidate intent cluster(s) from {log_dir}")
+        print(f"[INFO] Review file written to: {mined_output_path}")
+        print("[INFO] NONE of these ship automatically -- human review required before adding to curated_recipes.py")
+        return 0
 
     root = get_project_root()
     python_dir = get_index_dir() / "python"

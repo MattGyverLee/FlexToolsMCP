@@ -967,6 +967,23 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
 
     matched_patterns = find_worked_examples(query=query, max_results=3)
 
+    # Issue #52: attach a curated, runnable recipe to the TOP hit when the
+    # query matches one closely (one recipe max per response -- recipes are
+    # big). Recipes count as discovery: every entity the recipe touches is
+    # marked validated, same as a get_object_api round trip, so the model
+    # doesn't need a second call to "prove" the entities it just got a
+    # working snippet for.
+    try:
+        from ..recipes import find_recipe_for_search
+    except ImportError:
+        from server.recipes import find_recipe_for_search
+
+    matched_recipe = find_recipe_for_search(query)
+    if matched_recipe and results:
+        results[0]["recipe"] = matched_recipe
+        for entity in matched_recipe.get("entities", []):
+            session_state.record_validated_api(entity)
+
     result = {
         KEY_QUERY: query,
         KEY_API_MODE: api_mode,
@@ -1085,6 +1102,23 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         # Defensive: skeleton retrieval must never fail find_examples.
         skeletons_from_sessions = []
 
+    # Issue #52: operation_type/object_type filters also search curated
+    # recipes. Serving a recipe marks its entities validated (same rationale
+    # as search_by_capability -- a served, working snippet is discovery).
+    try:
+        from ..recipes import find_recipes_for_examples
+    except ImportError:
+        from server.recipes import find_recipes_for_examples
+
+    matched_recipes = find_recipes_for_examples(
+        operation_type=operation_type or "",
+        object_type=object_type or "",
+        max_results=max_results,
+    )
+    for recipe in matched_recipes:
+        for entity in recipe.get("entities", []):
+            session_state.record_validated_api(entity)
+
     response = {
         KEY_QUERY: {
             KEY_METHOD_NAME: method_name,
@@ -1098,6 +1132,9 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
         # Distinct from per-method docstring examples above.
         "worked_examples": matched_patterns,
         "worked_examples_count": len(matched_patterns),
+        # Curated recipes matching operation_type/object_type filters.
+        "recipes": matched_recipes,
+        "recipes_count": len(matched_recipes),
     }
     if skeletons_from_sessions:
         # Closet entries under a separate key so they're clearly distinguished

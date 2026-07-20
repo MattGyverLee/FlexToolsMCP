@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.6.2] - 2026-07-20
+
+### Raise the `pyflexicon` floor to 4.2.0
+- **`pyflexicon` is now required at `>=4.2.0,<5`** (was `>=4.1,<5`). The bundled
+  Flexicon API index and generated-script guidance track the 4.2.x surface, so
+  the floor is raised to keep installs resolving to a matching library. Still a
+  floor (not a pin), capped at the next major. Mirrored in `requirements.txt`.
+
 ## [2.6.1] - 2026-07-13
 
 ### Ship stable `flexlibs` as a runtime dependency

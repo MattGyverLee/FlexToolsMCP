@@ -15,7 +15,7 @@ pythonnet>=3.0.0
 # FieldWorks wrappers the server generates scripts against. pyflexicon is the
 # deep wrapper; flexlibs is the shallow/stable one -- small, pythonnet-only, and
 # shipped so the stable-flexlibs index matches out of the box and can refresh.
-pyflexicon>=4.1,<5
+pyflexicon>=4.2.0,<5
 flexlibs>=1.2.8,<2
 
 # Utilities

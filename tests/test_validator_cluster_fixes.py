@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Tests for the validator-cluster bug fixes (issues #39, #40, #41, #44).
+Tests for the validator-cluster bug fixes (issues #38, #39, #40, #41, #44, #69).
 
+#38 -- ApplySyncableProperties present in the flexicon API index (was 0)
 #40 -- casting gate over-rejects safe read-only property access
 #41 -- import scanner false-rejects parenthesized multi-line imports
 #39 -- surface Python's native "Did you mean" for attribute typos
 #44 -- writeability count consistency (raw set_String counts as a mutation)
+#69 -- invalid_api_chain suppresses low-confidence "did you mean" matches
 """
 
 import unittest
@@ -14,10 +16,28 @@ import unittest
 from server.validators import (
     detect_casting_needs,
     detect_missing_operations_imports,
+    detect_invalid_project_chains,
     extract_python_did_you_mean,
     certify_script_readonly,
     _collect_all_imported_names,
 )
+import ast
+
+
+class _FakeIndex:
+    """Minimal stand-in for APIIndex exposing just the `.flexicon` shape that
+    _project_accessors / _operation_method_names read."""
+
+    def __init__(self, accessors, ops_methods=None):
+        entities = {
+            "FLExProject": {
+                "properties": [{"name": a} for a in accessors],
+                "methods": [],
+            }
+        }
+        for ops_class, methods in (ops_methods or {}).items():
+            entities[ops_class] = {"methods": [{"name": m} for m in methods]}
+        self.flexicon = {"entities": entities}
 
 
 class TestIssue40CastingOverRejection(unittest.TestCase):
@@ -397,6 +417,102 @@ class TestIssue40DomainRuling(unittest.TestCase):
         )
         flagged = self._flagged(detect_casting_needs(code, self.INDEX))
         self.assertNotIn("CategoryRA", flagged)
+
+
+class TestIssue69LowConfidenceSuppression(unittest.TestCase):
+    """invalid_api_chain must not reject valid code toward a wrong accessor
+    when the only "match" is a low-confidence acronym-fallback hit.
+
+    Reproduces the reported case: `project.LangProject` (used behind a
+    `hasattr(project, "lp")` guard) was hard-rejected with a suggestion of
+    `PossibilityLists` / `PossibilityList` at match_ratio ~0.15, because the
+    acronym "LP" appears inside the scrambled initials of "PossibilityList(s)".
+    """
+
+    # Accessors chosen so the acronym fallback fires for "LangProject":
+    # PossibilityList(s) initials contain "LP". LexEntry lets us prove genuine
+    # typos are still caught.
+    INDEX = _FakeIndex(
+        accessors=["PossibilityLists", "PossibilityList", "LexEntry", "LexSense"],
+        ops_methods={"LexEntryOperations": ["GetGloss", "GetLexemeForm", "GetAll"]},
+    )
+
+    def _chain(self, code):
+        return detect_invalid_project_chains(ast.parse(code), self.INDEX)
+
+    def test_langproject_not_falsely_rejected(self):
+        code = 'lp = project.lp if hasattr(project, "lp") else project.LangProject\n'
+        result = self._chain(code)
+        self.assertFalse(
+            result["has_invalid"],
+            f"Low-confidence acronym match must not reject; got {result.get('issues')}",
+        )
+
+    def test_low_confidence_accessor_suppressed(self):
+        """A bare LangProject reference still must not be flagged toward
+        PossibilityList(s)."""
+        result = self._chain("x = project.LangProject\n")
+        self.assertFalse(result["has_invalid"])
+
+    def test_genuine_accessor_typo_still_caught(self):
+        """Guard: a high-confidence typo (LexEntries -> LexEntry, ratio ~0.78)
+        must still be rejected -- the fix suppresses only low-confidence hits."""
+        result = self._chain("x = project.LexEntries\n")
+        self.assertTrue(result["has_invalid"])
+        self.assertIn("LexEntry", result["issues"][0]["did_you_mean"])
+
+    def test_genuine_method_typo_still_caught(self):
+        """A close method typo on a valid accessor must still be rejected."""
+        result = self._chain("g = project.LexEntry.GetGlosss(entry)\n")
+        self.assertTrue(result["has_invalid"])
+        self.assertIn("GetGloss", result["issues"][0]["did_you_mean"])
+
+    def test_flagged_issues_meet_ratio_floor(self):
+        """Any issue that IS emitted must carry a match_ratio at/above the
+        suppression floor (0.5)."""
+        result = self._chain("x = project.LexEntries\n")
+        for issue in result.get("issues", []):
+            self.assertGreaterEqual(issue.get("match_ratio", 0.0), 0.5)
+
+
+class TestIssue38SyncablePropertiesIndexed(unittest.TestCase):
+    """ApplySyncableProperties must appear in the real flexicon API index so
+    the preflight no longer false-rejects project.<X>.ApplySyncableProperties.
+
+    Skips gracefully if the on-disk index is unavailable (e.g. minimal CI).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            from server.kernel import get_index_dir
+            from server import APIIndex
+            cls.api = APIIndex.load(get_index_dir())
+        except Exception as exc:  # pragma: no cover - environment dependent
+            cls.api = None
+            cls._skip_reason = f"API index unavailable: {exc}"
+
+    def setUp(self):
+        if self.api is None:
+            self.skipTest(getattr(self, "_skip_reason", "no index"))
+
+    def _method_names(self, ops_class):
+        ents = (getattr(self.api, "flexicon", {}) or {}).get("entities", {})
+        return {m.get("name") for m in ents.get(ops_class, {}).get("methods", [])}
+
+    def test_apply_syncable_on_pos_operations(self):
+        self.assertIn("ApplySyncableProperties", self._method_names("POSOperations"))
+
+    def test_apply_syncable_on_lexentry_operations(self):
+        self.assertIn("ApplySyncableProperties", self._method_names("LexEntryOperations"))
+
+    def test_apply_syncable_not_rejected_by_preflight(self):
+        code = "project.POS.ApplySyncableProperties(pos, props)\n"
+        result = detect_invalid_project_chains(ast.parse(code), self.api)
+        self.assertFalse(
+            result["has_invalid"],
+            f"ApplySyncableProperties must not be rejected; got {result.get('issues')}",
+        )
 
 
 if __name__ == "__main__":

@@ -571,13 +571,29 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     }
 
 
+# Issue #69: the accessor/method rejection gate must not surface low-confidence
+# matches as authoritative "did you mean" fixes. difflib's cutoff=0.7 already
+# guards the primary path, but the acronym fallback in _suggest_attribute_matches
+# can return a garbage candidate (e.g. LangProject -> PossibilityLists, because
+# the acronym "LP" appears in the scrambled initials of "PossibilityList(s)") at
+# a real similarity ratio of ~0.15. A wrong-but-confident suggestion is worse
+# than none, so any candidate whose measured ratio is below this floor is
+# dropped and the code is left for runtime to handle. Calibration: genuine
+# accessor typos we DO want to catch score >=0.78 (LexEntries->LexEntry 0.78,
+# ReversalEntrie->ReversalEntries 0.97); the false LangProject match is 0.15.
+_MIN_CHAIN_MATCH_RATIO = 0.5
+
+
 def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optional[Any] = None) -> dict:
     """Pre-flight: scan AST for project.<X> / project.<X>.<Y> references and reject typos.
 
     Conservative by design: only rejects when difflib finds a HIGH-confidence
-    (>=0.7) match against known accessor / method names. If a name is unknown
-    but has no close match, we let runtime handle it -- avoids false positives
-    on dynamic / direct project methods we don't have in the index.
+    (>=0.7) match against known accessor / method names, AND the measured
+    similarity ratio of the top candidate clears _MIN_CHAIN_MATCH_RATIO (issue
+    #69 -- suppress low-confidence acronym-fallback matches). If a name is
+    unknown but has no confident close match, we let runtime handle it -- avoids
+    false positives on dynamic / direct project methods we don't have in the
+    index.
 
     Returns dict with:
       - has_invalid: bool
@@ -631,6 +647,10 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
                 # enforce the >=0.9 threshold (issue #46).
                 import difflib as _dl
                 _ratio = _dl.SequenceMatcher(None, x.lower(), close[0].lower()).ratio()
+                if _ratio < _MIN_CHAIN_MATCH_RATIO:
+                    # Issue #69: low-confidence match (typically from the acronym
+                    # fallback) -- don't reject valid code toward a wrong name.
+                    continue
                 issues.append({
                     "kind": "accessor",
                     "expr": f"project.{x}",
@@ -659,6 +679,9 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
             if close:
                 import difflib as _dl
                 _ratio = _dl.SequenceMatcher(None, y.lower(), close[0].lower()).ratio()
+                if _ratio < _MIN_CHAIN_MATCH_RATIO:
+                    # Issue #69: low-confidence match -- leave for runtime.
+                    continue
                 issues.append({
                     "kind": "method",
                     "expr": f"project.{x}.{y}",

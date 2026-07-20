@@ -854,6 +854,11 @@ async def list_tools() -> list[Tool]:
 _SESSION_INDEPENDENT_TOOLS = frozenset({
     "flextools_start",
     "flextools_list_projects",
+    # Issue #56: flextools_health is a pure-read diagnostic composed from
+    # existing detectors -- it must be callable even when the session isn't
+    # initialized yet (that's precisely the "user is stuck, nothing else
+    # works" case it exists to help with).
+    "flextools_health",
 })
 
 

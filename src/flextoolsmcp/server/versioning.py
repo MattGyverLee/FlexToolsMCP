@@ -53,6 +53,19 @@ def extract_version(filename: str) -> Tuple[int, int, int]:
     return (0, 0, 0)
 
 
+def extract_version_string(filename: str) -> Optional[str]:
+    """Extract the version string (e.g. '11.0.0') from a versioned filename.
+
+    Unlike extract_version() (which returns an (int, int, int) sort key and
+    silently reads as (0, 0, 0) when no version segment is present), this
+    returns the original dotted string or None -- used where the caller
+    needs to *report* the version (e.g. flextools_health's index_loaded
+    field), not just sort by it.
+    """
+    match = re.search(r'v(\d+\.\d+\.\d+)', filename)
+    return match.group(1) if match else None
+
+
 def detect_installed_library_version(
     library_name: str,
     import_path: Optional[str] = None,
@@ -133,6 +146,54 @@ def detect_installed_library_version(
     return None
 
 
+def _default_liblcm_search_paths() -> list[Path]:
+    """Standard search locations for the SIL.LCModel DLL / FieldWorks install.
+
+    Shared by detect_liblcm_version_from_disk() and locate_liblcm_dll() (the
+    latter used by flextools_health to report the detected install path) so
+    the candidate list can't drift between the two callers.
+    """
+    import os
+
+    search_paths: list[Path] = []
+    env_path = os.environ.get("FIELDWORKS_DLL_PATH")
+    if env_path:
+        search_paths.append(Path(env_path))
+    search_paths.extend([
+        Path(r"D:/Github/Fieldworks/Output/Debug"),
+        Path(r"D:/Github/Fieldworks/Output/Release"),
+        Path(r"C:/Program Files/SIL/FieldWorks 9"),
+        Path(r"C:/Program Files (x86)/SIL/FieldWorks 9"),
+    ])
+    return search_paths
+
+
+def locate_liblcm_dll(
+    dll_name: str = "SIL.LCModel.dll",
+    search_paths: Optional[list[Path]] = None,
+) -> Optional[Path]:
+    """Find the SIL.LCModel DLL on disk without loading it.
+
+    Args:
+        dll_name: DLL filename to locate
+        search_paths: Override search paths. Defaults to FIELDWORKS_DLL_PATH env
+            var plus the standard FieldWorks install locations.
+
+    Returns:
+        Path to the DLL if found, else None. Does not require pythonnet --
+        this is a plain filesystem check, used by flextools_health to report
+        a FieldWorks install path even when pythonnet/CLR isn't available.
+    """
+    if search_paths is None:
+        search_paths = _default_liblcm_search_paths()
+
+    for base in search_paths:
+        candidate = base / dll_name
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def detect_liblcm_version_from_disk(
     dll_name: str = "SIL.LCModel.dll",
     search_paths: Optional[list[Path]] = None,
@@ -152,26 +213,7 @@ def detect_liblcm_version_from_disk(
     Returns:
         Version string like '11.0.0', or None if pythonnet/DLL unavailable.
     """
-    import os
-
-    if search_paths is None:
-        search_paths = []
-        env_path = os.environ.get("FIELDWORKS_DLL_PATH")
-        if env_path:
-            search_paths.append(Path(env_path))
-        search_paths.extend([
-            Path(r"D:/Github/Fieldworks/Output/Debug"),
-            Path(r"D:/Github/Fieldworks/Output/Release"),
-            Path(r"C:/Program Files/SIL/FieldWorks 9"),
-            Path(r"C:/Program Files (x86)/SIL/FieldWorks 9"),
-        ])
-
-    dll_path: Optional[Path] = None
-    for base in search_paths:
-        candidate = base / dll_name
-        if candidate.exists():
-            dll_path = candidate
-            break
+    dll_path = locate_liblcm_dll(dll_name, search_paths)
 
     if dll_path is None:
         _log_ops_debug(f"Could not locate {dll_name} on disk for version detection")
@@ -234,6 +276,28 @@ def find_api_files(
     return files
 
 
+def _dir_state_token(index_dir: Path) -> float:
+    """Return a cheap freshness token (mtime) for a directory.
+
+    Used to key the file-discovery cache so that a write to ``index_dir``
+    (e.g. ``auto_refresh_missing_api_file()`` writing a newly-generated
+    versioned JSON file, whether from this process or an external
+    ``refresh.py`` run) naturally invalidates any previously-cached lookup
+    for that directory -- no explicit ``clear_file_discovery_cache()`` call
+    required. Creating/removing an entry inside a directory updates that
+    directory's mtime on both Windows and POSIX, which is exactly the
+    "index changed" signal we need.
+
+    Falls back to ``0.0`` when the directory doesn't exist (or stat fails);
+    that's a stable, valid token in its own right -- lookups against a
+    still-missing directory stay cheap until it's created.
+    """
+    try:
+        return index_dir.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Path]:
     """Find the latest versioned API file for a library.
 
@@ -248,13 +312,17 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
         Path to latest versioned file, or None if not found
 
     Caching:
-        - Results cached for entire process lifetime
-        - Assumes index directory content is static during runtime
-        - Call clear_file_discovery_cache() if index changes during execution
-        - Safe for repeated calls (idempotent)
+        - Keyed on (index_dir, prefix, directory mtime) -- a write to
+          index_dir (new/removed file) changes the mtime and transparently
+          invalidates stale cache entries for that directory, so a refresh
+          that happens between calls (in this process or another) is
+          picked up on the next lookup without requiring callers to call
+          clear_file_discovery_cache() themselves.
+        - clear_file_discovery_cache() remains available for tests that
+          want a hard reset regardless of mtime granularity.
         - Single-threaded use (safe in normal MCP server context)
     """
-    cache_key = (str(index_dir), f"{prefix}_latest")
+    cache_key = (str(index_dir), f"{prefix}_latest", _dir_state_token(index_dir))
 
     if cache_key in _file_discovery_cache:
         return _file_discovery_cache[cache_key]
@@ -276,7 +344,9 @@ def find_versioned_api_file(
 
     Tries exact match in main directory, then archive directory.
     Handles both underscore (_) and hyphen (-) naming patterns.
-    Results are cached to avoid repeated filesystem operations.
+    Results are cached to avoid repeated filesystem operations, keyed on
+    (index_dir, prefix, version, directory mtime) so a write to index_dir
+    invalidates stale entries (see find_latest_versioned_api_file docstring).
 
     Args:
         index_dir: Parent directory (e.g., index/liblcm)
@@ -286,7 +356,7 @@ def find_versioned_api_file(
     Returns:
         Path to matching file, or None if not found
     """
-    cache_key = (str(index_dir), f"{prefix}_v{target_version}")
+    cache_key = (str(index_dir), f"{prefix}_v{target_version}", _dir_state_token(index_dir))
 
     if cache_key in _file_discovery_cache:
         return _file_discovery_cache[cache_key]

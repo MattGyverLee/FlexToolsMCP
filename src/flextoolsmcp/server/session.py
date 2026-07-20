@@ -63,8 +63,9 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "fix the syntax -- don't resubmit substantially-similar code."
     ),
     "server_state_error": (
-        "the server didn't initialize cleanly. Check the server logs "
-        "and consider restarting -- retrying won't help."
+        "the server didn't initialize cleanly. Call flextools_health "
+        "(verbose=True for project-lock/pythonnet detail) for a diagnostic "
+        "snapshot instead of reading server logs -- retrying won't help."
     ),
     "partial_module_structure": (
         "call flextools_get_module_template to get the full "

@@ -66,6 +66,7 @@ try:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
+        detect_overload_resolution_error,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
     )
@@ -77,6 +78,7 @@ except ImportError:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
+        detect_overload_resolution_error,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
     )
@@ -3453,6 +3455,23 @@ MODULE_CODE = {code}
                     execution_result["object_type"] = polymorphic_info["object_type"]
                     execution_result["property_name"] = polymorphic_info["property_name"]
                     execution_result["help"] = polymorphic_info["suggestion"]
+
+        # Issue #75: detect pythonnet overload-resolution failures ("No method
+        # matches given arguments"). Distinct failure class from the
+        # PolymorphicAttributeError gate above (#39/#48) -- this fires when the
+        # method genuinely exists but pythonnet can't match the call's
+        # argument shape to any of its overloads, not when an attribute is
+        # missing. Observed at IFwMetaDataCache.GetFields and
+        # IPartOfSpeechFactory.Create.
+        elif execution_result.get("error") and "No method matches given arguments" in execution_result.get("error", ""):
+            overload_info = detect_overload_resolution_error(execution_result["error"], api_idx)
+            if overload_info.get("is_overload_error"):
+                execution_result["overload_error_detected"] = True
+                execution_result["error_type"] = "OverloadResolutionError"
+                execution_result["method_name"] = overload_info.get("method_name")
+                execution_result["given_arg_types"] = overload_info.get("given_arg_types")
+                execution_result["candidate_overloads"] = overload_info.get("candidates")
+                execution_result["help"] = overload_info.get("suggestion")
 
         # Record API usage patterns for learning
         from ..kernel import get_pattern_tracker

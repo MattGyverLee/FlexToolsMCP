@@ -65,6 +65,7 @@ try:
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
+        detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload,
@@ -77,6 +78,7 @@ except ImportError:
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
         detect_overload_resolution_error, detect_getall_unsafe_idiom,
+        detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload,
@@ -2635,6 +2637,25 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     api_idx = get_api_index()
     casting_index = api_idx.casting_index if api_idx else None
     casting_check = detect_casting_needs(code, casting_index, code_tree)
+
+    # Issue #39: high-confidence attribute typos on a statically-typed
+    # receiver (ILexDb.EntriesOC -> Entries, fp.InflectionFeature ->
+    # InflectionFeatures where fp = FLExProject(...)) used to only surface as
+    # a runtime "hint" after the code had already crashed inside an open LCM
+    # transaction -- and the hint's own "resubmit, preflight will catch it"
+    # message was false, because detect_casting_needs' casting_index lookup
+    # only recognizes properties that genuinely require a cast, not pure
+    # typos that don't exist anywhere. Merge typo issues into the same
+    # casting_issues list/reject path so run_module rejects BEFORE execution,
+    # carrying casting_issues[*].rewrite same as a genuine casting issue.
+    typo_check = detect_interface_attribute_typos(code_tree, api_idx)
+    if typo_check["has_typos"]:
+        casting_check["casting_issues"] = (
+            casting_check.get("casting_issues") or []
+        ) + typo_check["issues"]
+        casting_check["has_casting_issues"] = True
+        casting_check["severity"] = "error"
+
     if casting_check["has_casting_issues"]:
         # Format issues with clear fixes for all 3 API flavors
         issues = casting_check["casting_issues"]

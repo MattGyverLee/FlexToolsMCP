@@ -712,6 +712,189 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
     }
 
 
+# Issue #39: high-confidence typo threshold for interface-attribute access
+# (ILexDb.EntriesOC -> Entries, FLExProject.InflectionFeature -> InflectionFeatures).
+# Mirrors the cutoff/ratio-floor pairing already used by
+# detect_invalid_project_chains -- cutoff gates difflib's candidate search,
+# the ratio floor additionally guards against low-confidence acronym-fallback
+# matches slipping through as a "confident" rewrite.
+_INTERFACE_TYPO_CUTOFF = 0.7
+_INTERFACE_TYPO_MIN_RATIO = 0.6
+
+
+def _interface_member_names(interface: str, api_index: Optional[Any], _depth: int = 0) -> Set[str]:
+    """Real property + method names for `interface`, plus one hop of its
+    declared parent interfaces (so inherited members like ICmObject's don't
+    false-positive as typos on a derived interface).
+
+    Searches liblcm first (the authoritative source for raw LCM interfaces
+    like ILexDb), then flexicon (for wrapper-level entities). Returns an
+    empty set if the interface isn't found in any indexed source -- callers
+    treat that as "unknown interface, can't check" rather than "typo".
+    """
+    if api_index is None or not interface:
+        return set()
+    names: Set[str] = set()
+    entity = None
+    for attr in ("liblcm", "flexicon", "flexlibs_stable"):
+        source_data = getattr(api_index, attr, None)
+        if not source_data:
+            continue
+        entities = source_data.get("entities", {}) or {}
+        if interface in entities:
+            entity = entities[interface]
+            break
+    if entity is None:
+        return set()
+    for p in entity.get("properties", []) or []:
+        if p.get("name"):
+            names.add(p["name"])
+    for m in entity.get("methods", []) or []:
+        if m.get("name"):
+            names.add(m["name"])
+    if _depth == 0:
+        for parent in entity.get("interfaces", []) or []:
+            names |= _interface_member_names(parent, api_index, _depth=1)
+    return names
+
+
+def detect_interface_attribute_typos(
+    code_tree: Optional[ast.AST], api_index: Optional[Any] = None
+) -> dict:
+    """Pre-flight: catch high-confidence attribute typos on a statically-typed
+    receiver (`ILexDb.EntriesOC` -> `Entries`, `fp.InflectionFeature` where
+    `fp = FLExProject(...)` -> `InflectionFeatures`), BEFORE execution.
+
+    Issue #39: previously, this class of mistake was only caught by Python's
+    own runtime "Did you mean" AttributeError suffix -- after the code had
+    already opened an LCM transaction and crashed. Worse, the runtime hint
+    told the AI to "resubmit; preflight should now catch it," but
+    detect_casting_needs' casting_index lookup only flags properties that
+    genuinely require a cast (i.e. exist elsewhere but not on the base type)
+    -- a pure typo like `EntriesOC` doesn't exist ANYWHERE, so casting_props
+    lookup silently misses it and preflight passes again, wasting a second
+    round-trip on the identical crash.
+
+    Only fires for receivers with a STATICALLY KNOWN interface:
+      - an inline cast call: `ILexDb(x).EntriesOC`
+      - a Name previously bound by a cast alias: `lexdb = ILexDb(x); lexdb.EntriesOC`
+    Untyped receivers (`obj.EntriesOC` with no cast in scope) are left alone --
+    there's no interface to check the attribute against, and flagging one
+    would require the same return-type inference the casting gate
+    deliberately avoids.
+
+    Conservative like detect_invalid_project_chains: only rejects when
+    difflib finds a HIGH-confidence match (>=_INTERFACE_TYPO_CUTOFF) against
+    the receiver interface's real property + method names, AND the measured
+    ratio clears _INTERFACE_TYPO_MIN_RATIO. Members already covered by the
+    universal casting whitelist (Guid/Hvo/ClassID/ClassName, Best*Alternative)
+    are skipped -- they're never typos, by construction. Unrecognized
+    interfaces or attributes with no confident match fall through to runtime,
+    same conservative posture as every other preflight typo gate.
+
+    Returns dict with:
+      - has_typos: bool
+      - issues: list of dicts with kind/expr/typo_attr/object_type/
+        did_you_mean/rewrite/imports_needed/lineno/suggestion
+      - suggestion: combined human-readable hint
+    """
+    result = {"has_typos": False, "issues": [], "suggestion": ""}
+    if code_tree is None or api_index is None:
+        return result
+
+    assigns, _ = _collect_assign_call_nodes(code_tree)
+    _, cast_aliases = _resolve_alias_maps(assigns)
+
+    issues: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, str]] = set()
+    for node in ast.walk(code_tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        attr = node.attr
+        if attr in _CASTING_ALWAYS_SAFE_MEMBERS or _is_multistring_value_member(attr):
+            continue
+
+        interface: Optional[str] = None
+        if isinstance(node.value, ast.Name) and node.value.id in cast_aliases:
+            interface = cast_aliases[node.value.id]
+        elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
+            fid = node.value.func.id
+            if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
+                interface = fid
+
+        if not interface:
+            continue
+
+        members = _interface_member_names(interface, api_index)
+        if not members or attr in members:
+            continue  # unknown interface (can't check) or genuinely valid member
+
+        close = _suggest_attribute_matches(attr, list(members), cutoff=_INTERFACE_TYPO_CUTOFF)
+        if not close:
+            continue  # no confident match -- leave for runtime, don't guess wrong
+
+        ratio = _dl_ratio(attr, close[0])
+        if ratio < _INTERFACE_TYPO_MIN_RATIO:
+            continue
+
+        try:
+            receiver_src = ast.unparse(node.value)
+        except Exception:
+            receiver_src = interface
+        rewrite = f"{receiver_src}.{close[0]}"
+        expr = f"{interface}.{attr}"
+        dedup_key = (expr, close[0])
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
+        suggestion = (
+            f"'{attr}' does not exist on '{interface}'. Did you mean: "
+            f"{', '.join(interface + '.' + c for c in close)}? "
+            f"Replace with `{rewrite}`."
+        )
+        issues.append({
+            # Field names match detect_casting_needs()'s issue shape (kind
+            # excepted) so the two sources merge into one casting_issues list
+            # at the execution.py call site without a translation step.
+            "kind": "interface_attribute_typo",
+            "expr": expr,
+            "property": attr,
+            "line": node.lineno,
+            "col_offset": node.col_offset,
+            "pattern": f"{receiver_src}.{attr}",
+            "found_at": f"{receiver_src}.{attr}",
+            "object_type": interface,
+            "typo_attr": attr,
+            "did_you_mean": close,
+            "match_ratio": ratio,
+            "missing_on": [interface],
+            "available_on": [interface],
+            "fix": suggestion,
+            "flexicon_helper": suggestion,
+            "severity": "error",
+            "rewrite": rewrite,
+            "imports_needed": [],
+            "cast_interface": None,
+            "suggestion": suggestion,
+        })
+
+    if not issues:
+        return result
+
+    return {
+        "has_typos": True,
+        "issues": issues,
+        "suggestion": " ".join(i["suggestion"] for i in issues),
+    }
+
+
+def _dl_ratio(a: str, b: str) -> float:
+    """Thin wrapper so callers don't need to import difflib themselves."""
+    import difflib
+    return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
 def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     """Map project.<accessor> name -> Operations class name from the API index.
 
@@ -2473,17 +2656,36 @@ _TYPED_RECEIVER_SUFFIXES = ("_obj", "_typed", "_cast")
 _CASTING_ALWAYS_SAFE_MEMBERS = frozenset({"Guid", "Hvo", "ClassID", "ClassName"})
 
 # Issue #40 (domain ruling): IMultiString/IMultiUnicode VALUE accessors.
-# BestAnalysisAlternative and BestVernacularAlternative are returned by
-# multistring value properties -- their receiver is already a typed
-# IMultiString/IMultiUnicode value, not an ICmObject, so no cast is possible or
-# needed. Likewise, chaining .Text off these is a plain string accessor. The
-# heuristic must never flag these; they were driving constant false-positive
-# rewrites in multilingual-field access patterns.
+# The Best*Alternative family (BestAnalysisAlternative, BestVernacularAlternative,
+# BestAnalysisVernacularAlternative, BestVernacularAnalysisAlternative, and any
+# future sibling LibLCM adds) are all returned by multistring value properties --
+# the receiver is already a typed IMultiString/IMultiUnicode value, not an
+# ICmObject, so no cast is possible or needed. Likewise, chaining .Text off
+# these is a plain string accessor. The heuristic must never flag these; they
+# were driving constant false-positive rewrites in multilingual-field access
+# patterns. Enumerated names are kept (not just the pattern check below) for
+# fast membership tests and clear intent at the call sites.
 _CASTING_MULTISTRING_VALUE_MEMBERS = frozenset({
     "BestAnalysisAlternative",
     "BestVernacularAlternative",
+    "BestAnalysisVernacularAlternative",
+    "BestVernacularAnalysisAlternative",
     "Text",  # chained off the above; also safe on its own (str attribute)
 })
+
+
+def _is_multistring_value_member(name: str) -> bool:
+    """True for any member of the Best*Alternative multistring-value family.
+
+    Pattern-based fallback alongside the enumerated ``_CASTING_MULTISTRING_
+    VALUE_MEMBERS`` set so a LibLCM sibling we haven't enumerated by name
+    (any ``Best<...>Alternative`` accessor) still gets the same safe
+    treatment, rather than re-introducing the #40 false-positive class one
+    name at a time.
+    """
+    if name in _CASTING_MULTISTRING_VALUE_MEMBERS:
+        return True
+    return name.startswith("Best") and name.endswith("Alternative")
 
 # Issue #40 (domain ruling): conditional members -- safe ONLY when the
 # receiver's static declared type (cast_alias) proves it, otherwise keep
@@ -2750,8 +2952,11 @@ def annotate_properties_with_casting(
     out: List[Dict[str, Any]] = []
     for prop in properties:
         name = prop.get("name")
-        info = props_idx.get(name) if name else None
-        poly = poly_idx.get(name) if name else None
+        if not isinstance(name, str):
+            out.append(prop)  # no name to match -> byte-identical
+            continue
+        info = props_idx.get(name)
+        poly = poly_idx.get(name)
         if not info and not poly:
             out.append(prop)  # untouched -> byte-identical
             continue
@@ -2765,7 +2970,7 @@ def annotate_properties_with_casting(
         # have no analogue at discovery time and are intentionally not mirrored.
         cast_safe = (
             name in _CASTING_ALWAYS_SAFE_MEMBERS
-            or name in _CASTING_MULTISTRING_VALUE_MEMBERS
+            or _is_multistring_value_member(name)
         )
         info_annotates = bool(info) and not cast_safe
         if not info_annotates and not poly:
@@ -2781,7 +2986,7 @@ def annotate_properties_with_casting(
         if info_annotates:
             new_prop["requires_cast"] = True
             new_prop["cast_to"] = [
-                d for d in info.get("defined_on", []) if isinstance(d, str)
+                d for d in (info or {}).get("defined_on", []) if isinstance(d, str)
             ]
             example = build_property_cast_example(name, casting_index)
             if example:
@@ -2958,7 +3163,7 @@ def detect_casting_needs(
                         break
                     # Issue #40 (domain ruling): Best* accessors and .Text are
                     # IMultiString/IMultiUnicode value members -- no cast needed.
-                    if property_name in _CASTING_MULTISTRING_VALUE_MEMBERS:
+                    if _is_multistring_value_member(property_name):
                         break
                     # Issue #15: if the access on this line is rooted at a cast
                     # alias whose interface is listed in available_on, the cast
@@ -3034,7 +3239,7 @@ def detect_casting_needs(
                 # accessors (BestAnalysisAlternative, BestVernacularAlternative,
                 # Text). The receiver of these is already a typed value object,
                 # not an ICmObject -- no cast is possible or needed.
-                if prop_name in _CASTING_MULTISTRING_VALUE_MEMBERS:
+                if _is_multistring_value_member(prop_name):
                     continue
 
                 # Issue #40: a call on an Operations-class instance

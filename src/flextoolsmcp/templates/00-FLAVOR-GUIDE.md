@@ -146,6 +146,9 @@ form = project.LexiconGetEntryForm(entry)
 
 # After (Flexicon)
 from flexicon import LexEntryOperations
+# GetAll() returns a behavioral collection -- safe to subscript, len(), or
+# re-iterate directly. Only wrap in list(...) if you specifically need a
+# plain list.
 entry = project.LexEntry.GetAll()[0]
 form = project.LexEntry.GetLexemeForm(entry)
 ```

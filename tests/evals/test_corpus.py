@@ -120,3 +120,13 @@ def test_corpus_entry(name: str, entry: Dict[str, Any]):
             f"{name}: expected error_code={expected_error_code!r} got {result.error_code!r} "
             f"(detail={result.detail!r})"
         )
+
+    # getall-contract SPEC §6 Level 3: optional non-blocking advisory check.
+    # Corpus entries only assert this when `expect.advisories` is explicitly
+    # present -- absence means "don't care" so the hundreds of pre-existing
+    # entries that happen to touch GetAll() aren't forced to declare a stance.
+    if "advisories" in expect:
+        expected_advisories = sorted(expect["advisories"] or [])
+        assert sorted(result.advisories) == expected_advisories, (
+            f"{name}: expected advisories={expected_advisories!r} got {sorted(result.advisories)!r}"
+        )

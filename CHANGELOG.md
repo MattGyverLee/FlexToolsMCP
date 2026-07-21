@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### GetAll() behavioral-collection contract (issue #37)
+- **Flexicon-mode index regenerated to v4.3.0.** Flexicon 4.3.0 upgraded
+  `EnumerableWrapper` (`flexicon/code/BaseOperations.py`, commit 205d5a9) to
+  cache its materialized list on first access, so `.GetAll()` results now
+  safely support `len()`, subscript/slice, and repeat iteration — a genuine
+  behavioral collection, not a one-shot generator. Docs, worked examples, and
+  curated recipes are reframed around this contract instead of the previous
+  "materialize with `list(...)` to be safe" idiom.
+- **Reverses the cycle-2 flexicon-mode overreach.** An earlier synthesis
+  (`specs/getall-contract/SPEC.md`) proposed a Level-3 validator rule that
+  flagged unsafe `GetAll()` idioms in flexicon mode, keyed off a
+  reconciled `returns.type` container-shape taxonomy. That taxonomy is
+  obsolete now that flexicon 4.3.0 makes the flexicon-mode result safe by
+  construction; the flexicon-mode advisory has been removed.
+- **Validator (`server/validators.py`) rescoped to `flexlibs_stable` mode
+  only.** `detect_getall_unsafe_idiom` now flags raw one-shot
+  iterators/generators in the stable FlexLibs API only (e.g.
+  `LexiconAllEntries`, `LexiconAllEntriesSorted`, `ObjectsIn`,
+  `GetLexicalRelationTypes`, `ReversalEntries`, `TextsGetAll`) via a
+  hand-curated, docstring-sourced allowlist, and is silent in flexicon mode.
+  Wired into `handlers/execution.py` alongside the other advisory detectors.
+- **v4.2.1 index files archived**, still resolvable for projects pinned to
+  older Flexicon versions (`src/flextoolsmcp/index/python/archive/`,
+  `src/flextoolsmcp/index/archive/`).
+
 ## [2.7.0] - 2026-07-20
 
 ### Proactive update notice (issue #79)

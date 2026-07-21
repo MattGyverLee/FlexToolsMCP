@@ -1347,6 +1347,224 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
     return result
 
 
+# ============================================================
+# getall-contract SPEC (specs/getall-contract/SPEC.md) Level 3:
+# raw one-shot iterator/generator unsafe-idiom advisory
+# (flexlibs_stable mode only -- see cycle-4 reversal below)
+# ============================================================
+#
+# HISTORY / REVERSAL NOTE (cycle-4, getall-contract):
+# This detector previously fired in FLEXICON mode, keyed off the reconciled
+# `returns.type` container-shape wording (shape (a) list / (b) smart
+# collection / (c) `EnumerableWrapper`) applied by a since-removed
+# flexicon_analyzer post-process step. Flexicon 4.3.0 standardized
+# `EnumerableWrapper.GetAll()` docstrings and upgraded the class itself
+# (`flexicon/code/BaseOperations.py`, commit 205d5a9) so it now *safely*
+# supports `len()`, subscript/slice, and repeat iteration by caching the
+# materialized list on first access (`_ensure_list()`) -- it is a genuine
+# behavioral collection, not a one-shot generator. The flexicon-mode shape
+# taxonomy and this detector's advisory are therefore obsolete for flexicon
+# mode and the scope is INVERTED: silent in flexicon mode, active only in
+# `flexlibs_stable` mode, where FLExProject exposes several methods that are
+# still raw one-shot C# iterators/IronPython generators.
+#
+# Flexlibs stable has no per-return-type index data to key off (the stable
+# index's `return_type` field is blank for every function/method today), so
+# unlike the removed flexicon-mode approach this is a conservative,
+# hand-curated allowlist rather than an index-derived resolution. Membership
+# is based on `../flexlibs/flexlibs/code/FLExProject.py` docstrings that
+# explicitly say "iterator" or "generator" (verified 2026-07-20 against
+# flexlibs stable v1.2.8's `FLExProject.py`):
+#   - LexiconAllEntries       -- "Returns an iterator over all entries..."
+#   - LexiconAllEntriesSorted -- generator (`yield`)
+#   - ObjectsIn               -- "Returns an iterator over all the objects..."
+#   - GetLexicalRelationTypes -- "Returns an iterator over LexRefType objects..."
+#   - ReversalEntries         -- "Returns an iterator for the reversal entries..."
+#   - TextsGetAll             -- "A generator that returns all the texts..."
+# Explicitly NOT included (confirmed safe by docstring/return type): the
+# `GetAllSemanticDomains` real Python `list`, and the `GetAllVernacularWSs`/
+# `GetAllAnalysisWSs` `set` (len()-safe; subscript is a separate, unrelated
+# concern not covered by this detector).
+#
+# LIMITATION: this allowlist is not exhaustive -- new stable-mode functions
+# with the same raw-iterator hazard won't be flagged until added here. This
+# is a deliberate conservative/low-false-positive tradeoff (SPEC.md cycle-4
+# guidance) rather than a fragile source-text heuristic. Revisit if flexlibs
+# stable ever gains reliable return-type index data.
+STABLE_ONE_SHOT_METHODS = {
+    "LexiconAllEntries",
+    "LexiconAllEntriesSorted",
+    "ObjectsIn",
+    "GetLexicalRelationTypes",
+    "ReversalEntries",
+    "TextsGetAll",
+}
+
+
+def _stable_one_shot_call(call: ast.Call) -> Optional[str]:
+    """Resolve a `project.<StableOneShotMethod>(...)` call to its method name.
+
+    Only matches the flat `FLExProject` calling convention used by flexlibs
+    stable (`project.MethodName(...)`); returns None otherwise.
+    """
+    func = call.func
+    if not isinstance(func, ast.Attribute):
+        return None
+    if func.attr not in STABLE_ONE_SHOT_METHODS:
+        return None
+    receiver = func.value
+    if isinstance(receiver, ast.Name) and receiver.id == "project":
+        return func.attr
+    return None
+
+
+def _is_name(node: Optional[ast.AST], name: str) -> bool:
+    return isinstance(node, ast.Name) and node.id == name
+
+
+def detect_getall_unsafe_idiom(
+    code_tree: Optional[ast.AST],
+    api_mode: str,
+    api_index: Optional[Any] = None,
+) -> dict:
+    """getall-contract SPEC §6 Level 3 (cycle-4 reversal): flag unsafe idioms
+    on a raw one-shot FLExProject iterator/generator result.
+
+    Scoped to `api_mode == 'flexlibs_stable'` ONLY -- silent in flexicon mode
+    (flexicon 4.3.0's `EnumerableWrapper.GetAll()` is a genuine, safe
+    behavioral collection; see the module-level HISTORY note above) and
+    silent in any other mode.
+
+    Flags `len()`, subscript/slice, truthiness (`if not x` / `if x`), and
+    double/multi-consume (repeated `for` iteration) on the result of a
+    `project.<StableOneShotMethod>(...)` call (see `STABLE_ONE_SHOT_METHODS`
+    for the allowlist and its docstring-sourced rationale).
+
+    Non-blocking (advisory only) -- this never rejects code, it only attaches
+    guidance.
+
+    No false positive on plain `for x in ...():` (single-pass iteration) or a
+    single-pass `next(...)` consume -- both are safe on a one-shot iterator.
+
+    `api_index` is accepted for call-site compatibility but unused (the
+    stable-mode allowlist above is not index-derived; see LIMITATION note).
+
+    Returns dict with:
+      - has_unsafe_idiom: bool
+      - issues: list[dict] -- {variable, entity, shape, idioms, lineno, suggestion}
+      - suggestion: combined human-readable advisory
+    """
+    result: Dict[str, Any] = {"has_unsafe_idiom": False, "issues": [], "suggestion": ""}
+    if api_mode != "flexlibs_stable" or code_tree is None:
+        return result
+
+    # Track `var = project.<StableOneShotMethod>(...)` assignments.
+    tracked: Dict[str, Dict[str, Any]] = {}
+    for node in ast.walk(code_tree):
+        if not (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and isinstance(node.value, ast.Call)
+        ):
+            continue
+        method_name = _stable_one_shot_call(node.value)
+        if method_name is None:
+            continue
+        tracked[node.targets[0].id] = {
+            "entity": method_name,
+            "shape": "c",
+            "lineno": node.lineno,
+        }
+
+    issues: List[Dict[str, Any]] = []
+
+    # --- len() / subscript / truthiness, via a tracked variable OR directly
+    # on the inline `project.<method>(...)` call. ---
+    for node in ast.walk(code_tree):
+        target_entity: Optional[str] = None
+        idiom: Optional[str] = None
+        var_name = "<inline result>"
+        lineno = getattr(node, "lineno", 0)
+
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "len" and node.args:
+            arg = node.args[0]
+            if isinstance(arg, ast.Name) and arg.id in tracked:
+                var_name = arg.id
+                target_entity = tracked[arg.id]["entity"]
+                idiom = "len()"
+            elif isinstance(arg, ast.Call):
+                method_name = _stable_one_shot_call(arg)
+                if method_name:
+                    target_entity, idiom = method_name, "len()"
+        elif isinstance(node, ast.Subscript):
+            base = node.value
+            if isinstance(base, ast.Name) and base.id in tracked:
+                var_name = base.id
+                target_entity = tracked[base.id]["entity"]
+                idiom = "subscript/slice"
+            elif isinstance(base, ast.Call):
+                method_name = _stable_one_shot_call(base)
+                if method_name:
+                    target_entity, idiom = method_name, "subscript/slice"
+        elif isinstance(node, (ast.If, ast.While)):
+            test = node.test
+            name_node = test if isinstance(test, ast.Name) else (
+                test.operand if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not) else None
+            )
+            if isinstance(name_node, ast.Name) and name_node.id in tracked:
+                var_name = name_node.id
+                target_entity = tracked[name_node.id]["entity"]
+                idiom = "truthiness"
+
+        if idiom and target_entity:
+            issues.append({
+                "variable": var_name,
+                "entity": target_entity,
+                "shape": "c",
+                "idioms": [idiom],
+                "lineno": lineno,
+                "suggestion": (
+                    f"{('`' + var_name + '` =') if var_name != '<inline result>' else 'The result of'} "
+                    f"project.{target_entity}(...) is a raw one-shot iterator/generator (flexlibs "
+                    f"stable); {idiom} on it directly is unsafe. Wrap it once: "
+                    f"list(project.{target_entity}(...)) before using len(), subscripting, or "
+                    f"iterating more than once."
+                ),
+            })
+
+    # --- double/multi-consume via repeated `for x in var:` over the same
+    # tracked variable. ---
+    for var_name, info in tracked.items():
+        for_loop_count = sum(
+            1
+            for node in ast.walk(code_tree)
+            if isinstance(node, ast.For) and _is_name(node.iter, var_name)
+        )
+        if for_loop_count > 1:
+            issues.append({
+                "variable": var_name,
+                "entity": info["entity"],
+                "shape": "c",
+                "idioms": ["double-consume (repeated iteration)"],
+                "lineno": info["lineno"],
+                "suggestion": (
+                    f"`{var_name}` = project.{info['entity']}(...) is iterated more than once "
+                    f"(double/multi-consume). This is a raw one-shot iterator/generator (flexlibs "
+                    f"stable) -- wrap it once: {var_name} = list(project.{info['entity']}(...)) "
+                    f"before iterating it more than once."
+                ),
+            })
+
+    if not issues:
+        return result
+
+    result["has_unsafe_idiom"] = True
+    result["issues"] = issues
+    result["suggestion"] = " ".join(i["suggestion"] for i in issues)
+    return result
+
+
 def detect_undefined_variables(code: str, tree: ast.AST | None = None) -> dict:
     """Detect likely undefined variables in code using static analysis.
 

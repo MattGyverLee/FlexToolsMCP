@@ -66,6 +66,10 @@ def Main(project, report, modifyAllowed):
         # Example: Iterate entries
         report.Info("[INFO] Starting module execution...")
 
+        # GetAll() returns a behavioral collection -- safe to loop, len(),
+        # index/slice, or re-iterate freely. Only wrap in list(...) if you
+        # specifically need a plain list (e.g. to hand off to code that
+        # requires one).
         entries = project.LexEntry.GetAll()
         report.Info(f"Found {len(entries)} lexical entries")
 

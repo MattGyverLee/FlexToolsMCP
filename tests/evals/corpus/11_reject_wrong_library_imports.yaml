@@ -5,7 +5,7 @@ session:
   validated_apis: ["LexEntryOperations"]
 code: |
   from flexlibs import LexEntryOperations
-  entries = LexEntryOperations(project).GetAll()
+  entries = list(LexEntryOperations(project).GetAll())
   report.Info(str(len(entries)))
 expect:
   outcome: preflight_reject

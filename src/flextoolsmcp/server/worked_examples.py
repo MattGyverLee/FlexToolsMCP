@@ -204,6 +204,9 @@ def Main(project, report, modifyAllowed):
     # Pick a sense to attach the MSA to. For this recipe we take the
     # first sense of the first entry; in real scripts you'd iterate or
     # look up a specific entry via project.LexEntry.Find(...).
+    # GetAll() returns a behavioral collection -- safe to check truthiness,
+    # subscript, or re-iterate directly. Only wrap in list(...) if you
+    # specifically need a plain list.
     entries = project.LexEntry.GetAll()
     if not entries:
         report.Error("Project has no entries")

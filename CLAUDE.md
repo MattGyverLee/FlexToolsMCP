@@ -278,6 +278,9 @@ def Main(project, report, modify):
     """
     try:
         # Your implementation here
+        # GetAll() returns a behavioral collection -- safe to loop, len(),
+        # index/slice, or re-iterate freely. Only wrap in list(...) if you
+        # specifically need a plain list.
         entries = project.LexEntry.GetAll()
         report.Info(f"Processing {len(entries)} entries...")
 

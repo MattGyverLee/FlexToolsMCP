@@ -153,6 +153,9 @@ headword = entry.HeadWord.Text
 # flexicon wrappers may not expose all collection properties
 from flexicon import LexSenseOperations
 
+# GetAll() returns a behavioral collection -- safe to subscript, len(), or
+# re-iterate directly. Only wrap in list(...) if you specifically need a
+# plain list.
 sense = LexSenseOperations.GetAll(project)[0]
 
 # Some collections only exist on raw LCM

@@ -16,6 +16,9 @@ expect:
   outcome: ok
   error_code: null
   auto_fixes: 0
+  # getall-contract SPEC (cycle-4 reversal): the flexicon-mode getall_unsafe_idiom
+  # advisory was removed -- flexicon 4.3.0's EnumerableWrapper.GetAll() safely
+  # supports len()/subscript/repeat-iteration, so len(segs) here is not flagged.
 notes: >
   Historical context: issue #20 originally reported that the
   undiscovered_entity gate rejected code even after an explicit

@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.2.1"
+    "version": "4.3.0"
   },
   "categories": {
     "discourse": {
@@ -2095,14 +2095,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmAgent objects.",
-              "type": "list"
+              "description": "list[ICmAgent]: All agents.",
+              "type": "list[ICmAgent]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmAgent objects. ",
+          "return_type": "list[ICmAgent]",
+          "returns": "list[ICmAgent]: All agents. ",
           "signature": "GetAll()",
           "summary": "Iterate over all agents in the project's AnalyzingAgentsOC.",
           "usage_hint": "retrieval"
@@ -3677,8 +3677,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "AllomorphCollection: Smart collection of Allomorph wrapper objects showing type breakdown and supporting filtered queries.",
-              "type": "AllomorphCollection"
+              "description": "AllomorphCollection[Allomorph]: Smart collection of Allomorph wrapper objects showing type breakdown and supporting filtered queries.",
+              "type": "AllomorphCollection[Allomorph]"
             }
           },
           "parameters": [
@@ -3690,8 +3690,8 @@
             }
           ],
           "raises": [],
-          "return_type": "AllomorphCollection",
-          "returns": "AllomorphCollection: Smart collection of Allomorph wrapper objects showing type breakdown and supporting filtered queries. ",
+          "return_type": "AllomorphCollection[Allomorph]",
+          "returns": "AllomorphCollection[Allomorph]: Smart collection of Allomorph wrapper objects showing type breakdown and supporting filtered queries. ",
           "signature": "GetAll(entry_or_hvo=None)",
           "summary": "Get all allomorphs for a lexical entry, or all allomorphs in the entire project.",
           "usage_hint": "retrieval"
@@ -5779,14 +5779,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmAnnotationDefn: Each annotation definition in the project.",
-              "type": "ICmAnnotationDefn"
+              "description": "EnumerableWrapper[ICmAnnotationDefn]: Each annotation definition in the project.",
+              "type": "EnumerableWrapper[ICmAnnotationDefn]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ICmAnnotationDefn",
-          "returns": "ICmAnnotationDefn: Each annotation definition in the project. ",
+          "return_type": "EnumerableWrapper[ICmAnnotationDefn]",
+          "returns": "EnumerableWrapper[ICmAnnotationDefn]: Each annotation definition in the project. ",
           "signature": "GetAll()",
           "summary": "Get all annotation definitions in the project.",
           "usage_hint": "retrieval"
@@ -7234,8 +7234,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmAnthroItem objects.",
-              "type": "list"
+              "description": "list[ICmAnthroItem]: All anthropology items.",
+              "type": "list[ICmAnthroItem]"
             }
           },
           "parameters": [
@@ -7247,8 +7247,8 @@
             }
           ],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmAnthroItem objects. ",
+          "return_type": "list[ICmAnthroItem]",
+          "returns": "list[ICmAnthroItem]: All anthropology items. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all anthropology items in the project.",
           "usage_hint": "retrieval"
@@ -9760,14 +9760,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmPossibility: Each check type object",
-              "type": "ICmPossibility"
+              "description": "EnumerableWrapper[ICmPossibility]: Each check type object",
+              "type": "EnumerableWrapper[ICmPossibility]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ICmPossibility",
-          "returns": "ICmPossibility: Each check type object ",
+          "return_type": "EnumerableWrapper[ICmPossibility]",
+          "returns": "EnumerableWrapper[ICmPossibility]: Each check type object ",
           "signature": "GetAllCheckTypes()",
           "summary": "Get all consistency check types in the project.",
           "usage_hint": "retrieval"
@@ -12011,8 +12011,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IConstChartClauseMarker objects (empty list if none)",
-              "type": "list"
+              "description": "list[IConstChartClauseMarker]: List of clause markers (empty list if none)",
+              "type": "list[IConstChartClauseMarker]"
             }
           },
           "parameters": [
@@ -12026,8 +12026,8 @@
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IConstChartClauseMarker objects (empty list if none) ",
+          "return_type": "list[IConstChartClauseMarker]",
+          "returns": "list[IConstChartClauseMarker]: List of clause markers (empty list if none) ",
           "signature": "GetAll(row_or_hvo)",
           "summary": "Get all clause markers in a chart row.",
           "usage_hint": "retrieval"
@@ -12707,8 +12707,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IConstChartMovedTextMarker objects (empty list if none)",
-              "type": "list"
+              "description": "list[IConstChartMovedTextMarker]: List of moved text markers (empty list if none)",
+              "type": "list[IConstChartMovedTextMarker]"
             }
           },
           "parameters": [
@@ -12722,8 +12722,8 @@
           "raises": [
             "FP_NullParameterError: If chart_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IConstChartMovedTextMarker objects (empty list if none) ",
+          "return_type": "list[IConstChartMovedTextMarker]",
+          "returns": "list[IConstChartMovedTextMarker]: List of moved text markers (empty list if none) ",
           "signature": "GetAll(chart_or_hvo)",
           "summary": "Get all moved text markers in a constituent chart.",
           "usage_hint": "retrieval"
@@ -13127,14 +13127,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IDsConstChart: Each constituent chart object in the project",
-              "type": "IDsConstChart"
+              "description": "EnumerableWrapper[IDsConstChart]: Each constituent chart object in the project",
+              "type": "EnumerableWrapper[IDsConstChart]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IDsConstChart",
-          "returns": "IDsConstChart: Each constituent chart object in the project ",
+          "return_type": "EnumerableWrapper[IDsConstChart]",
+          "returns": "EnumerableWrapper[IDsConstChart]: Each constituent chart object in the project ",
           "signature": "GetAll()",
           "summary": "Get all constituent charts in the project.",
           "usage_hint": "retrieval"
@@ -13596,8 +13596,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IConstChartRow objects (empty list if none)",
-              "type": "list"
+              "description": "list[IConstChartRow]: List of rows (empty list if none)",
+              "type": "list[IConstChartRow]"
             }
           },
           "parameters": [
@@ -13611,8 +13611,8 @@
           "raises": [
             "FP_NullParameterError: If chart_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IConstChartRow objects (empty list if none) ",
+          "return_type": "list[IConstChartRow]",
+          "returns": "list[IConstChartRow]: List of rows (empty list if none) ",
           "signature": "GetAll(chart_or_hvo)",
           "summary": "Get all rows in a constituent chart.",
           "usage_hint": "retrieval"
@@ -14160,8 +14160,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IConstChartWordGroup objects (empty list if none)",
-              "type": "list"
+              "description": "list[IConstChartWordGroup]: List of word groups (empty list if none)",
+              "type": "list[IConstChartWordGroup]"
             }
           },
           "parameters": [
@@ -14175,8 +14175,8 @@
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IConstChartWordGroup objects (empty list if none) ",
+          "return_type": "list[IConstChartWordGroup]",
+          "returns": "list[IConstChartWordGroup]: List of word groups (empty list if none) ",
           "signature": "GetAll(row_or_hvo)",
           "summary": "Get all word groups in a chart row.",
           "usage_hint": "retrieval"
@@ -16999,14 +16999,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IRnGenericRec: Each notebook record object.",
-              "type": "IRnGenericRec"
+              "description": "EnumerableWrapper[IRnGenericRec]: Each notebook record object.",
+              "type": "EnumerableWrapper[IRnGenericRec]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IRnGenericRec",
-          "returns": "IRnGenericRec: Each notebook record object. ",
+          "return_type": "EnumerableWrapper[IRnGenericRec]",
+          "returns": "EnumerableWrapper[IRnGenericRec]: Each notebook record object. ",
           "signature": "GetAll()",
           "summary": "Get all research notebook records in the project.",
           "usage_hint": "retrieval"
@@ -19034,7 +19034,7 @@
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
           "return_type": "",
-          "returns": "Chart objects (IConstChart or IDsChart): Each chart associated with the text. ",
+          "returns": "EnumerableWrapper[IConstChart | IDsChart]: Each chart associated with the text. ",
           "signature": "GetAllCharts(text_or_hvo)",
           "summary": "Get all charts (discourse and constituent) for a text.",
           "usage_hint": "retrieval"
@@ -20007,14 +20007,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IPhEnvironment: Each environment object in the project's environment list.",
-              "type": "IPhEnvironment"
+              "description": "EnumerableWrapper[IPhEnvironment]: Each environment object in the project's environment list.",
+              "type": "EnumerableWrapper[IPhEnvironment]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IPhEnvironment",
-          "returns": "IPhEnvironment: Each environment object in the project's environment list. ",
+          "return_type": "EnumerableWrapper[IPhEnvironment]",
+          "returns": "EnumerableWrapper[IPhEnvironment]: Each environment object in the project's environment list. ",
           "signature": "GetAll()",
           "summary": "Get all phonological environments in the project.",
           "usage_hint": "retrieval"
@@ -20708,8 +20708,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexEtymology: Each etymology object for the entry (or project).",
-              "type": "ILexEtymology"
+              "description": "EnumerableWrapper[ILexEtymology]: Each etymology object for the entry (or project).",
+              "type": "EnumerableWrapper[ILexEtymology]"
             }
           },
           "parameters": [
@@ -20721,8 +20721,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexEtymology",
-          "returns": "ILexEtymology: Each etymology object for the entry (or project). ",
+          "return_type": "EnumerableWrapper[ILexEtymology]",
+          "returns": "EnumerableWrapper[ILexEtymology]: Each etymology object for the entry (or project). ",
           "signature": "GetAll(entry_or_hvo=None)",
           "summary": "Get all etymologies for a lexical entry, or all etymologies in the entire project.",
           "usage_hint": "retrieval"
@@ -22022,8 +22022,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexExampleSentence: Each example sentence.",
-              "type": "ILexExampleSentence"
+              "description": "EnumerableWrapper[ILexExampleSentence]: Each example sentence.",
+              "type": "EnumerableWrapper[ILexExampleSentence]"
             }
           },
           "parameters": [
@@ -22035,8 +22035,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexExampleSentence",
-          "returns": "ILexExampleSentence: Each example sentence. ",
+          "return_type": "EnumerableWrapper[ILexExampleSentence]",
+          "returns": "EnumerableWrapper[ILexExampleSentence]: Each example sentence. ",
           "signature": "GetAll(sense_or_hvo=None)",
           "summary": "Get example sentences for a sense or all examples in the project.",
           "usage_hint": "retrieval"
@@ -29810,14 +29810,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "dict: Each filter object with keys: guid, name, filter_type, criteria",
-              "type": "dict"
+              "description": "EnumerableWrapper[dict]: Each filter object with keys: guid, name, filter_type, criteria",
+              "type": "EnumerableWrapper[dict]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "dict",
-          "returns": "dict: Each filter object with keys: guid, name, filter_type, criteria ",
+          "return_type": "EnumerableWrapper[dict]",
+          "returns": "EnumerableWrapper[dict]: Each filter object with keys: guid, name, filter_type, criteria ",
           "signature": "GetAll()",
           "summary": "Get all saved filters in the project.",
           "usage_hint": "retrieval"
@@ -30766,8 +30766,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmPossibility: Each grammatical category.",
-              "type": "ICmPossibility"
+              "description": "EnumerableWrapper[ICmPossibility]: Each grammatical category.",
+              "type": "EnumerableWrapper[ICmPossibility]"
             }
           },
           "parameters": [
@@ -30779,8 +30779,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ICmPossibility",
-          "returns": "ICmPossibility: Each grammatical category. ",
+          "return_type": "EnumerableWrapper[ICmPossibility]",
+          "returns": "EnumerableWrapper[ICmPossibility]: Each grammatical category. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all grammatical categories in the project.",
           "usage_hint": "retrieval"
@@ -33087,14 +33087,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexEntry: Each lexical entry object in the project",
-              "type": "ILexEntry"
+              "description": "EnumerableWrapper[ILexEntry]: All lexical entries in the project",
+              "type": "EnumerableWrapper[ILexEntry]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ILexEntry",
-          "returns": "ILexEntry: Each lexical entry object in the project ",
+          "return_type": "EnumerableWrapper[ILexEntry]",
+          "returns": "EnumerableWrapper[ILexEntry]: All lexical entries in the project ",
           "signature": "GetAll()",
           "summary": "Get all lexical entries in the project.",
           "usage_hint": "retrieval"
@@ -35858,8 +35858,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexReference: Each reference that includes this sense/entry (or project)",
-              "type": "ILexReference"
+              "description": "EnumerableWrapper[ILexReference]: Each reference that includes this sense/entry (or project)",
+              "type": "EnumerableWrapper[ILexReference]"
             }
           },
           "parameters": [
@@ -35871,8 +35871,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexReference",
-          "returns": "ILexReference: Each reference that includes this sense/entry (or project) ",
+          "return_type": "EnumerableWrapper[ILexReference]",
+          "returns": "EnumerableWrapper[ILexReference]: Each reference that includes this sense/entry (or project) ",
           "signature": "GetAll(sense_or_entry=None)",
           "summary": "Get all lexical references for a sense or entry, or all references in the entire project.",
           "usage_hint": "retrieval"
@@ -35898,14 +35898,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexRefType: Each lexical reference type object in the project",
-              "type": "ILexRefType"
+              "description": "EnumerableWrapper[ILexRefType]: Each lexical reference type object in the project",
+              "type": "EnumerableWrapper[ILexRefType]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ILexRefType",
-          "returns": "ILexRefType: Each lexical reference type object in the project ",
+          "return_type": "EnumerableWrapper[ILexRefType]",
+          "returns": "EnumerableWrapper[ILexRefType]: Each lexical reference type object in the project ",
           "signature": "GetAllTypes()",
           "summary": "Get all lexical relation types in the project.",
           "usage_hint": "retrieval"
@@ -37304,8 +37304,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexSense: Each sense.",
-              "type": "ILexSense"
+              "description": "EnumerableWrapper[ILexSense]: Each sense.",
+              "type": "EnumerableWrapper[ILexSense]"
             }
           },
           "parameters": [
@@ -37323,8 +37323,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexSense",
-          "returns": "ILexSense: Each sense. ",
+          "return_type": "EnumerableWrapper[ILexSense]",
+          "returns": "EnumerableWrapper[ILexSense]: Each sense. ",
           "signature": "GetAll(entry_or_hvo=None, recursive=True)",
           "summary": "Get senses for an entry or all senses in the project.",
           "usage_hint": "retrieval"
@@ -41094,8 +41094,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmLocation objects.",
-              "type": "list"
+              "description": "list[ICmLocation]: All locations.",
+              "type": "list[ICmLocation]"
             }
           },
           "parameters": [
@@ -41107,8 +41107,8 @@
             }
           ],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmLocation objects. ",
+          "return_type": "list[ICmLocation]",
+          "returns": "list[ICmLocation]: All locations. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all locations in the project.",
           "usage_hint": "retrieval"
@@ -42628,9 +42628,9 @@
       "lcm_dependencies": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -43013,14 +43013,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmFile: Each media file object in the project",
-              "type": "ICmFile"
+              "description": "EnumerableWrapper[ICmFile]: Each media file object in the project",
+              "type": "EnumerableWrapper[ICmFile]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ICmFile",
-          "returns": "ICmFile: Each media file object in the project ",
+          "return_type": "EnumerableWrapper[ICmFile]",
+          "returns": "EnumerableWrapper[ICmFile]: Each media file object in the project ",
           "signature": "GetAll()",
           "summary": "Retrieve all media files in the FLEx project.",
           "usage_hint": "retrieval"
@@ -43046,8 +43046,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmFile: Each media file of the specified type",
-              "type": "ICmFile"
+              "description": "EnumerableWrapper[ICmFile]: Each media file of the specified type",
+              "type": "EnumerableWrapper[ICmFile]"
             }
           },
           "parameters": [
@@ -43061,8 +43061,8 @@
           "raises": [
             "FP_ParameterError: If media_type is invalid"
           ],
-          "return_type": "ICmFile",
-          "returns": "ICmFile: Each media file of the specified type ",
+          "return_type": "EnumerableWrapper[ICmFile]",
+          "returns": "EnumerableWrapper[ICmFile]: Each media file of the specified type ",
           "signature": "GetAllByType(media_type)",
           "summary": "Get all media files of a specific type.",
           "usage_hint": "retrieval"
@@ -43956,9 +43956,9 @@
       "lcm_dependencies": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -44336,7 +44336,7 @@
           "parameters": [],
           "raises": [],
           "return_type": "",
-          "returns": "Each compound rule or affix template object. ",
+          "returns": "EnumerableWrapper[IMoCompoundRule | IMoInflAffixTemplate]: Each compound rule or affix template object. ",
           "signature": "GetAll()",
           "summary": "Get all compound rules and affix templates in the project.",
           "usage_hint": "retrieval"
@@ -44362,14 +44362,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IMoAdhocProhib: Each co-occurrence prohibition.",
-              "type": "IMoAdhocProhib"
+              "description": "EnumerableWrapper[IMoAdhocProhib]: Each co-occurrence prohibition.",
+              "type": "EnumerableWrapper[IMoAdhocProhib]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IMoAdhocProhib",
-          "returns": "IMoAdhocProhib: Each co-occurrence prohibition. ",
+          "return_type": "EnumerableWrapper[IMoAdhocProhib]",
+          "returns": "EnumerableWrapper[IMoAdhocProhib]: Each co-occurrence prohibition. ",
           "signature": "GetAllAdhocCoProhibitions()",
           "summary": "Get all ad hoc co-occurrence prohibitions from MoMorphData.",
           "usage_hint": "retrieval"
@@ -44395,14 +44395,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "AffixTemplateCollection: Collection of AffixTemplate wrapper objects from all parts of speech.",
-              "type": "AffixTemplateCollection"
+              "description": "AffixTemplateCollection[AffixTemplate]: Collection of AffixTemplate wrapper objects from all parts of speech.",
+              "type": "AffixTemplateCollection[AffixTemplate]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "AffixTemplateCollection",
-          "returns": "AffixTemplateCollection: Collection of AffixTemplate wrapper objects from all parts of speech. ",
+          "return_type": "AffixTemplateCollection[AffixTemplate]",
+          "returns": "AffixTemplateCollection[AffixTemplate]: Collection of AffixTemplate wrapper objects from all parts of speech. ",
           "signature": "GetAllAffixTemplates()",
           "summary": "Get all inflectional affix templates from all parts of speech.",
           "usage_hint": "retrieval"
@@ -44428,8 +44428,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "AffixTemplateCollection: Collection of AffixTemplate wrapper objects on the given POS.",
-              "type": "AffixTemplateCollection"
+              "description": "AffixTemplateCollection[AffixTemplate]: Collection of AffixTemplate wrapper objects on the given POS.",
+              "type": "AffixTemplateCollection[AffixTemplate]"
             }
           },
           "parameters": [
@@ -44443,8 +44443,8 @@
           "raises": [
             "FP_NullParameterError: If pos_or_hvo is None."
           ],
-          "return_type": "AffixTemplateCollection",
-          "returns": "AffixTemplateCollection: Collection of AffixTemplate wrapper objects on the given POS. ",
+          "return_type": "AffixTemplateCollection[AffixTemplate]",
+          "returns": "AffixTemplateCollection[AffixTemplate]: Collection of AffixTemplate wrapper objects on the given POS. ",
           "signature": "GetAllAffixTemplatesForPOS(pos_or_hvo)",
           "summary": "Get affix templates for a specific part of speech (non-recursive).",
           "usage_hint": "retrieval"
@@ -44470,14 +44470,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "CompoundRuleCollection: Collection of CompoundRule wrapper objects (MoEndoCompound or MoExoCompound).",
-              "type": "CompoundRuleCollection"
+              "description": "CompoundRuleCollection[CompoundRule]: Collection of CompoundRule wrapper objects (MoEndoCompound or MoExoCompound).",
+              "type": "CompoundRuleCollection[CompoundRule]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "CompoundRuleCollection",
-          "returns": "CompoundRuleCollection: Collection of CompoundRule wrapper objects (MoEndoCompound or MoExoCompound). ",
+          "return_type": "CompoundRuleCollection[CompoundRule]",
+          "returns": "CompoundRuleCollection[CompoundRule]: Collection of CompoundRule wrapper objects (MoEndoCompound or MoExoCompound). ",
           "signature": "GetAllCompoundRules()",
           "summary": "Get all compound rules from MoMorphData.",
           "usage_hint": "retrieval"
@@ -46039,14 +46039,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IPhNaturalClass: Each natural class in the project.",
-              "type": "IPhNaturalClass"
+              "description": "EnumerableWrapper[IPhNaturalClass]: Each natural class in the project.",
+              "type": "EnumerableWrapper[IPhNaturalClass]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IPhNaturalClass",
-          "returns": "IPhNaturalClass: Each natural class in the project. ",
+          "return_type": "EnumerableWrapper[IPhNaturalClass]",
+          "returns": "EnumerableWrapper[IPhNaturalClass]: Each natural class in the project. ",
           "signature": "GetAll()",
           "summary": "Get all natural classes in the phonological inventory.",
           "usage_hint": "retrieval"
@@ -46796,8 +46796,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmBaseAnnotation: Each note/annotation attached to the object.",
-              "type": "ICmBaseAnnotation"
+              "description": "EnumerableWrapper[ICmBaseAnnotation]: Each note/annotation attached to the object.",
+              "type": "EnumerableWrapper[ICmBaseAnnotation]"
             }
           },
           "parameters": [
@@ -46811,8 +46811,8 @@
           "raises": [
             "FP_NullParameterError: If owner_object is None."
           ],
-          "return_type": "ICmBaseAnnotation",
-          "returns": "ICmBaseAnnotation: Each note/annotation attached to the object. ",
+          "return_type": "EnumerableWrapper[ICmBaseAnnotation]",
+          "returns": "EnumerableWrapper[ICmBaseAnnotation]: Each note/annotation attached to the object. ",
           "signature": "GetAll(owner_object)",
           "summary": "Get all notes attached to an object.",
           "usage_hint": "retrieval"
@@ -48506,8 +48506,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IPartOfSpeech: Each part of speech object.",
-              "type": "IPartOfSpeech"
+              "description": "EnumerableWrapper[IPartOfSpeech]: Each part of speech object.",
+              "type": "EnumerableWrapper[IPartOfSpeech]"
             }
           },
           "parameters": [
@@ -48519,8 +48519,8 @@
             }
           ],
           "raises": [],
-          "return_type": "IPartOfSpeech",
-          "returns": "IPartOfSpeech: Each part of speech object. ",
+          "return_type": "EnumerableWrapper[IPartOfSpeech]",
+          "returns": "EnumerableWrapper[IPartOfSpeech]: Each part of speech object. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all parts of speech in the project.",
           "usage_hint": "retrieval"
@@ -49274,8 +49274,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IStTxtPara: Each paragraph object in the text.",
-              "type": "IStTxtPara"
+              "description": "EnumerableWrapper[IStTxtPara]: Each paragraph object in the text.",
+              "type": "EnumerableWrapper[IStTxtPara]"
             }
           },
           "parameters": [
@@ -49290,8 +49290,8 @@
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
-          "return_type": "IStTxtPara",
-          "returns": "IStTxtPara: Each paragraph object in the text. ",
+          "return_type": "EnumerableWrapper[IStTxtPara]",
+          "returns": "EnumerableWrapper[IStTxtPara]: Each paragraph object in the text. ",
           "signature": "GetAll(text_or_hvo)",
           "summary": "Get all paragraphs in a text.",
           "usage_hint": "retrieval"
@@ -50259,14 +50259,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmPerson: Each person object in the project",
-              "type": "ICmPerson"
+              "description": "EnumerableWrapper[ICmPerson]: Each person object in the project",
+              "type": "EnumerableWrapper[ICmPerson]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ICmPerson",
-          "returns": "ICmPerson: Each person object in the project ",
+          "return_type": "EnumerableWrapper[ICmPerson]",
+          "returns": "EnumerableWrapper[ICmPerson]: Each person object in the project ",
           "signature": "GetAll()",
           "summary": "Get all people in the project.",
           "usage_hint": "retrieval"
@@ -51699,14 +51699,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IFsClosedFeature: Each feature in PhFeatureSystemOA.FeaturesOC.",
-              "type": "IFsClosedFeature"
+              "description": "EnumerableWrapper[IFsClosedFeature]: Each feature in PhFeatureSystemOA.FeaturesOC.",
+              "type": "EnumerableWrapper[IFsClosedFeature]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IFsClosedFeature",
-          "returns": "IFsClosedFeature: Each feature in PhFeatureSystemOA.FeaturesOC. ",
+          "return_type": "EnumerableWrapper[IFsClosedFeature]",
+          "returns": "EnumerableWrapper[IFsClosedFeature]: Each feature in PhFeatureSystemOA.FeaturesOC. ",
           "signature": "GetAll()",
           "summary": "Get all phonological features in the project.",
           "usage_hint": "retrieval"
@@ -52606,14 +52606,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IPhPhoneme: Each phoneme object in the project's phoneme inventory.",
-              "type": "IPhPhoneme"
+              "description": "EnumerableWrapper[IPhPhoneme]: Each phoneme object in the project's phoneme inventory.",
+              "type": "EnumerableWrapper[IPhPhoneme]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IPhPhoneme",
-          "returns": "IPhPhoneme: Each phoneme object in the project's phoneme inventory. ",
+          "return_type": "EnumerableWrapper[IPhPhoneme]",
+          "returns": "EnumerableWrapper[IPhPhoneme]: Each phoneme object in the project's phoneme inventory. ",
           "signature": "GetAll()",
           "summary": "Get all phonemes in the project.",
           "usage_hint": "retrieval"
@@ -55194,14 +55194,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "RuleCollection: Smart collection of PhonologicalRule wrapped objects.",
-              "type": "RuleCollection"
+              "description": "RuleCollection[PhonologicalRule]: Smart collection of PhonologicalRule wrapped objects.",
+              "type": "RuleCollection[PhonologicalRule]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "RuleCollection",
-          "returns": "RuleCollection: Smart collection of PhonologicalRule wrapped objects. ",
+          "return_type": "RuleCollection[PhonologicalRule]",
+          "returns": "RuleCollection[PhonologicalRule]: Smart collection of PhonologicalRule wrapped objects. ",
           "signature": "GetAll()",
           "summary": "Get all phonological rules in the project.",
           "usage_hint": "retrieval"
@@ -56239,14 +56239,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmPossibility objects representing items.",
-              "type": "list"
+              "description": "list[ICmPossibility]: All items in the list.",
+              "type": "list[ICmPossibility]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmPossibility objects representing items. ",
+          "return_type": "list[ICmPossibility]",
+          "returns": "list[ICmPossibility]: All items in the list. ",
           "signature": "GetAll()",
           "summary": "Get all items in the list.",
           "usage_hint": "retrieval"
@@ -59725,8 +59725,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexPronunciation: Each pronunciation for the entry (or project).",
-              "type": "ILexPronunciation"
+              "description": "EnumerableWrapper[ILexPronunciation]: Each pronunciation for the entry (or project).",
+              "type": "EnumerableWrapper[ILexPronunciation]"
             }
           },
           "parameters": [
@@ -59738,8 +59738,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexPronunciation",
-          "returns": "ILexPronunciation: Each pronunciation for the entry (or project). ",
+          "return_type": "EnumerableWrapper[ILexPronunciation]",
+          "returns": "EnumerableWrapper[ILexPronunciation]: Each pronunciation for the entry (or project). ",
           "signature": "GetAll(entry_or_hvo=None)",
           "summary": "Get all pronunciations for a lexical entry, or all pronunciations in the entire project.",
           "usage_hint": "retrieval"
@@ -60433,8 +60433,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmPossibility objects representing publications.",
-              "type": "list"
+              "description": "list[ICmPossibility]: All publications.",
+              "type": "list[ICmPossibility]"
             }
           },
           "parameters": [
@@ -60446,8 +60446,8 @@
             }
           ],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmPossibility objects representing publications. ",
+          "return_type": "list[ICmPossibility]",
+          "returns": "list[ICmPossibility]: All publications. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all publications in the project.",
           "usage_hint": "retrieval"
@@ -61563,8 +61563,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IReversalIndexEntry: Each reversal entry in the index",
-              "type": "IReversalIndexEntry"
+              "description": "EnumerableWrapper[IReversalIndexEntry]: Each reversal entry in the index",
+              "type": "EnumerableWrapper[IReversalIndexEntry]"
             }
           },
           "parameters": [
@@ -61578,8 +61578,8 @@
           "raises": [
             "FP_NullParameterError: If index_or_hvo is None"
           ],
-          "return_type": "IReversalIndexEntry",
-          "returns": "IReversalIndexEntry: Each reversal entry in the index ",
+          "return_type": "EnumerableWrapper[IReversalIndexEntry]",
+          "returns": "EnumerableWrapper[IReversalIndexEntry]: Each reversal entry in the index ",
           "signature": "GetAll(index_or_hvo)",
           "summary": "Get all reversal entries in a reversal index.",
           "usage_hint": "retrieval"
@@ -62143,14 +62143,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IReversalIndex: Each reversal index object in the project",
-              "type": "IReversalIndex"
+              "description": "EnumerableWrapper[IReversalIndex]: Each reversal index object in the project",
+              "type": "EnumerableWrapper[IReversalIndex]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IReversalIndex",
-          "returns": "IReversalIndex: Each reversal index object in the project ",
+          "return_type": "EnumerableWrapper[IReversalIndex]",
+          "returns": "EnumerableWrapper[IReversalIndex]: Each reversal index object in the project ",
           "signature": "GetAll()",
           "summary": "Get all reversal indexes in the project.",
           "usage_hint": "retrieval"
@@ -63069,14 +63069,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IScrBook: Each Scripture book object in the project",
-              "type": "IScrBook"
+              "description": "EnumerableWrapper[IScrBook]: Each Scripture book object in the project",
+              "type": "EnumerableWrapper[IScrBook]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IScrBook",
-          "returns": "IScrBook: Each Scripture book object in the project ",
+          "return_type": "EnumerableWrapper[IScrBook]",
+          "returns": "EnumerableWrapper[IScrBook]: Each Scripture book object in the project ",
           "signature": "GetAll()",
           "summary": "Get all Scripture books in the project.",
           "usage_hint": "retrieval"
@@ -63493,14 +63493,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IScrDraft: Each Scripture draft object in the project",
-              "type": "IScrDraft"
+              "description": "EnumerableWrapper[IScrDraft]: Each Scripture draft object in the project",
+              "type": "EnumerableWrapper[IScrDraft]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IScrDraft",
-          "returns": "IScrDraft: Each Scripture draft object in the project ",
+          "return_type": "EnumerableWrapper[IScrDraft]",
+          "returns": "EnumerableWrapper[IScrDraft]: Each Scripture draft object in the project ",
           "signature": "GetAll()",
           "summary": "Get all Scripture drafts in the project.",
           "usage_hint": "retrieval"
@@ -63889,8 +63889,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IScrScriptureNote objects (empty list if none)",
-              "type": "list"
+              "description": "list[IScrScriptureNote]: List of Scripture notes (empty list if none)",
+              "type": "list[IScrScriptureNote]"
             }
           },
           "parameters": [
@@ -63904,8 +63904,8 @@
           "raises": [
             "FP_NullParameterError: If book_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IScrScriptureNote objects (empty list if none) ",
+          "return_type": "list[IScrScriptureNote]",
+          "returns": "list[IScrScriptureNote]: List of Scripture notes (empty list if none) ",
           "signature": "GetAll(book_or_hvo)",
           "summary": "Get all Scripture notes in a book.",
           "usage_hint": "retrieval"
@@ -64381,8 +64381,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IScrSection objects (empty list if none)",
-              "type": "list"
+              "description": "list[IScrSection]: List of sections (empty list if none)",
+              "type": "list[IScrSection]"
             }
           },
           "parameters": [
@@ -64396,8 +64396,8 @@
           "raises": [
             "FP_NullParameterError: If book_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IScrSection objects (empty list if none) ",
+          "return_type": "list[IScrSection]",
+          "returns": "list[IScrSection]: List of sections (empty list if none) ",
           "signature": "GetAll(book_or_hvo)",
           "summary": "Get all Scripture sections in a book.",
           "usage_hint": "retrieval"
@@ -64847,8 +64847,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IScrTxtPara objects (empty list if none)",
-              "type": "list"
+              "description": "list[IScrTxtPara]: List of paragraphs (empty list if none)",
+              "type": "list[IScrTxtPara]"
             }
           },
           "parameters": [
@@ -64862,8 +64862,8 @@
           "raises": [
             "FP_NullParameterError: If section_or_hvo is None"
           ],
-          "return_type": "list",
-          "returns": "list: List of IScrTxtPara objects (empty list if none) ",
+          "return_type": "list[IScrTxtPara]",
+          "returns": "list[IScrTxtPara]: List of paragraphs (empty list if none) ",
           "signature": "GetAll(section_or_hvo)",
           "summary": "Get all Scripture paragraphs in a section.",
           "usage_hint": "retrieval"
@@ -65392,8 +65392,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ISegment: Each segment in the paragraph.",
-              "type": "ISegment"
+              "description": "EnumerableWrapper[ISegment]: Each segment in the paragraph.",
+              "type": "EnumerableWrapper[ISegment]"
             }
           },
           "parameters": [
@@ -65407,8 +65407,8 @@
           "raises": [
             "FP_NullParameterError: If paragraph_or_hvo is None."
           ],
-          "return_type": "ISegment",
-          "returns": "ISegment: Each segment in the paragraph. ",
+          "return_type": "EnumerableWrapper[ISegment]",
+          "returns": "EnumerableWrapper[ISegment]: Each segment in the paragraph. ",
           "signature": "GetAll(paragraph_or_hvo)",
           "summary": "Get all segments in a paragraph.",
           "usage_hint": "retrieval"
@@ -66734,8 +66734,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of ICmSemanticDomain objects.",
-              "type": "list"
+              "description": "list[ICmSemanticDomain]: All semantic domains.",
+              "type": "list[ICmSemanticDomain]"
             }
           },
           "parameters": [
@@ -66747,8 +66747,8 @@
             }
           ],
           "raises": [],
-          "return_type": "list",
-          "returns": "list: List of ICmSemanticDomain objects. ",
+          "return_type": "list[ICmSemanticDomain]",
+          "returns": "list[ICmSemanticDomain]: All semantic domains. ",
           "signature": "GetAll(recursive=True)",
           "summary": "Get all semantic domains in the project.",
           "usage_hint": "retrieval"
@@ -68028,14 +68028,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IMoStratum: Each stratum in declaration order.",
-              "type": "IMoStratum"
+              "description": "EnumerableWrapper[IMoStratum]: Each stratum in declaration order.",
+              "type": "EnumerableWrapper[IMoStratum]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IMoStratum",
-          "returns": "IMoStratum: Each stratum in declaration order.",
+          "return_type": "EnumerableWrapper[IMoStratum]",
+          "returns": "EnumerableWrapper[IMoStratum]: Each stratum in declaration order.",
           "signature": "GetAll()",
           "summary": "Yield every stratum in ``MorphologicalDataOA.",
           "usage_hint": "retrieval"
@@ -68704,14 +68704,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IText: Each text object in the project.",
-              "type": "IText"
+              "description": "EnumerableWrapper[IText]: Each text object in the project.",
+              "type": "EnumerableWrapper[IText]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IText",
-          "returns": "IText: Each text object in the project. ",
+          "return_type": "EnumerableWrapper[IText]",
+          "returns": "EnumerableWrapper[IText]: Each text object in the project. ",
           "signature": "GetAll()",
           "summary": "Get all texts in the project.",
           "usage_hint": "retrieval"
@@ -69380,7 +69380,6 @@
       "example": "",
       "id": "TranslationTypeOperations",
       "lcm_dependencies": [
-        "IStTxtParaRepository",
         "ITextRepository",
         "ITsString",
         "TsStringUtils"
@@ -69612,7 +69611,7 @@
         },
         {
           "description": "Get all segments that use a specific translation type.\n\nSearches through all segments in all texts and returns those that\nreference this translation type in their translations.\n",
-          "example": "            >>> literal = project.TranslationTypes.GetLiteralTranslationType()\n            >>> segments = list(project.TranslationTypes.GetSegmentsWithType(literal))\n            >>> print(f\"{len(segments)} segments use literal translation\")\n            458 segments use literal translation\n\n        Warning:\n            - This operation can be very slow for large projects\n            - Scans all paragraphs and segments in the entire project\n            - Consider using GetTextsWithType() for faster overview\n",
+          "example": "",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -69624,13 +69623,22 @@
               {
                 "exception": "FP",
                 "when": "_NullParameterError: If type_or_hvo is None."
+              },
+              {
+                "exception": "NotImplementedError",
+                "when": "Always. Segments do not carry typed"
+              },
+              {
+                "exception": "FreeTranslation",
+                "when": "/LiteralTranslation multistrings with no"
+              },
+              {
+                "exception": "TypeRA",
+                "when": "style link to a translation-type possibility), so"
               }
             ],
             "notes": [],
-            "success": {
-              "description": "ISegment: Each segment object that uses this translation type.",
-              "type": "ISegment"
-            }
+            "success": {}
           },
           "parameters": [
             {
@@ -69641,10 +69649,17 @@
             }
           ],
           "raises": [
-            "FP_NullParameterError: If type_or_hvo is None."
+            "FP_NullParameterError: If type_or_hvo is None.",
+            "NotImplementedError: Always. Segments do not carry typed",
+            "translations the way texts do (ISegment has plain",
+            "FreeTranslation/LiteralTranslation multistrings with no",
+            "TypeRA-style link to a translation-type possibility), so",
+            "there is no well-defined \"segment uses this type\" query to",
+            "perform. Use GetTextsWithType() instead, or design a",
+            "dedicated spec if segment-level typing is genuinely needed."
           ],
-          "return_type": "ISegment",
-          "returns": "ISegment: Each segment object that uses this translation type. ",
+          "return_type": "",
+          "returns": "",
           "signature": "GetSegmentsWithType(type_or_hvo)",
           "summary": "Get all segments that use a specific translation type.",
           "usage_hint": "retrieval"
@@ -70281,8 +70296,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexEntryRef: Each variant reference associated with the entry (or project).",
-              "type": "ILexEntryRef"
+              "description": "EnumerableWrapper[ILexEntryRef]: Each variant reference associated with the entry (or project).",
+              "type": "EnumerableWrapper[ILexEntryRef]"
             }
           },
           "parameters": [
@@ -70294,8 +70309,8 @@
             }
           ],
           "raises": [],
-          "return_type": "ILexEntryRef",
-          "returns": "ILexEntryRef: Each variant reference associated with the entry (or project). ",
+          "return_type": "EnumerableWrapper[ILexEntryRef]",
+          "returns": "EnumerableWrapper[ILexEntryRef]: Each variant reference associated with the entry (or project). ",
           "signature": "GetAll(entry_or_hvo=None)",
           "summary": "Get all variant references for a lexical entry, or all variants in the entire project.",
           "usage_hint": "retrieval"
@@ -70321,14 +70336,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "ILexEntryType: Each variant type defined in the project.",
-              "type": "ILexEntryType"
+              "description": "EnumerableWrapper[ILexEntryType]: Each variant type defined in the project.",
+              "type": "EnumerableWrapper[ILexEntryType]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "ILexEntryType",
-          "returns": "ILexEntryType: Each variant type defined in the project. ",
+          "return_type": "EnumerableWrapper[ILexEntryType]",
+          "returns": "EnumerableWrapper[ILexEntryType]: Each variant type defined in the project. ",
           "signature": "GetAllTypes()",
           "summary": "Get all variant entry types defined in the project.",
           "usage_hint": "retrieval"
@@ -71333,8 +71348,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "list: List of IWfiAnalysis objects for this wordform",
-              "type": "list"
+              "description": "list[IWfiAnalysis]: All analyses for this wordform",
+              "type": "list[IWfiAnalysis]"
             }
           },
           "parameters": [
@@ -71349,8 +71364,8 @@
             "FP_NullParameterError: If wordform_or_hvo is None",
             "FP_ParameterError: If wordform doesn't exist"
           ],
-          "return_type": "list",
-          "returns": "list: List of IWfiAnalysis objects for this wordform ",
+          "return_type": "list[IWfiAnalysis]",
+          "returns": "list[IWfiAnalysis]: All analyses for this wordform ",
           "signature": "GetAll(wordform_or_hvo)",
           "summary": "Retrieve all analyses for a wordform.",
           "usage_hint": "retrieval"
@@ -72695,8 +72710,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWfiGloss: Each gloss object for the analysis",
-              "type": "IWfiGloss"
+              "description": "EnumerableWrapper[IWfiGloss]: Each gloss object for the analysis",
+              "type": "EnumerableWrapper[IWfiGloss]"
             }
           },
           "parameters": [
@@ -72711,8 +72726,8 @@
             "FP_NullParameterError: If analysis_or_hvo is None",
             "FP_ParameterError: If analysis doesn't exist"
           ],
-          "return_type": "IWfiGloss",
-          "returns": "IWfiGloss: Each gloss object for the analysis ",
+          "return_type": "EnumerableWrapper[IWfiGloss]",
+          "returns": "EnumerableWrapper[IWfiGloss]: Each gloss object for the analysis ",
           "signature": "GetAll(analysis_or_hvo)",
           "summary": "Retrieve all glosses for a wordform analysis.",
           "usage_hint": "retrieval"
@@ -73369,8 +73384,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWfiMorphBundle: Each morph bundle in the analysis.",
-              "type": "IWfiMorphBundle"
+              "description": "EnumerableWrapper[IWfiMorphBundle]: Each morph bundle in the analysis.",
+              "type": "EnumerableWrapper[IWfiMorphBundle]"
             }
           },
           "parameters": [
@@ -73384,8 +73399,8 @@
           "raises": [
             "FP_NullParameterError: If analysis_or_hvo is None."
           ],
-          "return_type": "IWfiMorphBundle",
-          "returns": "IWfiMorphBundle: Each morph bundle in the analysis. ",
+          "return_type": "EnumerableWrapper[IWfiMorphBundle]",
+          "returns": "EnumerableWrapper[IWfiMorphBundle]: Each morph bundle in the analysis. ",
           "signature": "GetAll(analysis_or_hvo)",
           "summary": "Get all morph bundles for a wordform analysis.",
           "usage_hint": "retrieval"
@@ -74612,14 +74627,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWfiWordform: Each wordform object in the project",
-              "type": "IWfiWordform"
+              "description": "EnumerableWrapper[IWfiWordform]: Each wordform object in the project",
+              "type": "EnumerableWrapper[IWfiWordform]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IWfiWordform",
-          "returns": "IWfiWordform: Each wordform object in the project ",
+          "return_type": "EnumerableWrapper[IWfiWordform]",
+          "returns": "EnumerableWrapper[IWfiWordform]: Each wordform object in the project ",
           "signature": "GetAll()",
           "summary": "Retrieve all wordforms in the FLEx project.",
           "usage_hint": "retrieval"
@@ -74645,14 +74660,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWfiWordform: Each wordform object with UNDECIDED or INCORRECT status",
-              "type": "IWfiWordform"
+              "description": "EnumerableWrapper[IWfiWordform]: Each wordform object with UNDECIDED or INCORRECT status",
+              "type": "EnumerableWrapper[IWfiWordform]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IWfiWordform",
-          "returns": "IWfiWordform: Each wordform object with UNDECIDED or INCORRECT status ",
+          "return_type": "EnumerableWrapper[IWfiWordform]",
+          "returns": "EnumerableWrapper[IWfiWordform]: Each wordform object with UNDECIDED or INCORRECT status ",
           "signature": "GetAllUnapproved()",
           "summary": "Retrieve all wordforms that are not approved (not CORRECT status).",
           "usage_hint": "retrieval"
@@ -74678,8 +74693,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWfiWordform: Each wordform object with the specified status",
-              "type": "IWfiWordform"
+              "description": "EnumerableWrapper[IWfiWordform]: Each wordform object with the specified status",
+              "type": "EnumerableWrapper[IWfiWordform]"
             }
           },
           "parameters": [
@@ -74693,8 +74708,8 @@
           "raises": [
             "FP_ParameterError: If status is invalid"
           ],
-          "return_type": "IWfiWordform",
-          "returns": "IWfiWordform: Each wordform object with the specified status ",
+          "return_type": "EnumerableWrapper[IWfiWordform]",
+          "returns": "EnumerableWrapper[IWfiWordform]: Each wordform object with the specified status ",
           "signature": "GetAllWithStatus(status)",
           "summary": "Retrieve all wordforms with a specific spelling status.",
           "usage_hint": "retrieval"
@@ -75423,14 +75438,14 @@
             ],
             "notes": [],
             "success": {
-              "description": "IWritingSystemDefinition: Each writing system object",
-              "type": "IWritingSystemDefinition"
+              "description": "EnumerableWrapper[IWritingSystemDefinition]: Each writing system object",
+              "type": "EnumerableWrapper[IWritingSystemDefinition]"
             }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "IWritingSystemDefinition",
-          "returns": "IWritingSystemDefinition: Each writing system object ",
+          "return_type": "EnumerableWrapper[IWritingSystemDefinition]",
+          "returns": "EnumerableWrapper[IWritingSystemDefinition]: Each writing system object ",
           "signature": "GetAll()",
           "summary": "Get all active writing systems in the project.",
           "usage_hint": "retrieval"
@@ -76493,7 +76508,7 @@
     "wrap_enumerable": {
       "base_classes": [],
       "category": "general",
-      "description": "Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!",
+      "description": "Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!\n\nBehavioral collection contract:\nEvery ``GetAll`` in flexicon returns a **behavioral collection**: you\ncan always loop it, ``len()`` it, index into it, and re-iterate it.\nThe concrete return type -- ``EnumerableWrapper`` (this decorator, for\nlarge/lazily-materialized results), a plain ``list`` (already a\nsequence, so wrapping is a no-op), or a ``SmartCollection`` subtype\n(adds ``.filter()``/type-breakdown display on top of the same\nsequence guarantees) -- is an implementation detail callers never\nhave to branch on. See ``docs/getall-contract.md`` for the full\nguarantee and rationale.",
       "example": "",
       "id": "wrap_enumerable",
       "lcm_dependencies": [
@@ -76575,6 +76590,7 @@
       "ICmBaseAnnotationFactory",
       "ICmFile",
       "ICmFileFactory",
+      "ICmFileRepository",
       "ICmFilter",
       "ICmFilterFactory",
       "ICmFolder",
@@ -76727,7 +76743,6 @@
       "IStTextFactory",
       "IStTxtPara",
       "IStTxtParaFactory",
-      "IStTxtParaRepository",
       "IText",
       "ITextFactory",
       "ITextRepository",
@@ -76775,11 +76790,11 @@
     ],
     "mapping_types": {
       "composite": 114,
-      "convenience": 210,
+      "convenience": 209,
       "direct": 596,
-      "pure_python": 587
+      "pure_python": 588
     },
-    "methods_with_return_type": 889,
+    "methods_with_return_type": 888,
     "total_classes": 116,
     "total_methods": 1507,
     "total_properties": 151

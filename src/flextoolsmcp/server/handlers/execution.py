@@ -64,7 +64,7 @@ try:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
-        detect_overload_resolution_error,
+        detect_overload_resolution_error, detect_getall_unsafe_idiom,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload,
@@ -76,7 +76,7 @@ except ImportError:
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
         detect_candidate_entities, extract_python_did_you_mean,
-        detect_overload_resolution_error,
+        detect_overload_resolution_error, detect_getall_unsafe_idiom,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload,
@@ -3152,6 +3152,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
 
+    # getall-contract SPEC §6 Level 3 (cycle-4 reversal): non-blocking
+    # advisory (never rejects) for unsafe len()/subscript/truthiness/
+    # double-consume idioms on a raw one-shot FLExProject iterator/generator
+    # result. flexlibs_stable-only -- flexicon 4.3.0's EnumerableWrapper is a
+    # genuine safe behavioral collection, so this is silent in flexicon mode.
+    getall_check = detect_getall_unsafe_idiom(code_tree, api_mode, api_idx)
+
     timeout_seconds = args.get("timeout_seconds", 300)
 
     # Determine three-tier injection strategy based on pre-flight results
@@ -3194,6 +3201,11 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "Set write_enabled=True to enable modifications.",
             ""
         ])
+
+    if getall_check["has_unsafe_idiom"]:
+        for issue in getall_check["issues"]:
+            warnings.append(f"[GetAll() container contract] {issue['suggestion']}")
+        warnings.append("")
 
     # Create the runner script that will be executed in a subprocess
     # (Large script template - hardcoded imports to avoid placeholder/indentation issues)

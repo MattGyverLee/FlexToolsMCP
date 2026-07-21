@@ -7,7 +7,7 @@ code: |
   class LexEntryOperations:
       pass
 
-  entries = LexEntryOperations(project).GetAll()
+  entries = list(LexEntryOperations(project).GetAll())
   report.Info(str(len(entries)))
 expect:
   outcome: preflight_reject

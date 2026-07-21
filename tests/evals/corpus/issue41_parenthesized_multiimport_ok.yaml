@@ -14,6 +14,9 @@ expect:
   outcome: ok
   error_code: null
   auto_fixes: 0
+  # getall-contract SPEC (cycle-4 reversal): the flexicon-mode getall_unsafe_idiom
+  # advisory was removed -- flexicon 4.3.0's EnumerableWrapper.GetAll() safely
+  # supports len()/subscript/repeat-iteration, so len() here is not flagged.
 notes: >
   Regression for issue #41: the original single-line-only import regex
   (`from \w+ import ([^#\n]+)`) failed to see names inside a parenthesized,

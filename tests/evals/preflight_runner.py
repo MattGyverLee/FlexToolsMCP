@@ -51,6 +51,7 @@ from server.validators import (
     detect_missing_operations_imports,
     detect_wrong_library_imports,
     detect_invalid_project_chains,
+    detect_getall_unsafe_idiom,
 )
 from server import kernel
 
@@ -79,7 +80,11 @@ class _FakeAPIIndex:
                 },
                 "LexEntryOperations": {
                     "methods": [
-                        {"name": "GetAll", "is_mutating": False},
+                        # return_type wording retained for historical parity with
+                        # the real index; detect_getall_unsafe_idiom no longer
+                        # reads it (cycle-4 reversal: the detector is now
+                        # flexlibs_stable-only and index-independent).
+                        {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ILexEntry]"},
                         {"name": "GetLexemeForm", "is_mutating": False},
                         {"name": "Create", "is_mutating": True},
                         {"name": "SetLexemeForm", "is_mutating": True},
@@ -87,7 +92,7 @@ class _FakeAPIIndex:
                 },
                 "POSOperations": {
                     "methods": [
-                        {"name": "GetAll", "is_mutating": False},
+                        {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[IPartOfSpeech]"},
                         {"name": "GetSyncableProperties", "is_mutating": False},
                         # Issue #38 regression: ApplySyncableProperties is a
                         # real, correctly-indexed mutating method (it used to
@@ -99,21 +104,21 @@ class _FakeAPIIndex:
                 },
                 "LexSenseOperations": {
                     "methods": [
-                        {"name": "GetAll", "is_mutating": False},
+                        {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ILexSense]"},
                         {"name": "GetGloss", "is_mutating": False},
                         {"name": "SetGloss", "is_mutating": True},
                     ],
                 },
                 "SegmentOperations": {
                     "methods": [
-                        {"name": "GetAll", "is_mutating": False},
+                        {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[ISegment]"},
                         {"name": "IsLabel", "is_mutating": False},
                         {"name": "GetFreeTranslation", "is_mutating": False},
                     ],
                 },
                 "WordformOperations": {
                     "methods": [
-                        {"name": "GetAll", "is_mutating": False},
+                        {"name": "GetAll", "is_mutating": False, "return_type": "EnumerableWrapper[IWfiWordform]"},
                     ],
                 },
             }
@@ -164,6 +169,11 @@ class PreflightResult:
     error_code: Optional[str]
     gate: Optional[str]
     detail: str = ""
+    # getall-contract SPEC §6 Level 3: non-blocking advisory codes attached
+    # to an "ok" outcome (never changes outcome/error_code). Empty for
+    # preflight_reject results (the chain returns before the advisory check
+    # runs) and for any "ok" result with no flagged GetAll() idiom.
+    advisories: list = field(default_factory=list)
 
 
 _ORDERED_GATES = (
@@ -321,4 +331,13 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             "preflight_reject", "invalid_api_chain", "invalid_api_chain", str(chain["issues"])
         )
 
-    return PreflightResult("ok", None, None)
+    # Non-blocking advisory (getall-contract SPEC §6 Level 3): never rejects,
+    # so it only runs once every reject-gate above has already passed --
+    # mirrors execution.handle_run_module, which computes it right before
+    # building the response `warnings` list.
+    advisories = []
+    getall_check = detect_getall_unsafe_idiom(tree, api_mode, FAKE_API_INDEX)
+    if getall_check["has_unsafe_idiom"]:
+        advisories.append("getall_unsafe_idiom")
+
+    return PreflightResult("ok", None, None, advisories=advisories)

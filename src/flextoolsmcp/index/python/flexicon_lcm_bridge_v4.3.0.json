@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.2.1"
+    "version": "4.3.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -47552,9 +47552,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47623,9 +47623,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47701,9 +47701,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47747,9 +47747,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47808,9 +47808,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47845,9 +47845,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47890,9 +47890,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47914,7 +47914,7 @@
         "param_usage": {},
         "properties_accessed": [],
         "repositories_used": [
-          "ICmObjectRepository"
+          "ICmFileRepository"
         ],
         "transformations": [
           {
@@ -47928,9 +47928,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -47939,7 +47939,7 @@
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [
-        "ICmObjectRepository"
+        "ICmFileRepository"
       ],
       "utilities_used": []
     },
@@ -47966,9 +47966,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48013,9 +48013,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48054,9 +48054,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48103,9 +48103,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48147,9 +48147,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48196,9 +48196,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48264,9 +48264,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48313,9 +48313,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48354,9 +48354,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48394,9 +48394,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48438,9 +48438,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48480,9 +48480,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48520,9 +48520,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48560,9 +48560,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48601,9 +48601,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48641,9 +48641,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48688,9 +48688,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48733,9 +48733,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48798,9 +48798,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -48836,9 +48836,9 @@
       "lcm_deps": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -75841,7 +75841,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -75905,7 +75904,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -75945,7 +75943,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -75984,7 +75981,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76025,7 +76021,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76066,7 +76061,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76085,51 +76079,28 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "type_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of _PossibilityItemOperations__ResolveObject()"
+            "arg[0] of _ValidateParam()"
           ]
         },
-        "properties_accessed": [
-          "Guid",
-          "SegmentsOS (OwningSequence)"
-        ],
-        "repositories_used": [
-          "IStTxtParaRepository"
-        ],
-        "transformations": [
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          }
-        ],
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "GetSegmentsWithType",
       "methods_called": [],
-      "properties_accessed": [
-        "Guid",
-        "SegmentsOS (OwningSequence)"
-      ],
-      "repositories_used": [
-        "IStTxtParaRepository"
-      ],
+      "properties_accessed": [],
+      "repositories_used": [],
       "utilities_used": []
     },
     "TranslationTypeOperations.GetTextsWithType": {
@@ -76170,7 +76141,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76216,7 +76186,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76274,7 +76243,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76341,7 +76309,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76376,7 +76343,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],
@@ -76407,7 +76373,6 @@
       },
       "lcm_deps": [
         "ITextRepository",
-        "IStTxtParaRepository",
         "ITsString",
         "TsStringUtils"
       ],

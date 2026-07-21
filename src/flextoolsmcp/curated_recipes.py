@@ -441,7 +441,7 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "report.Info(f\"Entries: {entry_count}\")\n"
             "report.Info(f\"Senses: {sense_count}\")\n"
         ),
-        "notes": "GetAll returns an EnumerableWrapper that supports len(); no need to materialize a Python list first.",
+        "notes": "GetAll returns a behavioral collection that supports len(), subscripting, and re-iteration directly; only wrap in list(...) if you specifically need a plain list.",
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
     },

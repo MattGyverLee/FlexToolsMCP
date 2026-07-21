@@ -138,8 +138,10 @@ def test_undiscovered_entity_hint_is_tailored():
     assert "get_object_api" in pattern["message"]
 
 
-def test_project_not_open_hint_points_to_list_projects():
-    """project_not_open hint should mention list_projects."""
+def test_project_not_open_hint_points_to_available_projects():
+    """Issue #53: project_not_open hint now points at the inlined
+    available_projects field on the rejection payload itself, rather than
+    sending the model back to a separate flextools_list_projects call."""
     state = _new_state()
     base = datetime.now()
     for i in range(5):
@@ -150,7 +152,7 @@ def test_project_not_open_hint_points_to_list_projects():
         )
     pattern = state.detect_retry_loop_pattern()
     assert pattern is not None
-    assert "list_projects" in pattern["message"]
+    assert "available_projects" in pattern["message"]
 
 
 def test_attach_assistance_injects_into_response():

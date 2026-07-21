@@ -50,13 +50,17 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "POS) before referencing it again."
     ),
     "project_not_open": (
-        "the project isn't open. Call flextools_list_projects to see "
-        "what's available, then re-call flextools_start with a valid "
-        "project_name."
+        # Issue #53: the rejection payload now inlines available_projects
+        # (from the same safe enumeration flextools_list_projects uses) --
+        # pick directly from that list instead of making a separate call.
+        "pick one of available_projects in this payload and pass it as "
+        "project_name to flextools_start (or directly to flextools_run_module)."
     ),
     "project_name_required": (
-        "the project_name is missing. Call flextools_list_projects to "
-        "see what's available, then pass one to flextools_start."
+        # Issue #53: same self-healing payload -- available_projects is
+        # already attached to this rejection.
+        "pick one of available_projects in this payload and pass it as "
+        "project_name."
     ),
     "syntax_error": (
         "the Python is malformed. Read the line number in the error and "
@@ -171,6 +175,38 @@ class SessionState:
     # been taken THIS session. Ensures the backup fires exactly once per
     # (session, project) instead of on every mutating run.
     backed_up_projects: set = field(default_factory=set)
+
+    # Issue #53: count of cold-start auto-initializations performed this
+    # session (a READ_ONLY_SAFE tool -- or run_module with an explicit
+    # project_name -- called with no prior flextools_start). The happy path
+    # is exactly 0 or 1 per conversation. A count > 1 means the session was
+    # observed uninitialized MORE THAN ONCE, which -- since nothing in this
+    # codebase intentionally resets `initialized` back to False mid-session
+    # -- signals the underlying session-loss bug (#10/#42) is biting, not
+    # that cold-start tolerance is working as designed. record_auto_init()
+    # logs at WARNING starting on the second occurrence; #53 must not mask
+    # #10 by silently absorbing repeat auto-inits.
+    auto_init_count: int = 0
+
+    def record_auto_init(self) -> int:
+        """Record a cold-start auto-initialization and return the new count.
+
+        Call this exactly once per auto-init event (never for an explicit
+        flextools_start call). Logs INFO for the first occurrence and
+        WARNING for every subsequent one within the same session -- see
+        the auto_init_count docstring for why repeats are suspicious.
+        """
+        self.auto_init_count += 1
+        if self.auto_init_count > 1:
+            logger.warning(
+                f"[AUTO-INIT-REPEAT] Session auto-initialized {self.auto_init_count} "
+                f"times this conversation -- this usually means the session was lost "
+                f"between calls (see issues #10/#42), not that cold-start tolerance "
+                f"is working as designed."
+            )
+        else:
+            logger.info("[AUTO-INIT] Session auto-initialized (flexicon, read-only).")
+        return self.auto_init_count
 
     # Issue #28: Retry-loop / size-oscillation detector. Each entry is
     # (timestamp, error_code, code_size_bytes); only the last 5 ops are

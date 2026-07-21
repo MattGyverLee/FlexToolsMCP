@@ -251,14 +251,25 @@ class TestToolAnnotations(ToolsTestBase):
 # ---------------------------------------------------------------------------
 
 class TestWorkflowGates(TestCase):
-    """Test that tools enforce the 'call flextools_start first' gate."""
+    """Test the cold-start session gate (issue #53: auto-init for
+    READ_ONLY_SAFE tools instead of the old hard 'call start first' error).
+    """
 
     @classmethod
     def setUpClass(cls):
-        """Reset session state to uninitialized before gate tests."""
+        """Load a real api_index once -- READ_ONLY_SAFE tools now actually
+        dispatch on a cold session (issue #53), so they need one to run."""
+        from server import APIIndex  # type: ignore
+        from server.kernel import initialize_kernel, set_api_index, get_index_dir  # type: ignore
+        initialize_kernel()
+        set_api_index(APIIndex.load(get_index_dir()))
+
+    def setUp(self):
+        """Reset session state to uninitialized before EACH test -- auto-init
+        (#53) mutates it in place, so per-class-only reset would leak
+        initialized=True into later tests in this class."""
         from server.session import SessionState  # type: ignore
         srv = _get_srv()
-        # Reset to uninitialized state
         srv.session_state = SessionState()  # type: ignore
 
     def _parse_response(self, result):
@@ -267,30 +278,60 @@ class TestWorkflowGates(TestCase):
         text = result[0].text
         return json.loads(text)
 
-    def test_search_before_start_returns_error(self):
-        """Calling flextools_search_by_capability before start should return init error."""
+    def test_search_before_start_auto_inits_readonly(self):
+        """Issue #53: a READ_ONLY_SAFE tool called cold auto-initializes a
+        read-only flexicon session instead of erroring, and the response
+        carries a _session_note saying so."""
         result = call_tool("flextools_search_by_capability", {"query": "add gloss"})
+        data = self._parse_response(result)
+        self.assertNotIn("error", data)
+        self.assertIn("_session_note", data)
+        self.assertIn("auto-initialized", data["_session_note"].lower())
+        srv = _get_srv()
+        self.assertTrue(srv.session_state.initialized)
+        self.assertFalse(srv.session_state.write_enabled)
+        self.assertEqual(srv.session_state.project_name, "")
+
+    def test_get_object_api_before_start_auto_inits_readonly(self):
+        """Issue #53: flextools_get_object_api is READ_ONLY_SAFE -- cold call
+        auto-initializes instead of erroring."""
+        result = call_tool("flextools_get_object_api", {"object_type": "ILexEntry"})
+        data = self._parse_response(result)
+        self.assertNotIn("error", data)
+        self.assertIn("_session_note", data)
+
+    def test_second_call_has_no_session_note(self):
+        """Issue #53 acceptance + #10 regression guard: the auto-init note
+        only appears on the FIRST cold call. A second call in the same
+        conversation must find the session already initialized (no note) --
+        if this ever regresses, it means the session was lost between calls
+        (#10/#42), not that #53 is doing its job twice."""
+        first = self._parse_response(call_tool("flextools_search_by_capability", {"query": "add gloss"}))
+        self.assertIn("_session_note", first)
+
+        second = self._parse_response(call_tool("flextools_list_categories", {}))
+        self.assertNotIn("_session_note", second)
+
+        srv = _get_srv()
+        self.assertEqual(srv.session_state.auto_init_count, 1)
+
+    def test_run_operation_before_start_returns_error(self):
+        """flextools_run_operation isn't a registered tool at all (it was
+        consolidated into run_module) -- it must still hit the strict gate
+        and return the old-style init error, since it's neither
+        READ_ONLY_SAFE nor run_module."""
+        result = call_tool("flextools_run_operation", {"operations": "print('hello')"})
         data = self._parse_response(result)
         self.assertIn("error", data)
         self.assertIn("not initialized", data.get("error", "").lower())
 
-    def test_get_object_api_before_start_returns_error(self):
-        """Calling flextools_get_object_api before start should return init error."""
-        result = call_tool("flextools_get_object_api", {"object_type": "ILexEntry"})
-        data = self._parse_response(result)
-        self.assertIn("error", data)
-
-    def test_run_operation_before_start_returns_error(self):
-        """Calling flextools_run_operation before start should return init error."""
-        result = call_tool("flextools_run_operation", {"operations": "print('hello')"})
-        data = self._parse_response(result)
-        self.assertIn("error", data)
-
-    def test_list_categories_before_start_returns_error(self):
-        """Calling flextools_list_categories before start should return init error."""
+    def test_list_categories_before_start_auto_inits_readonly(self):
+        """Issue #53: flextools_list_categories is READ_ONLY_SAFE -- cold call
+        auto-initializes instead of erroring."""
         result = call_tool("flextools_list_categories", {})
         data = self._parse_response(result)
-        self.assertIn("error", data)
+        self.assertNotIn("error", data)
+        self.assertIn("_session_note", data)
 
     def test_list_projects_before_start_is_allowed(self):
         """flextools_list_projects is session-independent: it must NOT be blocked
@@ -302,6 +343,70 @@ class TestWorkflowGates(TestCase):
         # "Session not initialized" gate error.
         self.assertNotIn("not initialized", str(data.get("error", "")).lower())
         self.assertIn("projects", data)
+
+    def test_manage_config_before_start_still_gated(self):
+        """flextools_manage_config is readOnlyHint=False and isn't run_module --
+        it must still hit the strict 'call start first' gate (#53 explicitly
+        scopes auto-init to READ_ONLY_SAFE tools + run_module only)."""
+        result = call_tool("flextools_manage_config", {"action": "list"})
+        data = self._parse_response(result)
+        self.assertIn("error", data)
+        self.assertIn("not initialized", data.get("error", "").lower())
+
+    def test_run_module_cold_with_project_name_executes_readonly(self):
+        """Issue #53 item 3: run_module with a project_name on a cold session
+        initializes the session from it (read-only, since write_enabled was
+        not passed) instead of erroring with 'Session not initialized'."""
+        result = call_tool("flextools_run_module", {
+            "code": "report.Info('hello')",
+            "project_name": "NoSuchProjectForTesting",
+        })
+        data = self._parse_response(result)
+        # Must NOT be the old generic top-level gate error (session should
+        # have been auto-initialized from project_name instead of blocked).
+        # It's fine (and expected, since the project doesn't really exist on
+        # this machine) for the deeper project-resolution check to reject
+        # with project_not_found -- that's a DIFFERENT, later gate.
+        self.assertNotEqual(data.get("error"), "Session not initialized")
+        self.assertNotEqual(data.get("error_code"), "session_not_initialized")
+        srv = _get_srv()
+        self.assertTrue(srv.session_state.initialized)
+        self.assertFalse(srv.session_state.write_enabled, (
+            "cold run_module without write_enabled=True must never end up "
+            "write-enabled -- a cold session is always read-only"
+        ))
+
+    def test_run_module_cold_write_enabled_matches_explicit_start_plus_run(self):
+        """Issue #53 acceptance: cold run_module with write_enabled=True and a
+        project_name must behave exactly like start(write_enabled=True) then
+        run -- write gating is never weakened by the auto-init path; it only
+        ever reflects what THIS call explicitly asked for."""
+        result = call_tool("flextools_run_module", {
+            "code": "report.Info('hello')",
+            "project_name": "NoSuchProjectForTesting",
+            "write_enabled": True,
+        })
+        self._parse_response(result)
+        srv = _get_srv()
+        self.assertTrue(srv.session_state.initialized)
+        self.assertTrue(srv.session_state.write_enabled, (
+            "explicit write_enabled=True on the cold call must be honored, "
+            "exactly as if start(write_enabled=True) had been called first"
+        ))
+
+    def test_run_module_cold_without_project_name_gets_available_projects(self):
+        """Issue #53 item 2: run_module cold with no project_name anywhere
+        still rejects (a project is genuinely required) but the rejection is
+        now self-healing -- it inlines available_projects/total_count from
+        the same safe enumeration flextools_list_projects uses, and NEVER
+        auto-selects one."""
+        result = call_tool("flextools_run_module", {"code": "report.Info('hello')"})
+        data = self._parse_response(result)
+        self.assertEqual(data.get("error_code"), "project_name_required")
+        self.assertIn("available_projects", data)
+        self.assertIsInstance(data["available_projects"], list)
+        self.assertIn("total_count", data)
+        self.assertLessEqual(len(data["available_projects"]), 15)
 
 
 # ---------------------------------------------------------------------------
@@ -484,9 +589,16 @@ class TestToolOutcomeLogging(TestCase):
         import logging as _logging
         # Session-gated tool without a session: the gate itself must leave a
         # visible (WARNING) trace, not a silent return.
-        records = self._capture("flextools_get_module_template", {"flavor": "flexicon"})
+        # NOTE (issue #53): flextools_get_module_template is READ_ONLY_SAFE, so
+        # a cold call now auto-initializes instead of hitting the [BLOCKED]
+        # path -- use flextools_manage_config instead, which is neither
+        # READ_ONLY_SAFE nor run_module, so it still hits the strict gate.
+        srv = _get_srv()
+        from server.session import SessionState  # type: ignore
+        srv.session_state = SessionState()  # type: ignore
+        records = self._capture("flextools_manage_config", {"action": "list"})
         self.assertTrue(
-            any(lvl == _logging.WARNING and "[BLOCKED] flextools_get_module_template" in m
+            any(lvl == _logging.WARNING and "[BLOCKED] flextools_manage_config" in m
                 for lvl, m in records),
             f"blocked tool left no WARNING trace: {[m for _, m in records]}",
         )

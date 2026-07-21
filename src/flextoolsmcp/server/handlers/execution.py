@@ -161,6 +161,41 @@ ERROR_WRONG_LIBRARY = "wrong_library_imports"
 ERROR_UNPROTECTED_CODE = "unprotected_code"
 
 
+# Issue #53: cap the inlined project list so a projects-directory with
+# hundreds of entries doesn't bloat every rejection payload.
+_AVAILABLE_PROJECTS_CAP = 15
+
+
+def _available_projects_payload() -> Dict[str, Any]:
+    """Build the self-healing `available_projects` block for cold run_module
+    rejections (project_not_open / project_name_required -- issue #53).
+
+    Uses the SAME safe enumeration flextools_list_projects uses
+    (project_discovery.list_projects) -- directory scan + .fwdata existence
+    check only, never opens a project or loads the LCM cache. Capped at
+    _AVAILABLE_PROJECTS_CAP names + a total_count so the model can recover
+    in one turn without the payload growing unbounded on large projects
+    directories.
+
+    NEVER auto-selects a project -- this is purely informational so the
+    caller can choose and pass one to project_name explicitly.
+    """
+    try:
+        from ..project_discovery import list_projects
+    except ImportError:
+        from server.project_discovery import list_projects
+    try:
+        names, _source = list_projects()
+    except Exception:
+        # Discovery itself is best-effort here; never let it break the
+        # rejection response the caller actually needs.
+        names = []
+    return {
+        "available_projects": names[:_AVAILABLE_PROJECTS_CAP],
+        "total_count": len(names),
+    }
+
+
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
@@ -2425,7 +2460,8 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         return error_response(
             "project_name_required",
             "No project specified. Either set project_name in start() or provide it directly.",
-            session=session_state.summary()
+            session=session_state.summary(),
+            **_available_projects_payload(),
         )
 
     # Fuzzy resolution: autocorrect case/whitespace-only typos, return an

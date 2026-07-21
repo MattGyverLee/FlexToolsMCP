@@ -861,34 +861,87 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # first step when the user hasn't named a project yet, so forcing a session
     # (and API discovery) ahead of it is backwards. The discovery gate that
     # matters -- api_discovery_required in run_module -- is unaffected.
+    #
+    # Issue #53 (cold-start tolerance): a READ_ONLY_SAFE-annotated tool (see
+    # tool_definitions.READ_ONLY_SAFE) never touches a project, so a missing
+    # session is pure ceremony -- auto-initialize read-only instead of
+    # rejecting. flextools_run_module is a special case: it genuinely needs a
+    # project, but if the caller already named one in this very call there's
+    # no reason to bounce -- initialize the session from it (read-only unless
+    # write_enabled was explicitly passed) and let the normal run proceed. If
+    # run_module is cold AND has no project_name, it still gets auto-initialized
+    # (read-only, no project) so its OWN project_name_required rejection can
+    # attach available_projects (see handlers/execution.py) instead of dying
+    # here with the old generic message.
+    #
+    # This must NEVER auto-select a project, and must NEVER set
+    # write_enabled=True unless the caller passed it explicitly in THIS call.
+    _pending_session_note: Optional[str] = None
     if name not in _SESSION_INDEPENDENT_TOOLS and not session_state.initialized:
-        # Diagnostic context for #10 (Session-not-initialized between consecutive
-        # run_module calls). Static analysis found no code path that resets
-        # `initialized` to False, so we log identity info every time this gate
-        # fires to catch the live cause next time it happens.
-        diag = {
-            "session_state_id": id(session_state),
-            "session_id": getattr(session_state, "session_id", None),
-            "project_name": getattr(session_state, "project_name", None),
-            "api_mode": getattr(session_state, "api_mode", None),
-            "write_enabled": getattr(session_state, "write_enabled", None),
-        }
-        err_msg = "Session not initialized. Call flextools_start() first."
-        if operations_logger:
-            operations_logger.warning(f"[BLOCKED] {name}: {err_msg}")
-            operations_logger.warning(f"[BLOCKED-DIAG] {name}: {json.dumps(diag, default=str)}")
-        return [TextContent(type="text", text=json.dumps({
-            "error": "Session not initialized",
-            "message": "You must call flextools_start() first to initialize the session and set the API mode.",
-            "hint": "Call flextools_start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
-            "_diagnostic": diag,  # See #10 -- helps trace stale-ref / restart cases
-            "available_task_examples": [
-                "Add gloss to sense definitions",
-                "Delete senses with test in gloss",
-                "Count entries by part of speech",
-                "Create new lexical entries"
-            ]
-        }, indent=2))]
+        tool_def = TOOL_DEFINITIONS.get(name)
+        is_read_only_safe = bool(
+            tool_def is not None and getattr(tool_def.annotations, "readOnlyHint", False)
+        )
+        is_run_module = (name == "flextools_run_module")
+
+        if is_read_only_safe or is_run_module:
+            cold_project_name = arguments.get("project_name") if is_run_module else None
+            # Only ever honor write_enabled/undoable if the CALLER explicitly
+            # passed them on this cold run_module call -- never default to True.
+            cold_write_enabled = bool(arguments.get("write_enabled")) if (
+                is_run_module and arguments.get("write_enabled") is not None
+            ) else False
+            cold_undoable = bool(arguments.get("undoable")) if (
+                is_run_module and arguments.get("undoable") is not None
+            ) else False
+
+            session_state.configure(
+                api_mode="flexicon",
+                write_enabled=cold_write_enabled,
+                undoable=cold_undoable,
+                project_name=cold_project_name or "",
+            )
+            auto_init_count = session_state.record_auto_init()
+            if operations_logger:
+                operations_logger.info(
+                    f"[AUTO-INIT] {name}: cold session auto-initialized "
+                    f"(project={cold_project_name or '(none)'}, "
+                    f"write_enabled={cold_write_enabled}, count={auto_init_count})"
+                )
+            if is_read_only_safe:
+                _pending_session_note = (
+                    "Session auto-initialized (flexicon, read-only). Call "
+                    "flextools_start to set a project or change api_mode."
+                )
+            # Fall through to normal dispatch below -- do NOT return here.
+        else:
+            # Diagnostic context for #10 (Session-not-initialized between consecutive
+            # run_module calls). Static analysis found no code path that resets
+            # `initialized` to False, so we log identity info every time this gate
+            # fires to catch the live cause next time it happens.
+            diag = {
+                "session_state_id": id(session_state),
+                "session_id": getattr(session_state, "session_id", None),
+                "project_name": getattr(session_state, "project_name", None),
+                "api_mode": getattr(session_state, "api_mode", None),
+                "write_enabled": getattr(session_state, "write_enabled", None),
+            }
+            err_msg = "Session not initialized. Call flextools_start() first."
+            if operations_logger:
+                operations_logger.warning(f"[BLOCKED] {name}: {err_msg}")
+                operations_logger.warning(f"[BLOCKED-DIAG] {name}: {json.dumps(diag, default=str)}")
+            return [TextContent(type="text", text=json.dumps({
+                "error": "Session not initialized",
+                "message": "You must call flextools_start() first to initialize the session and set the API mode.",
+                "hint": "Call flextools_start(task='your task description') to begin. This will discover relevant APIs and configure the session.",
+                "_diagnostic": diag,  # See #10 -- helps trace stale-ref / restart cases
+                "available_task_examples": [
+                    "Add gloss to sense definitions",
+                    "Delete senses with test in gloss",
+                    "Count entries by part of speech",
+                    "Create new lexical entries"
+                ]
+            }, indent=2))]
 
     # Look up handler and input model from dispatch router
     route = get_tool_handler(name)
@@ -922,6 +975,19 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # Pydantic v2's `model_fields_set` is exactly this set, no re-dump needed.
         dumped["_user_provided_keys"] = validated_args.model_fields_set
     result = await handler(dumped)
+
+    # Issue #53: attach the cold-start auto-init note to the response body
+    # (rather than returning it as a separate signal) so it survives whatever
+    # transport/serialization the client applies to the tool result.
+    if _pending_session_note and result:
+        try:
+            _parsed = json.loads(result[0].text)
+            if isinstance(_parsed, dict):
+                _parsed["_session_note"] = _pending_session_note
+                result = [TextContent(type="text", text=json.dumps(_parsed, indent=2, ensure_ascii=False))]
+        except (ValueError, TypeError):
+            pass  # Non-JSON response body (shouldn't happen) -- leave untouched.
+
     if operations_logger:
         result_text = result[0].text if result else ""
         # Log the OUTCOME at a level that survives the default cutoff, so every

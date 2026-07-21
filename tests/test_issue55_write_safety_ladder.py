@@ -167,9 +167,14 @@ class TestRung2BackupModule:
         for i in range(4):
             backup_mod.perform_pre_write_backup("RetProj")
             # Force distinct timestamps (the resolution is whole seconds).
+            # Compute the fake timestamp up front (not as a lambda default --
+            # that would be a function call in an argument default, B008)
+            # and bind it via a closure-safe default so each patched
+            # gmtime() call returns this iteration's fixed value.
+            fake_time = _time.gmtime(_time.time() + (i + 1) * 2)
             monkeypatch.setattr(
                 _time, "gmtime",
-                (lambda base=_time.gmtime(_time.time() + (i + 1) * 2): (lambda *a: base))(),
+                lambda *a, _fake_time=fake_time: _fake_time,
             )
         remaining = sorted((tmp_path / "backups" / "RetProj").iterdir())
         assert len(remaining) <= 2

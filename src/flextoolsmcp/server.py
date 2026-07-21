@@ -247,7 +247,10 @@ class SemanticSearch:
         scores, indices = self.index.search(query_embedding, k)
 
         results = []
-        for score, idx in zip(scores[0], indices[0]):
+        # scores[0]/indices[0] are the two parallel outputs of the same faiss
+        # search() call, so they are always equal length -- strict=True makes
+        # that invariant explicit rather than silently tolerating a mismatch.
+        for score, idx in zip(scores[0], indices[0], strict=True):
             if idx < 0 or idx >= len(self.items):
                 continue
 

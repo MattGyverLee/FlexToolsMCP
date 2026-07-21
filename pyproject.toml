@@ -114,9 +114,12 @@ extend-exclude = [
 
 # Lint-widening step 1 (issue #67): full F (pyflakes) + E4/E7 on top of the
 # fatal-only floor. E9/F63/F7/F82 remain a subset, so pre-commit's fatal-only
-# gate still matches. Bugbear (B) is deferred to step 2.
+# gate still matches.
+# Lint-widening step 2 (issue #67): add B (flake8-bugbear) -- catches likely
+# bugs like mutable default args, function calls in default args, and bare
+# `raise` inside `except` (losing the original traceback context).
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+select = ["B", "E4", "E7", "E9", "F"]
 
 [tool.ruff.lint.per-file-ignores]
 # __init__.py modules re-export the package's public API for backward-compat

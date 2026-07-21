@@ -110,7 +110,7 @@ def test_size_oscillation_pattern_triggers():
     sizes = [100, 200, 100, 200, 100]  # deltas: +100, -100, +100, -100
     # Use DIFFERENT error codes so the same_error path can't grab it first
     error_codes = ["err_a", "err_b", "err_a", "err_b", "err_a"]
-    for i, (sz, ec) in enumerate(zip(sizes, error_codes)):
+    for i, (sz, ec) in enumerate(zip(sizes, error_codes, strict=True)):
         state.record_op_signal(
             error_code=ec,
             code_size_bytes=sz,

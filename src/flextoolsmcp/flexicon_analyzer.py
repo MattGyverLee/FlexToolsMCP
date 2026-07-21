@@ -1715,7 +1715,7 @@ def cross_reference_liblcm(flexlibs_data: Dict[str, Any], liblcm_path: str | Non
     all_factories = set()
     all_repos = set()
 
-    for entity_name, entity in flexlibs_data.get("entities", {}).items():
+    for _entity_name, entity in flexlibs_data.get("entities", {}).items():
         for method in entity.get("methods", []):
             lcm_map = method.get("lcm_mapping", {})
             all_factories.update(lcm_map.get("factories_used", []))

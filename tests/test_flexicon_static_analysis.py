@@ -194,7 +194,7 @@ class FlexiconStaticAnalyzer:
         has_flex_empty = False
         missing_check = False
 
-        for i, line in enumerate(lines, 1):
+        for _i, line in enumerate(lines, 1):
             # Check if code imports or defines the placeholder constant
             if "FLEX_EMPTY_PLACEHOLDER" in line or "'***'" in line or '"***"' in line:
                 has_flex_empty = True

@@ -71,7 +71,7 @@ def test_all_example_code_parses_as_python():
         try:
             ast.parse(ex["code"])
         except SyntaxError as e:
-            raise AssertionError(f"{ex['id']} code does not parse: {e}")
+            raise AssertionError(f"{ex['id']} code does not parse: {e}") from e
 
 
 if __name__ == "__main__":

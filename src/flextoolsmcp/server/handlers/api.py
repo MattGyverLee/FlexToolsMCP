@@ -681,7 +681,11 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                     KEY_ALTERNATIVES: ranked.get(KEY_MATCHES, []),
                     KEY_QUESTION: "Multiple matches found. Which did you mean?"
                 }
-            for match, ranked_match in zip(result[KEY_FLEXICON_MATCHES], ranked.get(KEY_MATCHES, [])):
+            # ranked[KEY_MATCHES] is truncated to the top 5 (see
+            # rank_object_matches), so it is often shorter than the full
+            # match list -- strict=False preserves the existing
+            # only-annotate-the-first-N behavior instead of raising.
+            for match, ranked_match in zip(result[KEY_FLEXICON_MATCHES], ranked.get(KEY_MATCHES, []), strict=False):
                 match[KEY_SCORE] = ranked_match.get(KEY_SCORE)
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
@@ -700,7 +704,10 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                         KEY_CONFIDENCE: ranked[KEY_CONFIDENCE],
                         KEY_REASONING: ranked[KEY_REASONING]
                     }
-            for match, ranked_match in zip(result[KEY_LIBLCM_MATCHES], ranked.get(KEY_MATCHES, [])):
+            # See the KEY_FLEXICON_MATCHES loop above: ranked[KEY_MATCHES] is
+            # truncated to the top 5, so lengths can differ; strict=False
+            # preserves that.
+            for match, ranked_match in zip(result[KEY_LIBLCM_MATCHES], ranked.get(KEY_MATCHES, []), strict=False):
                 match[KEY_SCORE] = ranked_match.get(KEY_SCORE)
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
@@ -718,7 +725,10 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                     KEY_CONFIDENCE: ranked[KEY_CONFIDENCE],
                     KEY_REASONING: ranked[KEY_REASONING]
                 }
-            for match, ranked_match in zip(result[KEY_FLEXLIBS_STABLE_MATCHES], ranked.get(KEY_MATCHES, [])):
+            # See the KEY_FLEXICON_MATCHES loop above: ranked[KEY_MATCHES] is
+            # truncated to the top 5, so lengths can differ; strict=False
+            # preserves that.
+            for match, ranked_match in zip(result[KEY_FLEXLIBS_STABLE_MATCHES], ranked.get(KEY_MATCHES, []), strict=False):
                 match[KEY_SCORE] = ranked_match.get(KEY_SCORE)
                 match[KEY_CONFIDENCE] = ranked_match.get(KEY_CONFIDENCE)
                 match[KEY_REASONING] = ranked_match.get(KEY_REASONING)
@@ -1168,7 +1178,11 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
             if property_lower in pythonic_name.lower() or pythonic_name.lower() in property_lower:
                 result["suggestions"].append(pythonic_name)
             elif abs(len(property_name) - len(pythonic_name)) <= 2:
-                if sum(a != b for a, b in zip(property_lower, pythonic_name.lower())) <= 2:
+                # Names may legitimately differ in length here (that's the
+                # point of the abs(...) <= 2 check above), so this is a
+                # deliberate Hamming-style compare over the shorter length,
+                # not an equal-length invariant -- strict=False is correct.
+                if sum(a != b for a, b in zip(property_lower, pythonic_name.lower(), strict=False)) <= 2:
                     result["suggestions"].append(pythonic_name)
 
         result["suggestions"] = list(set(result["suggestions"]))[:10]

@@ -256,7 +256,7 @@ def generate_code_pattern(path: List[Dict]) -> str:
     # Start with first entity (lowercase, remove I prefix)
     current_var = path[0]["from"].lower().replace("i", "", 1)
 
-    for i, step in enumerate(path):
+    for _i, step in enumerate(path):
         prop = step["via"]
         is_collection = prop.endswith("OS") or prop.endswith("OC") or prop.endswith("RC") or prop.endswith("RS")
 

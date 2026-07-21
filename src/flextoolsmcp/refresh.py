@@ -509,29 +509,38 @@ def main():
     print("=" * 60)
 
     success = True
+    any_refresh_succeeded = False
 
     # Determine what to refresh
     only_one = args.flexicon_only or args.flexlibs_only or args.liblcm_only
 
     # Refresh FlexLibs stable
     if args.flexlibs_only or (not only_one):
-        if not refresh_flexlibs_stable(args.flexlibs_path):
+        if refresh_flexlibs_stable(args.flexlibs_path):
+            any_refresh_succeeded = True
+        else:
             success = False
 
     # Refresh Flexicon
     if args.flexicon_only or (not only_one):
-        if not refresh_flexicon(args.flexicon_path):
+        if refresh_flexicon(args.flexicon_path):
+            any_refresh_succeeded = True
+        else:
             success = False
 
     # Refresh LibLCM
     if args.liblcm_only or (not only_one):
-        if not refresh_liblcm(args.dll_path):
+        if refresh_liblcm(args.dll_path):
+            any_refresh_succeeded = True
+            if not args.skip_categorization:
+                if not apply_categorization():
+                    success = False
+        else:
             success = False
-        elif not args.skip_categorization:
-            if not apply_categorization():
-                success = False
 
-    # Post-processing steps (run if any indexes were refreshed)
+    # Post-processing steps (run if any indexes were refreshed) - reverse
+    # mapping, navigation graph, and pattern extraction only make sense
+    # after a full refresh (they cross-reference multiple libraries).
     if not args.skip_postprocess and not only_one:
         print("\n" + "-" * 40)
         print("Post-processing...")
@@ -553,7 +562,11 @@ def main():
         if not run_postprocess_casting_index():
             success = False
 
-        # Archive old versions
+    # Archive old versions - runs after ANY successful refresh (full or
+    # targeted/partial), so superseded versions are pruned regardless of
+    # which --*-only flag was used. Guarded so it runs exactly once and
+    # only when at least one refresh actually succeeded.
+    if any_refresh_succeeded:
         if not run_archive_old_versions():
             success = False
 

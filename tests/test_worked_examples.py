@@ -49,6 +49,20 @@ def test_empty_query_returns_nothing():
     assert find_worked_examples() == []
 
 
+def test_wordform_query_returns_analysis_subtype_example():
+    """#12 seth-logs sub-gap: distinguishing analysis subtypes."""
+    hits = find_worked_examples(query="distinguish wordform analysis gloss")
+    assert hits, "Expected a hit for analysis-subtype query"
+    assert hits[0]["id"] == "analysis-subtype-disambiguation"
+
+
+def test_kclsid_query_returns_analysis_subtype_example():
+    """A user reaching for kclsid* constants should be steered to the example."""
+    hits = find_worked_examples(query="kclsid class id constant IWfiGloss")
+    assert hits, "Expected a hit for kclsid query"
+    assert hits[0]["id"] == "analysis-subtype-disambiguation"
+
+
 def test_object_type_drives_match():
     """find_examples passes object_type, not free-text query -- verify that path."""
     hits = find_worked_examples(object_type="phoneme")

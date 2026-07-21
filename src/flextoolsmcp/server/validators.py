@@ -1229,6 +1229,70 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
     return {"is_polymorphic_error": False}
 
 
+# Issue #12 (seth-logs sub-gap): the C# `kclsid<ClassName>` class-id constants
+# (e.g. IWfiGloss.kclsidWfiGloss, IWfiAnalysis.kclsidWfiAnalysis) are static
+# fields in LibLCM but pythonnet does NOT project them onto the interface types.
+# An AI reasonably reaches for them to discriminate analysis subtypes and hits
+# `type object 'IWfiGloss' has no attribute 'kclsidWfiGloss'`. This detector
+# recognizes that failure shape and points at the members that DO exist on every
+# ICmObject: the instance `ClassID` (int) and `ClassName` (str). No casting
+# needed -- both are on the ICmObject base, so `obj.ClassName == "WfiGloss"` is
+# the correct runtime type check.
+_PATTERN_KCLSID = re.compile(
+    r"(?:type object\s+)?'?(\w+)'?(?:\s+object)?\s+has\s+no\s+attribute\s+'(kclsid\w*)'",
+    re.IGNORECASE,
+)
+
+
+def detect_class_id_constant_error(error_msg: str) -> dict:
+    """Detect access to non-existent `kclsid*` class-id constants.
+
+    The C# `kclsid<ClassName>` static constants aren't projected by pythonnet,
+    so `IWfiGloss.kclsidWfiGloss` raises AttributeError. Rather than the generic
+    "has no attribute" path (which can't help -- there is no correctly-spelled
+    replacement attribute), steer the caller to `obj.ClassName` / `obj.ClassID`,
+    which live on ICmObject and need no cast.
+
+    Returns dict with:
+      - is_class_id_error: bool
+      - object_type: str | None    - the type the constant was accessed on
+      - constant_name: str | None  - the kclsid* name that failed
+      - suggestion: str            - how to discriminate concrete types instead
+    """
+    if not error_msg or "kclsid" not in error_msg.lower():
+        return {"is_class_id_error": False}
+
+    match = _PATTERN_KCLSID.search(error_msg)
+    if not match:
+        return {"is_class_id_error": False}
+
+    object_type, constant_name = match.groups()
+    # kclsidWfiGloss -> WfiGloss (strip the "kclsid" prefix for the ClassName hint).
+    class_name = constant_name[len("kclsid"):] or None
+
+    if class_name:
+        check_hint = f'obj.ClassName == "{class_name}"'
+    else:
+        check_hint = 'obj.ClassName == "WfiGloss"'
+
+    return {
+        "is_class_id_error": True,
+        "object_type": object_type,
+        "constant_name": constant_name,
+        "suggestion": (
+            f"'{constant_name}' is a C# class-id constant that pythonnet does NOT "
+            f"project onto '{object_type}'. There is no correctly-spelled "
+            f"replacement -- these constants simply don't exist on the Python side. "
+            f"To identify or discriminate an object's concrete type at runtime, use "
+            f"the instance members every LCM object exposes via ICmObject (no cast "
+            f"needed): obj.ClassName (str, e.g. \"{class_name or 'WfiGloss'}\") or "
+            f"obj.ClassID (int). Example: if {check_hint}: ... . "
+            f"See the 'analysis-subtype-disambiguation' worked example "
+            f"(flextools_find_examples) for the IWfiWordform/IWfiAnalysis/IWfiGloss case."
+        ),
+    }
+
+
 # Issue #75: pythonnet overload-resolution failures ("No method matches given
 # arguments") are a DIFFERENT failure class from the polymorphic-cast gates
 # above (#39/#48, PolymorphicAttributeError / casting_issues_detected). Those

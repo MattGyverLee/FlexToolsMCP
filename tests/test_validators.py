@@ -18,6 +18,7 @@ from server.validators import (
     detect_module_structure,
     detect_partial_module_structure,
     detect_polymorphic_error,
+    detect_class_id_constant_error,
     detect_overload_resolution_error,
     detect_missing_operations_imports,
     detect_wrong_library_imports,
@@ -163,6 +164,43 @@ class TestPolymorphicError(unittest.TestCase):
         error = "some random error"
         result = detect_polymorphic_error(error)
         self.assertIn("is_polymorphic_error", result)
+
+
+class TestClassIdConstantError(unittest.TestCase):
+    """Tests for detect_class_id_constant_error() -- #12 seth-logs sub-gap."""
+
+    def test_detect_type_object_form(self):
+        """The pythonnet 'type object' AttributeError form is recognized."""
+        error = "type object 'IWfiGloss' has no attribute 'kclsidWfiGloss'"
+        result = detect_class_id_constant_error(error)
+        self.assertTrue(result["is_class_id_error"])
+        self.assertEqual(result["object_type"], "IWfiGloss")
+        self.assertEqual(result["constant_name"], "kclsidWfiGloss")
+        # Guidance must steer toward ClassName / ClassID.
+        self.assertIn("ClassName", result["suggestion"])
+        self.assertIn("ClassID", result["suggestion"])
+        self.assertIn('"WfiGloss"', result["suggestion"])
+
+    def test_detect_instance_object_form(self):
+        """The plain 'X object has no attribute' form is also recognized."""
+        error = "'IWfiAnalysis' object has no attribute 'kclsidWfiAnalysis'"
+        result = detect_class_id_constant_error(error)
+        self.assertTrue(result["is_class_id_error"])
+        self.assertEqual(result["object_type"], "IWfiAnalysis")
+        self.assertEqual(result["constant_name"], "kclsidWfiAnalysis")
+
+    def test_non_kclsid_attribute_not_flagged(self):
+        """A normal missing-attribute error is not a class-id error."""
+        error = "'ILexEntry' object has no attribute 'HeadWord'"
+        result = detect_class_id_constant_error(error)
+        self.assertFalse(result["is_class_id_error"])
+
+    def test_unrelated_error_not_flagged(self):
+        result = detect_class_id_constant_error("name 'foo' is not defined")
+        self.assertFalse(result["is_class_id_error"])
+
+    def test_empty_error_not_flagged(self):
+        self.assertFalse(detect_class_id_constant_error("")["is_class_id_error"])
 
 
 def _fake_api_index_for_overloads():

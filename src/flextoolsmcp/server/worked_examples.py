@@ -298,6 +298,62 @@ def Main(project, report, modifyAllowed):
             "InflectionFeatureOperations.MakeFeatStruc",
         ],
     },
+    {
+        "id": "analysis-subtype-disambiguation",
+        "title": "Distinguish IWfiWordform / IWfiAnalysis / IWfiGloss at runtime",
+        "summary": (
+            "Word-analysis objects are polymorphic: a wordform owns analyses, "
+            "an analysis owns glosses. Do NOT reach for C# kclsid* class-id "
+            "constants (kclsidWfiGloss, kclsidWfiAnalysis) -- pythonnet does not "
+            "project them, so they raise AttributeError. Discriminate on the "
+            "obj.ClassName string (or obj.ClassID int) instead; both live on "
+            "ICmObject and need no cast."
+        ),
+        "tags": [
+            "wordform", "analysis", "gloss", "iwfiwordform", "iwfianalysis",
+            "iwfigloss", "classname", "classid", "kclsid", "class id",
+            "polymorphic", "subtype", "concrete type", "discriminate",
+            "wfianalysis", "wfigloss", "wordforms",
+        ],
+        "library": "liblcm",
+        "code": '''from flexicon import FLExProject
+# Walk the analysis hierarchy: WfiWordform -> WfiAnalysis -> WfiGloss.
+# The three types are polymorphic; identify the concrete type with the
+# ClassName property (on ICmObject), NOT with kclsid* class-id constants
+# -- those C# statics are not exposed through pythonnet.
+
+def Main(project, report, modifyAllowed):
+    wordforms = project.Cache.LangProject.WordformInventoryOA.WordformsOC
+
+    for wf in wordforms:
+        # Every LCM object exposes ClassName (str) and ClassID (int) via
+        # ICmObject -- no cast, no class-id constant needed.
+        assert wf.ClassName == "WfiWordform"
+        report.Info(f"Wordform: {wf.Form.BestVernacularAlternative.Text}")
+
+        for analysis in wf.AnalysesOC:
+            # analysis is an IWfiAnalysis. Confirm by ClassName, not by
+            # comparing against a (non-existent) kclsidWfiAnalysis constant.
+            if analysis.ClassName != "WfiAnalysis":
+                continue
+            for gloss in analysis.MeaningsOC:
+                # gloss is an IWfiGloss.
+                if gloss.ClassName == "WfiGloss":
+                    report.Info(f"  Gloss: {gloss.Form.BestAnalysisAlternative.Text}")
+
+    # WRONG -- raises AttributeError, kclsid* constants are not projected:
+    #   if analysis.ClassID == IWfiGloss.kclsidWfiGloss: ...
+    # RIGHT -- ClassName comparison, or ClassID against a known int if you
+    # have one from the metadata cache (project.GetService(IFwMetaDataCache)).
+''',
+        "see_also": [
+            "ICmObject.ClassName",
+            "ICmObject.ClassID",
+            "IWfiWordform",
+            "IWfiAnalysis",
+            "IWfiGloss",
+        ],
+    },
 ]
 
 

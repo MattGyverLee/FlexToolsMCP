@@ -1151,6 +1151,32 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
     context_entity = args.get(KEY_CONTEXT_ENTITY)
     include_casting_info = args.get(KEY_INCLUDE_CASTING_INFO, True)
 
+    # Issue #12 (seth-logs sub-gap): kclsid* class-id constants (e.g.
+    # kclsidWfiGloss) are C# statics pythonnet never projects. No amount of
+    # property resolution will find them -- short-circuit with the ClassName/
+    # ClassID guidance so the caller stops hunting for a spelling that can't exist.
+    if property_name.lower().startswith("kclsid"):
+        class_name = property_name[len("kclsid"):] or "WfiGloss"
+        on_type = context_entity or "the interface"
+        return json_response(build_response_with_context({
+            KEY_PROPERTY_NAME: property_name,
+            KEY_CONTEXT_ENTITY: context_entity,
+            KEY_FOUND: False,
+            "class_id_constant": True,
+            KEY_MESSAGE: (
+                f"'{property_name}' is a C# class-id constant that pythonnet does "
+                f"NOT project onto {on_type}. These constants don't exist on the "
+                f"Python side, so there is nothing to resolve to."
+            ),
+            KEY_GUIDANCE: (
+                f"To identify or discriminate an object's concrete type at runtime, "
+                f"use the instance members every LCM object exposes via ICmObject "
+                f"(no cast needed): obj.ClassName (str, e.g. \"{class_name}\") or "
+                f"obj.ClassID (int). Example: if obj.ClassName == \"{class_name}\": ..."
+            ),
+            "see_also_example": "analysis-subtype-disambiguation (flextools_find_examples)",
+        }, include_session=True))
+
     # Cache API index to avoid redundant lookups
     api_index = get_api_index()
 

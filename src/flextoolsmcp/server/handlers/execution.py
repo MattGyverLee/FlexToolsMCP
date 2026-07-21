@@ -58,7 +58,8 @@ except ImportError:
 # Import validators with fallback
 try:
     from ..validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
+        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -72,7 +73,8 @@ try:
     )
 except ImportError:
     from server.validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_undefined_variables,
+        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
         detect_partial_module_structure, detect_undiscovered_entities,
@@ -3912,6 +3914,23 @@ MODULE_CODE = {code}
         # Detect polymorphic attribute errors and suggest resolve_property
         if execution_result.get("error") and "has no attribute" in execution_result.get("error", ""):
             _rt_casting_index = api_idx.casting_index if api_idx else None
+            # Issue #12 (seth-logs sub-gap): a kclsid* class-id constant access is
+            # a distinct, unrecoverable-by-rename failure -- pythonnet never
+            # projects those constants. Check it first so we emit the ClassName/
+            # ClassID guidance instead of a generic "no attribute" resolve hint
+            # that can't actually fix it.
+            class_id_info = detect_class_id_constant_error(execution_result["error"])
+            if class_id_info.get("is_class_id_error"):
+                execution_result["class_id_constant_detected"] = True
+                execution_result["error_type"] = "ClassIdConstantError"
+                execution_result["object_type"] = class_id_info["object_type"]
+                execution_result["constant_name"] = class_id_info["constant_name"]
+                execution_result["help"] = class_id_info["suggestion"]
+                # Fall through skipped: the polymorphic/name-suggestion paths below
+                # have nothing useful to add for a constant that doesn't exist.
+                _skip_generic_attr_paths = True
+            else:
+                _skip_generic_attr_paths = False
             polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
             # Issue #39: Python's own "Did you mean: 'X'?" suffix is authoritative
             # about what exists on the live object, so for a typo it beats any
@@ -3921,7 +3940,9 @@ MODULE_CODE = {code}
             # being told to "resubmit" for a preflight that can't catch a raw-LCM
             # attribute typo.
             native_did_you_mean = extract_python_did_you_mean(execution_result["error"])
-            if polymorphic_info["is_polymorphic_error"] and polymorphic_info.get("rewrite"):
+            if _skip_generic_attr_paths:
+                pass  # kclsid class-id constant handled above; nothing to add.
+            elif polymorphic_info["is_polymorphic_error"] and polymorphic_info.get("rewrite"):
                 execution_result["polymorphic_error_detected"] = True
                 execution_result["error_type"] = "PolymorphicAttributeError"
                 execution_result["object_type"] = polymorphic_info["object_type"]

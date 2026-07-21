@@ -115,11 +115,48 @@ def __getattr__(name: str):
             if src_path not in sys.path:
                 sys.path.insert(0, src_path)
 
-            spec = importlib.util.spec_from_file_location("_server_module", server_path)
+            # Issue #10 root-cause fix: server.py physically lives at
+            # src/flextoolsmcp/server.py -- a SIBLING of this very package
+            # (src/flextoolsmcp/server/). Its own top-level code branches on
+            # `if __package__:` to choose between relative imports
+            # (`.server.kernel`) and script-mode absolute imports
+            # (`server.kernel`). Loading it via spec_from_file_location with
+            # a dotless name (the old "_server_module") gives it
+            # `__package__ == ""` (falsy), so it took the script-mode
+            # branch -- which imports the top-level `server` name via
+            # sys.path. Because `import server` resolves to the PACKAGE
+            # (server/__init__.py wins over server.py for same-name
+            # siblings -- see comment on session identity below), that
+            # script-mode import tree re-executed server/kernel.py under
+            # sys.modules key "server.kernel", creating a SECOND
+            # `SessionState()` singleton completely disconnected from the
+            # one this package (flextoolsmcp.server.kernel) already
+            # created when `flextoolsmcp.server` was first imported.
+            #
+            # Depending on which tree a given code path touched, session
+            # state configured via one singleton was invisible to reads
+            # against the other -- this is the split-brain behind issue
+            # #10 ("Session not initialized" between consecutive
+            # run_module calls with no in-memory reset anywhere in the
+            # call graph; static analysis alone could not find it because
+            # both singletons look individually well-behaved).
+            #
+            # Fix: name the loaded module so its __package__ is the REAL
+            # "flextoolsmcp" package (matching server.py's actual location
+            # on disk) and set that explicitly before exec. This makes
+            # `if __package__:` take the relative-import branch, which
+            # resolves `.server.kernel` to `flextoolsmcp.server.kernel` --
+            # the SAME module (and therefore the SAME session_state
+            # singleton) already used by every other package-mode import
+            # path (handlers, dispatch, admin, execution, etc.).
+            spec = importlib.util.spec_from_file_location(
+                "flextoolsmcp._server_legacy", server_path
+            )
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not load server module from {server_path}")
 
             _server_module = importlib.util.module_from_spec(spec)
+            _server_module.__package__ = "flextoolsmcp"
             spec.loader.exec_module(_server_module)
             _server_module_cache = _server_module
 

@@ -39,12 +39,12 @@ When LibLCM, FlexLibs, or Flexicon changes, regenerate the bundled indexes:
 ```
 # Refresh all indexes (requires FieldWorks DLLs + .env paths on Windows)
 python src/refresh.py
-
-# Refresh only one source
-python src/refresh.py --flexicon-only
-python src/refresh.py --flexlibs-only
-python src/refresh.py --liblcm-only
 ```
+
+There is no per-library flag anymore -- every run scans all available APIs,
+since the reverse mapping and pattern extraction cross-link LibLCM,
+FlexLibs, and Flexicon entries with each other. LibLCM is best-effort and
+is skipped gracefully if FieldWorks DLLs/pythonnet are unavailable.
 
 Commit the updated files under `src/flextoolsmcp/index/` as part of the PR.
 

@@ -418,7 +418,7 @@ def _load_library_api_index(
                 f"{_mismatch_direction(shipped_version, installed_version)}. "
                 f"Documented APIs may not match -- some methods may be missing, or "
                 f"shown but absent in your version. Regenerate a matching index with "
-                f"'python -m flextoolsmcp.refresh --{library_key}-only'."
+                f"'python -m flextoolsmcp.refresh'."
             )
             # The library IS installed but auto-refresh (step 2) could not
             # produce a matching index, so we are serving a ballpark shipped
@@ -768,18 +768,18 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         # invocations resolve in both source and installed (wheel) layouts.
         project_root = Path(__file__).parent
 
-        cmd = [sys.executable, str(refresh_script)]
-
-        if library_name == 'flexlibs':
-            cmd.append("--flexlibs-only")
-        elif library_name == 'flexicon':
-            cmd.append("--flexicon-only")
-        elif library_name == 'liblcm':
-            cmd.append("--liblcm-only")
-        else:
+        if library_name not in ('flexlibs', 'flexicon', 'liblcm'):
             return False
 
-        _log_info(f"Auto-refreshing {library_name} API index...")
+        # refresh.py always scans every available API (the scans are
+        # cross-linked, so a per-library refresh would leave the others'
+        # cross-references stale). library_name is advisory here -- it only
+        # names which missing file triggered the self-heal for the log line.
+        cmd = [sys.executable, str(refresh_script)]
+
+        _log_info(
+            f"Auto-refreshing API indexes (triggered by missing {library_name})..."
+        )
         result = subprocess.run(
             cmd,
             cwd=project_root,
@@ -789,10 +789,16 @@ def auto_refresh_missing_api_file(library_name: str, prefix: str, index_dir: Pat
         )
 
         if result.returncode == 0:
-            _log_info(f"Successfully refreshed {library_name} API index")
+            _log_info(
+                f"Successfully refreshed all available API indexes "
+                f"(triggered by missing {library_name})"
+            )
             return True
         else:
-            _log_warning(f"Failed to refresh {library_name}: {result.stderr[:500]}")
+            _log_warning(
+                f"Failed to refresh API indexes (triggered by missing "
+                f"{library_name}): {result.stderr[:500]}"
+            )
             return False
 
     except Exception as e:

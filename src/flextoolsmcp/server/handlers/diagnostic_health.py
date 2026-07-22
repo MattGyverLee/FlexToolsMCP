@@ -233,7 +233,7 @@ def _build_warnings(libraries: Dict[str, Dict[str, Any]]) -> List[str]:
                 f"Index fallback active: installed {spec['display_name']} "
                 f"{status['installed']} has no matching index; using "
                 f"{status['index_loaded'] or '?'} (stale). Run refresh with "
-                f"'python -m flextoolsmcp.refresh --{spec['key']}-only'."
+                f"'python -m flextoolsmcp.refresh'."
             )
     api_index = get_api_index()
     if api_index is not None:

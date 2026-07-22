@@ -13,11 +13,16 @@ Priority order (per library):
 
 Run this when LibLCM, FlexLibs stable, or Flexicon is updated.
 
+Every run scans ALL available APIs -- there is no per-library filter. The
+API scans are cross-linked (the reverse mapping annotates LibLCM entities
+with their FlexLibs/Flexicon wrappers, and pattern extraction annotates
+Flexicon from the shared corpus), so refreshing one library in isolation
+would leave the others' cross-references stale. LibLCM is best-effort: if
+FieldWorks DLLs / pythonnet are unavailable (e.g. a runtime/wheel install),
+its scan is skipped and the existing index is kept rather than failing.
+
 Usage:
-    python src/refresh.py                     # Refresh all indexes
-    python src/refresh.py --flexicon-only    # Only refresh Flexicon
-    python src/refresh.py --flexlibs-only     # Only refresh FlexLibs stable
-    python src/refresh.py --liblcm-only       # Only refresh LibLCM
+    python src/refresh.py                     # Refresh all available indexes
 
 Configuration:
     By default, all paths in .env are commented out (prefers installed packages).
@@ -248,6 +253,34 @@ def refresh_flexicon(flexicon_path: str | None = None) -> bool:
     )
 
 
+def liblcm_scannable(dll_path: str | None = None) -> bool:
+    """Return True if LibLCM can be scanned here.
+
+    LibLCM extraction is via .NET reflection, which needs pythonnet AND a
+    FieldWorks DLL directory. On a runtime/wheel install without FieldWorks
+    neither is present, so the scan is skipped (best-effort) rather than
+    failing the whole refresh. This is a cheap probe -- it does not load any
+    assemblies.
+    """
+    try:
+        import clr  # noqa: F401  # pythonnet availability probe
+    except Exception:
+        return False
+
+    if dll_path is None:
+        dll_path = os.environ.get("FIELDWORKS_DLL_PATH")
+
+    try:
+        if __package__:
+            from .liblcm_extractor import find_dll_directory
+        else:
+            from liblcm_extractor import find_dll_directory
+    except Exception:
+        return False
+
+    return find_dll_directory(dll_path) is not None
+
+
 def refresh_liblcm(dll_path: str | None = None) -> bool:
     """Refresh LibLCM index with versioning."""
     # Priority: explicit path > .env FIELDWORKS_DLL_PATH > auto-detect from FieldWorks
@@ -462,21 +495,6 @@ def main():
         description="Refresh FlexTools MCP API indexes"
     )
     parser.add_argument(
-        "--flexicon-only",
-        action="store_true",
-        help="Only refresh Flexicon index"
-    )
-    parser.add_argument(
-        "--flexlibs-only",
-        action="store_true",
-        help="Only refresh FlexLibs stable index"
-    )
-    parser.add_argument(
-        "--liblcm-only",
-        action="store_true",
-        help="Only refresh LibLCM index"
-    )
-    parser.add_argument(
         "--flexicon-path",
         default=None,
         help="Path to Flexicon repository (fallback; installed package is always preferred)"
@@ -511,25 +529,27 @@ def main():
     success = True
     any_refresh_succeeded = False
 
-    # Determine what to refresh
-    only_one = args.flexicon_only or args.flexlibs_only or args.liblcm_only
+    # Every run scans ALL available APIs -- there is no per-library filter.
+    # The scans are cross-linked (post-processing annotates LibLCM entities
+    # with their FlexLibs/Flexicon wrappers and Flexicon with shared patterns),
+    # so scanning one library in isolation would leave the others stale.
 
     # Refresh FlexLibs stable
-    if args.flexlibs_only or (not only_one):
-        if refresh_flexlibs_stable(args.flexlibs_path):
-            any_refresh_succeeded = True
-        else:
-            success = False
+    if refresh_flexlibs_stable(args.flexlibs_path):
+        any_refresh_succeeded = True
+    else:
+        success = False
 
     # Refresh Flexicon
-    if args.flexicon_only or (not only_one):
-        if refresh_flexicon(args.flexicon_path):
-            any_refresh_succeeded = True
-        else:
-            success = False
+    if refresh_flexicon(args.flexicon_path):
+        any_refresh_succeeded = True
+    else:
+        success = False
 
-    # Refresh LibLCM
-    if args.liblcm_only or (not only_one):
+    # Refresh LibLCM (best-effort). Reflection extraction needs pythonnet +
+    # FieldWorks DLLs; on machines without them (e.g. runtime/wheel installs)
+    # we skip the scan and keep the existing index rather than failing.
+    if liblcm_scannable(args.dll_path):
         if refresh_liblcm(args.dll_path):
             any_refresh_succeeded = True
             if not args.skip_categorization:
@@ -537,11 +557,19 @@ def main():
                     success = False
         else:
             success = False
+    else:
+        print("\n[WARN] Skipping LibLCM scan: FieldWorks DLLs / pythonnet not "
+              "available on this machine.")
+        print("       Keeping the existing LibLCM index; enrichment still "
+              "annotates it.")
 
-    # Post-processing steps (run if any indexes were refreshed) - reverse
-    # mapping, navigation graph, and pattern extraction only make sense
-    # after a full refresh (they cross-reference multiple libraries).
-    if not args.skip_postprocess and not only_one:
+    # Post-processing steps - reverse mapping, navigation graph, and pattern
+    # extraction. These cross-link the just-scanned libraries: the reverse
+    # mapping writes python_wrappers onto LibLCM entities and pattern extraction
+    # writes common_patterns onto Flexicon entities. They always run after the
+    # scans (only --skip-postprocess suppresses them) so the raw extraction
+    # output never ships without its cross-references.
+    if not args.skip_postprocess:
         print("\n" + "-" * 40)
         print("Post-processing...")
         print("-" * 40)

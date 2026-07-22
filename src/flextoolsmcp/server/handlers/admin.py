@@ -330,7 +330,6 @@ def _build_index_health_offers() -> list[dict]:
     offers = []
     for note in get_index_refresh_failures():
         lib = note["library_name"]
-        key = note["library_key"]
         installed = note["installed_version"]
         served = note["served_version"] or "unknown"
         title = f"[index] {lib} v{installed} installed but no matching index (serving v{served})"
@@ -341,7 +340,7 @@ def _build_index_health_offers() -> list[dict]:
             f"the installed library.\n\n"
             f"To help fix this, please include: your OS, how {lib} is installed "
             f"(pip/uvx/repo), and the output of "
-            f"`python -m flextoolsmcp.refresh --{key}-only`."
+            f"`python -m flextoolsmcp.refresh`."
         )
         github = _transports.build_github_issue_url(title, summary)
         mailto = _transports.build_mailto(title, summary)
@@ -352,7 +351,7 @@ def _build_index_health_offers() -> list[dict]:
             "message": summary,
             "report_github_url": github.get("url"),
             "report_mailto": mailto.get("uri"),
-            "refresh_command": f"python -m flextoolsmcp.refresh --{key}-only",
+            "refresh_command": "python -m flextoolsmcp.refresh",
         })
     return offers
 

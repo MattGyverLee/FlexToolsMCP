@@ -53,25 +53,41 @@ Users typically don't need to manually refresh - it happens automatically when v
 ### Manual Refresh Commands
 
 ```bash
-# Refresh all indexes
+# Refresh all indexes (there is no per-library flag anymore)
 python src/refresh.py
-
-# Refresh only FlexLibs stable
-python src/refresh.py --flexlibs-only
-
-# Refresh only Flexicon
-python src/refresh.py --flexicon-only
-
-# Refresh only LibLCM (requires pythonnet and FieldWorks DLLs)
-python src/refresh.py --liblcm-only
 ```
+
+Every run scans all available APIs in one pass -- the reverse mapping
+annotates LibLCM entities with their FlexLibs/Flexicon wrappers and pattern
+extraction annotates Flexicon, so scanning one library in isolation would
+leave the others' cross-references stale. LibLCM is best-effort: if
+FieldWorks DLLs/pythonnet are unavailable, its scan is skipped gracefully
+and the existing LibLCM index is kept.
+
+As a one-time post-install step, run the `flextools-mcp-refresh` console
+script (installed by the package, entry point for
+`flextoolsmcp.refresh:main`) on the machine where the MCP server will
+actually run, to warm the index and avoid the server's first-run
+lazy-refresh delay:
+
+```bash
+pip install flextools-mcp
+flextools-mcp-refresh
+```
+
+- On a Windows machine with FieldWorks installed (the normal target), this
+  warms all three indexes (flexlibs, flexicon, liblcm) to match the
+  installed library versions.
+- In a headless environment without FieldWorks, it still warms the
+  flexlibs + flexicon indexes but leaves the shipped LibLCM index in place
+  (LibLCM regeneration requires FieldWorks/pythonnet).
 
 ### When to Manually Refresh
 
 If you're iterating on Flexicon without changing the version number:
 
 1. Modify the library code
-2. Run `python src/refresh.py --flexicon-only`
+2. Run `python src/refresh.py`
 3. Test with the MCP
 
 ## Key Technical Decisions

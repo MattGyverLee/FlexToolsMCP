@@ -65,7 +65,8 @@ When the MCP server starts (`uvx flextools-mcp`, or `python -m flextoolsmcp` fro
 
 ### 5. Auto-Refresh on Demand
 
-If the server can't find a matching API file:
+If the server can't find an API file matching the installed library version, it
+self-heals by running a **full refresh** (at most once per process):
 
 ```python
 # In server.py
@@ -74,11 +75,27 @@ if not liblcm_path:
     liblcm_path = find_latest_versioned_api_file(liblcm_dir, "liblcm_api")
 ```
 
+Despite the `library_name` argument (which only names the trigger for logging),
+the refresh scans **all available APIs**, not just the missing one. This is
+deliberate: the scans are cross-linked -- the reverse mapping annotates LibLCM
+entities with their FlexLibs/Flexicon wrappers (`python_wrappers`) and pattern
+extraction annotates Flexicon (`common_patterns`) -- so regenerating a single
+library in isolation would leave the others' cross-references stale. Refreshing
+per-library is exactly how those enrichment fields were lost in 2.8.0; the
+self-heal now always runs the full, post-processed refresh so it can never
+produce a half-enriched index.
+
 The server will automatically:
-- Detect what's missing
-- Run the appropriate analyzer
-- Generate the missing API file
-- Load it on startup
+- Detect that no index matches the installed library version
+- Run a full refresh of all available APIs (LibLCM is best-effort -- skipped,
+  keeping the existing index, when FieldWorks DLLs / pythonnet are absent)
+- Re-apply the cross-link enrichment (reverse mapping, navigation graph,
+  patterns, casting index)
+- Load the regenerated index on startup
+
+To avoid paying this refresh cost on the server's first run, warm the index at
+install time with the `flextools-mcp-refresh` console command (see the refresh
+docs).
 
 ## Workflow Example
 
@@ -94,8 +111,10 @@ index/liblcm/
 #   Installed: LibLCM 8.3.0
 #   Available: liblcm_api_v8.2.3.json
 
-# Option 1: Manual refresh
-python -m flextoolsmcp.refresh --liblcm-only
+# Option 1: Manual refresh (no per-library flag anymore -- this scans all
+# available APIs; LibLCM is best-effort and skipped gracefully if FieldWorks
+# DLLs/pythonnet are unavailable)
+python -m flextoolsmcp.refresh
 
 # Now index contains both:
 index/liblcm/

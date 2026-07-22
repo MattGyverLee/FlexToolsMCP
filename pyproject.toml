@@ -45,9 +45,9 @@ dependencies = [
     # The shallow/stable FieldWorks wrapper (cdfarrow/flexlibs). Small, and its
     # only dependency (pythonnet) is already required, so we ship it too: this
     # guarantees an exact-version flexlibs index out of the box (matching the
-    # bundled flexlibs_api_v1.2.8) and lets the runtime `--flexlibs-only` refresh
-    # regenerate when the installed flexlibs drifts from what shipped. Floor at
-    # the indexed version; cap at the next major.
+    # bundled flexlibs_api_v1.2.8) and lets a runtime refresh regenerate it when
+    # the installed flexlibs drifts from what shipped. Floor at the indexed
+    # version; cap at the next major.
     "flexlibs>=1.2.8,<2",
 ]
 
@@ -75,6 +75,13 @@ Issues = "https://github.com/MattGyverLee/FlexToolsMCP/issues"
 [project.scripts]
 flextoolsmcp = "flextoolsmcp.server:run"
 flextools-mcp = "flextoolsmcp.server:run"
+# Post-install index warmup. Wheels cannot run code at install time, so this is
+# the reliable seam: run it once after `pip install`, on the machine where the
+# server will run, to regenerate indexes matching the installed libraries so the
+# server's first run does not pay the lazy self-heal delay. On a Windows machine
+# with FieldWorks it warms all three indexes; without FieldWorks/pythonnet the
+# LibLCM scan is skipped gracefully and the shipped LibLCM index is kept.
+flextools-mcp-refresh = "flextoolsmcp.refresh:main"
 
 [tool.setuptools]
 include-package-data = true

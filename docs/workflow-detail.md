@@ -136,14 +136,14 @@ Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per l
 - **Source:** LibLCM C# assemblies (FieldWorks data layer)
 - **Extraction:** .NET reflection via pythonnet — reads compiled DLLs, captures interfaces, classes, properties, methods, generic args, attribute metadata
 - **Coverage:** 100% — every public symbol, every overload
-- **Refresh:** `python src/refresh.py --liblcm-only`
+- **Refresh:** `python src/refresh.py` (full refresh scans all libraries; LibLCM is skipped gracefully if pythonnet + FieldWorks DLLs are unavailable, keeping the existing index)
 - Requires pythonnet + FieldWorks DLLs at refresh time only
 
 #### `flexicon_api.json` ★
 - **Source:** Flexicon Python wrapper (~90% LCM coverage)
 - **Extraction:** AST static analysis — parses `.py` files, captures Operations classes, decorators, type hints, docstrings, inline examples
 - **Coverage:** ~1400 methods · 99% docs · 82% examples
-- **Refresh:** `python src/refresh.py --flexicon-only`
+- **Refresh:** `python src/refresh.py` (full refresh, always scans every library)
 - Primary recommendation for new modules — best documentation
 
 #### `flexlibs_api.json`
@@ -151,7 +151,7 @@ Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per l
 - **Extraction:** AST static analysis (same parser as flexicon)
 - **Coverage:** ~40 functions · stable, FW-version-tolerant
 - **Use when:** FieldWorks < 9.0 or compatibility-bound scripts
-- **Refresh:** `refresh.py --flexlibs-only`
+- **Refresh:** `refresh.py` (full refresh, always scans every library)
 - LibLCM fallback covers the gaps the stable wrapper doesn't reach
 
 ### Derived structures
@@ -179,9 +179,10 @@ Pre-computed at refresh time via AST (Python) + .NET reflection. Versioned per l
 
 #### Refresh process — regeneration is offline
 - No network, no external API calls, auditable
-- `python src/refresh.py` — refresh all three indexes
-- Flags: `--flexicon-only`, `--flexlibs-only`, `--liblcm-only`
+- `python src/refresh.py` — refresh all indexes; there is no per-library flag anymore, every run scans all available APIs (LibLCM/FlexLibs/Flexicon are cross-linked via the reverse mapping and pattern extraction, so a partial scan would leave the others' cross-references stale). LibLCM is best-effort and is skipped gracefully when FieldWorks DLLs/pythonnet are unavailable.
+- Remaining flags: `--flexicon-path`, `--flexlibs-path`, `--dll-path`, `--skip-categorization`, `--skip-postprocess`
 - Run when source library updates, or first-time setup, or version change detected
+- Post-install seam: the package also installs a `flextools-mcp-refresh` console script (entry point for `flextoolsmcp.refresh:main`) since wheels can't run code at install time — run once on the machine that will host the MCP server. On Windows with FieldWorks installed it warms all three indexes; headless/no-FieldWorks it still warms flexlibs + flexicon but leaves the shipped LibLCM index in place
 - See `flexicon_analyzer.py`, `liblcm_extractor.py`
 
 ### Consumers — what reads from the foundation

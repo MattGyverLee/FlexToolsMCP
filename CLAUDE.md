@@ -115,18 +115,36 @@ Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/T
 When LibLCM, FlexLibs stable, or Flexicon changes, refresh the indexes:
 
 ```bash
-# Refresh all
+# Refresh all indexes (there is no per-library flag anymore)
 python src/refresh.py
-
-# Refresh only FlexLibs stable
-python src/refresh.py --flexlibs-only
-
-# Refresh only Flexicon
-python src/refresh.py --flexicon-only
-
-# Refresh only LibLCM (requires pythonnet and FieldWorks DLLs)
-python src/refresh.py --liblcm-only
 ```
+
+This always scans every available API in one pass. The reverse mapping
+annotates LibLCM entities with their FlexLibs/Flexicon wrappers
+(`python_wrappers`), and pattern extraction annotates Flexicon
+(`common_patterns`) -- scanning one library in isolation would leave the
+others' cross-references stale. LibLCM is best-effort: if FieldWorks DLLs /
+pythonnet are unavailable, its scan is skipped gracefully and the existing
+LibLCM index is kept rather than failing the whole refresh.
+
+**Post-install warmup**: the package also installs a `flextools-mcp-refresh`
+console script (entry point for `flextoolsmcp.refresh:main`) so wheels --
+which cannot run code at install time -- have a reliable seam to warm the
+index right after `pip install`, avoiding the server's first-run lazy-refresh
+delay:
+
+```bash
+pip install flextools-mcp
+flextools-mcp-refresh
+```
+
+Run it once on the machine where the MCP server will actually run:
+- On a Windows machine with FieldWorks installed (the normal target), this
+  warms all three indexes (flexlibs, flexicon, liblcm) to match the
+  installed library versions.
+- In a headless environment without FieldWorks, it still warms the
+  flexlibs + flexicon indexes but leaves the shipped LibLCM index in place
+  (LibLCM regeneration requires FieldWorks/pythonnet).
 
 **API Versioning**: Files are now stored with version suffixes (e.g., `flexicon_api_v4.1.0.json`).
 - Server automatically detects library versions and loads matching API files

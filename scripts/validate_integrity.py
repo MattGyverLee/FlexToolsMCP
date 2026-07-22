@@ -272,16 +272,19 @@ def check_refresh_runs():
         return False
 
     help_text = result.stdout
-    expected_flags = ["--flexicon-only", "--flexlibs-only", "--liblcm-only"]
-    missing = [f for f in expected_flags if f not in help_text]
-    if missing:
+    # The per-library filter flags were removed: refresh.py always scans every
+    # available API because the scans are cross-linked (a partial scan leaves
+    # the others' cross-references stale). Guard against their reintroduction.
+    removed_flags = ["--flexicon-only", "--flexlibs-only", "--liblcm-only"]
+    present = [f for f in removed_flags if f in help_text]
+    if present:
         print(
-            f"REFRESH ERROR: --help output missing expected flags: {missing}",
+            f"REFRESH ERROR: --help output has removed per-library filter flags: {present}",
             file=sys.stderr,
         )
         return False
 
-    print(f"  refresh.py: --help OK, all {len(expected_flags)} flags present [OK]")
+    print("  refresh.py: --help OK, per-library filter flags absent [OK]")
     return True
 
 

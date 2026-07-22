@@ -482,9 +482,11 @@
     },
     "LCMObjectWrapper": {
       "category": "general",
-      "method_count": 2,
+      "method_count": 3,
       "methods": {},
-      "wraps_interfaces": []
+      "wraps_interfaces": [
+        "ICmObject"
+      ]
     },
     "LexEntryOperations": {
       "category": "lexicon",
@@ -582,10 +584,11 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 8,
+      "method_count": 9,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
+        "ILexEntryRepository",
         "ILexSense",
         "IMoDerivAffMsa",
         "IMoDerivAffMsaFactory",
@@ -594,7 +597,8 @@
         "IMoStemMsa",
         "IMoStemMsaFactory",
         "IMoUnclassifiedAffixMsa",
-        "IMoUnclassifiedAffixMsaFactory"
+        "IMoUnclassifiedAffixMsaFactory",
+        "IWfiMorphBundleRepository"
       ]
     },
     "MediaOperations": {
@@ -604,9 +608,9 @@
       "wraps_interfaces": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString"
       ]
     },
@@ -617,9 +621,9 @@
       "wraps_interfaces": [
         "ICmFile",
         "ICmFileFactory",
+        "ICmFileRepository",
         "ICmFolder",
         "ICmFolderFactory",
-        "ICmObjectRepository",
         "ITsString"
       ]
     },
@@ -992,7 +996,7 @@
     },
     "SegmentOperations": {
       "category": "texts",
-      "method_count": 24,
+      "method_count": 29,
       "methods": {},
       "wraps_interfaces": [
         "ISegment",
@@ -1065,7 +1069,6 @@
       "method_count": 13,
       "methods": {},
       "wraps_interfaces": [
-        "IStTxtParaRepository",
         "ITextRepository",
         "ITsString"
       ]
@@ -1500,6 +1503,19 @@
       ],
       "flexlibs_stable": null
     },
+    "ICmFileRepository": {
+      "flexlibs_2": [
+        {
+          "class": "MediaOperations",
+          "methods": []
+        },
+        {
+          "class": "MediaType",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
     "ICmFilter": {
       "flexlibs_2": [
         {
@@ -1590,6 +1606,13 @@
       },
       "flexlibs_stable": null
     },
+    "ICmObject": {
+      "flexlibs_2": {
+        "class": "LCMObjectWrapper",
+        "methods": []
+      },
+      "flexlibs_stable": null
+    },
     "ICmObjectRepository": {
       "flexlibs_2": [
         {
@@ -1610,14 +1633,6 @@
         },
         {
           "class": "FilterTypes",
-          "methods": []
-        },
-        {
-          "class": "MediaOperations",
-          "methods": []
-        },
-        {
-          "class": "MediaType",
           "methods": []
         },
         {
@@ -2910,6 +2925,10 @@
         },
         {
           "class": "LexEntryOperations",
+          "methods": []
+        },
+        {
+          "class": "MSAOperations",
           "methods": []
         },
         {
@@ -4626,13 +4645,6 @@
       ],
       "flexlibs_stable": null
     },
-    "IStTxtParaRepository": {
-      "flexlibs_2": {
-        "class": "TranslationTypeOperations",
-        "methods": []
-      },
-      "flexlibs_stable": null
-    },
     "IText": {
       "flexlibs_2": [
         {
@@ -5594,6 +5606,13 @@
           "methods": []
         }
       ],
+      "flexlibs_stable": null
+    },
+    "IWfiMorphBundleRepository": {
+      "flexlibs_2": {
+        "class": "MSAOperations",
+        "methods": []
+      },
       "flexlibs_stable": null
     },
     "IWfiWordform": {

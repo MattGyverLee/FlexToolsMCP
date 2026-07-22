@@ -2,6 +2,59 @@
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-07-22
+
+### Refresh always scans all APIs (per-library filter removed)
+- **Removed `--flexicon-only` / `--flexlibs-only` / `--liblcm-only` from
+  `refresh.py`.** Every run now scans all available APIs. The scans are
+  cross-linked -- the reverse mapping annotates LibLCM entities with their
+  FlexLibs/Flexicon wrappers (`python_wrappers`) and pattern extraction
+  annotates Flexicon entities (`common_patterns`) -- so refreshing one library
+  in isolation left the other libraries' cross-references stale. This regressed
+  in 2.8.0, where a targeted `--flexicon-only` refresh silently dropped
+  `python_wrappers` from 201 LibLCM entities and `common_patterns` from 9
+  Flexicon entities. **Breaking:** any script or automation invoking those
+  flags must drop them; the full refresh is the only mode.
+- **LibLCM scanning is now best-effort.** A new `liblcm_scannable()` probe
+  skips the LibLCM reflection scan (keeping the existing index) when FieldWorks
+  DLLs / pythonnet are unavailable, instead of failing the whole refresh.
+  Post-processing still re-applies the cross-link enrichment to the retained
+  index.
+- **Post-processing is no longer gated to full refreshes** (it never should
+  have been). Reverse mapping, navigation graph, pattern extraction, and the
+  casting index run after every scan; only `--skip-postprocess` suppresses them.
+- **Server cold-start self-heal simplified** to trigger a single full refresh
+  (the `_REFRESH_ATTEMPTED` dedup means one refresh covers all missing
+  indexes). Stale `--*-only` guidance in the runtime version-mismatch warning,
+  health warnings, and prefilled bug-report text was updated to the flagless
+  command.
+
+### New: `flextools-mcp-refresh` post-install warmup
+- **Added the `flextools-mcp-refresh` console entry point**
+  (`flextoolsmcp.refresh:main`). Wheels cannot run code at install time, so
+  this is the reliable seam to warm the index right after install and avoid the
+  server's first-run lazy-refresh delay: run it once after `pip install`, on
+  the machine where the server will run. On Windows with FieldWorks it warms
+  all three indexes to match the installed libraries; without FieldWorks /
+  pythonnet the LibLCM scan is skipped gracefully and the shipped LibLCM index
+  is kept.
+
+### Indexes regenerated
+- **All bundled indexes regenerated** with the cross-link enrichment restored:
+  `python_wrappers` on 201 LibLCM entities, `common_patterns` on 9 Flexicon
+  entities, navigation-graph relationships (325 entities), the casting index,
+  and the semantic-search embeddings/FAISS index (3579 items).
+
+### Docs & integrity
+- Updated `CLAUDE.md`, `CONTRIBUTING.md`, `DEVELOPMENT.md`,
+  `docs/VERSIONING.md`, `docs/workflow-detail.md`,
+  `docs/workflow-detail-2-foundation.svg`, and `docs/STABILIZATION-STRATEGY.md`
+  to the flagless refresh (with the cross-linked-scan rationale and LibLCM
+  best-effort note) and to document `flextools-mcp-refresh` as the post-install
+  warmup step.
+- `scripts/validate_integrity.py` now asserts the removed per-library filter
+  flags stay absent from `refresh.py --help`, guarding against reintroduction.
+
 ## [2.8.0] - 2026-07-22
 
 ### Flexicon 4.3.0 floor + index refresh

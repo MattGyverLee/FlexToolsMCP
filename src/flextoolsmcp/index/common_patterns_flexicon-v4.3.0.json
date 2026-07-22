@@ -3001,7 +3001,7 @@
       }
     },
     "count-entries-total": {
-      "code": "entries = list(project.LexEntry.GetAll())\nentry_count = len(entries)\nsense_count = sum(project.LexEntry.GetSenseCount(e) for e in entries)\nreport.Info(f\"Entries: {entry_count}\")\nreport.Info(f\"Senses: {sense_count}\")\n",
+      "code": "entries = project.LexEntry.GetAll()\nentry_count = len(entries)\nsense_count = sum(project.LexEntry.GetSenseCount(e) for e in entries)\nreport.Info(f\"Entries: {entry_count}\")\nreport.Info(f\"Senses: {sense_count}\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3014,7 +3014,7 @@
         "project size summary",
         "entry count"
       ],
-      "notes": "GetAll returns a lazily-materialized EnumerableWrapper; wrap it in list() before using len(), subscripting, or iterating more than once.",
+      "notes": "GetAll returns a behavioral collection that supports len(), subscripting, and re-iteration directly; only wrap in list(...) if you specifically need a plain list.",
       "operations": [
         "read",
         "iterate"
@@ -3386,7 +3386,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1165,
+    "total_patterns": 1171,
     "unique_patterns": 115
   }
 }

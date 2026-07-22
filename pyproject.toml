@@ -41,7 +41,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     # The deep FieldWorks wrapper the server generates scripts against. A floor
     # (not a pin) so upgrading FLExToolsMCP re-resolves to the latest Flexicon.
-    "pyflexicon>=4.2.0,<5",
+    "pyflexicon>=4.3.0,<5",
     # The shallow/stable FieldWorks wrapper (cdfarrow/flexlibs). Small, and its
     # only dependency (pythonnet) is already required, so we ship it too: this
     # guarantees an exact-version flexlibs index out of the box (matching the

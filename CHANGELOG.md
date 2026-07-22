@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-07-22
+
+### Flexicon 4.3.0 floor + index refresh
+- **Minimum `pyflexicon` raised to `>=4.3.0,<5`** (`pyproject.toml`,
+  `requirements.txt`). Upgrading FLExToolsMCP now re-resolves to a Flexicon
+  that ships the GetAll() behavioral-collection contract by construction, so
+  the flexicon-mode advisory removed below is correct for every supported
+  install.
+- **All bundled indexes regenerated** against the current sources:
+  flexicon-mode API + LCM bridge (v4.3.0, sourced from the local clone on the
+  dev machine), flexlibs-stable API + LCM bridge (v1.2.8), LibLCM API
+  (v11.0.0), and the semantic-search embeddings/FAISS index (3579 items).
+
 ### GetAll() behavioral-collection contract (issue #37)
 - **Flexicon-mode index regenerated to v4.3.0.** Flexicon 4.3.0 upgraded
   `EnumerableWrapper` (`flexicon/code/BaseOperations.py`, commit 205d5a9) to

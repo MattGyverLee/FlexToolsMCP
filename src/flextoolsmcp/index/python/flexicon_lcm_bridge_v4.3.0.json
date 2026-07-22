@@ -33617,6 +33617,30 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "LCMObjectWrapper.AsICmObject": {
+      "class": "LCMObjectWrapper",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ICmObject"
+      ],
+      "mapping_type": "pure_python",
+      "method": "AsICmObject",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "LCMObjectWrapper.__init__": {
       "class": "LCMObjectWrapper",
       "factories_used": [],
@@ -33641,7 +33665,9 @@
         ],
         "utilities_used": []
       },
-      "lcm_deps": [],
+      "lcm_deps": [
+        "ICmObject"
+      ],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],
@@ -33678,7 +33704,9 @@
         ],
         "utilities_used": []
       },
-      "lcm_deps": [],
+      "lcm_deps": [
+        "ICmObject"
+      ],
       "mapping_type": "pure_python",
       "method": "get_property",
       "methods_called": [],
@@ -47086,6 +47114,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47168,6 +47198,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47231,6 +47263,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47287,6 +47321,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47340,6 +47376,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47351,6 +47389,92 @@
         "MainPOS (OwningSequence)"
       ],
       "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.RemoveOrphaned": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "composite",
+        "methods_called": [
+          ".Remove()"
+        ],
+        "param_usage": {
+          "entry": [
+            "arg[0] of __ResolveEntry()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName",
+          "Hvo",
+          "MorphoSyntaxAnalysesOC (OwningCollection)",
+          "MorphoSyntaxAnalysisRA (ReferenceAtomic)",
+          "MsaRA (ReferenceAtomic)",
+          "SensesOS (OwningSequence)"
+        ],
+        "repositories_used": [
+          "ILexEntryRepository",
+          "IWfiMorphBundleRepository"
+        ],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "entry",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "progress",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "composite",
+      "method": "RemoveOrphaned",
+      "methods_called": [
+        ".Remove()"
+      ],
+      "properties_accessed": [
+        "ClassName",
+        "Hvo",
+        "MorphoSyntaxAnalysesOC (OwningCollection)",
+        "MorphoSyntaxAnalysisRA (ReferenceAtomic)",
+        "MsaRA (ReferenceAtomic)",
+        "SensesOS (OwningSequence)"
+      ],
+      "repositories_used": [
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository"
+      ],
       "utilities_used": []
     },
     "MSAOperations.SetDerivAffMsaPos": {
@@ -47404,6 +47528,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47457,6 +47583,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -47501,6 +47629,8 @@
         "IMoUnclassifiedAffixMsaFactory",
         "ILexSense",
         "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
         "LexEntryTags",
         "MsaType",
         "SandboxGenericMSA"
@@ -71127,6 +71257,51 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "SegmentOperations.AppendAnalysis": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".Add()"
+        ],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAnalysisObject()"
+          ],
+          "segment_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [
+          "AnalysesRS (ReferenceSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "AppendAnalysis",
+      "methods_called": [
+        ".Add()"
+      ],
+      "properties_accessed": [
+        "AnalysesRS (ReferenceSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "SegmentOperations.AppendSentence": {
       "class": "SegmentOperations",
       "factories_used": [],
@@ -71845,6 +72020,55 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "SegmentOperations.InsertAnalysis": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".Insert()"
+        ],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAnalysisObject()"
+          ],
+          "index": [
+            "arg[0] of Insert()",
+            "arg[0] of isinstance()"
+          ],
+          "segment_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [
+          "AnalysesRS (ReferenceSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "InsertAnalysis",
+      "methods_called": [
+        ".Insert()"
+      ],
+      "properties_accessed": [
+        "AnalysesRS (ReferenceSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "SegmentOperations.IsLabel": {
       "class": "SegmentOperations",
       "factories_used": [],
@@ -71953,6 +72177,47 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "SegmentOperations.RemoveAnalysis": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "index": [
+            "arg[0] of RemoveAt()",
+            "arg[0] of isinstance()"
+          ],
+          "segment_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [
+          "AnalysesRS (ReferenceSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "RemoveAnalysis",
+      "methods_called": [],
+      "properties_accessed": [
+        "AnalysesRS (ReferenceSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "SegmentOperations.ReparseParagraph": {
       "class": "SegmentOperations",
       "factories_used": [],
@@ -71992,6 +72257,101 @@
       "methods_called": [],
       "properties_accessed": [
         "SegmentsOS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "SegmentOperations.ReplaceAnalysis": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "new_analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAnalysisObject()"
+          ],
+          "old_analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAnalysisObject()"
+          ],
+          "segment_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [
+          "AnalysesRS (ReferenceSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "ReplaceAnalysis",
+      "methods_called": [],
+      "properties_accessed": [
+        "AnalysesRS (ReferenceSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "SegmentOperations.SetAnalysis": {
+      "class": "SegmentOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "analysis_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAnalysisObject()"
+          ],
+          "index": [
+            "arg[0] of isinstance()"
+          ],
+          "segment_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetSegmentObject()"
+          ]
+        },
+        "properties_accessed": [
+          "AnalysesRS (ReferenceSequence)"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ISegment",
+        "ISegmentFactory",
+        "IStTxtPara",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "SetAnalysis",
+      "methods_called": [],
+      "properties_accessed": [
+        "AnalysesRS (ReferenceSequence)"
       ],
       "repositories_used": [],
       "utilities_used": []

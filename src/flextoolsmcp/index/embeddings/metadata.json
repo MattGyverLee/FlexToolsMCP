@@ -1062,7 +1062,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "AgentOperations GetAll Iterate over all agents in the project's AnalyzingAgentsOC. Iterate over all agents in the project's AnalyzingAgentsOC.\n\nOverrides the PossibilityItemOperations.GetAll inherited\ndefault, which assumes the list-object has PossibilitiesOS.\nLangProject.AnalyzingAgentsOC is a plain LcmOwningCollection\nof ICmAgent, not a CmPossibilityList, so PossibilitiesOS\ndoesn't exist on it -- AttributeError every call. Iterate the\ncollection directly.\n returns list retrieval",
+      "text": "AgentOperations GetAll Iterate over all agents in the project's AnalyzingAgentsOC. Iterate over all agents in the project's AnalyzingAgentsOC.\n\nOverrides the PossibilityItemOperations.GetAll inherited\ndefault, which assumes the list-object has PossibilitiesOS.\nLangProject.AnalyzingAgentsOC is a plain LcmOwningCollection\nof ICmAgent, not a CmPossibilityList, so PossibilitiesOS\ndoesn't exist on it -- AttributeError every call. Iterate the\ncollection directly.\n returns list[ICmAgent] retrieval",
       "type": "method"
     },
     {
@@ -1389,7 +1389,7 @@
       "name": "GetAll",
       "signature": "GetAll(entry_or_hvo=None)",
       "source": "flexicon",
-      "text": "AllomorphOperations GetAll Get all allomorphs for a lexical entry, or all allomorphs in the entire project. Get all allomorphs for a lexical entry, or all allomorphs in the entire project.\n\nReturns a smart collection of wrapped allomorph objects that transparently\nhandle the two concrete types (MoStemAllomorph and MoAffixAllomorph).\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all allomorphs in the entire project. returns AllomorphCollection retrieval",
+      "text": "AllomorphOperations GetAll Get all allomorphs for a lexical entry, or all allomorphs in the entire project. Get all allomorphs for a lexical entry, or all allomorphs in the entire project.\n\nReturns a smart collection of wrapped allomorph objects that transparently\nhandle the two concrete types (MoStemAllomorph and MoAffixAllomorph).\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all allomorphs in the entire project. returns AllomorphCollection[Allomorph] retrieval",
       "type": "method"
     },
     {
@@ -1782,7 +1782,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "AnnotationDefOperations GetAll Get all annotation definitions in the project. Get all annotation definitions in the project.\n returns ICmAnnotationDefn retrieval",
+      "text": "AnnotationDefOperations GetAll Get all annotation definitions in the project. Get all annotation definitions in the project.\n returns EnumerableWrapper[ICmAnnotationDefn] retrieval",
       "type": "method"
     },
     {
@@ -2133,7 +2133,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "AnthropologyOperations GetAll Get all anthropology items in the project. Get all anthropology items in the project.\n recursive If True (default), returns every item in the hierarchy (depth-first, parents before children). If False, returns only top-level items and the caller must descend via GetSubitems. returns list retrieval",
+      "text": "AnthropologyOperations GetAll Get all anthropology items in the project. Get all anthropology items in the project.\n recursive If True (default), returns every item in the hierarchy (depth-first, parents before children). If False, returns only top-level items and the caller must descend via GetSubitems. returns list[ICmAnthroItem] retrieval",
       "type": "method"
     },
     {
@@ -2553,12 +2553,12 @@
     },
     {
       "category": "general",
-      "description": "Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.).\n\nSubclasses declare class-level constants:\n\nCATALOG_FILE\nFilename of the catalog XML, e.g. \"GOLDEtic.xml\" or\n\"PhonFeatsEticGlossList.xml\".\n\nCATALOG_SUBDIR\nRelative subdirectory under FWCodeDir. Defaults to \"Templates\"\nin this base; subclasses override for catalogs that live\nelsewhere (e.g. \"Language Explorer/MGA/GlossLists\").\n\nCATALOG_PARSER\nStaticmethod returning ``list[CatalogEntry]`` from a file path.\nEither ``parse_etic_catalog`` or ``parse_etic_gloss_list``.\n\nCATALOG_PREFIX_WRITE\nEither a string (e.g. ``\"GOLD\"``) or ``None``.\n* String: the mixin writes ``CatalogSourceId = \"{PREFIX}:{entry.id}\"``.\n* None: the mixin writes ``CatalogSourceId = entry.id`` (the bare\nFW convention used by PhonFeats).\n\nDOMAIN_LABEL\nShort human-readable label used in error messages, e.g.\n\"POS\" or \"feature\".\n\nSubclasses must also set the optional class flag:\n\n_supports_recursive_entries (bool, default False)\nTrue for catalogs whose CatalogEntry tree is hierarchical and\nshould produce a parallel hierarchy of LCM objects (POS:\ntop-level entries become top-level POSs, nested entries\nbecome SubPossibilitiesOS). When True, the mixin recurses on\nentry.children calling _create_from_entry(child,\nparent_obj=created_obj).\n\nFalse for catalogs whose top-level entries own a flat list of\nchildren that need bespoke per-domain handling (PhonFeats:\nvalue children of a feature). When False, the mixin invokes\n``_handle_entry_children(entry, created_obj, ...)`` once per\ntop-level entry; the subclass is responsible for the children.\n\nSubclasses implement these hook methods:\n\n_factory_create_attached(self, guid, parent)\nTry the LCM 2-arg factory overload ``Create(Guid, parent)``.\n``parent`` is whatever was passed to ``_create_from_entry`` -\neither the parent LCM object (subcategory case) or the\n\"root list\" returned by ``_get_root_list()`` (top-level case).\nMust return either the new LCM object (Path A success) or\n``None`` (Path A failed; mixin then runs Path B).\n\n_path_b_attach(self, new_obj, parent_obj)\nPath B fallback: attach ``new_obj`` (just created via\n``concrete_factory.Create(guid)``) to its owning collection.\n``parent_obj`` matches the ``parent`` arg passed to the\ntop-level _create_from_entry call; if it is None and the\ndomain supports subcategories, the subclass attaches to the\ntop-level collection on ``_get_root_list()``.\n* POS: ``parent_obj.SubPossibilitiesOS.Add(new_obj)`` if\nparent_obj is a POS, else\n``self.project.lp.PartsOfSpeechOA.PossibilitiesOS.Add(new_obj)``.\n* PhonFeats: ``self._get_root_list().FeaturesOC.Add(new_obj)``.\n\n_cast_to_domain(self, raw_lcm_obj)\nReturn the interface-cast view of the raw LCM object.\n* POS:        ``IPartOfSpeech(raw)``\n* PhonFeats:  ``IFsClosedFeature(raw)``\n\n_set_localized(self, obj, term, abbrev, def_, missing_ws_seen, warnings)\nPer-domain multistring writes. ``term``, ``abbrev`` and ``def_``\nare ``{ws_tag: text}`` dicts from the CatalogEntry. The\nsubclass writes ``obj.Name`` / ``obj.Abbreviation`` /\n``obj.Description`` (where present) using\n``_set_multistring`` which the mixin provides.\n\n_walk_existing(self)\nYield existing items for idempotency lookup. For domains\nwith subcategories (POS), this walks recursively. For flat\ndomains (PhonFeats), it yields top-level items.\n\n_get_root_list(self)\nReturn the top-level owner object. POS returns\n``self.project.lp.PartsOfSpeechOA``; PhonFeats returns\n``self.project.lp.PhFeatureSystemOA``.\n\n_handle_entry_children(self, entry, created_obj, missing_ws_seen, warnings, result)\nPer-domain handling of CatalogEntry.children.\n* POS: empty (use ``_supports_recursive_entries=True`` instead).\n* PhonFeats: walk ``entry.children`` (value entries) and\ncreate IFsSymFeatVal items under ``created_obj.ValuesOC``,\nrespecting per-feature value-GUID idempotency.\n``result`` is the CatalogImportResult (so per-value\ncreated/skipped counts and created_guids can be updated).\n``result`` is None when called from CreateFromCatalog or\nFixGuidsAgainstCatalog; subclasses must handle that.\n\nThe mixin provides three public methods (ImportCatalog,\nCreateFromCatalog, FixGuidsAgainstCatalog) plus private helpers\n(_create_from_entry, _get_all_guids, _find_by_guid,\n_set_multistring, _flattened_catalog_count). The public methods are\nplain ``def``s on the mixin; subclasses reach them through normal\ninstance dispatch (see the note below for the @OperationsMethod\nconvention).\n\nWhy a mixin and not inheritance? The shared behaviour cuts across\nOperations classes that have their own primary inheritance chain\n(BaseOperations); a mixin keeps the catalog-import surface composable\nwith that chain without disturbing it.",
+      "description": "Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.).\n\nSubclasses declare class-level constants:\n\nCATALOG_FILE\nFilename of the catalog XML, e.g. \"GOLDEtic.xml\" or\n\"PhonFeatsEticGlossList.xml\".\n\nCATALOG_SUBDIR\nRelative subdirectory under FWCodeDir. Defaults to \"Templates\"\nin this base; subclasses override for catalogs that live\nelsewhere (e.g. \"Language Explorer/MGA/GlossLists\").\n\nCATALOG_PARSER\nStaticmethod returning ``list[CatalogEntry]`` from a file path.\nEither ``parse_etic_catalog`` or ``parse_etic_gloss_list``.\n\nCATALOG_PREFIX_WRITE\nEither a string (e.g. ``\"GOLD\"``) or ``None``.\n\n* String: the mixin writes ``CatalogSourceId = \"{PREFIX}:{entry.id}\"``.\n* None: the mixin writes ``CatalogSourceId = entry.id`` (the bare\nFW convention used by PhonFeats).\n\nDOMAIN_LABEL\nShort human-readable label used in error messages, e.g.\n\"POS\" or \"feature\".\n\nSubclasses must also set the optional class flag:\n\n_supports_recursive_entries (bool, default False)\nTrue for catalogs whose CatalogEntry tree is hierarchical and\nshould produce a parallel hierarchy of LCM objects (POS:\ntop-level entries become top-level POSs, nested entries\nbecome SubPossibilitiesOS). When True, the mixin recurses on\nentry.children calling _create_from_entry(child,\nparent_obj=created_obj).\n\nFalse for catalogs whose top-level entries own a flat list of\nchildren that need bespoke per-domain handling (PhonFeats:\nvalue children of a feature). When False, the mixin invokes\n``_handle_entry_children(entry, created_obj, ...)`` once per\ntop-level entry; the subclass is responsible for the children.\n\nSubclasses implement these hook methods:\n\n_factory_create_attached(self, guid, parent)\nTry the LCM 2-arg factory overload ``Create(Guid, parent)``.\n``parent`` is whatever was passed to ``_create_from_entry`` -\neither the parent LCM object (subcategory case) or the\n\"root list\" returned by ``_get_root_list()`` (top-level case).\nMust return either the new LCM object (Path A success) or\n``None`` (Path A failed; mixin then runs Path B).\n\n_path_b_attach(self, new_obj, parent_obj)\nPath B fallback: attach ``new_obj`` (just created via\n``concrete_factory.Create(guid)``) to its owning collection.\n``parent_obj`` matches the ``parent`` arg passed to the\ntop-level _create_from_entry call; if it is None and the\ndomain supports subcategories, the subclass attaches to the\ntop-level collection on ``_get_root_list()``.\n\n* POS: ``parent_obj.SubPossibilitiesOS.Add(new_obj)`` if\nparent_obj is a POS, else\n``self.project.lp.PartsOfSpeechOA.PossibilitiesOS.Add(new_obj)``.\n* PhonFeats: ``self._get_root_list().FeaturesOC.Add(new_obj)``.\n\n_cast_to_domain(self, raw_lcm_obj)\nReturn the interface-cast view of the raw LCM object.\n\n* POS:        ``IPartOfSpeech(raw)``\n* PhonFeats:  ``IFsClosedFeature(raw)``\n\n_set_localized(self, obj, term, abbrev, ``def_``, missing_ws_seen, warnings)\nPer-domain multistring writes. ``term``, ``abbrev`` and ``def_``\nare ``{ws_tag: text}`` dicts from the CatalogEntry. The\nsubclass writes ``obj.Name`` / ``obj.Abbreviation`` /\n``obj.Description`` (where present) using\n``_set_multistring`` which the mixin provides.\n\n_walk_existing(self)\nYield existing items for idempotency lookup. For domains\nwith subcategories (POS), this walks recursively. For flat\ndomains (PhonFeats), it yields top-level items.\n\n_get_root_list(self)\nReturn the top-level owner object. POS returns\n``self.project.lp.PartsOfSpeechOA``; PhonFeats returns\n``self.project.lp.PhFeatureSystemOA``.\n\n_handle_entry_children(self, entry, created_obj, missing_ws_seen, warnings, result)\nPer-domain handling of CatalogEntry.children.\n\n* POS: empty (use ``_supports_recursive_entries=True`` instead).\n* PhonFeats: walk ``entry.children`` (value entries) and\ncreate IFsSymFeatVal items under ``created_obj.ValuesOC``,\nrespecting per-feature value-GUID idempotency.\n\n``result`` is the CatalogImportResult (so per-value\ncreated/skipped counts and created_guids can be updated).\n``result`` is None when called from CreateFromCatalog or\nFixGuidsAgainstCatalog; subclasses must handle that.\n\nThe mixin provides three public methods (ImportCatalog,\nCreateFromCatalog, FixGuidsAgainstCatalog) plus private helpers\n(_create_from_entry, _get_all_guids, _find_by_guid,\n_set_multistring, _flattened_catalog_count). The public methods are\nplain ``def``\\ s on the mixin; subclasses reach them through normal\ninstance dispatch (see the note below for the @OperationsMethod\nconvention).\n\nWhy a mixin and not inheritance? The shared behaviour cuts across\nOperations classes that have their own primary inheritance chain\n(BaseOperations); a mixin keeps the catalog-import surface composable\nwith that chain without disturbing it.",
       "entity": "CatalogBackedMixin",
       "id": "flexicon:CatalogBackedMixin",
       "name": "CatalogBackedMixin",
       "source": "flexicon",
-      "text": "CatalogBackedMixin Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.).\n\nSubclasses declare class-level constants:\n\nCATALOG_FILE\nFilename of the catalog XML, e.g. \"GOLDEtic.xml\" or\n\"PhonFeatsEticGlossList.xml\".\n\nCATALOG_SUBDIR\nRelative subdirectory under FWCodeDir. Defaults to \"Templates\"\nin this base; subclasses override for catalogs that live\nelsewhere (e.g. \"Language Explorer/MGA/GlossLists\").\n\nCATALOG_PARSER\nStaticmethod returning ``list[CatalogEntry]`` from a file path.\nEither ``parse_etic_catalog`` or ``parse_etic_gloss_list``.\n\nCATALOG_PREFIX_WRITE\nEither a string (e.g. ``\"GOLD\"``) or ``None``.\n* String: the mixin writes ``CatalogSourceId = \"{PREFIX}:{entry.id}\"``.\n* None: the mixin writes ``CatalogSourceId = entry.id`` (the bare\nFW convention used by PhonFeats).\n\nDOMAIN_LABEL\nShort human-readable label used in error messages, e.g.\n\"POS\" or \"feature\".\n\nSubclasses must also set the optional class flag:\n\n_supports_recursive_entries (bool, default False)\nTrue for catalogs whose CatalogEntry tree is hierarchical and\nshould produce a parallel hierarchy of LCM objects (POS:\ntop-level entries become top-level POSs, nested entries\nbecome SubPossibilitiesOS). When True, the mixin recurses on\nentry.children calling _create_from_entry(child,\nparent_obj=created_obj).\n\nFalse for catalogs whose top-level entries own a flat list of\nchildren that need bespoke per-domain handling (PhonFeats:\nvalue children of a feature). When False, the mixin invokes\n``_handle_entry_children(entry, created_obj, ...)`` once per\ntop-level entry; the subclass is responsible for the children.\n\nSubclasses implement these hook methods:\n\n_factory_create_attached(self, guid, parent)\nTry the LCM 2-arg factory overload ``Create(Guid, parent)``.\n``parent`` is whatever was passed to ``_create_from_entry`` -\neither the parent LCM object (subcategory case) or the\n\"root list\" returned by ``_get_root_list()`` (top-level case).\nMust return either the new LCM object (Path A success) or\n``None`` (Path A failed; mixin then runs Path B).\n\n_path_b_attach(self, new_obj, parent_obj)\nPath B fallback: attach ``new_obj`` (just created via\n``concrete_factory.Create(guid)``) to its owning collection.\n``parent_obj`` matches the ``parent`` arg passed to the\ntop-level _create_from_entry call; if it is None and the\ndomain supports subcategories, the subclass attaches to the\ntop-level collection on ``_get_root_list()``.\n* POS: ``parent_obj.SubPossibilitiesOS.Add(new_obj)`` if\nparent_obj is a POS, else\n``self.project.lp.PartsOfSpeechOA.PossibilitiesOS.Add(new_obj)``.\n* PhonFeats: ``self._get_root_list().FeaturesOC.Add(new_obj)``.\n\n_cast_to_domain(self, raw_lcm_obj)\nReturn the interface-cast view of the raw LCM object.\n* POS:        ``IPartOfSpeech(raw)``\n* PhonFeats:  ``IFsClosedFeature(raw)``\n\n_set_localized(self, obj, term, abbrev, def_, missing_ws_seen, warnings)\nPer-domain multistring writes. ``term``, ``abbrev`` and ``def_``\nare ``{ws_tag: text}`` dicts from the CatalogEntry. The\nsubclass writes ``obj.Name`` / ``obj.Abbreviation`` /\n``obj.Description`` (where present) using\n``_set_multistring`` which the mixin provides.\n\n_walk_existing(self)\nYield existing items for idempotency lookup. For domains\nwith subcategories (POS), this walks recursively. For flat\ndomains (PhonFeats), it yields top-level items.\n\n_get_root_list(self)\nReturn the top-level owner object. POS returns\n``self.project.lp.PartsOfSpeechOA``; PhonFeats returns\n``self.project.lp.PhFeatureSystemOA``.\n\n_handle_entry_children(self, entry, created_obj, missing_ws_seen, warnings, result)\nPer-domain handling of CatalogEntry.children.\n* POS: empty (use ``_supports_recursive_entries=True`` instead).\n* PhonFeats: walk ``entry.children`` (value entries) and\ncreate IFsSymFeatVal items under ``created_obj.ValuesOC``,\nrespecting per-feature value-GUID idempotency.\n``result`` is the CatalogImportResult (so per-value\ncreated/skipped counts and created_guids can be updated).\n``result`` is None when called from CreateFromCatalog or\nFixGuidsAgainstCatalog; subclasses must handle that.\n\nThe mixin provides three public methods (ImportCatalog,\nCreateFromCatalog, FixGuidsAgainstCatalog) plus private helpers\n(_create_from_entry, _get_all_guids, _find_by_guid,\n_set_multistring, _flattened_catalog_count). The public methods are\nplain ``def``s on the mixin; subclasses reach them through normal\ninstance dispatch (see the note below for the @OperationsMethod\nconvention).\n\nWhy a mixin and not inheritance? The shared behaviour cuts across\nOperations classes that have their own primary inheritance chain\n(BaseOperations); a mixin keeps the catalog-import surface composable\nwith that chain without disturbing it. Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc. category general Class for working with general data in FieldWorks",
+      "text": "CatalogBackedMixin Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc.).\n\nSubclasses declare class-level constants:\n\nCATALOG_FILE\nFilename of the catalog XML, e.g. \"GOLDEtic.xml\" or\n\"PhonFeatsEticGlossList.xml\".\n\nCATALOG_SUBDIR\nRelative subdirectory under FWCodeDir. Defaults to \"Templates\"\nin this base; subclasses override for catalogs that live\nelsewhere (e.g. \"Language Explorer/MGA/GlossLists\").\n\nCATALOG_PARSER\nStaticmethod returning ``list[CatalogEntry]`` from a file path.\nEither ``parse_etic_catalog`` or ``parse_etic_gloss_list``.\n\nCATALOG_PREFIX_WRITE\nEither a string (e.g. ``\"GOLD\"``) or ``None``.\n\n* String: the mixin writes ``CatalogSourceId = \"{PREFIX}:{entry.id}\"``.\n* None: the mixin writes ``CatalogSourceId = entry.id`` (the bare\nFW convention used by PhonFeats).\n\nDOMAIN_LABEL\nShort human-readable label used in error messages, e.g.\n\"POS\" or \"feature\".\n\nSubclasses must also set the optional class flag:\n\n_supports_recursive_entries (bool, default False)\nTrue for catalogs whose CatalogEntry tree is hierarchical and\nshould produce a parallel hierarchy of LCM objects (POS:\ntop-level entries become top-level POSs, nested entries\nbecome SubPossibilitiesOS). When True, the mixin recurses on\nentry.children calling _create_from_entry(child,\nparent_obj=created_obj).\n\nFalse for catalogs whose top-level entries own a flat list of\nchildren that need bespoke per-domain handling (PhonFeats:\nvalue children of a feature). When False, the mixin invokes\n``_handle_entry_children(entry, created_obj, ...)`` once per\ntop-level entry; the subclass is responsible for the children.\n\nSubclasses implement these hook methods:\n\n_factory_create_attached(self, guid, parent)\nTry the LCM 2-arg factory overload ``Create(Guid, parent)``.\n``parent`` is whatever was passed to ``_create_from_entry`` -\neither the parent LCM object (subcategory case) or the\n\"root list\" returned by ``_get_root_list()`` (top-level case).\nMust return either the new LCM object (Path A success) or\n``None`` (Path A failed; mixin then runs Path B).\n\n_path_b_attach(self, new_obj, parent_obj)\nPath B fallback: attach ``new_obj`` (just created via\n``concrete_factory.Create(guid)``) to its owning collection.\n``parent_obj`` matches the ``parent`` arg passed to the\ntop-level _create_from_entry call; if it is None and the\ndomain supports subcategories, the subclass attaches to the\ntop-level collection on ``_get_root_list()``.\n\n* POS: ``parent_obj.SubPossibilitiesOS.Add(new_obj)`` if\nparent_obj is a POS, else\n``self.project.lp.PartsOfSpeechOA.PossibilitiesOS.Add(new_obj)``.\n* PhonFeats: ``self._get_root_list().FeaturesOC.Add(new_obj)``.\n\n_cast_to_domain(self, raw_lcm_obj)\nReturn the interface-cast view of the raw LCM object.\n\n* POS:        ``IPartOfSpeech(raw)``\n* PhonFeats:  ``IFsClosedFeature(raw)``\n\n_set_localized(self, obj, term, abbrev, ``def_``, missing_ws_seen, warnings)\nPer-domain multistring writes. ``term``, ``abbrev`` and ``def_``\nare ``{ws_tag: text}`` dicts from the CatalogEntry. The\nsubclass writes ``obj.Name`` / ``obj.Abbreviation`` /\n``obj.Description`` (where present) using\n``_set_multistring`` which the mixin provides.\n\n_walk_existing(self)\nYield existing items for idempotency lookup. For domains\nwith subcategories (POS), this walks recursively. For flat\ndomains (PhonFeats), it yields top-level items.\n\n_get_root_list(self)\nReturn the top-level owner object. POS returns\n``self.project.lp.PartsOfSpeechOA``; PhonFeats returns\n``self.project.lp.PhFeatureSystemOA``.\n\n_handle_entry_children(self, entry, created_obj, missing_ws_seen, warnings, result)\nPer-domain handling of CatalogEntry.children.\n\n* POS: empty (use ``_supports_recursive_entries=True`` instead).\n* PhonFeats: walk ``entry.children`` (value entries) and\ncreate IFsSymFeatVal items under ``created_obj.ValuesOC``,\nrespecting per-feature value-GUID idempotency.\n\n``result`` is the CatalogImportResult (so per-value\ncreated/skipped counts and created_guids can be updated).\n``result`` is None when called from CreateFromCatalog or\nFixGuidsAgainstCatalog; subclasses must handle that.\n\nThe mixin provides three public methods (ImportCatalog,\nCreateFromCatalog, FixGuidsAgainstCatalog) plus private helpers\n(_create_from_entry, _get_all_guids, _find_by_guid,\n_set_multistring, _flattened_catalog_count). The public methods are\nplain ``def``\\ s on the mixin; subclasses reach them through normal\ninstance dispatch (see the note below for the @OperationsMethod\nconvention).\n\nWhy a mixin and not inheritance? The shared behaviour cuts across\nOperations classes that have their own primary inheritance chain\n(BaseOperations); a mixin keeps the catalog-import surface composable\nwith that chain without disturbing it. Mixin for Operations classes that wrap LCM possibility-list /\nfeature-system domains backed by a SIL catalog XML file (GOLDEtic,\nPhonFeatsEticGlossList, etc. category general Class for working with general data in FieldWorks",
       "type": "entity"
     },
     {
@@ -2730,7 +2730,7 @@
       "name": "GetAllCheckTypes",
       "signature": "GetAllCheckTypes()",
       "source": "flexicon",
-      "text": "CheckOperations GetAllCheckTypes Get all consistency check types in the project. Get all consistency check types in the project.\n\nReturns all check types that are available for validation and\nconsistency checking.\n returns ICmPossibility retrieval",
+      "text": "CheckOperations GetAllCheckTypes Get all consistency check types in the project. Get all consistency check types in the project.\n\nReturns all check types that are available for validation and\nconsistency checking.\n returns EnumerableWrapper[ICmPossibility] retrieval",
       "type": "method"
     },
     {
@@ -3231,7 +3231,7 @@
       "name": "GetAll",
       "signature": "GetAll(row_or_hvo)",
       "source": "flexicon",
-      "text": "ConstChartClauseMarkerOperations GetAll Get all clause markers in a chart row. Get all clause markers in a chart row.\n row_or_hvo Either an IConstChartRow object or its HVO returns list retrieval",
+      "text": "ConstChartClauseMarkerOperations GetAll Get all clause markers in a chart row. Get all clause markers in a chart row.\n row_or_hvo Either an IConstChartRow object or its HVO returns list[IConstChartClauseMarker] retrieval",
       "type": "method"
     },
     {
@@ -3427,7 +3427,7 @@
       "name": "GetAll",
       "signature": "GetAll(chart_or_hvo)",
       "source": "flexicon",
-      "text": "ConstChartMovedTextOperations GetAll Get all moved text markers in a constituent chart. Get all moved text markers in a constituent chart.\n chart_or_hvo Either an IDsConstChart object or its HVO returns list retrieval",
+      "text": "ConstChartMovedTextOperations GetAll Get all moved text markers in a constituent chart. Get all moved text markers in a constituent chart.\n chart_or_hvo Either an IDsConstChart object or its HVO returns list[IConstChartMovedTextMarker] retrieval",
       "type": "method"
     },
     {
@@ -3530,13 +3530,13 @@
     },
     {
       "category": "discourse",
-      "description": "Get all constituent charts in the project.\n\nThis method returns an iterator over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
+      "description": "Get all constituent charts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
       "entity": "ConstChartOperations",
       "id": "flexicon:ConstChartOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "ConstChartOperations GetAll Get all constituent charts in the project. Get all constituent charts in the project.\n\nThis method returns an iterator over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n returns IDsConstChart retrieval",
+      "text": "ConstChartOperations GetAll Get all constituent charts in the project. Get all constituent charts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n returns EnumerableWrapper[IDsConstChart] retrieval",
       "type": "method"
     },
     {
@@ -3656,7 +3656,7 @@
       "name": "GetAll",
       "signature": "GetAll(chart_or_hvo)",
       "source": "flexicon",
-      "text": "ConstChartRowOperations GetAll Get all rows in a constituent chart. Get all rows in a constituent chart.\n chart_or_hvo Either an IDsConstChart object or its HVO returns list retrieval",
+      "text": "ConstChartRowOperations GetAll Get all rows in a constituent chart. Get all rows in a constituent chart.\n chart_or_hvo Either an IDsConstChart object or its HVO returns list[IConstChartRow] retrieval",
       "type": "method"
     },
     {
@@ -3787,7 +3787,7 @@
       "name": "GetAll",
       "signature": "GetAll(row_or_hvo)",
       "source": "flexicon",
-      "text": "ConstChartWordGroupOperations GetAll Get all word groups in a chart row. Get all word groups in a chart row.\n row_or_hvo Either an IConstChartRow object or its HVO returns list retrieval",
+      "text": "ConstChartWordGroupOperations GetAll Get all word groups in a chart row. Get all word groups in a chart row.\n row_or_hvo Either an IConstChartRow object or its HVO returns list[IConstChartWordGroup] retrieval",
       "type": "method"
     },
     {
@@ -4466,7 +4466,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "DataNotebookOperations GetAll Get all research notebook records in the project. Get all research notebook records in the project.\n\nReturns all top-level notebook records. Use GetSubRecords() to navigate\nthe hierarchical structure of records and their sub-records.\n returns IRnGenericRec retrieval",
+      "text": "DataNotebookOperations GetAll Get all research notebook records in the project. Get all research notebook records in the project.\n\nReturns all top-level notebook records. Use GetSubRecords() to navigate\nthe hierarchical structure of records and their sub-records.\n returns EnumerableWrapper[IRnGenericRec] retrieval",
       "type": "method"
     },
     {
@@ -5156,7 +5156,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "EnvironmentOperations GetAll Get all phonological environments in the project. Get all phonological environments in the project.\n returns IPhEnvironment retrieval",
+      "text": "EnvironmentOperations GetAll Get all phonological environments in the project. Get all phonological environments in the project.\n returns EnumerableWrapper[IPhEnvironment] retrieval",
       "type": "method"
     },
     {
@@ -5320,7 +5320,7 @@
       "name": "GetAll",
       "signature": "GetAll(entry_or_hvo=None)",
       "source": "flexicon",
-      "text": "EtymologyOperations GetAll Get all etymologies for a lexical entry, or all etymologies in the entire project. Get all etymologies for a lexical entry, or all etymologies in the entire project.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all etymologies in the entire project. returns ILexEtymology retrieval",
+      "text": "EtymologyOperations GetAll Get all etymologies for a lexical entry, or all etymologies in the entire project. Get all etymologies for a lexical entry, or all etymologies in the entire project.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all etymologies in the entire project. returns EnumerableWrapper[ILexEtymology] retrieval",
       "type": "method"
     },
     {
@@ -5616,7 +5616,7 @@
       "name": "GetAll",
       "signature": "GetAll(sense_or_hvo=None)",
       "source": "flexicon",
-      "text": "ExampleOperations GetAll Get example sentences for a sense or all examples in the project. Get example sentences for a sense or all examples in the project.\n sense_or_hvo Optional ILexSense object or HVO. If provided, returns examples for that sense only. If None, returns ALL examples in the entire project. returns ILexExampleSentence retrieval",
+      "text": "ExampleOperations GetAll Get example sentences for a sense or all examples in the project. Get example sentences for a sense or all examples in the project.\n sense_or_hvo Optional ILexSense object or HVO. If provided, returns examples for that sense only. If None, returns ALL examples in the entire project. returns EnumerableWrapper[ILexExampleSentence] retrieval",
       "type": "method"
     },
     {
@@ -6841,13 +6841,13 @@
     },
     {
       "category": "general",
-      "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\nEnable full undo stack integration with FLEx Ctrl+Z.\nWhen True, operations wrapped in UndoableOperation() will appear\nin FLEx's Undo menu. When False (default), uses rollback-only\ntransactions via Transaction().\n\nOnly valid when writeEnabled=True. Ignored if False.\n\nPhase 2 feature: requires LCM BeginUndoTask/EndUndoTask support.\nSee docs/RESEARCH_NEEDED.md for details.\n",
+      "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\nEnable full undo stack integration with FLEx Ctrl+Z.\nWhen True, operations wrapped in UndoableOperation() will appear\nin FLEx's Undo menu. When False (default), uses rollback-only\ntransactions via Transaction().\n\nOnly valid when writeEnabled=True. Ignored if False.\n\nPhase 2 feature: requires LCM BeginUndoTask/EndUndoTask support.\nSee docs/internal/RESEARCH_NEEDED.md for details.\n",
       "entity": "FLExProject",
       "id": "flexicon:FLExProject.OpenProject",
       "name": "OpenProject",
       "signature": "OpenProject(projectName, writeEnabled=False, undoable=False)",
       "source": "flexicon",
-      "text": "FLExProject OpenProject Open a project. Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\nEnable full undo stack integration with FLEx Ctrl+Z.\nWhen True, operations wrapped in UndoableOperation() will appear\nin FLEx's Undo menu. When False (default), uses rollback-only\ntransactions via Transaction().\n\nOnly valid when writeEnabled=True. Ignored if False.\n\nPhase 2 feature: requires LCM BeginUndoTask/EndUndoTask support.\nSee docs/RESEARCH_NEEDED.md for details.\n",
+      "text": "FLExProject OpenProject Open a project. Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\nEnable full undo stack integration with FLEx Ctrl+Z.\nWhen True, operations wrapped in UndoableOperation() will appear\nin FLEx's Undo menu. When False (default), uses rollback-only\ntransactions via Transaction().\n\nOnly valid when writeEnabled=True. Ignored if False.\n\nPhase 2 feature: requires LCM BeginUndoTask/EndUndoTask support.\nSee docs/internal/RESEARCH_NEEDED.md for details.\n",
       "type": "method"
     },
     {
@@ -7309,7 +7309,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "FilterOperations GetAll Get all saved filters in the project. Get all saved filters in the project.\n\nThis method returns all filter objects stored in the project,\nregardless of their type.\n returns dict retrieval",
+      "text": "FilterOperations GetAll Get all saved filters in the project. Get all saved filters in the project.\n\nThis method returns all filter objects stored in the project,\nregardless of their type.\n returns EnumerableWrapper[dict] retrieval",
       "type": "method"
     },
     {
@@ -7538,7 +7538,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "GramCatOperations GetAll Get all grammatical categories in the project. Get all grammatical categories in the project.\n recursive If True (default), yields every category in the hierarchy (depth-first, parents before children). If False, yields only top-level categories and the caller must descend via GetSubcategories. returns ICmPossibility retrieval",
+      "text": "GramCatOperations GetAll Get all grammatical categories in the project. Get all grammatical categories in the project.\n recursive If True (default), yields every category in the hierarchy (depth-first, parents before children). If False, yields only top-level categories and the caller must descend via GetSubcategories. returns EnumerableWrapper[ICmPossibility] retrieval",
       "type": "method"
     },
     {
@@ -7916,13 +7916,24 @@
     },
     {
       "category": "general",
-      "description": "Base wrapper for LCM objects providing unified interface access.\n\nStores both the base interface and concrete type, routing property access\nintelligently to support the two-layer LCM type system transparently.\n\nAttributes:\n_obj: The base interface object (e.g., IPhSegmentRule)\n_concrete: The concrete type object (e.g., IPhRegularRule)",
+      "description": "Base wrapper for LCM objects providing unified interface access.\n\nStores both the base interface and concrete type, routing property access\nintelligently to support the two-layer LCM type system transparently.\n\nExternal callers needing to cast the wrapped object to a specific\npythonnet/.NET interface (ICmObject, ICmPossibility, ICmMajorObject,\nIMoInflAffixTemplate, etc.) should use the `lcm_object` property to\nretrieve the raw LCM object, then cast it themselves; or call\n`AsICmObject()` for the common ICmObject case.\n\nAttributes:\n_obj: The base interface object (e.g., IPhSegmentRule)\n_concrete: The concrete type object (e.g., IPhRegularRule)",
       "entity": "LCMObjectWrapper",
       "id": "flexicon:LCMObjectWrapper",
       "name": "LCMObjectWrapper",
       "source": "flexicon",
-      "text": "LCMObjectWrapper Base wrapper for LCM objects providing unified interface access.\n\nStores both the base interface and concrete type, routing property access\nintelligently to support the two-layer LCM type system transparently.\n\nAttributes:\n_obj: The base interface object (e.g., IPhSegmentRule)\n_concrete: The concrete type object (e.g., IPhRegularRule) Base wrapper for LCM objects providing unified interface access. category general Class for working with general data in FieldWorks",
+      "text": "LCMObjectWrapper Base wrapper for LCM objects providing unified interface access.\n\nStores both the base interface and concrete type, routing property access\nintelligently to support the two-layer LCM type system transparently.\n\nExternal callers needing to cast the wrapped object to a specific\npythonnet/.NET interface (ICmObject, ICmPossibility, ICmMajorObject,\nIMoInflAffixTemplate, etc.) should use the `lcm_object` property to\nretrieve the raw LCM object, then cast it themselves; or call\n`AsICmObject()` for the common ICmObject case.\n\nAttributes:\n_obj: The base interface object (e.g., IPhSegmentRule)\n_concrete: The concrete type object (e.g., IPhRegularRule) Base wrapper for LCM objects providing unified interface access. category general Class for working with general data in FieldWorks",
       "type": "entity"
+    },
+    {
+      "category": "general",
+      "description": "Cast the wrapped object to ICmObject.\n\nConvenience method for the common case of needing an ICmObject-typed\nreference (e.g. to read `.ClassName`, `.Hvo`, `.Guid`, `.Owner`, or\nother properties defined on the base LCM object interface). This is\nequivalent to ``ICmObject(wrapped.lcm_object)`` but raises a\nflexlibs-style exception instead of a raw TypeError when there is no\nunderlying object to cast.\n",
+      "entity": "LCMObjectWrapper",
+      "id": "flexicon:LCMObjectWrapper.AsICmObject",
+      "name": "AsICmObject",
+      "signature": "AsICmObject()",
+      "source": "flexicon",
+      "text": "LCMObjectWrapper AsICmObject Cast the wrapped object to ICmObject. Cast the wrapped object to ICmObject.\n\nConvenience method for the common case of needing an ICmObject-typed\nreference (e.g. to read `.ClassName`, `.Hvo`, `.Guid`, `.Owner`, or\nother properties defined on the base LCM object interface). This is\nequivalent to ``ICmObject(wrapped.lcm_object)`` but raises a\nflexlibs-style exception instead of a raw TypeError when there is no\nunderlying object to cast.\n returns ICmObject",
+      "type": "method"
     },
     {
       "category": "general",
@@ -8079,13 +8090,13 @@
     },
     {
       "category": "lexicon",
-      "description": "Get all lexical entries in the project.\n\nThis method returns an iterator over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
+      "description": "Get all lexical entries in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
       "entity": "LexEntryOperations",
       "id": "flexicon:LexEntryOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "LexEntryOperations GetAll Get all lexical entries in the project. Get all lexical entries in the project.\n\nThis method returns an iterator over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n returns ILexEntry retrieval",
+      "text": "LexEntryOperations GetAll Get all lexical entries in the project. Get all lexical entries in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n returns EnumerableWrapper[ILexEntry] retrieval",
       "type": "method"
     },
     {
@@ -8754,18 +8765,18 @@
       "name": "GetAll",
       "signature": "GetAll(sense_or_entry=None)",
       "source": "flexicon",
-      "text": "LexReferenceOperations GetAll Get all lexical references for a sense or entry, or all references in the entire project. Get all lexical references for a sense or entry, or all references in the entire project.\n\nThis returns all LexReference objects that include the specified\nsense or entry as one of their targets.\n sense_or_entry Either an ILexSense or ILexEntry object (or HVO). If None, iterates all lexical references in the entire project. returns ILexReference retrieval",
+      "text": "LexReferenceOperations GetAll Get all lexical references for a sense or entry, or all references in the entire project. Get all lexical references for a sense or entry, or all references in the entire project.\n\nThis returns all LexReference objects that include the specified\nsense or entry as one of their targets.\n sense_or_entry Either an ILexSense or ILexEntry object (or HVO). If None, iterates all lexical references in the entire project. returns EnumerableWrapper[ILexReference] retrieval",
       "type": "method"
     },
     {
       "category": "lexicon",
-      "description": "Get all lexical relation types in the project.\n\nThis method returns an iterator over all ILexRefType objects that\ndefine the types of lexical relations available in the project, such\nas Synonym, Antonym, Part-Whole, etc.\n",
+      "description": "Get all lexical relation types in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all ILexRefType objects that define the\ntypes of lexical relations available in the project, such as\nSynonym, Antonym, Part-Whole, etc.\n",
       "entity": "LexReferenceOperations",
       "id": "flexicon:LexReferenceOperations.GetAllTypes",
       "name": "GetAllTypes",
       "signature": "GetAllTypes()",
       "source": "flexicon",
-      "text": "LexReferenceOperations GetAllTypes Get all lexical relation types in the project. Get all lexical relation types in the project.\n\nThis method returns an iterator over all ILexRefType objects that\ndefine the types of lexical relations available in the project, such\nas Synonym, Antonym, Part-Whole, etc.\n returns ILexRefType retrieval",
+      "text": "LexReferenceOperations GetAllTypes Get all lexical relation types in the project. Get all lexical relation types in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all ILexRefType objects that define the\ntypes of lexical relations available in the project, such as\nSynonym, Antonym, Part-Whole, etc.\n returns EnumerableWrapper[ILexRefType] retrieval",
       "type": "method"
     },
     {
@@ -9083,7 +9094,7 @@
       "name": "GetAll",
       "signature": "GetAll(entry_or_hvo=None, recursive=True)",
       "source": "flexicon",
-      "text": "LexSenseOperations GetAll Get senses for an entry or all senses in the project. Get senses for an entry or all senses in the project.\n entry_or_hvo Optional ILexEntry object or HVO. If provided, yields senses for that entry only. If None, yields every sense in the project. recursive If True (default), yields every sense including subsenses (depth-first, parents before children). If False, yields only top-level senses on each entry. returns ILexSense retrieval",
+      "text": "LexSenseOperations GetAll Get senses for an entry or all senses in the project. Get senses for an entry or all senses in the project.\n entry_or_hvo Optional ILexEntry object or HVO. If provided, yields senses for that entry only. If None, yields every sense in the project. recursive If True (default), yields every sense including subsenses (depth-first, parents before children). If False, yields only top-level senses on each entry. returns EnumerableWrapper[ILexSense] retrieval",
       "type": "method"
     },
     {
@@ -10038,7 +10049,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "LocationOperations GetAll Get all locations in the project. Get all locations in the project.\n recursive If True (default), returns every location in the hierarchy (depth-first, parents before children). If False, returns only top-level locations and the caller must descend via GetSublocations. returns list retrieval",
+      "text": "LocationOperations GetAll Get all locations in the project. Get all locations in the project.\n recursive If True (default), returns every location in the hierarchy (depth-first, parents before children). If False, returns only top-level locations and the caller must descend via GetSublocations. returns list[ICmLocation] retrieval",
       "type": "method"
     },
     {
@@ -10366,7 +10377,7 @@
       "name": "CreateInflAff",
       "signature": "CreateInflAff(sense, pos, slots=None)",
       "source": "flexicon",
-      "text": "MSAOperations CreateInflAff Create an IMoInflAffMsa, attach it to the sense. Create an IMoInflAffMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech -- the category this affix inflects. slots Optional sequence of IMoInflAffixSlot objects. Slots are added to the MSA's SlotsRC reference collection after creation (Phase 2 ownership-ordering doesn't apply to reference collections). returns IMoInflAffMsa creation",
+      "text": "MSAOperations CreateInflAff Create an IMoInflAffMsa, attach it to the sense. Create an IMoInflAffMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech -- the category this affix inflects, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"category not yet specified\": an inflectional affix MSA may legitimately carry a blank category cell in FLEx. Mirrors CreateStem's / CreateUnclassifiedAffix's pos=None support. slots Optional sequence of IMoInflAffixSlot objects. Slots are added to the MSA's SlotsRC reference collection after creation (Phase 2 ownership-ordering doesn't apply to reference collections). returns IMoInflAffMsa creation",
       "type": "method"
     },
     {
@@ -10377,7 +10388,7 @@
       "name": "CreateStem",
       "signature": "CreateStem(sense, pos)",
       "source": "flexicon",
-      "text": "MSAOperations CreateStem Create an IMoStemMsa, attach it to the sense. Create an IMoStemMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech (or HVO) -- the grammatical category. returns IMoStemMsa creation",
+      "text": "MSAOperations CreateStem Create an IMoStemMsa, attach it to the sense. Create an IMoStemMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech (or HVO) -- the grammatical category, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"grammatical category not specified\" -- a very common state for stem entries in FLEx (the category cell is blank). BEHAVIOR CHANGE (issue: null-category stems): previously a None pos raised FP_NullParameterError, which made it impossible to round-trip a legitimately category-less stem MSA. This mirrors CreateDerivAff's to_pos=None \"unset\" precedent. returns IMoStemMsa creation",
       "type": "method"
     },
     {
@@ -10388,7 +10399,18 @@
       "name": "CreateUnclassifiedAffix",
       "signature": "CreateUnclassifiedAffix(sense, pos)",
       "source": "flexicon",
-      "text": "MSAOperations CreateUnclassifiedAffix Create an IMoUnclassifiedAffixMsa, attach it to the sense. Create an IMoUnclassifiedAffixMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech (or HVO) -- the grammatical category. returns IMoUnclassifiedAffixMsa creation",
+      "text": "MSAOperations CreateUnclassifiedAffix Create an IMoUnclassifiedAffixMsa, attach it to the sense. Create an IMoUnclassifiedAffixMsa, attach it to the sense.\n sense An ILexSense (or HVO) to attach the MSA to. pos An IPartOfSpeech (or HVO) -- the grammatical category, or None to leave PartOfSpeechRA unset. Passing None is valid and means \"category not specified\" -- an unclassified affix legitimately may carry no grammatical category (that is what \"unclassified\" means). Mirrors CreateStem's / CreateDerivAff's pos=None support. returns IMoUnclassifiedAffixMsa creation",
+      "type": "method"
+    },
+    {
+      "category": "lexicon",
+      "description": "Remove MSAs that are no longer referenced by any sense or morph\nbundle.\n\nSetPartOfSpeech and ChangeAffixVariant detach a sense's\nMorphoSyntaxAnalysisRA from an old MSA when reassigning or\nconverting it, but the old MSA can remain in its owning entry's\nMorphoSyntaxAnalysesOC. That is safe to leave in place ONLY if\nnothing else still points at it. This method performs the\nproject-wide safety check and removes any MSA that is truly\nunreferenced.\n\nAn MSA is considered orphaned iff it is referenced by NEITHER:\n1. Any ILexSense.MorphoSyntaxAnalysisRA (entry-local senses), NOR\n2. Any IWfiMorphBundle.MsaRA (project-wide, across all\ninterlinear texts).\n",
+      "entity": "MSAOperations",
+      "id": "flexicon:MSAOperations.RemoveOrphaned",
+      "name": "RemoveOrphaned",
+      "signature": "RemoveOrphaned(entry=None, progress=None)",
+      "source": "flexicon",
+      "text": "MSAOperations RemoveOrphaned Remove MSAs that are no longer referenced by any sense or morph\nbundle. Remove MSAs that are no longer referenced by any sense or morph\nbundle.\n\nSetPartOfSpeech and ChangeAffixVariant detach a sense's\nMorphoSyntaxAnalysisRA from an old MSA when reassigning or\nconverting it, but the old MSA can remain in its owning entry's\nMorphoSyntaxAnalysesOC. That is safe to leave in place ONLY if\nnothing else still points at it. This method performs the\nproject-wide safety check and removes any MSA that is truly\nunreferenced.\n\nAn MSA is considered orphaned iff it is referenced by NEITHER:\n1. Any ILexSense.MorphoSyntaxAnalysisRA (entry-local senses), NOR\n2. Any IWfiMorphBundle.MsaRA (project-wide, across all\ninterlinear texts).\n entry An ILexEntry (or HVO) to limit the *scanned* MSAs to (only that entry's MorphoSyntaxAnalysesOC is examined for removal candidates). Pass None (the default) to sweep every entry in the project. In BOTH cases, the safety check against morph bundles is performed project-wide -- scoping to a single entry never skips the bundle cross-check, since a bundle anywhere in the project can be the only thing keeping an entry-local MSA alive. progress Optional callback invoked as ``progress(current, total)`` once per entry scanned, where ``total`` is the number of entries in scope (1 if ``entry`` was supplied, or the full entry count for a project-wide sweep). Pass None (the default) for no progress reporting. Exceptions raised by the callback are caught and logged, never propagated -- a broken progress reporter should not abort the sweep. returns RemoveOrphanedResult deletion",
       "type": "method"
     },
     {
@@ -10513,13 +10535,13 @@
     },
     {
       "category": "general",
-      "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an iterator over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
+      "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
       "entity": "MediaOperations",
       "id": "flexicon:MediaOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "MediaOperations GetAll Retrieve all media files in the FLEx project. Retrieve all media files in the FLEx project.\n\nThis method returns an iterator over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n returns ICmFile retrieval",
+      "text": "MediaOperations GetAll Retrieve all media files in the FLEx project. Retrieve all media files in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n returns EnumerableWrapper[ICmFile] retrieval",
       "type": "method"
     },
     {
@@ -10530,7 +10552,7 @@
       "name": "GetAllByType",
       "signature": "GetAllByType(media_type)",
       "source": "flexicon",
-      "text": "MediaOperations GetAllByType Get all media files of a specific type. Get all media files of a specific type.\n media_type Media type constant (MediaType.AUDIO, VIDEO, IMAGE) returns ICmFile retrieval",
+      "text": "MediaOperations GetAllByType Get all media files of a specific type. Get all media files of a specific type.\n media_type Media type constant (MediaType.AUDIO, VIDEO, IMAGE) returns EnumerableWrapper[ICmFile] retrieval",
       "type": "method"
     },
     {
@@ -10823,9 +10845,9 @@
       "entity": "MorphRuleOperations",
       "id": "flexicon:MorphRuleOperations.Duplicate",
       "name": "Duplicate",
-      "signature": "Duplicate(item_or_hvo, insert_after=True)",
+      "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
       "source": "flexicon",
-      "text": "MorphRuleOperations Duplicate Duplicate a morphological rule or template, creating a copy with a new GUID. Duplicate a morphological rule or template, creating a copy with a new GUID.\n\nHandles compound rules (MoEndoCompound, MoExoCompound) and affix\ntemplates (MoInflAffixTemplate). Uses the appropriate factory for\neach type and inserts into the correct owning collection.\n item_or_hvo The rule object or HVO to duplicate. insert_after If True (default), insert after the source. If False, insert at end of collection.",
+      "text": "MorphRuleOperations Duplicate Duplicate a morphological rule or template, creating a copy with a new GUID. Duplicate a morphological rule or template, creating a copy with a new GUID.\n\nHandles compound rules (MoEndoCompound, MoExoCompound) and affix\ntemplates (MoInflAffixTemplate). Uses the appropriate factory for\neach type and inserts into the correct owning collection.\n item_or_hvo The rule object or HVO to duplicate. insert_after If True (default), insert after the source. If False, insert at end of collection. deep If True (default), copy reference sequences (slot assignments for affix templates). If False, only copy simple properties.",
       "type": "method"
     },
     {
@@ -10847,7 +10869,7 @@
       "name": "GetAllAdhocCoProhibitions",
       "signature": "GetAllAdhocCoProhibitions()",
       "source": "flexicon",
-      "text": "MorphRuleOperations GetAllAdhocCoProhibitions Get all ad hoc co-occurrence prohibitions from MoMorphData. Get all ad hoc co-occurrence prohibitions from MoMorphData.\n\nThese have a different property interface from compound rules and\naffix templates (no Name/Description). Use rule.ClassName to\ndetermine the subtype: MoAdhocProhibGr, MoAdhocProhibMorph,\nor MoAdhocProhibAllomorph.\n returns IMoAdhocProhib retrieval",
+      "text": "MorphRuleOperations GetAllAdhocCoProhibitions Get all ad hoc co-occurrence prohibitions from MoMorphData. Get all ad hoc co-occurrence prohibitions from MoMorphData.\n\nThese have a different property interface from compound rules and\naffix templates (no Name/Description). Use rule.ClassName to\ndetermine the subtype: MoAdhocProhibGr, MoAdhocProhibMorph,\nor MoAdhocProhibAllomorph.\n returns EnumerableWrapper[IMoAdhocProhib] retrieval",
       "type": "method"
     },
     {
@@ -10858,7 +10880,7 @@
       "name": "GetAllAffixTemplates",
       "signature": "GetAllAffixTemplates()",
       "source": "flexicon",
-      "text": "MorphRuleOperations GetAllAffixTemplates Get all inflectional affix templates from all parts of speech. Get all inflectional affix templates from all parts of speech.\n\nWalks the entire POS hierarchy and returns templates from each POS\nas a smart collection with filtering capabilities.\n returns AffixTemplateCollection retrieval",
+      "text": "MorphRuleOperations GetAllAffixTemplates Get all inflectional affix templates from all parts of speech. Get all inflectional affix templates from all parts of speech.\n\nWalks the entire POS hierarchy and returns templates from each POS\nas a smart collection with filtering capabilities.\n returns AffixTemplateCollection[AffixTemplate] retrieval",
       "type": "method"
     },
     {
@@ -10869,7 +10891,7 @@
       "name": "GetAllAffixTemplatesForPOS",
       "signature": "GetAllAffixTemplatesForPOS(pos_or_hvo)",
       "source": "flexicon",
-      "text": "MorphRuleOperations GetAllAffixTemplatesForPOS Get affix templates for a specific part of speech (non-recursive). Get affix templates for a specific part of speech (non-recursive).\n pos_or_hvo The IPartOfSpeech object or HVO. returns AffixTemplateCollection retrieval",
+      "text": "MorphRuleOperations GetAllAffixTemplatesForPOS Get affix templates for a specific part of speech (non-recursive). Get affix templates for a specific part of speech (non-recursive).\n pos_or_hvo The IPartOfSpeech object or HVO. returns AffixTemplateCollection[AffixTemplate] retrieval",
       "type": "method"
     },
     {
@@ -10880,7 +10902,7 @@
       "name": "GetAllCompoundRules",
       "signature": "GetAllCompoundRules()",
       "source": "flexicon",
-      "text": "MorphRuleOperations GetAllCompoundRules Get all compound rules from MoMorphData. Get all compound rules from MoMorphData.CompoundRulesOS.\n returns CompoundRuleCollection retrieval",
+      "text": "MorphRuleOperations GetAllCompoundRules Get all compound rules from MoMorphData. Get all compound rules from MoMorphData.CompoundRulesOS.\n returns CompoundRuleCollection[CompoundRule] retrieval",
       "type": "method"
     },
     {
@@ -11196,7 +11218,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "NaturalClassOperations GetAll Get all natural classes in the phonological inventory. Get all natural classes in the phonological inventory.\n returns IPhNaturalClass retrieval",
+      "text": "NaturalClassOperations GetAll Get all natural classes in the phonological inventory. Get all natural classes in the phonological inventory.\n returns EnumerableWrapper[IPhNaturalClass] retrieval",
       "type": "method"
     },
     {
@@ -11371,7 +11393,7 @@
       "name": "GetAll",
       "signature": "GetAll(owner_object)",
       "source": "flexicon",
-      "text": "NoteOperations GetAll Get all notes attached to an object. Get all notes attached to an object.\n owner_object The object whose notes to retrieve. Can be an ILexEntry, ILexSense, IText, IStPara, or any annotatable object. returns ICmBaseAnnotation retrieval",
+      "text": "NoteOperations GetAll Get all notes attached to an object. Get all notes attached to an object.\n owner_object The object whose notes to retrieve. Can be an ILexEntry, ILexSense, IText, IStPara, or any annotatable object. returns EnumerableWrapper[ICmBaseAnnotation] retrieval",
       "type": "method"
     },
     {
@@ -11808,7 +11830,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "POSOperations GetAll Get all parts of speech in the project. Get all parts of speech in the project.\n\nCan be called two ways:\nPOSOperations.GetAll(project)         # Class-level, no instantiation\nPOSOperations(project).GetAll()       # Instance-level, traditional\n recursive If True (default), yields every POS in the hierarchy (depth-first, parents before children). If False, yields only top-level POSs and the caller must descend via GetSubcategories. returns IPartOfSpeech retrieval",
+      "text": "POSOperations GetAll Get all parts of speech in the project. Get all parts of speech in the project.\n\nCan be called two ways:\nPOSOperations.GetAll(project)         # Class-level, no instantiation\nPOSOperations(project).GetAll()       # Instance-level, traditional\n recursive If True (default), yields every POS in the hierarchy (depth-first, parents before children). If False, yields only top-level POSs and the caller must descend via GetSubcategories. returns EnumerableWrapper[IPartOfSpeech] retrieval",
       "type": "method"
     },
     {
@@ -11977,13 +11999,13 @@
     },
     {
       "category": "texts",
-      "description": "Get all paragraphs in a text.\n\nReturns a generator that yields all paragraph objects in the text's\nparagraph collection in order.\n",
+      "description": "Get all paragraphs in a text.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily\nmaterialized) over all paragraph objects in the text's paragraph\ncollection, in order.\n",
       "entity": "ParagraphOperations",
       "id": "flexicon:ParagraphOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll(text_or_hvo)",
       "source": "flexicon",
-      "text": "ParagraphOperations GetAll Get all paragraphs in a text. Get all paragraphs in a text.\n\nReturns a generator that yields all paragraph objects in the text's\nparagraph collection in order.\n text_or_hvo Either an IText object or its HVO (integer identifier). returns IStTxtPara retrieval",
+      "text": "ParagraphOperations GetAll Get all paragraphs in a text. Get all paragraphs in a text.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily\nmaterialized) over all paragraph objects in the text's paragraph\ncollection, in order.\n text_or_hvo Either an IText object or its HVO (integer identifier). returns EnumerableWrapper[IStTxtPara] retrieval",
       "type": "method"
     },
     {
@@ -12196,13 +12218,13 @@
     },
     {
       "category": "notebook",
-      "description": "Get all people in the project.\n\nThis method returns an iterator over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
+      "description": "Get all people in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
       "entity": "PersonOperations",
       "id": "flexicon:PersonOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "PersonOperations GetAll Get all people in the project. Get all people in the project.\n\nThis method returns an iterator over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n returns ICmPerson retrieval",
+      "text": "PersonOperations GetAll Get all people in the project. Get all people in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n returns EnumerableWrapper[ICmPerson] retrieval",
       "type": "method"
     },
     {
@@ -12459,6 +12481,17 @@
     },
     {
       "category": "grammar",
+      "description": "Apply syncable properties (from GetSyncableProperties) onto a feature.\n\nHandles the feature's own multistring / CatalogSourceId fields via\nthe BaseOperations loop, then co-creates the owned ``Values``\n(IFsSymFeatVal) GUID-aligned so the synced feature is not left an\nempty shell (issue #222).\n",
+      "entity": "PhonFeatureOperations",
+      "id": "flexicon:PhonFeatureOperations.ApplySyncableProperties",
+      "name": "ApplySyncableProperties",
+      "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
+      "source": "flexicon",
+      "text": "PhonFeatureOperations ApplySyncableProperties Apply syncable properties (from GetSyncableProperties) onto a feature. Apply syncable properties (from GetSyncableProperties) onto a feature.\n\nHandles the feature's own multistring / CatalogSourceId fields via\nthe BaseOperations loop, then co-creates the owned ``Values``\n(IFsSymFeatVal) GUID-aligned so the synced feature is not left an\nempty shell (issue #222).\n item Target IFsClosedFeature (already created + owned + GUID-assigned by the caller). props dict produced by GetSyncableProperties. ws_map Optional source->target writing-system Id mapping. fill_gaps If True, only fill empty target alts / add missing values; never overwrite existing target data.",
+      "type": "method"
+    },
+    {
+      "category": "grammar",
       "description": "Create a new phonological feature (IFsClosedFeature).\n",
       "entity": "PhonFeatureOperations",
       "id": "flexicon:PhonFeatureOperations.Create",
@@ -12542,7 +12575,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "PhonFeatureOperations GetAll Get all phonological features in the project. Get all phonological features in the project.\n returns IFsClosedFeature retrieval",
+      "text": "PhonFeatureOperations GetAll Get all phonological features in the project. Get all phonological features in the project.\n returns EnumerableWrapper[IFsClosedFeature] retrieval",
       "type": "method"
     },
     {
@@ -12565,6 +12598,17 @@
       "signature": "GetName(feature_or_hvo, wsHandle=None)",
       "source": "flexicon",
       "text": "PhonFeatureOperations GetName Get the name of a phonological feature or value. Get the name of a phonological feature or value.\n feature_or_hvo An IFsClosedFeature, IFsSymFeatVal, or HVO. wsHandle Optional writing system handle. Defaults to analysis WS. returns str retrieval",
+      "type": "method"
+    },
+    {
+      "category": "grammar",
+      "description": "Get dictionary of syncable properties for cross-project sync.\n",
+      "entity": "PhonFeatureOperations",
+      "id": "flexicon:PhonFeatureOperations.GetSyncableProperties",
+      "name": "GetSyncableProperties",
+      "signature": "GetSyncableProperties(item)",
+      "source": "flexicon",
+      "text": "PhonFeatureOperations GetSyncableProperties Get dictionary of syncable properties for cross-project sync. Get dictionary of syncable properties for cross-project sync.\n item The IFsClosedFeature object, wrapper, or HVO. returns dict retrieval",
       "type": "method"
     },
     {
@@ -12656,13 +12700,13 @@
     },
     {
       "category": "grammar",
-      "description": "Apply syncable properties (from GetSyncableProperties) onto an item.\n\nInherited from BaseOperations; declared on the concrete class so static\nAPI indexers see it. The base implementation handles every property\nshape this class's GetSyncableProperties emits.",
+      "description": "Apply syncable properties (from GetSyncableProperties) onto a phoneme.\n\nHandles the multistring fields via the BaseOperations loop, applies\n``BasicIPASymbol`` through the shape-tolerant setter, and rewires the\n``Features`` specs against the target project's feature system by GUID\n(issue #222).\n",
       "entity": "PhonemeOperations",
       "id": "flexicon:PhonemeOperations.ApplySyncableProperties",
       "name": "ApplySyncableProperties",
       "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
       "source": "flexicon",
-      "text": "PhonemeOperations ApplySyncableProperties Apply syncable properties (from GetSyncableProperties) onto an item. Apply syncable properties (from GetSyncableProperties) onto an item.\n\nInherited from BaseOperations; declared on the concrete class so static\nAPI indexers see it. The base implementation handles every property\nshape this class's GetSyncableProperties emits.",
+      "text": "PhonemeOperations ApplySyncableProperties Apply syncable properties (from GetSyncableProperties) onto a phoneme. Apply syncable properties (from GetSyncableProperties) onto a phoneme.\n\nHandles the multistring fields via the BaseOperations loop, applies\n``BasicIPASymbol`` through the shape-tolerant setter, and rewires the\n``Features`` specs against the target project's feature system by GUID\n(issue #222).\n item Target IPhPhoneme (already created + owned + GUID-assigned by the caller). props dict produced by GetSyncableProperties. ws_map Optional source->target writing-system Id mapping. fill_gaps If True, only fill empty target alts / add missing feature specs; never overwrite existing target data.",
       "type": "method"
     },
     {
@@ -12750,7 +12794,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "PhonemeOperations GetAll Get all phonemes in the project. Get all phonemes in the project.\n returns IPhPhoneme retrieval",
+      "text": "PhonemeOperations GetAll Get all phonemes in the project. Get all phonemes in the project.\n returns EnumerableWrapper[IPhPhoneme] retrieval",
       "type": "method"
     },
     {
@@ -12816,7 +12860,7 @@
       "name": "GetSyncableProperties",
       "signature": "GetSyncableProperties(item)",
       "source": "flexicon",
-      "text": "PhonemeOperations GetSyncableProperties Get dictionary of syncable properties for cross-project synchronization. Get dictionary of syncable properties for cross-project synchronization.\n item The IPhPhoneme object. returns dict retrieval",
+      "text": "PhonemeOperations GetSyncableProperties Get dictionary of syncable properties for cross-project synchronization. Get dictionary of syncable properties for cross-project synchronization.\n item The IPhPhoneme object or HVO. returns dict retrieval",
       "type": "method"
     },
     {
@@ -13154,7 +13198,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "PhonologicalRuleOperations GetAll Get all phonological rules in the project. Get all phonological rules in the project.\n returns RuleCollection retrieval",
+      "text": "PhonologicalRuleOperations GetAll Get all phonological rules in the project. Get all phonological rules in the project.\n returns RuleCollection[PhonologicalRule] retrieval",
       "type": "method"
     },
     {
@@ -13406,7 +13450,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "PossibilityItemOperations GetAll Get all items in the list. Get all items in the list.\n returns list retrieval",
+      "text": "PossibilityItemOperations GetAll Get all items in the list. Get all items in the list.\n returns list[ICmPossibility] retrieval",
       "type": "method"
     },
     {
@@ -14293,7 +14337,7 @@
       "name": "GetAll",
       "signature": "GetAll(entry_or_hvo=None)",
       "source": "flexicon",
-      "text": "PronunciationOperations GetAll Get all pronunciations for a lexical entry, or all pronunciations in the entire project. Get all pronunciations for a lexical entry, or all pronunciations in the entire project.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all pronunciations in the entire project. returns ILexPronunciation retrieval",
+      "text": "PronunciationOperations GetAll Get all pronunciations for a lexical entry, or all pronunciations in the entire project. Get all pronunciations for a lexical entry, or all pronunciations in the entire project.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all pronunciations in the entire project. returns EnumerableWrapper[ILexPronunciation] retrieval",
       "type": "method"
     },
     {
@@ -14468,7 +14512,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "PublicationOperations GetAll Get all publications in the project. Get all publications in the project.\n recursive If True (default), returns every publication in the hierarchy (depth-first, parents before children). If False, returns only top-level publications and the caller must descend via GetSubPublications. returns list retrieval",
+      "text": "PublicationOperations GetAll Get all publications in the project. Get all publications in the project.\n recursive If True (default), returns every publication in the hierarchy (depth-first, parents before children). If False, returns only top-level publications and the caller must descend via GetSubPublications. returns list[ICmPossibility] retrieval",
       "type": "method"
     },
     {
@@ -14741,7 +14785,7 @@
       "name": "GetAll",
       "signature": "GetAll(index_or_hvo)",
       "source": "flexicon",
-      "text": "ReversalIndexEntryOperations GetAll Get all reversal entries in a reversal index. Get all reversal entries in a reversal index.\n index_or_hvo Either an IReversalIndex object or its HVO returns IReversalIndexEntry retrieval",
+      "text": "ReversalIndexEntryOperations GetAll Get all reversal entries in a reversal index. Get all reversal entries in a reversal index.\n index_or_hvo Either an IReversalIndex object or its HVO returns EnumerableWrapper[IReversalIndexEntry] retrieval",
       "type": "method"
     },
     {
@@ -14883,7 +14927,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "ReversalIndexOperations GetAll Get all reversal indexes in the project. Get all reversal indexes in the project.\n returns IReversalIndex retrieval",
+      "text": "ReversalIndexOperations GetAll Get all reversal indexes in the project. Get all reversal indexes in the project.\n returns EnumerableWrapper[IReversalIndex] retrieval",
       "type": "method"
     },
     {
@@ -15138,13 +15182,13 @@
     },
     {
       "category": "scripture",
-      "description": "Get all Scripture books in the project.\n\nThis method returns an iterator over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
+      "description": "Get all Scripture books in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
       "entity": "ScrBookOperations",
       "id": "flexicon:ScrBookOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "ScrBookOperations GetAll Get all Scripture books in the project. Get all Scripture books in the project.\n\nThis method returns an iterator over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n returns IScrBook retrieval",
+      "text": "ScrBookOperations GetAll Get all Scripture books in the project. Get all Scripture books in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n returns EnumerableWrapper[IScrBook] retrieval",
       "type": "method"
     },
     {
@@ -15247,13 +15291,13 @@
     },
     {
       "category": "scripture",
-      "description": "Get all Scripture drafts in the project.\n\nThis method returns an iterator over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
+      "description": "Get all Scripture drafts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
       "entity": "ScrDraftOperations",
       "id": "flexicon:ScrDraftOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "ScrDraftOperations GetAll Get all Scripture drafts in the project. Get all Scripture drafts in the project.\n\nThis method returns an iterator over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n returns IScrDraft retrieval",
+      "text": "ScrDraftOperations GetAll Get all Scripture drafts in the project. Get all Scripture drafts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n returns EnumerableWrapper[IScrDraft] retrieval",
       "type": "method"
     },
     {
@@ -15351,7 +15395,7 @@
       "name": "GetAll",
       "signature": "GetAll(book_or_hvo)",
       "source": "flexicon",
-      "text": "ScrNoteOperations GetAll Get all Scripture notes in a book. Get all Scripture notes in a book.\n book_or_hvo Either an IScrBook object or its HVO returns list retrieval",
+      "text": "ScrNoteOperations GetAll Get all Scripture notes in a book. Get all Scripture notes in a book.\n book_or_hvo Either an IScrBook object or its HVO returns list[IScrScriptureNote] retrieval",
       "type": "method"
     },
     {
@@ -15471,7 +15515,7 @@
       "name": "GetAll",
       "signature": "GetAll(book_or_hvo)",
       "source": "flexicon",
-      "text": "ScrSectionOperations GetAll Get all Scripture sections in a book. Get all Scripture sections in a book.\n book_or_hvo Either an IScrBook object or its HVO returns list retrieval",
+      "text": "ScrSectionOperations GetAll Get all Scripture sections in a book. Get all Scripture sections in a book.\n book_or_hvo Either an IScrBook object or its HVO returns list[IScrSection] retrieval",
       "type": "method"
     },
     {
@@ -15580,7 +15624,7 @@
       "name": "GetAll",
       "signature": "GetAll(section_or_hvo)",
       "source": "flexicon",
-      "text": "ScrTxtParaOperations GetAll Get all Scripture paragraphs in a section. Get all Scripture paragraphs in a section.\n section_or_hvo Either an IScrSection object or its HVO returns list retrieval",
+      "text": "ScrTxtParaOperations GetAll Get all Scripture paragraphs in a section. Get all Scripture paragraphs in a section.\n section_or_hvo Either an IScrSection object or its HVO returns list[IScrTxtPara] retrieval",
       "type": "method"
     },
     {
@@ -15660,13 +15704,24 @@
     },
     {
       "category": "texts",
-      "description": "This class provides operations for managing segments in a FieldWorks project.\n\nSegments represent the units of text analysis in FLEx, typically sentences\nor clauses within paragraphs. Each segment can have baseline text, analyses,\ntranslations (free and literal), and notes.\n\nThe write path follows the LCM idiom:\n1. Edit IStTxtPara.Contents (via TsStringBuilder) first.\n2. Assign builder.GetString() to para.Contents - this fires ContentsSideEffects\nwhich triggers AnalysisAdjuster to reconcile segment offsets automatically.\n3. Then update SegmentsOS (Add/Insert/Remove) as needed.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all segments in a paragraph\npara = project.Object(para_hvo)\nfor segment in project.Segments.GetAll(para):\nbaseline = project.Segments.GetBaselineText(segment)\nprint(baseline)\n\n# Append a new sentence to a paragraph\nnew_seg = project.Segments.AppendSentence(para, \"A new sentence.\")\n\n# Split a segment at a character offset within that segment\nseg1, seg2 = project.Segments.SplitSegment(new_seg, 5)\n\n# Merge two adjacent segments (migrates translations by default)\nmerged = project.Segments.MergeSegments(seg1, seg2)\n\n# Set translations on a segment\nproject.Segments.SetFreeTranslation(merged, \"In the beginning...\")\nproject.Segments.SetLiteralTranslation(merged, \"In-the beginning...\")\n\n# Reparse a paragraph from its Contents (use only to repair corruption)\nproject.Segments.ReparseParagraph(para)\n\nproject.CloseProject()",
+      "description": "This class provides operations for managing segments in a FieldWorks project.\n\nSegments represent the units of text analysis in FLEx, typically sentences\nor clauses within paragraphs. Each segment can have baseline text, analyses,\ntranslations (free and literal), and notes.\n\nThe write path follows the LCM idiom:\n\n1. Edit IStTxtPara.Contents (via TsStringBuilder) first.\n2. Assign builder.GetString() to para.Contents - this fires ContentsSideEffects\nwhich triggers AnalysisAdjuster to reconcile segment offsets automatically.\n3. Then update SegmentsOS (Add/Insert/Remove) as needed.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all segments in a paragraph\npara = project.Object(para_hvo)\nfor segment in project.Segments.GetAll(para):\nbaseline = project.Segments.GetBaselineText(segment)\nprint(baseline)\n\n# Append a new sentence to a paragraph\nnew_seg = project.Segments.AppendSentence(para, \"A new sentence.\")\n\n# Split a segment at a character offset within that segment\nseg1, seg2 = project.Segments.SplitSegment(new_seg, 5)\n\n# Merge two adjacent segments (migrates translations by default)\nmerged = project.Segments.MergeSegments(seg1, seg2)\n\n# Set translations on a segment\nproject.Segments.SetFreeTranslation(merged, \"In the beginning...\")\nproject.Segments.SetLiteralTranslation(merged, \"In-the beginning...\")\n\n# Reparse a paragraph from its Contents (use only to repair corruption)\nproject.Segments.ReparseParagraph(para)\n\nproject.CloseProject()",
       "entity": "SegmentOperations",
       "id": "flexicon:SegmentOperations",
       "name": "SegmentOperations",
       "source": "flexicon",
-      "text": "SegmentOperations This class provides operations for managing segments in a FieldWorks project.\n\nSegments represent the units of text analysis in FLEx, typically sentences\nor clauses within paragraphs. Each segment can have baseline text, analyses,\ntranslations (free and literal), and notes.\n\nThe write path follows the LCM idiom:\n1. Edit IStTxtPara.Contents (via TsStringBuilder) first.\n2. Assign builder.GetString() to para.Contents - this fires ContentsSideEffects\nwhich triggers AnalysisAdjuster to reconcile segment offsets automatically.\n3. Then update SegmentsOS (Add/Insert/Remove) as needed.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all segments in a paragraph\npara = project.Object(para_hvo)\nfor segment in project.Segments.GetAll(para):\nbaseline = project.Segments.GetBaselineText(segment)\nprint(baseline)\n\n# Append a new sentence to a paragraph\nnew_seg = project.Segments.AppendSentence(para, \"A new sentence.\")\n\n# Split a segment at a character offset within that segment\nseg1, seg2 = project.Segments.SplitSegment(new_seg, 5)\n\n# Merge two adjacent segments (migrates translations by default)\nmerged = project.Segments.MergeSegments(seg1, seg2)\n\n# Set translations on a segment\nproject.Segments.SetFreeTranslation(merged, \"In the beginning...\")\nproject.Segments.SetLiteralTranslation(merged, \"In-the beginning...\")\n\n# Reparse a paragraph from its Contents (use only to repair corruption)\nproject.Segments.ReparseParagraph(para)\n\nproject.CloseProject() This class provides operations for managing segments in a FieldWorks project. category texts Provides operations for working with texts data in FieldWorks",
+      "text": "SegmentOperations This class provides operations for managing segments in a FieldWorks project.\n\nSegments represent the units of text analysis in FLEx, typically sentences\nor clauses within paragraphs. Each segment can have baseline text, analyses,\ntranslations (free and literal), and notes.\n\nThe write path follows the LCM idiom:\n\n1. Edit IStTxtPara.Contents (via TsStringBuilder) first.\n2. Assign builder.GetString() to para.Contents - this fires ContentsSideEffects\nwhich triggers AnalysisAdjuster to reconcile segment offsets automatically.\n3. Then update SegmentsOS (Add/Insert/Remove) as needed.\n\nUsage::\n\nfrom flexlibs2 import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Get all segments in a paragraph\npara = project.Object(para_hvo)\nfor segment in project.Segments.GetAll(para):\nbaseline = project.Segments.GetBaselineText(segment)\nprint(baseline)\n\n# Append a new sentence to a paragraph\nnew_seg = project.Segments.AppendSentence(para, \"A new sentence.\")\n\n# Split a segment at a character offset within that segment\nseg1, seg2 = project.Segments.SplitSegment(new_seg, 5)\n\n# Merge two adjacent segments (migrates translations by default)\nmerged = project.Segments.MergeSegments(seg1, seg2)\n\n# Set translations on a segment\nproject.Segments.SetFreeTranslation(merged, \"In the beginning...\")\nproject.Segments.SetLiteralTranslation(merged, \"In-the beginning...\")\n\n# Reparse a paragraph from its Contents (use only to repair corruption)\nproject.Segments.ReparseParagraph(para)\n\nproject.CloseProject() This class provides operations for managing segments in a FieldWorks project. category texts Provides operations for working with texts data in FieldWorks",
       "type": "entity"
+    },
+    {
+      "category": "texts",
+      "description": "Append an analysis token to the end of a segment's AnalysesRS.\n\nConvenience wrapper around ``InsertAnalysis`` at\n``AnalysesRS.Count`` (issue #215).\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.AppendAnalysis",
+      "name": "AppendAnalysis",
+      "signature": "AppendAnalysis(segment_or_hvo, analysis_or_hvo)",
+      "source": "flexicon",
+      "text": "SegmentOperations AppendAnalysis Append an analysis token to the end of a segment's AnalysesRS. Append an analysis token to the end of a segment's AnalysesRS.\n\nConvenience wrapper around ``InsertAnalysis`` at\n``AnalysesRS.Count`` (issue #215).\n segment_or_hvo The ISegment object or HVO. analysis_or_hvo The IAnalysis object or HVO to append.",
+      "type": "method"
     },
     {
       "category": "texts",
@@ -15720,7 +15775,7 @@
       "name": "GetAll",
       "signature": "GetAll(paragraph_or_hvo)",
       "source": "flexicon",
-      "text": "SegmentOperations GetAll Get all segments in a paragraph. Get all segments in a paragraph.\n paragraph_or_hvo The IStTxtPara object or HVO. returns ISegment retrieval",
+      "text": "SegmentOperations GetAll Get all segments in a paragraph. Get all segments in a paragraph.\n paragraph_or_hvo The IStTxtPara object or HVO. returns EnumerableWrapper[ISegment] retrieval",
       "type": "method"
     },
     {
@@ -15780,6 +15835,17 @@
     },
     {
       "category": "texts",
+      "description": "Returns the gloss (translation, meaning) for a sense in a specific writing system.\n\nGet the gloss text for a segment analysis token of any type.\n\n``GetAnalyses()`` returns polymorphic ``IAnalysis`` objects -- a mix of\n``IWfiWordform`` (unanalyzed), ``IWfiAnalysis`` (analyzed, no chosen\ngloss), ``IWfiGloss`` (fully glossed), and ``IPunctuationForm``. Only\n``IWfiGloss`` tokens carry a chosen word gloss; reading it off the wrong\nsubtype (or off an un-cast ``IAnalysis`` reference) silently yields ''\n(issue #212). This helper dispatches on the concrete type so callers\nstop hand-rolling ``IWfiGloss(tok)`` casts in interlinear loops.\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.GetGloss",
+      "name": "GetGloss",
+      "signature": "GetGloss(analysis_or_hvo, wsHandle=None)",
+      "source": "flexicon",
+      "text": "SegmentOperations GetGloss Returns the gloss (translation, meaning) for a sense in a specific writing system. Returns the gloss (translation, meaning) for a sense in a specific writing system.\n\nGet the gloss text for a segment analysis token of any type.\n\n``GetAnalyses()`` returns polymorphic ``IAnalysis`` objects -- a mix of\n``IWfiWordform`` (unanalyzed), ``IWfiAnalysis`` (analyzed, no chosen\ngloss), ``IWfiGloss`` (fully glossed), and ``IPunctuationForm``. Only\n``IWfiGloss`` tokens carry a chosen word gloss; reading it off the wrong\nsubtype (or off an un-cast ``IAnalysis`` reference) silently yields ''\n(issue #212). This helper dispatches on the concrete type so callers\nstop hand-rolling ``IWfiGloss(tok)`` casts in interlinear loops.\n analysis_or_hvo An IAnalysis token (from GetAnalyses) or its HVO. wsHandle Optional writing system handle. Defaults to analysis WS. returns str retrieval",
+      "type": "method"
+    },
+    {
+      "category": "texts",
       "description": "Get the literal (word-for-word) translation of a segment.\n",
       "entity": "SegmentOperations",
       "id": "flexicon:SegmentOperations.GetLiteralTranslation",
@@ -15813,6 +15879,17 @@
     },
     {
       "category": "texts",
+      "description": "Insert an analysis token at a given index in a segment's AnalysesRS.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.InsertAnalysis",
+      "name": "InsertAnalysis",
+      "signature": "InsertAnalysis(segment_or_hvo, index, analysis_or_hvo)",
+      "source": "flexicon",
+      "text": "SegmentOperations InsertAnalysis Insert an analysis token at a given index in a segment's AnalysesRS. Insert an analysis token at a given index in a segment's AnalysesRS.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n segment_or_hvo The ISegment object or HVO. index The 0-based index at which to insert. May equal the current AnalysesRS.Count to append at the end. analysis_or_hvo The IAnalysis object or HVO to insert.",
+      "type": "method"
+    },
+    {
+      "category": "texts",
       "description": "Check if a segment is marked as a label (section header).\n",
       "entity": "SegmentOperations",
       "id": "flexicon:SegmentOperations.IsLabel",
@@ -15835,6 +15912,17 @@
     },
     {
       "category": "texts",
+      "description": "Remove the analysis token at a given index from a segment's AnalysesRS.\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.RemoveAnalysis",
+      "name": "RemoveAnalysis",
+      "signature": "RemoveAnalysis(segment_or_hvo, index)",
+      "source": "flexicon",
+      "text": "SegmentOperations RemoveAnalysis Remove the analysis token at a given index from a segment's AnalysesRS. Remove the analysis token at a given index from a segment's AnalysesRS.\n segment_or_hvo The ISegment object or HVO. index The 0-based index within AnalysesRS to remove. deletion",
+      "type": "method"
+    },
+    {
+      "category": "texts",
       "description": "Re-derive segment offsets and wordform analyses for a paragraph by\nreassigning para.Contents to itself; FreeTranslation, LiteralTranslation,\nand Notes on surviving segments are preserved.\n\nImplementation: assigns para.Contents back to itself. That single setter\nassignment fires ContentsSideEffects -> AnalysisAdjuster, which is an\noffset reconciler -- it rebuilds AnalysesRS (wordform analyses) but does\nNOT touch FreeTranslation, LiteralTranslation, or NotesOS on surviving\nsegments (those are independently-owned LCM objects with no dependency\non Contents). When the assignment is a self-assignment (the only path\nthrough this method), segment objects survive with identical offsets,\nso their translations are never cleared. No regex, no manual\nSegmentsOS.Clear(), no factory.Create() calls are needed or used.\n",
       "entity": "SegmentOperations",
       "id": "flexicon:SegmentOperations.ReparseParagraph",
@@ -15842,6 +15930,28 @@
       "signature": "ReparseParagraph(paragraph_or_hvo)",
       "source": "flexicon",
       "text": "SegmentOperations ReparseParagraph Re-derive segment offsets and wordform analyses for a paragraph by\nreassigning para. Re-derive segment offsets and wordform analyses for a paragraph by\nreassigning para.Contents to itself; FreeTranslation, LiteralTranslation,\nand Notes on surviving segments are preserved.\n\nImplementation: assigns para.Contents back to itself. That single setter\nassignment fires ContentsSideEffects -> AnalysisAdjuster, which is an\noffset reconciler -- it rebuilds AnalysesRS (wordform analyses) but does\nNOT touch FreeTranslation, LiteralTranslation, or NotesOS on surviving\nsegments (those are independently-owned LCM objects with no dependency\non Contents). When the assignment is a self-assignment (the only path\nthrough this method), segment objects survive with identical offsets,\nso their translations are never cleared. No regex, no manual\nSegmentsOS.Clear(), no factory.Create() calls are needed or used.\n paragraph_or_hvo The IStTxtPara object or HVO.",
+      "type": "method"
+    },
+    {
+      "category": "texts",
+      "description": "Find an analysis token in a segment's AnalysesRS and replace it.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.ReplaceAnalysis",
+      "name": "ReplaceAnalysis",
+      "signature": "ReplaceAnalysis(segment_or_hvo, old_analysis_or_hvo, new_analysis_or_hvo)",
+      "source": "flexicon",
+      "text": "SegmentOperations ReplaceAnalysis Find an analysis token in a segment's AnalysesRS and replace it. Find an analysis token in a segment's AnalysesRS and replace it.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n segment_or_hvo The ISegment object or HVO. old_analysis_or_hvo The existing IAnalysis object or HVO to locate within AnalysesRS. new_analysis_or_hvo The IAnalysis object or HVO to put in its place.",
+      "type": "method"
+    },
+    {
+      "category": "texts",
+      "description": "Replace the analysis token at a given index in a segment's AnalysesRS.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n",
+      "entity": "SegmentOperations",
+      "id": "flexicon:SegmentOperations.SetAnalysis",
+      "name": "SetAnalysis",
+      "signature": "SetAnalysis(segment_or_hvo, index, analysis_or_hvo)",
+      "source": "flexicon",
+      "text": "SegmentOperations SetAnalysis Replace the analysis token at a given index in a segment's AnalysesRS. Replace the analysis token at a given index in a segment's AnalysesRS.\n\nWrites directly to ``ISegment.AnalysesRS`` (a reference sequence),\nwhich previously required dropping to raw LCM reflection (issue #215).\n segment_or_hvo The ISegment object or HVO. index The 0-based index within AnalysesRS to replace. analysis_or_hvo The replacement IAnalysis object (IWfiWordform, IWfiAnalysis, IWfiGloss, or IPunctuationForm) or its HVO. modification",
       "type": "method"
     },
     {
@@ -16027,7 +16137,7 @@
       "name": "GetAll",
       "signature": "GetAll(recursive=True)",
       "source": "flexicon",
-      "text": "SemanticDomainOperations GetAll Get all semantic domains in the project. Get all semantic domains in the project.\n recursive If True (default), returns every domain in the hierarchy (depth-first, parents before children). If False, returns only top-level domains and the caller must descend via GetSubdomains. returns list retrieval",
+      "text": "SemanticDomainOperations GetAll Get all semantic domains in the project. Get all semantic domains in the project.\n recursive If True (default), returns every domain in the hierarchy (depth-first, parents before children). If False, returns only top-level domains and the caller must descend via GetSubdomains. returns list[ICmSemanticDomain] retrieval",
       "type": "method"
     },
     {
@@ -16376,7 +16486,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "StratumOperations GetAll Yield every stratum in ``MorphologicalDataOA. Yield every stratum in ``MorphologicalDataOA.StrataOS``.\n returns IMoStratum retrieval",
+      "text": "StratumOperations GetAll Yield every stratum in ``MorphologicalDataOA. Yield every stratum in ``MorphologicalDataOA.StrataOS``.\n returns EnumerableWrapper[IMoStratum] retrieval",
       "type": "method"
     },
     {
@@ -16523,13 +16633,13 @@
     },
     {
       "category": "texts",
-      "description": "Get all texts in the project.\n\nReturns a generator that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
+      "description": "Get all texts in the project.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
       "entity": "TextOperations",
       "id": "flexicon:TextOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "TextOperations GetAll Get all texts in the project. Get all texts in the project.\n\nReturns a generator that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n returns IText retrieval",
+      "text": "TextOperations GetAll Get all texts in the project. Get all texts in the project.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n returns EnumerableWrapper[IText] retrieval",
       "type": "method"
     },
     {
@@ -16770,7 +16880,7 @@
       "name": "GetSegmentsWithType",
       "signature": "GetSegmentsWithType(type_or_hvo)",
       "source": "flexicon",
-      "text": "TranslationTypeOperations GetSegmentsWithType Get all segments that use a specific translation type. Get all segments that use a specific translation type.\n\nSearches through all segments in all texts and returns those that\nreference this translation type in their translations.\n type_or_hvo The ICmPossibility object or HVO. returns ISegment retrieval",
+      "text": "TranslationTypeOperations GetSegmentsWithType Get all segments that use a specific translation type. Get all segments that use a specific translation type.\n\nSearches through all segments in all texts and returns those that\nreference this translation type in their translations.\n type_or_hvo The ICmPossibility object or HVO. retrieval",
       "type": "method"
     },
     {
@@ -16923,7 +17033,7 @@
       "name": "GetAll",
       "signature": "GetAll(entry_or_hvo=None)",
       "source": "flexicon",
-      "text": "VariantOperations GetAll Get all variant references for a lexical entry, or all variants in the entire project. Get all variant references for a lexical entry, or all variants in the entire project.\n\nThis returns the entry references that define this entry as a variant\nof other entries, or other entries as variants of this one.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all variant references in the entire project. returns ILexEntryRef retrieval",
+      "text": "VariantOperations GetAll Get all variant references for a lexical entry, or all variants in the entire project. Get all variant references for a lexical entry, or all variants in the entire project.\n\nThis returns the entry references that define this entry as a variant\nof other entries, or other entries as variants of this one.\n entry_or_hvo The ILexEntry object or HVO. If None, iterates all variant references in the entire project. returns EnumerableWrapper[ILexEntryRef] retrieval",
       "type": "method"
     },
     {
@@ -16934,7 +17044,7 @@
       "name": "GetAllTypes",
       "signature": "GetAllTypes()",
       "source": "flexicon",
-      "text": "VariantOperations GetAllTypes Get all variant entry types defined in the project. Get all variant entry types defined in the project.\n\nVariant types define the nature of the relationship between entries,\nsuch as spelling variants, dialectal variants, irregularly inflected\nforms, etc.\n returns ILexEntryType retrieval",
+      "text": "VariantOperations GetAllTypes Get all variant entry types defined in the project. Get all variant entry types defined in the project.\n\nVariant types define the nature of the relationship between entries,\nsuch as spelling variants, dialectal variants, irregularly inflected\nforms, etc.\n returns EnumerableWrapper[ILexEntryType] retrieval",
       "type": "method"
     },
     {
@@ -17175,7 +17285,7 @@
       "name": "GetAll",
       "signature": "GetAll(wordform_or_hvo)",
       "source": "flexicon",
-      "text": "WfiAnalysisOperations GetAll Retrieve all analyses for a wordform. Retrieve all analyses for a wordform.\n\nThis method returns all IWfiAnalysis objects associated with a given\nwordform, representing different possible linguistic interpretations.\n wordform_or_hvo Either an IWfiWordform object or its HVO returns list retrieval",
+      "text": "WfiAnalysisOperations GetAll Retrieve all analyses for a wordform. Retrieve all analyses for a wordform.\n\nThis method returns all IWfiAnalysis objects associated with a given\nwordform, representing different possible linguistic interpretations.\n wordform_or_hvo Either an IWfiWordform object or its HVO returns list[IWfiAnalysis] retrieval",
       "type": "method"
     },
     {
@@ -17198,6 +17308,17 @@
       "signature": "GetCategory(analysis_or_hvo)",
       "source": "flexicon",
       "text": "WfiAnalysisOperations GetCategory Get the grammatical category (part of speech) for an analysis. Get the grammatical category (part of speech) for an analysis.\n\nRetrieves the IPartOfSpeech object representing the grammatical\ncategory assigned to this analysis.\n analysis_or_hvo Either an IWfiAnalysis object or its HVO returns IPartOfSpeech or None retrieval",
+      "type": "method"
+    },
+    {
+      "category": "texts",
+      "description": "Get the category (POS) abbreviation for any analysis token.\n\nOwner-resolving convenience wrapper over :meth:`GetCategory` +\n``project.POS.GetAbbreviation`` that accepts the polymorphic\n``IAnalysis`` tokens from ``SegmentOperations.GetAnalyses`` -- an\n``IWfiGloss`` resolves to its owning ``IWfiAnalysis`` automatically.\nSaves interlinear loops from hand-rolling the\n``gloss -> Owner -> WfiAnalysis -> CategoryRA -> Abbreviation`` chase\n(issue #212).\n",
+      "entity": "WfiAnalysisOperations",
+      "id": "flexicon:WfiAnalysisOperations.GetCategoryAbbrev",
+      "name": "GetCategoryAbbrev",
+      "signature": "GetCategoryAbbrev(analysis_or_hvo, wsHandle=None)",
+      "source": "flexicon",
+      "text": "WfiAnalysisOperations GetCategoryAbbrev Get the category (POS) abbreviation for any analysis token. Get the category (POS) abbreviation for any analysis token.\n\nOwner-resolving convenience wrapper over :meth:`GetCategory` +\n``project.POS.GetAbbreviation`` that accepts the polymorphic\n``IAnalysis`` tokens from ``SegmentOperations.GetAnalyses`` -- an\n``IWfiGloss`` resolves to its owning ``IWfiAnalysis`` automatically.\nSaves interlinear loops from hand-rolling the\n``gloss -> Owner -> WfiAnalysis -> CategoryRA -> Abbreviation`` chase\n(issue #212).\n analysis_or_hvo An IAnalysis token or its HVO. wsHandle Optional writing system handle. Defaults to analysis WS. returns str retrieval",
       "type": "method"
     },
     {
@@ -17275,6 +17396,17 @@
       "signature": "GetMorphBundles(analysis_or_hvo)",
       "source": "flexicon",
       "text": "WfiAnalysisOperations GetMorphBundles Get all morpheme bundles for an analysis. Get all morpheme bundles for an analysis.\n\nRetrieves all IWfiMorphBundle objects representing the morphological\nbreakdown of the wordform in this analysis.\n analysis_or_hvo Either an IWfiAnalysis object or its HVO returns list retrieval",
+      "type": "method"
+    },
+    {
+      "category": "texts",
+      "description": "Get morpheme bundles for any segment analysis token (owner-resolving).\n\nUnlike :meth:`GetMorphBundles` (which requires a concrete\n``IWfiAnalysis``), this accepts the polymorphic ``IAnalysis`` tokens\nthat ``SegmentOperations.GetAnalyses`` returns and resolves the owning\n``IWfiAnalysis`` automatically. This is the traversal helper interlinear\nloops kept hand-rolling (issue #212).\n",
+      "entity": "WfiAnalysisOperations",
+      "id": "flexicon:WfiAnalysisOperations.GetMorphemeBundles",
+      "name": "GetMorphemeBundles",
+      "signature": "GetMorphemeBundles(analysis_or_hvo)",
+      "source": "flexicon",
+      "text": "WfiAnalysisOperations GetMorphemeBundles Get morpheme bundles for any segment analysis token (owner-resolving). Get morpheme bundles for any segment analysis token (owner-resolving).\n\nUnlike :meth:`GetMorphBundles` (which requires a concrete\n``IWfiAnalysis``), this accepts the polymorphic ``IAnalysis`` tokens\nthat ``SegmentOperations.GetAnalyses`` returns and resolves the owning\n``IWfiAnalysis`` automatically. This is the traversal helper interlinear\nloops kept hand-rolling (issue #212).\n analysis_or_hvo An IAnalysis token (IWfiGloss / IWfiAnalysis / IWfiWordform / IPunctuationForm) or its HVO. returns list retrieval",
       "type": "method"
     },
     {
@@ -17465,13 +17597,13 @@
     },
     {
       "category": "texts",
-      "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an iterator over all IWfiGloss objects associated with\nthe specified analysis, allowing iteration over all meaning glosses.\n",
+      "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all IWfiGloss objects associated with the\nspecified analysis, allowing iteration over all meaning glosses.\n",
       "entity": "WfiGlossOperations",
       "id": "flexicon:WfiGlossOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll(analysis_or_hvo)",
       "source": "flexicon",
-      "text": "WfiGlossOperations GetAll Retrieve all glosses for a wordform analysis. Retrieve all glosses for a wordform analysis.\n\nThis method returns an iterator over all IWfiGloss objects associated with\nthe specified analysis, allowing iteration over all meaning glosses.\n analysis_or_hvo Either an IWfiAnalysis object or its HVO returns IWfiGloss retrieval",
+      "text": "WfiGlossOperations GetAll Retrieve all glosses for a wordform analysis. Retrieve all glosses for a wordform analysis.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all IWfiGloss objects associated with the\nspecified analysis, allowing iteration over all meaning glosses.\n analysis_or_hvo Either an IWfiAnalysis object or its HVO returns EnumerableWrapper[IWfiGloss] retrieval",
       "type": "method"
     },
     {
@@ -17635,7 +17767,7 @@
       "name": "GetAll",
       "signature": "GetAll(analysis_or_hvo)",
       "source": "flexicon",
-      "text": "WfiMorphBundleOperations GetAll Get all morph bundles for a wordform analysis. Get all morph bundles for a wordform analysis.\n analysis_or_hvo The IWfiAnalysis object or HVO. returns IWfiMorphBundle retrieval",
+      "text": "WfiMorphBundleOperations GetAll Get all morph bundles for a wordform analysis. Get all morph bundles for a wordform analysis.\n analysis_or_hvo The IWfiAnalysis object or HVO. returns EnumerableWrapper[IWfiMorphBundle] retrieval",
       "type": "method"
     },
     {
@@ -17936,13 +18068,13 @@
     },
     {
       "category": "texts",
-      "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an iterator over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
+      "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
       "entity": "WordformOperations",
       "id": "flexicon:WordformOperations.GetAll",
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "WordformOperations GetAll Retrieve all wordforms in the FLEx project. Retrieve all wordforms in the FLEx project.\n\nThis method returns an iterator over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n returns IWfiWordform retrieval",
+      "text": "WordformOperations GetAll Retrieve all wordforms in the FLEx project. Retrieve all wordforms in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n returns EnumerableWrapper[IWfiWordform] retrieval",
       "type": "method"
     },
     {
@@ -17953,7 +18085,7 @@
       "name": "GetAllUnapproved",
       "signature": "GetAllUnapproved()",
       "source": "flexicon",
-      "text": "WordformOperations GetAllUnapproved Retrieve all wordforms that are not approved (not CORRECT status). Retrieve all wordforms that are not approved (not CORRECT status).\n returns IWfiWordform retrieval",
+      "text": "WordformOperations GetAllUnapproved Retrieve all wordforms that are not approved (not CORRECT status). Retrieve all wordforms that are not approved (not CORRECT status).\n returns EnumerableWrapper[IWfiWordform] retrieval",
       "type": "method"
     },
     {
@@ -17964,7 +18096,7 @@
       "name": "GetAllWithStatus",
       "signature": "GetAllWithStatus(status)",
       "source": "flexicon",
-      "text": "WordformOperations GetAllWithStatus Retrieve all wordforms with a specific spelling status. Retrieve all wordforms with a specific spelling status.\n status The spelling status to filter by (from SpellingStatusStates) returns IWfiWordform retrieval",
+      "text": "WordformOperations GetAllWithStatus Retrieve all wordforms with a specific spelling status. Retrieve all wordforms with a specific spelling status.\n status The spelling status to filter by (from SpellingStatusStates) returns EnumerableWrapper[IWfiWordform] retrieval",
       "type": "method"
     },
     {
@@ -18150,7 +18282,7 @@
       "name": "GetAll",
       "signature": "GetAll()",
       "source": "flexicon",
-      "text": "WritingSystemOperations GetAll Get all active writing systems in the project. Get all active writing systems in the project.\n\nReturns all writing systems that are currently active (both vernacular\nand analysis) in the project.\n returns IWritingSystemDefinition retrieval",
+      "text": "WritingSystemOperations GetAll Get all active writing systems in the project. Get all active writing systems in the project.\n\nReturns all writing systems that are currently active (both vernacular\nand analysis) in the project.\n returns EnumerableWrapper[IWritingSystemDefinition] retrieval",
       "type": "method"
     },
     {
@@ -18446,12 +18578,12 @@
     },
     {
       "category": "general",
-      "description": "Descriptor to automatically wrap IEnumerable return values.\n\nWraps methods that return C# IEnumerable collections to make them\nPythonic with .Count property and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!",
+      "description": "Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!\n\nBehavioral collection contract:\nEvery ``GetAll`` in flexicon returns a **behavioral collection**: you\ncan always loop it, ``len()`` it, index into it, and re-iterate it.\nThe concrete return type -- ``EnumerableWrapper`` (this decorator, for\nlarge/lazily-materialized results), a plain ``list`` (already a\nsequence, so wrapping is a no-op), or a ``SmartCollection`` subtype\n(adds ``.filter()``/type-breakdown display on top of the same\nsequence guarantees) -- is an implementation detail callers never\nhave to branch on. See ``docs/getall-contract.md`` for the full\nguarantee and rationale.",
       "entity": "wrap_enumerable",
       "id": "flexicon:wrap_enumerable",
       "name": "wrap_enumerable",
       "source": "flexicon",
-      "text": "wrap_enumerable Descriptor to automatically wrap IEnumerable return values.\n\nWraps methods that return C# IEnumerable collections to make them\nPythonic with .Count property and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works! Descriptor to automatically wrap IEnumerable return values. category general Class for working with general data in FieldWorks",
+      "text": "wrap_enumerable Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!\n\nBehavioral collection contract:\nEvery ``GetAll`` in flexicon returns a **behavioral collection**: you\ncan always loop it, ``len()`` it, index into it, and re-iterate it.\nThe concrete return type -- ``EnumerableWrapper`` (this decorator, for\nlarge/lazily-materialized results), a plain ``list`` (already a\nsequence, so wrapping is a no-op), or a ``SmartCollection`` subtype\n(adds ``.filter()``/type-breakdown display on top of the same\nsequence guarantees) -- is an implementation detail callers never\nhave to branch on. See ``docs/getall-contract.md`` for the full\nguarantee and rationale. Descriptor to automatically wrap IEnumerable/iterator return values. category general Class for working with general data in FieldWorks",
       "type": "entity"
     },
     {
@@ -37249,14 +37381,14 @@
   "statistics": {
     "embedding_dimension": 384,
     "sources": {
-      "flexicon": 1618,
+      "flexicon": 1630,
       "flexlibs_stable": 71,
       "liblcm": 1878
     },
-    "total_items": 3567,
+    "total_items": 3579,
     "types": {
       "entity": 1994,
-      "method": 1573
+      "method": 1585
     }
   }
 }

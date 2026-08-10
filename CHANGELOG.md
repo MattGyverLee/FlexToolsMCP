@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+### Fixed: unprotected mutating scripts returned an opaque error instead of guidance (#82)
+- **`run_module` on any unprotected mutating script returned `'str' object has
+  no attribute 'get'`** instead of the `unprotected_mutations_detected`
+  guidance the preflight had already computed. The writeability gate worked
+  correctly -- it detected the mutation and decided to reject -- but the
+  handler crashed while *logging* that rejection, so the one message telling
+  the caller how to fix their script (`wrap writes in if modifyAllowed:`) never
+  arrived. Regression from `a449605` (2.7.x); affected every
+  `write_enabled` / `confirmed` combination. `validate_only=True` was
+  unaffected and was the workaround.
+- **Root cause:** the per-issue DEBUG loop iterated `cert["raw_lcm_patterns"]`
+  calling `p.get("line")`, but that list holds plain formatted strings
+  (`"CREATE (Create())"`) extended from `detect_cud_operations()["operations"]`
+  -- not the `{"line", "method", "context"}` dicts its sibling
+  `unprotected_liblcm_calls` holds. Copy-paste from the immediately preceding
+  loop, which uses the same field names correctly.
+- **Structural hardening:** the reject diagnostics moved into
+  `_log_writeability_reject()`, wrapped in a blanket `try/except`. This block
+  is diagnostic-only -- it describes a rejection already decided -- so a future
+  shape drift in any of the three lists now costs a log line rather than the
+  tool result. Also closed a second latent path to the same symptom:
+  `get_operations_logger()` is `Optional` and returns `None` before kernel
+  init, which would have raised `'NoneType' object has no attribute 'info'` in
+  place of the guidance.
+- Regression coverage in `tests/test_issue82_writeability_reject_logging.py`,
+  including the `raw_lcm_patterns`-is-strings shape contract, so a future
+  change to that structure fails loudly instead of silently breaking the log.
+
 ## [2.9.0] - 2026-07-22
 
 ### Refresh always scans all APIs (per-library filter removed)

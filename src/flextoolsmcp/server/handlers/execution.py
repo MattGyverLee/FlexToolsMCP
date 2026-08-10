@@ -13,6 +13,7 @@ These handlers manage module and operation execution:
 - get_operation_logs: View execution logs and pattern recommendations
 """
 
+import contextlib
 import json
 import sys
 import subprocess
@@ -810,6 +811,72 @@ def _log_operation_failure(
             assistance_triggered=False,
             log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
         )
+
+
+def _log_writeability_reject(
+    cert: Dict[str, Any],
+    mutating: List[Dict[str, Any]],
+) -> None:
+    """Emit the per-issue DEBUG breakdown for an `unprotected_writes` reject.
+
+    Mirrors the casting-reject pattern: an INFO summary plus per-issue DEBUG
+    lines so the .log captures WHY writeability failed, not just that it did.
+    Without this the reject's `detail` field only carries the first 5 method
+    names and the actual line numbers / contexts are lost.
+
+    Issue #82: this is DIAGNOSTIC-ONLY -- it describes a rejection the gate has
+    already decided. It must never be able to take down the response it is
+    describing, so every failure mode degrades the log instead:
+
+    - The three lists it reads have *different* element shapes.
+      `mutating_calls` and `unprotected_liblcm_calls` hold dicts, but
+      `raw_lcm_patterns` holds plain formatted strings (`"CREATE (Create())"`)
+      extended from `detect_cud_operations()["operations"]`. A copy-pasted
+      `p.get("line")` over the string list raised AttributeError here and
+      replaced the caller's `unprotected_mutations_detected` guidance with a
+      bare `'str' object has no attribute 'get'`.
+    - The blanket try/except makes that structural: a future shape drift in any
+      of the three lists costs a log line, not the tool result.
+    - `get_operations_logger()` is `Optional` and returns None before kernel
+      init, which was a second latent path to the same symptom (an opaque
+      `'NoneType' object has no attribute 'info'` in place of the guidance).
+      No logger simply means no diagnostics to write.
+    """
+    op_logger = get_operations_logger()
+    if op_logger is None:
+        return
+    try:
+        unprotected_lcm = cert.get("unprotected_liblcm_calls", []) or []
+        raw_lcm = cert.get("raw_lcm_patterns", []) or []
+        # Issue #44: a raw `set_String` / collection write surfaces in
+        # unprotected_lcm but NOT in the flexicon-index `mutating` list, which
+        # made the old line read `mutating=0 ... raw_lcm=1` -- self-contradictory
+        # (a raw write IS a mutation). Report the true total and keep the
+        # per-source breakdown so the count and the raw_lcm flag agree.
+        total_mutations = len(mutating) + len(unprotected_lcm)
+        op_logger.info(
+            f"Preflight writeability: mutating={total_mutations} "
+            f"(flexicon={len(mutating)} unprotected_lcm={len(unprotected_lcm)} "
+            f"raw_lcm={len(raw_lcm)}) (rejected)"
+        )
+        for m in mutating[:10]:
+            op_logger.debug(
+                f"  writeability: class={m.get('class')} method={m.get('method')} "
+                f"source={m.get('source')}"
+            )
+        for c in unprotected_lcm[:10]:
+            op_logger.debug(
+                f"  writeability: line={c.get('line')} method={c.get('method')} "
+                f"context={(c.get('context') or '')[:80]!r}"
+            )
+        # Strings, not dicts -- see the shape note in the docstring.
+        for p in raw_lcm[:10]:
+            op_logger.debug(f"  writeability: raw_lcm_pattern={p!r}")
+    except Exception as log_exc:
+        # The fallback line is itself best-effort -- if the log backend is the
+        # thing that broke, reporting that must not raise either.
+        with contextlib.suppress(Exception):
+            op_logger.debug(f"  writeability: per-issue logging failed: {log_exc!r}")
 
 
 def _log_preflight_reject(
@@ -2626,39 +2693,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if not cert["is_certified_readonly"]:
         guidance = get_unprotected_write_guidance(cert)
         mutating = [m for m in cert.get("mutating_calls", []) if m.get("is_mutating")]
-        unprotected_lcm = cert.get("unprotected_liblcm_calls", []) or []
-        raw_lcm = cert.get("raw_lcm_patterns", []) or []
-        # Mirror the casting-reject pattern: an INFO summary + per-issue DEBUG
-        # lines so the .log captures WHY writeability failed, not just that it
-        # did. Without this the detail field only carries the first 5 method
-        # names and the actual line numbers / contexts are lost.
-        op_logger = get_operations_logger()
-        # Issue #44: a raw `set_String` / collection write surfaces in
-        # unprotected_lcm but NOT in the flexicon-index `mutating` list, which
-        # made the old line read `mutating=0 ... raw_lcm=1` -- self-contradictory
-        # (a raw write IS a mutation). Report the true total and keep the
-        # per-source breakdown so the count and the raw_lcm flag agree.
-        total_mutations = len(mutating) + len(unprotected_lcm)
-        op_logger.info(
-            f"Preflight writeability: mutating={total_mutations} "
-            f"(flexicon={len(mutating)} unprotected_lcm={len(unprotected_lcm)} "
-            f"raw_lcm={len(raw_lcm)}) (rejected)"
-        )
-        for m in mutating[:10]:
-            op_logger.debug(
-                f"  writeability: class={m.get('class')} method={m.get('method')} "
-                f"source={m.get('source')}"
-            )
-        for c in unprotected_lcm[:10]:
-            op_logger.debug(
-                f"  writeability: line={c.get('line')} method={c.get('method')} "
-                f"context={(c.get('context') or '')[:80]!r}"
-            )
-        for p in raw_lcm[:10]:
-            op_logger.debug(
-                f"  writeability: line={p.get('line')} method={p.get('method')} "
-                f"context={(p.get('context') or '')[:80]!r}"
-            )
+        _log_writeability_reject(cert, mutating)
         _log_preflight_reject(
             op_id, seq, time.monotonic() - t_start,
             "unprotected_writes",

@@ -74,6 +74,13 @@ from .kernel import (
 # Cache the loaded server.py module to avoid reloading on every __getattr__ call (efficiency fix)
 _server_module_cache = None
 
+# Cache a load FAILURE too (P1 fix): if server.py raised while executing,
+# every subsequent lazy attribute touch must fail fast with the SAME chained
+# error instead of re-executing server.py's top-level code again (which has
+# side effects -- logging setup, decorator registration -- that can compound
+# and further obscure the original failure).
+_server_load_error = None
+
 def __getattr__(name: str):
     """Lazy load handler functions and classes from the main server.py module.
 
@@ -84,7 +91,7 @@ def __getattr__(name: str):
 
     The server.py module is loaded once and cached to avoid reload overhead.
     """
-    global _server_module_cache
+    global _server_module_cache, _server_load_error
     import sys
     from pathlib import Path
     import importlib.util
@@ -103,9 +110,23 @@ def __getattr__(name: str):
         'rank_object_matches',
         'main',
         'run',
+
+        # MCP protocol entry points (server.py:689, 809, 855) -- must be
+        # reachable via `from flextoolsmcp.server import list_tools` etc.
+        'server',
+        'list_tools',
+        'call_tool',
     }
 
     if name in LAZY_IMPORTS:
+        # If a previous load attempt failed, do not re-execute server.py --
+        # just re-raise the same chained failure immediately.
+        if _server_load_error is not None:
+            raise ImportError(
+                f"flextoolsmcp.server lazy-load of '{name}' failed previously "
+                "and will not be retried (see chained cause below)."
+            ) from _server_load_error
+
         # Load server.py as a module once and cache it
         if _server_module_cache is None:
             src_path = str(Path(__file__).parent.parent)
@@ -157,7 +178,22 @@ def __getattr__(name: str):
 
             _server_module = importlib.util.module_from_spec(spec)
             _server_module.__package__ = "flextoolsmcp"
-            spec.loader.exec_module(_server_module)
+            try:
+                spec.loader.exec_module(_server_module)
+            except Exception as exc:
+                # CPython's IMPORT_FROM opcode reinterprets ANY AttributeError
+                # escaping a module's __getattr__ as "attribute absent" and
+                # re-raises a generic `ImportError: cannot import name`,
+                # destroying the real traceback/message. Convert eagerly and
+                # chain so the actual cause (e.g. an mcp API removal breaking
+                # a decorator at server.py import time) is never laundered
+                # into a misleading missing-attribute error.
+                _server_load_error = exc
+                raise ImportError(
+                    f"flextoolsmcp.server lazy-load of '{name}' failed: server.py raised "
+                    f"{type(exc).__name__} while executing (NOT a missing-attribute error). "
+                    f"See chained cause below."
+                ) from exc
             _server_module_cache = _server_module
 
         # Get the attribute from the cached module

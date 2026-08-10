@@ -173,10 +173,25 @@ def check_runtime_import(script_path, description):
                 )
                 print(stderr, file=sys.stderr)
                 return False
+            # Genuine third-party ImportError/ModuleNotFoundError (e.g. a dep
+            # simply isn't installed in this environment) -- intentional skip,
+            # not a code bug.
             print(
                 f"  Note: {description} has uninstalled third-party dependency "
                 f"(not a code bug, skipping)",
             )
+            return True
+        # Non-zero exit with NEITHER ImportError nor ModuleNotFoundError in
+        # stderr (e.g. a bare AttributeError from a removed decorator API --
+        # see mcp 2.0.0 incompatibility). This is an unclassified failure and
+        # must FAIL the check rather than silently falling through to True.
+        print(
+            f"RUNTIME ERROR: {script_path} ({description}) exited "
+            f"{result.returncode} with an unrecognized (non-Import) error:",
+            file=sys.stderr,
+        )
+        print(stderr, file=sys.stderr)
+        return False
     return True
 
 
@@ -186,7 +201,7 @@ def check_server_tools():
     """Verify server.py exposes the expected number of MCP tools."""
     check_code = (
         "import asyncio; "
-        "from src.server import APIIndex, get_index_dir, list_tools; "
+        "from flextoolsmcp.server import APIIndex, get_index_dir, list_tools; "
         "tools = asyncio.run(list_tools()); "
         "print(len(tools))"
     )
@@ -210,7 +225,12 @@ def check_server_tools():
             )
             return False
 
-    print("  server.py: deps not installed, falling back to AST tool count")
+    print(
+        "  server.py: runtime import/execution failed, falling back to AST tool "
+        "count -- DEGRADED CHECK, does not verify server.py actually imports/runs"
+    )
+    if result.stderr.strip():
+        print(f"  (runtime import stderr: {result.stderr.strip().splitlines()[-1]})")
     return _count_tools_from_ast()
 
 
@@ -246,7 +266,11 @@ def _count_tools_from_ast():
         pass
 
     if tool_count >= MIN_TOOL_COUNT:
-        print(f"  server.py + tool_definitions.py: {tool_count} tool definitions found (AST) [OK]")
+        print(
+            f"  server.py + tool_definitions.py: {tool_count} tool definitions found "
+            f"(AST, DEGRADED -- runtime import check failed, this does NOT prove "
+            f"server.py imports/runs) [OK]"
+        )
         return True
     else:
         print(
@@ -378,7 +402,7 @@ def check_flexicon_contract(operations_classes, exception_classes):
 
     # Import the non-enumerable operations list from server constants
     try:
-        from src.server.constants import NON_ENUMERABLE_OPERATIONS
+        from flextoolsmcp.server.constants import NON_ENUMERABLE_OPERATIONS
     except (ImportError, AttributeError):
         NON_ENUMERABLE_OPERATIONS = {
             "CheckOperations",

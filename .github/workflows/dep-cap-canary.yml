@@ -1,0 +1,135 @@
+name: Dependency cap canary
+
+# Answers "can we raise this cap yet?" -- monthly, with the answer already tested.
+#
+# Runtime deps are capped in pyproject.toml so a new major cannot break fresh
+# installs the way mcp 2.0.0 did (specs/mcp2-compat/). The cost of that safety
+# is silence: .github/dependabot.yml tracks development dependencies only, so
+# nothing otherwise reports that a cap has started excluding a usable release.
+#
+# This job finds excluded releases, force-installs them, runs the suite against
+# them, and keeps ONE sticky issue current with the verdict. It comments (i.e.
+# notifies) only when a newer version actually passes -- that is the moment a
+# cap is ready to move. A cap that is still legitimately holding back a broken
+# release updates the issue body silently.
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"   # 06:00 UTC, first of the month
+  workflow_dispatch:       # and on demand
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    name: check caps against latest PyPI releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev dependencies (capped, as published)
+        run: pip install -e .[dev]
+
+      - name: Audit caps against PyPI
+        id: audit
+        # Exit 1 means "a cap is excluding a newer release" -- a finding, not a
+        # failure. Exit 2 is a real error (network/parse) and should fail the job.
+        run: |
+          set +e
+          python scripts/cap_canary.py --json > canary.json
+          rc=$?
+          set -e
+          if [ "$rc" = "2" ]; then
+            echo "cap_canary.py failed to run" >&2
+            exit 1
+          fi
+          python scripts/cap_canary.py --markdown > canary.md
+          echo "blocked=$(jq '.blocked | length' canary.json)" >> "$GITHUB_OUTPUT"
+          jq -r '.blocked[] | "\(.name)==\(.latest)"' canary.json > blocked.txt
+          cat canary.md
+
+      - name: Install excluded versions and run the suite against them
+        id: verify
+        if: steps.audit.outputs.blocked != '0'
+        # Deliberately force-installs past our own pin: the whole question is
+        # what happens when the cap is not there. pip will warn about the
+        # conflict with the installed flextools-mcp metadata; that is expected.
+        run: |
+          echo "### Test verdict" >> canary.md
+          echo "" >> canary.md
+          overall=pass
+          while read -r pinned; do
+            [ -z "$pinned" ] && continue
+            echo "::group::$pinned"
+            if ! pip install "$pinned"; then
+              echo "- \`$pinned\` -- **install failed**; cap stays." >> canary.md
+              overall=fail
+              echo "::endgroup::"
+              continue
+            fi
+            set +e
+            pytest -m "not requires_flex" --continue-on-collection-errors -q > out.txt 2>&1
+            rc=$?
+            set -e
+            tail -n 25 out.txt
+            if [ "$rc" = "0" ]; then
+              echo "- \`$pinned\` -- **suite passes**. This cap can be raised." >> canary.md
+            else
+              echo "- \`$pinned\` -- **suite fails** (exit $rc); cap is still doing its job." >> canary.md
+              echo "" >> canary.md
+              echo "<details><summary>failure tail</summary>" >> canary.md
+              echo "" >> canary.md
+              echo '```' >> canary.md
+              tail -n 25 out.txt >> canary.md
+              echo '```' >> canary.md
+              echo "" >> canary.md
+              echo "</details>" >> canary.md
+              overall=fail
+            fi
+            echo "::endgroup::"
+            # Restore the capped environment before testing the next dep, so
+            # verdicts stay independent.
+            pip install -e .[dev] --force-reinstall --no-deps >/dev/null 2>&1 || true
+            pip install -e .[dev] >/dev/null 2>&1 || true
+          done < blocked.txt
+          echo "verdict=$overall" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the sticky review issue
+        if: steps.audit.outputs.blocked != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERDICT: ${{ steps.verify.outputs.verdict }}
+        run: |
+          gh label create dep-cap-canary \
+            --description "Automated dependency cap review" \
+            --color 0366d6 2>/dev/null || true
+
+          echo "" >> canary.md
+          echo "---" >> canary.md
+          echo "_Run: [\`${GITHUB_RUN_ID}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) -- rerun any time via workflow_dispatch._" >> canary.md
+
+          existing=$(gh issue list --label dep-cap-canary --state open \
+                       --json number --jq '.[0].number // empty')
+
+          if [ -z "$existing" ]; then
+            gh issue create \
+              --title "Dependency cap review" \
+              --label dep-cap-canary --label dependencies \
+              --body-file canary.md
+          else
+            # Rewrite the body every run so the issue is always a current
+            # dashboard rather than a pile of stale monthly comments.
+            gh issue edit "$existing" --body-file canary.md
+            # Notify only when something is actually actionable.
+            if [ "$VERDICT" = "pass" ]; then
+              gh issue comment "$existing" \
+                --body "A capped dependency's excluded version now passes the full suite -- this cap is ready to be raised. See the issue body for details."
+            fi
+          fi

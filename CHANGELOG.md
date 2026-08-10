@@ -2,6 +2,84 @@
 
 ## [Unreleased]
 
+## [2.9.1] - 2026-08-10
+
+### Fixed: installs of 2.3.1-2.9.0 were broken against mcp 2.0.0
+
+**Every published release from 2.3.1 through 2.9.0 (11 releases) fails to
+import on a fresh install today.** `pyproject.toml`/`requirements.txt`
+declared an uncapped `mcp>=1.27.0`; mcp 2.0.0 (released 2026-07-28) removed
+the low-level `Server.list_tools()`/`call_tool()` decorator API that
+`server.py` depends on, so any fresh `pip install` resolving mcp>=2.0.0
+raises `AttributeError` at import time. 2.9.1 is the fix: it caps `mcp` back
+to the working 1.x range. No forward port to mcp 2.0 is included in this
+release (tracked separately, see `specs/mcp2-compat/deferred-issues.md`).
+
+- **Capped `mcp` to `>=1.27.0,<2`** in `pyproject.toml` and `requirements.txt`.
+  Newest available 1.x is 1.29.0, which resolves cleanly with no dependency
+  fallout.
+- **Fixed error laundering in the lazy server loader**
+  (`src/flextoolsmcp/server/__init__.py`). The loader's
+  `spec.loader.exec_module(...)` call had no try/except; because it runs
+  inside module `__getattr__`, CPython's `IMPORT_FROM` opcode reinterprets
+  *any* `AttributeError` escaping it as "attribute absent" and re-raises a
+  generic `ImportError: cannot import name`, destroying the real
+  traceback/message. This is exactly why the original mcp 2.0 break surfaced
+  in CI as `ImportError: cannot import name 'APIIndex'`, naming neither `mcp`
+  nor `list_tools`. `exec_module` is now wrapped in `try/except Exception`,
+  re-raising a clearly labeled `ImportError` chained via `raise ... from exc`
+  so the true cause is always visible.
+- **Cached the load failure**, not just the success. A broken `server.py`
+  previously re-executed in full on *every* subsequent lazy attribute touch,
+  compounding side effects (logging setup, decorator registration) and
+  further obscuring the original error. A failed load is now cached and
+  short-circuits immediately on later access.
+- **Added `list_tools`, `call_tool`, and `server` to the lazy-loader's
+  `LAZY_IMPORTS` set.** They were defined in `server.py` but never
+  registered for lazy loading, so `from flextoolsmcp.server import
+  list_tools` always raised `ImportError: cannot import name 'list_tools'`
+  even when `server.py` itself imported fine -- and no runtime tool-count
+  check could ever exercise the actual decorator-registration seam that
+  broke.
+- **Fixed `scripts/validate_integrity.py`'s tool-count check, which had been
+  silently AST-only for its entire life.** `check_server_tools()` imported
+  from `src.server` (a module that can never resolve -- no `src/__init__.py`
+  exists), so every run fell through to the AST fallback and reported
+  `"23 tool definitions found (AST) [OK]"` against a completely
+  non-importable server under mcp 2.0.0. Repointed to
+  `flextoolsmcp.server`, which now performs a real runtime `list_tools()`
+  call and reports `"N tools registered (runtime) [OK]"`. The AST path
+  remains as a fallback but now prints plainly that it is a DEGRADED check
+  when it fires, so it can never again be mistaken for a real runtime
+  verification. Also fixed a second dead `src.server` import in the
+  flexicon contract check.
+- **Fixed `check_runtime_import()`'s silent fall-through to green.** A
+  non-zero subprocess exit whose stderr contained neither `ImportError` nor
+  `ModuleNotFoundError` (e.g. a bare `AttributeError` from a removed
+  decorator API) fell through to `return True` -- an unclassified runtime
+  failure now correctly fails the check. The existing, deliberate skip for
+  genuine third-party "dependency not installed" `ImportError`s is
+  unchanged.
+- **Added a wheel-install smoke-test job to `.github/workflows/publish.yml`**
+  (`smoke`, gating `publish`). It installs the just-built wheel into a
+  completely fresh venv -- no repo checkout, no editable install, no
+  `conftest.py` sys.path shims -- and runs
+  `list_tools()` from a directory outside the repo, exercising the exact
+  lazy-loader + decorator-registration seam that broke. `twine check` only
+  validates package metadata and could never have caught this.
+- **Added `--continue-on-collection-errors` to both pytest invocations in
+  `.github/workflows/test.yml`.** On 2026-08-01 the mcp 2.0 break turned a
+  single root-cause failure into "0 of 824 tests ran" because two
+  module-level imports failed at collection time; this degrades that to
+  "N passed, M errors" (still a non-zero exit) instead of masking the
+  entire suite's results.
+- New regression tests: `tests/test_lazy_loader_diagnostics.py` (loader
+  diagnostics, failure caching, `list_tools` reachability) and
+  `tests/test_dependency_bounds.py` (mcp major-version and upper-bound
+  regression guards).
+- Review trail for this investigation and fix is recorded under
+  `specs/mcp2-compat/`.
+
 ### Fixed: unprotected mutating scripts returned an opaque error instead of guidance (#82)
 - **`run_module` on any unprotected mutating script returned `'str' object has
   no attribute 'get'`** instead of the `unprotected_mutations_detected`

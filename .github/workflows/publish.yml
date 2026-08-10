@@ -46,9 +46,50 @@ jobs:
           name: dist
           path: dist/
 
+  smoke:
+    name: Wheel install smoke test
+    # Releases 2.3.1-2.9.0 all shipped un-importable (mcp 2.0.0 removed the
+    # low-level Server.list_tools()/call_tool() decorators; see
+    # specs/mcp2-compat/). `twine check` only validates metadata/packaging,
+    # not that the wheel actually imports for a real end user, so nothing in
+    # the `build` job would have caught it. This job installs the just-built
+    # wheel into a completely fresh venv -- no repo checkout, no editable
+    # install, no conftest.py sys.path shims -- and exercises the exact lazy
+    # loader + decorator registration seam that broke, reproducing real user
+    # dependency resolution instead of the repo's dev environment.
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install built wheel into a fresh venv
+        shell: pwsh
+        run: |
+          python -m venv smoke-venv
+          $wheel = Get-ChildItem -Path dist -Filter *.whl | Select-Object -First 1
+          smoke-venv\Scripts\python.exe -m pip install --upgrade pip
+          smoke-venv\Scripts\python.exe -m pip install $wheel.FullName
+
+      - name: Smoke test import + list_tools() from outside the repo
+        shell: pwsh
+        run: |
+          $smokeDir = Join-Path $env:RUNNER_TEMP "flextools-smoke"
+          New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
+          Push-Location $smokeDir
+          & "$env:GITHUB_WORKSPACE\smoke-venv\Scripts\python.exe" -c "import asyncio; from flextoolsmcp.server import APIIndex, list_tools; ts = asyncio.run(list_tools()); print(len(ts)); assert len(ts) >= 10"
+          Pop-Location
+
   publish:
     name: Publish to PyPI
-    needs: build
+    needs: [build, smoke]
     runs-on: ubuntu-latest
     # The environment must match the trusted-publisher config on PyPI.
     environment:

@@ -40,9 +40,17 @@ jobs:
         # -m "not requires_flex": Windows CI has no FieldWorks install or
         # generated flexicon index; mirrors Linux deselection.  Coverage floor
         # still holds on the non-flex surface.
+        # --continue-on-collection-errors: on 2026-08-01 two module-level
+        # import breaks (mcp 2.0.0 removing Server.list_tools()/call_tool())
+        # turned a single root-cause failure into "0 of 824 tests ran" --
+        # pytest aborted collection entirely instead of reporting anything.
+        # This flag degrades that failure mode to "822 passed, 2 errors"
+        # while still exiting non-zero, so collection breaks in unrelated
+        # files can no longer mask the entire suite's results.
         run: >
           pytest
           -m "not requires_flex"
+          --continue-on-collection-errors
           --cov=src/flextoolsmcp
           --cov=server
           --cov-fail-under=25
@@ -79,4 +87,7 @@ jobs:
 
       - name: Run pytest (skip requires_flex tests)
         # No coverage gate here — the Windows job owns the floor.
-        run: pytest -m "not requires_flex" -q
+        # --continue-on-collection-errors: see the Windows job's comment --
+        # a single module-level import break must degrade to per-test
+        # failures, not silently zero out the whole run.
+        run: pytest -m "not requires_flex" --continue-on-collection-errors -q

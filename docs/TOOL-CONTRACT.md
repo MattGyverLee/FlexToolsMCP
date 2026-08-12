@@ -24,8 +24,10 @@ Additional tool-specific data keys are spread at the top level alongside
 these envelope keys. Success models use `extra="ignore"` so unknown keys
 are forward-compatible.
 
-Success responses may also carry an optional top-level `update_notice`
-block — see [update_notice](#update_notice-advisory-block) below.
+Success responses may also carry optional top-level `update_notice` and
+`workspace_notice` blocks — see
+[update_notice](#update_notice-advisory-block) and
+[workspace_notice](#workspace_notice-advisory-block) below.
 
 #### Graceful discovery redirect (issue #80)
 
@@ -269,6 +271,54 @@ raises into the op path. The block is emitted at most once per process.
 
 Built by `get_update_notice()` in `flextoolsmcp/update_check.py`, attached in
 `build_response_with_context()`.
+
+---
+
+## `workspace_notice` advisory block
+
+Success responses may carry an optional top-level `workspace_notice` block when
+the server's working directory is inside a source checkout of FlexToolsMCP or of
+one of the libraries it documents (LibLCM, Flexicon, FlexLibs, FLExTools,
+FieldWorks). Like `update_notice` it is an **additive optional field** and did
+**not** bump the contract version.
+
+Why it exists: users who find the project on GitHub often clone it and open that
+clone as their workspace. The assistant then answers FLEx questions by *reading
+the repository* — grepping the bundled index, opening templates, walking
+`specs/`, or parsing LCM model XML / `.fwdata` directly — instead of calling the
+`flextools_*` tools that serve the same data already parsed. Installing from PyPI
+makes this less likely but not impossible: the checkout can still be the working
+directory while the code runs from `site-packages` or a `uvx` cache.
+
+| Key | Type | Description |
+|---|---|---|
+| `detected_repo` | string | Signature key of the matched checkout (e.g. `flextools-mcp`, `liblcm`). |
+| `repo_root` | string | Absolute path of the checkout root that matched. |
+| `cwd` | string | The resolved working directory that triggered the check. |
+| `running_from_this_checkout` | boolean | `true` when the executing package also lives in that checkout (a maintainer's source/editable install) rather than being an unrelated clone. |
+| `message` | string | Human-readable summary for the assistant to relay, including the suggested move to an empty folder. |
+| `suggested_workspace` | string | A concrete empty-folder path to offer (`~/flex-scripts`). |
+| `assistant_directive` | array of strings | Explicit do-not-read instructions plus the tool to call instead. |
+| `opt_out_env_var` | string | Always `FLEXTOOLSMCP_NO_WORKSPACE_CHECK`. |
+
+**Behavior guarantees.** Detection is a bounded walk up from cwd (at most
+`MAX_ANCESTOR_DEPTH` = 6 ancestors) doing `exists()` probes for two markers per
+repo — no file reads, no network. Two markers are required so an ordinary folder
+that merely contains a `pyproject.toml` or a `flexicon/` directory does not trip
+it. Any failure (unresolvable cwd, permission error) fails open to *no notice*
+and never raises into the op path. Setting
+`FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` disables the feature entirely — the escape
+hatch for maintainers who legitimately work inside the repo.
+
+**Emission points.** On the response envelope the block is emitted at most once
+per process, matching `update_notice`. Two surfaces report it *every* time
+instead, because both are moments where the setup can still be changed:
+
+- `flextools_start` — adds a `WORKSPACE: …` line to `warnings` and the full
+  block as `workspace_notice`.
+- `flextools_health` — adds the same `WORKSPACE: …` line to `warnings`.
+
+Built by `get_workspace_notice()` in `flextoolsmcp/workspace_check.py`.
 
 ---
 

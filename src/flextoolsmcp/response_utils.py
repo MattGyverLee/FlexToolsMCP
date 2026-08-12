@@ -157,6 +157,22 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
         except Exception:
             pass
 
+    # Attach a workspace notice (at most once per process) when the session's
+    # working directory is a source checkout of FlexToolsMCP or one of the FLEx
+    # libraries -- the situation that makes the assistant read the repo instead
+    # of calling these tools. Same fail-open contract as the update notice.
+    if "workspace_notice" not in data:
+        try:
+            if __package__:
+                from .workspace_check import get_workspace_notice
+            else:
+                from workspace_check import get_workspace_notice
+            notice = get_workspace_notice(once=True)
+            if notice:
+                data["workspace_notice"] = notice
+        except Exception:
+            pass
+
     # Import here to avoid circular imports. Package-relative when installed,
     # absolute for script runs (dual-mode guard, per repo convention).
     if __package__:

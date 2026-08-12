@@ -95,6 +95,17 @@ or `pip install flextools-mcp` also work.
 ### 2. Connect to Your AI Assistant
 See [SETUP.md](SETUP.md#connecting-to-ai-assistants) for Claude Code, Antigravity, and other tools.
 
+> **Don't work inside a clone of this repo.** You don't need the source at all —
+> `uvx`/`pip` installs everything. Open a **new, empty folder** for your FLEx
+> work (e.g. `mkdir ~/flex-scripts`) and point your assistant there. When the
+> workspace is a checkout of this repo (or of LibLCM, Flexicon, FlexLibs,
+> FLExTools, or FieldWorks), assistants stop calling the tools and start reading
+> the repository instead — grepping the bundled index, copying templates by hand,
+> even parsing LCM model XML or your project's `.fwdata` directly. That produces
+> slower and less accurate scripts. The server detects this and adds a
+> `workspace_notice` to its responses; silence it with
+> `FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` if you are developing the MCP itself.
+
 **Note:** Each AI tool has different MCP configuration syntax. See SETUP.md for your specific tool.
 
 **User data** lives under `~/.flextoolsmcp/` (logs, saved skeletons, cached
@@ -109,6 +120,10 @@ pip install -e ".[dev]"     # editable install with dev tools (pulls in Flexicon
 # Test it works
 python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
 ```
+
+Working *on* the MCP means your workspace legitimately is the checkout, so set
+`FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` to suppress the `workspace_notice` described
+above.
 
 ### 3. Updating to New Versions
 The server tells you when a newer release is out — it adds an `update_notice` to

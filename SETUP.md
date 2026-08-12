@@ -89,6 +89,28 @@ uv tool install flextools-mcp      # installs the `flextools-mcp` command
 pip install flextools-mcp          # into the current environment
 ```
 
+## Choose a working folder first
+
+Before you connect an assistant, make a **new, empty folder** for your FLEx work
+and open your assistant *there*:
+
+```bash
+mkdir ~/flex-scripts        # any empty folder; the name doesn't matter
+```
+
+> [!IMPORTANT]
+> **Do not work inside a clone of FlexToolsMCP** (or of LibLCM, Flexicon,
+> FlexLibs, FLExTools, or FieldWorks). You don't need any of that source —
+> `uvx`/`pip` installs everything. When the workspace is one of those checkouts,
+> assistants stop calling the MCP tools and start reading the repository instead:
+> grepping the bundled API index, hand-copying templates, and in the worst case
+> parsing LCM model XML or your project's `.fwdata` directly instead of going
+> through the API. The result is slower, less accurate scripts.
+>
+> The server detects this and adds a `workspace_notice` to its responses asking
+> you to move. If you are developing the MCP itself, the checkout *is* your
+> workspace — set `FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` to silence it.
+
 ## Connecting to AI assistants
 
 **Note:** Indexes ship with the package and also refresh automatically when your
@@ -308,13 +330,16 @@ cp .env.example .env             # configure paths for index regeneration
 python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print('Loaded', len(i.flexicon.get('entities', {})), 'Flexicon entities')"
 ```
 
-Point your AI tool at the source checkout by running the module directly:
+Point your AI tool at the source checkout by running the module directly. Add
+`FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` so the `workspace_notice` doesn't fire — when
+you're developing the MCP, the checkout legitimately *is* your workspace:
 ```json
 {
   "mcpServers": {
     "flextoolsmcp": {
       "command": "python",
-      "args": ["-m", "flextoolsmcp"]
+      "args": ["-m", "flextoolsmcp"],
+      "env": { "FLEXTOOLSMCP_NO_WORKSPACE_CHECK": "1" }
     }
   }
 }

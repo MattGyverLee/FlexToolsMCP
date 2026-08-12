@@ -30,6 +30,11 @@ try:
 except (ImportError, ValueError):
     from file_utils import get_bundled_templates_dir
 
+try:
+    from ...workspace_check import get_workspace_notice, warning_line as _workspace_warning_line
+except (ImportError, ValueError):
+    from workspace_check import get_workspace_notice, warning_line as _workspace_warning_line
+
 
 def _ops_logger():
     """Return the shared operations logger (or None before init).
@@ -507,6 +512,16 @@ async def handle_start(args: dict) -> list[TextContent]:
 
     # Warnings
     warnings = []
+
+    # Workspace sanity first: if cwd is a library/MCP source checkout, every
+    # later instruction in this response competes with a tempting pile of
+    # readable source. Reported on every start (not once per process) -- the
+    # session boundary is exactly where the setup can still be changed.
+    workspace_notice = get_workspace_notice()
+    if workspace_notice:
+        warnings.append(_workspace_warning_line(workspace_notice))
+        result["workspace_notice"] = workspace_notice
+
     if not project_name:
         warnings.append("No project_name set - will need to specify when running operations")
     if write_enabled:

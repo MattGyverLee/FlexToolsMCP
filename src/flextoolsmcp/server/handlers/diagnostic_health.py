@@ -45,6 +45,11 @@ except (ImportError, ValueError):
     from file_utils import get_index_dir
 
 try:
+    from ...workspace_check import get_workspace_notice, warning_line as workspace_warning_line
+except (ImportError, ValueError):
+    from workspace_check import get_workspace_notice, warning_line as workspace_warning_line
+
+try:
     from ..versioning import (
         detect_installed_library_version,
         detect_liblcm_version_from_disk,
@@ -238,6 +243,13 @@ def _build_warnings(libraries: Dict[str, Dict[str, Any]]) -> List[str]:
     api_index = get_api_index()
     if api_index is not None:
         warnings.extend(getattr(api_index, "startup_lock_warnings", []) or [])
+
+    # "Why is the assistant behaving oddly?" is exactly what this tool is for,
+    # and a checkout-as-workspace is one answer. Not once-per-process gated:
+    # health is explicitly diagnostic, so it always reports current state.
+    notice = get_workspace_notice()
+    if notice:
+        warnings.append(workspace_warning_line(notice))
     return warnings
 
 

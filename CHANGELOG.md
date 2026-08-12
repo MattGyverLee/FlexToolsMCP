@@ -46,6 +46,52 @@ offered the failing name back as the top fix.
 - 61 assertions in `tests/test_issue84_project_lexsense_accessor.py`, including
   live import resolution for every shipped template and alias-table drift.
 
+### Added: `workspace_notice` -- warn when the workspace is a source checkout (#90)
+
+Users who find the project on GitHub tend to clone it and then open that clone as
+their AI workspace. That measurably degrades the assistant: instead of calling
+the `flextools_*` tools it starts *reading the repository* -- grepping the
+bundled API index, hand-copying templates, walking `specs/`, and in the worst
+case parsing LCM model XML or a project's `.fwdata` directly rather than going
+through the API. Installing from PyPI makes this less likely but not impossible,
+since the checkout can still be the *working directory* while the code runs from
+`site-packages` or a `uvx` cache.
+
+- **New `flextoolsmcp/workspace_check.py`.** Detects when the server's cwd is
+  inside a source checkout of FlexToolsMCP, LibLCM, Flexicon, FlexLibs,
+  FLExTools, or FieldWorks. Detection is a bounded walk up from cwd (at most 6
+  ancestors) doing `exists()` probes for **two** markers per repo -- two so an
+  ordinary folder that merely contains a `pyproject.toml` or a `flexicon/`
+  subdirectory doesn't trip it. No file reads, no network; safe on the hot path.
+  Fails open to *no notice* on any problem, never raising into a tool response
+  (same contract as `update_check.py`).
+- **The notice carries an `assistant_directive`**, not just prose: explicit
+  do-not-read instructions naming the tool to call instead
+  (`flextools_search_by_capability`, `flextools_get_object_api`,
+  `flextools_get_module_template`), plus a concrete empty-folder suggestion for
+  the user (`~/flex-scripts`).
+- **Distinguishes the maintainer case.** `running_from_this_checkout` is `true`
+  when the executing package also lives in the detected checkout (a source or
+  editable install), so the message points at the opt-out instead of implying
+  the setup is broken.
+- **Three surfaces.** `flextools_start` adds a `WORKSPACE: ...` line to
+  `warnings` plus the full `workspace_notice` block; `flextools_health` adds the
+  same warning line; the response envelope
+  (`build_response_with_context`) attaches the block at most once per process so
+  it still lands if `flextools_start` was skipped. Start and health report every
+  time -- both are moments where the setup can still be changed.
+- **Opt out with `FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1`** (matches
+  `FLEXTOOLSMCP_NO_UPDATE_CHECK` semantics), for maintainers who legitimately
+  work inside the repo.
+- Additive optional envelope field -- **no contract-version bump**, same as
+  `update_notice`. Documented in
+  [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md#workspace_notice-advisory-block).
+- 34 new tests in `tests/test_workspace_check.py` covering every signature,
+  the ancestor walk and its depth bound, nearest-match-wins on nested
+  checkouts, the no-false-positive cases, opt-out parsing, the once-per-process
+  gate (including that a clean cwd does not consume it), fail-open on an
+  unresolvable cwd, and all three wiring surfaces.
+
 ## [2.9.1] - 2026-08-10
 
 ### Fixed: installs of 2.3.1-2.9.0 were broken against mcp 2.0.0

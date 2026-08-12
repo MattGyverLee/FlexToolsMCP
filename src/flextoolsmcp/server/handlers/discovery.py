@@ -13,7 +13,6 @@ from collections import deque
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
-from ..models import GetNavigationPathInput
 from ..response_keys import (
     KEY_MESSAGE, KEY_DESCRIPTION, KEY_TYPE, KEY_FOUND, KEY_SOURCE,
     KEY_FROM, KEY_TO, KEY_VIA, KEY_PROPERTY, KEY_STEPS, KEY_CODE, KEY_HINT,
@@ -76,9 +75,13 @@ def find_path_bfs(graph: dict, start: str, end: str, max_depth: int = 5) -> list
             target, via, rel_type = edge[0], edge[1], edge[2]
 
             if target == end:
-                # Reconstruct path using parent pointers (linear reconstruction, not exponential)
-                path = []
-                node = target
+                # Reconstruct path using parent pointers (linear reconstruction, not exponential).
+                # NOTE: parent[end] is intentionally never recorded here -- `end` may already be
+                # in `visited` with a different (shorter) parent from an earlier edge, and
+                # overwriting it would corrupt that entry. Instead, seed the path with the final
+                # edge (current -> target) directly, then walk backwards from `current`.
+                path = [{KEY_FROM: current, KEY_TO: target, KEY_VIA: via, KEY_TYPE: rel_type}]
+                node = current
                 while node in parent:
                     parent_node, via_prop, rel_t = parent[node]
                     path.append({KEY_FROM: parent_node, KEY_TO: node, KEY_VIA: via_prop, KEY_TYPE: rel_t})
@@ -166,13 +169,13 @@ def _add_polymorphic_warnings(result: dict, steps: list) -> None:
         result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use CastingOperations from Flexicon to access type-specific properties."
 
 
-async def handle_get_navigation_path(args: GetNavigationPathInput) -> list[TextContent]:
+async def handle_get_navigation_path(args: dict) -> list[TextContent]:
     """Find navigation path between two object types using precomputed graph.
 
     Tries precomputed common paths first, then falls back to BFS search.
     Includes polymorphic collection warnings for paths that require casting."""
-    from_obj = args.from_object
-    to_obj = args.to_object
+    from_obj = args.get("from_object")
+    to_obj = args.get("to_object")
 
     from_normalized = normalize_object_name(from_obj)
     to_normalized = normalize_object_name(to_obj)

@@ -178,6 +178,46 @@ aliases matching the key strings above. The `_inline_discovery` alias uses the
 
 ---
 
+## Inherited member fields (`get_object_api`, `resolve_property`)
+
+`get_object_api` and `resolve_property` responses may carry additional
+optional fields when the target entity has ancestors in its `interfaces`
+closure (issue #86, inheritance-resolution CP2): `inherited_from` is emitted
+by both tools, while `total_properties_including_inherited` and
+`total_methods_including_inherited` are produced by `paginate_entity()` and
+so appear on `get_object_api` responses only. Like `update_notice` and
+`workspace_notice`, these are **additive optional fields** -- adding them did
+**not** bump the contract version, continuing the same additive-optional
+pattern already established by `auto_discovered`, `diagnostic_report`,
+`update_notice`, and `workspace_notice`.
+
+| Key | Location | Type | Description |
+|---|---|---|---|
+| `inherited_from` | per property/method item | string or absent | Name of the ancestor interface the member was merged in from. Absent (not `null`) on members the entity declares itself. Own members always shadow an ancestor member of the same name ("child wins" -- no entity ever emits two entries for the same name). |
+| `total_properties_including_inherited` | top-level | integer | Combined count of own-declared **and** merged-inherited properties. `total_properties` is unchanged and stays byte-identical to today's own-only count; this is a new, separate key, not a redefinition. |
+| `total_methods_including_inherited` | top-level | integer | Combined count of own-declared **and** merged-inherited methods. `total_methods` is unchanged and stays byte-identical to today's own-only count; this is a new, separate key, not a redefinition. |
+
+**Scope (issue #86, CP2).** Only `I*` interface entities receive the merge.
+Class-side ancestor merging is **not** covered by these fields -- class
+hierarchies have real semantic overrides (a subclass narrowing
+`can_write: true` to `false`, for example) that need a policy decision before
+they can be merged safely, and that policy is tracked separately from this
+change.
+
+**`summary_only` treatment.** `inherited_from` survives `summary_only`
+truncation the same way `casting_notes` does -- it is cheap (one short string
+per row) and lets a caller distinguish own-vs-inherited members with a single
+`.get("inherited_from")` check without requesting the full (non-summary)
+response.
+
+Built by `collect_inherited_members()`, merged into the `properties` /
+`methods` candidate lists in `paginate_entity()` (`api.py:575`) before the
+existing pagination and `summary_only` logic runs, so filtering, totals,
+slicing, and the casting-index join stay consistent with the merged view
+rather than the own-only one.
+
+---
+
 ## `diagnostic_report` advisory block (run_module tool)
 
 Successful `run_module` responses may additionally carry a `diagnostic_report`

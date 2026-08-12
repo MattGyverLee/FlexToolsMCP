@@ -280,3 +280,4 @@ Possible improvements:
 - [Script Certification](./SCRIPT_CERTIFICATION.md)
 - [Untagged Mutating Methods](./UNTAGGED_MUTATING_METHODS.md)
 - [Async Write Locking](./ASYNC_CONCURRENCY_ANALYSIS.md)
+- [LibLCM Extraction Semantics](./LIBLCM_EXTRACTION_SEMANTICS.md)

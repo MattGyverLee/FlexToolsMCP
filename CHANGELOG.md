@@ -92,6 +92,60 @@ since the checkout can still be the *working directory* while the code runs from
   gate (including that a clean cwd does not consume it), fail-open on an
   unresolvable cwd, and all three wiring surfaces.
 
+### Added: `inherited_from` / `total_properties_including_inherited` -- inheritance-aware `get_object_api` (#86)
+
+`get_object_api` previously only listed a type's own (`DeclaredOnly`)
+properties and methods -- ancestor-declared members like `IFsClosedValue`'s
+`FeatureRA` (declared on a parent interface) were invisible, forcing users
+onto fragile workarounds (e.g. parsing `LongName` strings, which breaks on
+unordered `ILcmOwningCollection` positional assumptions and on space-bearing
+values like Swahili `"NC 4"` / `"NC 1a"`).
+
+- **New `collect_inherited_members()` helper** -- memoized, cycle-guarded walk
+  of an entity's `interfaces` closure (already the full transitive closure
+  per `liblcm_extractor.py`'s use of .NET `GetInterfaces()`; no recursive walk
+  needed for interface ancestors). Merged into `paginate_entity()`'s
+  candidate list *before* pagination, filtering, and `summary_only`
+  truncation, so all three stay consistent with the merged view.
+- **`inherited_from`** tags each merged property/method with its declaring
+  ancestor. Own members always shadow an ancestor member of the same name.
+- **`total_properties_including_inherited`** and
+  **`total_methods_including_inherited`** added at the top level.
+  `total_properties` and `total_methods` are both unchanged (byte-identical,
+  own-only counts).
+- **Scoped to interface entities only** (`I*`) this round -- interface
+  merging is collision-free (0 interface-side name collisions found across
+  the index); class-side merging needs an override-semantics policy and is
+  tracked separately.
+- Additive optional fields -- **no contract-version bump**, same pattern as
+  `update_notice` and `workspace_notice`. Documented in
+  [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md#inherited-member-fields-get_object_api-resolve_property).
+- `resolve_property` gained a matching ancestor-aware fallback so a property
+  found via `get_object_api`'s merged view also resolves via
+  `resolve_property` for the same concrete type -- verified by a
+  cross-tool consistency test sampled against `get_object_api`,
+  `resolve_property`, and `validators._interface_member_names`.
+- Canonical case: `IFsClosedValue` merges 2 own properties to 31 total, with
+  `FeatureRA` now visible and tagged `inherited_from`.
+
+### Fixed: `get_object_api` pagination under-reported remaining properties (#86)
+
+`has_more` / `next_offset` were computed from `total_methods` alone, so
+`properties` had no pagination signal of its own -- a property-heavy entity
+could report `has_more: false` while properties beyond the current page were
+still unreachable. `IFsClosedValue` (14 combined methods vs 31 combined
+properties) flips this after page 3: the method-only signal goes `False`
+while 16 properties remain unpaged.
+
+- **`has_more` is now `methods_has_more OR properties_has_more`**, derived
+  from both dimensions instead of methods alone.
+- Widened to **all** entities, not only the `I*`-interface entities the
+  inheritance merge (see `Added` entry above, #86) targets -- the underlying
+  under-reporting bug predates and is independent of that merge, and existed
+  for every entity's properties. See `SPEC.md` DEC-7 for the scoping
+  rationale and the verification matrix (method-heavy merged, property-heavy
+  merged, and non-merged non-interface cases).
+
 ## [2.9.1] - 2026-08-10
 
 ### Fixed: installs of 2.3.1-2.9.0 were broken against mcp 2.0.0

@@ -1,8 +1,8 @@
 # SPEC — Inheritance Resolution & Navigation Path Repair (issues #85 / #86)
 
 **Feature:** `inheritance-resolution`
-**Status:** in_progress — CP1 partially landed, CP2 designed
-**Last updated:** 2026-08-12 (cycle 1 synthesis)
+**Status:** in_progress — CP1 landed (d693e26), CP2 landed (13f69f8), CP4 docs in flight (concurrent lex-doc pass, cycle 4), CP3 design-ready but deferred and NOT YET FILED
+**Last updated:** 2026-08-13 (cycle 4 archivist reconciliation)
 **Cycle-1 evidence:** `specs/inheritance-resolution/reviews/cycle1-{explore,programmer,domain,author}.md`
 
 ---
@@ -177,12 +177,17 @@ Our advisory locks (team `lex-crew-85-86`, session
 | `api.py` | untouched since Jul 21 | **EDIT** — unobstructed |
 | `tests/**` (new files) | clear | **EDIT** |
 | `validators.py` | their hunks at 20 / 449-460 / 552-576 / 656-676; our target at 765-797 | **READ ONLY** — disjoint regions, but same file; assert, don't edit |
-| `docs/TOOL-CONTRACT.md` | their hunks at 27, 277-325 | **DEFER to CP4** — draft text into `DOCS-PENDING.md` |
-| `CHANGELOG.md` | new block at top of `[Unreleased]` | **DEFER to CP4** — draft text into `DOCS-PENDING.md` |
+| `docs/TOOL-CONTRACT.md` | GATE CLEARED (bd066a0, #90 closed) | CP4 — in flight cycle 4 via parallel lex-doc pass; draft was staged in `DOCS-PENDING.md` |
+| `CHANGELOG.md` | GATE CLEARED (bd066a0, #90 closed) | CP4 — in flight cycle 4 via parallel lex-doc pass; draft was staged in `DOCS-PENDING.md` |
 
 Note: the other crew's TOOL-CONTRACT change is itself an additive-field
 precedent — the same compatibility question DEC-3 just adjudicated. CP4 should
 document both consistently rather than as two unrelated additions.
+
+**Cycle 4 update:** the concurrency gate above is CLEARED — the other crew's
+`workspace_notice` work landed in `bd066a0` and issue #90 closed. Nobody
+should re-defer the CP4-deferred rows on grounds of this table; they are only
+recorded here for the historical rationale.
 
 ---
 
@@ -191,42 +196,77 @@ document both consistently rather than as two unrelated additions.
 ### CP1 — Navigation path actually works (`#85` closable)
 - [x] T1.1 Fix `args` dict access in `handle_get_navigation_path` *(cycle 1)*
 - [x] T1.2 7 regression tests incl. real `server.call_tool()` dispatch path *(cycle 1)*
-- [ ] T1.3 Fix `find_path_bfs()` reconstruction (record the final edge before
+- [x] T1.3 Fix `find_path_bfs()` reconstruction (record the final edge before
       walking `parent`; do **not** mutate `parent[end]` — a visited `end` may
-      already hold a different parent)
-- [ ] T1.4 Flip `TestFindPathBfsReconstructionBug` from pinning the bug to
+      already hold a different parent) *(cycle 2, d693e26)*
+- [x] T1.4 Flip `TestFindPathBfsReconstructionBug` from pinning the bug to
       asserting correct behavior; keep the multi-hop + direct-edge cases
-- [ ] T1.5 Verify `IFsFeatStruc -> IFsFeatDefn` returns the real 2-hop path
-- [ ] T1.6 Confirm `ILexSense -> IFsSymFeatVal` still returns `found:false`
+      *(cycle 2, d693e26 — renamed to `TestFindPathBfsReconstruction`,
+      `tests/test_issue85_navigation_path.py:201`)*
+- [x] T1.5 Verify `IFsFeatStruc -> IFsFeatDefn` returns the real 2-hop path
+      *(cycle 2, d693e26 — `test_known_good_query_now_resolves_via_bfs`,
+      `tests/test_issue85_navigation_path.py:148`)*
+- [x] T1.6 Confirm `ILexSense -> IFsSymFeatVal` still returns `found:false`
       for the *correct* reason (no downcast edge — CP3, not a bug)
+      *(cycle 2, d693e26 — `test_missing_downcast_edge_still_not_found`,
+      `tests/test_issue85_navigation_path.py:179`)*
 
 ### CP2 — Inheritance merge (`#86` read-path)
-- [ ] T2.1 `collect_inherited_members(entity_name, index)` — memoized, cycle-guarded
-- [ ] T2.2 Merge into `paginate_entity` before `api.py:444/482`, `inherited_from` tag
-- [ ] T2.3 `total_properties_including_inherited`; repoint `has_more`/`next_offset`
-- [ ] T2.4 Ancestor-aware fallback in `resolve_pythonic_property`
-- [ ] T2.5 Consistency-invariant test across all three surfaces (§3)
+- [x] T2.1 `collect_inherited_members(entity_name, index)` — memoized, cycle-guarded
+      *(cycle 2, 13f69f8 — `api.py:474`; 8 tests incl.
+      `test_cycle_guard_does_not_hang`)*
+- [x] T2.2 Merge into `paginate_entity` before `api.py:444/482`, `inherited_from` tag
+      *(cycle 2, 13f69f8 — merge + `KEY_INHERITED_FROM` at `api.py:436`,
+      called at `api.py:617`)*
+- [x] T2.3 `total_properties_including_inherited`; repoint `has_more`/`next_offset`
+      *(cycle 2, 13f69f8 — `KEY_TOTAL_{METHODS,PROPERTIES}_INCLUDING_INHERITED`
+      at `api.py:437-438`; `has_more` repointed at `api.py:668` and `api.py:715`
+      per DEC-7)*
+- [x] T2.4 Ancestor-aware fallback in `resolve_pythonic_property`
+      *(cycle 2, 13f69f8 — tests at
+      `tests/test_issue86_inheritance_resolution.py:278-311`)*
+- [x] T2.5 Consistency-invariant test across all three surfaces (§3)
+      *(cycle 2, 13f69f8 — `TestConsistencyInvariant` at
+      `tests/test_issue86_inheritance_resolution.py:331`; covers
+      `get_object_api` (:343), `resolve_property` (:356), and
+      `validators._interface_member_names` (:366, read-only per DEC-5))*
 
-### CP3 — `required_cast` labeled downcast edges *(design ready, not started)*
+### CP3 — `required_cast` labeled downcast edges *(design ready, NOT started, issue NOT filed)*
 Per lex-domain §4: scoped to the dominant concrete subtype from casting_index's
 `base_type`/`concrete_types`, with `_add_polymorphic_warnings` listing alternates
 (`InflFeatsOA`, `From/ToMsFeaturesOA`) as advisories — **not** as competing BFS edges.
+Issue body drafted in `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md`
+(cycle 3) but deliberately left unfiled pending user authorization — filing is
+the user's call, not the crew's. *(cycle 4 note: still unfiled as of this
+reconciliation; do not treat the drafted body as evidence of a filed issue.)*
 
-### CP4 — Docs *(gated on the other crew landing)*
+### CP4 — Docs *(gate CLEARED, in flight cycle 4)*
 `docs/TOOL-CONTRACT.md`, `CHANGELOG.md` (`Added`, not "Tool contract"),
 `docs/LIBLCM_CONTEXTUAL_ANALYSIS.md` (the `GetInterfaces()` full-closure vs
-`BaseType` single-level asymmetry).
+`BaseType` single-level asymmetry). The concurrency gate (§4) cleared when
+commit `bd066a0` landed the other crew's `workspace_notice` work and #90
+closed. A parallel lex-doc pass is applying these docs THIS cycle (cycle 4);
+its result is not yet visible to this reconciliation and must not be marked
+done until independently confirmed.
 
 ---
 
 ## 6. Issues to file (pending user approval)
 
-Both bodies are drafted in `reviews/cycle1-programmer.md`. Neither should be
-filed unattended — issue creation is a user decision.
+Both cycle-1 bodies were drafted in `reviews/cycle1-programmer.md`. Status as
+of cycle 4:
 
 1. **`find_path_bfs()` never finds a path since the Wave 3 parent-tracking
-   rewrite** — blocks closing #85 (DEC-1).
+   rewrite** — blocks closing #85 (DEC-1). **FILED as #88, CLOSED** (landed
+   with the CP1 fix in `d693e26`, commit message reads "closes #85, closes
+   #88").
 2. **Handler exceptions bypass the structured error envelope** —
    `server.py:986` `await handler(dumped)` is unguarded; this is *why* #85
    surfaced as a raw string instead of a TOOL-CONTRACT error code. Independent
-   of this feature; file and defer.
+   of this feature. **FILED as #89, still OPEN** (not part of this feature's
+   closing criteria).
+3. **`required_cast` labeled downcast edges for CP3** — body drafted in
+   `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` (cycle 3). **NOT
+   FILED.** Commit `5a986c2`'s message implied filing would follow; it did
+   not happen. Filing requires explicit user authorization — do not file
+   without it.

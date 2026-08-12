@@ -88,3 +88,70 @@ The working tree carries unrelated pre-existing changes to
 `tests/test_validator_cluster_fixes.py`. These are NOT part of the
 diagnostic-report feature -- do not sweep them into a diagnostic-report commit;
 commit or revert them deliberately on their own.
+
+## Interrupt: inheritance-resolution (#85 / #86) -- also not part of diagnostic-report
+
+A separate, higher-priority bug chain (#85 navigation-path crash -> #88 BFS
+reconstruction bug -> #86 inherited properties hidden from `get_object_api` /
+`resolve_property`) was worked as its own feature,
+`specs/inheritance-resolution/SPEC.md`, in parallel with diagnostic-report.
+Status as of 2026-08-13 (cycle 4 reconciliation -- see
+`specs/inheritance-resolution/reviews/cycle4-archivist.md`):
+
+**CP1 -- Navigation path actually works: COMPLETE and green
+(commit `d693e26`, closes #85 and #88).** `find_path_bfs()` reconstruction
+fixed; `IFsFeatStruc -> IFsFeatDefn` verified resolving its real 2-hop path;
+`ILexSense -> IFsSymFeatVal` verified still `found:false` for the *correct*
+reason (missing downcast edge, not a bug).
+
+**CP2 -- Inheritance merge: COMPLETE and green (commit `13f69f8`, #86
+read-path).** `collect_inherited_members` merges ancestor-declared members
+into `get_object_api` / `resolve_property` for `I*` interface entities;
+additive `inherited_from` / `*_including_inherited` fields; `has_more`
+repointed to combined totals (DEC-7). Canonical case `IFsClosedValue`: 2 own
+-> 31 total properties, `FeatureRA` now visible. Issue **#86 left OPEN**
+pending user sign-off -- class-side merging still needs an
+override-semantics policy.
+
+**CP4 -- Docs: COMPLETE and independently verified (cycles 4 + 5,
+uncommitted).** A parallel `/lex-doc` pass in cycle 4 wrote
+`docs/TOOL-CONTRACT.md`, `CHANGELOG.md`, and the new
+`docs/LIBLCM_EXTRACTION_SEMANTICS.md`; concurrency gate cleared when
+`bd066a0` landed the other crew's `workspace_notice` work and #90 closed. A
+cycle-5 precision pass then closed four gaps found while verifying that
+landing (`specs/inheritance-resolution/reviews/cycle5-doc.md`):
+
+- **P1** -- `total_methods_including_inherited` was documented nowhere. Now
+  has its own contract table row (`docs/TOOL-CONTRACT.md:198`) and is named
+  in the CHANGELOG bullet (`CHANGELOG.md:112-115`).
+- **P2** -- TOOL-CONTRACT over-claimed that both `*_including_inherited`
+  totals come from `resolve_property`; they are `paginate_entity()`-only and
+  appear on `get_object_api` alone. Lead sentence reworded (lines 183-192).
+  Stale citation `api.py:420` corrected to `api.py:575` (line 214).
+- **P3** -- "this fields" -> "these fields" (line 201); the
+  "full transitive closure" claim in `LIBLCM_EXTRACTION_SEMANTICS.md:9` now
+  carries the real exclusion caveat (`IDisposable`, `IEnumerable`,
+  `IComparable` are filtered out at `liblcm_extractor.py:700`).
+
+All four re-verified against source by lex-lead on 2026-08-13. Regression
+suite green and unchanged from cycle 4: `pytest
+tests/test_issue86_inheritance_resolution.py
+tests/test_issue85_navigation_path.py -q` -> **31 passed**. No `.py` file was
+modified in cycles 4-5 (docs-only).
+
+**Deferred P2 (tracked, not a close-blocker for #86): no test asserts
+`total_methods_including_inherited`.** The key is emitted at
+`api.py:638` and its properties twin has four assertions
+(`tests/test_issue86_inheritance_resolution.py:176,217,256,270`), but the
+methods key has **zero**. The untested-but-non-trivial branch is
+`api.py:630-631`, where `total_methods` counts only indices below
+`own_method_count` while the inherited total is `len(filtered_methods)` --
+an off-by-one there would ship silently. Fix is one assertion mirroring
+line 176; pick it up in the next spurt that touches tests. Deliberately
+NOT folded into the CP3 issue (different scope) and not worth its own
+GitHub issue.
+
+**CP3 -- `required_cast` downcast edges: design ready, NOT started, issue
+NOT filed.** Draft body in
+`specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md`. Filing requires
+explicit user authorization -- no agent should file it unattended.

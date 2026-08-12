@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+### Fixed: `project.LexSense` was blessed by the pre-flight gate but does not exist (#84)
+
+The accessor allowlist was built partly by stripping `"Operations"` off every
+`KNOWN_OPERATIONS` entry (`LexEntryOperations` -> `project.LexEntry`). That holds
+for 41 of the 43 classes, but invents two accessors `FLExProject` does not have:
+`LexSense` (real: `Senses`) and `PhonologicalRule` (real: `PhonRules`).
+
+A phantom in an allowlist is worse than a missing one -- the gate *approves* code
+that raises `AttributeError` at runtime. That is how the authoritative flexicon
+template came to teach `project.LexSense.GetAllSenses(entry)`, and it also placed
+`LexSense` in the candidate pool for its own `AttributeError`, so the runner
+offered the failing name back as the top fix.
+
+- **`PROJECT_ACCESSOR_ALIASES`** (`server/constants.py`) records the two
+  exceptions; `_project_accessors()` drops them from the legacy union, while
+  index-derived properties stay authoritative.
+- **Deterministic redirect.** `detect_invalid_project_chains()` rejects a phantom
+  with the single correct answer at `match_ratio` 1.0, so auto-fix can apply the
+  rewrite instead of guessing via difflib.
+- **No more circular hints.** `detect_unknown_attribute_error()` filters the
+  failing identifier out of its own candidate list -- if a name were a valid fix
+  for itself, no `AttributeError` would have fired.
+- **`scripts/check_project_accessors.py`** diffs the shorthands against the
+  **live** `dir(FLExProject)` and fails on drift, so a future flexicon release
+  that adds a third phantom is caught rather than silently blessed. It
+  deliberately does not use the index: that property list enumerates 58 names and
+  omits 29 real accessors (`Example`, `WritingSystem`, `Text`, ...), so deriving
+  the allowlist from it would delete working accessors.
+- **Corpus swept.** The bad idiom had propagated into `curated_recipes.py` (16
+  sites), `worked_examples.py`, both affected templates, the `common_patterns`
+  index, four `docs/` pages and `CLAUDE.md`.
+- **Two further defects found while fixing this**, both pre-existing and both
+  strictly worse than the reported bug because they fail at *import* time:
+  `2-flexicon-template.py` imported a nonexistent `ReversalOperations`, and
+  `3-liblcm-template.py` pulled LCM interfaces from `flexicon.code.lcm_casting`,
+  which imports them internally from `SIL.LCModel` but never re-exports them.
+- **Argument-type trap pinned.** `GetAllSenses` exists on *both* operations
+  classes with different parameters (`LexEntry` takes an entry, `Senses` takes a
+  sense) and both duck-type on an `AllSenses` property, so passing an entry to
+  the sense flavour returns plausible results instead of raising. The accessor
+  gate compares names only and cannot see this, so it is covered by test instead.
+- 61 assertions in `tests/test_issue84_project_lexsense_accessor.py`, including
+  live import resolution for every shipped template and alias-table drift.
+
 ## [2.9.1] - 2026-08-10
 
 ### Fixed: installs of 2.3.1-2.9.0 were broken against mcp 2.0.0

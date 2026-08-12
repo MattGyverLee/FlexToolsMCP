@@ -228,7 +228,7 @@ project._cache.BeginNonUndoableTask()  # Will fail certification
 ```python
 # OK: No need for extra guard (Flexicon has _EnsureWriteEnabled)
 entry = project.LexEntry.Create("new_word")
-entry.SensesOS.Add(project.LexSense.Create(...))
+entry.SensesOS.Add(project.Senses.Create(...))
 ```
 
 ---

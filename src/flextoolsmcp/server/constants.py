@@ -67,6 +67,25 @@ NON_ENUMERABLE_OPERATIONS = {
 OPERATIONS_CLASSES = KNOWN_OPERATIONS  # Alias for backwards compatibility
 
 # ============================================================
+# Operations shorthands that are NOT project accessors (issue #84)
+# ============================================================
+# Most Operations classes have a same-named shorthand on FLExProject
+# (LexEntryOperations -> project.LexEntry, ExampleOperations -> project.Example).
+# Two do not, so stripping "Operations" off the class name invents an accessor
+# that raises AttributeError at runtime:
+#
+#   project.LexSense         -> AttributeError  (real accessor: project.Senses)
+#   project.PhonologicalRule -> AttributeError  (real accessor: project.PhonRules)
+#
+# Keeping these out of the accessor allowlist lets the pre-flight gate reject
+# them, and the mapping gives it the one right answer instead of a fuzzy guess.
+# Verify against a live install with scripts/check_project_accessors.py.
+PROJECT_ACCESSOR_ALIASES = {
+    "LexSense": "Senses",
+    "PhonologicalRule": "PhonRules",
+}
+
+# ============================================================
 # API Mode Values
 # ============================================================
 # Supported API modes. Used across validators, models,

@@ -30,7 +30,11 @@ import clr
 
 # Flexicon casting utilities
 from flexicon.code.lcm_casting import cast_to_concrete
-from flexicon.code.lcm_casting import (
+
+# LCM interfaces come from the C# assembly, NOT from flexicon -- lcm_casting
+# imports them internally but does not re-export them, so pulling them from
+# there is an ImportError that kills the module before Main() runs.
+from SIL.LCModel import (
     ILexEntry,
     ILexSense,
     ILexEntryRef,

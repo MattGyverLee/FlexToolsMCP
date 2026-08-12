@@ -29,7 +29,7 @@ A user asks: *"show me the headword for every sense."* Claude writes a first
 attempt that reaches for `sense.Owner.HeadWord`:
 
 ```python
-for s in project.LexSense.GetAll():
+for s in project.Senses.GetAll():
     report.Info(s.Owner.HeadWord)
 ```
 
@@ -39,8 +39,8 @@ so op-1 closes `runtime_fail` with `PolymorphicAttributeError`. Claude works
 around it in the same turn with a wrapped accessor:
 
 ```python
-for s in project.LexSense.GetAll():
-    report.Info(project.LexSense.GetGloss(s))
+for s in project.Senses.GetAll():
+    report.Info(project.Senses.GetGloss(s))
 ```
 
 op-2 closes `ok`. The failure was real, was worked around, and — left alone —

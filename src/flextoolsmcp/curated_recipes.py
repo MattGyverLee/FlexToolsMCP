@@ -42,7 +42,7 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        gloss = project.LexSense.GetGloss(sense)\n"
+            "        gloss = project.Senses.GetGloss(sense)\n"
             "        report.Info(f\"{headword}: {gloss}\")\n"
         ),
         "notes": "GetGloss returns '' for empty (never '***'). GetAll returns an EnumerableWrapper.",
@@ -60,7 +60,7 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "counts = Counter()\n"
             "for entry in project.LexEntry.GetAll():\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        pos = project.LexSense.GetPartOfSpeech(sense) or \"(none)\"\n"
+            "        pos = project.Senses.GetPartOfSpeech(sense) or \"(none)\"\n"
             "        counts[pos] += 1\n\n"
             "for pos, n in counts.most_common():\n"
             "    report.Info(f\"{pos}: {n}\")\n"
@@ -79,9 +79,9 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        definition = project.LexSense.GetDefinition(sense)\n"
+            "        definition = project.Senses.GetDefinition(sense)\n"
             "        if not definition:\n"
-            "            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no definition\")\n"
+            "            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no definition\")\n"
         ),
         "notes": "GetDefinition normalizes '***' to '' -- 'if not definition' is the correct empty check.",
         "source": "curated",
@@ -104,8 +104,8 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "    else:\n"
             "        sense = senses[0]\n"
             "        if modifyAllowed:\n"
-            "            project.LexSense.SetGloss(sense, \"to move rapidly on foot\")\n"
-            "            report.Info(f\"Set gloss: {project.LexSense.GetGloss(sense)}\")\n"
+            "            project.Senses.SetGloss(sense, \"to move rapidly on foot\")\n"
+            "            report.Info(f\"Set gloss: {project.Senses.GetGloss(sense)}\")\n"
             "        else:\n"
             "            report.Info(\"(Would set gloss to 'to move rapidly on foot')\")\n"
         ),
@@ -221,7 +221,7 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        pos = project.LexSense.GetPartOfSpeech(sense) or \"(unspecified)\"\n"
+            "        pos = project.Senses.GetPartOfSpeech(sense) or \"(unspecified)\"\n"
             "        report.Info(f\"{headword} [{pos}]\")\n"
         ),
         "notes": "Same shape as list-entries-with-glosses but keyed on POS instead of gloss.",
@@ -238,9 +238,9 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        pos = project.LexSense.GetPartOfSpeech(sense)\n"
+            "        pos = project.Senses.GetPartOfSpeech(sense)\n"
             "        if not pos:\n"
-            "            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no POS\")\n"
+            "            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no POS\")\n"
         ),
         "notes": "A sense may have no MSA at all, in which case GetPartOfSpeech returns None/empty.",
         "source": "curated",
@@ -283,8 +283,8 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        if project.LexSense.GetExampleCount(sense) == 0:\n"
-            "            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no examples\")\n"
+            "        if project.Senses.GetExampleCount(sense) == 0:\n"
+            "            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no examples\")\n"
         ),
         "notes": "GetExampleCount avoids materializing the full example list just to check emptiness.",
         "source": "curated",
@@ -300,8 +300,8 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        definition = project.LexSense.GetDefinition(sense)\n"
-            "        examples = [project.Example.GetExample(ex) for ex in project.LexSense.GetExamples(sense)]\n"
+            "        definition = project.Senses.GetDefinition(sense)\n"
+            "        examples = [project.Example.GetExample(ex) for ex in project.Senses.GetExamples(sense)]\n"
             "        report.Info(f\"{headword}: {definition} | examples: {examples}\")\n"
         ),
         "notes": "GetExamples returns ILexExampleSentence objects; pass each through Example.GetExample for the text.",
@@ -326,7 +326,7 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "    else:\n"
             "        sense = senses[0]\n"
             "        if modifyAllowed:\n"
-            "            project.LexSense.AddSemanticDomain(sense, domain)\n"
+            "            project.Senses.AddSemanticDomain(sense, domain)\n"
             "            report.Info(\"Added semantic domain 'Move'\")\n"
             "        else:\n"
             "            report.Info(\"(Would add semantic domain 'Move')\")\n"
@@ -419,8 +419,8 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
             "for entry in project.LexEntry.GetAll():\n"
             "    headword = project.LexEntry.GetHeadword(entry)\n"
             "    for sense in project.LexEntry.GetAllSenses(entry):\n"
-            "        analysis_gloss = project.LexSense.GetGloss(sense)\n"
-            "        french_gloss = project.LexSense.GetGloss(sense, project.WSHandle('fr'))\n"
+            "        analysis_gloss = project.Senses.GetGloss(sense)\n"
+            "        french_gloss = project.Senses.GetGloss(sense, project.WSHandle('fr'))\n"
             "        if analysis_gloss and french_gloss:\n"
             "            report.Info(f\"{headword}: has gloss in default + fr\")\n"
         ),

@@ -304,9 +304,9 @@ def Main(project, report, modify):
 
         for entry in entries:
             # Use flexicon wrapped methods
-            senses = project.LexSense.GetAllSenses(entry)
+            senses = project.LexEntry.GetAllSenses(entry)
             for sense in senses:
-                gloss = project.LexSense.GetGloss(sense)
+                gloss = project.Senses.GetGloss(sense)
                 report.Info(f"  {gloss}")
 
         report.Info("Complete!")

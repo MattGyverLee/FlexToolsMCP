@@ -17,9 +17,9 @@ import textwrap
 from typing import Dict, List, Set, Optional, Any, Tuple
 
 try:
-    from .constants import KNOWN_OPERATIONS
+    from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
 except ImportError:
-    from server.constants import KNOWN_OPERATIONS
+    from server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
 
 
 # ============================================================
@@ -446,11 +446,22 @@ def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
 
     Reads the real FLExProject property list from the flexicon index when
     available, unioned with the legacy KNOWN_OPERATIONS-derived names so
-    accessors like LexSense (Operations-class shorthand) keep validating.
+    Operations-class shorthands (project.Example, project.WritingSystem) that
+    the index's property list doesn't enumerate keep validating.
     Falls back to the KNOWN_OPERATIONS-derived list alone if the index is
     unavailable or has no FLExProject properties.
+
+    Issue #84: names in PROJECT_ACCESSOR_ALIASES are stripped from the legacy
+    set. Stripping "Operations" is a heuristic, and for LexSenseOperations /
+    PhonologicalRuleOperations it invents an accessor FLExProject does not
+    have -- keeping them here made the gate bless code that AttributeErrors at
+    runtime, and made the failing name its own top "did you mean" suggestion.
     """
-    legacy = [op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")]
+    legacy = [
+        op[: -len("Operations")]
+        for op in KNOWN_OPERATIONS
+        if op.endswith("Operations") and op[: -len("Operations")] not in PROJECT_ACCESSOR_ALIASES
+    ]
     if api_index is None:
         return legacy
     flexicon = getattr(api_index, "flexicon", None) or {}
@@ -550,10 +561,19 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
         candidates = _operation_method_names(api_index, object_type)
         scope = object_type
 
+    # Issue #84: the name that just raised can never be its own fix. Suggesting
+    # it back ("project.LexSense is not an accessor -- did you mean
+    # project.LexSense?") sends the reader in a loop and buries the real answer.
+    candidates = [c for c in candidates if c != attr_name]
     if not candidates:
         return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
 
     matches = _suggest_attribute_matches(attr_name, candidates)
+    # A known Operations-shorthand mistake has one right answer -- lead with it
+    # rather than whatever difflib ranks first.
+    if scope == "project" and attr_name in PROJECT_ACCESSOR_ALIASES:
+        alias = PROJECT_ACCESSOR_ALIASES[attr_name]
+        matches = [alias] + [m for m in matches if m != alias]
     if not matches:
         return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
 
@@ -632,6 +652,26 @@ def detect_invalid_project_chains(code_tree: Optional[ast.AST], api_index: Optio
         if isinstance(node.value, ast.Name) and node.value.id == "project":
             x = node.attr
             if x in accessors:
+                continue
+            # Issue #84: Operations-shorthand names that FLExProject does not
+            # actually expose. There is exactly one right answer, so skip the
+            # fuzzy path -- ratio 1.0 also lets auto-fix apply the rewrite.
+            if x in PROJECT_ACCESSOR_ALIASES:
+                correct = PROJECT_ACCESSOR_ALIASES[x]
+                issues.append({
+                    "kind": "accessor",
+                    "expr": f"project.{x}",
+                    "typo_attr": x,
+                    "lineno": node.lineno,
+                    "col_offset": node.col_offset,
+                    "did_you_mean": [correct],
+                    "match_ratio": 1.0,
+                    "suggestion": (
+                        f"'project.{x}' does not exist on FLExProject "
+                        f"({x}Operations has no same-named accessor). "
+                        f"Use project.{correct} instead."
+                    ),
+                })
                 continue
             if x.startswith(method_prefixes):
                 continue  # Looks like a direct project method, not an accessor typo

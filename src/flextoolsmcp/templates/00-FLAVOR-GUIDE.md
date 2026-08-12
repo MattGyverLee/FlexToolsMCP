@@ -74,7 +74,7 @@ def Main(project, report, modify):
     entries = project.LexEntry.GetAll()
     for entry in entries:
         form = project.LexEntry.GetLexemeForm(entry)
-        senses = project.LexSense.GetAllSenses(entry)
+        senses = project.LexEntry.GetAllSenses(entry)
         report.Info(f"{form} ({len(senses)} senses)")
 ```
 

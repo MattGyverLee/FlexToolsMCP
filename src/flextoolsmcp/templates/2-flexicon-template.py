@@ -30,10 +30,13 @@ from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
-    ReversalOperations,
     LexReferenceOperations,
     WritingSystemOperations,
-    # Add other operations as needed based on your implementation
+    # Add other operations as needed based on your implementation.
+    # Import only names flexicon actually exports -- a wrong name here is an
+    # ImportError that kills the module before Main() runs. Reversal work, for
+    # example, has no top-level "ReversalOperations": reach it through the
+    # accessors project.ReversalIndexes / project.ReversalEntries instead.
 )
 
 
@@ -79,8 +82,17 @@ def Main(project, report, modifyAllowed):
                 # Get entry form (headword)
                 form = project.LexEntry.GetLexemeForm(entry)
 
-                # Get all senses for this entry
-                senses = project.LexSense.GetAllSenses(entry)
+                # Get all senses for this entry (incl. subsenses, recursively).
+                # NOTE two easy mistakes here (issue #84):
+                #   - FLExProject has NO attribute named after the
+                #     LexSenseOperations class; the sense accessor is
+                #     project.Senses. Guessing raises AttributeError.
+                #   - GetAllSenses exists on BOTH operations classes and they
+                #     take DIFFERENT arguments: project.LexEntry.GetAllSenses
+                #     takes an entry, project.Senses.GetAllSenses takes a
+                #     SENSE (that sense plus its subsenses). Going from an
+                #     entry, you want the LexEntry one.
+                senses = project.LexEntry.GetAllSenses(entry)
                 report.Info(f"  [{i+1}] {form} ({len(senses)} senses)")
 
                 # BuildGoToURL creates clickable links in FLExTools output
@@ -94,8 +106,8 @@ def Main(project, report, modifyAllowed):
 
                 # Process each sense
                 for sense in senses:
-                    gloss = project.LexSense.GetGloss(sense)
-                    definition = project.LexSense.GetDefinition(sense)
+                    gloss = project.Senses.GetGloss(sense)
+                    definition = project.Senses.GetDefinition(sense)
 
                     if gloss:
                         report.Info(f"      - {gloss}")
@@ -196,11 +208,18 @@ COMMON PATTERNS:
    for entry in project.LexEntry.GetAll():
        form = project.LexEntry.GetLexemeForm(entry)
 
-2. Get senses:
-   senses = project.LexSense.GetAllSenses(entry)
+2. Get the senses of an entry -- use the LexEntry accessor:
+   senses = project.LexEntry.GetAllSenses(entry)
 
-3. Check for empty fields (flexicon returns "" not "***"):
-   gloss = project.LexSense.GetGloss(sense)
+   GetAllSenses exists on both operations classes and they take DIFFERENT
+   arguments -- project.Senses.GetAllSenses(sense) takes a SENSE and returns
+   that sense plus its subsenses. Starting from an entry, use the line above.
+   (FLExProject also has no attribute named after the LexSenseOperations
+   class, so project.<that name> raises AttributeError.)
+
+3. Read sense fields via project.Senses -- these take a sense
+   (flexicon returns "" not "***" for empty):
+   gloss = project.Senses.GetGloss(sense)
    if not gloss:
        report.Info("Gloss is empty")
 

@@ -211,7 +211,7 @@ def Main(project, report, modifyAllowed):
     if not entries:
         report.Error("Project has no entries")
         return
-    senses = project.LexSense.GetAllSenses(entries[0])
+    senses = project.LexEntry.GetAllSenses(entries[0])
     if not senses:
         report.Error("First entry has no senses")
         return

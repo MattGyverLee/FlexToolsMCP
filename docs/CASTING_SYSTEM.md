@@ -284,7 +284,7 @@ def Main(project, report, modifyAllowed):
         # Use safe helper:
         hw = get_headword(entry)  # Returns "Unknown" if fails
 
-        senses = project.LexSense.GetAllSenses(entry)
+        senses = project.LexEntry.GetAllSenses(entry)
         for sense in senses:
             # Access nested collection safely
             form = safe_get_property(sense.Owner, 'LexemeForm', '')
@@ -313,7 +313,7 @@ def Main(project, report, modifyAllowed):
 from flexicon import FLExInitialize, FLExCleanup, FLExProject
 
 def Main(project, report, modifyAllowed):
-    senses = project.LexSense.GetAll()
+    senses = project.Senses.GetAll()
 
     for sense in senses:
         # One-liner for cast + property access

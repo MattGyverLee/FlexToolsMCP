@@ -146,7 +146,7 @@ report.Error(f"Failed to process entry: {e}")
 
 ```python
 # Flexicon (recommended)
-gloss = project.LexSense.GetGloss(sense)
+gloss = project.Senses.GetGloss(sense)
 if not gloss:  # Empty check is normal Python
     report.Info("Gloss is empty")
 
@@ -234,7 +234,7 @@ project.LexEntry.SetLexemeForm(entry, new_form)
 entry.LexemeForm = new_value
 
 # WRONG - Modification without guard!
-project.LexSense.SetGloss(sense, "new gloss")
+project.Senses.SetGloss(sense, "new gloss")
 ```
 
 **Correct pattern:**
@@ -294,9 +294,9 @@ def multistring_safe(project, sense, field_name):
     """Get multistring field safely (flexicon)"""
     try:
         if field_name == "gloss":
-            return project.LexSense.GetGloss(sense)
+            return project.Senses.GetGloss(sense)
         elif field_name == "definition":
-            return project.LexSense.GetDefinition(sense)
+            return project.Senses.GetDefinition(sense)
         return ""
     except Exception:
         return ""
@@ -426,7 +426,7 @@ The MCP can analyze generated scripts for **critical bugs**:
 # UNPROTECTED - Write without permission check
 ❌ project.LexEntry.SetLexemeForm(entry, value)
 ❌ entry.LexemeForm = new_value
-❌ project.LexSense.SetGloss(sense, gloss)
+❌ project.Senses.SetGloss(sense, gloss)
 
 # PROTECTED - Properly guarded
 ✓ if modifyAllowed:
@@ -442,7 +442,7 @@ The MCP can analyze generated scripts for **critical bugs**:
 
 2. **Method call that modifies**
    ```python
-   project.LexSense.SetGloss(sense, "new")  # ❌ Unprotected
+   project.Senses.SetGloss(sense, "new")  # ❌ Unprotected
    ```
 
 3. **C# property assignment (LibLCM)**

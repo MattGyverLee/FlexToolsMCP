@@ -2876,7 +2876,7 @@
       }
     },
     "add-gloss-to-sense": {
-      "code": "entry = project.LexEntry.Find(\"run\")\nif entry is None:\n    report.Error(\"Entry 'run' not found\")\nelse:\n    senses = project.LexEntry.GetAllSenses(entry)\n    if not senses:\n        report.Error(\"Entry has no senses\")\n    else:\n        sense = senses[0]\n        if modifyAllowed:\n            project.LexSense.SetGloss(sense, \"to move rapidly on foot\")\n            report.Info(f\"Set gloss: {project.LexSense.GetGloss(sense)}\")\n        else:\n            report.Info(\"(Would set gloss to 'to move rapidly on foot')\")\n",
+      "code": "entry = project.LexEntry.Find(\"run\")\nif entry is None:\n    report.Error(\"Entry 'run' not found\")\nelse:\n    senses = project.LexEntry.GetAllSenses(entry)\n    if not senses:\n        report.Error(\"Entry has no senses\")\n    else:\n        sense = senses[0]\n        if modifyAllowed:\n            project.Senses.SetGloss(sense, \"to move rapidly on foot\")\n            report.Info(f\"Set gloss: {project.Senses.GetGloss(sense)}\")\n        else:\n            report.Info(\"(Would set gloss to 'to move rapidly on foot')\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -2926,7 +2926,7 @@
       }
     },
     "add-semantic-domain-to-sense": {
-      "code": "entry = project.LexEntry.Find(\"run\")\ndomain = project.SemanticDomain.FindByName(\"Move\")\nif entry is None or domain is None:\n    report.Error(\"Entry 'run' or semantic domain 'Move' not found\")\nelse:\n    senses = project.LexEntry.GetAllSenses(entry)\n    if not senses:\n        report.Error(\"Entry has no senses\")\n    else:\n        sense = senses[0]\n        if modifyAllowed:\n            project.LexSense.AddSemanticDomain(sense, domain)\n            report.Info(\"Added semantic domain 'Move'\")\n        else:\n            report.Info(\"(Would add semantic domain 'Move')\")\n",
+      "code": "entry = project.LexEntry.Find(\"run\")\ndomain = project.SemanticDomain.FindByName(\"Move\")\nif entry is None or domain is None:\n    report.Error(\"Entry 'run' or semantic domain 'Move' not found\")\nelse:\n    senses = project.LexEntry.GetAllSenses(entry)\n    if not senses:\n        report.Error(\"Entry has no senses\")\n    else:\n        sense = senses[0]\n        if modifyAllowed:\n            project.Senses.AddSemanticDomain(sense, domain)\n            report.Info(\"Added semantic domain 'Move'\")\n        else:\n            report.Info(\"(Would add semantic domain 'Move')\")\n",
       "entities": [
         "LexEntry",
         "LexSense",
@@ -3027,7 +3027,7 @@
       }
     },
     "count-senses-by-pos": {
-      "code": "from collections import Counter\n\ncounts = Counter()\nfor entry in project.LexEntry.GetAll():\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.LexSense.GetPartOfSpeech(sense) or \"(none)\"\n        counts[pos] += 1\n\nfor pos, n in counts.most_common():\n    report.Info(f\"{pos}: {n}\")\n",
+      "code": "from collections import Counter\n\ncounts = Counter()\nfor entry in project.LexEntry.GetAll():\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.Senses.GetPartOfSpeech(sense) or \"(none)\"\n        counts[pos] += 1\n\nfor pos, n in counts.most_common():\n    report.Info(f\"{pos}: {n}\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3076,7 +3076,7 @@
       }
     },
     "find-empty-definitions": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        definition = project.LexSense.GetDefinition(sense)\n        if not definition:\n            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no definition\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        definition = project.Senses.GetDefinition(sense)\n        if not definition:\n            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no definition\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3101,7 +3101,7 @@
       }
     },
     "find-entries-missing-pos": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.LexSense.GetPartOfSpeech(sense)\n        if not pos:\n            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no POS\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.Senses.GetPartOfSpeech(sense)\n        if not pos:\n            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no POS\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3126,7 +3126,7 @@
       }
     },
     "find-entries-without-examples": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        if project.LexSense.GetExampleCount(sense) == 0:\n            report.Info(f\"{headword}: sense {project.LexSense.GetSenseNumber(sense)} has no examples\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        if project.Senses.GetExampleCount(sense) == 0:\n            report.Info(f\"{headword}: sense {project.Senses.GetSenseNumber(sense)} has no examples\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3151,7 +3151,7 @@
       }
     },
     "find-senses-with-multiple-glosses-in-ws": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        analysis_gloss = project.LexSense.GetGloss(sense)\n        french_gloss = project.LexSense.GetGloss(sense, project.WSHandle('fr'))\n        if analysis_gloss and french_gloss:\n            report.Info(f\"{headword}: has gloss in default + fr\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        analysis_gloss = project.Senses.GetGloss(sense)\n        french_gloss = project.Senses.GetGloss(sense, project.WSHandle('fr'))\n        if analysis_gloss and french_gloss:\n            report.Info(f\"{headword}: has gloss in default + fr\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3175,7 +3175,7 @@
       }
     },
     "list-entries-with-glosses": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        gloss = project.LexSense.GetGloss(sense)\n        report.Info(f\"{headword}: {gloss}\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        gloss = project.Senses.GetGloss(sense)\n        report.Info(f\"{headword}: {gloss}\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3201,7 +3201,7 @@
       }
     },
     "list-entries-with-pos": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.LexSense.GetPartOfSpeech(sense) or \"(unspecified)\"\n        report.Info(f\"{headword} [{pos}]\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        pos = project.Senses.GetPartOfSpeech(sense) or \"(unspecified)\"\n        report.Info(f\"{headword} [{pos}]\")\n",
       "entities": [
         "LexEntry",
         "LexSense"
@@ -3275,7 +3275,7 @@
       }
     },
     "list-senses-with-definitions-and-examples": {
-      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        definition = project.LexSense.GetDefinition(sense)\n        examples = [project.Example.GetExample(ex) for ex in project.LexSense.GetExamples(sense)]\n        report.Info(f\"{headword}: {definition} | examples: {examples}\")\n",
+      "code": "for entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    for sense in project.LexEntry.GetAllSenses(entry):\n        definition = project.Senses.GetDefinition(sense)\n        examples = [project.Example.GetExample(ex) for ex in project.Senses.GetExamples(sense)]\n        report.Info(f\"{headword}: {definition} | examples: {examples}\")\n",
       "entities": [
         "LexEntry",
         "LexExampleSentence",

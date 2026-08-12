@@ -10,6 +10,7 @@ Provides read-only API discovery tools:
 
 import heapq
 import re
+from collections import deque
 from mcp.types import TextContent
 from typing import List, Dict, Any
 
@@ -417,13 +418,182 @@ def _match_canonical_intents(query: str, flexicon_index: dict | None) -> list:
     return rows
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None) -> dict:
+# ============================================================
+# Inheritance resolution (issue #86, CP2 -- specs/inheritance-resolution/SPEC.md)
+#
+# DEC-2 scope gate: this cycle merges ancestor members ONLY for LibLCM
+# interface entities (name starts with "I" AND entity["type"] == "interface").
+# Explore found 2214 colliding (entity, property) pairs across 250 entities,
+# ALL class-side, 0 interface-side (cycle1-explore.md Sec.3) -- some are real
+# semantic overrides (e.g. BackupFileSettings.BackupTime can_write:true vs.
+# IBackupSettings.BackupTime can_write:false). Class-side merging needs an
+# override-semantics policy that is a follow-up ticket, not CP2.
+# ============================================================
+
+# Additive-only response fields for this feature (DEC-3). Not added to
+# response_keys.py: this cycle's file scope is restricted to this module
+# (see specs/inheritance-resolution/SPEC.md CP2 dispatch prompt).
+KEY_INHERITED_FROM = "inherited_from"
+KEY_TOTAL_METHODS_INCLUDING_INHERITED = "total_methods_including_inherited"
+KEY_TOTAL_PROPERTIES_INCLUDING_INHERITED = "total_properties_including_inherited"
+
+# T2.1: memoized per (id(entities_index), entity_name). The `entities` dict
+# for a given library is loaded once per process (server.py's
+# ensure_liblcm_loaded() loads it lazily and never mutates/reloads it in
+# place -- see server.py:569-583), so caching against its identity is safe
+# and avoids re-walking ancestry (max depth 6, avg 1.33, max ancestor set 14
+# -- cycle1-explore.md Sec.4) on every request.
+_INHERITED_MEMBERS_CACHE: Dict[tuple, Dict[str, list]] = {}
+
+
+def _direct_ancestors(entity: dict) -> list:
+    """`interfaces` UNION `base_classes` for one entity -- one walk step.
+
+    `interfaces` (liblcm_extractor.py:698, .NET `GetInterfaces()`) is already
+    the full transitive interface closure; `base_classes` (line 695-696,
+    `t.BaseType`) is one level only, so recursing over this union is what
+    extends class-inheritance chains beyond a single hop.
+    """
+    return list(entity.get("interfaces", []) or []) + list(entity.get("base_classes", []) or [])
+
+
+def _is_interface_entity(entity_name: str, entity: dict | None) -> bool:
+    """DEC-2 scope gate: True only for `I*`-named LibLCM interface entities.
+
+    The name-prefix check mirrors the spec's literal wording ("entities
+    whose name starts with 'I'"); the `type == "interface"` check guards
+    against non-interface names that happen to start with "I" (e.g.
+    flexicon's `InflectionFeatureOperations`, whose `base_classes` are
+    flexicon mixins unrelated to LibLCM ancestry).
+    """
+    if not entity_name or not entity_name.startswith("I") or entity is None:
+        return False
+    return entity.get(KEY_TYPE) == "interface"
+
+
+def collect_inherited_members(entity_name: str, index: dict) -> Dict[str, list]:
+    """T2.1: walk `entity_name`'s ancestry in `index` (an ``entities``
+    mapping, e.g. ``api_index.liblcm["entities"]``) and return ancestor-only
+    members.
+
+    Returns ``{"properties": [...], "methods": [...]}``. Every returned
+    member is a shallow copy of the ancestor's declaration with an added
+    ``inherited_from`` key naming the ancestor entity it came from.
+    `entity_name`'s own members are never included here -- callers merge
+    them in separately, "child wins" (DEC-2): a member already declared on
+    `entity_name` itself, or already claimed by a closer ancestor (BFS
+    order -- direct ancestors are visited before their own ancestors), is
+    skipped.
+
+    Cycle-guarded via a `visited` set: the `interfaces`/`base_classes` graphs
+    are not expected to cycle, but a malformed or hand-authored index (e.g.
+    in tests) must not hang the process. Memoized at module scope.
+    """
+    cache_key = (id(index), entity_name)
+    cached = _INHERITED_MEMBERS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    entity = (index or {}).get(entity_name)
+    if not entity:
+        result: Dict[str, list] = {KEY_PROPERTIES: [], KEY_METHODS: []}
+        _INHERITED_MEMBERS_CACHE[cache_key] = result
+        return result
+
+    own_property_names = {p[KEY_NAME] for p in entity.get(KEY_PROPERTIES, []) or [] if p.get(KEY_NAME)}
+    own_method_names = {m[KEY_NAME] for m in entity.get(KEY_METHODS, []) or [] if m.get(KEY_NAME)}
+
+    merged_properties: Dict[str, dict] = {}
+    merged_methods: Dict[str, dict] = {}
+    visited = {entity_name}
+    queue = deque(_direct_ancestors(entity))
+
+    while queue:
+        ancestor_name = queue.popleft()
+        if ancestor_name in visited:
+            continue
+        visited.add(ancestor_name)
+        ancestor = index.get(ancestor_name)
+        if not ancestor:
+            continue
+
+        for p in ancestor.get(KEY_PROPERTIES, []) or []:
+            pname = p.get(KEY_NAME)
+            if not pname or pname in own_property_names or pname in merged_properties:
+                continue
+            tagged = dict(p)
+            tagged[KEY_INHERITED_FROM] = ancestor_name
+            merged_properties[pname] = tagged
+
+        for m in ancestor.get(KEY_METHODS, []) or []:
+            mname = m.get(KEY_NAME)
+            if not mname or mname in own_method_names or mname in merged_methods:
+                continue
+            tagged = dict(m)
+            tagged[KEY_INHERITED_FROM] = ancestor_name
+            merged_methods[mname] = tagged
+
+        queue.extend(_direct_ancestors(ancestor))
+
+    result = {
+        KEY_PROPERTIES: list(merged_properties.values()),
+        KEY_METHODS: list(merged_methods.values()),
+    }
+    _INHERITED_MEMBERS_CACHE[cache_key] = result
+    return result
+
+
+def _ancestor_entity_names(entity_name: str, index: dict) -> list:
+    """BFS-ordered ancestor entity names for `entity_name` (interfaces UNION
+    base_classes, transitive), excluding `entity_name` itself.
+
+    Used by `resolve_pythonic_property`'s ancestor-aware fallback (T2.4),
+    which needs candidate ancestor *names* to probe the suffix index with,
+    rather than merged member dicts. Shares the cycle guard with
+    `collect_inherited_members` but is not memoized separately -- it is only
+    reached on the cache-miss fallback path (exact match already failed).
+    """
+    entity = (index or {}).get(entity_name)
+    if not entity:
+        return []
+    visited = {entity_name}
+    order: list = []
+    queue = deque(_direct_ancestors(entity))
+    while queue:
+        ancestor_name = queue.popleft()
+        if ancestor_name in visited:
+            continue
+        visited.add(ancestor_name)
+        order.append(ancestor_name)
+        ancestor = index.get(ancestor_name)
+        if not ancestor:
+            continue
+        queue.extend(_direct_ancestors(ancestor))
+    return order
+
+
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None) -> dict:
     """Apply pagination and filtering to an entity's methods and properties.
 
     Issue #48: when a ``casting_index`` is supplied, per-property casting
     requirements are joined into the returned properties (and a top-level
     ``casting_notes`` counter is added) so the model writes cast-correct code
     from the discovery response instead of learning it via a rejection.
+
+    Issue #86 / CP2 (T2.2/T2.3): when ``entities_index`` is supplied (the
+    library's full ``entities`` mapping) AND ``entity``/``object_type`` is a
+    LibLCM interface (DEC-2 scope gate, see ``_is_interface_entity``),
+    ancestor properties/methods are merged in here -- before filtering,
+    totals, and offset/limit slicing -- so those stay consistent with the
+    returned candidate list, and each merged member is tagged
+    ``inherited_from``. ``total_methods``/``total_properties`` stay
+    byte-identical (own-only, DEC-3); ``total_methods_including_inherited``/
+    ``total_properties_including_inherited`` report the combined count, and
+    ``has_more``/``next_offset`` are computed against the combined method
+    total so pagination does not under-report remaining pages once merged
+    members are in the candidate list. Entities outside the scope gate (no
+    ``entities_index``, non-interface, or non-liblcm ``library``) are
+    unaffected -- this whole block is then a no-op and output is unchanged.
     """
     try:
         from ..constants import OPERATIONS_CLASSES, KNOWN_OPERATIONS
@@ -441,14 +611,31 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
         result[KEY_IMPORT_STATEMENT] = f"from {library} import {object_type}"
         result[KEY_IMPORT_REQUIRED] = True
 
+    inherited_methods: list = []
+    inherited_properties: list = []
+    if library == "liblcm" and entities_index is not None and _is_interface_entity(object_type, entity):
+        inherited = collect_inherited_members(object_type, entities_index)
+        inherited_methods = inherited[KEY_METHODS]
+        inherited_properties = inherited[KEY_PROPERTIES]
+
     methods = entity.get(KEY_METHODS, [])
+    own_method_count = len(methods)
+    methods = methods + inherited_methods
 
     if method_filter:
         filter_lower = method_filter.lower()
-        methods = [m for m in methods if filter_lower in m.get(KEY_NAME, "").lower()]
+        filtered_methods = [
+            (i, m) for i, m in enumerate(methods) if filter_lower in m.get(KEY_NAME, "").lower()
+        ]
+        total_methods = sum(1 for i, _m in filtered_methods if i < own_method_count)
+        total_methods_including_inherited = len(filtered_methods)
+        methods = [m for _i, m in filtered_methods]
+    else:
+        total_methods = own_method_count
+        total_methods_including_inherited = len(methods)
 
-    total_methods = len(methods)
     result[KEY_TOTAL_METHODS] = total_methods
+    result[KEY_TOTAL_METHODS_INCLUDING_INHERITED] = total_methods_including_inherited
 
     methods = methods[offset:offset + limit]
 
@@ -458,14 +645,17 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     force_thin = is_operations_class and not method_filter
 
     if summary_only or force_thin:
-        result[KEY_METHODS] = [
-            {
+        thin_methods = []
+        for m in methods:
+            row = {
                 KEY_NAME: m.get(KEY_NAME),
                 KEY_SIGNATURE: m.get(KEY_SIGNATURE, ""),
                 KEY_DESCRIPTION: (m.get(KEY_SUMMARY) or m.get(KEY_DESCRIPTION, "") or "").split("\n")[0][:120],
             }
-            for m in methods
-        ]
+            if KEY_INHERITED_FROM in m:
+                row[KEY_INHERITED_FROM] = m[KEY_INHERITED_FROM]
+            thin_methods.append(row)
+        result[KEY_METHODS] = thin_methods
         if force_thin:
             result[KEY_HINT] = (
                 f"{object_type} is an Operations namespace; only method index returned. "
@@ -475,9 +665,7 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
         result[KEY_METHODS] = methods
 
     result[KEY_RETURNED_METHODS] = len(result[KEY_METHODS])
-    result[KEY_HAS_MORE] = (offset + limit) < total_methods
-    if result[KEY_HAS_MORE]:
-        result[KEY_NEXT_OFFSET] = offset + limit
+    methods_has_more = (offset + limit) < total_methods_including_inherited
 
     properties = list(entity.get(KEY_PROPERTIES, []))
 
@@ -497,23 +685,51 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
             })
             existing.add(accessor)
 
+    own_property_count = len(properties)
+    properties = properties + inherited_properties
+
     if method_filter:
         filter_lower = method_filter.lower()
-        properties = [p for p in properties if filter_lower in p.get(KEY_NAME, "").lower()]
+        filtered_properties = [
+            (i, p) for i, p in enumerate(properties) if filter_lower in p.get(KEY_NAME, "").lower()
+        ]
+        total_properties = sum(1 for i, _p in filtered_properties if i < own_property_count)
+        total_properties_including_inherited = len(filtered_properties)
+        properties = [p for _i, p in filtered_properties]
+    else:
+        total_properties = own_property_count
+        total_properties_including_inherited = len(properties)
 
-    total_properties = len(properties)
     result[KEY_TOTAL_PROPERTIES] = total_properties
+    result[KEY_TOTAL_PROPERTIES_INCLUDING_INHERITED] = total_properties_including_inherited
+
+    # T2.3: has_more/next_offset is a single top-level pair covering BOTH
+    # lists (methods and properties share one offset/limit window). Before
+    # this fix it was computed from methods alone (explore.md Sec.2's
+    # "coherence bug merged members will amplify") -- an interface with few
+    # inherited methods but many inherited properties (e.g. IFsClosedValue:
+    # 14 combined methods vs. 31 combined properties) would silently stop
+    # signaling has_more once the method total was exhausted, even though
+    # more properties remained. Combined via OR against each list's own
+    # (own+inherited) total so neither dimension under-reports.
+    properties_has_more = (offset + limit) < total_properties_including_inherited
+    result[KEY_HAS_MORE] = methods_has_more or properties_has_more
+    if result[KEY_HAS_MORE]:
+        result[KEY_NEXT_OFFSET] = offset + limit
 
     properties = properties[offset:offset + limit]
 
     if summary_only:
-        result[KEY_PROPERTIES] = [
-            {
+        thin_properties = []
+        for p in properties:
+            row = {
                 KEY_NAME: p.get(KEY_NAME),
                 KEY_DESCRIPTION: (p.get(KEY_DESCRIPTION, "") or "")[:120],
             }
-            for p in properties
-        ]
+            if KEY_INHERITED_FROM in p:
+                row[KEY_INHERITED_FROM] = p[KEY_INHERITED_FROM]
+            thin_properties.append(row)
+        result[KEY_PROPERTIES] = thin_properties
     else:
         result[KEY_PROPERTIES] = properties
 
@@ -539,10 +755,19 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
 
 
 def resolve_pythonic_property(name: str, context_entity: str | None = None) -> List[Dict[str, Any]]:
-    """Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s)."""
+    """Resolve a pythonic (suffix-free) property name to its LibLCM equivalent(s).
+
+    T2.4 (issue #86): when the exact-`context_entity` lookups below find
+    nothing, an ancestor-aware fallback walks `context_entity`'s
+    interfaces/base_classes (DEC-2 scope gate: only for `I*` LibLCM
+    interfaces) and retries against each ancestor name, closest first. This
+    only runs on the existing "not found" path, so behavior is unchanged
+    whenever an exact match already succeeds.
+    """
     if not get_api_index() or not get_api_index().liblcm:
         return []
 
+    liblcm_entities = get_api_index().liblcm.get("entities", {})
     suffix_index = get_api_index().liblcm.get("suffix_index", {})
     if not suffix_index:
         return []
@@ -578,6 +803,31 @@ def resolve_pythonic_property(name: str, context_entity: str | None = None) -> L
                         KEY_PYTHONIC_NAME: match[KEY_PYTHONIC_NAME],
                         KEY_KIND: match[KEY_KIND]
                     })
+
+    if not results and context_entity and _is_interface_entity(context_entity, liblcm_entities.get(context_entity)):
+        ancestors = _ancestor_entity_names(context_entity, liblcm_entities)
+        if ancestors:
+            ancestor_set = set(ancestors)
+            by_full = suffix_index.get("by_full_name", {})
+            if name in by_pythonic:
+                # dict(m) copies: `by_pythonic[name]` entries are shared,
+                # module-level index objects -- tagging inherited_from below
+                # must not mutate them in place (it would leak into every
+                # other context's lookup of the same pythonic name).
+                results = [dict(m) for m in by_pythonic[name] if m[KEY_ENTITY] in ancestor_set]
+            if not results:
+                for ancestor_name in ancestors:  # closest first (BFS order)
+                    match = by_full.get(f"{ancestor_name}.{name}")
+                    if match:
+                        results = [{
+                            KEY_ENTITY: match[KEY_ENTITY],
+                            "full_name": name,
+                            KEY_PYTHONIC_NAME: match[KEY_PYTHONIC_NAME],
+                            KEY_KIND: match[KEY_KIND]
+                        }]
+                        break
+            for r in results:
+                r.setdefault(KEY_INHERITED_FROM, r.get(KEY_ENTITY))
 
     return results
 
@@ -637,6 +887,7 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
             result[source_key] = paginate_entity(
                 entities[object_type], summary_only, method_filter, limit, offset,
                 object_type=object_type, library=source_name, casting_index=casting_index,
+                entities_index=entities,
             )
             result[KEY_FOUND] = True
             continue

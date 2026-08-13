@@ -175,6 +175,43 @@ class TestPaginateEntityMerge:
         assert result["total_properties"] == 2
         assert result["total_properties_including_inherited"] == 31
 
+    def test_total_methods_byte_identical_own_only(self, liblcm_entities):
+        """IFsClosedValue declares no methods of its own; all 14 come from
+        ancestors, so the own-only total must stay 0 while the combined
+        total reports the merge."""
+        from server.handlers.api import paginate_entity
+
+        entity = liblcm_entities["IFsClosedValue"]
+        result = paginate_entity(
+            entity, summary_only=False, method_filter="", limit=50, offset=0,
+            object_type="IFsClosedValue", library="liblcm", entities_index=liblcm_entities,
+        )
+        assert result["total_methods"] == 0
+        assert result["total_methods_including_inherited"] == 14
+
+    def test_total_methods_including_inherited_counts_filtered_inherited(self, liblcm_entities):
+        """Discriminating case for api.py:630-631. IFsClosedValue has 0 own
+        methods, so under a filter its own-only total is trivially 0 and
+        cannot detect an off-by-one at api.py:630. IReversalIndex has both
+        own and inherited matches for the "find" filter, so the two totals
+        genuinely diverge (1 own match vs 2 combined): total_methods counts
+        only filtered entries whose index is below own_method_count, while
+        total_methods_including_inherited is the full filtered count. The
+        ordering assertion below also pins the own-then-inherited order
+        that line 630's index comparison depends on."""
+        from server.handlers.api import paginate_entity
+
+        entity = liblcm_entities["IReversalIndex"]
+        result = paginate_entity(
+            entity, summary_only=False, method_filter="find", limit=50, offset=0,
+            object_type="IReversalIndex", library="liblcm", entities_index=liblcm_entities,
+        )
+        assert result["total_methods"] == 1  # own match: FindOrCreateReversalEntry
+        assert result["total_methods_including_inherited"] == 2  # + inherited FindHeaderFooterSetByName
+        assert [m["name"] for m in result["methods"]] == [
+            "FindOrCreateReversalEntry", "FindHeaderFooterSetByName"
+        ]
+
     def test_featurera_visible_with_inherited_from(self, liblcm_entities):
         from server.handlers.api import paginate_entity
 

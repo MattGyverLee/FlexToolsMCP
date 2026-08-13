@@ -1,7 +1,16 @@
 # DOCS-PENDING -- inheritance-resolution (issues #85 / #86)
 
-**Status:** drafted, not yet applied (CP4, gated on the `workspace_notice` crew
-landing -- see `SPEC.md` §4 concurrency table).
+**SUPERSEDED by commit `f930908`** ("docs: complete the #86
+inheritance-resolution contract docs (CP4)", cycle 6). Every draft staged
+below has landed: the `docs/TOOL-CONTRACT.md` "Inherited member fields"
+section (§1, including the `total_methods_including_inherited` row added in
+the cycle-5 precision pass), the `CHANGELOG.md` `Added`/`Fixed` entries (§2),
+and the new `docs/LIBLCM_EXTRACTION_SEMANTICS.md` plus the `See also`
+cross-link in `docs/LIBLCM_CONTEXTUAL_ANALYSIS.md` (§3). This file is
+retained only as the drafting trail -- do not paste from it again.
+
+**Original status (historical):** drafted, not yet applied (CP4, gated on the
+`workspace_notice` crew landing -- see `SPEC.md` §4 concurrency table).
 **Source of truth for the decisions below:** `SPEC.md` DEC-3 (§2), CP4 (§5);
 `reviews/cycle1-author.md` §5.
 

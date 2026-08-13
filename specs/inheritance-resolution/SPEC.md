@@ -1,8 +1,8 @@
 # SPEC — Inheritance Resolution & Navigation Path Repair (issues #85 / #86)
 
 **Feature:** `inheritance-resolution`
-**Status:** in_progress — CP1 landed (d693e26), CP2 landed (13f69f8), CP4 docs in flight (concurrent lex-doc pass, cycle 4), CP3 design-ready but deferred and NOT YET FILED
-**Last updated:** 2026-08-13 (cycle 4 archivist reconciliation)
+**Status:** COMPLETE — CP1 landed (d693e26), CP2 landed (13f69f8), CP4 docs landed (f930908), CP3 filed as `#CP3-TBD` and tracked separately (design-ready, not started)
+**Last updated:** 2026-08-13 (cycle 6 archivist close-out)
 **Cycle-1 evidence:** `specs/inheritance-resolution/reviews/cycle1-{explore,programmer,domain,author}.md`
 
 ---
@@ -230,31 +230,44 @@ recorded here for the historical rationale.
       `tests/test_issue86_inheritance_resolution.py:331`; covers
       `get_object_api` (:343), `resolve_property` (:356), and
       `validators._interface_member_names` (:366, read-only per DEC-5))*
+- [x] T2.6 Methods-side test coverage for `total_methods_including_inherited`
+      *(cycle 6 — `test_total_methods_byte_identical_own_only`,
+      `tests/test_issue86_inheritance_resolution.py:178`, unfiltered branch
+      `api.py:634-635`, `IFsClosedValue` 0 own / 14 combined; and
+      `test_total_methods_including_inherited_counts_filtered_inherited`,
+      `tests/test_issue86_inheritance_resolution.py:192`, filtered branch
+      `api.py:630-631`, `IReversalIndex` 1 own / 2 combined, pinning the
+      own-then-inherited ordering. Both independently certified via targeted
+      mutation by the verification agent, not just the programmer's
+      self-report — see `reviews/cycle6-verification.md`.)*
 
-### CP3 — `required_cast` labeled downcast edges *(design ready, NOT started, issue NOT filed)*
+### CP3 — `required_cast` labeled downcast edges *(design ready, filed as `#CP3-TBD`, NOT started)*
 Per lex-domain §4: scoped to the dominant concrete subtype from casting_index's
 `base_type`/`concrete_types`, with `_add_polymorphic_warnings` listing alternates
 (`InflFeatsOA`, `From/ToMsFeaturesOA`) as advisories — **not** as competing BFS edges.
 Issue body drafted in `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md`
-(cycle 3) but deliberately left unfiled pending user authorization — filing is
-the user's call, not the crew's. *(cycle 4 note: still unfiled as of this
-reconciliation; do not treat the drafted body as evidence of a filed issue.)*
+(cycle 3, corrected cycle 6 — see `reviews/cycle6-doc.md`) and filed as
+`#CP3-TBD` this cycle with explicit user authorization. Design content
+(dominant-concrete-subtype scoping from `casting_index`'s `base_type`/
+`concrete_types`, `_add_polymorphic_warnings` advisories rather than
+competing BFS edges) is unchanged; implementation has not started.
 
-### CP4 — Docs *(gate CLEARED, in flight cycle 4)*
+### CP4 — Docs *(COMPLETE, committed as `f930908`)*
 `docs/TOOL-CONTRACT.md`, `CHANGELOG.md` (`Added`, not "Tool contract"),
 `docs/LIBLCM_CONTEXTUAL_ANALYSIS.md` (the `GetInterfaces()` full-closure vs
-`BaseType` single-level asymmetry). The concurrency gate (§4) cleared when
+`BaseType` single-level asymmetry), and the new
+`docs/LIBLCM_EXTRACTION_SEMANTICS.md`. The concurrency gate (§4) cleared when
 commit `bd066a0` landed the other crew's `workspace_notice` work and #90
-closed. A parallel lex-doc pass is applying these docs THIS cycle (cycle 4);
-its result is not yet visible to this reconciliation and must not be marked
-done until independently confirmed.
+closed. The lex-doc pass landed in cycle 4, a precision pass closed four
+gaps in cycle 5, and all edits were independently re-verified against
+source before commit `f930908` landed the whole set (cycle 6).
 
 ---
 
 ## 6. Issues to file (pending user approval)
 
 Both cycle-1 bodies were drafted in `reviews/cycle1-programmer.md`. Status as
-of cycle 4:
+of cycle 6 (feature close-out):
 
 1. **`find_path_bfs()` never finds a path since the Wave 3 parent-tracking
    rewrite** — blocks closing #85 (DEC-1). **FILED as #88, CLOSED** (landed
@@ -266,7 +279,17 @@ of cycle 4:
    of this feature. **FILED as #89, still OPEN** (not part of this feature's
    closing criteria).
 3. **`required_cast` labeled downcast edges for CP3** — body drafted in
-   `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` (cycle 3). **NOT
-   FILED.** Commit `5a986c2`'s message implied filing would follow; it did
-   not happen. Filing requires explicit user authorization — do not file
-   without it.
+   `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` (cycle 3, corrected
+   cycle 6). **FILED as `#CP3-TBD`** this cycle with explicit user
+   authorization. Not started.
+4. **Class-side (non-`I*`) ancestor merging** — descoped from #86 by DEC-2,
+   not folded into #86's closing criteria. #86 merges only `I*` interface
+   entities because interface-side merging is provably collision-free (0
+   collisions), while Explore found **2214 colliding `(entity, property)`
+   pairs across 250 class entities** — real semantic overrides exist there
+   (e.g. `BackupFileSettings.BackupTime can_write:true` vs
+   `IBackupSettings.BackupTime can_write:false`). Merging class-side members
+   needs an override-semantics policy decision (which declaration wins, and
+   how the shadowed one is surfaced to the caller) before it can be
+   implemented safely. **NOT FILED.** No issue exists yet for this; file one
+   when this work is picked up.

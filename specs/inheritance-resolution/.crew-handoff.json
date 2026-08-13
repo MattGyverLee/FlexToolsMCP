@@ -1,8 +1,8 @@
 {
   "feature": "inheritance-resolution",
-  "status": "needs_human",
-  "last_cycle": 5,
-  "spurts_completed": 4,
+  "status": "feature_complete",
+  "last_cycle": 6,
+  "spurts_completed": 5,
   "tasks_done": [
     "T1.1: fix args dict access in handle_get_navigation_path (cycle 1)",
     "T1.2: 7 regression tests incl. real server.call_tool() dispatch path (cycle 1)",
@@ -15,9 +15,13 @@
     "T2.3: total_properties_including_inherited / total_methods_including_inherited; has_more/next_offset repointed to combined totals per DEC-7 (cycle 2, 13f69f8)",
     "T2.4: ancestor-aware fallback in resolve_pythonic_property (cycle 2, 13f69f8)",
     "T2.5: consistency-invariant test across all three surfaces -- get_object_api, resolve_property, validators._interface_member_names read-only per DEC-5 (cycle 2, 13f69f8)",
-    "T4.1: CP4 docs written -- docs/TOOL-CONTRACT.md inherited-member-fields section, CHANGELOG.md #86 entry, new docs/LIBLCM_EXTRACTION_SEMANTICS.md (cycle 4, UNCOMMITTED)",
-    "T4.2: CP4 precision pass -- 4 gaps closed: P1 total_methods_including_inherited now documented (TOOL-CONTRACT.md:198 + CHANGELOG.md:112-115); P2 paginate_entity-only scoping corrected (lines 183-192) and stale api.py:420 -> api.py:575 (line 214); P3 'this fields' -> 'these fields' (line 201); P3 transitive-closure exclusion caveat added (LIBLCM_EXTRACTION_SEMANTICS.md:9) (cycle 5, UNCOMMITTED)",
-    "T4.3: all four cycle-5 edits independently re-verified against source by lex-lead; regression suite 31 passed, unchanged from cycle 4; no .py file modified in cycles 4-5 (cycle 5)"
+    "T4.1: CP4 docs written -- docs/TOOL-CONTRACT.md inherited-member-fields section, CHANGELOG.md #86 entry, new docs/LIBLCM_EXTRACTION_SEMANTICS.md (cycle 4)",
+    "T4.2: CP4 precision pass -- 4 gaps closed: P1 total_methods_including_inherited now documented (TOOL-CONTRACT.md:198 + CHANGELOG.md:112-115); P2 paginate_entity-only scoping corrected (lines 183-192) and stale api.py:420 -> api.py:575 (line 214); P3 'this fields' -> 'these fields' (line 201); P3 transitive-closure exclusion caveat added (LIBLCM_EXTRACTION_SEMANTICS.md:9) (cycle 5)",
+    "T4.3: all four cycle-5 edits independently re-verified against source by lex-lead; regression suite 31 passed, unchanged from cycle 4; no .py file modified in cycles 4-5 (cycle 5)",
+    "T4.4: CP4 docs committed as f930908 ('docs: complete the #86 inheritance-resolution contract docs (CP4)') -- CHANGELOG.md, STATUS.md, docs/LIBLCM_CONTEXTUAL_ANALYSIS.md, docs/LIBLCM_EXTRACTION_SEMANTICS.md, docs/TOOL-CONTRACT.md, specs/inheritance-resolution/SPEC.md all landed (cycle 6)",
+    "T6.1: resolved deferred P2-test-gap -- added test_total_methods_byte_identical_own_only (tests/test_issue86_inheritance_resolution.py:178, unfiltered branch api.py:634-635, IFsClosedValue 0/14) and test_total_methods_including_inherited_counts_filtered_inherited (tests/test_issue86_inheritance_resolution.py:192, filtered discriminating branch api.py:630-631, IReversalIndex 1/2 with own-then-inherited ordering pinned) (cycle 6)",
+    "T6.2: independent double-mutation certification by the verification agent (not the programmer's self-report) -- api.py:630 '<' -> '<=' broke test_total_methods_including_inherited_counts_filtered_inherited exactly as predicted (assert 2 == 1); api.py:635 'len(methods)' -> 'len(methods) - 1' broke test_total_methods_byte_identical_own_only exactly as predicted (assert 13 == 14); both reverted, full suite re-run green both before and after (979 passed, 2 skipped, 0 failed each time); src/ confirmed byte-identical at close (cycle 6, reviews/cycle6-verification.md)",
+    "T6.3: corrected three factual errors in specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md before filing -- (1) wrong script attribution, 'liblcm_extractor.py' -> 'build_navigation_graph.py', in the 'Why its own issue' section and proposed-scope item 3; (2) crew-internal cycle numbers replaced with commit hashes ('cycle 3' -> 'd693e26'/'13f69f8') in the Problem and Motivating-case sections, since a GitHub reader has no access to crew cycle numbering; (3) added a two-sentence clarifying paragraph explaining structurally why #86's ancestor-only collect_inherited_members() can never surface MsFeaturesOA (declared on descendant IMoStemMsa, not any ancestor) (cycle 6, reviews/cycle6-doc.md)"
   ],
   "cp1_close": {
     "commit": "d693e26f66794492e26d5916878bf36607d76ffb",
@@ -26,19 +30,12 @@
   },
   "cp2_close": {
     "commit": "13f69f8fa139229209257d89aa54f481f63a9cda",
-    "issue": "#86 (left OPEN -- class-side merging still pending an override-semantics policy)",
+    "issue": "#86 -- CLOSED this cycle by the main session (status comment recorded). Class-side (non-I*) ancestor merging is explicitly DESCOPED from #86, not left as an open policy question blocking the issue -- it is tracked separately as SPEC.md section 6 item 4, blocked on an override-semantics policy, and needs its own future issue when picked up.",
     "message": "feat: inheritance-aware get_object_api and resolve_property (#86)"
   },
-  "cp3_status": "design ready, NOT started, issue NOT filed. Draft body in specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md (cycle 3). Filing requires explicit user authorization.",
-  "cp4_status": "COMPLETE and independently verified (cycles 4 + 5). Supersedes the cycle-4 'in flight / do not mark done' note, which was written before the doc pass returned. Docs are correct and source-verified but STILL UNCOMMITTED -- see pending_commit.",
+  "cp3_status": "issue filed and tracked as #CP3-TBD (main session runs `gh issue create`; substitute the real number here and in SPEC.md section 6 once it returns). Body corrected in cycle 6 (see T6.3) before filing -- specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md.",
+  "cp4_status": "COMPLETE, independently verified (cycles 4 + 5), and COMMITTED as f930908 ('docs: complete the #86 inheritance-resolution contract docs (CP4)').",
   "deferred": [
-    {
-      "id": "P2-test-gap",
-      "summary": "No test asserts total_methods_including_inherited. Key is emitted at api.py:638; the properties twin has 4 assertions (tests/test_issue86_inheritance_resolution.py:176,217,256,270), the methods key has zero.",
-      "risk": "api.py:630-631 is the non-trivial branch -- total_methods counts only indices below own_method_count while the inherited total is len(filtered_methods); an off-by-one there would ship silently.",
-      "fix": "one assertion mirroring test line 176",
-      "disposition": "NOT a close-blocker for #86. Not folded into the CP3 issue (different scope). Not worth its own GitHub issue. Pick up in the next spurt that touches tests."
-    },
     {
       "id": "P3-changelog-closure-caveat",
       "summary": "CHANGELOG.md:106 still says 'already the full transitive closure per liblcm_extractor.py's use of .NET GetInterfaces()' without the IDisposable/IEnumerable/IComparable exclusion caveat now carried by LIBLCM_EXTRACTION_SEMANTICS.md:9.",
@@ -50,9 +47,8 @@
       "disposition": "future doc-audit task, out of scope for #86"
     }
   ],
-  "pending_commit": "CP4 docs + spurt state are uncommitted. Main session has the exact commit message in the cycle-5 handoff. Working tree is docs-only: CHANGELOG.md, STATUS.md, docs/LIBLCM_CONTEXTUAL_ANALYSIS.md, docs/TOOL-CONTRACT.md, specs/inheritance-resolution/SPEC.md modified; docs/LIBLCM_EXTRACTION_SEMANTICS.md + .crew-handoff.json + reviews/cycle4-{archivist,doc}.md + reviews/cycle5-doc.md untracked.",
-  "next_checkpoint": "#86 close-out + CP3 issue filing -- BOTH BLOCKED ON USER APPROVAL",
-  "next_entry": "Do NOT auto-continue. Two remaining actions are user-authorization-gated and no agent may perform them unattended: (1) closing issue #86, (2) filing the CP3 issue from PROPOSED-ISSUE-cp3.md. All implementation and doc work through CP4 is done, verified, and green. Commit the spurt, then stop and ask the user.",
-  "blocker": "Closing #86 and filing the CP3 issue both require explicit user approval, which has not been given.",
+  "pending_commit": "One remaining uncommitted change set, for the main session to commit: (1) the two cycle-6 test additions in tests/test_issue86_inheritance_resolution.py (lines 178, 192); (2) the cycle-6 corrections to specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md (see T6.3); (3) these cycle-6 state updates (.crew-handoff.json, SPEC.md, STATUS.md, reviews/cycle6-{programmer,doc,verification,archivist}.md). CP4 docs are already committed as f930908 and are NOT part of this remaining set.",
+  "next_checkpoint": "Feature complete. No further crew work is queued for inheritance-resolution.",
+  "next_entry": "Nothing to continue. The only residual manual step is substituting the real CP3 issue number for the `#CP3-TBD` placeholder in this file (cp3_status) and in specs/inheritance-resolution/SPEC.md (Status line and section 6 item 3) once `gh issue create` returns a number.",
   "updated": "2026-08-13"
 }

@@ -89,14 +89,16 @@ The working tree carries unrelated pre-existing changes to
 diagnostic-report feature -- do not sweep them into a diagnostic-report commit;
 commit or revert them deliberately on their own.
 
-## Interrupt: inheritance-resolution (#85 / #86) -- also not part of diagnostic-report
+## Closed interrupt: inheritance-resolution (#85 / #86) -- CLOSED, was not part of diagnostic-report
 
 A separate, higher-priority bug chain (#85 navigation-path crash -> #88 BFS
 reconstruction bug -> #86 inherited properties hidden from `get_object_api` /
 `resolve_property`) was worked as its own feature,
 `specs/inheritance-resolution/SPEC.md`, in parallel with diagnostic-report.
-Status as of 2026-08-13 (cycle 4 reconciliation -- see
-`specs/inheritance-resolution/reviews/cycle4-archivist.md`):
+The feature is now COMPLETE and closed out as of 2026-08-13 (cycle 6
+close-out -- see `specs/inheritance-resolution/reviews/cycle6-archivist.md`).
+Diagnostic-report (above) is once again the sole active feature; this
+section is retained as the historical record of the interrupt.
 
 **CP1 -- Navigation path actually works: COMPLETE and green
 (commit `d693e26`, closes #85 and #88).** `find_path_bfs()` reconstruction
@@ -109,12 +111,17 @@ read-path).** `collect_inherited_members` merges ancestor-declared members
 into `get_object_api` / `resolve_property` for `I*` interface entities;
 additive `inherited_from` / `*_including_inherited` fields; `has_more`
 repointed to combined totals (DEC-7). Canonical case `IFsClosedValue`: 2 own
--> 31 total properties, `FeatureRA` now visible. Issue **#86 left OPEN**
-pending user sign-off -- class-side merging still needs an
-override-semantics policy.
+-> 31 total properties, `FeatureRA` now visible. Issue **#86 CLOSED this
+cycle** (cycle 6, status comment recorded by the main session). Class-side
+(non-`I*`) ancestor merging is explicitly **descoped from #86**, not left as
+an open policy question blocking the issue -- it is tracked separately in
+`specs/inheritance-resolution/SPEC.md` section 6 item 4, blocked on an
+override-semantics policy, with its own issue still to be filed when picked
+up.
 
-**CP4 -- Docs: COMPLETE and independently verified (cycles 4 + 5,
-uncommitted).** A parallel `/lex-doc` pass in cycle 4 wrote
+**CP4 -- Docs: COMPLETE, independently verified (cycles 4 + 5), and
+COMMITTED as `f930908`** ("docs: complete the #86 inheritance-resolution
+contract docs (CP4)"). A parallel `/lex-doc` pass in cycle 4 wrote
 `docs/TOOL-CONTRACT.md`, `CHANGELOG.md`, and the new
 `docs/LIBLCM_EXTRACTION_SEMANTICS.md`; concurrency gate cleared when
 `bd066a0` landed the other crew's `workspace_notice` work and #90 closed. A
@@ -137,21 +144,31 @@ All four re-verified against source by lex-lead on 2026-08-13. Regression
 suite green and unchanged from cycle 4: `pytest
 tests/test_issue86_inheritance_resolution.py
 tests/test_issue85_navigation_path.py -q` -> **31 passed**. No `.py` file was
-modified in cycles 4-5 (docs-only).
+modified in cycles 4-5 (docs-only). CP4 docs were committed in cycle 6 as
+`f930908`.
 
-**Deferred P2 (tracked, not a close-blocker for #86): no test asserts
-`total_methods_including_inherited`.** The key is emitted at
-`api.py:638` and its properties twin has four assertions
-(`tests/test_issue86_inheritance_resolution.py:176,217,256,270`), but the
-methods key has **zero**. The untested-but-non-trivial branch is
-`api.py:630-631`, where `total_methods` counts only indices below
-`own_method_count` while the inherited total is `len(filtered_methods)` --
-an off-by-one there would ship silently. Fix is one assertion mirroring
-line 176; pick it up in the next spurt that touches tests. Deliberately
-NOT folded into the CP3 issue (different scope) and not worth its own
-GitHub issue.
+**Resolved (was Deferred P2): `total_methods_including_inherited` test
+coverage.** Cycle 6 added two tests to
+`tests/test_issue86_inheritance_resolution.py` --
+`test_total_methods_byte_identical_own_only` (line 178, unfiltered branch
+`api.py:634-635`, `IFsClosedValue` 0 own / 14 combined) and
+`test_total_methods_including_inherited_counts_filtered_inherited` (line
+192, filtered branch `api.py:630-631`, `IReversalIndex` 1 own / 2 combined,
+pinning the own-then-inherited ordering). Both were independently certified
+by the verification agent via two separate targeted mutations (api.py:630
+`<` -> `<=`, and api.py:635 `len(methods)` -> `len(methods) - 1`), each
+breaking exactly the predicted test with the predicted assertion error;
+full suite re-run green after revert: **979 passed, 2 skipped, 0 failed**.
+See `specs/inheritance-resolution/reviews/cycle6-verification.md`.
 
-**CP3 -- `required_cast` downcast edges: design ready, NOT started, issue
-NOT filed.** Draft body in
-`specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md`. Filing requires
-explicit user authorization -- no agent should file it unattended.
+**CP3 -- `required_cast` downcast edges: design ready, FILED as
+`#CP3-TBD`, NOT started.** Draft body in
+`specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` was corrected in cycle
+6 (wrong script attribution, crew-internal cycle numbers replaced with
+commit hashes, and a clarifying paragraph on why #86's mechanism cannot
+cover this case) and then filed with explicit user authorization.
+
+**Feature status: CLOSED (cycle 6).** All checkpoints (CP1-CP4) are landed,
+committed, and verified; #86 and #85/#88 are closed; CP3 is filed and
+tracked as its own issue for future work. The repo's active feature reverts
+to diagnostic-report (line 3).

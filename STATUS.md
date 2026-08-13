@@ -162,7 +162,7 @@ full suite re-run green after revert: **979 passed, 2 skipped, 0 failed**.
 See `specs/inheritance-resolution/reviews/cycle6-verification.md`.
 
 **CP3 -- `required_cast` downcast edges: design ready, FILED as
-`#CP3-TBD`, NOT started.** Draft body in
+`#91`, NOT started.** Draft body in
 `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` was corrected in cycle
 6 (wrong script attribution, crew-internal cycle numbers replaced with
 commit hashes, and a clarifying paragraph on why #86's mechanism cannot

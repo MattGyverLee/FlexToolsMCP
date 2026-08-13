@@ -33,7 +33,7 @@
     "issue": "#86 -- CLOSED this cycle by the main session (status comment recorded). Class-side (non-I*) ancestor merging is explicitly DESCOPED from #86, not left as an open policy question blocking the issue -- it is tracked separately as SPEC.md section 6 item 4, blocked on an override-semantics policy, and needs its own future issue when picked up.",
     "message": "feat: inheritance-aware get_object_api and resolve_property (#86)"
   },
-  "cp3_status": "issue filed and tracked as #CP3-TBD (main session runs `gh issue create`; substitute the real number here and in SPEC.md section 6 once it returns). Body corrected in cycle 6 (see T6.3) before filing -- specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md.",
+  "cp3_status": "FILED as #91 (label: enhancement) -- 'Add required_cast downcast edges to the navigation graph so ILexSense -> IFsSymFeatVal resolves'. Design ready, NOT started. Body corrected in cycle 6 (see T6.3) before filing -- specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md.",
   "cp4_status": "COMPLETE, independently verified (cycles 4 + 5), and COMMITTED as f930908 ('docs: complete the #86 inheritance-resolution contract docs (CP4)').",
   "deferred": [
     {
@@ -47,8 +47,8 @@
       "disposition": "future doc-audit task, out of scope for #86"
     }
   ],
-  "pending_commit": "One remaining uncommitted change set, for the main session to commit: (1) the two cycle-6 test additions in tests/test_issue86_inheritance_resolution.py (lines 178, 192); (2) the cycle-6 corrections to specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md (see T6.3); (3) these cycle-6 state updates (.crew-handoff.json, SPEC.md, STATUS.md, reviews/cycle6-{programmer,doc,verification,archivist}.md). CP4 docs are already committed as f930908 and are NOT part of this remaining set.",
+  "pending_commit": "None. CP4 docs landed as f930908; the cycle-6 test additions, the corrected PROPOSED-ISSUE-cp3.md, and the cycle-6 state updates landed as b1ef0e3. The only follow-up commit is this file's #91 substitution.",
   "next_checkpoint": "Feature complete. No further crew work is queued for inheritance-resolution.",
-  "next_entry": "Nothing to continue. The only residual manual step is substituting the real CP3 issue number for the `#CP3-TBD` placeholder in this file (cp3_status) and in specs/inheritance-resolution/SPEC.md (Status line and section 6 item 3) once `gh issue create` returns a number.",
+  "next_entry": "Nothing to continue. All gated actions are executed: #86 closed with a status comment, and CP3 filed as #91 (enhancement). The #CP3-TBD placeholders have been substituted with #91 in this file, SPEC.md, and STATUS.md.",
   "updated": "2026-08-13"
 }

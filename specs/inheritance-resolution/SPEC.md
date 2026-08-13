@@ -1,7 +1,7 @@
 # SPEC — Inheritance Resolution & Navigation Path Repair (issues #85 / #86)
 
 **Feature:** `inheritance-resolution`
-**Status:** COMPLETE — CP1 landed (d693e26), CP2 landed (13f69f8), CP4 docs landed (f930908), CP3 filed as `#CP3-TBD` and tracked separately (design-ready, not started)
+**Status:** COMPLETE — CP1 landed (d693e26), CP2 landed (13f69f8), CP4 docs landed (f930908), CP3 filed as `#91` and tracked separately (design-ready, not started)
 **Last updated:** 2026-08-13 (cycle 6 archivist close-out)
 **Cycle-1 evidence:** `specs/inheritance-resolution/reviews/cycle1-{explore,programmer,domain,author}.md`
 
@@ -241,13 +241,13 @@ recorded here for the historical rationale.
       mutation by the verification agent, not just the programmer's
       self-report — see `reviews/cycle6-verification.md`.)*
 
-### CP3 — `required_cast` labeled downcast edges *(design ready, filed as `#CP3-TBD`, NOT started)*
+### CP3 — `required_cast` labeled downcast edges *(design ready, filed as `#91`, NOT started)*
 Per lex-domain §4: scoped to the dominant concrete subtype from casting_index's
 `base_type`/`concrete_types`, with `_add_polymorphic_warnings` listing alternates
 (`InflFeatsOA`, `From/ToMsFeaturesOA`) as advisories — **not** as competing BFS edges.
 Issue body drafted in `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md`
 (cycle 3, corrected cycle 6 — see `reviews/cycle6-doc.md`) and filed as
-`#CP3-TBD` this cycle with explicit user authorization. Design content
+`#91` this cycle with explicit user authorization. Design content
 (dominant-concrete-subtype scoping from `casting_index`'s `base_type`/
 `concrete_types`, `_add_polymorphic_warnings` advisories rather than
 competing BFS edges) is unchanged; implementation has not started.
@@ -280,7 +280,7 @@ of cycle 6 (feature close-out):
    closing criteria).
 3. **`required_cast` labeled downcast edges for CP3** — body drafted in
    `specs/inheritance-resolution/PROPOSED-ISSUE-cp3.md` (cycle 3, corrected
-   cycle 6). **FILED as `#CP3-TBD`** this cycle with explicit user
+   cycle 6). **FILED as `#91`** this cycle with explicit user
    authorization. Not started.
 4. **Class-side (non-`I*`) ancestor merging** — descoped from #86 by DEC-2,
    not folded into #86's closing criteria. #86 merges only `I*` interface

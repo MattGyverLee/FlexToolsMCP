@@ -1,0 +1,14 @@
+{
+  "feature": "shared-mode-access",
+  "status": "in_progress",
+  "last_cycle": 1,
+  "spurts_completed": 0,
+  "tasks_done": [],
+  "issues_filed": {
+    "cp1_bug": "#92 -- Mutating writes fail silently in the default config: undoable=True opens no UnitOfWork",
+    "cp2_cp6_enhancement": "#93 -- Shared-mode access: allow MCP operations while FLEx has the project open"
+  },
+  "next_checkpoint": "CP1",
+  "next_entry": "CP1 implementation is underway: hardcode undoable=False at the generated OpenProject call, remove the undoable session flag/plumbing, delete flextools_undo_last_operation and all dead undo machinery, stop reporting success over a run that emitted report.Error, and add the end-to-end write-persistence test. See specs/shared-mode-access/SPEC.md CP1 (T1.1-T1.6) and specs/shared-mode-access/reviews/cycle1-explore.md for the line-number map (several plan-cited line numbers had already drifted at cycle-1 explore time; the explore report gives corrected locations).",
+  "updated": "2026-08-13"
+}

@@ -16,7 +16,6 @@ from .models import (
     FlexToolsStartInput,
     ManageConfigInput,
     GetSessionHistoryInput,
-    UndoLastOperationInput,
     GetModuleTemplateInput,
     SearchCapabilityInput,
     GetObjectApiInput,
@@ -44,7 +43,6 @@ from .models import (
 TOOL_FLEXTOOLS_START = "flextools_start"
 TOOL_MANAGE_CONFIG = "flextools_manage_config"
 TOOL_GET_SESSION_HISTORY = "flextools_get_session_history"
-TOOL_UNDO_LAST_OPERATION = "flextools_undo_last_operation"
 TOOL_GET_MODULE_TEMPLATE = "flextools_get_module_template"
 
 # Discovery tools
@@ -87,7 +85,6 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
     TOOL_MANAGE_CONFIG,
     TOOL_GET_SESSION_HISTORY,
-    TOOL_UNDO_LAST_OPERATION,
     TOOL_GET_MODULE_TEMPLATE,
     TOOL_SEARCH_BY_CAPABILITY,
     TOOL_GET_OBJECT_API,
@@ -117,7 +114,6 @@ def _import_handlers():
             handle_start,
             handle_manage_config,
             handle_get_session_history,
-            handle_undo_last_operation,
             handle_get_module_template,
         )
         from .handlers.api import (
@@ -157,7 +153,6 @@ def _import_handlers():
             handle_start,
             handle_manage_config,
             handle_get_session_history,
-            handle_undo_last_operation,
             handle_get_module_template,
         )
         from server.handlers.api import (
@@ -196,7 +191,6 @@ def _import_handlers():
         "handle_start": handle_start,
         "handle_manage_config": handle_manage_config,
         "handle_get_session_history": handle_get_session_history,
-        "handle_undo_last_operation": handle_undo_last_operation,
         "handle_get_module_template": handle_get_module_template,
         "handle_get_object_api": handle_get_object_api,
         "handle_search_by_capability": handle_search_by_capability,
@@ -222,7 +216,6 @@ _handlers = _import_handlers()
 handle_start = _handlers["handle_start"]
 handle_manage_config = _handlers["handle_manage_config"]
 handle_get_session_history = _handlers["handle_get_session_history"]
-handle_undo_last_operation = _handlers["handle_undo_last_operation"]
 handle_get_module_template = _handlers["handle_get_module_template"]
 handle_get_object_api = _handlers["handle_get_object_api"]
 handle_search_by_capability = _handlers["handle_search_by_capability"]
@@ -255,7 +248,6 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     TOOL_FLEXTOOLS_START: (handle_start, FlexToolsStartInput),
     TOOL_MANAGE_CONFIG: (handle_manage_config, ManageConfigInput),
     TOOL_GET_SESSION_HISTORY: (handle_get_session_history, GetSessionHistoryInput),
-    TOOL_UNDO_LAST_OPERATION: (handle_undo_last_operation, UndoLastOperationInput),
     TOOL_GET_MODULE_TEMPLATE: (handle_get_module_template, GetModuleTemplateInput),
 
     # Discovery tools

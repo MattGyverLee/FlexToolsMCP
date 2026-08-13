@@ -6,8 +6,7 @@ Admin handler functions for FlexToolsMCP.
 These handlers manage session configuration and provide admin tools:
 - start: Initialize session with mode and project settings
 - manage_config: Get/set/delete/list persistent configuration (Feature 2)
-- get_session_history: View operation history and undo availability (Feature 3)
-- undo_last_operation: Undo the most recent database write (Feature 3)
+- get_session_history: View operation history (Feature 3)
 - get_module_template: Return the official FlexTools module template
 """
 
@@ -90,21 +89,11 @@ KEY_INITIALIZED = "session_initialized"
 KEY_API_MODE = "api_mode"
 KEY_OPERATIONS = "operations"
 KEY_INCLUDE_OPERATIONS = "include_operations"
-KEY_UNDO_AVAILABLE = "undo_available"
-KEY_REDO_AVAILABLE = "redo_available"
 KEY_NEXT_STEPS = "next_steps"
-KEY_CAN_UNDO = "can_undo"
 KEY_MODE_INFO = "mode_info"
 KEY_FLAVOR = "flavor"
 KEY_GUIDANCE = "guidance"
 KEY_STYLE_GUIDE = "style_guide"
-KEY_UNDONE_OPERATION = "undone_operation"
-KEY_TIMESTAMP = "timestamp"
-KEY_TOOL = "tool"
-KEY_ARGS_SUMMARY = "args_summary"
-KEY_UNDO_STATUS = "undo_status"
-KEY_NOTE = "note"
-KEY_REMAINING_UNDOABLE = "remaining_undoable"
 
 # Template flavors mapping
 TEMPLATE_MAP = {
@@ -306,8 +295,8 @@ def _resolve_inherited_flag(
 ):
     """Resolve a boolean session flag with explicit/inherit/default precedence.
 
-    Used for write_enabled and undoable (and any future flag that should
-    persist across same-project re-inits). Returns
+    Used for write_enabled (and any future flag that should persist across
+    same-project re-inits). Returns
     (value, inherited, downgraded) where:
         inherited  = prior session value was kept because no explicit value given
         downgraded = explicit value flipped a previously-True flag to False
@@ -420,29 +409,6 @@ async def handle_start(args: dict) -> list[TextContent]:
         _resolve_inherited_flag("write_enabled", args, user_provided, same_project)
     )
 
-    # Issue #55 (Rung 1): undoable now DEFAULTS to True whenever write_enabled
-    # is True, unless the caller explicitly passes undoable=False. This
-    # matches FLEx UI Ctrl+Z behavior for mutating sessions instead of
-    # requiring an opt-in.
-    #
-    # _resolve_inherited_flag() can't express this directly: its `default`
-    # fallback only applies when the field is ABSENT from `args`, but
-    # Pydantic always populates `undoable` with its own default (False) even
-    # when the caller never set it, so args.get("undoable", default) would
-    # silently return False instead of our computed default. Bespoke logic
-    # instead:
-    #   - explicit undoable=<bool>       -> honored verbatim (True or False)
-    #   - same-project restart, implicit -> inherit the prior session value
-    #   - fresh start, implicit          -> True iff write_enabled else False
-    _undoable_explicit = "undoable" in user_provided
-    if _undoable_explicit:
-        undoable = bool(args.get("undoable", False))
-    elif same_project:
-        undoable = bool(getattr(session_state, "undoable", False))
-    else:
-        undoable = True if write_enabled else False
-    undoable = undoable and write_enabled
-
     # Build API versions dict from current APIIndex (more Pythonic)
     api_versions = {}
     if get_api_index():
@@ -463,7 +429,6 @@ async def handle_start(args: dict) -> list[TextContent]:
         output_type="auto",
         project_name=project_name,
         write_enabled=write_enabled,
-        undoable=undoable,
         api_versions=api_versions,
         user_request=user_request,
     )
@@ -481,7 +446,7 @@ async def handle_start(args: dict) -> list[TextContent]:
             f"[SESSION-CONFIGURED] session_state_id={id(session_state)} "
             f"session_id={session_id} project={project_name!r} "
             f"api_mode={api_mode} write_enabled={write_enabled} "
-            f"undoable={undoable} initialized={session_state.initialized}"
+            f"initialized={session_state.initialized}"
         )
 
     # Rotate logging to session-specific log file
@@ -536,20 +501,6 @@ async def handle_start(args: dict) -> list[TextContent]:
             "write_enabled was downgraded True -> False on re-init. "
             "Was this intentional?"
         )
-    if undoable:
-        warnings.append(
-            "undoable=True: writes go through LCM's persistent undo stack. "
-            "flextools_undo_last_operation can reverse them across MCP "
-            "sessions (matches FLEx UI Ctrl+Z). This is the default whenever "
-            "write_enabled=True (issue #55); pass undoable=False explicitly "
-            "to opt out."
-        )
-    if "undoable" in user_provided and args.get("undoable") and not write_enabled:
-        warnings.append(
-            "undoable=True was requested but coerced to False because "
-            "write_enabled=False (flexicon ignores undoable in read-only mode)."
-        )
-
     # Index/version health: an installed library with no matching index that
     # auto-refresh could not regenerate. Surface a bug-report offer so the user
     # can report it (refresh is not yet fully reliable across environments).
@@ -645,11 +596,7 @@ async def handle_manage_config(args: dict) -> list[TextContent]:
 
 
 async def handle_get_session_history(args: dict) -> list[TextContent]:
-    """Get session history and undo/redo availability (Feature 3)."""
-    # Cache undo/redo status to avoid redundant computation
-    can_undo = session_state.can_undo()
-    can_redo = session_state.can_redo()
-
+    """Get session history (Feature 3)."""
     result = {
         KEY_INITIALIZED: session_state.initialized,
         KEY_API_MODE: session_state.api_mode,
@@ -665,121 +612,11 @@ async def handle_get_session_history(args: dict) -> list[TextContent]:
     if args.get(KEY_INCLUDE_OPERATIONS, False):
         result[KEY_OPERATIONS] = session_state.export_history()
 
-    # Add undo/redo status
-    result[KEY_UNDO_AVAILABLE] = can_undo
-    result[KEY_REDO_AVAILABLE] = can_redo
-
     # Add helpful next steps
     if not session_state.initialized:
         result[KEY_NEXT_STEPS] = ["Call start() to initialize session"]
-    elif can_undo:
-        result[KEY_NEXT_STEPS] = ["Call undo_last_operation() to undo recent changes"]
     else:
         result[KEY_NEXT_STEPS] = ["Run operations to build history"]
-
-    return json_response(result)
-
-
-async def handle_undo_last_operation(args: dict) -> list[TextContent]:
-    """Undo the last database write operation (#14 Phase 2).
-
-    Executes project.Undo() in a subprocess against the configured project,
-    which reverses the most recent LCM UndoableOperation. Requires the
-    session to have been started with undoable=True; otherwise the LCM
-    project was opened without an undo stack and Undo() will raise.
-
-    Returns a structured result including how many Undo() calls succeeded
-    and (best-effort) the undo stack depth before and after.
-    """
-    # Local session-side bookkeeping: peek the last checkpoint if any. This
-    # is informational -- the actual undo always runs against the LCM cache.
-    last_checkpoint = (
-        session_state.undo_checkpoints[-1] if session_state.undo_checkpoints else None
-    )
-
-    project_name = session_state.project_name or ""
-    if not project_name:
-        return json_response({
-            KEY_SUCCESS: False,
-            KEY_MESSAGE: "No project_name set in session. Call flextools_start(project_name=...) first.",
-        })
-
-    if not session_state.write_enabled:
-        return json_response({
-            KEY_SUCCESS: False,
-            KEY_MESSAGE: (
-                "Write mode is not enabled in this session. Re-init with "
-                "flextools_start(write_enabled=True, undoable=True) to enable undo."
-            ),
-        })
-
-    if not session_state.is_undoable():
-        return json_response({
-            KEY_SUCCESS: False,
-            KEY_MESSAGE: (
-                "Session was started with undoable=False, so the project was "
-                "opened without LCM's persistent undo stack. project.Undo() "
-                "would raise. Re-init with flextools_start(undoable=True) "
-                "BEFORE making changes you want to be reversible."
-            ),
-            KEY_NOTE: (
-                "Per #14 design: undoable is opt-in while experimental. "
-                "Existing writes from this session that were made under "
-                "undoable=False cannot be reversed by this tool."
-            ),
-        })
-
-    # Pydantic already validated count: int = Field(ge=1, default=1) on the
-    # input model, so no defensive re-coercion needed here.
-    undo_count = args.get("count", 1)
-
-    try:
-        from ..undo_subprocess import execute_undo
-    except ImportError:
-        from server.undo_subprocess import execute_undo
-
-    sub_result = await execute_undo(
-        project_name=project_name,
-        undo_count=undo_count,
-        timeout_seconds=60,
-    )
-
-    success = bool(sub_result.get("success"))
-    undid = int(sub_result.get("undid", 0))
-    result = {
-        KEY_SUCCESS: success and undid > 0,
-        KEY_MESSAGE: (
-            f"Undid {undid} operation(s) via project.Undo()."
-            if success and undid > 0
-            else "Undo did not reverse anything -- see error fields."
-        ),
-        "undid": undid,
-        "stack_depth_before": sub_result.get("stack_depth_before"),
-        "stack_depth_after": sub_result.get("stack_depth_after"),
-        "requested_count": undo_count,
-    }
-    if not success or undid == 0:
-        result[KEY_ERROR] = sub_result.get("error", "unknown")
-        if sub_result.get("error_message"):
-            result["error_message"] = sub_result["error_message"]
-        if sub_result.get("subprocess_stderr"):
-            result["subprocess_stderr"] = sub_result["subprocess_stderr"]
-        if sub_result.get("traceback"):
-            result["traceback"] = sub_result["traceback"]
-
-    # Pop matching checkpoints from our local log -- one per successful undo.
-    # If we undid more than we tracked, that's fine (we may have reached into
-    # a prior session's stack); the checkpoint log is informational only.
-    popped = []
-    for _ in range(undid):
-        if session_state.undo_checkpoints:
-            popped.append(session_state.undo_checkpoints.pop())
-    if popped:
-        result["local_checkpoints_popped"] = popped
-
-    if last_checkpoint is not None:
-        result["last_session_checkpoint"] = last_checkpoint
-    result["remaining_session_checkpoints"] = len(session_state.undo_checkpoints)
 
     return json_response(result)
 

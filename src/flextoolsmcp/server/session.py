@@ -4,7 +4,7 @@
 Session state management for FlexToolsMCP.
 
 Tracks session-wide settings, API discovery/validation, and operation history
-with undo/redo stack support (Feature 3).
+(Feature 3).
 """
 
 import re
@@ -15,10 +15,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Deque, Tuple
 
-
-# Cap on session-local undo checkpoint log. Long-running sessions still bound
-# memory; the actual undo state lives in LCM's persistent stack, not here.
-_UNDO_CHECKPOINT_CAP = 500
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -107,14 +103,13 @@ def _assistance_message_for_error(
 
 @dataclass
 class OperationRecord:
-    """Records details of a single operation for history and undo."""
+    """Records details of a single operation for history."""
     timestamp: datetime
     tool: str                    # tool name, currently always 'run_module'
     args_summary: str           # Human-readable summary of tool arguments
     script_code: str            # Full script code that was executed
     script_output: str          # Captured stdout/stderr from execution
     success: bool               # Whether operation succeeded
-    undoable: bool              # Can be undone via FLEx ActionHandler
     project: str = ""           # Project name at execution time
     extracted_details: Dict[str, Any] = field(default_factory=dict)  # Parsed from output
 
@@ -124,14 +119,13 @@ class SessionState:
     """Tracks session-wide settings to ensure consistency across tool calls.
 
     Set by the 'start' tool and respected by all other tools unless overridden.
-    Also tracks operation history and undo/redo stacks (Feature 3).
+    Also tracks operation history (Feature 3).
     """
     session_id: str = ""                   # Session ID (uuid4 hex, stamped on configure())
     api_mode: str = "flexicon"            # API mode: flexicon, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
     write_enabled: bool = False            # Write access: False = read-only/dry-run
-    undoable: bool = False                 # #14: open project with undoable=True (LCM persistent undo)
     # Diagnostic-report feature (spec section 4): verbatim human request text for
     # the current turn, set by flextools_start. run_module falls back to this when
     # its own per-op user_request override is absent. Reset (not inherited) on every
@@ -146,30 +140,8 @@ class SessionState:
     auto_discovered_apis: set = field(default_factory=set)   # Auto-granted on READ-ONLY runs only
     api_versions: dict = field(default_factory=dict)         # Track active API versions: {api_name: version}
 
-    # Feature 3: Session History and Undo/Redo
+    # Feature 3: Session History
     operations_history: List[OperationRecord] = field(default_factory=list)  # Full audit trail
-    undo_stack: List[OperationRecord] = field(default_factory=list)          # Undoable operations
-    redo_stack: List[OperationRecord] = field(default_factory=list)          # Popped undo entries
-
-    # #14 Phase 2: LCM UndoStack checkpoint records appended after each
-    # successful run_module that wrote under undoable=True. Bounded so a
-    # long-running session doesn't grow this without limit -- the actual
-    # undo state lives in LCM's persistent stack, not here.
-    #
-    # Rollover semantics (issue #55, Rung 1): this is a deque(maxlen=500).
-    # Appending a 501st entry silently evicts the OLDEST checkpoint (FIFO).
-    # This ONLY affects the session-local "what's reversible from this
-    # session" bookkeeping log -- it does NOT touch the underlying LCM
-    # persistent undo stack, which is unbounded and unaffected by this cap.
-    # A session with >500 mutating ops will lose the local checkpoint record
-    # for its earliest ops, but flextools_undo_last_operation still walks the
-    # REAL LCM stack, so undo itself keeps working; only the "local
-    # checkpoints popped" bookkeeping in the response is affected for ops
-    # that predate the rollover. The handler logs a WARNING at rollover time
-    # so this is visible in operations.log.
-    undo_checkpoints: Deque[Dict[str, Any]] = field(
-        default_factory=lambda: deque(maxlen=_UNDO_CHECKPOINT_CAP)
-    )
 
     # Issue #55 (Rung 2): projects for which a pre-write backup has already
     # been taken THIS session. Ensures the backup fires exactly once per
@@ -283,7 +255,7 @@ class SessionState:
         # Warn on unrecognised kwargs to surface typos (e.g. write_enbled=True).
         _known_kwargs = {
             "api_mode", "output_type", "project_name", "write_enabled",
-            "undoable", "api_versions", "user_request",
+            "api_versions", "user_request",
         }
         _unknown = set(kwargs) - _known_kwargs
         if _unknown:
@@ -300,8 +272,6 @@ class SessionState:
             self.project_name = kwargs["project_name"]
         if "write_enabled" in kwargs:
             self.write_enabled = kwargs["write_enabled"]
-        if "undoable" in kwargs:
-            self.undoable = kwargs["undoable"]
         if "api_versions" in kwargs:
             self.api_versions = kwargs["api_versions"]
         if "user_request" in kwargs:
@@ -311,7 +281,7 @@ class SessionState:
         self.initialized = True
         mode_info = f"mode={self.api_mode}, output={self.output_type}"
         mode_info += f", project={self.project_name or '(prompt)'}"
-        mode_info += f", write={self.write_enabled}, undoable={self.undoable}"
+        mode_info += f", write={self.write_enabled}"
         mode_info += f", session_id={self.session_id[:8]}..."
         if self.api_versions:
             versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
@@ -393,15 +363,6 @@ class SessionState:
         """
         return self.user_request
 
-    def is_undoable(self) -> bool:
-        """Get whether the session opened the project with undoable=True.
-
-        Used by handle_undo_last_operation as the precondition for routing
-        a real project.Undo() call; undoable mode is opt-in during #14's
-        experimental phase.
-        """
-        return self.undoable
-
     # --- Issue #55 (Rung 2): per-(session, project) backup tracking ---
 
     def was_backed_up(self, project_name: str) -> bool:
@@ -419,103 +380,12 @@ class SessionState:
             "output_type": self.output_type,
             "project_name": self.project_name or "(not set)",
             "write_enabled": self.write_enabled,
-            "undoable": self.undoable,
             "initialized": self.initialized,
             "discovered_api_count": len(self.discovered_apis)
         }
         return result
 
-    # ===== Feature 3: Session History and Undo/Redo =====
-
-    def record_operation(
-        self,
-        tool: str,
-        args_summary: str,
-        script_code: str,
-        script_output: str,
-        success: bool,
-        undoable: bool = False,
-        project: str = ""
-    ) -> None:
-        """Record an operation in the session history and undo stack.
-
-        Called after successful execution of run_module.
-
-        Args:
-            tool: Tool name (currently always 'run_module')
-            args_summary: Human-readable summary of arguments
-            script_code: Full script code that was executed
-            script_output: Captured stdout from execution
-            success: Whether operation succeeded
-            undoable: Whether operation can be undone (detected from script_output)
-            project: Project name at execution time
-        """
-        record = OperationRecord(
-            timestamp=datetime.now(),
-            tool=tool,
-            args_summary=args_summary,
-            script_code=script_code,
-            script_output=script_output,
-            success=success,
-            undoable=undoable,
-            project=project or self.project_name
-        )
-
-        # Extract operation details from output (e.g., "[OK] Created entry 'water' (hvo=12345)")
-        record.extracted_details = self._extract_operation_details(script_output)
-
-        # Add to history
-        self.operations_history.append(record)
-
-        # Add to undo stack if undoable
-        if undoable and success:
-            self.undo_stack.append(record)
-            # Clear redo stack when new operation is performed
-            self.redo_stack.clear()
-
-        logger.info(
-            f"Recorded operation: {tool} (success={success}, undoable={undoable})"
-        )
-
-    def can_undo(self) -> bool:
-        """Check if an undo operation is available."""
-        return len(self.undo_stack) > 0
-
-    def can_redo(self) -> bool:
-        """Check if a redo operation is available."""
-        return len(self.redo_stack) > 0
-
-    def pop_undo(self) -> Optional[OperationRecord]:
-        """Pop the most recent undoable operation from the undo stack.
-
-        Pushes it onto the redo stack for potential redo.
-
-        Returns:
-            The operation record that was popped, or None if no undo available.
-        """
-        if not self.can_undo():
-            return None
-
-        record = self.undo_stack.pop()
-        self.redo_stack.append(record)
-        logger.info(f"Popped undo: {record.tool} at {record.timestamp}")
-        return record
-
-    def pop_redo(self) -> Optional[OperationRecord]:
-        """Pop the most recent redo operation from the redo stack.
-
-        Pushes it back onto the undo stack.
-
-        Returns:
-            The operation record that was popped, or None if no redo available.
-        """
-        if not self.can_redo():
-            return None
-
-        record = self.redo_stack.pop()
-        self.undo_stack.append(record)
-        logger.info(f"Popped redo: {record.tool} at {record.timestamp}")
-        return record
+    # ===== Feature 3: Session History =====
 
     @staticmethod
     def _extract_operation_details(script_output: str) -> Dict[str, Any]:
@@ -567,7 +437,7 @@ class SessionState:
         """Get a summary of the operation history for the session.
 
         Returns:
-            Dictionary with history stats and availability of undo/redo.
+            Dictionary with history stats (totals by operation type).
         """
         # Single-pass iteration: count operation types in O(n) instead of O(4n)
         create_count = update_count = delete_count = 0
@@ -585,11 +455,6 @@ class SessionState:
             "create_count": create_count,
             "update_count": update_count,
             "delete_count": delete_count,
-            "undoable_count": len(self.undo_stack),
-            "can_undo": self.can_undo(),
-            "can_redo": self.can_redo(),
-            "undo_stack_depth": len(self.undo_stack),
-            "redo_stack_depth": len(self.redo_stack),
         }
 
     # ===== Issue #28: Retry-loop / size-oscillation detection =====
@@ -692,7 +557,6 @@ class SessionState:
                 "tool": op.tool,
                 "args_summary": op.args_summary,
                 "success": op.success,
-                "undoable": op.undoable,
                 "project": op.project,
                 "extracted_details": op.extracted_details,
             }

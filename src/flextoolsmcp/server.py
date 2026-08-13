@@ -895,19 +895,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         if is_read_only_safe or is_run_module:
             cold_project_name = arguments.get("project_name") if is_run_module else None
-            # Only ever honor write_enabled/undoable if the CALLER explicitly
-            # passed them on this cold run_module call -- never default to True.
+            # Only ever honor write_enabled if the CALLER explicitly passed it
+            # on this cold run_module call -- never default to True.
             cold_write_enabled = bool(arguments.get("write_enabled")) if (
                 is_run_module and arguments.get("write_enabled") is not None
-            ) else False
-            cold_undoable = bool(arguments.get("undoable")) if (
-                is_run_module and arguments.get("undoable") is not None
             ) else False
 
             session_state.configure(
                 api_mode="flexicon",
                 write_enabled=cold_write_enabled,
-                undoable=cold_undoable,
                 project_name=cold_project_name or "",
             )
             auto_init_count = session_state.record_auto_init()

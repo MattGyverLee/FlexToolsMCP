@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Issue #55: Write-path safety ladder -- undoable by default (Rung 1),
-automatic pre-write backup (Rung 2), enforced mutation confirmation (Rung 3).
+Issue #55: Write-path safety ladder -- automatic pre-write backup (Rung 2),
+enforced mutation confirmation (Rung 3).
 
-Covers each rung's acceptance criteria:
-- Rung 1: start(write_enabled=True) -> undoable active; explicit
-  undoable=False respected; same-project restart inherits prior value.
+Rung 1 (undoable-by-default) was removed by CP1 / issue #92: flexicon's
+undoable=True path never actually persisted writes (BeginUndoTask arity
+mismatch / UnitOfWork registration errors), and the whole undoable session
+flag plus its LCM-undo plumbing was deleted rather than fixed -- see
+CHANGELOG.md.
+
+Covers each remaining rung's acceptance criteria:
 - Rung 2: perform_pre_write_backup() creates/retains/opts-out/skips-on-low-disk;
   session_state.was_backed_up/record_backup track per-(session, project);
   wired so the FIRST confirmed mutating run backs up, the second does not.
@@ -52,46 +56,6 @@ def _start(project_name, write_enabled, user_provided_extra=None, **kwargs):
     args.update(kwargs)
     r = asyncio.run(handle_start(args))
     return json.loads(r[0].text)
-
-
-# ---------------------------------------------------------------------------
-# Rung 1: undoable defaults to True when write_enabled=True
-# ---------------------------------------------------------------------------
-
-class TestRung1UndoableDefault:
-    def test_fresh_write_enabled_defaults_undoable_true(self):
-        data = _start("Proj_r1_default", write_enabled=True)
-        ss = kernel.get_session_state()
-        assert ss.undoable is True
-        assert any("undoable=True" in w for w in data.get("warnings", []))
-
-    def test_explicit_undoable_false_respected(self):
-        data = _start(
-            "Proj_r1_explicit_false", write_enabled=True, undoable=False,
-            user_provided_extra={"undoable"},
-        )
-        ss = kernel.get_session_state()
-        assert ss.undoable is False
-
-    def test_read_only_start_defaults_undoable_false(self):
-        _start("Proj_r1_readonly", write_enabled=False)
-        ss = kernel.get_session_state()
-        assert ss.undoable is False
-
-    def test_same_project_restart_inherits_prior_default(self):
-        _start("Proj_r1_inherit", write_enabled=True)  # implicit True
-        ss = kernel.get_session_state()
-        assert ss.undoable is True
-        # Restart on the SAME project, write_enabled explicit, undoable implicit.
-        _start("Proj_r1_inherit", write_enabled=True)
-        ss = kernel.get_session_state()
-        assert ss.undoable is True
-
-    def test_undo_checkpoint_cap_documented_on_session_state(self):
-        """Checkpoint-501 rollover semantics: maxlen=500, FIFO eviction."""
-        assert session_mod._UNDO_CHECKPOINT_CAP == 500
-        ss = session_mod.SessionState()
-        assert ss.undo_checkpoints.maxlen == 500
 
 
 # ---------------------------------------------------------------------------

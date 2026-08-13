@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Fixed: writes silently failed under `undoable=True`; undo machinery removed (#92)
+
+Issue #55 Rung 1 made `undoable=True` the default whenever `write_enabled=True`.
+In undoable mode flexicon's `OpenProject` deliberately skips
+`BeginNonUndoableTask()` and opens no `UnitOfWork`, so every mutating call
+either raised `TypeError` (multi-mutation methods hitting LCM's two-argument
+`BeginUndoTask`) or `InvalidOperationException` (simple setters like
+`SetGloss`) -- and the generated script's own `except Exception` block then
+still reported `result["success"] = True`. No end-to-end test covered this:
+`operations.jsonl` had 27 `write_enabled: true` records and zero with
+`undoable: true`. Separately, `flextools_undo_last_operation` could never have
+worked: LCM's undo stack is a RAM-only `Stack<UnitOfWork>` with no serializer,
+and the MCP opens a fresh subprocess per call, so every undo attempt started
+from an empty stack.
+
+- **Hardcoded `undoable=False`** at the generated `OpenProject` call, so
+  flexicon takes the `BeginNonUndoableTask()` path that actually persists
+  writes. Removed the `undoable` session flag and its entire plumbing chain:
+  the `flextools_start` tool parameter, `SessionState.undoable`/`is_undoable()`,
+  and every warning that referenced it.
+- **Removed `flextools_undo_last_operation`** entirely (tool definition,
+  dispatch entry, input model, handler, and `undo_subprocess.py`) along with
+  the false "can reverse them across MCP sessions" claim and the
+  `undo_available`/`redo_available` fields on `flextools_get_session_history`.
+- **Removed the dead Feature-3 undo machinery** (`record_operation`,
+  `undo_stack`, `redo_stack`, `can_undo`, `can_redo`, `pop_undo`, `pop_redo`,
+  `undo_checkpoints`) -- `record_operation` was never called from production
+  code, so `get_session_history` had always reported `total_operations: 0`
+  regardless.
+- **Stopped reporting success over a failed write.** If a run emitted any
+  `report.Error()`, the operation is now returned (and logged) as a failure
+  (`success: False`, `error_type: "ReportedError"`, `error` describing the
+  count) instead of a clean success -- this is a response-shape change for
+  any caller that only checked for the absence of a raised exception.
+- **Added the end-to-end write test that was never written**
+  (`tests/test_issue92_write_path_e2e.py`, marked `requires_flex`, skipped by
+  default): drives the real `flextools_run_module` handler to `SetGloss`,
+  close the project, reopen it, and assert the value persisted.
+
 ### Fixed: `project.LexSense` was blessed by the pre-flight gate but does not exist (#84)
 
 The accessor allowlist was built partly by stripping `"Operations"` off every

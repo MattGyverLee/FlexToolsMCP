@@ -117,7 +117,7 @@ class TestFeature2Config(TestCase):
 
 
 class TestFeature3SessionHistory(TestCase):
-    """Test session history and undo tracking (Feature 3)."""
+    """Test session history tracking (Feature 3)."""
 
     def test_session_state_import(self):
         """Verify SessionState class exists and has history tracking."""
@@ -138,8 +138,20 @@ class TestFeature3SessionHistory(TestCase):
             except ImportError as e:
                 self.fail(f"SessionState import failed: {e}")
 
-    def test_operation_history_tracking(self):
-        """Test that operations can be recorded in history."""
+    def test_operation_history_field_exists_and_starts_empty(self):
+        """Smoke check only: operations_history exists and defaults to [].
+
+        This does NOT exercise recording -- nothing in production code calls
+        operations_history.append() (grep-confirmed; the field is read-only
+        today, consumed by summary()/history-rendering but never populated).
+        Renamed from test_operation_history_tracking, which overclaimed that
+        "operations can be recorded in history": the old assertion
+        (assertEqual(state.operations_history, [])) is trivially true on a
+        freshly constructed SessionState regardless of whether recording
+        works, so it never could have caught a broken recording path.
+        (undo/redo tracking was removed -- see CP1 / issue #92: LCM's undo
+        stack is RAM-only and cannot survive the per-call subprocess model.)
+        """
         try:
             from server import SessionState
         except ImportError:
@@ -147,23 +159,8 @@ class TestFeature3SessionHistory(TestCase):
 
         state = SessionState()
 
-        # After Feature 3, SessionState should have:
-        # - operations_history list
-        # - undo_stack list
-        # - record_operation method
-        # - can_undo method
-
-        if hasattr(state, "record_operation"):
-            # Test recording an operation
-            state.record_operation(
-                tool="test_tool",
-                args_summary="test args",
-                script_code="# test script",
-                script_output="[OK] test output",
-                success=True,
-                undoable=True,
-            )
-            self.assertTrue(state.can_undo())
+        self.assertTrue(hasattr(state, "operations_history"))
+        self.assertEqual(state.operations_history, [])
 
 
 class TestBackwardCompatibility(TestCase):

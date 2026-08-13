@@ -66,21 +66,6 @@ class FlexToolsStartInput(BaseModel):
         description="Enable write access. Default False (dry-run/read-only). "
                     "Set True only after testing!"
     )
-    undoable: bool = Field(
-        default=False,
-        description="Open project with undoable=True so writes go through LCM's "
-                    "persistent undo stack (matches FLEx UI Ctrl+Z behavior). "
-                    "Required for flextools_undo_last_operation to actually reverse "
-                    "a prior session's writes. Only meaningful when write_enabled=True. "
-                    "Issue #55: defaults to True whenever write_enabled=True unless "
-                    "you explicitly pass undoable=False -- matching FLEx UI Ctrl+Z "
-                    "behavior is now the default for mutating sessions, not an opt-in. "
-                    "The session-local checkpoint log (session_state.undo_checkpoints) "
-                    "is capped at 500 entries (deque maxlen); past that, the oldest "
-                    "checkpoint is silently evicted (FIFO rollover) -- this only "
-                    "affects the local 'what's reversible from this session' log, "
-                    "NOT the underlying LCM undo stack itself, which is unaffected."
-    )
     user_request: Optional[str] = Field(
         default=None,
         max_length=4000,
@@ -110,22 +95,10 @@ class ManageConfigInput(BaseModel):
 
 
 class GetSessionHistoryInput(BaseModel):
-    """View session operation history and undo/redo availability."""
+    """View session operation history."""
     include_operations: bool = Field(
         default=False,
         description="Include full list of operations in response"
-    )
-
-
-class UndoLastOperationInput(BaseModel):
-    """Undo the most recent database write operation."""
-    count: int = Field(
-        default=1,
-        ge=1,
-        description="How many undo steps to perform in one call (default 1). "
-                    "Useful when a single flextools_run_module call wrapped "
-                    "multiple UndoableOperations and you want to roll all of "
-                    "them back together."
     )
 
 

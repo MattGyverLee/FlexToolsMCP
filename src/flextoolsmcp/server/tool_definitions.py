@@ -24,7 +24,6 @@ from .models import (
     FlexToolsStartInput,
     ManageConfigInput,
     GetSessionHistoryInput,
-    UndoLastOperationInput,
     GetModuleTemplateInput,
     SearchCapabilityInput,
     GetObjectApiInput,
@@ -110,14 +109,9 @@ OPTIONAL: fill `user_request` with the VERBATIM text of what the human just aske
 feature; it is carried through to any run_module ops this turn unless a given
 op overrides it with its own user_request.
 
-Undoable mode: undoable now DEFAULTS to True whenever write_enabled=True (issue #55)
--- the project opens with LCM's persistent undo stack enabled (matches FLEx UI
-Ctrl+Z), so flextools_undo_last_operation can reverse a prior session's writes
-without any extra opt-in. Pass undoable=False explicitly to disable it.
-Both write_enabled and undoable are inherited from the prior session on re-init when
-not explicitly provided (per #9 fix). The session-local checkpoint log is capped at
-500 entries (deque maxlen); past that the oldest local checkpoint record is silently
-evicted (the real LCM undo stack itself is unaffected -- see docs/RECOVERY.md).""",
+write_enabled is inherited from the prior session on re-init when not
+explicitly provided (per #9 fix). There is no undo: writes are direct and
+immediate (see docs/RECOVERY.md for the pre-write backup safety net).""",
         input_model=FlexToolsStartInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -385,9 +379,9 @@ Actions:
 
     "flextools_get_session_history": ToolDef(
         name="flextools_get_session_history",
-        description="""View session operation history and undo/redo availability.
+        description="""View session operation history.
 
-Returns: List of operations performed, current undo stack, and next operation to undo.""",
+Returns: List of operations performed this session and summary counts by type.""",
         input_model=GetSessionHistoryInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -411,31 +405,6 @@ whether FLExInitialize/pythonnet are importable, and the last 5 operation
 outcomes from the telemetry log.""",
         input_model=FlexToolsHealthInput,
         annotations=READ_ONLY_SAFE,
-    ),
-
-    "flextools_undo_last_operation": ToolDef(
-        name="flextools_undo_last_operation",
-        description="""Undo the most recent database write operation via LCM's persistent undo stack.
-
-Executes project.Undo() in a subprocess, which reverses the most recent
-UndoableOperation -- the SAME stack FLEx UI Ctrl+Z uses. Survives MCP
-session boundaries: writes made by a prior session are reachable if
-they were made with undoable=True.
-
-REQUIRES the session to have been started with undoable=True (opt-in
-during the experimental phase -- pass to flextools_start). Will refuse
-with a clear error if the session is not undoable-mode, since
-project.Undo() would raise FP_TransactionError otherwise.
-
-Pass count=N to undo multiple steps in one call (useful for rolling
-back a single run_module that wrapped multiple UndoableOperations).""",
-        input_model=UndoLastOperationInput,
-        annotations=ToolAnnotations(
-            readOnlyHint=False,
-            destructiveHint=True,
-            idempotentHint=False,
-            openWorldHint=False,
-        ),
     ),
 
     "flextools_get_wrapper_dependencies": ToolDef(

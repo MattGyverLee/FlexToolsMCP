@@ -119,7 +119,7 @@ class TestConsecutiveRunModuleCalls:
     @pytest.fixture(autouse=True)
     def _bypass_project_resolution(self, monkeypatch):
         """Synthetic project names don't exist on the test host; bypass the
-        fuzzy resolver so any name is accepted (mirrors test_undo_wiring.py).
+        fuzzy resolver so any name is accepted.
         """
         def _passthrough(project_name):
             return project_name, None
@@ -170,8 +170,7 @@ class TestConsecutiveRunModuleCalls:
             "project_name": "Issue10TestProject",
             "output_type": "auto",
             "write_enabled": False,
-            "undoable": False,
-            "_user_provided_keys": {"project_name", "write_enabled", "undoable"},
+            "_user_provided_keys": {"project_name", "write_enabled"},
         }
         start_result = asyncio.run(admin_mod.handle_start(start_args))
         start_data = json.loads(start_result[0].text)

@@ -2477,8 +2477,6 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     project_name = args.get("project_name") or session_state.get_project()
     write_enabled_arg = args.get("write_enabled")
     write_enabled = bool(write_enabled_arg if write_enabled_arg is not None else session_state.is_write_enabled())
-    # #14 Phase 1: undoable session variable, ignored by flexicon when write=False.
-    undoable = session_state.is_undoable() and write_enabled
     api_mode = session_state.get_mode()
     # user_intent (issue #18) is optional LLM-provided context paraphrasing
     # the human's actual request. Logged on the Start block; never required.
@@ -3502,7 +3500,12 @@ def run_module():
         # Open project
         project = FLExProject()
         try:
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=UNDOABLE)
+            # Hardcoded False: flexicon's undoable=True path skips
+            # BeginNonUndoableTask() and opens no UnitOfWork, which makes every
+            # multi-mutation method and simple setter raise (see CP1 / issue
+            # #92). undoable=False is the only path that actually persists
+            # writes.
+            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             return result
@@ -3643,7 +3646,6 @@ def run_module():
                 pass
 
         # Collect results
-        result["success"] = True
         result["messages"] = report.messages
         result["summary"] = {
             "info_count": report.messageCounts[SimpleReporter.INFO],
@@ -3655,6 +3657,21 @@ def run_module():
         if report.dropped_message_count > 0:
             result["summary"]["dropped_messages"] = report.dropped_message_count
             result["summary"]["note"] = "Output exceeded maximum buffer size. Most recent {} messages retained.".format(report.max_messages)
+
+        # CP1 (issue #92): reaching this line without an exception does NOT
+        # mean the write happened -- code that catches its own exceptions and
+        # reports via report.Error() previously still yielded
+        # result["success"] = True unconditionally. Reflect reality: any
+        # reported error demotes the run to a failure.
+        if result["summary"]["error_count"] > 0:
+            result["success"] = False
+            result["error_type"] = "ReportedError"
+            result["error"] = (
+                "Operation reported {} error(s) via report.Error(); see "
+                "messages for details.".format(result["summary"]["error_count"])
+            )
+        else:
+            result["success"] = True
 
     except Exception as e:
         error_msg = str(e)
@@ -3693,14 +3710,12 @@ if __name__ == "__main__":
     full_script = '''# Configuration
 PROJECT_NAME = {project_name}
 WRITE_ENABLED = {write_enabled}
-UNDOABLE = {undoable}
 MODULE_CODE = {code}
 
 {runner_script}
 '''.format(
         project_name=repr(project_name),
         write_enabled=repr(write_enabled),
-        undoable=repr(undoable),
         code=escaped_code,
         runner_script=runner_script
     )
@@ -4116,31 +4131,6 @@ MODULE_CODE = {code}
                 error_count=error_count,
                 messages=report_messages,
             )
-            # #14 Phase 2: record a local checkpoint when this run actually
-            # mutated state under undoable=True. The actual Undo execution
-            # happens later in a subprocess, but the LLM-facing record of
-            # "what's reversible from this session" lives here.
-            if write_enabled and undoable:
-                # Issue #55 (Rung 1): document + surface checkpoint-cap rollover.
-                # deque(maxlen=500) silently evicts the OLDEST entry once full;
-                # WARN so this is visible in operations.log instead of being a
-                # silent memory-management detail (the underlying LCM undo
-                # stack itself is unaffected -- see session.py's field comment).
-                if len(session_state.undo_checkpoints) >= session_state.undo_checkpoints.maxlen:
-                    get_operations_logger().warning(
-                        f"[UNDO-CHECKPOINT] rollover: local checkpoint log at cap "
-                        f"({session_state.undo_checkpoints.maxlen}); oldest local "
-                        f"checkpoint evicted. The real LCM undo stack is unaffected."
-                    )
-                session_state.undo_checkpoints.append({
-                    "op_id": op_id,
-                    "seq": seq,
-                    "timestamp": datetime.now().isoformat(),
-                    "project_name": project_name,
-                    "info_count": info_count,
-                    "warning_count": warning_count,
-                    "error_count": error_count,
-                })
             # Issue #28: a successful op resets the retry-loop detector --
             # by definition we've broken whatever loop we were stuck in.
             session_state.reset_op_signals()

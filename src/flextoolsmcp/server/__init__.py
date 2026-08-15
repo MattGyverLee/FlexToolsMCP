@@ -23,7 +23,6 @@ from .models import (
     FlexToolsStartInput,
     ManageConfigInput,
     GetSessionHistoryInput,
-    UndoLastOperationInput,
     GetModuleTemplateInput,
     SearchCapabilityInput,
     GetObjectApiInput,

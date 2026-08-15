@@ -1,10 +1,114 @@
 # Project Status
 
-Active feature: **diagnostic-report** ("send this to the maintainer" flow).
-Spec: `specs/diagnostic-report/SPEC.md` (APPROVED-WITH-EDITS).
-Checkpoint plan: `specs/diagnostic-report/tasks.md`.
+Active feature: **shared-mode-access** (let the user keep FLEx open).
+Spec: `specs/shared-mode-access/SPEC.md`. Branch: `feat/shared-mode-access`.
+Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
+[#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
-## Where we are
+Paused (not abandoned): **diagnostic-report**, which is green through CP3 and
+whose next pickup is CP4 (docs + demo). Its section is retained below.
+
+## Active feature: shared-mode-access
+
+**CP1 -- Fix the write path; delete undo: CODE COMPLETE, STATIC GATES GREEN,
+NOT MERGEABLE YET (2026-08-14, spurt 1, cycles 1-3).**
+
+Commits on `feat/shared-mode-access`: `8a4fae5` (the CP1 fix, closes #92 --
+`d17105f` amended to carry the pattern audit) and `af79d81` (review trail +
+SPEC Section 8). `main` is unmoved at `b8533f0`.
+
+All six CP1 line-items (T1.1-T1.6) landed: `undoable=False` hardcoded at the
+generated `OpenProject` call, the `undoable` session flag and its plumbing
+removed, `flextools_undo_last_operation` and the whole dead Feature-3 undo
+machinery deleted, the false "can reverse them across MCP sessions" warning
+and the `undo_available`/`redo_available` fields removed, success no longer
+reported over a run that emitted `report.Error`, and the end-to-end write
+test added (`tests/test_issue92_write_path_e2e.py`, `requires_flex`).
+
+Gate results:
+
+- **Verification PASS** (cycle 2) -- `python -m pytest -q`: **961 passed, 3
+  skipped**; `python scripts/validate_integrity.py all`: all 5 checks passed,
+  21 tools.
+- **QC 92/100 APPROVE** (cycle 3 re-review, was 75/100 FIX ISSUES in cycle 2).
+  The cycle-2 pattern-audit gate **P0 block is cleared** and the cycle-2 **P1
+  is RESOLVED**.
+- **Domain** (cycle 2) -- CP1's semantics are correct as written; the only ask
+  was a caller-facing retry note, now captured as **T6.7** under CP6.
+- **Scope-creep check PASS** -- QC could not run `git diff` itself (no Bash in
+  its tool grant), so the orchestrator executed it: `git diff d17105f 8a4fae5
+  --stat` touches `tests/test_v1_3_0_upgrade.py` only (1 file, +14/-5), and
+  the same diff scoped to `-- src/` is **empty**. Zero production files were
+  touched by the amend. Recorded as a clearly-separated addendum in
+  `specs/shared-mode-access/reviews/cycle3-qc.md`.
+
+**CP1 is verified STATIC-ONLY.** Every green gate above is the test suite and
+static review. The one gate that actually proves #92 is fixed -- driving a real
+write against a real FieldWorks project -- has **not** been run, because it
+needs a live FLEx target and the user's authorization. See the blocker below.
+
+**CP1 pattern audit (from `8a4fae5`'s commit body):** no HIGH siblings. One
+**[MED]** -- `src/flextoolsmcp/server/handlers/execution.py:326`, the
+`"liblcm"` API-mode `OpenProject(self, projectName, writeEnabled=False)` stub
+ignores `writeEnabled` and has no `undoable` param at all. It is dead today
+(`_get_api_mode_imports()` has zero callers in `src/`), but it is the same bug
+shape lying dormant: if rewired, CP1's hardcoded `undoable=False` call site
+would `TypeError` against it. Left unfixed as out of CP1 scope. Two **[LOW]**
+siblings (a safe-direction `modifyAllowed=False` default whose sole call site
+always passes explicitly, and a flexicon index docstring that already
+self-documents an identical landmine) are FYI only.
+
+**Deferred, no issue filed** (SPEC.md Section 8): pre-existing P2 --
+`docs/TOOL-CONTRACT.md:13-26` claims all success responses carry
+`_contract`/`status`/`op_id`, but `run_module`'s raw success dict never does.
+Predates CP1. Issue filing needs the user's authorization.
+
+**CP2-CP6 are UNSTARTED.** No access probe, no read-only-always-works path, no
+shared-mode writes, no close-FLEx gate, no docs. CP1 was specced to ship
+standalone and it does -- but only once the live check passes.
+
+### BLOCKER -- needs the user: the CP1 live write check
+
+**Do not merge `feat/shared-mode-access` to `main` until this passes.** CP1 is
+a write-path fix whose entire point is that writes reach disk; every test that
+currently passes stubs `run_script_async`, which is exactly why the original
+#92 breakage survived 27 `write_enabled: true` runs undetected. A static-only
+green board cannot close this bug.
+
+SPEC.md Verification step 1: with **FLEx closed**, `run_module` a `SetGloss`
+**and** an `ApplySyncableProperties` against a disposable scratch project, then
+reopen and confirm both persisted.
+
+The automated half (`SetGloss`) is written and skips by default:
+
+```
+set FLEXTOOLSMCP_E2E_SCRATCH_PROJECT=<disposable-project-name>
+pytest tests/test_issue92_write_path_e2e.py -m requires_flex -v
+```
+
+- The project must be **disposable**, must have at least one entry with at
+  least one sense, and must not be open in FLEx.
+- **Pass looks like:** `test_setgloss_persists_across_close_and_reopen` PASSES.
+  It drives the real `flextools_run_module` handler (not a stub), sets a gloss
+  to a unique marker, closes the project, reopens it, and asserts the marker
+  survived the round trip. A pre-CP1 build fails this.
+- **Gap to close by hand:** the test file covers **`SetGloss` only**. The
+  `ApplySyncableProperties` leg of Verification step 1 has no automated
+  coverage yet -- run it manually against the same scratch project, or add a
+  second case to that file, before calling step 1 done.
+
+This is a live, mutating operation against a real FieldWorks project. The crew
+will not run it unattended; only the user authorizes it.
+
+## Next pickup -- shared-mode-access
+
+1. User runs the CP1 live write check above and reports the result.
+2. On pass: merge CP1 to `main` closing #92, then start **CP2 -- access probe**
+   (`project_access.py`, `read_lock_holder`, `probe_project_access`), which is
+   new detection with no behavior change.
+3. On fail: reopen CP1 with the live failure output; do not proceed to CP2.
+
+## Where we are (paused feature: diagnostic-report)
 
 **CP1 -- Foundation: COMPLETE and green (2026-07-13).** All six checklist items
 landed; both cycle-2 P1s resolved (`save_store` fail-open fixed in cycle 3;
@@ -74,10 +178,10 @@ un-actioned reportable failure). Documented in **SPEC.md §6.5/§10** and
 unchanged -- option (c) accepts the consequence rather than reopening the
 mechanism.
 
-## Next pickup -- CP4 (docs + demo)
+## Next pickup for diagnostic-report (paused) -- CP4 (docs + demo)
 
-CP3 is closed; the feature is **not** complete. Next spurt starts **CP4 -- docs +
-demo** (see `tasks.md` CP4 line-items, currently "not started"). Fold the CP2+CP3
+CP3 is closed; the feature is **not** complete. When diagnostic-report resumes,
+the next spurt starts **CP4 -- docs + demo** (see `tasks.md` CP4 line-items, currently "not started"). Fold the CP2+CP3
 P2 carryover (eight items, listed in `.crew-handoff.json` `carryover_p2` and in
 `tasks.md`) into CP4 or a follow-up as appropriate -- all non-blocking.
 

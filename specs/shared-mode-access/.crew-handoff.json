@@ -1,0 +1,64 @@
+{
+  "feature": "shared-mode-access",
+  "status": "needs_human",
+  "last_cycle": 3,
+  "spurts_completed": 1,
+  "branch": "feat/shared-mode-access",
+  "branch_tip": "af79d81",
+  "main_at": "b8533f0",
+  "tasks_done": [
+    "T1.1 -- undoable=False hardcoded at the generated OpenProject call; undoable session flag + plumbing removed",
+    "T1.2 -- flextools_undo_last_operation removed (tool def, dispatch entry, input model, handler, undo_subprocess.py)",
+    "T1.3 -- false cross-session-reverse warning deleted; undo_available/redo_available dropped from get_session_history",
+    "T1.4 -- dead Feature-3 undo machinery deleted (record_operation, undo/redo stacks, undo_checkpoints + rollover logging)",
+    "T1.5 -- success no longer reported over a run that emitted report.Error",
+    "T1.6 -- tests/test_undo_wiring.py deleted; tests/test_issue92_write_path_e2e.py added (requires_flex, skips by default)",
+    "T6.7 -- ReportedError retry contract written into SPEC.md under CP6 (from cycle2-domain)",
+    "SPEC.md Section 8 'Deferred follow-ups' added"
+  ],
+  "checkpoint_reached": "CP1",
+  "cp1_verified": "static_only",
+  "gates": {
+    "verification": "PASS (cycle 2) -- pytest -q: 961 passed, 3 skipped; validate_integrity.py all: 5/5 checks, 21 tools",
+    "qc": "92/100 APPROVE (cycle 3 re-review; was 75/100 FIX ISSUES in cycle 2)",
+    "pattern_audit_gate": "PASS -- cycle-2 P0 block cleared; no HIGH siblings, one [MED], two [LOW]",
+    "p1_weakened_test": "RESOLVED -- test_operation_history_tracking renamed to test_operation_history_field_exists_and_starts_empty with a docstring matching what it asserts (22 passed)",
+    "domain": "PASS (cycle 2) -- no change to CP1 semantics; retry note captured as T6.7",
+    "scope_creep": "PASS -- orchestrator ran git diff d17105f 8a4fae5 --stat (tests/test_v1_3_0_upgrade.py only, +14/-5); scoped to -- src/ it is empty; main unmoved at b8533f0",
+    "live_write_check": "NOT RUN -- blocked on the user; this is the only red gate"
+  },
+  "commits": {
+    "8a4fae5": "fix: writes silently fail under undoable=True; remove dead undo machinery (closes #92) -- d17105f amended to carry the pattern audit",
+    "af79d81": "docs: record the CP1 review trail and deferred follow-ups (#93)"
+  },
+  "issues": {
+    "cp1_bug": "#92 -- Mutating writes fail silently in the default config: undoable=True opens no UnitOfWork (fix landed on branch; NOT closeable until the live check passes)",
+    "cp2_cp6_enhancement": "#93 -- Shared-mode access: allow MCP operations while FLEx has the project open"
+  },
+  "blocker": {
+    "what": "SPEC.md Verification step 1 -- the CP1 live write check. Not runnable by the crew: it needs a live FLEx target and the user's authorization for a real mutating write.",
+    "why_it_cannot_be_waived": "CP1 is a write-path fix. Every passing unit test stubs run_script_async, which is exactly how the original #92 breakage survived 27 write_enabled:true runs undetected. A static-only green board cannot close #92.",
+    "env_var": "FLEXTOOLSMCP_E2E_SCRATCH_PROJECT",
+    "command": "set FLEXTOOLSMCP_E2E_SCRATCH_PROJECT=<disposable-project-name> && pytest tests/test_issue92_write_path_e2e.py -m requires_flex -v",
+    "preconditions": "FLEx CLOSED; project is disposable; project has at least one entry with at least one sense",
+    "pass_looks_like": "test_setgloss_persists_across_close_and_reopen PASSES -- it drives the real flextools_run_module handler (not a stub), sets a gloss to a unique marker, closes the project, reopens it, and asserts the marker survived. A pre-CP1 build fails this.",
+    "manual_gap": "The test file covers SetGloss ONLY. Verification step 1 also requires an ApplySyncableProperties write. Run that leg manually against the same scratch project, or add a second case to tests/test_issue92_write_path_e2e.py, before calling step 1 done."
+  },
+  "merge_gate": "DO NOT merge feat/shared-mode-access to main until the live write check passes. CP1 is verified static-only.",
+  "deferred_no_issue_filed": [
+    "[MED] execution.py:326 -- the liblcm-mode OpenProject stub ignores writeEnabled and has no undoable param. Dead today (_get_api_mode_imports has zero callers) but the same bug shape dormant; if rewired, CP1's hardcoded undoable=False call site would TypeError against it. Out of CP1 scope.",
+    "[LOW] execution.py:3345 -- FlexToolsModule.Run modifyAllowed=False default; sole call site always passes WRITE_ENABLED explicitly. Safe-direction, unreachable.",
+    "[LOW] index/common_patterns_flexicon-v4.3.0.json:1271 -- flexicon's own CreateField docstring documents an identical landmine. Not our code; FYI.",
+    "[P2, pre-existing] SPEC.md Section 8 -- docs/TOOL-CONTRACT.md:13-26 claims all success responses carry _contract/status/op_id, but run_module's raw success dict never does. Predates CP1. Needs the user's authorization to file."
+  ],
+  "checkpoints_remaining": {
+    "CP2": "UNSTARTED -- access probe (project_access.py, read_lock_holder, probe_project_access); new detection, no behavior change",
+    "CP3": "UNSTARTED -- read-only always works",
+    "CP4": "UNSTARTED -- writes allowed in shared mode",
+    "CP5": "UNSTARTED -- the 'close FLEx briefly' gate",
+    "CP6": "UNSTARTED -- docs (includes T6.7)"
+  },
+  "next_checkpoint": "CP2 -- access probe (gated behind the live write check + CP1 merge)",
+  "next_entry": "STOP -- wait for the user. The next spurt does not begin until the user runs the CP1 live write check (see blocker.command) and reports the result. On PASS: merge CP1 to main closing #92, then start CP2 (SPEC.md T2.1-T2.2). On FAIL: reopen CP1 with the live failure output and do NOT proceed to CP2.",
+  "updated": "2026-08-14"
+}

@@ -82,7 +82,6 @@ EXPECTED_TOOL_NAMES = [
     "flextools_resolve_type",
     "flextools_manage_config",
     "flextools_get_session_history",
-    "flextools_undo_last_operation",
     "flextools_get_wrapper_dependencies",
     "flextools_find_wrappers_for_lcm",
     "flextools_list_skeletons",
@@ -117,7 +116,6 @@ READ_ONLY_TOOLS = [
 # Tools that should be marked destructiveHint=True
 DESTRUCTIVE_TOOLS = [
     "flextools_run_module",
-    "flextools_undo_last_operation",
 ]
 
 

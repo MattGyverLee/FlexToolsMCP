@@ -8,7 +8,7 @@ Handlers are gradually being extracted from server.py during v1.3.0 modularizati
 
 Planned structure:
   - api.py: Read-only operations (get_object_api, search, find_examples, resolve_property)
-  - execution.py: Write operations (run_module, undo_last_operation)
+  - execution.py: Write operations (run_module)
   - admin.py: Admin tools (start, manage_config, get_session_history, get_module_template)
   - discovery.py: Navigation (get_navigation_path)
   - catalog.py: Listing (list_categories, list_entities_in_category)

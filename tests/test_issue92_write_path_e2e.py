@@ -174,3 +174,139 @@ def test_setgloss_persists_across_close_and_reopen():
         f"SetGloss did not persist across CloseProject/reopen: "
         f"expected {marker!r}, got {persisted_gloss!r}"
     )
+
+
+def test_applysyncableproperties_persists_across_close_and_reopen():
+    """flextools_run_module: ApplySyncableProperties -> reopen -> persisted.
+
+    The second half of SPEC Verification step 1. ``SetGloss`` (above) is a
+    *simple setter*: under the pre-CP1 ``undoable=True`` default it failed
+    inside ``UnitOfWorkService.RegisterCommon`` with
+    ``InvalidOperationException``. ``ApplySyncableProperties`` is a
+    *multi-mutation* method, which failed a different way -- through
+    flexicon's one-argument ``_begin_undo_fn`` against LCM's two-argument
+    ``BeginUndoTask(bstrUndo, bstrRedo)`` -> ``TypeError``. Both legs have
+    to be proven or CP1 is only half verified.
+
+    Writes two differently-shaped fields in one call: ``Definition`` (a
+    multistring, serialized as a ``{ws_id: text}`` dict) and
+    ``ScientificName`` (a plain ``str``).
+    """
+    pytest.importorskip(
+        "flexicon", reason="CP1 e2e write check needs a live flexicon+FieldWorks install"
+    )
+    project_name = _scratch_project_name()
+
+    from flextoolsmcp.server import APIIndex, kernel, project_discovery
+    from flextoolsmcp.server.handlers import execution as execution_mod
+
+    kernel.initialize_kernel()
+    kernel.set_api_index(APIIndex.load(kernel.get_index_dir()))
+    if kernel.get_operations_logger() is None:
+        kernel.init_operations_logger()
+
+    resolved, err = project_discovery.resolve_or_explain(project_name)
+    assert err is None, f"could not resolve scratch project {project_name!r}: {err}"
+    project_name = resolved or project_name
+
+    marker = f"cp1-asp-{uuid.uuid4().hex[:8]}"
+
+    # Pick a writing system id off a populated multistring rather than
+    # hardcoding 'en', so this runs against any scratch project.
+    _ws_pick = (
+        "    ws_id = None\n"
+        "    for _k in ('Gloss', 'Definition'):\n"
+        "        if props.get(_k):\n"
+        "            ws_id = sorted(props[_k].keys())[0]\n"
+        "            break\n"
+        "    if ws_id is None:\n"
+        "        ws_id = 'en'\n"
+    )
+
+    write_code = (
+        "if modifyAllowed:\n"
+        "    entries = list(project.LexEntry.GetAll())\n"
+        "    entry = entries[0]\n"
+        "    sense = list(project.LexEntry.GetAllSenses(entry))[0]\n"
+        "    props = project.Senses.GetSyncableProperties(sense)\n"
+        + _ws_pick
+        + "    report.Info('entry_hvo=' + str(entry.Hvo))\n"
+        "    report.Info('sense_hvo=' + str(sense.Hvo))\n"
+        "    report.Info('ws_id=' + str(ws_id))\n"
+        f"    props['Definition'] = {{ws_id: {marker!r}}}\n"
+        f"    props['ScientificName'] = {marker!r}\n"
+        "    project.Senses.ApplySyncableProperties(sense, props)\n"
+        "    report.Info('applied syncable properties')\n"
+        "else:\n"
+        "    report.Error('modifyAllowed is False -- write_enabled did not propagate')\n"
+    )
+
+    write_args = {
+        "code": write_code,
+        "project_name": project_name,
+        "write_enabled": True,
+        "confirmed": True,
+        "skip_api_check": True,
+        "skip_module_check": True,
+        "backup_before_write": False,
+        "user_intent": (
+            "CP1/#92 e2e regression: the multi-mutation write path "
+            "(ApplySyncableProperties) must persist across reopen."
+        ),
+    }
+    write_result = asyncio.run(execution_mod.handle_run_module(write_args))
+    write_data = _parse(write_result)
+
+    assert write_data.get("success") is True, (
+        "ApplySyncableProperties run_module call did not report success -- this "
+        "is the multi-mutation half of the CP1/#92 regression (the "
+        f"_begin_undo_fn/BeginUndoTask arity failure). Response: {write_data}"
+    )
+
+    entry_hvo = _find_marker(write_data.get("messages"), "entry_hvo=")
+    sense_hvo = _find_marker(write_data.get("messages"), "sense_hvo=")
+    ws_id = _find_marker(write_data.get("messages"), "ws_id=")
+    assert entry_hvo and sense_hvo and ws_id, (
+        f"could not recover entry/sense/ws markers from write response: {write_data}"
+    )
+
+    read_code = (
+        "entries = [e for e in project.LexEntry.GetAll() if str(e.Hvo) == "
+        f"{entry_hvo!r}]\n"
+        "assert entries, 'entry vanished across CloseProject/reopen'\n"
+        "senses = [s for s in project.LexEntry.GetAllSenses(entries[0]) if str(s.Hvo) == "
+        f"{sense_hvo!r}]\n"
+        "assert senses, 'sense vanished across CloseProject/reopen'\n"
+        "props = project.Senses.GetSyncableProperties(senses[0])\n"
+        f"report.Info('persisted_definition=' + str(props.get('Definition', {{}}).get({ws_id!r}, '')))\n"
+        "report.Info('persisted_scientificname=' + str(props.get('ScientificName', '')))\n"
+    )
+
+    read_args = {
+        "code": read_code,
+        "project_name": project_name,
+        "write_enabled": False,
+        "skip_api_check": True,
+        "skip_module_check": True,
+        "user_intent": (
+            "CP1/#92 e2e regression: read back the fields set by "
+            "ApplySyncableProperties in the prior call."
+        ),
+    }
+    read_result = asyncio.run(execution_mod.handle_run_module(read_args))
+    read_data = _parse(read_result)
+
+    assert read_data.get("success") is True, (
+        f"read-back run_module call failed: {read_data}"
+    )
+
+    persisted_definition = _find_marker(read_data.get("messages"), "persisted_definition=")
+    persisted_sciname = _find_marker(read_data.get("messages"), "persisted_scientificname=")
+    assert persisted_definition == marker, (
+        f"ApplySyncableProperties did not persist the multistring field: "
+        f"expected {marker!r}, got {persisted_definition!r}"
+    )
+    assert persisted_sciname == marker, (
+        f"ApplySyncableProperties did not persist the plain-string field: "
+        f"expected {marker!r}, got {persisted_sciname!r}"
+    )

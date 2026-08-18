@@ -108,7 +108,7 @@ authoritative. All detail fields are optional unless noted.
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
 | `nested_unit_of_work` | `constructs` (list), `guidance` |
-| `project_locked` | `guidance` (required string), `lock_file_path` |
+| `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
 | `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`) |

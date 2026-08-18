@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Fixed: writes are no longer refused on a project FieldWorks has open in shared mode (#93)
+
+The write gate refused on the mere *existence* of a `.fwdata.lock` file
+(issue #33). That was an over-correction, and it made the server unusable for
+its single most valuable workflow -- editing the lexicon and watching the
+change land in the FLEx UI. With `projectSharing="true"` in the project's
+`SharedSettings\LexiconSettings.plsx`, LCM promotes the backend to
+`SharedXMLBackendProvider` (`LcmCache.cs:211-226`) and our process attaches as
+a non-master peer that reads and writes through the shared commit log. The
+lock file's presence says nothing about whether that is possible.
+
+- **The gate is now driven by `project_access.probe_project_access()`**
+  (added detection-only in CP2, previously wired into
+  `flextools_health(verbose=True)` and nothing else). Verdict table:
+  `free` -> proceed; `open_shared` -> **proceed**; `stale_lock` (claimed PID
+  is dead) -> **proceed**; `open_exclusive` (live FieldWorks, sharing off) ->
+  refuse; `held_by_other` (live non-FieldWorks holder) -> refuse.
+- **`project_locked` rejections now carry the facts behind the verdict** --
+  `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy`, and
+  `lock_file_path` (response-shape addition; `ProjectLockedDetail` is
+  `extra="forbid"`, so the model was extended first). The remedy for
+  `open_exclusive` is the enable-sharing recipe, and it states that
+  re-submitting the same call re-checks the setting and continues
+  automatically. The server still never writes `LexiconSettings.plsx` itself.
+  Where the lock file is unreadable and no holder can be identified, the
+  remedy says so rather than blaming FieldWorks.
+- **Successful runs that went through a live peer or over a stale lock carry
+  a `shared_mode` block** naming the verdict, the holder, and the caveat that
+  custom-field and writing-system changes are *not* safe from a non-master
+  peer.
+- **The pre-write backup note is honest about what it is.** With FieldWorks
+  attached, the `.fwdata` on disk lags FLEx's unsaved in-memory state, so the
+  copy is a floor to fall back to, not a snapshot of what the UI is showing.
+- Read-only runs are unaffected: they were never gated, and the probe is not
+  even called for them.
+- Covered by `tests/test_shared_mode_write_gate.py` (15 tests: the remedy
+  builder, every verdict's effect on `handle_run_module`, the read-only
+  bypass, and the backup note).
+
 ### Fixed: writes silently failed under `undoable=True`; undo machinery removed (#92)
 
 Issue #55 Rung 1 made `undoable=True` the default whenever `write_enabled=True`.

@@ -21,9 +21,12 @@ verdict from three independently-fallible facts:
   3. Does <Project>\\SharedSettings\\LexiconSettings.plsx have
      projectSharing="true"? -- is_project_sharing_enabled()
 
-CP2 is detection-only: nothing here changes any existing gate's behavior.
-probe_project_access() is wired into flextools_health(verbose=True) (a
-read-only diagnostic) and nowhere else this cycle.
+This module is detection-only: it composes facts, and never deletes a lock
+file, writes LexiconSettings.plsx, or opens a project. Consumers decide what
+to do with a verdict. As of CP4 those consumers are
+flextools_health(verbose=True) (a read-only diagnostic) and the write gate in
+handlers/execution.py, which refuses only on "open_exclusive" and
+"held_by_other" -- see build_access_remedy().
 """
 
 from __future__ import annotations
@@ -219,6 +222,52 @@ def is_project_sharing_enabled(project_name: str) -> Optional[bool]:
     if value is None:
         return False
     return value.strip().lower() == "true"
+
+
+ENABLE_SHARING_REMEDY = (
+    "FieldWorks has this project open and project sharing is OFF, so LCM took "
+    "the .fwdata lock exclusively and no other process can write to it. To let "
+    "this server write while you keep FLEx open: in FieldWorks go to File > "
+    "Project Management > FieldWorks Project Properties > Sharing tab, tick "
+    "\"Share project contents with programs on this computer\", and click OK. "
+    "FLEx will ask to reopen the project -- let it, because the flag is read "
+    "once when the cache opens (LcmCache.cs:219). Then re-submit this same "
+    "call: it re-checks the setting and continues automatically. This server "
+    "never writes LexiconSettings.plsx on your behalf."
+)
+
+
+def build_access_remedy(access: "ProjectAccess") -> Optional[str]:
+    """The user-actionable next step for a verdict that blocks a write.
+
+    Returns None for verdicts that do not block ("free", "open_shared",
+    "stale_lock") -- there is nothing for the user to do. Shared by the CP4
+    write gate and (CP3) the post-hoc FP_FileLockedError diagnosis, so the
+    two can never drift apart.
+    """
+    if access.verdict == "open_exclusive":
+        if access.holder is None or access.holder.pid is None:
+            # The empty/malformed-lock fallback: we could not identify a
+            # holder at all, so do not assert that FieldWorks has it.
+            return (
+                "A .fwdata.lock file is present but unreadable, so the holder "
+                "could not be identified. Treating it as exclusively held. If "
+                "no FieldWorks or python process is actually running, the lock "
+                "is stale -- delete it manually and retry. This server never "
+                "deletes lock files."
+            )
+        return ENABLE_SHARING_REMEDY
+    if access.verdict == "held_by_other":
+        pid = access.holder.pid if access.holder else None
+        name = (access.holder.process_name if access.holder else None) or "unknown"
+        return (
+            f"The lock is held by a live process that is not FieldWorks: PID "
+            f"{pid} ({name}) -- most often a leftover FLExTools/MCP subprocess "
+            "from an earlier run. This is a real collision, and enabling "
+            "project sharing does not resolve it. Wait for that process to "
+            "exit (or end it), then retry."
+        )
+    return None
 
 
 def _is_fieldworks_process_name(process_name: Optional[str]) -> bool:

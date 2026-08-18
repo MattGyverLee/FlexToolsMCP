@@ -275,11 +275,29 @@ class NestedUnitOfWorkDetail(BaseModel):
 
 
 class ProjectLockedDetail(BaseModel):
-    """Detail payload for project_locked rejections."""
+    """Detail payload for project_locked rejections.
+
+    Issue #93 CP3 (T3.5) / CP4 (T4.1): the mere existence of a .fwdata.lock
+    file is no longer the reason for this rejection -- it is now raised only
+    for the two verdicts a write genuinely cannot survive
+    (``open_exclusive`` and ``held_by_other``). The probe facts that produced
+    the verdict travel with the payload so the caller can tell "FLEx has it
+    and sharing is off" (fixable by the user in 20 seconds) apart from
+    "another python process has it" (not fixable by toggling a checkbox).
+
+    The model is ``extra="forbid"``, so these fields had to exist before
+    the handler could send them.
+    """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["project_locked"] = "project_locked"
     guidance: str = ""
     lock_file_path: Optional[str] = None
+    # project_access.probe_project_access() facts behind the refusal.
+    verdict: Optional[str] = None
+    sharing_enabled: Optional[bool] = None
+    holder_pid: Optional[int] = None
+    holder_process: Optional[str] = None
+    remedy: Optional[str] = None
 
 
 class ProjectDriveUnavailableDetail(BaseModel):

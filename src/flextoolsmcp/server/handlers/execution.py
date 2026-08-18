@@ -87,6 +87,17 @@ except ImportError:
         build_writeability_payload, detect_nested_unit_of_work,
     )
 
+# Issue #93 CP4 (T4.2): backup honesty. With FieldWorks attached as a live
+# peer, the .fwdata on disk lags FLEx's unsaved in-memory state, so a file
+# copy is a floor -- the oldest state we could restore to -- not a snapshot
+# of what you see in the UI right now.
+_PEER_BACKUP_CAVEAT = (
+    " NOTE: FieldWorks currently has this project open, so the .fwdata on "
+    "disk lags FLEx's unsaved in-memory state. This copy is a floor to fall "
+    "back to, not a snapshot of what the FLEx UI is showing."
+)
+
+
 # Issue #55 (Rung 2): automatic pre-write backup.
 try:
     from ..backup import perform_pre_write_backup
@@ -3797,6 +3808,26 @@ MODULE_CODE = {code}
         is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
         needs_lock = write_enabled and is_mutating_script
 
+        # Issue #93 CP4 (T4.1): probe the project's real access state ONCE,
+        # here, ahead of the confirmation gate. The probe is pure filesystem
+        # (the .fwdata.lock JSON + SharedSettings\LexiconSettings.plsx) and
+        # never opens a project, so it is safe this early -- and both the
+        # confirmation preview's backup note (T4.2) and the lock gate below
+        # need its verdict. Ordering is deliberate: an unconfirmed run against
+        # an exclusively-held project still gets confirmation_required first,
+        # exactly as before. Only computed under write intent; read-only runs
+        # have never been gated and still are not (T4.3).
+        _access = None
+        if needs_lock:
+            try:
+                from ..project_access import probe_project_access, build_access_remedy
+                from ..project_discovery import check_project_locked
+            except (ImportError, ValueError):
+                from server.project_access import probe_project_access, build_access_remedy
+                from server.project_discovery import check_project_locked
+            _access = probe_project_access(project_name)
+        _live_fw_peer = _access is not None and _access.verdict == "open_shared"
+
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an
         # unconfirmed mutating run executes NOTHING -- no lock taken, no
@@ -3838,11 +3869,14 @@ MODULE_CODE = {code}
                         backup={
                             "intent": bool(_backup_would_run),
                             "note": (
-                                "A pre-write backup will be taken on the CONFIRMED "
-                                "execution, not on this preview."
-                                if _backup_would_run else
-                                "No new backup will be taken (already backed up this "
-                                "session for this project, or backup_before_write=False)."
+                                (
+                                    "A pre-write backup will be taken on the CONFIRMED "
+                                    "execution, not on this preview."
+                                    if _backup_would_run else
+                                    "No new backup will be taken (already backed up this "
+                                    "session for this project, or backup_before_write=False)."
+                                )
+                                + (_PEER_BACKUP_CAVEAT if (_backup_would_run and _live_fw_peer) else "")
                             ),
                         },
                         op_id=op_id,
@@ -3851,33 +3885,102 @@ MODULE_CODE = {code}
                     code_size_bytes=_code_size_bytes,
                 )
 
-        # Issue #33: fail fast if a .fwdata.lock file exists AND we intend to mutate.
-        # Read-only probes are allowed through to LCM, which permits shared-project
-        # access when FLEx has the database open in shared mode. Only an exclusive
-        # write would actually collide, so we gate the pre-flight on write intent
-        # and let LCM arbitrate the rest (LcmFileLockedException is caught downstream).
-        if needs_lock:
-            try:
-                from ..project_discovery import check_project_locked
-            except (ImportError, ValueError):
-                from server.project_discovery import check_project_locked
-            _lock_path = check_project_locked(project_name)
-            if _lock_path is not None:
+        # Issue #93 CP4 (T4.1): write gate, driven by the access probe rather
+        # than by the bare existence of a .fwdata.lock file.
+        #
+        # Issue #33 originally refused any write whenever a lock file existed.
+        # That was an over-correction: with projectSharing="true" in the
+        # project's SharedSettings\LexiconSettings.plsx, LCM promotes the
+        # backend to SharedXMLBackendProvider (LcmCache.cs:211-226) and our
+        # process attaches as a non-master peer that reads and writes through
+        # the shared commit log -- which is the whole point, since the change
+        # then shows up live in the FLEx UI. Refuse only the two verdicts a
+        # write genuinely cannot survive:
+        #
+        #   free           -> proceed (unchanged)
+        #   open_shared    -> proceed, with a shared_mode advisory on the result
+        #   stale_lock     -> proceed; the claimed PID is dead and LCM treats a
+        #                     stale lock as acquirable
+        #   open_exclusive -> refuse; the user can fix this in FLEx in seconds
+        #   held_by_other  -> refuse; a live non-FieldWorks holder is a real
+        #                     collision
+        #
+        # Read-only runs never reach here (needs_lock is False), so exploring a
+        # project while FLEx has it open keeps working regardless of verdict.
+        _shared_mode = None
+        if needs_lock and _access is not None:
+            if _access.verdict in ("open_exclusive", "held_by_other"):
+                _holder_pid = _access.holder.pid if _access.holder else None
+                _holder_proc = _access.holder.process_name if _access.holder else None
+                _lock_path = check_project_locked(project_name)
+                _remedy = build_access_remedy(_access)
                 _lock_msg = (
-                    f"Project '{project_name}' is locked by FieldWorks (found "
-                    f"{_lock_path.name}) and this script requests write access. "
-                    f"Close FieldWorks or run the script read-only, then retry."
+                    f"Project '{project_name}' is held for exclusive access "
+                    f"(verdict: {_access.verdict}) and this script requests "
+                    f"write access."
                 )
-                _log_preflight_reject(op_id, seq, time.monotonic() - t_start, "project_locked", _lock_msg)
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start, "project_locked",
+                    f"verdict={_access.verdict} sharing_enabled={_access.sharing_enabled} "
+                    f"holder_pid={_holder_pid} holder_process={_holder_proc}",
+                )
                 return _attach_assistance_if_loop(
                     error_response(
                         "project_locked",
                         _lock_msg,
-                        guidance="Close FieldWorks (or delete the .lock file only if no FW process is running), then retry. Read-only operations do not require closing FieldWorks.",
+                        guidance=(
+                            _remedy
+                            or "Close FieldWorks, then retry. Read-only operations "
+                               "do not require closing FieldWorks."
+                        ),
+                        lock_file_path=str(_lock_path) if _lock_path else None,
+                        verdict=_access.verdict,
+                        sharing_enabled=_access.sharing_enabled,
+                        holder_pid=_holder_pid,
+                        holder_process=_holder_proc,
+                        remedy=_remedy,
                         op_id=op_id,
                     ),
                     error_code="project_locked",
                     code_size_bytes=_code_size_bytes,
+                )
+
+            if _access.verdict == "open_shared":
+                _shared_mode = {
+                    "verdict": "open_shared",
+                    "sharing_enabled": True,
+                    "holder_pid": _access.holder.pid if _access.holder else None,
+                    "holder_process": _access.holder.process_name if _access.holder else None,
+                    "note": (
+                        "FieldWorks has this project open with sharing enabled, "
+                        "so this run attached as a non-master LCM peer and wrote "
+                        "through the shared commit log. The change should be "
+                        "visible in the FLEx UI. Custom-field and writing-system "
+                        "changes are NOT safe from a peer and are not covered by "
+                        "this path."
+                    ),
+                }
+                get_operations_logger().info(
+                    f"[SHARED] '{project_name}' open_shared (holder PID "
+                    f"{_shared_mode['holder_pid']}); proceeding with the write "
+                    "as a non-master peer."
+                )
+            elif _access.verdict == "stale_lock":
+                _shared_mode = {
+                    "verdict": "stale_lock",
+                    "sharing_enabled": _access.sharing_enabled,
+                    "holder_pid": _access.holder.pid if _access.holder else None,
+                    "holder_process": _access.holder.process_name if _access.holder else None,
+                    "note": (
+                        "A .fwdata.lock file is present but the process that "
+                        "claimed it is no longer running, so the lock is stale. "
+                        "Proceeding: LCM treats a stale lock as acquirable. This "
+                        "server never deletes lock files."
+                    ),
+                }
+                get_operations_logger().warning(
+                    f"[SHARED] '{project_name}' stale_lock (dead PID "
+                    f"{_shared_mode['holder_pid']}); proceeding with the write."
                 )
 
         # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
@@ -3889,6 +3992,8 @@ MODULE_CODE = {code}
             _backup_result = perform_pre_write_backup(project_name, backup_before_write=_backup_arg)
             _bk_logger = get_operations_logger()
             if _backup_result.get("created"):
+                if _live_fw_peer:
+                    _backup_result["note"] = _PEER_BACKUP_CAVEAT.strip()
                 session_state.record_backup(project_name)
                 _bk_logger.info(f"[BACKUP] '{project_name}' -> {_backup_result['path']}")
             elif _backup_result.get("skipped_reason") == "insufficient_disk_space":
@@ -3982,6 +4087,10 @@ MODULE_CODE = {code}
         # was the first mutating run for this (session, project)).
         if _backup_result is not None:
             execution_result["backup"] = _backup_result
+        # Issue #93 CP4 (T4.1): tell the caller the write went through a live
+        # FLEx peer / over a stale lock rather than against an idle project.
+        if _shared_mode is not None:
+            execution_result["shared_mode"] = _shared_mode
 
         # Include write certification result
         execution_result["write_certification"] = {

@@ -153,8 +153,14 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "constructs": [],
     },
     "project_locked": {
-        "message": "FieldWorks project is locked by another process",
-        "guidance": "Close FieldWorks and try again",
+        "message": "Project 'Demo' is held for exclusive access (verdict: open_exclusive) and this script requests write access.",
+        "guidance": "FieldWorks has this project open and project sharing is OFF...",
+        "lock_file_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\Demo\\Demo.fwdata.lock",
+        "verdict": "open_exclusive",
+        "sharing_enabled": False,
+        "holder_pid": 68436,
+        "holder_process": "FieldWorks",
+        "remedy": "FieldWorks has this project open and project sharing is OFF...",
     },
     "project_drive_unavailable": {
         "message": "Project drive is not available",

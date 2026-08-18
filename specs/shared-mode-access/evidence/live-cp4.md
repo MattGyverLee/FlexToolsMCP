@@ -116,6 +116,16 @@ practice, the fix is to route `held_by_other` + `sharing_enabled is True`
 to the same proceed path as `open_shared`, and the evidence that this is
 safe is Experiment A above.
 
+## 5b. Re-run after deployment (PASS)
+
+After the editable install of this branch into
+`D:/Apps/anaconda3/python.exe` and the pyflexicon upgrade **4.3.1 ->
+4.4.1**, Experiment A was re-run end to end and passed identically
+(holder PID 63088, pre-state 0 entries, post-state 1 entry re-queried in a
+fresh process, `Target` restored). `scripts/validate_integrity.py` reports
+`flexicon version: 4.4.1`, `43/43 Operations`, contract check passed, and
+the MCP suite is 990 passed / 2 skipped on the same interpreter.
+
 ## 6. Still owed before CP4 can be called complete
 
 - The **`open_shared` path itself** has not been exercised live -- it needs

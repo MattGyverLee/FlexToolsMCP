@@ -77933,6 +77933,13 @@
           "type": "ISynchronizeInvoke"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "HeadlessLcmUI",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for LcmUI operations",
       "tags": [
@@ -87492,6 +87499,13 @@
           "type": "ILcmReferenceSequence"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "AllomorphOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [
           {
@@ -95350,6 +95364,13 @@
           "type": "IMoStemName"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": {
+          "class": "AllomorphOperations",
+          "methods": []
+        },
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [],
         "parents": [],

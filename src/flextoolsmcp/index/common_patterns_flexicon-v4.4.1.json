@@ -1976,6 +1976,15 @@
       },
       {
         "class": "FLExProject",
+        "code": "# NOTE the explicit undoable=False. Under the 4.4.0 default this\n            # method has nothing session-wide to abort -- see the mode table\n            # above -- and each Create() rolls itself back instead.\n            project.OpenProject(\"MyProject\", writeEnabled=True, undoable=False)\n            try:\n                for word, gloss in messy_input:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            except Exception:\n                project.AbortSession()   # discard the whole partial import\n                raise\n            else:\n                project.SaveChanges()\n\n        See Also:\n            Undo() - reverse one committed ``UndoableOperation``\n                (``undoable=True`` only, in-process only).\n            UndoableOperation() - per-operation rollback, the finer-grained\n                and preferred mechanism once ``undoable=True`` is in use.",
+        "description": "Discard every uncommitted change in the currently open unit of work.",
+        "method": "AbortSession",
+        "object_type": "general",
+        "operation": "iterate",
+        "source": "docstring"
+      },
+      {
+        "class": "FLExProject",
         "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
         "description": "Get all allomorphs in the entire project.",
         "method": "LexiconAllAllomorphs",
@@ -1985,8 +1994,8 @@
       },
       {
         "class": "FLExProject",
-        "code": "project = FLExProject()\n            project.OpenProject(\"MyProject\", writeEnabled=True)\n            try:\n                with project.Transaction(\"import batch\"):\n                    for word, gloss in data:\n                        entry = project.LexEntry.Create(word, \"stem\")\n                        project.Senses.Create(entry, gloss, \"en\")\n            except Exception as e:\n                print(f\"Import failed and was rolled back: {e}\")\n            project.CloseProject()",
-        "description": "Return a context manager for a safe rollback transaction.",
+        "code": "project = FLExProject()\n            project.OpenProject(\"MyProject\", writeEnabled=True)\n            with project.Transaction(\"import batch\"):\n                for word, gloss in data:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            project.CloseProject()\n\n        See Also:\n            UndoableOperation() - the ``undoable=True`` path; adds to FLEx Ctrl+Z menu.",
+        "description": "Return a context manager for labelling and nesting a group of writes.",
         "method": "Transaction",
         "object_type": "general",
         "operation": "iterate",
@@ -2132,15 +2141,6 @@
         "code": "is_diff, diffs = ops1.CompareTo(para1, para2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
         "description": "Compare two paragraphs for differences.",
         "method": "CompareTo",
-        "object_type": "general",
-        "operation": "iterate",
-        "source": "docstring"
-      },
-      {
-        "class": "ParagraphOperations",
-        "code": "# Deep duplicate (default: with segments, though they need re-parsing)\npara = list(project.Paragraphs.GetAll(text))[0]\nduplicate = project.Paragraphs.Duplicate(para, insert_after=True)  # deep=True by default\nprint(project.Paragraphs.GetText(duplicate))\n            In the beginning...\n\n# Shallow duplicate (paragraph text only)\nduplicate = project.Paragraphs.Duplicate(para, deep=False)\n\n        Warning:\n            - The duplicate will have identical content but a new GUID\n            - Segments in duplicated paragraphs will need re-parsing for analyses\n            - insert_after=True inserts immediately after the original paragraph\n            - deep=True duplicates segments, but they may not have valid analyses",
-        "description": "Duplicate a paragraph, creating a new paragraph with the same content.",
-        "method": "Duplicate",
         "object_type": "general",
         "operation": "iterate",
         "source": "docstring"
@@ -3386,7 +3386,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1171,
+    "total_patterns": 1173,
     "unique_patterns": 115
   }
 }

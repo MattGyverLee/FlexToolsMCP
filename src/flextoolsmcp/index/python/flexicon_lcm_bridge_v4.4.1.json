@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.3.0"
+    "version": "4.4.1"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -486,10 +486,12 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
+          ],
           "name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
@@ -505,6 +507,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           }
         ],
@@ -524,7 +531,6 @@
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [],
@@ -599,6 +605,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           }
         ],
@@ -1033,18 +1044,12 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "agent_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of _PossibilityItemOperations__ResolveObject()"
-          ],
-          "wsHandle": [
-            "arg[0] of _PossibilityItemOperations__WSHandle()",
-            "arg[0] of get_String()"
           ]
         },
         "properties_accessed": [],
@@ -1056,11 +1061,6 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
             "description": "Returns empty string instead of None",
             "pattern": "or ''",
             "type": "null_coalesce"
@@ -1068,11 +1068,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -1086,11 +1081,9 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetVersion",
-      "methods_called": [
-        ".get_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -1228,23 +1221,15 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "agent_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of _PossibilityItemOperations__ResolveObject()"
           ],
           "version": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
-          ],
-          "wsHandle": [
-            "arg[0] of _PossibilityItemOperations__WSHandle()",
-            "arg[1] of MakeString()",
-            "arg[0] of set_String()"
+            "arg[0] of _ValidateParam()"
           ]
         },
         "properties_accessed": [],
@@ -1256,19 +1241,12 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "ICmAgent",
@@ -1278,16 +1256,12 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "SetVersion",
-      "methods_called": [
-        ".set_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "AgentOperations.__init__": {
       "class": "AgentOperations",
@@ -1626,7 +1600,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -1690,7 +1666,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "pure_python",
@@ -1787,7 +1765,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "composite",
@@ -1849,7 +1829,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "convenience",
@@ -1908,6 +1890,11 @@
             "type": "default_value"
           },
           {
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -1928,7 +1915,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "composite",
@@ -1993,7 +1982,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2068,7 +2059,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2139,7 +2132,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2197,7 +2192,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2255,7 +2252,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2321,7 +2320,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "convenience",
@@ -2379,7 +2380,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2457,7 +2460,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2532,7 +2537,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2588,7 +2595,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "direct",
@@ -2627,7 +2636,9 @@
         "IPhEnvironment",
         "ITsString",
         "TsStringUtils",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory"
       ],
       "mapping_type": "pure_python",
@@ -6541,8 +6552,8 @@
             "arg[0] of _apply_props_loop()"
           ],
           "props": [
-            "arg[1] of _apply_props_loop()",
             "arg[0] of isinstance()",
+            "arg[1] of _apply_props_loop()",
             "arg[0] of type()"
           ],
           "ws_map": [
@@ -8445,8 +8456,8 @@
           ],
           "name": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()",
-            "arg[0] of isinstance()"
+            "arg[0] of isinstance()",
+            "arg[0] of MakeString()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -12734,6 +12745,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           }
         ],
@@ -18903,6 +18919,11 @@
             "type": "default_value"
           },
           {
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -21486,8 +21507,8 @@
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
-            "arg[0] of set_String()",
-            "arg[0] of get_String()"
+            "arg[0] of get_String()",
+            "arg[0] of set_String()"
           ]
         },
         "properties_accessed": [
@@ -21906,6 +21927,73 @@
       ],
       "mapping_type": "pure_python",
       "method": "__init__",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "FLExProject.AbortSession": {
+      "class": "FLExProject",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ICmObjectRepository",
+        "ILexEntryRepository",
+        "ILexEntry",
+        "LexEntryTags",
+        "ILexSense",
+        "LexSenseTags",
+        "IWfiWordformRepository",
+        "WfiWordformTags",
+        "WfiGlossTags",
+        "IWfiAnalysisRepository",
+        "IWfiAnalysis",
+        "WfiAnalysisTags",
+        "WfiMorphBundleTags",
+        "LexExampleSentenceTags",
+        "MoFormTags",
+        "ILexRefTypeRepository",
+        "ICmPossibilityRepository",
+        "ICmPossibilityList",
+        "ICmSemanticDomain",
+        "TextTags",
+        "ITextRepository",
+        "IStTxtPara",
+        "ISegmentRepository",
+        "IReversalIndex",
+        "IReversalIndexEntry",
+        "ReversalIndexEntryTags",
+        "IMoMorphType",
+        "SpecialWritingSystemCodes",
+        "LcmInvalidClassException",
+        "LcmInvalidFieldException",
+        "LcmFileLockedException",
+        "LcmDataMigrationForbiddenException",
+        "IUndoStackManager",
+        "CellarPropertyType",
+        "CellarPropertyTypeFilter",
+        "IFwMetaDataCacheManaged",
+        "ITsString",
+        "ITsStrBldr",
+        "TsStringUtils",
+        "WorkerThreadException",
+        "ReflectionHelper",
+        "XmlTranslatedLists",
+        "ILexEntryRefFactory",
+        "FwObjDataTypes"
+      ],
+      "mapping_type": "pure_python",
+      "method": "AbortSession",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
@@ -23811,6 +23899,9 @@
         "param_usage": {
           "complex_form_type": [
             "arg[0] of Append()"
+          ],
+          "components": [
+            "arg[0] of len()"
           ]
         },
         "properties_accessed": [
@@ -24566,8 +24657,8 @@
           "fieldID": [
             "arg[1] of __ValidatedHvo()",
             "arg[0] of GetFieldType()",
-            "arg[1] of SetString()",
-            "arg[1] of get_MultiStringProp()"
+            "arg[1] of get_MultiStringProp()",
+            "arg[1] of SetString()"
           ],
           "senseOrEntryOrHvo": [
             "arg[0] of __ValidatedHvo()"
@@ -27870,8 +27961,8 @@
           "fieldID": [
             "arg[1] of __ValidatedHvo()",
             "arg[0] of GetFieldType()",
-            "arg[1] of SetString()",
-            "arg[1] of get_MultiStringProp()"
+            "arg[1] of get_MultiStringProp()",
+            "arg[1] of SetString()"
           ],
           "languageTagOrHandle": [
             "arg[0] of __WSHandleAnalysis()"
@@ -28139,8 +28230,8 @@
         "param_usage": {
           "fieldID": [
             "arg[1] of __ValidatedHvo()",
-            "arg[1] of SetObjProp()",
-            "arg[1] of ListFieldLookup()"
+            "arg[1] of ListFieldLookup()",
+            "arg[1] of SetObjProp()"
           ],
           "possibilityOrString": [
             "arg[0] of type()",
@@ -28911,6 +29002,9 @@
           "projectName": [
             "arg[0] of OpenProject()",
             "arg[0] of FP_FileNotFoundError()"
+          ],
+          "ui": [
+            "arg[1] of OpenProject()"
           ]
         },
         "properties_accessed": [
@@ -28924,8 +29018,13 @@
             "type": "default_value"
           },
           {
-            "default": "False",
+            "default": "True",
             "param": "undoable",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "ui",
             "type": "default_value"
           }
         ],
@@ -29186,6 +29285,73 @@
       ],
       "mapping_type": "pure_python",
       "method": "Redo",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "FLExProject.RefreshFromDisk": {
+      "class": "FLExProject",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ICmObjectRepository",
+        "ILexEntryRepository",
+        "ILexEntry",
+        "LexEntryTags",
+        "ILexSense",
+        "LexSenseTags",
+        "IWfiWordformRepository",
+        "WfiWordformTags",
+        "WfiGlossTags",
+        "IWfiAnalysisRepository",
+        "IWfiAnalysis",
+        "WfiAnalysisTags",
+        "WfiMorphBundleTags",
+        "LexExampleSentenceTags",
+        "MoFormTags",
+        "ILexRefTypeRepository",
+        "ICmPossibilityRepository",
+        "ICmPossibilityList",
+        "ICmSemanticDomain",
+        "TextTags",
+        "ITextRepository",
+        "IStTxtPara",
+        "ISegmentRepository",
+        "IReversalIndex",
+        "IReversalIndexEntry",
+        "ReversalIndexEntryTags",
+        "IMoMorphType",
+        "SpecialWritingSystemCodes",
+        "LcmInvalidClassException",
+        "LcmInvalidFieldException",
+        "LcmFileLockedException",
+        "LcmDataMigrationForbiddenException",
+        "IUndoStackManager",
+        "CellarPropertyType",
+        "CellarPropertyTypeFilter",
+        "IFwMetaDataCacheManaged",
+        "ITsString",
+        "ITsStrBldr",
+        "TsStringUtils",
+        "WorkerThreadException",
+        "ReflectionHelper",
+        "XmlTranslatedLists",
+        "ILexEntryRefFactory",
+        "FwObjDataTypes"
+      ],
+      "mapping_type": "pure_python",
+      "method": "RefreshFromDisk",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
@@ -29517,11 +29683,6 @@
             "default": "\"transaction\"",
             "param": "label",
             "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -29952,6 +30113,32 @@
       ],
       "mapping_type": "pure_python",
       "method": "WSUIName",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "FP_ConflictingSaveError.__init__": {
+      "class": "FP_ConflictingSaveError",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "message": [
+            "arg[0] of __init__()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "__init__",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
@@ -30407,6 +30594,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           },
           {
@@ -31816,6 +32008,394 @@
       ],
       "mapping_type": "pure_python",
       "method": "__init__",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.CannotRestoreLinkedFilesToOriginalLocation": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "CannotRestoreLinkedFilesToOriginalLocation",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.ChooseFilesToUse": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ChooseFilesToUse",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.ConflictingSave": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ConflictingSave",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.DisplayCircularRefBreakerReport": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "DisplayCircularRefBreakerReport",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.DisplayMessage": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "type": [
+            "arg[0] of get()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "DisplayMessage",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.OfferToRestore": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "OfferToRestore",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.ReportDuplicateGuids": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ReportDuplicateGuids",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.ReportException": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ReportException",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.RestoreLinkedFilesInProjectFolder": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "RestoreLinkedFilesInProjectFolder",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.Retry": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "Retry",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.TouchActivity": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "TouchActivity",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.__init__": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "True",
+            "param": "raise_on_conflicting_save",
+            "type": "default_value"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "__init__",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.get_LastActivityTime": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "get_LastActivityTime",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "HeadlessLcmUI.get_SynchronizeInvoke": {
+      "class": "HeadlessLcmUI",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ILcmUI",
+        "MessageType",
+        "FileSelection",
+        "YesNoCancel"
+      ],
+      "mapping_type": "pure_python",
+      "method": "get_SynchronizeInvoke",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
@@ -43438,8 +44018,8 @@
         "param_usage": {
           "picture": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of Remove()",
-            "arg[0] of hasattr()"
+            "arg[0] of hasattr()",
+            "arg[0] of Remove()"
           ],
           "sense_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -50610,6 +51190,11 @@
             "type": "default_value"
           },
           {
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
+          },
+          {
             "description": "Converts to list",
             "pattern": "list",
             "type": "type_conversion"
@@ -51615,6 +52200,7 @@
             "arg[0] of _ValidateParam()",
             "arg[0] of _GetTypedOwner()",
             "arg[0] of hasattr()",
+            "arg[0] of getattr()",
             "arg[0] of Remove()"
           ]
         },
@@ -51684,7 +52270,8 @@
           "AnnotationsOC (OwningCollection)",
           "BeginObjectRA (ReferenceAtomic)",
           "Comment",
-          "RepliesOS (OwningSequence)"
+          "RepliesOS (OwningSequence)",
+          "SourceRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -51738,7 +52325,8 @@
         "AnnotationsOC (OwningCollection)",
         "BeginObjectRA (ReferenceAtomic)",
         "Comment",
-        "RepliesOS (OwningSequence)"
+        "RepliesOS (OwningSequence)",
+        "SourceRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -54293,16 +54881,18 @@
         "factories_used": [
           "IStTxtParaFactory"
         ],
-        "mapping_type": "composite",
+        "mapping_type": "convenience",
         "methods_called": [
-          ".Add()",
-          ".Create()"
+          ".Add()"
         ],
         "param_usage": {
           "content": [
             "arg[0] of _ValidateParam()",
             "arg[0] of isinstance()",
             "arg[0] of str()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ],
           "text_or_hvo": [
             "arg[0] of __GetTextObject()"
@@ -54321,6 +54911,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           },
           {
@@ -54354,11 +54949,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Create",
       "methods_called": [
-        ".Add()",
-        ".Create()"
+        ".Add()"
       ],
       "properties_accessed": [
         "ContentsOA (OwningAtomic)",
@@ -55386,6 +55980,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           },
           {
@@ -59590,8 +60189,8 @@
           ],
           "wsHandle": [
             "arg[1] of MakeString()",
-            "arg[0] of set_String()",
-            "arg[0] of _FLExProject__WSHandle()"
+            "arg[0] of _FLExProject__WSHandle()",
+            "arg[0] of set_String()"
           ]
         },
         "properties_accessed": [],
@@ -61699,6 +62298,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           }
         ],
@@ -64010,6 +64614,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           }
         ],
@@ -67236,13 +67845,15 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
           "form": [
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ],
           "index_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -67270,6 +67881,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           },
           {
@@ -67304,7 +67920,6 @@
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -67861,10 +68476,12 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
+          ],
           "name": [
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
@@ -67881,6 +68498,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "default": "None",
+            "param": "guid",
+            "type": "default_value"
+          },
           {
             "description": "Applies default writing system if not specified",
             "pattern": "WSHandle",
@@ -67913,7 +68535,6 @@
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -71308,12 +71929,14 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
+        "mapping_type": "direct",
         "methods_called": [
-          ".Add()",
-          ".Create()"
+          ".Add()"
         ],
         "param_usage": {
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
+          ],
           "paragraph_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetParagraphObject()"
@@ -71335,6 +71958,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           },
           {
@@ -71368,11 +71996,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "direct",
       "method": "AppendSentence",
       "methods_called": [
-        ".Add()",
-        ".Create()"
+        ".Add()"
       ],
       "properties_accessed": [
         "SegmentsOS (OwningSequence)"
@@ -74941,12 +75568,17 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
+          "contents_guid": [
+            "arg[1] of _CreateWithGuid()"
+          ],
           "genre": [
             "arg[1] of SetGenre()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ],
           "name": [
             "arg[0] of _ValidateStringNotEmpty()",
@@ -74962,6 +75594,16 @@
           {
             "default": "None",
             "param": "genre",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "contents_guid",
             "type": "default_value"
           },
           {
@@ -74992,7 +75634,6 @@
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -77023,6 +77664,11 @@
             "type": "default_value"
           },
           {
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -78089,12 +78735,14 @@
         "factories_used": [
           "IWfiAnalysisFactory"
         ],
-        "mapping_type": "composite",
+        "mapping_type": "convenience",
         "methods_called": [
-          ".Add()",
-          ".Create()"
+          ".Add()"
         ],
         "param_usage": {
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
+          ],
           "wordform_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetWordformObject()"
@@ -78104,7 +78752,13 @@
           "AnalysesOC (OwningCollection)"
         ],
         "repositories_used": [],
-        "transformations": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "guid",
+            "type": "default_value"
+          }
+        ],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -78121,11 +78775,10 @@
         "TsStringUtils",
         "Opinions"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Create",
       "methods_called": [
-        ".Add()",
-        ".Create()"
+        ".Add()"
       ],
       "properties_accessed": [
         "AnalysesOC (OwningCollection)"
@@ -78213,7 +78866,6 @@
           "AnalysesOC (OwningCollection)",
           "CategoryRA (ReferenceAtomic)",
           "Form",
-          "Gloss",
           "InflClassRA (ReferenceAtomic)",
           "MeaningsOC (OwningCollection)",
           "MorphBundlesOS (OwningSequence)",
@@ -78267,7 +78919,6 @@
         "AnalysesOC (OwningCollection)",
         "CategoryRA (ReferenceAtomic)",
         "Form",
-        "Gloss",
         "InflClassRA (ReferenceAtomic)",
         "MeaningsOC (OwningCollection)",
         "MorphBundlesOS (OwningSequence)",
@@ -79613,7 +80264,6 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
@@ -79625,6 +80275,9 @@
           "form": [
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -79641,6 +80294,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           },
           {
@@ -79669,7 +80327,6 @@
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -79754,7 +80411,6 @@
         },
         "properties_accessed": [
           "Form",
-          "Hvo",
           "MeaningsOC (OwningCollection)",
           "Owner"
         ],
@@ -79766,9 +80422,9 @@
             "type": "default_value"
           },
           {
-            "description": "Resolves HVO (integer) to object if needed",
-            "pattern": "GetObject",
-            "type": "hvo_resolution"
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
           },
           {
             "description": "Converts to int",
@@ -79799,7 +80455,6 @@
       ],
       "properties_accessed": [
         "Form",
-        "Hvo",
         "MeaningsOC (OwningCollection)",
         "Owner"
       ],
@@ -80510,22 +81165,30 @@
         "factories_used": [
           "IWfiMorphBundleFactory"
         ],
-        "mapping_type": "composite",
+        "mapping_type": "convenience",
         "methods_called": [
-          ".Add()",
-          ".Create()"
+          ".Add()"
         ],
         "param_usage": {
           "analysis_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __GetAnalysisObject()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ]
         },
         "properties_accessed": [
           "MorphBundlesOS (OwningSequence)"
         ],
         "repositories_used": [],
-        "transformations": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "guid",
+            "type": "default_value"
+          }
+        ],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -80539,11 +81202,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Create",
       "methods_called": [
-        ".Add()",
-        ".Create()"
+        ".Add()"
       ],
       "properties_accessed": [
         "MorphBundlesOS (OwningSequence)"
@@ -80639,6 +81301,11 @@
           {
             "default": "True",
             "param": "insert_after",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
             "type": "default_value"
           },
           {
@@ -81982,15 +82649,17 @@
         "factories_used": [
           "IWfiWordformFactory"
         ],
-        "mapping_type": "composite",
+        "mapping_type": "convenience",
         "methods_called": [
-          ".Create()",
           ".set_String()"
         ],
         "param_usage": {
           "form": [
             "arg[0] of _ValidateParam()",
             "arg[0] of MakeString()"
+          ],
+          "guid": [
+            "arg[1] of _CreateWithGuid()"
           ],
           "wsHandle": [
             "arg[0] of __WSHandle()",
@@ -82006,6 +82675,11 @@
           {
             "default": "None",
             "param": "wsHandle",
+            "type": "default_value"
+          },
+          {
+            "default": "None",
+            "param": "guid",
             "type": "default_value"
           },
           {
@@ -82037,10 +82711,9 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "Create",
       "methods_called": [
-        ".Create()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -82124,7 +82797,6 @@
           "AnalysesOC (OwningCollection)",
           "CategoryRA (ReferenceAtomic)",
           "Form",
-          "Gloss",
           "InflClassRA (ReferenceAtomic)",
           "MeaningsOC (OwningCollection)",
           "MorphBundlesOS (OwningSequence)",
@@ -82168,7 +82840,6 @@
         "AnalysesOC (OwningCollection)",
         "CategoryRA (ReferenceAtomic)",
         "Form",
-        "Gloss",
         "InflClassRA (ReferenceAtomic)",
         "MeaningsOC (OwningCollection)",
         "MorphBundlesOS (OwningSequence)",
@@ -83053,6 +83724,11 @@
             "default": "True",
             "param": "insert_after",
             "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "deep",
+            "type": "default_value"
           }
         ],
         "utilities_used": []
@@ -83894,7 +84570,9 @@
         "transformations": [],
         "utilities_used": []
       },
-      "lcm_deps": [],
+      "lcm_deps": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],
@@ -83916,7 +84594,9 @@
         "transformations": [],
         "utilities_used": []
       },
-      "lcm_deps": [],
+      "lcm_deps": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],
@@ -83938,7 +84618,9 @@
         "transformations": [],
         "utilities_used": []
       },
-      "lcm_deps": [],
+      "lcm_deps": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],

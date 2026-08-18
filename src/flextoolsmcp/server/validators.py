@@ -441,6 +441,114 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
     }
 
 
+# ============================================================
+# Nested-UnitOfWork detection (issue #92 follow-up)
+# ============================================================
+#
+# CP1 (issue #92) hardcoded `undoable=False` at the generated OpenProject()
+# call so flexicon takes the working BeginNonUndoableTask() path (see
+# handlers/execution.py's generated run_module() body). That means a
+# write-enabled run now always has ONE non-undoable UnitOfWork open for the
+# whole session -- opened once at OpenProject(), closed once at
+# CloseProject() (flexicon's FLExProject.py: `writeEnabled and not
+# _undoable` branch calls `MainCacheAccessor.BeginNonUndoableTask()`/
+# `EndNonUndoableTask()`). A user script that opens its OWN raw UnitOfWork
+# on top of that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper
+# (constructor or static .Do*() calls), or a bare
+# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
+# task inside the runner's own. liblcm does not merge tasks opened this
+# way (only flexicon's OWN Transaction()/UndoableOperation() context
+# managers check ActionHandlerAccessor.CurrentDepth and join instead of
+# nesting -- see flexicon's transaction.py / undoable_operation.py). A
+# second raw BeginUndoTask/BeginNonUndoableTask call rolls back the
+# ALREADY-OPEN unit of work first, before it throws (UndoStack.cs), which
+# discards every mutation the runner's own outer task was holding, for the
+# whole run -- silently, if the script also swallows the exception.
+#
+# This gate fires ONLY on write-enabled runs. flexicon's OpenProject() only
+# calls BeginNonUndoableTask() when writeEnabled=True and undoable=False
+# (which is now unconditional per CP1); a read-only run opens no
+# UnitOfWork at all, so there is nothing open to nest into and no
+# rollback-and-discard risk -- see FLExProject.py's OpenProject() body.
+
+_NESTED_UOW_HELPER_NAMES = ("UndoableUnitOfWorkHelper", "NonUndoableUnitOfWorkHelper")
+_NESTED_UOW_RAW_METHODS = ("BeginUndoTask", "BeginNonUndoableTask")
+
+
+def detect_nested_unit_of_work(code: str, tree: Optional[ast.AST] = None) -> dict:
+    """Detect scripts that open their own raw liblcm UnitOfWork.
+
+    AST-based (not regex/line-blind) so a construct name that only appears
+    inside a string literal or a comment is never flagged -- Python's own
+    parser never turns string/comment contents into ast.Call nodes, so
+    there is nothing here to explicitly strip.
+
+    Detects, regardless of any `if modifyAllowed:` guard (a guard does not
+    fix the nesting problem -- see the module comment above this function):
+      - `UndoableUnitOfWorkHelper(...)` / `NonUndoableUnitOfWorkHelper(...)`
+        direct construction.
+      - `UndoableUnitOfWorkHelper.Do(...)` / `.DoSomehow(...)` / etc. (any
+        static method reached off either helper class name).
+      - `<anything>.BeginUndoTask(...)` / `<anything>.BeginNonUndoableTask(...)`
+        raw calls, regardless of the owning expression. flexicon's own
+        `project.Transaction()` / `project.UndoableOperation()` wrappers
+        never call these two methods by name (they ask
+        `ActionHandlerAccessor.CurrentDepth` instead), so ordinary guarded
+        flexicon writes never false-positive here.
+
+    Args:
+        code: Python source code string.
+        tree: Optional pre-parsed AST (avoids redundant parsing when the
+            caller already parsed the code).
+
+    Returns:
+        dict with:
+          has_nested_uow_risk: bool - True if any construct was found
+          constructs: [{"construct": str, "line": int}, ...]
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {"has_nested_uow_risk": False, "constructs": []}
+
+    constructs: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, int]] = set()
+
+    def _record(label: str, node: ast.AST) -> None:
+        line = getattr(node, "lineno", 0)
+        key = (label, line)
+        if key not in seen:
+            seen.add(key)
+            constructs.append({"construct": label, "line": line})
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+
+        # Direct construction: UndoableUnitOfWorkHelper(...) / NonUndoableUnitOfWorkHelper(...)
+        if isinstance(func, ast.Name) and func.id in _NESTED_UOW_HELPER_NAMES:
+            _record(f"{func.id}(...)", node)
+            continue
+
+        if isinstance(func, ast.Attribute):
+            # Static method reached off either helper class name:
+            # HelperName.Do(...), HelperName.DoSomehow(...), etc.
+            if isinstance(func.value, ast.Name) and func.value.id in _NESTED_UOW_HELPER_NAMES:
+                _record(f"{func.value.id}.{func.attr}(...)", node)
+                continue
+            # Raw IActionHandler calls, any owner expression:
+            # x.BeginUndoTask(...), x.y.ActionHandlerAccessor.BeginNonUndoableTask(...), etc.
+            if func.attr in _NESTED_UOW_RAW_METHODS:
+                _record(f"...{func.attr}(...)", node)
+
+    return {
+        "has_nested_uow_risk": bool(constructs),
+        "constructs": constructs,
+    }
+
+
 def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     """Valid project.<X> accessor names.
 

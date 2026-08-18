@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 16 per-code detail models (12 existing + 4 folded in)
+- 17 per-code detail models (12 existing + 4 folded in + nested_unit_of_work)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -259,6 +259,21 @@ class InvalidApiChainDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class NestedUnitOfWorkDetail(BaseModel):
+    """Detail payload for nested_unit_of_work rejections (issue #92 follow-up).
+
+    Fires when write-enabled code opens its own raw liblcm UnitOfWork
+    (UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper, or a bare
+    IActionHandler.BeginUndoTask()/BeginNonUndoableTask() call), which would
+    nest inside the runner's already-open non-undoable task and discard the
+    whole run's writes. See validators.detect_nested_unit_of_work().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"
+    constructs: List[Any] = Field(default_factory=list)
+    guidance: Optional[str] = None
+
+
 class ProjectLockedDetail(BaseModel):
     """Detail payload for project_locked rejections."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -305,7 +320,7 @@ class RuntimeErrorDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 16 per-code detail models
+# Discriminated union over all 17 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -320,6 +335,7 @@ AnyDetail = Union[
     MissingImportsDetail,
     WrongLibraryImportsDetail,
     InvalidApiChainDetail,
+    NestedUnitOfWorkDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
@@ -367,7 +383,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              16 known codes, plus any per-code detail fields.
+              17 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

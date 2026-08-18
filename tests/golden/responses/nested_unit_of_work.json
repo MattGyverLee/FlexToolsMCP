@@ -1,0 +1,12 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "nested_unit_of_work",
+  "message": "Code opens its own raw liblcm UnitOfWork, which nests inside the runner's already-open non-undoable task and will discard this run's writes.",
+  "constructs": [],
+  "error": {
+    "code": "nested_unit_of_work",
+    "message": "Code opens its own raw liblcm UnitOfWork, which nests inside the runner's already-open non-undoable task and will discard this run's writes.",
+    "constructs": []
+  }
+}

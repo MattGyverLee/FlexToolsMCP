@@ -70,7 +70,7 @@ try:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload,
+        build_writeability_payload, detect_nested_unit_of_work,
     )
 except ImportError:
     from server.validators import (
@@ -84,7 +84,7 @@ except ImportError:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload,
+        build_writeability_payload, detect_nested_unit_of_work,
     )
 
 # Issue #55 (Rung 2): automatic pre-write backup.
@@ -2680,6 +2680,58 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     op_id=op_id,
                 ),
                 error_code="partial_module_structure",
+                code_size_bytes=_code_size_bytes,
+            )
+
+    # Nested-UnitOfWork check (issue #92 follow-up): CP1 hardcoded
+    # undoable=False at the generated OpenProject() call, so a write-enabled
+    # run now always has ONE non-undoable UnitOfWork open for the whole
+    # session (opened once at OpenProject(), closed once at CloseProject()).
+    # A script that opens its OWN raw UnitOfWork on top of that --
+    # UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper or a bare
+    # IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a
+    # second task inside the runner's own; liblcm rolls back the
+    # already-open task first, discarding the whole run's writes, before it
+    # throws. Only meaningful when write_enabled: flexicon's OpenProject()
+    # only opens that UnitOfWork when writeEnabled=True (undoable=False is
+    # unconditional per CP1), so a read-only run has no open UnitOfWork to
+    # nest into. An `if modifyAllowed:` guard does NOT fix this -- the
+    # nesting collision happens regardless of guard state once the code
+    # actually executes -- so this fires unconditionally on the construct,
+    # not just on unprotected occurrences of it (see detect_cud_operations
+    # below for the separate protected-vs-unprotected write-safety concern).
+    if write_enabled:
+        nested_uow_check = detect_nested_unit_of_work(code, code_tree)
+        if nested_uow_check["has_nested_uow_risk"]:
+            constructs = nested_uow_check["constructs"]
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "nested_unit_of_work",
+                f"constructs={[c.get('construct') for c in constructs[:5]]}",
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "nested_unit_of_work",
+                    "Code opens its own raw liblcm UnitOfWork, which nests inside "
+                    "the runner's already-open non-undoable task and will discard "
+                    "this run's writes.",
+                    constructs=constructs,
+                    next_steps=[
+                        "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
+                        "the runner already opens a UnitOfWork for the whole run.",
+                        "2. Just perform the mutation directly (guarded by "
+                        "`if modifyAllowed:` as usual); it will be captured by the "
+                        "runner's own UnitOfWork.",
+                        "3. If you need FLEx Ctrl+Z grouping for this specific change, "
+                        "use `project.UndoableOperation(label)` / `project.Transaction(label)` "
+                        "instead of the raw liblcm helper -- those join an already-open "
+                        "UnitOfWork instead of nesting a second one.",
+                        "4. Re-run flextools_run_module()",
+                    ],
+                    op_id=op_id,
+                ),
+                error_code="nested_unit_of_work",
                 code_size_bytes=_code_size_bytes,
             )
 

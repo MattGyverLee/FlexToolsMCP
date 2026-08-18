@@ -6,7 +6,7 @@ Issue #54: Tests for the tool-response envelope contract.
 Tests:
 - Required keys present (containment, not equality) per golden fixtures
 - Dual-emit: both canonical top-level error_code AND deprecated nested error.code present
-- Round-trip: each of the 16 error codes validates against RejectionEnvelope
+- Round-trip: each of the 17 error codes validates against RejectionEnvelope
 - Success shapes validated against *Success models with extra keys tolerated
 - CONTRACT_VERSION stamp on all responses
 
@@ -196,7 +196,7 @@ class TestGoldenFixtures:
 # Round-trip: error_response() output validates against RejectionEnvelope
 # ---------------------------------------------------------------------------
 
-ALL_16_CODES = [
+ALL_17_CODES = [
     ("syntax_error", dict(line_number=1, guidance="Fix syntax")),
     ("server_state_error", dict(server_state={"is_healthy": False, "issues": []})),
     ("partial_module_structure", dict(missing_elements=["docs"])),
@@ -208,6 +208,7 @@ ALL_16_CODES = [
     ("missing_imports", dict(missing_imports=["LexEntryOperations"], api_mode="flexicon")),
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
+    ("nested_unit_of_work", dict(constructs=[{"construct": "UndoableUnitOfWorkHelper(...)", "line": 3}])),
     ("project_locked", dict(guidance="Close FW")),
     ("project_drive_unavailable", dict(attempted_path="V:\\share")),
     ("project_path_mismatch", dict(attempted_path="C:\\old", discovered_at="C:\\new")),
@@ -217,9 +218,9 @@ ALL_16_CODES = [
 
 
 class TestRejectionEnvelopeRoundTrip:
-    """Each of the 16 codes round-trips through RejectionEnvelope validation."""
+    """Each of the 17 codes round-trips through RejectionEnvelope validation."""
 
-    @pytest.mark.parametrize("code,extras", ALL_16_CODES)
+    @pytest.mark.parametrize("code,extras", ALL_17_CODES)
     def test_validates_against_rejection_envelope(self, code, extras):
         resp = _parse_error_response(error_response(code, f"Test message for {code}", **extras))
         # Should not raise
@@ -228,7 +229,7 @@ class TestRejectionEnvelopeRoundTrip:
         assert envelope.status == "error"
         assert envelope.contract == CONTRACT_VERSION
 
-    @pytest.mark.parametrize("code,extras", ALL_16_CODES)
+    @pytest.mark.parametrize("code,extras", ALL_17_CODES)
     def test_envelope_has_deprecated_nested_error(self, code, extras):
         resp = _parse_error_response(error_response(code, f"Test message for {code}", **extras))
         envelope = RejectionEnvelope.model_validate(resp, by_alias=True)

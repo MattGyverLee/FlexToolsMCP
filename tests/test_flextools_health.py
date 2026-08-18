@@ -225,7 +225,7 @@ class TestHandleFlexToolsHealth:
         data = self._run({"verbose": True})
 
         assert "verbose" in data
-        assert "project_lock" in data["verbose"]
+        assert "project_access" in data["verbose"]
         assert "flexinit_importable" in data["verbose"]
         assert "pythonnet_available" in data["verbose"]
         assert "recent_operations" in data["verbose"]

@@ -289,22 +289,34 @@ def get_project_fwdata_path(project_name: str) -> Optional[Path]:
 
 
 def sweep_stale_locks() -> list:
-    """Issue #57 (C): scan for stale .fwdata.lock files at server startup.
+    """Issue #57 (C); rewritten for issue #93 CP2 (T2.6): scan for
+    .fwdata.lock files at server startup and report what's known about
+    each holder.
 
-    Logs each stale lock at WARNING level and returns a list of warning
+    Logs each finding at WARNING level and returns a list of warning
     strings suitable for inclusion in the flextools_health response.
 
-    Design: detection only, no deletion.  A lock file that exists while no
-    FieldWorks or FLExTools process is running is almost certainly stale, but
-    we cannot be certain without inspecting the locking process.  Logging
-    surfaces the information for the user without risking data loss.
+    Design: detection only, no deletion, ever. Previously this could only
+    say "a lock file exists, we cannot be certain if it's stale." Now it
+    reads the lock's claimed PID/ProcessName (project_access.read_lock_holder)
+    and checks liveness (project_access._pid_is_alive), so the warning can
+    name the holding process and say whether it is alive -- including the
+    case (Section 1 fact 4) where the holder is a dead, non-FieldWorks
+    process (e.g. a leftover MCP subprocess), which the old mtime-only
+    check could not express at all.
 
     Returns:
-        List of human-readable warning strings (one per stale lock found).
+        List of human-readable warning strings (one per lock file found).
         Empty list if no locks found or the projects directory is unavailable.
     """
     import logging
     _sweep_log = logging.getLogger(__name__)
+
+    # Local import: project_access imports get_projects_directory/_FWDATA_EXT
+    # from this module at module load time, so importing it back at this
+    # module's top level would be circular. Deferring the import to call
+    # time (after both modules are fully loaded) breaks the cycle.
+    from .project_access import read_lock_holder, _pid_is_alive
 
     warnings: list = []
     dir_result = get_projects_directory()
@@ -319,20 +331,35 @@ def sweep_stale_locks() -> list:
 
     for project_name in sorted(entries):
         lock_path = Path(projects_dir) / project_name / (project_name + _FWDATA_EXT + ".lock")
-        if lock_path.exists():
-            try:
-                lock_stat = lock_path.stat()
-                age_seconds = time.time() - lock_stat.st_mtime
-                age_str = f"{age_seconds / 60:.0f} min" if age_seconds >= 60 else f"{age_seconds:.0f} s"
-            except OSError:
-                age_str = "unknown age"
+        if not lock_path.exists():
+            continue
+
+        holder = read_lock_holder(project_name)
+        try:
+            age_seconds = time.time() - lock_path.stat().st_mtime
+            age_str = f"{age_seconds / 60:.0f} min" if age_seconds >= 60 else f"{age_seconds:.0f} s"
+        except OSError:
+            age_str = "unknown age"
+
+        if holder is not None and holder.pid is not None:
+            alive = _pid_is_alive(holder.pid)
+            holder_desc = f"held by {holder.process_name or 'unknown process'} (PID {holder.pid})"
+            status_desc = "still running" if alive else "no longer running (stale)"
+            msg = (
+                f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                f"process {status_desc}. "
+                "Close FieldWorks (or delete the .lock file only if no FW process is running) "
+                "to allow write operations on this project."
+            )
+        else:
             msg = (
                 f"Stale lock detected: {lock_path} ({age_str} old). "
                 "Close FieldWorks (or delete the .lock file only if no FW process is running) "
                 "to allow write operations on this project."
             )
-            _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)
-            warnings.append(msg)
+
+        _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)
+        warnings.append(msg)
 
     return warnings
 

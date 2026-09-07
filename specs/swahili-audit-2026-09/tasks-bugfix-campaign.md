@@ -581,7 +581,12 @@ corpus **35 passed / 2 skipped**, up from 34 with the new #39 fixture.
 
 ### CP-B residual -- NOT done, carry to the next spurt
 
-- [ ] B-3  #97 Bug 1: `_pick_cast_interface` still picks a plausible-but-arbitrary
+- [x] B-3  **DONE (spurt 3, `6e35204` + `97bd304`).** The diagnosis below was
+      WRONG in an instructive way: `_pick_cast_interface` was never the culprit --
+      it already returned `None` on ambiguity by design. The leak was the `fix`
+      f-string at the old `validators.py:4090` taking `defined_on[0]` directly.
+      Original (incorrect) framing retained for the record:
+      #97 Bug 1: `_pick_cast_interface` still picks a plausible-but-arbitrary
       interface (`defined_on[0]`), so `"fix": "Cast x to Y"` is frequently wrong
       (`IWfiGloss` -> "ILexEtymology", morph type -> "ICmAgent",
       `IMoMorphSynAnalysis` -> "IMoDerivStepMsa", `IFsClosedValue.FeatureRA` ->
@@ -663,9 +668,10 @@ guard learnable.
       `ClassName`, `Best*Alternative`); track local casts so a var assigned from
       `IWfiAnalysis(...)` stops re-triggering; stop flagging arguments passed INTO
       Operations methods.
-- [ ] B-3  #97: repair `_pick_cast_interface` ranking (it currently picks
-      `defined_on[0]`, which is the arbitrary-selection defect #97 diagnosed), or
-      soften the assertive `"fix": "Cast x to Y"` to candidates-with-uncertainty.
+- [x] B-3  **DONE (spurt 3).** Neither option as framed: the ranking needed no
+      repair (`_pick_cast_interface` already declines on ambiguity). Routed the
+      `fix` string through the already-resolved interface, and softened ONLY the
+      ambiguous branch to two-tier candidates-with-uncertainty.
 - [ ] B-4  #97: flow-sensitive var types so mutually exclusive `if`/`elif` branches
       stop conflating on a shared variable name.
 
@@ -772,3 +778,115 @@ Corrections and discoveries from the implementation, all worth keeping:
 
 **Checkpoint:** advertised imports actually import; the ICmPossibility trap is
 answerable from the index without a runtime TypeError.
+
+
+---
+
+## CP-D -- B-3 (#97 Bug 1) + carried P2s: CLOSED GREEN (2026-09-07, spurt 3, cycles 7-9)
+
+Suite **1133 passed / 4 skipped / 12 subtests**; corpus **35 / 2**; casting
+regression set **111 passed**. Verification PASS on all four CP-D code commits;
+cycle-9 re-gate **no P0**.
+
+Commits: `6e35204` (B-3), `71576a6` (D-2), `ce267e0` (D-3), `97bd304` (cycle-8
+gate P0 + 4 findings); reports `eb66ac4`, `c6cbd25`, `4b43688`.
+
+- [x] D-1 / B-3  #97 Bug 1 -- `fix` routes through the resolved interface;
+      ambiguous cases emit two-tier candidates-with-uncertainty (2-6 listed with
+      an explicit "alphabetical, not ranked, do not pick the first" warning;
+      **>6 emits no interface names at all**). Message-only: severity,
+      `cast_interface`, `rewrite`, `imports_needed`, `available_on` byte-identical;
+      all four accept/reject quadrants re-verified. **#97 STAYS OPEN.**
+- [x] D-2  versioning-cache flake -- reproduced for the first time (5/40, 1/40 in
+      true isolation), 0/40 after pinning explicit directory mtimes via `os.utime`.
+      Test-only; `versioning.py` untouched by design. **It exposed a real
+      production defect -- see carryover.**
+- [x] D-3  eighth import-advertising surface -- confirmed **no-op**: 43/43
+      `KNOWN_OPERATIONS` members top-level importable in flexicon 4.5.2
+      (independently re-confirmed by both gates). `handlers/api.py:689-692`
+      unchanged; documented no-op + a tripwire proven REAL, not tautological
+      (21/21 hazardous enrollments fail, benign control passes).
+
+### Cycle-8 gate findings, all closed in `97bd304`
+
+- **P0-1 contract drift** -- `docs/TOOL-CONTRACT.md:209-211` still described the
+  `defined_on[0]` behavior and called Bug 1 "not yet repaired". Cycle 7's consumer
+  audit had certified that exact file clean because it grepped the OUTPUT shape
+  (`fix`, `Cast `) and missed the backticked MECHANISM name (`defined_on[0]`).
+  Third contract-drift incident of this campaign. **Rule adopted: audit for
+  mechanism names, not just output shapes.**
+- **P1-1** D-3's rationale claimed MSAOperations was the only facade-only
+  Operations class; really 13 of 64 are (8 more unreachable by either route). The
+  no-op conclusion held; wording corrected and the tripwire widened.
+- **P1-2** the 4-item alphabetical head still led with `ICmAgent` for `Name` -- the
+  exact pairing #97 cited. Ruled a residual, not a regression (the old message was
+  a bare imperative with zero uncertainty signal), but fixed before closing B-3
+  because the headline symptom was still the first token a model saw.
+- **P1-3** the escape hatch was circular and emitted a literal
+  `context_entity=...` -- valid Python meaning nothing, i.e. copy-paste-broken.
+- **P2** `_casting_candidates_for_fix` forked a second normalizer while its comment
+  claimed it reused the first. Extracted `_clean_interface_head`
+  (`validators.py:3414`, called at `:3456` and `:3515`); equivalence independently
+  re-derived over 26,622 combinations + 14 adversarial inputs, 0 mismatches.
+- **P2** `tests/test_flextools_health.py` claimed an unsupported "~15-25%";
+  replaced with the real measured figures.
+
+### CP-D carryover -- do not lose these
+
+**Needs a USER DECISION (crew must not act):**
+
+1. **The versioning stale-read race -- REAL, measured twice, needs a design call
+   plus authorization to file.** `versioning._dir_state_token`
+   (`versioning.py:277-295`) keys the file-discovery cache on bare
+   `index_dir.stat().st_mtime` (`:323`, `:357`). Verification: **13.3% (40/300)**
+   stale results via the real production functions, perfect mtime/staleness
+   correlation. QC: **29% (58/200)** of rapid double-writes leave `st_mtime`
+   unchanged. NARROW -- `server.py:351` clears the cache on in-process refresh, so
+   only out-of-band writers are exposed and it self-heals on the next directory
+   change. Note D-2 removed the last same-tick coverage, so that case is now
+   covered nowhere. Docstring left deliberately uncorrected so the fix and the
+   admission land together. Options: directory listing hash, write counter, or
+   bypass-cache-on-miss.
+2. **`CastingOperations.cast_to_concrete` is a PHANTOM REMEDY advertised in FIVE
+   places** (incl. `handlers/discovery.py:163`) but proven NONEXISTENT in flexicon
+   4.5.2. Same failure class as #103 and the import-advertising surfaces.
+   PRE-EXISTING, not CP-D's doing. Caught only because the cycle-9 brief required
+   verifying a remedy before advertising it. Needs authorization to file.
+3. **MCP server PID 19808 still predates every fix.** #96's staleness remains
+   UNVERIFIED; no live-LCM evidence is trustworthy until the user restarts it.
+
+**P2/P3, crew-actionable in a later spurt:**
+
+- `tests/test_issue100_access_path.py:399` assigns
+  `facade = _extract_facade_access_paths(...)` and never reads it, implying a
+  facade cross-check the tripwire does not perform (the hazard set is pure
+  `hasattr`). Both gates confirmed the tripwire still works, so this is DEAD CODE,
+  not a broken test. Either wire the facade check in or delete the assignment.
+- **`fix` is heterogeneous across tiers** -- the known-pattern tier emits pasteable
+  code (`validators.py:3910-3926`, documented `docs/CASTING_SYSTEM.md:34`) while
+  the index-derived tier now emits prose containing a tool call. Pasted-into-script
+  risk. Deferred: moving prose to `flexicon_helper` is a contract decision.
+- **QC P2-2 (`validators.py:1022`) slash-joined pseudo-interface label** -- still
+  carried, cosmetic (`imports_needed=[]` / `cast_interface=None` keep auto-fix out).
+- **QC P2-3 (`admin.py:278-289`) primer wording nit** -- still carried,
+  self-limiting.
+- **Cross-repo item 6 still OPEN** -- whether the generated runner can call
+  `SaveChanges()` right after `OpenProject`; `execution.py:3810` is the anchor.
+- **flexicon #254 write-side twin (`SetMorphType`) still UNFILED** -- relay to
+  whoever owns #254. The flexicon repo is READ-ONLY for this crew.
+- Both helpers `IndexError` on a whitespace-only `defined_on` entry
+  (`validators.py:3443`, `:3495`); none shipped, latent.
+- The D-3 tripwire `skipTest`s when flexicon is unimportable, leaving it unguarded
+  in a flexicon-less CI.
+- `_bump_dir_mtime` writes future-dated mtimes (+1s/write).
+- The ten `reportOptionalMemberAccess` findings in `handlers/api.py` are confirmed
+  PRE-EXISTING and line-shifted, byte-identical to the parent commit's set. Not a
+  CP-D defect; a decision on whether they are real latent issues is still open.
+
+### Pyright tally for this campaign
+
+**Ten-plus false positives** reported as real bugs across cycles, including
+`fix_msg` "not accessed" at three sites and `_casting_candidates_for_fix` /
+`_clean_interface_head` / `head` "not accessed" -- all from stale mid-edit
+snapshots, all disproven by targeted runtime checks. **Never report a Pyright
+finding without a confirming pytest / `--collect-only` / runtime check.**

@@ -73,9 +73,9 @@ skipped**. Verification PASS on every commit; QC no P0 across three passes.
   inputs and the casting gate's inputs were not the same set. The most dangerous
   was a FALSE-NEGATIVE regression: the new resolver silently stopped reporting real
   typos in three code shapes on both read-only and write runs.
-- **#97 IS NOT CLOSED.** Bug 1 (`_pick_cast_interface` picks a
-  plausible-but-arbitrary interface, so `"fix": "Cast x to Y"` is frequently wrong)
-  is deliberately deferred. Do not report #97 as resolved.
+- **#97 Bug 1 is REPAIRED in spurt 3 (`6e35204` + `97bd304`) -- but #97 ITSELF IS
+  STILL OPEN.** See the CP-D section below. Do NOT report #97 as resolved: only the
+  user closes issues.
 - **#100 / #101 are fixed.** `access_path` now records the real `project.X` facade
   path, and the load-bearing half was the read path -- `_build_entity_import` had
   four call sites that ignored the index entirely. #101 uses a curated set of the
@@ -83,11 +83,88 @@ skipped**. Verification PASS on every commit; QC no P0 across three passes.
   explicitly not flagged. #100 is DORMANT until someone runs an index refresh,
   which is entangled with the undecided v4.4.1 deletion below.
 
-### Next pickup -- spurt 3
+**CP-D -- B-3 (#97 Bug 1) + carried P2s: CLOSED GREEN (2026-09-07, spurt 3,
+cycles 7-9).**
 
-No checkpoint is blocked by us. Start with **B-3 (#97 Bug 1)**, then the carried
-P2 list in `specs/swahili-audit-2026-09/tasks-bugfix-campaign.md`. The #96 live
-repro remains available only after the user restarts the MCP server.
+Commits: `6e35204` (the B-3 fix), `71576a6` (D-2 mtime flake), `ce267e0` (D-3
+no-op), `97bd304` (the cycle-8 gate's P0 + four findings), plus report commits
+`eb66ac4`, `c6cbd25`, `4b43688`. Final gate state: suite **1133 passed / 4
+skipped / 12 subtests**, eval corpus **35 passed / 2 skipped**, casting
+regression set **111 passed**. Verification PASS on all four CP-D commits; the
+cycle-9 re-gate returned **no P0**.
+
+- **#97 Bug 1 is FIXED, and the diagnosis in the issue was wrong.** The defect was
+  never the ranking. `_pick_cast_interface` already returned `None` on genuine
+  ambiguity by design, for a reason recorded on-record at
+  `validators.py:3324-3337` (the Dennis cascade-failure pattern: a
+  confidently-wrong rewrite is worse than no rewrite). The single leak was the
+  `fix` f-string at the old `validators.py:4090`, which took `defined_on[0]`
+  directly and therefore printed a confident "Cast x to Y" naming an arbitrary
+  interface **right next to a `cast_interface: null`** on the same payload. The
+  LLM reads the prose, not the null. `fix` now reuses the resolved interface, and
+  ambiguous cases emit a two-tier candidates-with-uncertainty message: 2-6
+  candidates are listed with an explicit "alphabetical, not ranked, do not pick
+  the first" warning; **more than 6 candidates emits no interface names at all**,
+  because a 4-of-36 alphabetical slice is uninformative and used to lead with
+  `ICmAgent` for `Name` -- the exact wrong pairing #97 cited. Behavior is
+  message-only: severity, `cast_interface`, `rewrite`, `imports_needed` and
+  `available_on` are byte-identical, and all four accept/reject quadrants were
+  re-verified.
+- **#97 IS NOT CLOSED.** Bug 1 is repaired; the issue stays open (only the user
+  closes issues).
+- **D-2 (the versioning-cache flake) is fixed test-side, and it exposed a real
+  production defect -- see the blocker below.** The flake was reproduced for the
+  first time (5/40 and 1/40 in true isolation) and is 0/40 after pinning explicit
+  directory mtimes via `os.utime`. `versioning.py` was deliberately NOT patched.
+- **D-3 (the eighth import-advertising surface) is a confirmed no-op.** All 43
+  `KNOWN_OPERATIONS` members are genuinely top-level importable from flexicon
+  4.5.2 (re-confirmed independently by both gates), so `handlers/api.py:689-692`
+  was left unchanged behind a documented no-op plus a tripwire proven real, not
+  tautological (21/21 hazardous enrollments fail, benign control passes).
+- **Process note worth keeping.** The cycle-8 gate caught a P0 contract drift at
+  `docs/TOOL-CONTRACT.md:209-211`, which still described the `defined_on[0]`
+  behavior and called Bug 1 "not yet repaired". Cycle 7's consumer audit had
+  certified that exact file clean, because it grepped for the OUTPUT shape
+  (`fix`, `Cast `) and missed the backticked MECHANISM name (`defined_on[0]`).
+  This was the campaign's third contract-drift incident. **Audit for mechanism
+  names, not just output shapes.**
+
+### Next pickup -- spurt 4
+
+No checkpoint is blocked by us. The carried P2/P3 list is in
+`specs/swahili-audit-2026-09/tasks-bugfix-campaign.md` under "CP-D carryover".
+Three items there need a USER DECISION before the crew can act (see BLOCKERS
+below): the versioning stale-read race, the `cast_to_concrete` phantom remedy,
+and the still-unrestarted MCP server. The #96 live repro remains available only
+after the user restarts the MCP server.
+
+### NEW BLOCKERS from spurt 3 -- both need the user, neither is code
+
+4. **A real latent production defect in the index cache, measured twice by two
+   independent methods.** `versioning._dir_state_token`
+   (`versioning.py:277-295`) keys the file-discovery cache on bare
+   `index_dir.stat().st_mtime`, used at `versioning.py:323` and `:357`. Its
+   docstring claims entry creation bumps directory mtime "on both Windows and
+   POSIX, which is exactly the 'index changed' signal we need" -- true, but
+   insufficient: the failure mode is mtime *resolution*, not whether mtime
+   updates. Verification measured **13.3% (40/300)** stale results using the real
+   production functions with no test help, with perfect mtime/staleness
+   correlation; QC separately measured **29% (58/200)** of rapid double-writes
+   leaving `st_mtime` unchanged. The race is REAL but NARROW -- in-process refresh
+   clears the cache explicitly (`server.py:351`), so only out-of-band writers are
+   exposed and it self-heals on the next directory change. `versioning.py` was
+   left untouched on purpose, docstring included: correcting the docstring to
+   admit a 13% race without either a fix or an issue to link would be worse than
+   bundling both. **Needs: a design call (listing hash vs. write counter vs.
+   bypass-cache-on-miss) and authorization to file.**
+5. **A phantom remedy advertised in five places.**
+   `CastingOperations.cast_to_concrete` is advertised to users in FIVE locations
+   (including `handlers/discovery.py:163`) but was proven **NONEXISTENT** in
+   flexicon 4.5.2. This is the #103 / import-advertising failure class again: the
+   tool tells users to call something that isn't there. Found because the cycle-9
+   brief required verifying a remedy before advertising it -- the programmer
+   checked before adding a sixth advertisement and the check failed. PRE-EXISTING,
+   not introduced by CP-D. **Needs: authorization to file as a new issue.**
 
 ### BLOCKERS -- all three need the user
 

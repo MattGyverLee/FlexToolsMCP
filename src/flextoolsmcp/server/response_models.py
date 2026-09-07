@@ -7,7 +7,8 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 17 per-code detail models (12 existing + 4 folded in + nested_unit_of_work)
+- 18 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -337,8 +338,27 @@ class RuntimeErrorDetail(BaseModel):
     error_type: Optional[str] = None
 
 
+
+
+class HvoLiteralWriteRiskDetail(BaseModel):
+    """Detail payload for hvo_literal_write_risk rejections (issue #103).
+
+    Fires when write-enabled code passes a bare integer literal to an
+    `*_or_hvo` parameter. An hvo is a session-scoped handle that liblcm
+    renumbers on every cache load, so a literal carried across run_module
+    calls silently resolves to a real but DIFFERENT object -- the write
+    lands on the wrong target with no exception. Only GUIDs are stable;
+    re-resolve with project.Object(guid_str). See
+    validators.detect_hvo_literal_args().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["hvo_literal_write_risk"] = "hvo_literal_write_risk"
+    findings: List[Any] = Field(default_factory=list)
+    next_steps: List[Any] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
-# Discriminated union over all 17 per-code detail models
+# Discriminated union over all 18 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -359,6 +379,7 @@ AnyDetail = Union[
     ProjectPathMismatchDetail,
     ProjectNotFoundDetail,
     RuntimeErrorDetail,
+    HvoLiteralWriteRiskDetail,
 ]
 
 
@@ -401,7 +422,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              17 known codes, plus any per-code detail fields.
+              18 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

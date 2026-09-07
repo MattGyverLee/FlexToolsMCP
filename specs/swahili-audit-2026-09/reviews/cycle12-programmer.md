@@ -7,9 +7,8 @@
   cycle1-explore-nullmorph.md)
 - `f44d75f` -- style: clear ruff F401/F541 in branch-touched files
   (execution.py + 4 test files)
-- Commit C (STATUS.md + this report) -- created immediately after this report
-  is written; see final `git status`/`git log` in the follow-up verification
-  step for its SHA.
+- `d3b8195` -- docs: reconcile the stale MERGE READINESS section
+  (STATUS.md + this report)
 
 All three commit messages verified against
 `grep -inE '(clos(e|es|ed)|fix(e[sd])?|resolv(e|es|ed))[[:space:]]+#[0-9]+'`

@@ -1,6 +1,6 @@
-intent: "Negative control: CategoryRA WITHOUT a prior cast must still be rejected"
+intent: "Negative control: CategoryRA WITHOUT a prior cast must still be rejected on a WRITE-enabled run"
 api_mode: flexicon
-write_enabled: false
+write_enabled: true
 code: |
   from flexicon import LexEntryOperations
   for ana in LexEntryOperations(project).GetAll():
@@ -15,3 +15,17 @@ notes: >
   proves the casting_index-driven advanced loop is genuinely active (not
   silently disabled) by confirming the SAME property (CategoryRA) IS
   flagged when there is no prior cast establishing the receiver's type.
+
+  UPDATED for issue #40 B-1 (2026-09): CategoryRA's only source here is the
+  casting_index-driven advanced lookup, which is warning-tier
+  (severity="warning" per issue -- see validators.py's KNOWN_CASTING_PATTERNS
+  vs advanced-lookup split). B-1 made warning-tier issues non-blocking on a
+  READ-ONLY run (a wrong guess raises a TypeError at runtime, no data risk),
+  so this fixture's original write_enabled=false would now legitimately
+  proceed with outcome=ok instead of rejecting -- that is NOT a detection
+  regression, detect_casting_needs() still flags CategoryRA exactly as
+  before (see issue40_warning_tier_readonly_proceeds.yaml for that read-only
+  "ok"-with-advisory case). Flipped write_enabled to true here instead of
+  flipping expect.outcome, so this fixture keeps proving detection is
+  active AND additionally proves B-1's other half: a write-enabled run
+  still hard-rejects a casting issue at EVERY severity, warning included.

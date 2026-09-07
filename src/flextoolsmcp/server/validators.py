@@ -952,6 +952,18 @@ def detect_interface_attribute_typos(
 
     assigns, _ = _collect_assign_call_nodes(code_tree)
     _, cast_aliases = _resolve_alias_maps(assigns)
+    # Issue #97 Bug 2: cast_aliases above is a single whole-function dict, so
+    # mutually exclusive if/elif/else branches that cast the SAME variable
+    # name to different interfaces collapse onto whichever branch assigned
+    # last in document order -- misattributing every earlier branch's usage
+    # to the LAST branch's interface (reported as e.g. "'SlotsRC' does not
+    # exist on 'IMoUnclassifiedAffixMsa'" for a property that's actually
+    # valid on an EARLIER branch's own cast). _resolve_cast_type_at walks
+    # outward through the enclosing body/orelse lists instead, so a sibling
+    # branch's assignment is never visible while resolving this branch's
+    # usage. Only build the parent map when there's at least one cast alias
+    # to resolve (cheap short-circuit for the common no-casts case).
+    parents: Dict[ast.AST, ast.AST] = _build_parent_map(code_tree) if cast_aliases else {}
 
     issues: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str]] = set()
@@ -964,7 +976,7 @@ def detect_interface_attribute_typos(
 
         interface: Optional[str] = None
         if isinstance(node.value, ast.Name) and node.value.id in cast_aliases:
-            interface = cast_aliases[node.value.id]
+            interface = _resolve_cast_type_at(node.value, parents, node.value.id)
         elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             fid = node.value.func.id
             if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
@@ -2270,6 +2282,147 @@ def _find_cast_alias_property_writes(
     return mutations
 
 
+# Issue #97 Bug 2 (branch-aware cast tracking) ------------------------------
+#
+# `_resolve_alias_maps` above builds a single, whole-function `cast_aliases`
+# dict keyed only by variable name: iterating every Assign in document order
+# via `ast.walk`, the LAST assignment to a given name silently overwrites all
+# earlier ones. That is correct for straight-line code but wrong across
+# mutually exclusive `if`/`elif`/`else` arms that all cast the SAME variable
+# name to a DIFFERENT interface -- every arm's usage gets attributed to
+# whichever arm's cast happened to come last in the source, producing
+# spurious "does not exist on <wrong interface>" rejections on code that was
+# actually correct in its own arm.
+#
+# The functions below are a branch-aware REPLACEMENT lookup used only by the
+# two casting-gate functions (`detect_casting_needs`,
+# `detect_interface_attribute_typos`) that were shown to misfire on this
+# shape. They are deliberately NOT wired into `_resolve_alias_maps` itself or
+# into `certify_script_readonly` (the unprotected_writes / mutation-detection
+# gate) -- that gate's blast radius is out of scope for this fix and the flat
+# dict's "false positives over false negatives" posture (see
+# `_resolve_alias_maps`'s own docstring) is deliberate there.
+#
+# Algorithm: given the AST node where a variable is USED, walk outward
+# through the enclosing statement lists (function body, then the enclosing
+# if-body/orelse if any, then whatever contains THAT, ...). At each level,
+# scan backward through the statements that come BEFORE the current position
+# in that SAME list for an assignment to the variable. Because each
+# if/elif/else arm's statements live in that arm's OWN `body`/`orelse` list
+# (never in a sibling arm's list), an assignment in one arm is structurally
+# invisible while resolving a usage in a different arm -- it is only visible
+# to later statements in the SAME arm, or via a list that CONTAINS the whole
+# if/elif chain (i.e. code before the conditional altogether, which
+# legitimately applies to every arm).
+
+
+def _direct_cast_call_interface(rhs: ast.AST) -> Optional[str]:
+    """If `rhs` is `I<Concrete>(...)`, return the interface name, else None."""
+    if (
+        isinstance(rhs, ast.Call)
+        and isinstance(rhs.func, ast.Name)
+        and len(rhs.func.id) >= 2
+        and rhs.func.id[0] == "I"
+        and rhs.func.id[1].isupper()
+        and len(rhs.args) >= 1
+    ):
+        return rhs.func.id
+    return None
+
+
+# Compound statements safe to recurse into when scanning backward for a
+# prior cast: a `try`/`with` block always attempts (or fully runs) its body
+# on the taken path. Deliberately EXCLUDES `ast.If` (mutually exclusive arms
+# -- the whole point of this fix) and `ast.For`/`ast.While` (the body may run
+# zero times, so an assignment inside one is not guaranteed).
+_CAST_SCAN_RECURSE_INTO = (ast.Try, ast.With)
+
+
+def _scan_backward_for_cast(
+    stmt_list: List[ast.stmt],
+    upto_index: int,
+    var_name: str,
+    parents: Dict[ast.AST, ast.AST],
+) -> Optional[str]:
+    """Scan `stmt_list[:upto_index]` in reverse for the nearest assignment
+    that types `var_name`. Handles a direct cast call (`v = IFoo(...)`) and
+    a chained rebind (`v = other`), resolving the rebind's source
+    recursively AT THE REBIND'S OWN POSITION (via `_resolve_cast_type_at`)
+    so branch-awareness and further chaining both apply. A rebind to
+    anything else stops the scan -- a genuine reassignment must not let a
+    stale, earlier cast of the same name leak forward."""
+    for stmt in reversed(stmt_list[:upto_index]):
+        if (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+            and stmt.targets[0].id == var_name
+        ):
+            direct = _direct_cast_call_interface(stmt.value)
+            if direct is not None:
+                return direct
+            if isinstance(stmt.value, ast.Name):
+                return _resolve_cast_type_at(stmt, parents, stmt.value.id)
+            return None
+        if isinstance(stmt, _CAST_SCAN_RECURSE_INTO):
+            for field in ("body", "orelse", "finalbody"):
+                sub = getattr(stmt, field, None)
+                if isinstance(sub, list):
+                    found = _scan_backward_for_cast(sub, len(sub), var_name, parents)
+                    if found is not None:
+                        return found
+    return None
+
+
+def _find_enclosing_stmt_list(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST]
+) -> Tuple[Optional[ast.AST], Optional[List[ast.stmt]]]:
+    """Climb from `node` to the nearest ancestor that is itself a direct
+    element of some ancestor's body/orelse/finalbody list. Returns
+    (stmt, list) or (None, None) once we reach the tree root."""
+    current = node
+    while current in parents:
+        parent = parents[current]
+        for field in ("body", "orelse", "finalbody"):
+            lst = getattr(parent, field, None)
+            if isinstance(lst, list) and current in lst:
+                return current, lst
+        current = parent
+    return None, None
+
+
+def _build_parent_map(tree: ast.AST) -> Dict[ast.AST, ast.AST]:
+    """Map each AST node to its immediate parent, for `_resolve_cast_type_at`."""
+    parents: Dict[ast.AST, ast.AST] = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parents[child] = node
+    return parents
+
+
+def _resolve_cast_type_at(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], var_name: str
+) -> Optional[str]:
+    """Issue #97 Bug 2: branch-aware replacement for a flat `cast_aliases`
+    lookup. Resolves the interface `var_name` was cast to, as OBSERVED AT
+    `node`'s position in the source, by walking outward through the
+    enclosing statement lists rather than consulting a single whole-function
+    dict. See the module comment above `_direct_cast_call_interface` for the
+    full rationale."""
+    current = node
+    while True:
+        stmt, lst = _find_enclosing_stmt_list(current, parents)
+        if stmt is None:
+            return None
+        idx = lst.index(stmt)
+        found = _scan_backward_for_cast(lst, idx, var_name, parents)
+        if found is not None:
+            return found
+        current = parents.get(stmt)
+        if current is None:
+            return None
+
+
 # Issue #103: hvo instability. liblcm states this outright --
 # `src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44`:
 #   "The hvo values are true 'handles' in that they are valid for one
@@ -3468,6 +3621,12 @@ def detect_casting_needs(
     # so a method call captured by the property regex (segOps.IsLabel(seg)) is
     # recognized as a wrapper call, not a polymorphic property access.
     operations_aliases: Dict[str, str] = {}
+    # Issue #97 Bug 2 / #40 item 3: (line_num, var_name) -> branch-aware cast
+    # interface, feeding the regex-based advanced casting_index loop below.
+    # A flat cast_aliases lookup there would suffer the exact same branch-
+    # conflation bug as detect_interface_attribute_typos (mutually exclusive
+    # if/elif arms casting the same variable name to different interfaces).
+    line_var_cast_types: Dict[Tuple[int, str], str] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -3477,6 +3636,9 @@ def detect_casting_needs(
         ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
         operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
         if cast_aliases:
+            # Built once and reused for every branch-aware resolution below --
+            # cheap short-circuit for the common no-casts-anywhere case.
+            _parents: Dict[ast.AST, ast.AST] = _build_parent_map(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
                     continue
@@ -3485,9 +3647,13 @@ def detect_casting_needs(
                 root = node.value.id
                 if root not in cast_aliases:
                     continue
+                resolved_iface = _resolve_cast_type_at(node.value, _parents, root)
+                if resolved_iface is None:
+                    continue
                 alias_attr_accesses.setdefault(node.lineno, []).append(
-                    (node.attr, cast_aliases[root])
+                    (node.attr, resolved_iface)
                 )
+                line_var_cast_types[(node.lineno, root)] = resolved_iface
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
                 continue
@@ -3499,7 +3665,12 @@ def detect_casting_needs(
                 root = root.value
             typed_root = False
             if isinstance(root, ast.Name) and root.id in cast_aliases:
-                typed_root = True
+                # Branch-aware: only count the chain root as "typed" if a
+                # cast is actually in effect for THIS branch, not merely
+                # somewhere in the whole function.
+                typed_root = (
+                    _resolve_cast_type_at(root, _parents, root.id) is not None
+                )
             elif isinstance(root, ast.Call) and isinstance(root.func, ast.Name):
                 fid = root.func.id
                 if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
@@ -3662,7 +3833,11 @@ def detect_casting_needs(
                 # interface, skip; otherwise keep the flag.
                 if prop_name in _CASTING_CONDITIONAL_SAFE:
                     safe_ifaces = _CASTING_CONDITIONAL_SAFE[prop_name]
-                    receiver_iface = cast_aliases.get(obj_var)
+                    # Issue #97 Bug 2: branch-aware -- a flat cast_aliases
+                    # lookup here would misattribute this line's receiver to
+                    # whatever branch happened to assign obj_var LAST in the
+                    # whole function, not the branch this line is actually in.
+                    receiver_iface = line_var_cast_types.get((line_num, obj_var))
                     if receiver_iface and receiver_iface in safe_ifaces:
                         continue
 
@@ -3677,8 +3852,12 @@ def detect_casting_needs(
                     # so descriptive entries ("IWfiAnalysis (raw LCM)") still match
                     # -- the raw `in defined_on` check missed those, re-flagging
                     # properties like CategoryRA even after `wa = IWfiAnalysis(ana)`.
-                    if cast_aliases.get(obj_var) and (
-                        cast_aliases[obj_var] in _extract_interface_names(defined_on)
+                    # Issue #97 Bug 2: resolved branch-aware via
+                    # line_var_cast_types (see comment above), not the flat
+                    # whole-function cast_aliases dict.
+                    _receiver_iface_here = line_var_cast_types.get((line_num, obj_var))
+                    if _receiver_iface_here and (
+                        _receiver_iface_here in _extract_interface_names(defined_on)
                     ):
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:

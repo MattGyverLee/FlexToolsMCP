@@ -2517,6 +2517,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Accumulator for auto-fix records; populated when auto-fix succeeds.
     _auto_fixes_applied: Optional[List[Dict[str, Any]]] = None
     _auto_fix_note: Optional[str] = None
+    # Issue #40 B-1: populated when the casting gate is downgraded to a
+    # non-blocking advisory (read-only run, no issue at "error" severity).
+    # Surfaced in the response `warnings` list instead of rejecting.
+    _casting_readonly_warnings: Optional[List[Dict[str, Any]]] = None
     # Issue #80: provenance. 'existing' code (from disk / pasted by the human)
     # skips the two API-DISCOVERY gates -- verifying every API the model didn't
     # author is expensive LLM work we don't need. This is a COST lever ONLY:
@@ -2852,137 +2856,171 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         casting_check["severity"] = "error"
 
     if casting_check["has_casting_issues"]:
-        # Format issues with clear fixes for all 3 API flavors
         issues = casting_check["casting_issues"]
-        # Log the casting findings before rejecting so the .log captures the WHY.
-        get_operations_logger().info(
-            f"Preflight casting: issues={len(issues)} (rejected)"
+        # Issue #40 B-1: gate-local read-only severity downgrade. Per-issue
+        # severity already exists in the data (a known-pattern hit, or a
+        # genuine attribute typo merged in above, is "error"; an index-
+        # derived lookup with no corroborating known pattern is "warning").
+        # If NO issue here is "error", a read-only run does not reject --
+        # the run proceeds and the issues are surfaced as non-blocking
+        # advisories instead. A wrong guess in read-only code raises a
+        # TypeError at runtime (one iteration, no data risk); it cannot
+        # corrupt anything. Any "error"-severity issue still hard-rejects,
+        # and EVERY write-enabled run still hard-rejects at every severity,
+        # exactly as before. This downgrade is GATE-LOCAL to the casting
+        # gate's warning tier -- no other preflight gate (unprotected_writes,
+        # hvo_literal_write_risk, nested_unit_of_work) is touched by it.
+        _has_error_severity_casting_issue = any(
+            (i.get("severity") == "error") for i in issues
         )
-        for issue in issues[:10]:
-            get_operations_logger().debug(
-                f"  casting: line={issue.get('line')} property={issue.get('property')} "
-                f"pattern={issue.get('pattern','')[:80]!r}"
+        if (not write_enabled) and not _has_error_severity_casting_issue:
+            get_operations_logger().info(
+                f"Preflight casting: issues={len(issues)} severity=warning "
+                "(read-only run) -- proceeding without rejecting (issue #40 B-1)."
             )
-
-        # Issue #46: attempt safe auto-fix for read-only runs.
-        if effective_auto_fix:
-            _af_result = _try_auto_fix_casting(code, issues, api_idx, code_tree)
-            if _af_result is not None:
-                _patched = _af_result["patched_code"]
-                _fix_records = _af_result["fixes"]
-                if _validate_patched_code(_patched, api_idx, casting_index):
-                    # Telemetry: log both original and patched sha256
-                    _orig_sha = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
-                    _patched_sha = hashlib.sha256(_patched.encode("utf-8", errors="replace")).hexdigest()[:12]
-                    get_operations_logger().info(
-                        f"[AUTO-FIX] casting: applied {len(_fix_records)} rewrite(s). "
-                        f"original_sha256={_orig_sha} patched_sha256={_patched_sha}"
-                    )
-                    # Record success signal so the retry-loop detector resets.
-                    # (None error_code = success, resets the loop counter.)
-                    session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
-                    # Replace code + tree with patched version and continue preflight
-                    code = _patched
-                    code_tree = ast.parse(code)
-                    casting_check = detect_casting_needs(code, casting_index, code_tree)
-                    # CP2 fix: re-derive `issues` from the post-fix casting_check so
-                    # the still-has-issues branch below (signature, enrichment,
-                    # how_to_fix, error_response) reflects only the RESIDUAL issues,
-                    # not the stale pre-fix set captured at line 2077.
-                    issues = casting_check["casting_issues"]
-                    _auto_fixes_applied = _fix_records
-                    _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
-                    # Proceed to rest of preflight with patched code
-                else:
-                    get_operations_logger().info(
-                        "[AUTO-FIX] casting: patch did not pass re-preflight; falling back to rejection"
-                    )
-
-        # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
-        if casting_check["has_casting_issues"]:
-            # Diagnostic-report CP2: thread a real per-issue signature (built
-            # from property + missing-interface + cast-interface) into the
-            # JSONL record instead of leaving casting_signature blank. Without
-            # this, two UNRELATED casting issues in the same turn (e.g. a bad
-            # Gloss access, then later an unrelated bad Definition access)
-            # both fall through to the bare "casting_issues_detected" code and
-            # collapse into a single false recurrence.
-            _casting_sig = compute_casting_signature(issues)
-            _log_preflight_reject(
-                op_id, seq, time.monotonic() - t_start,
-                "casting_issues_detected",
-                f"{len(issues)} polymorphic property access issue(s) require casting.",
-                casting_signature=_casting_sig,
-            )
-            # Issue #21: each issue carries an inline rewrite + imports_needed so
-            # the LLM doesn't need to call flextools_resolve_property to recover.
-            # Issue #22: retarget the hint at the inlined rewrite, not the tool.
-            has_any_rewrite = any(i.get("rewrite") for i in issues)
-            first_rewrite = next(
-                (i for i in issues if i.get("rewrite")), None
-            )
-            if has_any_rewrite and first_rewrite is not None:
-                how_to_fix = [
-                    f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
-                    f"`{first_rewrite['rewrite']}`",
-                    "2. Add the imports listed in casting_issues[*].imports_needed",
-                    "3. Re-run your code",
-                ]
-                hint_msg = (
-                    "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
-                    "expression) and `imports_needed` (the SIL.LCModel imports to add). "
-                    "Apply them line-by-line and re-run."
+            for issue in issues[:10]:
+                get_operations_logger().debug(
+                    f"  casting[warn]: line={issue.get('line')} property={issue.get('property')} "
+                    f"pattern={issue.get('pattern','')[:80]!r}"
                 )
-            else:
-                # Fall back to the old guidance when the AST-rewrite path didn't
-                # produce anything (e.g. chained receivers).
-                how_to_fix = [
-                    "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
-                        issues[0]["property"],
-                        issues[0].get("context_entity", "ICmObject"),
-                    ),
-                    "2. Apply the suggested cast from the tool response",
-                    "3. Re-run your code",
-                ]
-                hint_msg = (
-                    "No automatic rewrite was emitted (likely because the property "
-                    "is accessed via a chained or call-rooted receiver). Use "
-                    "flextools_resolve_property to resolve manually."
+            _casting_readonly_warnings = issues
+            # Issue #28: record a SUCCESS signal so the retry-loop detector
+            # resets -- the loops it was catching here were largely this
+            # gate's own false rejects, and a run that proceeds is a genuine
+            # success by the detector's own documented contract
+            # (record_op_signal docstring: "On success: pass error_code=None").
+            session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+        else:
+            # Format issues with clear fixes for all 3 API flavors
+            # Log the casting findings before rejecting so the .log captures the WHY.
+            get_operations_logger().info(
+                f"Preflight casting: issues={len(issues)} (rejected)"
+            )
+            for issue in issues[:10]:
+                get_operations_logger().debug(
+                    f"  casting: line={issue.get('line')} property={issue.get('property')} "
+                    f"pattern={issue.get('pattern','')[:80]!r}"
                 )
-            # Issue #54: enrich each casting issue with the #54-spec detail keys.
-            # correct_cast_expression is the ready-to-paste rewrite (issue #21
-            # already computes it as `rewrite`; we alias here rather than duplicate).
-            # base_type / concrete_type are derived from the existing keys.
-            for _ci in issues:
-                if "correct_cast_expression" not in _ci:
-                    _ci["correct_cast_expression"] = _ci.get("rewrite")
-                if "base_type" not in _ci:
-                    _missing = _ci.get("missing_on")
-                    _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
-                if "concrete_type" not in _ci:
-                    _ci["concrete_type"] = _ci.get("cast_interface")
 
-            # Issue #28: wrap the rejection with the retry-loop detector so
-            # repeated casting failures surface _assistance hints.
-            return _attach_assistance_if_loop(
-                error_response(
+            # Issue #46: attempt safe auto-fix for read-only runs.
+            if effective_auto_fix:
+                _af_result = _try_auto_fix_casting(code, issues, api_idx, code_tree)
+                if _af_result is not None:
+                    _patched = _af_result["patched_code"]
+                    _fix_records = _af_result["fixes"]
+                    if _validate_patched_code(_patched, api_idx, casting_index):
+                        # Telemetry: log both original and patched sha256
+                        _orig_sha = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
+                        _patched_sha = hashlib.sha256(_patched.encode("utf-8", errors="replace")).hexdigest()[:12]
+                        get_operations_logger().info(
+                            f"[AUTO-FIX] casting: applied {len(_fix_records)} rewrite(s). "
+                            f"original_sha256={_orig_sha} patched_sha256={_patched_sha}"
+                        )
+                        # Record success signal so the retry-loop detector resets.
+                        # (None error_code = success, resets the loop counter.)
+                        session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+                        # Replace code + tree with patched version and continue preflight
+                        code = _patched
+                        code_tree = ast.parse(code)
+                        casting_check = detect_casting_needs(code, casting_index, code_tree)
+                        # CP2 fix: re-derive `issues` from the post-fix casting_check so
+                        # the still-has-issues branch below (signature, enrichment,
+                        # how_to_fix, error_response) reflects only the RESIDUAL issues,
+                        # not the stale pre-fix set captured at line 2077.
+                        issues = casting_check["casting_issues"]
+                        _auto_fixes_applied = _fix_records
+                        _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
+                        # Proceed to rest of preflight with patched code
+                    else:
+                        get_operations_logger().info(
+                            "[AUTO-FIX] casting: patch did not pass re-preflight; falling back to rejection"
+                        )
+
+            # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
+            if casting_check["has_casting_issues"]:
+                # Diagnostic-report CP2: thread a real per-issue signature (built
+                # from property + missing-interface + cast-interface) into the
+                # JSONL record instead of leaving casting_signature blank. Without
+                # this, two UNRELATED casting issues in the same turn (e.g. a bad
+                # Gloss access, then later an unrelated bad Definition access)
+                # both fall through to the bare "casting_issues_detected" code and
+                # collapse into a single false recurrence.
+                _casting_sig = compute_casting_signature(issues)
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start,
                     "casting_issues_detected",
-                    f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
-                    severity=casting_check["severity"],
-                    casting_issues=issues,  # canonical key matching validator output
-                    issues=issues,           # back-compat alias
-                    general_guidance={
-                        "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
-                        "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
-                        "how_to_fix": how_to_fix,
-                    },
-                    hint=hint_msg,
-                    next_steps=hint_msg,
-                    op_id=op_id,
-                ),
-                error_code="casting_issues_detected",
-                code_size_bytes=_code_size_bytes,
-            )
+                    f"{len(issues)} polymorphic property access issue(s) require casting.",
+                    casting_signature=_casting_sig,
+                )
+                # Issue #21: each issue carries an inline rewrite + imports_needed so
+                # the LLM doesn't need to call flextools_resolve_property to recover.
+                # Issue #22: retarget the hint at the inlined rewrite, not the tool.
+                has_any_rewrite = any(i.get("rewrite") for i in issues)
+                first_rewrite = next(
+                    (i for i in issues if i.get("rewrite")), None
+                )
+                if has_any_rewrite and first_rewrite is not None:
+                    how_to_fix = [
+                        f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
+                        f"`{first_rewrite['rewrite']}`",
+                        "2. Add the imports listed in casting_issues[*].imports_needed",
+                        "3. Re-run your code",
+                    ]
+                    hint_msg = (
+                        "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
+                        "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                        "Apply them line-by-line and re-run."
+                    )
+                else:
+                    # Fall back to the old guidance when the AST-rewrite path didn't
+                    # produce anything (e.g. chained receivers).
+                    how_to_fix = [
+                        "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                            issues[0]["property"],
+                            issues[0].get("context_entity", "ICmObject"),
+                        ),
+                        "2. Apply the suggested cast from the tool response",
+                        "3. Re-run your code",
+                    ]
+                    hint_msg = (
+                        "No automatic rewrite was emitted (likely because the property "
+                        "is accessed via a chained or call-rooted receiver). Use "
+                        "flextools_resolve_property to resolve manually."
+                    )
+                # Issue #54: enrich each casting issue with the #54-spec detail keys.
+                # correct_cast_expression is the ready-to-paste rewrite (issue #21
+                # already computes it as `rewrite`; we alias here rather than duplicate).
+                # base_type / concrete_type are derived from the existing keys.
+                for _ci in issues:
+                    if "correct_cast_expression" not in _ci:
+                        _ci["correct_cast_expression"] = _ci.get("rewrite")
+                    if "base_type" not in _ci:
+                        _missing = _ci.get("missing_on")
+                        _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
+                    if "concrete_type" not in _ci:
+                        _ci["concrete_type"] = _ci.get("cast_interface")
+
+                # Issue #28: wrap the rejection with the retry-loop detector so
+                # repeated casting failures surface _assistance hints.
+                return _attach_assistance_if_loop(
+                    error_response(
+                        "casting_issues_detected",
+                        f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
+                        severity=casting_check["severity"],
+                        casting_issues=issues,  # canonical key matching validator output
+                        issues=issues,           # back-compat alias
+                        general_guidance={
+                            "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
+                            "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
+                            "how_to_fix": how_to_fix,
+                        },
+                        hint=hint_msg,
+                        next_steps=hint_msg,
+                        op_id=op_id,
+                    ),
+                    error_code="casting_issues_detected",
+                    code_size_bytes=_code_size_bytes,
+                )
 
     # Issue #47 accumulators: populated when read-only auto-discovery fires.
     _auto_discovered_entities: Optional[List[str]] = None
@@ -3438,6 +3476,26 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         )
         for finding in hvo_literal_check["findings"]:
             warnings.append(f"  line {finding['line']}: {finding['detail']}")
+        warnings.append("")
+
+    # Issue #40 B-1: casting issues downgraded from a hard reject to a
+    # non-blocking advisory (read-only run, no issue at "error" severity --
+    # see the gate-local downgrade above). Still surfaced here so the caller
+    # sees them even though preflight let the run proceed.
+    if _casting_readonly_warnings:
+        warnings.append(
+            f"[casting] {len(_casting_readonly_warnings)} polymorphic property "
+            "access issue(s) were detected but did NOT block this READ-ONLY "
+            "run (index-derived guess, not a known casting pattern or "
+            "attribute typo). A wrong guess raises a TypeError at runtime -- "
+            "it cannot corrupt data. Set write_enabled=True and these WILL "
+            "be rejected."
+        )
+        for issue in _casting_readonly_warnings[:10]:
+            warnings.append(
+                f"  line {issue.get('line')}: {issue.get('property')} -- "
+                f"{issue.get('fix', '')}"
+            )
         warnings.append("")
 
     # Create the runner script that will be executed in a subprocess

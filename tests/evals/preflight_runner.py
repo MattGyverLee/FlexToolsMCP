@@ -269,15 +269,28 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             str(cert["mutating_calls"] + cert["unprotected_liblcm_calls"]),
         )
 
-    # Gate 5: casting_issues_detected.
+    # Gate 5: casting_issues_detected. Issue #40 B-1: on a READ-ONLY run, a
+    # casting issue set where EVERY issue is warning-tier (index-derived
+    # lookup only -- never a known-pattern hit, and this runner never calls
+    # detect_interface_attribute_typos so no typo-derived "error" issues are
+    # modeled either) is a non-blocking advisory, not a preflight reject. A
+    # write_enabled run always rejects regardless of severity. Mirrors
+    # execution.handle_run_module's post-#40-B-1 decision.
     casting = detect_casting_needs(code, FAKE_API_INDEX.casting_index, tree)
+    advisories: list = []
     if casting["has_casting_issues"]:
-        return PreflightResult(
-            "preflight_reject",
-            "casting_issues_detected",
-            "casting_issues_detected",
-            str(casting["casting_issues"]),
+        _casting_issues = casting["casting_issues"]
+        _has_error_severity = any(
+            (i.get("severity") == "error") for i in _casting_issues
         )
+        if write_enabled or _has_error_severity:
+            return PreflightResult(
+                "preflight_reject",
+                "casting_issues_detected",
+                "casting_issues_detected",
+                str(_casting_issues),
+            )
+        advisories.append("casting_warning")
 
     # Gate 6: api_discovery_required (WRITE runs only -- hard gate, no
     # auto-discovery exception; see module docstring re issues #47/#80 scope).
@@ -334,8 +347,8 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
     # Non-blocking advisory (getall-contract SPEC §6 Level 3): never rejects,
     # so it only runs once every reject-gate above has already passed --
     # mirrors execution.handle_run_module, which computes it right before
-    # building the response `warnings` list.
-    advisories = []
+    # building the response `warnings` list. `advisories` may already carry
+    # "casting_warning" from the Gate 5 downgrade above.
     getall_check = detect_getall_unsafe_idiom(tree, api_mode, FAKE_API_INDEX)
     if getall_check["has_unsafe_idiom"]:
         advisories.append("getall_unsafe_idiom")

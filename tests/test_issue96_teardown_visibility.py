@@ -50,6 +50,7 @@ import ast
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -283,6 +284,37 @@ class TestRunnerScriptRuntime:
         assert "simulated ConflictingSave during teardown" in payload["error"]
         assert payload.get("teardown_error", {}).get("type") == "RuntimeError"
 
+    def test_body_error_preserved_when_teardown_also_fails(self, monkeypatch, tmp_path):
+        """Both gates in bugfix-cycle2 flagged this branch as untested: the
+        script body raises FIRST (setting result["error"] to the body's own
+        "Execution error: ..." message), and THEN CloseProject() also raises
+        during teardown. The teardown handler (execution.py) is designed to
+        be ADDITIVE -- it must append to the existing error and attach
+        `teardown_error`, not clobber the original body failure. Assert both
+        survive and `success` is False."""
+        script = _capture_generated_script(
+            monkeypatch,
+            tmp_path,
+            code="raise ValueError('body failure before teardown')\n",
+        )
+        script_path = tmp_path / "runner.py"
+        script_path.write_text(script, encoding="utf-8")
+        _write_fake_flexicon(tmp_path / "fake_pkgs", with_headless_ui=True)
+
+        payload = _run_script(
+            script_path, tmp_path / "fake_pkgs", close_raises=True,
+        )
+
+        assert payload["success"] is False
+        # Original body error must be PRESERVED, not overwritten by the
+        # teardown failure.
+        assert "body failure before teardown" in payload["error"]
+        # The teardown failure must ALSO be present, appended rather than
+        # replacing the body error.
+        assert "simulated ConflictingSave during teardown" in payload["error"]
+        assert payload.get("teardown_error", {}).get("type") == "RuntimeError"
+        assert "simulated ConflictingSave during teardown" in payload["teardown_error"]["message"]
+
     def test_missing_headless_ui_degrades_with_visible_warning(self, monkeypatch, tmp_path):
         """A-8 fallback: an older flexicon build without headless_ui must
         not crash the run -- it falls back to ui=None (historical FwLcmUI
@@ -325,6 +357,16 @@ class TestRuntimePrimerSharedModeReadBack:
             "last master save, not your write" in blob
         )
         # Must not fabricate a safe waiting interval or retry count -- the
-        # cycle-1 investigation proved the window is unbounded.
-        for forbidden in ("18 second", "18s", "seconds is safe", "retry up to", "within 30", "within 60"):
-            assert forbidden not in blob.lower(), f"primer must not promise an interval: found {forbidden!r}"
+        # cycle-1 investigation proved the window is unbounded. This must be
+        # structural (any digit+unit duration), not a blacklist of specific
+        # numbers -- a blacklist of ("18s", "within 30") would happily pass
+        # something like "wait 45 seconds".
+        duration_pattern = re.compile(
+            r"\b\d+\s*(?:s|sec|secs|second|seconds|m|min|mins|minute|minutes|"
+            r"hr|hrs|hour|hours)\b",
+            re.IGNORECASE,
+        )
+        match = duration_pattern.search(blob)
+        assert match is None, (
+            f"primer must not promise any interval/retry duration: found {match.group()!r}"
+        )

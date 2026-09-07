@@ -276,8 +276,14 @@ RUNTIME_PRIMER = {
             "Do not treat a stale read-back as a dropped write: the data is safely "
             "in the shared commit log the whole time. Do not paper over this by "
             "polling a fresh session and waiting N seconds -- there is no N that is "
-            "safe. If a caller must verify its own write, it needs a LIVE peer "
-            "session (one that stays open and calls Commit again), not a new one."
+            "safe. In-session verification of a shared-mode write is not currently "
+            "possible with run_module: every call opens a brand-new session, and a "
+            "brand-new session only ever sees the last master flush. Instead, check "
+            "the FLEx UI on the master peer -- it sees the write through its own "
+            "live cache (Commit / ReconcileForeignChanges), not through a fresh "
+            "read. If the write must be confirmed programmatically, that requires a "
+            "session that stays open and calls Commit again; run_module cannot "
+            "provide one."
         ),
     },
     "namespace_helpers": {

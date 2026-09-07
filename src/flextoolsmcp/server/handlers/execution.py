@@ -3632,9 +3632,37 @@ def run_module():
 
     project = None
 
+    # Create reporter early: setup steps below (the ui= fallback check) need
+    # somewhere visible to report a degraded-but-working state, and the
+    # OpenProject failure path also benefits from returning any such warning.
+    report = SimpleReporter()
+
     try:
         # API Mode-specific imports
         from flexicon import FLExInitialize, FLExCleanup, FLExProject
+
+        # Issue #96 (A-8): a generated runner has no WinForms message pump.
+        # Passing no `ui=` to OpenProject() falls back to flexicon's WinForms
+        # FwLcmUI, whose ConflictingSave() opens a modal dialog with no
+        # owner -- an indefinite hang in this headless subprocess (flexicon
+        # issue #238). HeadlessLcmUI never blocks a conflicting save; it
+        # raises FP_ConflictingSaveError instead, which the teardown path
+        # below now surfaces as a real failure instead of swallowing it.
+        # Older flexicon builds may not ship the module yet -- degrade to
+        # the historical FwLcmUI rather than hard-failing the whole run, but
+        # make the degradation visible instead of silent.
+        try:
+            from flexicon.code.headless_ui import HeadlessLcmUI
+            _lcm_ui = HeadlessLcmUI()
+        except ImportError:
+            _lcm_ui = None
+            report.Warning(
+                "flexicon.code.headless_ui.HeadlessLcmUI is not available in "
+                "this flexicon build; falling back to the WinForms FwLcmUI. "
+                "A ConflictingSave() in this headless subprocess can hang "
+                "indefinitely instead of raising (issue #96 / flexicon "
+                "#238). Upgrade flexicon to remove this hazard."
+            )
 
         FLExInitialize()
 
@@ -3646,13 +3674,17 @@ def run_module():
             # multi-mutation method and simple setter raise (see CP1 / issue
             # #92). undoable=False is the only path that actually persists
             # writes.
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False)
+            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False, ui=_lcm_ui)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
+            result["messages"] = report.messages
+            result["summary"] = {
+                "info_count": report.messageCounts[SimpleReporter.INFO],
+                "warning_count": report.messageCounts[SimpleReporter.WARNING],
+                "error_count": report.messageCounts[SimpleReporter.ERROR],
+                "total_messages": len(report.messages)
+            }
             return result
-
-        # Create reporter
-        report = SimpleReporter()
 
         # FLEx uses '***' as placeholder for empty/unset multilingual string values
         FLEX_EMPTY_PLACEHOLDER = "***"
@@ -3823,11 +3855,37 @@ def run_module():
             result["error"] = "Execution error: {}\\n{}".format(error_msg, traceback.format_exc())
 
     finally:
+        # Issue #96 (A-7): CloseProject() is where the write actually commits
+        # (EndNonUndoableTask() -> UnitOfWorkService.Save() -> Dispose()).
+        # A bare `except: pass` here used to swallow a commit failure while
+        # `result["success"]` had already been set True above -- silent
+        # data loss reported as success. Capture the failure and demote the
+        # run instead of discarding it. Preserve any prior error/messages
+        # rather than clobbering them, since a teardown failure can follow
+        # either a successful or an already-failed script body.
         if project:
             try:
                 project.CloseProject()
-            except:
-                pass
+            except Exception as e:
+                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                _teardown_tb = traceback.format_exc()
+                if result.get("error"):
+                    result["error"] = (
+                        "{}\\n\\nAdditionally, project teardown failed (writes "
+                        "may not have been committed): {}\\n{}"
+                    ).format(result["error"], _teardown_msg, _teardown_tb)
+                else:
+                    result["error"] = (
+                        "Project teardown failed after script execution "
+                        "(writes may not have been committed): {}\\n{}"
+                    ).format(_teardown_msg, _teardown_tb)
+                result["success"] = False
+                result["error_type"] = "TeardownError"
+                result["teardown_error"] = {
+                    "type": type(e).__name__,
+                    "message": str(e),
+                    "traceback": _teardown_tb,
+                }
         try:
             FLExCleanup()
         except:

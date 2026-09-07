@@ -251,6 +251,35 @@ RUNTIME_PRIMER = {
             "call or the FLEx UI."
         ),
     },
+    "shared_mode_read_back": {
+        "description": (
+            "In FLEx's shared-mode setup, a fresh read-only session under a live "
+            "FLEx master shows the last master save, not your write."
+        ),
+        "why": (
+            "FieldWorks project sharing uses a shared commit log "
+            "(SharedXMLBackendProvider). Exactly one peer is the 'master', "
+            "responsible for writing the on-disk .fwdata file; every other peer's "
+            "commit lands only in the shared commit log, not on disk. A brand-new "
+            "session's startup reads the .fwdata file (ReadInSurrogates) and never "
+            "replays commit-log records -- it registers at the file's last-written "
+            "generation and stops there. So a write made by a non-master peer is "
+            "durable and visible to other LIVE peers as soon as each of them next "
+            "commits, but it is invisible to any FRESH, independent session until "
+            "the master itself flushes the file. The master's own flush "
+            "(SaveOnIdle) is gated on human actions in the FLEx UI (an idle period "
+            "with no open edit and no pending-reconciliation prompt), so there is "
+            "NO reliable interval and NO retry count that guarantees the write has "
+            "become visible -- the window is unbounded, not merely long."
+        ),
+        "note": (
+            "Do not treat a stale read-back as a dropped write: the data is safely "
+            "in the shared commit log the whole time. Do not paper over this by "
+            "polling a fresh session and waiting N seconds -- there is no N that is "
+            "safe. If a caller must verify its own write, it needs a LIVE peer "
+            "session (one that stays open and calls Commit again), not a new one."
+        ),
+    },
     "namespace_helpers": {
         "description": "These helpers are pre-injected into the execution namespace. No import required.",
         "available": [

@@ -1904,7 +1904,7 @@
       },
       {
         "class": "BaseOperations",
-        "code": "def CompareTo(self, sense1, sense2, ops1=None, ops2=None):\n    '''Compare two senses for differences.'''\n    if ops1 is None:\n        ops1 = self\n    if ops2 is None:\n        ops2 = self\n\n    is_different = False\n    differences = {'properties': {}, 'children': {}}\n\n    # Compare properties\n    props1 = ops1.GetSyncableProperties(sense1)\n    props2 = ops2.GetSyncableProperties(sense2)\n\n    for key in set(props1.keys()) | set(props2.keys()):\n        val1 = props1.get(key)\n        val2 = props2.get(key)\n        if val1 != val2:\n            is_different = True\n            differences['properties'][key] = {\n                'source': val1,\n                'target': val2,\n                'type': 'modified'\n            }\n\n    # Compare child sequences (examples)\n    guids1 = {ex.Guid for ex in sense1.ExamplesOS}\n    guids2 = {ex.Guid for ex in sense2.ExamplesOS}\n\n    added = guids2 - guids1\n    removed = guids1 - guids2\n\n    if added or removed:\n        is_different = True\n        differences['children']['Examples'] = {\n            'added': list(added),\n            'removed': list(removed),\n            'modified': []\n        }\n\n    return is_different, differences\n\n        Example Usage (by sync framework):\nfrom flexlibs2.sync import DiffEngine\n\n# Find matching senses by GUID in two projects\nsense1 = project1.Senses.FindByGuid(guid)\nsense2 = project2.Senses.FindByGuid(guid)\n\n# Compare them\nis_diff, diffs = project1.Senses.CompareTo(\n    sense1, sense2,\n    ops1=project1.Senses,\n    ops2=project2.Senses\n)\n\nif is_diff:\n    print(\"Sense has diverged between projects:\")\n    for prop, details in diffs['properties'].items():\n        print(f\"  {prop}: {details['source']} -> {details['target']}\")\n\n    for child_name, child_diffs in diffs['children'].items():\n        if child_diffs['added']:\n            print(f\"  {child_name} added: {len(child_diffs['added'])}\")\n        if child_diffs['removed']:\n            print(f\"  {child_name} removed: {len(child_diffs['removed'])}\")",
+        "code": "def CompareTo(self, sense1, sense2, ops1=None, ops2=None):\n    '''Compare two senses for differences.'''\n    if ops1 is None:\n        ops1 = self\n    if ops2 is None:\n        ops2 = self\n\n    is_different = False\n    differences = {'properties': {}, 'children': {}}\n\n    # Compare properties\n    props1 = ops1.GetSyncableProperties(sense1)\n    props2 = ops2.GetSyncableProperties(sense2)\n\n    for key in set(props1.keys()) | set(props2.keys()):\n        val1 = props1.get(key)\n        val2 = props2.get(key)\n        if val1 != val2:\n            is_different = True\n            differences['properties'][key] = {\n                'source': val1,\n                'target': val2,\n                'type': 'modified'\n            }\n\n    # Compare child sequences (examples)\n    guids1 = {ex.Guid for ex in sense1.ExamplesOS}\n    guids2 = {ex.Guid for ex in sense2.ExamplesOS}\n\n    added = guids2 - guids1\n    removed = guids1 - guids2\n\n    if added or removed:\n        is_different = True\n        differences['children']['Examples'] = {\n            'added': list(added),\n            'removed': list(removed),\n            'modified': []\n        }\n\n    return is_different, differences\n\n        Example Usage (by sync framework):\nfrom flexicon.sync import DiffEngine\n\n# Find matching senses by GUID in two projects\nsense1 = project1.Senses.FindByGuid(guid)\nsense2 = project2.Senses.FindByGuid(guid)\n\n# Compare them\nis_diff, diffs = project1.Senses.CompareTo(\n    sense1, sense2,\n    ops1=project1.Senses,\n    ops2=project2.Senses\n)\n\nif is_diff:\n    print(\"Sense has diverged between projects:\")\n    for prop, details in diffs['properties'].items():\n        print(f\"  {prop}: {details['source']} -> {details['target']}\")\n\n    for child_name, child_diffs in diffs['children'].items():\n        if child_diffs['added']:\n            print(f\"  {child_name} added: {len(child_diffs['added'])}\")\n        if child_diffs['removed']:\n            print(f\"  {child_name} removed: {len(child_diffs['removed'])}\")",
         "description": "Compare two items and return detailed differences.",
         "method": "CompareTo",
         "object_type": "general",
@@ -1976,7 +1976,7 @@
       },
       {
         "class": "FLExProject",
-        "code": "# NOTE the explicit undoable=False. Under the 4.4.0 default this\n            # method has nothing session-wide to abort -- see the mode table\n            # above -- and each Create() rolls itself back instead.\n            project.OpenProject(\"MyProject\", writeEnabled=True, undoable=False)\n            try:\n                for word, gloss in messy_input:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            except Exception:\n                project.AbortSession()   # discard the whole partial import\n                raise\n            else:\n                project.SaveChanges()\n\n        See Also:\n            Undo() - reverse one committed ``UndoableOperation``\n                (``undoable=True`` only, in-process only).\n            UndoableOperation() - per-operation rollback, the finer-grained\n                and preferred mechanism once ``undoable=True`` is in use.",
+        "code": "# NOTE the explicit undoable=False. Under the 4.4.0 default this\n            # method has nothing session-wide to abort -- see the mode table\n            # above -- and each Create() rolls itself back instead.\n            project.OpenProject(\"MyProject\", writeEnabled=True, undoable=False)\n            try:\n                for word, gloss in messy_input:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            except Exception:\n                project.AbortSession()   # discard the whole partial import\n                raise\n            else:\n                # NOTE: not SaveChanges(). Under undoable=False the\n                # session-long envelope keeps CurrentDepth at 1 for the\n                # whole session (issue #243, spec.md C21), so\n                # SaveChanges() always raises FP_TransactionError here.\n                # CloseProject() ends that envelope first, then saves.\n                project.CloseProject()\n\n        See Also:\n            Undo() - reverse one committed ``UndoableOperation``\n                (``undoable=True`` only, in-process only).\n            UndoableOperation() - per-operation rollback, the finer-grained\n                and preferred mechanism once ``undoable=True`` is in use.",
         "description": "Discard every uncommitted change in the currently open unit of work.",
         "method": "AbortSession",
         "object_type": "general",
@@ -1988,6 +1988,15 @@
         "code": "for allomorph in project.LexiconAllAllomorphs():\n    form = project.Allomorphs.GetForm(allomorph)\n    print(form)",
         "description": "Get all allomorphs in the entire project.",
         "method": "LexiconAllAllomorphs",
+        "object_type": "general",
+        "operation": "iterate",
+        "source": "docstring"
+      },
+      {
+        "class": "FLExProject",
+        "code": "project.OpenProject(\"MyProject\", writeEnabled=True,\n                                 undoable=True)\n            # ... FLEx (or another client) saves a conflicting change ...\n            project.RefreshFromDisk()\n            project.SaveChanges()  # No longer wedged\n\n        Note on mode (issue #243, spec.md C21): the Example above requires\n            ``undoable=True``. Under ``undoable=False`` the session-long\n            envelope opened at ``OpenProject()`` holds ``CurrentDepth`` at\n            1 for the whole session, so ``SaveChanges()`` always raises\n            ``FP_TransactionError`` in that mode -- it cannot be called\n            mid-session at all, reconciliation or not.\n            ``CloseProject()`` ends that envelope before its own\n            ``usm.Save()`` call, so it reaches ``usm.Save()`` at a legal\n            depth; whether ``RefreshFromDisk()`` followed by\n            ``CloseProject()`` fully clears a pending-reconciliation wedge\n            under ``undoable=False`` has not been measured here and is\n            not claimed.",
+        "description": "Reconcile in-memory state with a foreign change and unblock auto-save.",
+        "method": "RefreshFromDisk",
         "object_type": "general",
         "operation": "iterate",
         "source": "docstring"
@@ -2131,15 +2140,6 @@
         "class": "POSOperations",
         "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
         "description": "Compare two parts of speech and return detailed differences.",
-        "method": "CompareTo",
-        "object_type": "general",
-        "operation": "iterate",
-        "source": "docstring"
-      },
-      {
-        "class": "ParagraphOperations",
-        "code": "is_diff, diffs = ops1.CompareTo(para1, para2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
-        "description": "Compare two paragraphs for differences.",
         "method": "CompareTo",
         "object_type": "general",
         "operation": "iterate",
@@ -3386,7 +3386,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1173,
+    "total_patterns": 1175,
     "unique_patterns": 115
   }
 }

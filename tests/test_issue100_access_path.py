@@ -302,15 +302,21 @@ class TestPaginateEntityAccessPath(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Real shipped index: documents the pre-refresh state
+# Real shipped index: locks in the post-refresh (fixed) state
 # ---------------------------------------------------------------------------
 
-class TestRealIndexPreRefreshState(unittest.TestCase):
-    """The working tree's shipped flexicon index predates this fix (a
-    regeneration is explicitly out of scope for this task, and forbidden
-    while an unrelated 4.4.1 -> 4.5.2 migration is uncommitted). These tests
-    lock in that the absent-access_path fallback is genuinely the live,
-    exercised path today -- not just a hypothetical."""
+class TestRealIndexPostRefreshState(unittest.TestCase):
+    """The shipped flexicon 4.5.2 index carries the generator's facade-scan
+    output, so MSAOperations -- the issue #100 exemplar, reachable only via
+    ``project.MSA`` and never re-exported at flexicon's top level -- now has a
+    real ``access_path``. These tests lock in that the fix is live in the index
+    that actually ships, not merely in the synthetic entities above.
+
+    They previously asserted the opposite (``TestRealIndexPreRefreshState``,
+    documenting the absent-access_path fallback as the live path) because the
+    tracked index was 4.4.1, which carried no access_path for any entity. The
+    4.4.1 -> 4.5.2 index migration is that self-heal-on-refresh, so the
+    assertions were flipped rather than deleted."""
 
     @classmethod
     def setUpClass(cls):
@@ -325,21 +331,22 @@ class TestRealIndexPreRefreshState(unittest.TestCase):
             data = json.load(f)
         cls.entity = data.get("entities", {}).get("MSAOperations")
 
-    def test_msa_operations_has_no_access_path_yet(self):
+    def test_msa_operations_has_access_path(self):
         if self.entity is None:
             self.skipTest("shipped flexicon index / MSAOperations entity not found")
-        self.assertNotIn("access_path", self.entity)
+        self.assertEqual(self.entity.get("access_path"), "project.MSA")
 
-    def test_build_entity_import_falls_back_for_unrefreshed_index(self):
+    def test_build_entity_import_prefers_access_path_for_refreshed_index(self):
         if self.entity is None:
             self.skipTest("shipped flexicon index / MSAOperations entity not found")
         from server.handlers.api import _build_entity_import
 
         namespace = self.entity.get("namespace", "") or ""
         result = _build_entity_import("flexicon", "MSAOperations", namespace, self.entity)
-        # Documents the known-broken pre-refresh behavior this fix targets --
-        # it only self-heals once someone runs a refresh.
-        self.assertEqual(result, "from flexicon import MSAOperations")
+        # The bare `from flexicon import MSAOperations` this used to advertise
+        # raises ImportError against the installed package -- MSAOperations is
+        # facade-only. project.MSA is the sole runtime-valid access line.
+        self.assertEqual(result, "project.MSA")
 
 
 # ---------------------------------------------------------------------------

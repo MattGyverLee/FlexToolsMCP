@@ -247,32 +247,50 @@ standalone and it does -- but only once the live check passes.
 > `git log origin/main..HEAD` first. The CP1 live-write blocker below is unaffected
 > and still stands.
 
-### MERGE READINESS (asked by the user, answered 2026-09-06): NOT READY
+### MERGE READINESS (asked by the user, answered 2026-09-06; reconciled 2026-09-07): READY
 
-The branch is 10 commits ahead of `origin/main` and unpushed. Four things block a
-merge; only the last two came from the bugfix campaign:
+The branch is 48 commits ahead of `origin/main` and unpushed (re-derived
+2026-09-07 via `git rev-list --count origin/main..HEAD`; the earlier "10
+commits" figure was stale). The four items that previously blocked a merge
+are now resolved or explicitly deferred by the user:
 
 1. ~~**The CP1 live write check for #92 has still never been run**~~ -- **CLEARED
    2026-09-07.** The check was run with the user's explicit authorization and
    **BOTH legs PASSED**. See "RESOLVED -- the CP1 live write check" below. This
    was the binding blocker; it no longer blocks.
-2. **This section is stale** (see the correction above) -- reconcile before
-   reasoning about what merging would ship.
-3. **The flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and undecided**:
-   3 deleted v4.4.1 files, 3 untracked v4.5.2 replacements, plus modified
-   `liblcm_api_v11.0.0.json` and `reverse_mapping_liblcm-v11.0.0.json`. Commit it
-   deliberately or revert it; never sweep it into a code commit. Because this repo
-   supports multiple index versions side by side (`docs/VERSIONING.md`), deleting
-   the v4.4.1 files is a real decision -- anyone still on flexicon 4.4.1 loses
-   their index. `docs/logscan-state.json` is also modified and belongs to logscan,
-   not to either feature here.
-4. **Two prior-session spec artifacts await a keep-or-drop call**:
+2. ~~**This section is stale**~~ -- **RECONCILED 2026-09-07** (this pass):
+   commit count, index-migration status, and the spec-artifact call below are
+   all re-derived against the current tree rather than carried forward from
+   2026-09-06.
+3. ~~**The flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and
+   undecided**~~ -- **DEFERRED 2026-09-07 by explicit user decision** ("We'll
+   build new indexes before the next release"). The working tree was reverted
+   to the committed v4.4.1 state (`common_patterns_flexicon-v4.4.1.json`,
+   `python/flexicon_api_v4.4.1.json`, `python/flexicon_lcm_bridge_v4.4.1.json`,
+   `liblcm/liblcm_api_v11.0.0.json`, `reverse_mapping_liblcm-v11.0.0.json`);
+   `scripts/validate_integrity.py all` still PASSES against the committed
+   v4.4.1 index even though the installed flexicon runtime is 4.5.2. The
+   v4.5.2 artifacts (3 files) were preserved, untracked, outside the repo at
+   `C:\Users\thoua\AppData\Local\Temp\claude\d--Github--Projects--LEX-FlexToolsMCP\6c4256f8-2cb3-439f-98c3-883ed21d18f5\scratchpad\index-migration-deferred\`
+   for deliberate regeneration before the next release -- nothing from this
+   migration is committed on this branch.
+4. ~~**Two prior-session spec artifacts await a keep-or-drop call**~~ --
+   **RESOLVED**: the user delegated the call, the lead ruled KEEP, and
    `specs/swahili-audit-2026-09/reviews/cycle1-domain.md` and
-   `cycle1-explore-nullmorph.md`, left untracked on purpose so the user decides.
+   `cycle1-explore-nullmorph.md` are committed this cycle.
 
-Safe on merge: `cb3f1b8` is the ONLY commit in `origin/main..HEAD` carrying an
-auto-close keyword (`closes #103`), and #103 genuinely is fixed. Nothing
-auto-closes #96, #40, #97, #100 or #101 -- all six remain open by design.
+Safe on merge -- CORRECTED: the "cb3f1b8 is the ONLY auto-close" claim above
+was FALSE. There are FOUR closing-keyword mentions across THREE commits in
+`origin/main..HEAD`: `6e35204`'s body ("closes #97 Bug 1"), `97bd304`'s body
+("(closes #97 Bug 1)"), `cb3f1b8`'s subject ("(closes #103)"), and
+`250469c`'s body (`"closes #103"`, quoting cb3f1b8). GitHub parses closing
+keywords anywhere in a commit message, not just the first one, so a merge to
+`main` will auto-close BOTH #97 and #103. #103's close is expected and
+accepted -- this document's own "#103 genuinely is fixed" finding stands.
+#97 is NOT resolved (only Bug 1 of #97 is; Bug 2's ranking fix is deliberately
+deferred as B-3) and must be REOPENED immediately after the merge lands.
+Nothing in range auto-closes #96, #40, #100 or #101 -- those four remain open
+by design.
 
 ### RESOLVED -- the CP1 live write check (2026-09-07): BOTH LEGS PASS
 

@@ -3481,6 +3481,28 @@ def _pick_cast_interface(
     return None
 
 
+# Issue #97 Bug 1: candidate list for the ambiguous-fix message. Reuses the
+# exact same cleaning _pick_cast_interface applies to `defined_on` (head-split
+# on whitespace and "(", keep I-prefixed) rather than hand-rolling a second
+# normalizer -- this is display-only, it never influences which interface
+# (if any) gets picked as `cast_interface`.
+def _casting_candidates_for_fix(defined_on: List[str]) -> List[str]:
+    """Deduped, order-preserving list of I-prefixed interface names from
+    `defined_on`, for use when `_pick_cast_interface` returns None and the
+    fix message needs to name the (ambiguous) candidate set without
+    claiming any single one is definite."""
+    seen: set = set()
+    out: List[str] = []
+    for entry in defined_on or ():
+        if not entry:
+            continue
+        head = entry.split()[0].split("(")[0].strip()
+        if head.startswith("I") and head not in seen:
+            seen.add(head)
+            out.append(head)
+    return out
+
+
 # Issue #21 follow-up: some LCM interfaces live OUTSIDE SIL.LCModel.
 # IMultiAccessorBase (and its kin) live in SIL.LCModel.Core.KernelInterfaces.
 # Emitting `from SIL.LCModel import IMultiAccessorBase` produces an
@@ -4079,6 +4101,38 @@ def detect_casting_needs(
                         ) if cast_iface else None
                         imports_needed = _imports_for_interface(cast_iface)
 
+                        # Issue #97 Bug 1: the fix string used to pick
+                        # `defined_on[0]` regardless of whether cast_iface
+                        # resolved -- an arbitrary alphabetical-ish pick that
+                        # confidently named the WRONG interface whenever
+                        # _pick_cast_interface (above) had already determined
+                        # the case was ambiguous and returned None. Reuse
+                        # cast_iface here instead of re-deriving it, and when
+                        # it's None, name the real (ambiguous) candidate set
+                        # rather than asserting a single definite target.
+                        if cast_iface:
+                            fix_msg = f"Cast {obj_var} to {cast_iface}"
+                        else:
+                            _fix_candidates = _casting_candidates_for_fix(
+                                casting_info.get("defined_on", [])
+                            )
+                            if _fix_candidates:
+                                _MAX_SHOWN = 4
+                                _shown = _fix_candidates[:_MAX_SHOWN]
+                                _remaining = len(_fix_candidates) - len(_shown)
+                                _tail = f", +{_remaining} more" if _remaining > 0 else ""
+                                fix_msg = (
+                                    f"Cast {obj_var} to one of: "
+                                    f"{', '.join(_shown)}{_tail} -- ambiguous, call "
+                                    f"flextools_resolve_property(property_name='{prop_name}', "
+                                    "context_entity=...) to confirm"
+                                )
+                            else:
+                                # No usable I-prefixed candidate at all --
+                                # degrade to the old placeholder rather than
+                                # ever IndexError / crash.
+                                fix_msg = f"Cast {obj_var} to concrete type"
+
                         # New issue not caught by known patterns
                         issues.append({
                             "property": prop_name,
@@ -4087,7 +4141,7 @@ def detect_casting_needs(
                             "found_at": line_content.strip()[:120],
                             "missing_on": requires_cast,
                             "available_on": casting_info.get("defined_on", []),
-                            "fix": f"Cast {obj_var} to {casting_info.get('defined_on', ['concrete type'])[0]}",
+                            "fix": fix_msg,
                             "flexicon_helper": "Use resolve_property() tool to find exact casting requirements",
                             "severity": "warning",
                             "rewrite": rewrite,

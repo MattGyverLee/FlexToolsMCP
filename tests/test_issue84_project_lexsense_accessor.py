@@ -41,6 +41,24 @@ def api_index():
     return APIIndex.load(get_index_dir())
 
 
+def _require_live_flexicon():
+    """Skip the calling test unless a live flexicon+FieldWorks install is present.
+
+    `pytest.importorskip` only turns an `ImportError` into a skip. On a box
+    without FieldWorks, `import flexicon` doesn't raise `ImportError` -- the
+    module imports fine but raises a bare `Exception` (e.g. "64bit FieldWorks
+    9 not found") during its own init. That bare Exception is NOT caught by
+    `importorskip`, so it escapes and pytest reports an ERROR instead of a
+    SKIP. This helper catches the broad `Exception` deliberately, which is
+    the whole point -- do not narrow it.
+    """
+    try:
+        import flexicon
+    except Exception as exc:  # noqa: BLE001 -- flexicon raises non-ImportError on missing FieldWorks
+        pytest.skip(f"needs a live flexicon+FieldWorks install: {exc}")
+    return flexicon
+
+
 # ---------------------------------------------------------------------------
 # The allowlist itself
 # ---------------------------------------------------------------------------
@@ -244,6 +262,7 @@ class TestGetAllSensesArgumentType:
             )
 
 
+@pytest.mark.requires_flex
 class TestTemplateImportsResolve:
     """A bad name in the template's import block is an ImportError that kills
     the module before Main() runs -- strictly worse than the AttributeError
@@ -263,7 +282,7 @@ class TestTemplateImportsResolve:
         """
         import importlib
 
-        pytest.importorskip("flexicon", reason="import check needs a live flexicon install")
+        _require_live_flexicon()
         tree = ast.parse((TEMPLATE_DIR / template).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom):
@@ -279,13 +298,21 @@ class TestTemplateImportsResolve:
                 )
 
 
+@pytest.mark.requires_flex
 class TestAliasTableMatchesLiveInstall:
-    """Mirrors scripts/check_project_accessors.py so drift fails in CI too."""
+    """Mirrors scripts/check_project_accessors.py so drift fails in CI too.
+
+    This class has errored on every Windows CI run since `pyflexicon` became
+    a runtime dependency (bare Exception on import when FieldWorks is
+    absent, not caught by `importorskip`) -- so it never actually delivered
+    CI drift protection; it only ever ran, and passed, on a developer's
+    FieldWorks-equipped box. That protection is delivered instead by
+    scripts/check_project_accessors.py and by running `pytest -m
+    requires_flex` locally on a FieldWorks box.
+    """
 
     def test_declared_aliases_are_exactly_the_live_phantoms(self):
-        flexicon = pytest.importorskip(
-            "flexicon", reason="drift check needs a live flexicon install"
-        )
+        flexicon = _require_live_flexicon()
         live = {n for n in dir(flexicon.FLExProject) if not n.startswith("_")}
         shorthands = {
             op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")
@@ -297,9 +324,7 @@ class TestAliasTableMatchesLiveInstall:
         )
 
     def test_alias_targets_exist_on_the_live_class(self):
-        flexicon = pytest.importorskip(
-            "flexicon", reason="drift check needs a live flexicon install"
-        )
+        flexicon = _require_live_flexicon()
         live = {n for n in dir(flexicon.FLExProject) if not n.startswith("_")}
         for phantom, correct in PROJECT_ACCESSOR_ALIASES.items():
             assert correct in live, f"{phantom} -> {correct} is not real either"

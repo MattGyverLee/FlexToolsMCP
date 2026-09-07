@@ -523,3 +523,43 @@ against it).
    replace with a soft advisory). No issue was reopened.
 4. Explicit decision **NOT** to close #40 -- it stays open for facets beyond
    the B-1 mitigation already confirmed live in production this scan.
+
+### Follow-up: user-authorized reopens + cleanup (2026-09-07, same day)
+
+The user authorized lex-lead's ranked reopen recommendation and the two
+pending cleanup items above. All four are now actioned:
+
+- **Reopened, ranked 1-4 of 5:** MCP#84 (documentation-only fix could not
+  plausibly have prevented the identical AttributeError recurring 58 minutes
+  after close), MCP#39 (10 recurrences matching the window's entire
+  PolymorphicAttributeError tally, at least two NOT user casting mistakes --
+  one a library-internal flexicon bug now flexicon#261, one a discoverability
+  trap now MCP#108 facet a), MCP#80 (recurred twice as a HARD
+  `preflight_reject`, precisely the behavior Part 1 of its own fix was meant
+  to replace with a soft advisory), MCP#69 (recurred with a second wrong
+  guess at the same target in the same session, so the user was never
+  steered to `project.lp` either time).
+- **Deliberately left closed (not reopened), with reasons on record:**
+  MCP#75 (rank 5 of 5 -- the recurrence is at a third, previously
+  unenumerated call site, `ISilDataAccess.BeginUndoTask`, so the original fix
+  holds for its known sites while the gap generalizes; tracked instead by new
+  MCP#111) and flexicon#34 (a cookbook issue whose docs fix was the correct
+  deliverable; the verbatim 3-month recurrence points at a surfacing gap in
+  `find_examples`/`search_by_capability`, not a bad fix -- contrast with
+  MCP#84, reopened on the opposite reasoning).
+- **New issue filed:** MCP#111 -- overload-resolution hinting is per-call-site
+  rather than general; asks for a mechanism that parses the pythonnet
+  `OverloadResolutionError` shape and emits candidate signatures from the
+  liblcm index instead of enumerating sites one at a time.
+- **Cleanup completed:** the stray repo-root `operations.jsonl` was removed
+  after a byte-identical copy was preserved at
+  `specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl`
+  and its contents inlined into a comment on MCP#109; `.gitignore` now
+  ignores `operations.jsonl*`/`operations.log*`, closing the
+  accidental-commit exposure (the underlying `log_dir_fn` defect itself
+  remains open, tracked by MCP#109).
+
+Full before/after ledger detail: `specs/logscan-2026-09-07/reviews/cycle3-archivist.md`.
+The only remaining un-filed follow-up from this run is the FlexToolsMCP-side
+recipe-surfacing gap implied by flexicon#34 (no issue number assigned yet;
+scope decision pending).

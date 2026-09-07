@@ -14,7 +14,8 @@
     "coverage_notes": [
       "No unscanned gap between the merged windows: no log directories exist for 2026-08-29 through 2026-09-05 (verified: only 2026-08-10..08-11..08-12..08-13..08-14..08-15..08-16..08-18..08-19..08-21..08-26..08-28 then 2026-09-06, 2026-09-07 exist), so the August and September window scans are contiguous over all real data.",
       "operations.log has a REAL 10-day hole, 2026-08-11 through 2026-08-20 (log.1 ends 2026-08-10T11:05:36 local, live log starts 2026-08-21T08:42:57 local, zero matching lines in either file for that span), while operations.jsonl covers it with 157 records and per-session log dirs exist for those days -- operations_log_bytes is NOT a trustworthy cursor for that span. Filed as MCP#110 (fingerprint f4f1db54e896).",
-      "operations.jsonl `ts` is UTC while operations.log and per-session log files are local time -- bucket accordingly in future scans (this ledger records raw evidence timestamps as sourced from each report; where a report distinguished local/UTC that distinction is carried in this entry's notes)."
+      "operations.jsonl `ts` is UTC while operations.log and per-session log files are local time -- bucket accordingly in future scans (this ledger records raw evidence timestamps as sourced from each report; where a report distinguished local/UTC that distinction is carried in this entry's notes).",
+      "CLEANUP (2026-09-07, cycle 3 follow-up): a stray repo-root operations.jsonl (5 synthetic rows, see MCP#109 fingerprint bb05277778ee) existed at the repository root; it was NOT part of this ledger's scan cursor (which tracks ~/.flextoolsmcp/logs/, not the repo root). Preserved byte-identically at specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl and inlined into a comment on MCP#109, then removed from the working tree with user authorization. .gitignore now carries `operations.jsonl*` / `operations.log*` (verified via git check-ignore -v), closing the accidental-commit exposure but NOT the underlying log_dir_fn=None defect tracked by MCP#109. Recorded here so a future scan does not rediscover the (now-absent) repo-root file as a novel finding."
     ],
     "session_logs_scanned": {
       "august_window": {
@@ -76,14 +77,16 @@
       "first_seen": "2026-06-24T08:16:17Z",
       "last_seen": "2026-08-21T08:43:40Z",
       "occurrences": 3,
-      "state": "regression-commented",
+      "state": "regression-reopened",
       "close_date": "2026-07-20T09:09:30Z",
+      "reopened_date": "2026-09-07",
       "recurrence_dates": [
         "2026-08-21T08:43:40Z"
       ],
       "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69#issuecomment-5568170194",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69#issuecomment-5572013895",
       "reopen_rank": 4,
-      "notes": "| STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #69 actually closed 2026-07-20T09:09:30Z. REGRESSION (2026-09-07): recurred 2026-08-21 with the same root confusion (guessing at the raw ILangProject accessor), compounded by a second wrong guess in the same session that also missed the documented project.lp accessor. Comment posted (see comment_url); reopen NOT performed, pending user confirmation. Ranked reopen recommendation: #84 > #39 > #80 > #69 > #75 (differs from lead's original ordering; see fingerprint 53d4e6f0b229 for the #80 justification)."
+      "notes": "| STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #69 actually closed 2026-07-20T09:09:30Z. REGRESSION (2026-09-07): recurred 2026-08-21 with the same root confusion (guessing at the raw ILangProject accessor), compounded by a second wrong guess in the same session that also missed the documented project.lp accessor. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 4 of 5): recurred 2026-08-21T08:43:40Z ('FLExProject' object has no attribute 'LangProject'); the same session's very next attempt was a second wrong guess at the same target (project.project.Cache.LangProject), so the user was never steered to the documented project.lp accessor in either attempt -- two consecutive misses on one target is a suggestion-quality failure, not a one-off. The second guess is counted once elsewhere (under #39 and MCP#108) to avoid triple-counting a single log line. Ranked reopen list actioned in full 2026-09-07: #84 > #39 > #80 > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f)."
     },
     "83105d5ecbd9": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -104,9 +107,11 @@
       "first_seen": "2026-06-20T22:00:17Z",
       "last_seen": "2026-08-28T16:44:57Z",
       "occurrences": 23,
-      "state": "regression-commented",
-      "notes": "Not newly filed this scan; pre-existing open issue re-observed recurring in-window (2026-07-01, 07-05, 07-08, 07-11). Ledger entry added so future scans dedup against it without re-querying GitHub. | STATE CORRECTION (2026-09-07): ledger carried a stale state:open from the 2026-07-20 write; #39 actually closed 2026-07-21T07:38:02Z (~14h after that write, within the ~36h window covering all six stale entries corrected this cycle). REGRESSION (2026-09-07): recurred 10 times 2026-08-11 through 2026-08-28 with the identical pre-fix hint template every time, matching the operations.jsonl PolymorphicAttributeError tally exactly; comment posted (see comment_url), reopen NOT performed -- pending user confirmation. Ranked reopen recommendation (peer, 2026-09-07): #84 > #39 > #80 > #69 > #75; this ranking differs from the lead's original ordering (#80 was moved up, see fingerprint 53d4e6f0b229 for the justification).",
+      "state": "regression-reopened",
+      "notes": "Not newly filed this scan; pre-existing open issue re-observed recurring in-window (2026-07-01, 07-05, 07-08, 07-11). Ledger entry added so future scans dedup against it without re-querying GitHub. | STATE CORRECTION (2026-09-07): ledger carried a stale state:open from the 2026-07-20 write; #39 actually closed 2026-07-21T07:38:02Z (~14h after that write, within the ~36h window covering all six stale entries corrected this cycle). REGRESSION (2026-09-07): recurred 10 times 2026-08-11 through 2026-08-28 with the identical pre-fix hint template every time, matching the operations.jsonl PolymorphicAttributeError tally exactly; comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 2 of 5): 10 recurrences in the 2026-08-10..08-28 window is the whole window's PolymorphicAttributeError tally, every one with the identical hint template; beyond volume, at least two were NOT user casting mistakes -- 'LcmCache'.GetObject was a library-internal flexicon bug (now flexicon#261) and 'LcmCache'.Cache is a recurring discoverability trap (now MCP#108 facet a), so the emitted 'resubmit' hint was actively misleading for those two. Scope boundary preserved: #39 is about execution GATING (hint emitted but code runs anyway); MCP#108 is about hint CONTENT and COVERAGE. Ranked reopen list actioned in full 2026-09-07: #84 > #39 (reopened) > #80 > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f).",
       "close_date": "2026-07-21T07:38:02Z",
+      "reopened_date": "2026-09-07",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/39#issuecomment-5572009878",
       "recurrence_dates": [
         "2026-08-11T09:18:23Z",
         "2026-08-13T00:02:20Z",
@@ -153,14 +158,16 @@
       "first_seen": "2026-06-17T01:46:22Z",
       "last_seen": "2026-08-15T17:49:55Z",
       "occurrences": 31,
-      "state": "regression-commented",
-      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window. Notable case: 2026-07-09 10:57:05-10:57:35, 4 consecutive ops rejected (3x casting_issues_detected then api_discovery_required on a trivial report.Info('hello') smoke test). | REGRESSION (2026-09-07, not a plain dedup): recurred 2026-08-11 and 2026-08-15 as a hard preflight_reject, after #80's 2026-07-21T06:30:06Z close -- the exact failure mode Part 1 of #80's fix was supposed to replace with a soft advisory redirect. Comment posted (see comment_url); reopen NOT performed, pending user confirmation. Ranked reopen recommendation (peer, 2026-09-07): #84 > #39 > #80 > #69 > #75 -- #80 was moved UP versus the lead's original ordering on the grounds that the hard reject regresses the very behavior change #80's own fix introduced.",
+      "state": "regression-reopened",
+      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window. Notable case: 2026-07-09 10:57:05-10:57:35, 4 consecutive ops rejected (3x casting_issues_detected then api_discovery_required on a trivial report.Info('hello') smoke test). | REGRESSION (2026-09-07, not a plain dedup): recurred 2026-08-11 and 2026-08-15 as a hard preflight_reject, after #80's 2026-07-21T06:30:06Z close -- the exact failure mode Part 1 of #80's fix was supposed to replace with a soft advisory redirect. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 3 of 5): recurred twice as a HARD preflight_reject on op #1 of a fresh session (2026-08-11 06:14:24 and 2026-08-15 20:49:55 local / 17:49:55Z), reproducing precisely the behavior Part 1 of #80's own fix was meant to replace with a soft advisory -- not a peripheral regression but a direct contradiction of the fix's stated behavior change. Ranked #3 of 5, moved up from #4 during triage on exactly this reasoning (a fix whose stated behavior change is directly contradicted is stronger evidence of a bad close than a higher-volume recurrence of a same-root confusion). Ranked reopen list actioned in full 2026-09-07: #84 > #39 > #80 (reopened) > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f).",
       "close_date": "2026-07-21T06:30:06Z",
+      "reopened_date": "2026-09-07",
       "recurrence_dates": [
         "2026-08-11T06:14:24Z",
         "2026-08-15T17:49:55Z"
       ],
       "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/80#issuecomment-5568168165",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/80#issuecomment-5572012012",
       "reopen_rank": 3,
       "correction": {
         "prior_attribution": 53,
@@ -201,14 +208,27 @@
       "first_seen": "2026-07-20T00:00:00Z",
       "last_seen": "2026-08-11T06:15:37Z",
       "occurrences": 4,
-      "state": "regression-commented",
-      "notes": "P2 enhancement: distinct failure class from polymorphic-cast gates (#39/#48) - pythonnet overload resolution, not currently detected by preflight. Seen on IFwMetaDataCache.GetFields and IPartOfSpeechFactory.Create. | STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #75 actually closed 2026-07-20T23:31:51Z. REGRESSION (2026-09-07): recurred once 2026-08-11 at a NEW, third call site (ISilDataAccess.BeginUndoTask) rather than the originally reported ones (GetFields/Create) -- weakest case of the five for reopening this specific issue vs. filing a follow-on for site generalization. Comment posted (see comment_url); reopen NOT performed, pending user confirmation. Ranked reopen recommendation: #84 > #39 > #80 > #69 > #75 (#75 ranked last).",
+      "state": "regression-closed-superseded",
+      "notes": "P2 enhancement: distinct failure class from polymorphic-cast gates (#39/#48) - pythonnet overload resolution, not currently detected by preflight. Seen on IFwMetaDataCache.GetFields and IPartOfSpeechFactory.Create. | STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #75 actually closed 2026-07-20T23:31:51Z. REGRESSION (2026-09-07): recurred once 2026-08-11 at a NEW, third call site (ISilDataAccess.BeginUndoTask) rather than the originally reported ones (GetFields/Create) -- weakest case of the five for reopening this specific issue vs. filing a follow-on for site generalization. Comment posted (see comment_url); ranked reopen recommendation: #84 > #39 > #80 > #69 > #75 (#75 ranked last). | DELIBERATELY NOT REOPENED 2026-09-07 (user-authorized triage decision, ranked #5 of 5 -- the one candidate recommended against reopening): the recurrence is at a THIRD call site, not either of the two originally reported (GetFields, Create), so the original fix holds for its known sites while the underlying gap generalizes -- a scope limitation, not a failed fix. Reopening would misrepresent that. Tracked instead by NEW issue MCP#111 (fingerprint 51a3e9827ef5), which asks for a general mechanism (parse the pythonnet overload-failure shape, emit candidate signatures from the liblcm index) rather than a per-site allowlist. #75 stays CLOSED; comment recording this decision and linking #111 posted 2026-09-07T14:23:59Z.",
       "close_date": "2026-07-20T23:31:51Z",
       "recurrence_dates": [
         "2026-08-11T06:15:37Z"
       ],
       "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/75#issuecomment-5568163038",
+      "not_reopened_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/75#issuecomment-5572032974",
+      "tracking_issue": 111,
       "reopen_rank": 5
+    },
+    "51a3e9827ef5": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 111,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/111",
+      "signature": "No method matches given arguments for ISilDataAccess.BeginUndoTask",
+      "first_seen": "2026-08-11T06:15:37 (local)",
+      "last_seen": "2026-08-11T06:15:37 (local)",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "New ledger entry (2026-09-07, cycle 3 follow-up write, filed after user authorization of the reopen/cleanup recommendations). Filed as a deliberate ALTERNATIVE to reopening closed #75 (see fingerprint d905780c9f6f, state regression-closed-superseded): the recurrence is at a third call site (ISilDataAccess.BeginUndoTask) not enumerated by #75's original two (GetFields, Create), so #75's fix holds for its known sites while the underlying gap generalizes. Evidence: logs/2026-08-11/session_091536_auto-Ejagham_Full_GT-Test.log, op-091543-001, 'No method matches given arguments for ISilDataAccess.BeginUndoTask: (<class 'str'>)'. Timestamp is LOCAL time per the UTC/local skew documented in MCP#110 (fingerprint f4f1db54e896) -- deliberately NOT given a trailing Z, to avoid falsely implying UTC. The ask is a general mechanism (parse the pythonnet OverloadResolutionError shape, emit candidate signatures from the liblcm index at src/flextoolsmcp/index/liblcm/liblcm_api_v11.0.0.json) rather than a per-site allowlist. Cross-references closed #75 and MCP#108 (hint content/coverage quality, same DX family, different emitter). Labels: bug, log-triage. P2."
     },
     "b9f95446acf2": {
       "signature": "undefined_variables preflight rejection - low-volume pattern",
@@ -330,15 +350,17 @@
       "first_seen": "2026-08-12T22:03:12Z",
       "last_seen": "2026-08-12T22:03:12Z",
       "occurrences": 1,
-      "state": "regression-commented",
+      "state": "regression-reopened",
       "close_date": "2026-08-12T21:05:10Z",
+      "reopened_date": "2026-09-07",
       "recurrence_dates": [
         "2026-08-12T22:03:12Z"
       ],
       "close_to_recurrence_minutes": 58,
       "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/84#issuecomment-5568158117",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/84#issuecomment-5572007779",
       "reopen_rank": 1,
-      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): recurred 2026-08-12T22:03:12Z, only 58 minutes after the 2026-08-12T21:05:10Z close -- `session_215659_auto-Claude-Swahili.log` op-220305383-003, 'FLExProject' object has no attribute 'LexSense'. `gh issue view 84` shows the merged fix was documentation-only (no template code diff), which does not plausibly explain the identical error firing under an hour later -- STRONGEST reopen candidate of the five ranked this cycle. Comment posted (see comment_url); reopen NOT performed, pending user confirmation. Ranked reopen recommendation: #84 > #39 > #80 > #69 > #75, differing from the lead's original ordering (peer moved #80 up; see fingerprint 53d4e6f0b229)."
+      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): recurred 2026-08-12T22:03:12Z, only 58 minutes after the 2026-08-12T21:05:10Z close -- `session_215659_auto-Claude-Swahili.log` op-220305383-003, 'FLExProject' object has no attribute 'LexSense'. `gh issue view 84` shows the merged fix was documentation-only (no template code diff), which does not plausibly explain the identical error firing under an hour later -- STRONGEST reopen candidate of the five ranked this cycle. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 1 of 5, strongest candidate): the merged fix was documentation-only with no diff to the served template, so a docs change cannot alter runtime behavior -- the recurrence of the identical AttributeError 58 minutes later was structurally guaranteed, not merely likely. The close premise itself, not just the outcome, was in question. Ranked reopen list actioned in full 2026-09-07: #84 (reopened) > #39 (reopened) > #80 (reopened) > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f)."
     },
     "3393ffcc9d96": {
       "repo": "MattGyverLee/flexicon",
@@ -348,13 +370,14 @@
       "first_seen": "2026-08-26T16:03:13Z",
       "last_seen": "2026-08-26T16:03:13Z",
       "occurrences": 1,
-      "state": "regression-commented",
+      "state": "regression-closed-deliverable-was-correct",
       "close_date": "2026-05-27T01:13:58Z",
       "recurrence_dates": [
         "2026-08-26T16:03:13Z"
       ],
       "comment_url": "https://github.com/MattGyverLee/flexicon/issues/34#issuecomment-5568171084",
-      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): closed 2026-05-27T01:13:58Z as a documentation/cookbook fix (not a code fix); recurred verbatim 2026-08-26T16:03:13Z (3 months later), `session_160242_auto-Ejagham_W_Mini.log`: 'ILcmServiceLocator' object has no attribute 'GetInstance'. Suggests the cookbook recipe isn't surfacing through find_examples/search_by_capability when someone actually needs it -- comment posted noting discoverability, not a reopen request; not part of the 5-issue MCP reopen ranking (flexicon repo)."
+      "not_reopened_comment_url": "https://github.com/MattGyverLee/flexicon/issues/34#issuecomment-5572080207",
+      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): closed 2026-05-27T01:13:58Z as a documentation/cookbook fix (not a code fix); recurred verbatim 2026-08-26T16:03:13Z (3 months later), `session_160242_auto-Ejagham_W_Mini.log`: 'ILcmServiceLocator' object has no attribute 'GetInstance'. Suggests the cookbook recipe isn't surfacing through find_examples/search_by_capability when someone actually needs it -- comment posted noting discoverability, not a reopen request; not part of the 5-issue MCP reopen ranking (flexicon repo). | DELIBERATELY NOT REOPENED 2026-09-07 (archivist's own call, not lex-lead's -- lead left it as an open question): this is a COOKBOOK issue, so documentation was the correct deliverable and it was in fact delivered. The verbatim 3-month-later recurrence indicates the recipe is not SURFACING (find_examples / search_by_capability), not that the fix was wrong -- reopening would ask for the recipe to be rewritten, which addresses nothing. CONTRAST with MCP#84 (fingerprint 15e120d04d11), which WAS reopened in this same pass on the opposite reasoning: there a documentation-only change was merged against a defect with a runtime symptom, so the docs fix could never have prevented the recurrence; here the docs fix was the right shape and only the delivery mechanism failed. OPEN FOLLOW-UP CANDIDATE (not yet filed, recorded here so a future scan does not lose it): a FlexToolsMCP-side issue that find_examples/search_by_capability should surface this ILcmServiceLocator.GetInstance[T]() cookbook recipe for queries that should hit it -- scope decision pending, no issue number assigned as of 2026-09-07."
     },
     "7c7b4c05e2b1": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -500,7 +523,7 @@
     },
     {
       "scan": "2026-09-07T00:00:00Z",
-      "new": 7,
+      "new": 8,
       "deduped": 5,
       "regressions": 6,
       "residual": 1,
@@ -509,8 +532,18 @@
         "itemised_one_offs": 9
       },
       "deferred_low_volume": 3,
+      "reopened": 4,
+      "closed_deliberately": 2,
+      "cleanup": {
+        "stray_jsonl_removed": true,
+        "evidence_preserved": [
+          "specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl",
+          "https://github.com/MattGyverLee/FlexToolsMCP/issues/109 (comment, contents inlined)"
+        ],
+        "gitignore_updated": true
+      },
       "scan_by": "lex-logscan (2 windows) + lex-lead synthesis",
-      "notes": "Merged August window (2026-08-10 -> 2026-08-28) + September window (2026-09-06/09-07) log scans, filed by 3 parallel peer agents (flexicon scope, MCP scope, regression-comments scope), consolidated into this single ledger write by the archivist. New (7): flexicon#260-263 (N1-N4), MCP#108-110 (N5-N7). Deduped (5): #48 aggregate merge (occurrences 61->95, see fingerprint 48c9b7e2a115), MCP#100/flexicon#257 first_seen backdate (0d7917c944e2/da50b2947f5d), new MCP#98 filed-entry creation, #101 occurrence bump (3969b046e421). Regressions (6): #84 (new entry), #39, #80 (retargeted from the wrong #53 attribution, see fingerprint 53d4e6f0b229's `correction` field), #69, #75, flexicon#34 -- all comment-only, none reopened, pending user confirmation on a ranked reopen list (#84 > #39 > #80 > #69 > #75). Residual (1): #74 (residual-not-strict-regression, not a strict regression -- see fingerprint f3827601b213). LEDGER CORRECTIONS applied this cycle: six stale state:open entries (39a2f8c1d004/#39, 48c9b7e2a115/#48, 53d4e6f0b229/#80, b68be869d2c2/#69, d905780c9f6f/#75, f3827601b213/#74) all verified closed within ~36h of the 2026-07-20 ledger write; fingerprint 53d4e6f0b229 retargeted from its prior #53 attribution to the correct #80."
+      "notes": "Merged August window (2026-08-10 -> 2026-08-28) + September window (2026-09-06/09-07) log scans, filed by 3 parallel peer agents (flexicon scope, MCP scope, regression-comments scope), consolidated into this single ledger write by the archivist (cycle 2), then followed up (cycle 3, 2026-09-07) once the user authorized lex-lead's reopen/cleanup recommendations. New (8, was 7 in the cycle-2 write): flexicon#260-263 (N1-N4), MCP#108-110 (N5-N7), plus MCP#111 (filed in this cycle-3 follow-up as the deliberate alternative to reopening #75 -- see fingerprint 51a3e9827ef5). Deduped (5): #48 aggregate merge (occurrences 61->95, see fingerprint 48c9b7e2a115), MCP#100/flexicon#257 first_seen backdate (0d7917c944e2/da50b2947f5d), new MCP#98 filed-entry creation, #101 occurrence bump (3969b046e421). Regressions (6, all now resolved): #84, #39, #80 (retargeted from the wrong #53 attribution, see fingerprint 53d4e6f0b229's `correction` field), #69 -- REOPENED 2026-09-07 with ranks 1-4 of 5 respectively (see each fingerprint's REOPENED note for rationale); #75 -- state regression-closed-superseded, deliberately NOT reopened (rank 5 of 5), tracked instead by new MCP#111; flexicon#34 -- state regression-closed-deliverable-was-correct, deliberately NOT reopened (archivist's own call), cookbook fix was correct and the gap is an un-filed FlexToolsMCP-side recipe-surfacing follow-up candidate (recorded on fingerprint 3393ffcc9d96, not yet filed). Residual (1): #74 (residual-not-strict-regression, not a strict regression -- see fingerprint f3827601b213, unchanged, no action). LEDGER CORRECTIONS applied in cycle 2: six stale state:open entries (39a2f8c1d004/#39, 48c9b7e2a115/#48, 53d4e6f0b229/#80, b68be869d2c2/#69, d905780c9f6f/#75, f3827601b213/#74) all verified closed within ~36h of the 2026-07-20 ledger write; fingerprint 53d4e6f0b229 retargeted from its prior #53 attribution to the correct #80. CLEANUP executed in cycle 3 (user-authorized): the stray repo-root operations.jsonl was removed after a byte-identical copy was preserved at specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl and its contents inlined into a comment on MCP#109; .gitignore now ignores operations.jsonl*/operations.log* (verified via git check-ignore -v), closing the accidental-commit exposure (not the underlying log_dir_fn defect, still tracked by MCP#109)."
     }
   ]
 }

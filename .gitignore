@@ -47,3 +47,9 @@ htmlcov/
 
 # Claude Code personal (untracked) settings
 .claude/settings.local.json
+
+# Operations telemetry logs. Canonical location is ~/.flextoolsmcp/logs/;
+# these patterns catch harness output that leaks into the repo root when a
+# caller omits the log_dir_fn override (see FlexToolsMCP#109).
+operations.jsonl*
+operations.log*

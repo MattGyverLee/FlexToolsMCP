@@ -39,7 +39,7 @@ try:
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
-        KEY_CASTING_NOTES,
+        KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
         KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -68,7 +68,7 @@ except ImportError:
         KEY_AVAILABLE_ON_CONCRETE_TYPES, KEY_POLYMORPHIC_COLLECTION_WARNING,
         KEY_BASE_TYPE, KEY_CONCRETE_TYPES, KEY_UNIQUE_PROPERTIES_BY_TYPE, KEY_CASTING_HINT,
         KEY_PROPERTY_AVAILABILITY_IN_CONTEXT, KEY_HAS_PROPERTY_ON, KEY_MISSING_FROM, KEY_GUIDANCE,
-        KEY_CASTING_NOTES,
+        KEY_CASTING_NOTES, KEY_ACCESS_PATH, KEY_NOT_CMPOSSIBILITY_WARNING,
         KEY_ERROR, KEY_HINT,
         # Operation types
         OP_CREATE, OP_READ, OP_UPDATE, OP_DELETE, OP_ITERATE, OP_SEARCH,
@@ -101,6 +101,48 @@ SUFFIX_KIND_GUIDE = {
     "RS": "Reference Sequence - ordered collection of references",
     "RC": "Reference Collection - unordered collection of references"
 }
+
+# ============================================================
+# Issue #101: types that look like ICmPossibility but are not
+# ============================================================
+# IMoInflAffixSlot, IMoInflAffixTemplate and IMoInflClass (and their concrete
+# implementations) declare base="CmObject" in MasterLCModel.xml and do NOT
+# implement ICmPossibility -- their `Name` (MultiUnicode) is each type's OWN
+# attribute, a pure name collision with CmPossibility.Name. Code that
+# reasonably guesses "this is a POS-owned list, cast to ICmPossibility to
+# read .Name" throws `TypeError: object does not implement ICmPossibility`
+# at runtime (confirmed against liblcm_api_v11.0.0.json).
+#
+# Deliberately curated, NOT a structural rule (e.g. "declares an own `Name`
+# property and doesn't implement ICmPossibility"): that heuristic
+# false-positives on ~76 other CmObject-derived liblcm entities that were
+# never mistaken for possibility lists (CmAgent, CmFile, LangProject, ...).
+# IMoMorphType is the explicit contrast case: it DOES inherit
+# base="CmPossibility" (interfaces includes "ICmPossibility"), so
+# ICmPossibility(morphType).Name is correct there and it must stay out of
+# this set. Same curated-exception-list pattern as
+# constants.PROJECT_ACCESSOR_ALIASES.
+NOT_CMPOSSIBILITY_NAME_COLLISION = frozenset({
+    "IMoInflAffixSlot", "MoInflAffixSlot",
+    "IMoInflAffixTemplate", "MoInflAffixTemplate",
+    "IMoInflClass", "MoInflClass",
+})
+
+
+def _not_cmpossibility_warning(object_type: str) -> str | None:
+    """Warning string for issue #101's 3 name-collision types, else None."""
+    if object_type not in NOT_CMPOSSIBILITY_NAME_COLLISION:
+        return None
+    return (
+        f"{object_type} is NOT ICmPossibility (base=CmObject in "
+        f"MasterLCModel.xml). Its `Name` is its own MultiUnicode attribute, "
+        f"not an inherited ICmPossibility.Name -- do NOT cast via "
+        f"ICmPossibility(obj).Name. Access .Name directly on the object "
+        f"(cast to {object_type} itself if you need the interface). "
+        f"Contrast: IMoMorphType genuinely IS ICmPossibility, so that cast "
+        f"is correct there."
+    )
+
 
 # API mode configuration
 API_MODE_CONFIG = {
@@ -349,15 +391,31 @@ def build_response_with_context(data: dict, include_session: bool = True) -> dic
     return data
 
 
-def _build_entity_import(library: str, entity_name: str, namespace: str = "") -> str:
-    """Ready-to-paste `from ... import <Entity>` line for a result row.
+def _build_entity_import(library: str, entity_name: str, namespace: str = "",
+                          entity: dict | None = None) -> str:
+    """Ready-to-paste access line for a result row.
 
     liblcm uses the recorded LCM namespace (SIL.LCModel.*); empty string if
-    that's missing. flexicon / flexlibs_stable always use the runtime-correct
+    that's missing. flexicon / flexlibs_stable default to the runtime-correct
     top-level import form, ignoring the recorded deep package path (e.g.
     `flexicon.code.System.CheckOperations`) -- IronPython interop wants
     `from flexicon import CheckOperations`.
+
+    Issue #100: some flexicon Operations classes (e.g. MSAOperations) are
+    reachable ONLY via a `FLExProject` facade property and are NOT re-exported
+    at flexicon's package top level, so the plain import line above raises
+    ImportError at runtime even though the class is real and documented. When
+    the entity dict carries `access_path` (set by the generator's facade scan,
+    flexicon_analyzer.py's `_extract_facade_access_paths`), advertise that
+    instead -- it's always valid once a `project` instance exists, regardless
+    of whether a direct import would also happen to work. Entities without
+    the key (including every entity in an index generated before this fix)
+    fall through unchanged to the import-line behavior above.
     """
+    if entity:
+        access_path = entity.get(KEY_ACCESS_PATH)
+        if access_path:
+            return access_path
     if library == "liblcm":
         return f"from {namespace} import {entity_name}" if namespace else ""
     return f"from {library} import {entity_name}"
@@ -407,7 +465,7 @@ def _match_canonical_intents(query: str, flexicon_index: dict | None) -> list:
             KEY_SOURCE: "flexicon",
             KEY_ENTITY: entity_name,
             KEY_NAMESPACE: namespace,
-            KEY_IMPORT_STATEMENT: _build_entity_import("flexicon", entity_name, namespace),
+            KEY_IMPORT_STATEMENT: _build_entity_import("flexicon", entity_name, namespace, entity),
             KEY_NAME: method_name,
             KEY_TYPE: "method",
             KEY_SIGNATURE: method.get(KEY_SIGNATURE),
@@ -605,6 +663,28 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
         KEY_SUMMARY: entity.get(KEY_SUMMARY, ""),
         KEY_SOURCE_FILE: entity.get(KEY_SOURCE_FILE, ""),
     }
+
+    # Issue #100: get_object_api builds its own result dict rather than
+    # passing the raw entity through, so a new entity-level key must be
+    # explicitly carried here or it silently never surfaces via this tool
+    # (unlike search_by_capability/find_examples/resolve_type, which read
+    # `entity` directly via _build_entity_import). Absent when the index
+    # predates the facade scan -- entity.get() then returns None and the key
+    # is simply omitted below.
+    access_path = entity.get(KEY_ACCESS_PATH)
+    if access_path:
+        result[KEY_ACCESS_PATH] = access_path
+
+    # Issue #101: read-path warning for the 3 curated CmObject-derived types
+    # whose own `Name` collides in name (not inheritance) with
+    # ICmPossibility.Name. Pure lookup against a hard-coded, deliberately
+    # narrow set -- see NOT_CMPOSSIBILITY_NAME_COLLISION's docstring for why
+    # this must not become a structural heuristic. Needs no index
+    # regeneration since it derives entirely from `object_type`, not from any
+    # entity field.
+    not_cmpossibility_warning = _not_cmpossibility_warning(object_type)
+    if not_cmpossibility_warning:
+        result[KEY_NOT_CMPOSSIBILITY_WARNING] = not_cmpossibility_warning
 
     is_operations_class = object_type in OPERATIONS_CLASSES
     if is_operations_class:
@@ -1089,7 +1169,7 @@ async def handle_search_by_capability(args: dict) -> list[TextContent]:
                 # carries them out -- without this, the assistant gets an entity
                 # name but no way to import it, which was the root cause of #12.
                 entity_namespace = entity.get("namespace", "") or ""
-                entity_import = _build_entity_import(source_name, entity_name, entity_namespace)
+                entity_import = _build_entity_import(source_name, entity_name, entity_namespace, entity)
 
                 for method in entity.get(KEY_METHODS, []):
                     method_name = method.get(KEY_NAME, '')
@@ -1288,7 +1368,7 @@ async def handle_find_examples(args: dict) -> list[TextContent]:
             # Cache namespace + import_statement once per entity (same fix as
             # search_by_capability for #12 -- examples must carry import path).
             entity_namespace = entity.get("namespace", "") or ""
-            entity_import = _build_entity_import(source_name, entity_name, entity_namespace)
+            entity_import = _build_entity_import(source_name, entity_name, entity_namespace, entity)
 
             for method in entity.get(KEY_METHODS, []):
                 method_name_str = method.get(KEY_NAME, "")
@@ -1614,7 +1694,7 @@ async def handle_resolve_type(args: dict) -> list[TextContent]:
         category = entity.get("category")
 
         assembly = _lcm_namespace_to_assembly(namespace) if lib == "liblcm" else None
-        import_statement = _build_entity_import(lib, type_name, namespace)
+        import_statement = _build_entity_import(lib, type_name, namespace, entity)
 
         canonical = {
             KEY_NAME: type_name,

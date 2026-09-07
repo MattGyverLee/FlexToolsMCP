@@ -1274,7 +1274,103 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
     return method_info
 
 
-def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, Any]:
+# ---- Facade access-path detection (issue #100) --------------------------------
+#
+# Some Operations classes (e.g. MSAOperations) are reachable only via a
+# `FLExProject` facade property (`project.MSA`) and are NOT re-exported at
+# flexicon's package top level, so `from flexicon import MSAOperations` raises
+# ImportError even though the class exists and is fully documented. Nothing in
+# the index recorded that fact, so such classes looked shape-identical to the
+# genuinely top-level-importable ones -- until a generated script followed the
+# advertised import line and failed at runtime.
+#
+# `FLExProject.py` memoizes each facade property with the idiom:
+#
+#     @property
+#     def MSA(self):
+#         if "_msa_ops" not in self.__dict__:
+#             from .Lexicon.MSAOperations import MSAOperations
+#             self._msa_ops = MSAOperations(self)
+#         return self._msa_ops
+#
+# so scanning for `self._x = ClassName(self)` assignments inside `@property`
+# bodies recovers `{ClassName: "project.<propname>"}` for every Operations
+# class reachable this way -- not just MSAOperations. A class can be BOTH
+# genuinely top-level importable AND facade-reachable (most Operations
+# classes are); we deliberately record `access_path` for all of them rather
+# than trying to detect true top-level importability (which would require
+# introspecting the installed flexicon package's `__init__.py` re-exports at
+# generation time, itself version-dependent and out of scope here). The
+# facade path is always valid guidance once a `project` instance exists, and
+# it's what flexicon's own docs teach -- so advertising it is never wrong,
+# even for classes where a direct import would also work.
+def _extract_facade_access_paths(flexicon_code_base: Path) -> Dict[str, str]:
+    """Scan FLExProject.py for facade properties, returning {ClassName: "project.<prop>"}.
+
+    Returns an empty dict (never raises) if FLExProject.py is missing,
+    unparsable, or doesn't declare a top-level `FLExProject` class -- callers
+    treat that as "no facade information available" and skip annotation.
+    """
+    flex_project_path = flexicon_code_base / "FLExProject.py"
+    if not flex_project_path.exists():
+        return {}
+
+    try:
+        with open(flex_project_path, 'r', encoding='utf-8') as f:
+            tree = ast.parse(f.read())
+    except (OSError, SyntaxError):
+        return {}
+
+    class_node = next(
+        (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == "FLExProject"),
+        None,
+    )
+    if class_node is None:
+        return {}
+
+    access_paths: Dict[str, str] = {}
+
+    for item in class_node.body:
+        if not isinstance(item, ast.FunctionDef):
+            continue
+        is_property = any(
+            isinstance(d, ast.Name) and d.id == "property" for d in item.decorator_list
+        )
+        if not is_property:
+            continue
+
+        prop_name = item.name
+        for sub in ast.walk(item):
+            if not isinstance(sub, ast.Assign) or not isinstance(sub.value, ast.Call):
+                continue
+
+            func = sub.value.func
+            if isinstance(func, ast.Name):
+                class_name = func.id
+            elif isinstance(func, ast.Attribute):
+                class_name = func.attr
+            else:
+                continue
+
+            # Only the memoization idiom `self._x = ClassName(self)` counts --
+            # an assignment to a local/other target isn't the facade binding.
+            targets_self_attr = any(
+                isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name) and t.value.id == "self"
+                for t in sub.targets
+            )
+            if not targets_self_attr:
+                continue
+
+            # First property found wins if a class is (unexpectedly) memoized
+            # under two different property names -- deterministic, and no
+            # known flexicon class does this today.
+            access_paths.setdefault(class_name, f"project.{prop_name}")
+
+    return access_paths
+
+
+def analyze_class(node, module_path: str, lcm_imports: List[Dict],
+                   facade_access_paths: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """Analyze a class definition and extract its API information."""
     docstring = extract_docstring(node)
     parsed_doc = parse_docstring(docstring)
@@ -1325,7 +1421,7 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, 
     # Build real Python namespace (flexicon.code.Lexicon.LexEntryOperations)
     namespace = f"flexicon.code.{module_path.replace('/', '.')}"
 
-    return {
+    entity = {
         "id": node.name,  # Alias for compatibility with LibLCM schema
         "name": node.name,
         "type": "class",
@@ -1343,8 +1439,18 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict]) -> Dict[str, 
         "tags": [category, "operations"] if "Operations" in node.name else [category]
     }
 
+    # Issue #100: only set when a facade property actually memoizes this
+    # class -- omitted (not None) otherwise, so `.get("access_path")`
+    # degrades to today's behavior everywhere it's consulted.
+    if facade_access_paths and node.name in facade_access_paths:
+        entity["access_path"] = facade_access_paths[node.name]
 
-def _parse_and_analyze_file(file_path: Path, base_path: Path) -> Optional[Tuple[Dict[str, Any], ast.AST]]:
+    return entity
+
+
+def _parse_and_analyze_file(file_path: Path, base_path: Path,
+                             facade_access_paths: Optional[Dict[str, str]] = None
+                             ) -> Optional[Tuple[Dict[str, Any], ast.AST]]:
     """Parse a Python file and return both file analysis and parsed AST for reuse."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -1369,7 +1475,7 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path) -> Optional[Tuple[
         # Find top-level classes
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
-                class_info = analyze_class(node, module_path, lcm_imports)
+                class_info = analyze_class(node, module_path, lcm_imports, facade_access_paths)
                 file_info["classes"].append(class_info)
 
         return (file_info, tree)
@@ -1379,13 +1485,15 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path) -> Optional[Tuple[
         return None
 
 
-def analyze_python_file(file_path: Path, base_path: Path) -> Optional[Dict[str, Any]]:
+def analyze_python_file(file_path: Path, base_path: Path,
+                         facade_access_paths: Optional[Dict[str, str]] = None
+                         ) -> Optional[Dict[str, Any]]:
     """Analyze a single Python file and extract its API structure.
 
     For callers that need both the file info and parsed tree, use
     _parse_and_analyze_file() instead to avoid parsing the file twice.
     """
-    result = _parse_and_analyze_file(file_path, base_path)
+    result = _parse_and_analyze_file(file_path, base_path, facade_access_paths)
     if result is None:
         return None
     file_info, _ = result
@@ -1402,6 +1510,11 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
     version = detect_flexicon_version(flexicon_path)
     print(f"[INFO] Analyzing Flexicon at: {base_path}")
     print(f"[INFO] Detected version: {version}")
+
+    # Issue #100: facade-property scan over FLExProject.py, done once up
+    # front so every class's analyze_class() call can annotate its
+    # `access_path` (e.g. MSAOperations -> "project.MSA") in the same pass.
+    facade_access_paths = _extract_facade_access_paths(base_path)
 
     result = {
         "_schema": "unified-api-doc/2.0",
@@ -1435,7 +1548,7 @@ def analyze_flexicon(flexicon_path: str) -> Dict[str, Any]:
         if py_file.name.startswith("__"):
             continue
 
-        file_info = analyze_python_file(py_file, base_path)
+        file_info = analyze_python_file(py_file, base_path, facade_access_paths)
         if file_info and file_info["classes"]:
             result["metadata"]["files_analyzed"] += 1
 

@@ -563,3 +563,75 @@ Full before/after ledger detail: `specs/logscan-2026-09-07/reviews/cycle3-archiv
 The only remaining un-filed follow-up from this run is the FlexToolsMCP-side
 recipe-surfacing gap implied by flexicon#34 (no issue number assigned yet;
 scope decision pending).
+
+## swahili-audit-2026-09 -- CP-E closed green (spurt 4, 2026-09-07)
+
+Spurt 4 resumed on the user's "continue" and closed **CP-E**. Suite
+**1138 passed, 4 skipped, 12 subtests** (1133 entering the spurt, +5 new tests,
+no regressions). Verification PASS on all 8 gate items, every number re-derived
+from the code rather than from the reports. Branch is **45 commits ahead of
+origin/main, unpushed** (46 including this closing commit).
+
+**What landed:**
+
+- **The `versioning` stale-read race is FIXED** (`36a5a1c`). `_dir_state_token()`
+  moved off a bare `st_mtime` to a hybrid `(dir_mtime, entry_count,
+  max_child_mtime)` token from a single `os.scandir()` pass. The overclaiming
+  docstring was corrected in the *same* commit, as designed at CP-D, so the fix
+  and the admission landed together. Deterministic same-tick RED/GREEN tests
+  restore the coverage D-2 had removed.
+- **The `cast_to_concrete` phantom remedy split into two different bugs, both
+  fixed and filed** (`1f8e90b`; issues **#112** and **#113**). The CP-D framing
+  ("five places, nonexistent") had conflated two symbols with *different*
+  statuses. Symbol A (`CastingOperations.cast_to_concrete`) is a true phantom --
+  zero occurrences in pyflexicon 4.5.2 -- but confined to 5 advisory strings.
+  Symbol B (`flexicon.code.lcm_casting.cast_to_concrete`) is **real but unary**
+  while every shipped call site passed two arguments, and two docs imported
+  `ILexEntry` from a module that never exports it. That made the LibLCM template
+  **served by `flextools_get_module_template`** crash at runtime -- code users
+  run, not just a hint they read. Verified through the served path, not by
+  reading the template file.
+- The dead `facade` assignment at `tests/test_issue100_access_path.py:399` is
+  gone (`ffafb8c`), and `test_issue48_inline_casting.py` -- previously this
+  campaign's own example of an assertion that passed both before *and* after its
+  bug -- was tightened and proven to bite.
+- **The `#96` restart precondition is now MET.** Old PID 19808 is dead; PID 4556
+  serves this session and postdates every fix, confirmed on three independent
+  read-only lines of evidence. Live evidence would now be trustworthy.
+  **`#96` staleness nonetheless remains UNVERIFIED** -- the repro was not run and
+  is not authorized.
+
+**MCP#80: the campaign answered the question, and found the trap in the answer.**
+The other crew reopened #80 because it recurred as a hard `preflight_reject`,
+the exact behavior its own fix was meant to soften. Cycle 10 proved at runtime
+that CP-B's severity downgrade is *unreachable* for #80's code (its entry guard
+sees no casting issues at all) and that the reject fires ~200 lines later at
+`execution.py:3138`, where `if write_enabled:` keys a hard gate on the **session
+write flag** rather than on whether the submitted code mutates. Both recurrences
+were certified-read-only introspection in a write-enabled session.
+
+The obvious fix -- key the gate on `cert["is_certified_readonly"]` -- **is a
+data-integrity hole**. The certifier's own contract (`validators.py:2969`) defines
+that field as "no *unprotected* mutations", not "no mutations", and keeps
+`protected_liblcm_calls` in a separate bucket. So code that mutates inside an
+`if modifyAllowed:` guard certifies `True`, and the naive fix would let guarded
+mutations run **without discovery in a write-enabled session** -- opening a write
+hazard while closing an over-refusal. The safe form is a conjunction requiring
+provably no mutation of any kind; it is recorded in full in
+`specs/swahili-audit-2026-09/.crew-handoff.json` under `mcp80_fix_design`.
+
+**STOPPED: `status: needs_human`.** The fix is designed, proven, and ready, but
+it relaxes a gate on a **write-enabled** session, whereas the user-approved B-1
+precedent only relaxed read-only runs where no write was possible even if the
+checker erred. The gate was left alone deliberately -- its own comment reads
+"Write isolation is non-negotiable". CP-B escalated the equivalent "lets
+previously-rejected scripts execute" call to the user rather than deciding it,
+so this crew is holding to that precedent rather than stretching the standing
+"fix and file at your discretion" delegation across that line.
+**Lead recommendation: authorize, using the conjunction predicate.**
+
+`#97` stays **NOT-CLOSED** -- Bug 1 is repaired, the issue is not. No issue was
+closed, commented on, or reopened this spurt; only #112/#113 were filed. The
+never-run CP1 live write check for `#92` remains the **binding** merge blocker.
+The flexicon 4.4.1 -> 4.5.2 index migration and both `cycle1-*.md` reports are
+still preserved byte-for-byte, awaiting a user call.

@@ -1,128 +1,119 @@
 {
   "feature": "swahili-audit-2026-09",
-  "status": "in_progress",
-  "last_cycle": 9,
-  "spurts_completed": 3,
+  "status": "needs_human",
+  "last_cycle": 11,
+  "spurts_completed": 4,
   "branch": "feat/shared-mode-access",
   "tasks_done": [
-    "A-4",
-    "A-5",
-    "A-6",
-    "A-7",
-    "A-8",
-    "A-9",
-    "B-1",
-    "B-2",
-    "B-3",
-    "B-4",
-    "B-5",
-    "B-6",
-    "C-1",
-    "C-1a",
-    "C-2",
-    "C-3",
-    "D-1",
-    "D-2",
-    "D-3"
+    "A-4", "A-5", "A-6", "A-7", "A-8", "A-9",
+    "B-1", "B-2", "B-3", "B-4", "B-5", "B-6",
+    "C-1", "C-1a", "C-2", "C-3",
+    "D-1", "D-2", "D-3",
+    "E-1", "E-2", "E-3", "E-4"
   ],
   "checkpoints": {
     "CP-A": "closed_green",
     "CP-B": "closed_green",
     "CP-C": "closed_green",
-    "CP-D": "closed_green"
+    "CP-D": "closed_green",
+    "CP-E": "closed_green"
   },
-  "commits_spurt3": [
-    "6e35204",
-    "eb66ac4",
-    "71576a6",
-    "ce267e0",
-    "c6cbd25",
-    "97bd304",
-    "4b43688"
+  "commits_spurt4": [
+    "0686c38", "36a5a1c", "77bc76f", "f9ac2c4",
+    "5a71102", "1f8e90b", "ffafb8c", "40b5a44", "a83e1e4"
   ],
-  "suite": "1133 passed, 4 skipped, 12 subtests",
-  "eval_corpus": "35 passed, 2 skipped",
-  "casting_regression_set": "111 passed",
-  "gates": {
-    "verification": "PASS on all four CP-D code commits; every claimed number independently re-derived and matched exactly",
-    "qc_cycle8": "one P0 (contract drift), 3 P1, 4 P2, 5 P3 -- all P0/P1 and 2 P2 closed in 97bd304",
-    "qc_cycle9_regate": "P0 CLOSED: YES, verified against the code not the report. No P0 remains.",
-    "live": "not run -- MCP server PID 19808 still predates every fix; user has not restarted it"
-  },
-  "next_checkpoint": "spurt 4 -- user decisions first, then the crew-actionable P2/P3 carryover",
-  "next_entry": "STOP AND ASK THE USER FIRST. Three carryover items need a user decision before the crew can act: (1) the versioning stale-read race -- design call + authorization to file; (2) the cast_to_concrete phantom remedy advertised in 5 places -- authorization to file; (3) the MCP server restart, which gates all #96 live verification. Only after those, pick up the crew-actionable P2/P3 list in tasks-bugfix-campaign.md under 'CP-D carryover' -- start with tests/test_issue100_access_path.py:399's dead facade assignment (smallest, fully in scope).",
-  "b3_outcome": "#97 Bug 1 FIXED, but the issue's own diagnosis was wrong: _pick_cast_interface never needed a ranking repair (it already returned None on ambiguity by design, validators.py:3324-3337). The single leak was the fix f-string at the old validators.py:4090 taking defined_on[0], printing a confident 'Cast x to Y' next to a cast_interface: null on the same payload. Now routed through the resolved interface, with a two-tier ambiguous message (2-6 candidates listed with an explicit not-ranked warning; >6 emits NO interface names).",
-  "issues_open_none_closed": [
-    "#40",
-    "#96",
-    "#97",
-    "#100",
-    "#101",
-    "#103",
-    "#107"
-  ],
-  "97_must_stay_open": "Bug 1 is repaired as of 6e35204 + 97bd304. The ISSUE is NOT closed -- only the user closes issues. Do not report #97 as resolved.",
-  "only_autoclose_in_range": "cb3f1b8 closes #103 -- a merge closes #103 ONLY",
-  "commits_ahead_of_origin": 32,
+  "suite": "1138 passed, 4 skipped, 12 subtests (was 1133 at CP-D; +5 across spurt 4, no regressions)",
+  "commits_ahead_of_origin": 46,
   "merge_ready": false,
-  "merge_blockers": [
-    "the CP1 live write check for #92 has never been run; STATUS.md forbids merging until it passes -- this is the BINDING one",
-    "flexicon 4.4.1 -> 4.5.2 index migration uncommitted and undecided (3 deletions, 3 untracked, 2 modified)",
-    "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop decision"
-  ],
+  "gates": {
+    "verification_cycle11": "PASS on all 8 items, every number re-derived from code not from the report. Both new tests reproduced RED then GREEN. Symbol B verified through the SERVED path (handle_get_module_template), not by reading the template file.",
+    "live": "STILL NOT RUN -- but the restart precondition is now MET, see resolved_blockers.mcp_server_restart"
+  },
+  "next_checkpoint": "CP-F -- the MCP#80 execution.py:3138 discovery-gate fix",
+  "next_entry": "STOP AND ASK THE USER FIRST. The MCP#80 fix at execution.py:3138 is fully designed and ready to execute, but it needs user authorization because it relaxes a gate on a WRITE-ENABLED session -- a step beyond the B-1 precedent (see blockers_needing_user item 1). Once authorized: implement the CONJUNCTION predicate in mcp80_fix_design.safe_predicate. Do NOT use the naive `if cert['is_certified_readonly']` form -- it opens a data-integrity hole.",
+  "mcp80_fix_design": {
+    "status": "DESIGNED AND PROVEN, awaiting user authorization only",
+    "defect": "execution.py:3138 `if write_enabled:` keys the api_discovery_required HARD gate on the SESSION write flag, not on whether the submitted code mutates. Cycle 10 proved at runtime that both #80 recurrences submitted certified-read-only introspection code (is_certified_readonly=True, mutating=[]) in a write_enabled=true session and were hard-rejected. Over-refusal on code proven safe.",
+    "outcome_a_evidence": "specs/swahili-audit-2026-09/reviews/cycle10-mcp80.md. CP-B's downgrade at execution.py:2951 is UNREACHABLE for #80's code -- its :2931 entry guard sees has_casting_issues=False / n_issues=0, so the reject fires ~200 lines later at the untouched gate. Outcome (b) ruled out: #80 Part 1 landed 7d17d78 2026-07-20T21:54:50Z, before both the 08-11 and 08-15 recurrences.",
+    "THE_TRAP_carry_this_forward": "The cycle-10 report proposes keying the gate on `cert` from execution.py:2841. The NAIVE form `if cert['is_certified_readonly']` IS A DATA-INTEGRITY HOLE. Proven from the certifier's own contract at validators.py:2969, which reads: is_certified_readonly bool -- 'True = no unprotected mutations'. No UNPROTECTED mutations, NOT no mutations. certify_script_readonly (validators.py:2952) keeps protected_liblcm_calls as a SEPARATE bucket from unprotected_liblcm_calls, so code that mutates inside an `if modifyAllowed:` guard certifies True. Trusting that single field at :3138 would let GUARDED MUTATIONS RUN WITHOUT DISCOVERY in a write-enabled session -- introducing a write hazard while closing an over-refusal. Same input-mismatch defect class as CP-B's P1-1/P1-2.",
+    "safe_predicate": "Require the CONJUNCTION -- provably no mutation of ANY kind, guarded or not: is_certified_readonly AND no entry in mutating_calls with is_mutating true AND protected_liblcm_calls empty AND unprotected_liblcm_calls empty AND raw_lcm_patterns empty. Re-read the certifier's actual return dict (validators.py:2967-2982) before coding; do not trust this list blind.",
+    "supporting_precedent_for_the_change": "execution.py:3136 already computes `_skip_discovery_gates = skip_api_check or _provenance_existing`, and its own comment justifies that skip as 'a COST lever only: write-safety + casting already ran and are unaffected'. So a skip path is architecturally sanctioned at this gate -- discovery is a 'did the LLM look up the API' gate, not a mutation gate. Extending _skip_discovery_gates may be cleaner than rewriting :3138, but it skips BOTH gates (api_discovery_required AND undiscovered_entity), which may be broader than needed. Require the implementer to justify which shape they pick.",
+    "guardrail": "DO NOT generalize B-1. CP-B's own ruling (tasks-bugfix-campaign.md, CP-B 'Guardrail this imposes on B-1') forbids a blanket 'downgrade all preflight gates on read-only runs' refactor. #80 needs a gate-local change.",
+    "test_requirement": "tests/test_issue80_graceful_redirect.py:236-264 asserts SOURCE-TEXT greps over the handler body, not behavior -- it passes while the recurrence reproduces. Any fix must add a real handle_run_module invocation test with a demonstrated red/green.",
+    "line_drift_warning": "The gate anchor drifted 2934 -> 2951 within a single cycle. Re-derive every line number before editing."
+  },
   "blockers_needing_user": [
-    "MCP SERVER RESTART: PID 19808 started 2026-09-06 22:41:49, predating every fix. Until it restarts, the #96 live repro cannot run safely (modal-dialog hang) or produce trustworthy evidence. #96 staleness remains UNVERIFIED.",
-    "VERSIONING STALE-READ RACE (new, spurt 3): versioning._dir_state_token (versioning.py:277-295) keys the file-discovery cache on bare index_dir.stat().st_mtime (:323, :357). Measured REAL twice independently -- verification 13.3% (40/300) stale reads via the real production functions with perfect mtime/staleness correlation; QC 29% (58/200) of rapid double-writes leave st_mtime unchanged. NARROW: server.py:351 clears the cache on in-process refresh, so only out-of-band writers are exposed and it self-heals on the next dir change. versioning.py left untouched on purpose, docstring included, so the fix and the admission land together. Needs a design call (listing hash / write counter / bypass-cache-on-miss) plus authorization to file.",
-    "CAST_TO_CONCRETE PHANTOM REMEDY (new, spurt 3): CastingOperations.cast_to_concrete is advertised to users in FIVE places (incl. handlers/discovery.py:163) but was proven NONEXISTENT in flexicon 4.5.2. Same failure class as #103 and the import-advertising surfaces. PRE-EXISTING, not CP-D's doing. Needs authorization to file.",
-    "the flexicon v4.4.1 index deletion decision -- also gates #100 becoming live, since access_path needs a refresh",
-    "STATUS.md's never-run CP1 live write check for #92 -- the BINDING merge blocker; no amount of static green touches it"
+    "MCP#80 DESIGN AUTHORIZATION (new, spurt 4) -- the primary blocker. The fix is designed, proven, and ready, but it relaxes a gate on a WRITE-ENABLED session, whereas the user-approved B-1 precedent only relaxed on read-only runs where no write was possible even if the checker erred. That difference is material: a certifier false negative here CAN permit an undiscovered write. The gate's own comment (execution.py:3139-3140) reads 'Write isolation is non-negotiable; issue #80 leaves this unchanged', i.e. it was left alone deliberately. By this campaign's own precedent -- CP-B escalated 'lets previously-rejected scripts execute' to the user rather than deciding it -- this needs the user, and the standing 'fix and file at your discretion' delegation does not cleanly extend across the read-only/write-enabled line. LEAD RECOMMENDATION: authorize, using mcp80_fix_design.safe_predicate.",
+    "#96 REPRO AUTHORIZATION -- the restart precondition is now MET (see resolved_blockers). Only the user's go-ahead for the live repro remains, because it can raise a modal dialog and hang. #96 staleness remains UNVERIFIED.",
+    "STATUS.md's never-run CP1 live write check for #92 -- the BINDING merge blocker. No amount of static green touches it.",
+    "the flexicon v4.4.1 -> v4.5.2 index deletion decision (3 deleted, 3 untracked, 2 modified, all still preserved byte-for-byte) -- also gates #100 becoming live, since access_path needs a refresh",
+    "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop call"
   ],
+  "resolved_blockers": {
+    "mcp_server_restart": "RESOLVED spurt 4 (cycle 10, read-only probe). Old PID 19808 is DEAD. PID 4556 (started 2026-09-07 09:21:27) serves THIS session, confirmed on three independent read-only lines of evidence: flextools_health self-reports pid 4556 / server 2.9.1; 4556's parent is claude.exe PID 54356 whose cmdline carries this session's --resume id; only 4556's CPU time moved across the health call. It POSTDATES the last server-code commit (97bd304, 2026-09-07 04:49:24), so this session is NOT running stale code and live evidence would now be trustworthy. Eight OTHER stale flextoolsmcp processes remain resident (22064, 41904, 38320, 48280, 39620, 47416, 40620, 31200) -- harmless but worth knowing. Evidence: reviews/cycle10-serverprobe.md.",
+    "versioning_stale_read_race": "FIXED spurt 4, commit 36a5a1c. _dir_state_token() moved from bare st_mtime to a hybrid (dir_mtime, entry_count, max_child_mtime) token from one os.scandir() pass. The overclaiming docstring was corrected in the SAME commit as designed. Deterministic same-tick RED/GREEN tests added, restoring the coverage D-2 removed. The do_not_touch entry on versioning.py is now LIFTED and spent.",
+    "cast_to_concrete_phantom": "SPLIT, FIXED, and FILED spurt 4. The CP-D framing ('five places, nonexistent') conflated TWO symbols with DIFFERENT statuses. Symbol A (CastingOperations.cast_to_concrete) is a true phantom -- zero occurrences in pyflexicon 4.5.2 -- but confined to 5 advisory strings (one more than the census: discovery.py:168). Symbol B (flexicon.code.lcm_casting.cast_to_concrete) EXISTS at lcm_casting.py:408 but is UNARY while every shipped call site passed two args, and two docs imported ILexEntry from that module where it is function-local and never exported -- so the SERVED liblcm template crashed at runtime. Both fixed (1f8e90b), filed as #112 and #113.",
+    "cp_b_severity_downgrade": "APPROVED by the user 2026-09-06 ('sharing on, fix and file at your discretion'), as scoped",
+    "liblcm_bug": "FILED as FlexToolsMCP#107 (MattGyverLee/liblcm has issues disabled)",
+    "target_preconditions": "MET -- projectSharing=true, open in FLEx PID 13272, .fwdata at Aug-18 baseline",
+    "operations_jsonl_carry_forward": "RESOLVED BY THE OTHER CREW, not us. fa289b7 removed the stray repo-root operations.jsonl after preserving a byte-identical copy at specs/logscan-2026-09-07/evidence/, inlined it into a comment on MCP#109, and added operations.jsonl*/operations.log* to .gitignore. It no longer appears in git status. The underlying log_dir_fn defect remains open as MCP#109."
+  },
+  "issues_open_none_closed": ["#40", "#80", "#96", "#97", "#100", "#101", "#103", "#107", "#112", "#113"],
+  "issues_filed_spurt4": {
+    "#112": "phantom CastingOperations.cast_to_concrete advertised in 5 user-facing hints (fixed same cycle, 1f8e90b)",
+    "#113": "shipped LibLCM template crashed: wrong arity + non-exported ILexEntry (fixed same cycle, 1f8e90b)"
+  },
+  "97_must_stay_open": "Bug 1 is repaired as of 6e35204 + 97bd304. The ISSUE is NOT closed -- only the user closes issues. Do not report #97 as resolved.",
+  "80_reopened_by_other_crew": "MCP#80 was reopened by the logscan crew (fa289b7). This campaign holds the only runtime proof of WHY it recurred. Do NOT close or comment on it -- only the user does that.",
+  "only_autoclose_in_range": "cb3f1b8 closes #103 -- a merge closes #103 ONLY",
   "carry_forward": [
-    "tests/test_issue100_access_path.py:399 assigns facade = _extract_facade_access_paths(...) and never reads it -- implies a facade cross-check the tripwire does not perform (hazard set is pure hasattr). Both gates confirmed the tripwire still works, so DEAD CODE not a broken test. Smallest fully-in-scope item; start spurt 4 here.",
-    "`fix` is heterogeneous across tiers: known-pattern tier emits pasteable code (validators.py:3910-3926, documented docs/CASTING_SYSTEM.md:34) while the index-derived tier now emits prose containing a tool call. Pasted-into-script risk. Moving prose to flexicon_helper is a contract decision -- deferred.",
+    "`fix` is heterogeneous across tiers: known-pattern tier emits pasteable code (validators.py:3910-3926, documented docs/CASTING_SYSTEM.md:34) while the index-derived tier emits prose containing a tool call. Pasted-into-script risk. Moving prose to flexicon_helper is a CONTRACT decision -- deferred.",
     "QC cycle-5 P2-2: slash-joined pseudo-interface label, validators.py:1022, cosmetic (imports_needed=[] / cast_interface=None keep auto-fix out)",
     "QC cycle-5 P2-3: primer parenthetical wording nit, admin.py:278-289, self-limiting",
     "#101's curated frozenset is a stopgap; the general facility waits on #87's interpretation/caveats field, which does not exist yet",
     "cross-repo item 6: whether the generated runner can call SaveChanges() right after OpenProject -- execution.py:3810 is the anchor",
-    "flexicon #254 write-side twin (SetMorphType) is still UNFILED -- relay to whoever owns #254",
+    "flexicon #254 write-side twin (SetMorphType) is still UNFILED -- relay to whoever owns #254; the flexicon repo is READ-ONLY for this crew",
     "both interface-head helpers IndexError on a whitespace-only defined_on entry (validators.py:3443, :3495); none shipped, latent",
     "the D-3 tripwire skipTests when flexicon is unimportable, leaving it unguarded in a flexicon-less CI",
-    "_bump_dir_mtime writes future-dated mtimes (+1s/write)",
-    "the ten reportOptionalMemberAccess findings in handlers/api.py are confirmed PRE-EXISTING and line-shifted (byte-identical to the parent's set); whether they are real latent issues is still an open decision"
+    "_bump_dir_mtime writes future-dated mtimes (+1s/write) -- survived the 36a5a1c token change; re-check whether it is still needed at all",
+    "the ten reportOptionalMemberAccess findings in handlers/api.py are confirmed PRE-EXISTING and line-shifted (byte-identical to the parent's set); whether they are real latent issues is still an open decision",
+    "extract_version annotation looseness (versioning.py:51, :59) -- tuple[int, ...] vs Tuple[int, int, int] from tuple(map(int, match.groups())). CONFIRMED PRE-EXISTING (absent from 36a5a1c's diff). NO ACTION; carry-forward only.",
+    "discovery.py:180-181 two reportArgumentType findings -- CONFIRMED PRE-EXISTING via git blame (2026-03-16, outside the cycle-11 hunk), triaged with a confirming pytest run. NO ACTION.",
+    "tests/test_issue48_inline_casting.py was the campaign's own example of an assertion that passed both before AND after its bug. Tightened in 1f8e90b and verified to bite. Audit sibling substring-only assertions for the same weakness."
   ],
   "cross_repo_report_only": [
     "flexicon #254 write-side twin: SetMorphType assigns bundle.MorphRA and its docstring example feeds it an IMoMorphType (WfiMorphBundleOperations.py:876-877, example :844-848) -- unfiled",
     "flexicon MediaOperations.GetHvo docstring teaches the #103 anti-pattern (MediaOperations.py:1497-1516) and it is re-served from our generated index at flexicon_api_v4.5.2.json:44013",
     "new liblcm bug: WriteCommitWork FileGeneration set after an early return (XMLBackendProvider.cs:518-527 vs SharedXMLBackendProvider.cs:499) -- FILED as FlexToolsMCP#107; reporting to sillsdev/liblcm remains a separate, untaken decision",
-    "#96's real fix (cache-bypassing verification read) was called flexicon-dependent, but that was not stress-tested -- check whether the generated runner can call SaveChanges() right after OpenProject before accepting the blocker"
+    "user-logs/Dennis-Logs/ shows real generated scripts using both the phantom CastingOperations. form and a flexlibs2.code.lcm_casting path -- corroborates #112/#113 and is a useful corpus for auditing other advertised remedies"
   ],
   "crew_mechanics": {
     "lex-qc": "NOT dispatchable in this environment (skill only) -- run the QC brief under general-purpose",
     "Explore": "has no Write tool -- use general-purpose for any task that must write its own report",
-    "artifact_check": "verify report files with `git ls-files specs/<feature>/`, not `ls`. Spurt 3 caught cycle7-programmer-p2.md untracked AFTER its code had shipped -- the same failure mode as CP-A. Land a report-tracking commit FIRST, before code, in every close.",
-    "mutation_rights": "when dispatching a gate pair in parallel, grant temporary-mutation rights to exactly ONE agent. Two agents mutating the same source for red/green corrupt each other's runs.",
-    "audit_rule": "audit for MECHANISM names, not just output shapes. Spurt 3's P0 (docs/TOOL-CONTRACT.md:209-211) survived a consumer audit that grepped `fix` and `Cast ` but missed the backticked `defined_on[0]`. Third contract-drift incident of this campaign.",
-    "remedy_rule": "verify a remedy exists before advertising it in any user-facing message. This precondition is what caught the cast_to_concrete phantom -- the programmer checked before adding a sixth advertisement and the check failed.",
-    "pyright": "ten-plus false positives reported as real bugs this campaign. Never report a Pyright finding without a confirming pytest / --collect-only / runtime check."
-  },
-  "resolved_blockers": {
-    "cp_b_severity_downgrade": "APPROVED by the user 2026-09-06 ('sharing on, fix and file at your discretion'), as scoped",
-    "liblcm_bug": "FILED as FlexToolsMCP#107 (MattGyverLee/liblcm has issues disabled)",
-    "target_preconditions": "MET -- projectSharing=true, open in FLEx PID 13272, .fwdata at Aug-18 baseline",
-    "b3_judgment_call": "RULED by the lead in spurt 3, under the user's 'fix and file at your discretion' delegation: neither 'repair the ranking' nor 'soften everywhere', but route the fix string through the existing resolver and soften only the ambiguous branch"
+    "read_only_agents_cannot_commit": "NEW, spurt 4. Read-only agents write their reports but have no commit rights, so all three cycle-10 reports landed UNTRACKED -- the third recurrence of the orphaned-report failure mode. FIX THAT WORKED: make a dedicated report-tracking commit the FIRST task of the next cycle, with explicit paths only. Never `git add -A`. Verify with `git ls-files`, not `ls`.",
+    "artifact_check": "verify report files with `git ls-files specs/<feature>/`, not `ls`. Land a report-tracking commit FIRST, before code, in every close.",
+    "mutation_rights": "when dispatching a gate pair in parallel, grant temporary-mutation rights to exactly ONE agent. Two agents mutating the same source for red/green corrupt each other's runs. Spurt 4 pattern that worked: pair a source-mutating programmer with a GitHub-only filing agent -- disjoint blast radii, safe in parallel.",
+    "audit_rule": "audit for MECHANISM names, not just output shapes. The third contract-drift incident of this campaign was a consumer audit that grepped the wrong token.",
+    "remedy_rule": "verify a remedy EXISTS, and verify its SIGNATURE, before advertising it. Spurt 4 upgraded this rule: existence alone was not enough -- Symbol B existed but was unary while every call site passed two args. Check arity, and check that every imported name is actually exported.",
+    "per_symbol_rule": "NEW, spurt 4. When a defect is described as 'X is advertised in N places', verify X is ONE symbol before filing. The CP-D handoff conflated a class method with a module-level function that had DIFFERENT statuses; a blanket issue would have been wrong.",
+    "pyright": "ten-plus false positives reported as real bugs this campaign. NEVER report a Pyright finding without a confirming pytest / --collect-only / runtime check. Spurt 4 added three more (versioning tuple-key findings, all stale mid-edit snapshots).",
+    "line_drift": "anchors drift constantly -- 2934 -> 2951 inside one cycle. Every brief must say 're-derive before editing'.",
+    "lockout": "team lex-crew-A. Run the CLI FROM THE REPO ROOT -- a stray `cd` previously caused src/src/... misresolution while the CLI still reported `acquired`. Verify echoed paths. Registry currently count: 0.",
+    "heredoc_warning": "writing this JSON via a bash heredoc silently failed (quoting) and left the OLD file in place while reporting an error. Always re-validate durable state after writing it: python -c \"import json; json.load(open(path))\" plus a spot-check of a NEW key."
   },
   "live_verification_preconditions": [
     "project sharing on",
     "FLEx parked on a non-editing view (TopMarkHandle == 0)",
-    "MCP SERVER RESTARTED after any runner-code change -- else evidence is about code that is not running"
+    "MCP SERVER RESTARTED after any runner-code change -- SATISFIED as of PID 4556, but re-check if any further server-code commit lands"
   ],
   "do_not_touch": [
     "src/flextoolsmcp/index/** -- no index refresh, no edits",
-    "D:\\Github\\_Projects\\_LEX\\flexicon -- READ-ONLY for this crew",
-    "src/flextoolsmcp/server/versioning.py -- deliberately untouched, docstring included, pending the design call",
-    "the uncommitted flexicon 4.4.1 -> 4.5.2 index migration, operations.jsonl, docs/logscan-state.json",
+    "D:\\Github\\_Projects\\_LEX\\flexicon -- READ-ONLY for this crew (reading and importing are fine)",
+    "the uncommitted flexicon 4.4.1 -> 4.5.2 index migration",
+    "docs/logscan-state.json and specs/logscan-2026-09-07/** -- the other crew's active territory, READ-ONLY",
     "specs/swahili-audit-2026-09/reviews/cycle1-domain.md and cycle1-explore-nullmorph.md -- await a user keep-or-drop call",
-    "Claude-Swahili -- live linguistic data, strictly off limits"
+    "Claude-Swahili -- live linguistic data, strictly off limits",
+    "src/flextoolsmcp/server/handlers/execution.py:3138 -- do NOT edit until the user authorizes the MCP#80 design (see blockers_needing_user item 1)"
   ],
   "updated": "2026-09-07"
 }

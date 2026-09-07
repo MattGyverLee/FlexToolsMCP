@@ -1,6 +1,6 @@
 # Cycle-6 programmer report -- P2-1 lexical scoping + P2-2 eval blindness
 
-Commit: **(pending -- see final commit sha in the commit this file ships with)**
+Commit: **1e301487139e2c1925e7ba632933564a69b3686b**
 
 ## Work item 1 -- lexical scope chain
 

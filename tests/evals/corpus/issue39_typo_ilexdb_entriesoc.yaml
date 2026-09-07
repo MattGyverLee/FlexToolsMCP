@@ -1,0 +1,31 @@
+intent: "Issue #39 verbatim repro: ILexDb.EntriesOC is a pure attribute typo (the real property is Entries), caught by detect_interface_attribute_typos via the shared casting-decision pipeline"
+api_mode: flexicon
+write_enabled: false
+code: |
+  d = ILexDb(project)
+  entries = d.EntriesOC
+  report.Info(str(entries))
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+notes: >
+  Cycle 6 (campaign P2-2 / QC's remaining P2-1): FAKE_API_INDEX.liblcm was
+  EMPTY, so _interface_member_names() (validators.py) returned set() for
+  every interface and detect_interface_attribute_typos() could never fire
+  in this Tier-1 corpus -- Gate 5 was correctly rewired in cycle 5 to call
+  it via _compute_casting_decision, but had nothing real to check the typo
+  against, so this whole class was untestable here despite looking covered.
+  FAKE_API_INDEX.liblcm now carries a small number of real-shaped entities
+  (ILexDb, IWfiAnalysis, mirroring liblcm_api_v11.0.0.json's property/method
+  shape) so this fixture can exercise the #39 typo class end to end: `d =
+  ILexDb(project)` establishes a confident cast, `.EntriesOC` does not exist
+  on ILexDb (the real property is `Entries`), and
+  detect_interface_attribute_typos flags it at severity="error", merged into
+  casting_issues by _compute_casting_decision -- hard-rejecting even though
+  write_enabled is false. Mirrors the unit-level coverage in
+  tests/test_issue40_casting_severity.py's FakeILexDbIndex-based tests. The
+  cycle-6 programmer report demonstrates this fixture going RED when typo
+  detection is disabled and GREEN when restored -- a coverage claim without
+  that demonstration was exactly the gap being closed here.
+issue: 39

@@ -494,6 +494,135 @@ class TestP1_1CandidateUnionFallback(unittest.TestCase):
         self.assertEqual(result["casting_issues"], [], result["casting_issues"])
 
 
+class FakeCrossFunctionIndex:
+    """Real-shaped stand-in for the cycle-6 cross-function leak repro:
+    `IMoStemMsa` has its own real property, but NOT `AddComponent` (that
+    method lives on `ILexEntry` in the real liblcm index -- verified
+    against `liblcm_api_v11.0.0.json`)."""
+
+    liblcm = {
+        "entities": {
+            "IMoStemMsa": {
+                "properties": [{"name": "InflectionClassRA"}],
+                "methods": [], "interfaces": [],
+            },
+        }
+    }
+    flexicon = {"entities": {}}
+    flexlibs_stable = {"entities": {}}
+
+
+class TestCycle6LexicalScopeChain(unittest.TestCase):
+    """Cycle 6: `_build_cast_candidate_set` is scoped to the usage's LEXICAL
+    SCOPE CHAIN (innermost enclosing FunctionDef/AsyncFunctionDef/Lambda,
+    then each enclosing function outward, then Module) rather than the
+    whole tree. QC found the whole-tree union leaks a cast across
+    UNRELATED `def` boundaries in both directions -- a false positive on
+    the typo detector and a false negative on the casting gate. Verified
+    against the real liblcm index too (not just these fakes) as part of
+    the cycle-6 report."""
+
+    def test_cross_function_leak_typo_false_positive_fixed(self):
+        """QC's verbatim repro: `def a` casts `obj` to `IMoStemMsa` and
+        reads `.Hvo`; the UNRELATED `def b` merely takes a same-named
+        parameter `obj` and calls `.AddComponent` (a method that exists on
+        neither `IMoStemMsa` nor anywhere in this fake index). `obj` inside
+        `b` has no cast anywhere in ITS lexical scope chain ([b, Module]) --
+        `a`'s local cast must never leak in, so the access must fall
+        through unchecked, not get flagged as a typo on a borrowed type."""
+        code = (
+            "def a(p):\n"
+            "    obj = IMoStemMsa(p)\n"
+            "    return obj.Hvo\n"
+            "\n"
+            "def b(obj):\n"
+            "    obj.AddComponent\n"
+        )
+        result = detect_interface_attribute_typos(ast.parse(code), FakeCrossFunctionIndex())
+        self.assertFalse(
+            result["has_typos"],
+            f"Cross-function candidate leak reintroduced (false positive): {result['issues']}"
+        )
+
+    def test_cross_function_leak_casting_false_negative_fixed(self):
+        """Mirror shape on the casting gate: `def a` casts `obj` to
+        `IWfiAnalysis`; the UNRELATED `def b` takes a same-named PARAMETER
+        `obj` (never cast in `b`'s own scope chain) and reads `.CategoryRA`,
+        which genuinely requires a cast. `a`'s cast must not leak into `b`
+        and silently suppress the flag -- that is the false-negative
+        direction, and the more dangerous one."""
+        index = {
+            "properties": {
+                "CategoryRA": {"defined_on": ["IWfiAnalysis"], "requires_cast_from": ["ICmObject"]},
+            },
+            "polymorphic_collections": {},
+        }
+        code = (
+            "def a(x):\n"
+            "    obj = IWfiAnalysis(x)\n"
+            "    return obj.Hvo\n"
+            "\n"
+            "def b(obj):\n"
+            "    return obj.CategoryRA\n"
+        )
+        result = detect_casting_needs(code, index)
+        flagged = {issue["property"] for issue in result["casting_issues"]}
+        self.assertIn(
+            "CategoryRA", flagged,
+            f"Cross-function leak suppressed a genuine uncast access: {result['casting_issues']}"
+        )
+
+    def test_bare_module_level_snippet_typo_still_detected(self):
+        """The naive 'nearest enclosing FunctionDef' fix QC literally
+        proposed would return `None` for a bare snippet (CLAUDE.md's
+        documented 'Lightweight op form' -- no `def` anywhere), yielding an
+        EMPTY candidate map and silently losing detection for the most
+        common exploratory shape. Module must always be the last scope in
+        the chain, so this must still detect."""
+        code = "d = ILexDb(project)\nx = d.EntriesOC\n"
+        result = detect_interface_attribute_typos(ast.parse(code), FakeILexDbIndex())
+        self.assertTrue(result["has_typos"], "bare module-level snippet typo must still be detected")
+
+    def test_module_level_cast_visible_inside_function(self):
+        """A cast at module level, used inside a function, is legitimately
+        visible per ordinary Python scoping -- it must not be lost just
+        because the usage is now scoped to a chain rather than the whole
+        tree. `d`'s cast lives in Module, which is always the outermost
+        link in `f`'s scope chain."""
+        code = (
+            "d = ILexDb(project)\n"
+            "def f():\n"
+            "    return d.EntriesOC\n"
+        )
+        result = detect_interface_attribute_typos(ast.parse(code), FakeILexDbIndex())
+        self.assertTrue(
+            result["has_typos"],
+            "module-level cast must remain visible to a nested function's usage"
+        )
+
+    def test_module_level_branch_conflated_cast_reaches_fallback_inside_function(self):
+        """Positional resolution fails here (the cast sits inside a
+        module-level `if`/`else`, which `_resolve_cast_type_at` does not
+        recurse into -- by design, to avoid #97 Bug 2's branch conflation),
+        forcing the CANDIDATE-UNION fallback. That fallback must still
+        reach module scope from inside `f`'s chain, proving the fallback
+        (not just positional resolution) includes Module, not only
+        positional resolution's own outward walk."""
+        code = (
+            "if cond:\n"
+            "    d = ILexDb(project)\n"
+            "else:\n"
+            "    d = ILexDb(project)\n"
+            "def f():\n"
+            "    return d.EntriesOC\n"
+        )
+        result = detect_interface_attribute_typos(ast.parse(code), FakeILexDbIndex())
+        self.assertTrue(
+            result["has_typos"],
+            "candidate-union fallback must still see a module-scope cast from inside a function"
+        )
+
+
 class TestParentsBindingUnderEmptyCastAliases(unittest.TestCase):
     """Issue #49 B-6: `_parents` in `detect_casting_needs` must be a
     structural binding (always a dict, even `{}`), not a correlation

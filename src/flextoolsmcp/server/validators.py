@@ -14,7 +14,7 @@ Provides checks for code structure, safety, and correctness:
 import re
 import ast
 import textwrap
-from typing import Dict, List, Set, Optional, Any, Tuple, TypeGuard
+from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard
 
 try:
     from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
@@ -965,11 +965,10 @@ def detect_interface_attribute_typos(
     # to resolve (cheap short-circuit for the common no-casts case).
     parents: Dict[ast.AST, ast.AST] = _build_parent_map(code_tree) if cast_aliases else {}
     # P1-1 candidate-union fallback (see module comment above
-    # `_build_cast_candidate_set`): only built when there's at least one
-    # cast alias, matching the `parents` short-circuit above.
-    candidates: Dict[str, Set[str]] = (
-        _build_cast_candidate_set(code_tree) if cast_aliases else {}
-    )
+    # `_build_cast_candidate_set`): built PER USAGE, scoped to that usage's
+    # lexical scope chain, only when positional resolution fails below --
+    # cycle 6 fix for the cross-function leak (a whole-tree build here would
+    # let a cast+typo in an unrelated function satisfy this one).
 
     issues: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str]] = set()
@@ -992,11 +991,14 @@ def detect_interface_attribute_typos(
                 # Positional resolution couldn't confidently attribute a
                 # single interface (e.g. cast in one `if`/`for`/`try` arm,
                 # used in a sibling arm or after). Fall back to the union
-                # of every interface this name is EVER cast to, anywhere
-                # in the tree, rather than dropping the check entirely --
-                # dropping it is exactly the P1-1 false-negative
-                # regression this fix closes.
-                resolved_interfaces = sorted(candidates.get(node.value.id, ()))
+                # of every interface this name is EVER cast to WITHIN THIS
+                # USAGE'S LEXICAL SCOPE CHAIN (see `_build_cast_candidate_set`),
+                # rather than dropping the check entirely -- dropping it is
+                # exactly the P1-1 false-negative regression this fix closes,
+                # and a whole-tree union is exactly the cross-function leak
+                # cycle 6 fixes.
+                scoped_candidates = _build_cast_candidate_set(node.value, parents, code_tree)
+                resolved_interfaces = sorted(scoped_candidates.get(node.value.id, ()))
         elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             fid = node.value.func.id
             if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
@@ -2489,23 +2491,98 @@ def _resolve_cast_type_at(
 # `_resolve_alias_maps`, which is shared with mutation detection and
 # `detect_hvo_literal_args`. Keeping out of other gates' blast radius is the
 # discipline that has held since cycle 1.
-def _build_cast_candidate_set(tree: ast.AST) -> Dict[str, Set[str]]:
+#
+# Cycle 6 (QC P2-1 + the lead's refinement): the walk below is NOT whole-tree
+# any more. A whole-tree walk leaks casts across `def` boundaries in BOTH
+# directions -- a cast+typo in one function's body wrongly satisfies a typo
+# check in an unrelated function (209 such false-positive combos among just
+# 12 common interfaces), AND a cast of the same variable NAME in an unrelated
+# function wrongly suppresses a genuine uncast access in another (the P1-1
+# false-negative direction). QC's literal suggestion -- "scope to the nearest
+# enclosing FunctionDef" -- breaks two dominant shapes if implemented that
+# way: bare module-level snippets (CLAUDE.md's documented "Lightweight op
+# form", no `def` anywhere) would get an EMPTY candidate map, and a
+# module-level cast legitimately used inside a function would be lost. The
+# correct scope is the usage's LEXICAL SCOPE CHAIN -- see
+# `_lexical_scope_chain` -- which always ends at the module root, so both of
+# those shapes keep full coverage while sibling/unrelated function bodies are
+# excluded.
+_SCOPE_DEF_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+_SCOPE_BOUNDARY_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+
+
+def _owning_scope(node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST) -> ast.AST:
+    """Nearest STRICT ancestor of `node` that is a FunctionDef /
+    AsyncFunctionDef / Lambda, or `tree` (the module root) if none exists --
+    e.g. a module-level bare snippet with no `def` anywhere, or `node` itself
+    being a top-level statement."""
+    current = parents.get(node)
+    while current is not None:
+        if isinstance(current, _SCOPE_DEF_TYPES):
+            return current
+        current = parents.get(current)
+    return tree
+
+
+def _lexical_scope_chain(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST
+) -> List[ast.AST]:
+    """`[innermost_scope, ..., tree]` for `node`: its own nearest enclosing
+    FunctionDef/AsyncFunctionDef/Lambda, then each further enclosing
+    function outward (so a nested helper still sees its enclosing
+    function's casts), then the module root `tree`. `tree` is always the
+    last element, so a usage with no enclosing `def` at all -- or a usage
+    inside a function that closes over a module-level cast -- still resolves
+    against module scope. Sibling and unrelated function bodies never appear
+    in this chain."""
+    chain: List[ast.AST] = []
+    scope = _owning_scope(node, parents, tree)
+    while True:
+        chain.append(scope)
+        if scope is tree:
+            break
+        scope = _owning_scope(scope, parents, tree)
+    return chain
+
+
+def _walk_scope_body(scope: ast.AST) -> Iterator[ast.AST]:
+    """Yield every node lexically owned by `scope` (its own statements,
+    including inside `if`/`for`/`while`/`try` -- those don't create a new
+    scope in Python), WITHOUT descending into a nested
+    FunctionDef/AsyncFunctionDef/Lambda/ClassDef -- each of those is a
+    separate scope, walked on its own when ITS chain is resolved. `scope`
+    itself is not yielded, only its descendants."""
+    stack = list(ast.iter_child_nodes(scope))
+    while stack:
+        n = stack.pop()
+        yield n
+        if isinstance(n, _SCOPE_BOUNDARY_TYPES):
+            continue
+        stack.extend(ast.iter_child_nodes(n))
+
+
+def _build_cast_candidate_set(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST
+) -> Dict[str, Set[str]]:
     """For every Name target directly assigned from an inline cast call
-    (`v = IFoo(...)`) ANYWHERE in `tree`, collect the set of interfaces that
-    name is ever cast to. Deliberately branch-UNAWARE (a flat scan, unlike
-    `_resolve_cast_type_at`) -- it exists only as a fallback for when the
-    branch-aware resolver can't confidently pick a single interface.
+    (`v = IFoo(...)`) visible to `node`'s LEXICAL SCOPE CHAIN (see
+    `_lexical_scope_chain`), collect the set of interfaces that name is
+    ever cast to. Deliberately branch-UNAWARE within each scope in the
+    chain (a flat scan, unlike `_resolve_cast_type_at`) -- it exists only as
+    a fallback for when the branch-aware resolver can't confidently pick a
+    single interface.
     """
     candidates: Dict[str, Set[str]] = {}
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-        ):
-            direct = _direct_cast_call_interface(node.value)
-            if direct is not None:
-                candidates.setdefault(node.targets[0].id, set()).add(direct)
+    for scope in _lexical_scope_chain(node, parents, tree):
+        for n in _walk_scope_body(scope):
+            if (
+                isinstance(n, ast.Assign)
+                and len(n.targets) == 1
+                and isinstance(n.targets[0], ast.Name)
+            ):
+                direct = _direct_cast_call_interface(n.value)
+                if direct is not None:
+                    candidates.setdefault(n.targets[0].id, set()).add(direct)
     return candidates
 
 
@@ -3733,15 +3810,11 @@ def detect_casting_needs(
         # to leave empty when cast_aliases is empty -- that guard makes the
         # second loop's _parents read unreachable -- but a reader (and
         # Pyright) should not have to reconstruct that across two guards.
-        # Same reasoning applies to `_candidates` (P1-1/P2-1 fallback map),
-        # hoisted alongside it for the identical structural reason.
         _parents: Dict[ast.AST, ast.AST] = {}
-        _candidates: Dict[str, Set[str]] = {}
         if cast_aliases:
             # Built once and reused for every branch-aware resolution below --
             # cheap short-circuit for the common no-casts-anywhere case.
             _parents = _build_parent_map(tree)
-            _candidates = _build_cast_candidate_set(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
                     continue
@@ -3756,13 +3829,17 @@ def detect_casting_needs(
                 else:
                     # P1-1/P2-1 candidate-union fallback: positional
                     # resolution couldn't confidently pick a branch, but
-                    # the name IS cast somewhere in the tree. Union every
-                    # interface it's ever cast to instead of dropping the
-                    # access entirely -- dropping it left the alias
-                    # untyped, which is what produced QC's false-positive
-                    # rejects (both if-arms used after; cast in for used
-                    # after the loop).
-                    ifaces = _candidates.get(root, set())
+                    # the name IS cast SOMEWHERE VISIBLE TO THIS USAGE'S
+                    # LEXICAL SCOPE CHAIN (cycle 6: scoped, not whole-tree --
+                    # see `_build_cast_candidate_set`). Union every interface
+                    # it's ever cast to in that chain instead of dropping the
+                    # access entirely -- dropping it left the alias untyped,
+                    # which is what produced QC's false-positive rejects
+                    # (both if-arms used after; cast in for used after the
+                    # loop).
+                    ifaces = _build_cast_candidate_set(node.value, _parents, tree).get(
+                        root, set()
+                    )
                 if not ifaces:
                     continue
                 for iface in ifaces:
@@ -3784,12 +3861,13 @@ def detect_casting_needs(
                 # Branch-aware: only count the chain root as "typed" if a
                 # cast is actually in effect for THIS branch, not merely
                 # somewhere in the whole function -- OR the fallback
-                # candidate set is non-empty (positional resolution failed
-                # but the name is cast somewhere; this check only needs
-                # "typed at all", not which interface).
+                # candidate set, scoped to THIS usage's lexical scope chain,
+                # is non-empty (positional resolution failed but the name is
+                # cast somewhere visible; this check only needs "typed at
+                # all", not which interface).
                 typed_root = (
                     _resolve_cast_type_at(root, _parents, root.id) is not None
-                    or bool(_candidates.get(root.id))
+                    or bool(_build_cast_candidate_set(root, _parents, tree).get(root.id))
                 )
             elif isinstance(root, ast.Call) and isinstance(root.func, ast.Name):
                 fid = root.func.id

@@ -148,6 +148,38 @@ class _FakeAPIIndex:
             "polymorphic_collections": {},
         }
 
+        # Cycle 6 (QC P2-2 / campaign P2-2): this dict was EMPTY, so
+        # `_interface_member_names` (validators.py) returned `set()` for
+        # every interface and `detect_interface_attribute_typos` could
+        # NEVER fire in this corpus -- Gate 5 above calls it via
+        # `_compute_casting_decision`, but a real typo (e.g. `ILexDb.
+        # EntriesOC`) had nothing to be measured against. Populated here
+        # with a SMALL number of REAL interface entities, shaped exactly
+        # like `src/flextoolsmcp/index/liblcm/liblcm_api_v11.0.0.json`
+        # (property/method dicts keyed by "name", verified against that
+        # file, NOT copied wholesale and NOT regenerated -- this file is
+        # off-limits to this campaign). `ILexDb.Entries` is real;
+        # `EntriesOC` is issue #39's verbatim typo and exists on NEITHER
+        # entity below, so the corpus fixture exercising it can actually
+        # go red if typo detection breaks (see
+        # issue39_typo_ilexdb_entriesoc.yaml and this file's own
+        # demonstrated red/green proof in the cycle-6 report).
+        self.liblcm: Dict[str, Any] = {
+            "entities": {
+                "ILexDb": {
+                    "properties": [{"name": "Entries"}],
+                    "methods": [],
+                    "interfaces": [],
+                },
+                "IWfiAnalysis": {
+                    "properties": [{"name": "CategoryRA"}],
+                    "methods": [],
+                    "interfaces": [],
+                },
+            }
+        }
+        self.flexlibs_stable: Dict[str, Any] = {"entities": {}}
+
     def ensure_casting_index_loaded(self) -> None:
         pass
 
@@ -283,10 +315,14 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
     # the shared _compute_casting_decision pipeline (same one
     # handle_run_module and _handle_validate_only use), which also runs
     # detect_interface_attribute_typos against FAKE_API_INDEX -- this
-    # runner now models the typo class too, to the extent FAKE_API_INDEX's
-    # entities cover it (real-index-only interfaces still fall through as
-    # "unknown, can't check", same documented scope limit as every other
-    # index-aware gate here). Mirrors execution.handle_run_module's
+    # runner now models the typo class too. Cycle 6: FAKE_API_INDEX.liblcm
+    # used to be EMPTY, so this coverage claim was false (typo detection
+    # could never fire against it at all); it now carries a small number of
+    # real-shaped liblcm entities (`ILexDb`, `IWfiAnalysis`) specifically so
+    # a genuine typo like `ILexDb.EntriesOC` (issue #39's verbatim repro)
+    # can be caught here. Interfaces NOT in that small set still fall
+    # through as "unknown, can't check", same documented scope limit as
+    # every other index-aware gate here. Mirrors execution.handle_run_module's
     # post-#40-B-1 / post-#39-P1-2 decision.
     casting = _compute_casting_decision(code, FAKE_API_INDEX.casting_index, tree, FAKE_API_INDEX)
     advisories: list = []

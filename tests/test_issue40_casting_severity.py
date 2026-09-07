@@ -320,6 +320,179 @@ class TestBranchAwareVariableTyping(unittest.TestCase):
             f"line 7; got: {result['casting_issues']}"
         )
 
+    def test_PROMINENT_bug2_msa_repro_still_zero_false_positives_after_p1_fix(self):
+        """PROMINENT, deliberately named: cycle 5's P1-1 candidate-union
+        fallback is the regression this fix could most easily reintroduce
+        (a naive "recurse into ast.If too" fix WOULD reintroduce #97 Bug 2 --
+        see the lead's ruling in
+        specs/swahili-audit-2026-09/tasks-bugfix-campaign.md). Re-asserts
+        the verbatim 4-branch MSA repro at ZERO false positives through
+        BOTH detectors the fallback touches: detect_interface_attribute_typos
+        (see test_issue97_bug2_if_elif_branches_no_false_positive above,
+        unchanged) AND detect_casting_needs (via the SlotsRC defined_on
+        check, exercising line_var_cast_types)."""
+        tree = ast.parse(
+            "def f(msa, cn):\n"
+            "    if cn == \"MoStemMsa\":\n"
+            "        m = IMoStemMsa(msa)\n"
+            "        return m.InflectionClassRA\n"
+            "    elif cn == \"MoInflAffMsa\":\n"
+            "        m = IMoInflAffMsa(msa)\n"
+            "        return m.SlotsRC\n"
+            "    elif cn == \"MoDerivAffMsa\":\n"
+            "        m = IMoDerivAffMsa(msa)\n"
+            "        return m.FromPartOfSpeechRA\n"
+            "    elif cn == \"MoUnclassifiedAffixMsa\":\n"
+            "        m = IMoUnclassifiedAffixMsa(msa)\n"
+        )
+        typo_result = detect_interface_attribute_typos(tree, FakeMSAIndex())
+        self.assertFalse(
+            typo_result["has_typos"],
+            f"P1-1 fallback reintroduced Bug 2 in the typo detector: {typo_result['issues']}"
+        )
+
+        casting_index = {
+            "properties": {
+                "SlotsRC": {"defined_on": ["IMoInflAffMsa"], "requires_cast_from": ["ICmObject"]},
+                "InflectionClassRA": {"defined_on": ["IMoStemMsa"], "requires_cast_from": ["ICmObject"]},
+                "FromPartOfSpeechRA": {"defined_on": ["IMoDerivAffMsa"], "requires_cast_from": ["ICmObject"]},
+            },
+            "polymorphic_collections": {},
+        }
+        code = (
+            "def f(msa, cn):\n"
+            "    if cn == \"MoStemMsa\":\n"
+            "        m = IMoStemMsa(msa)\n"
+            "        return m.InflectionClassRA\n"
+            "    elif cn == \"MoInflAffMsa\":\n"
+            "        m = IMoInflAffMsa(msa)\n"
+            "        return m.SlotsRC\n"
+            "    elif cn == \"MoDerivAffMsa\":\n"
+            "        m = IMoDerivAffMsa(msa)\n"
+            "        return m.FromPartOfSpeechRA\n"
+        )
+        casting_result = detect_casting_needs(code, casting_index)
+        self.assertEqual(
+            casting_result["casting_issues"], [],
+            f"P1-1 fallback reintroduced Bug 2 in detect_casting_needs: {casting_result['casting_issues']}"
+        )
+
+
+class FakeILexDbIndex:
+    """Real-shaped stand-in for the P1-1 repro shapes: `ILexDb.Entries` is
+    the real property; `EntriesOC` (the typo) exists nowhere."""
+
+    liblcm = {"entities": {"ILexDb": {"properties": [{"name": "Entries"}], "methods": []}}}
+    flexicon = {"entities": {}}
+    flexlibs_stable = {"entities": {}}
+
+
+class TestP1_1CandidateUnionFallback(unittest.TestCase):
+    """Cycle 5, issue #39 P1-1: `_resolve_cast_type_at` (branch-aware,
+    b5f41d8) returns `None` whenever it can't confidently attribute a
+    SINGLE interface to a usage (cast in one `if`/`for`/`try` arm, used in
+    a sibling arm or after). QC and the main session independently
+    reproduced that `detect_interface_attribute_typos` responded to `None`
+    by dropping the check entirely -- a false-negative regression, since
+    `EntriesOC` doesn't exist on ANY interface and previously hard-rejected
+    on both read-only and write runs. The fix is a candidate-union
+    fallback (see the lead's ruling): union every interface the name is
+    EVER cast to, and flag only if the attribute exists on NONE of them.
+
+    Each `has_typos` assertion below documents the PRE-FIX result in the
+    docstring/comment for contrast; all four now assert `True` again.
+    """
+
+    def _has_typos(self, code: str) -> bool:
+        tree = ast.parse(code)
+        result = detect_interface_attribute_typos(tree, FakeILexDbIndex())
+        return result["has_typos"]
+
+    def test_cast_in_if_used_after_still_detects_typo(self):
+        """Pre-fix: False (regression). Post-fix: True."""
+        code = (
+            "def f(project, cn):\n"
+            "    if cn == \"a\":\n"
+            "        d = ILexDb(project)\n"
+            "    else:\n"
+            "        d = ILexDb(project)\n"
+            "    return d.EntriesOC\n"
+        )
+        self.assertTrue(self._has_typos(code), "cast-in-if-used-after typo must still be detected")
+
+    def test_cast_in_try_used_in_except_still_detects_typo(self):
+        """Pre-fix: False (regression). Post-fix: True."""
+        code = (
+            "def f(project):\n"
+            "    try:\n"
+            "        d = ILexDb(project)\n"
+            "        risky()\n"
+            "    except Exception:\n"
+            "        return d.EntriesOC\n"
+        )
+        self.assertTrue(self._has_typos(code), "cast-in-try-used-in-except typo must still be detected")
+
+    def test_cast_in_for_used_after_still_detects_typo(self):
+        """Pre-fix: False (regression). Post-fix: True."""
+        code = (
+            "def f(project, items):\n"
+            "    for it in items:\n"
+            "        d = ILexDb(project)\n"
+            "    return d.EntriesOC\n"
+        )
+        self.assertTrue(self._has_typos(code), "cast-in-for-used-after typo must still be detected")
+
+    def test_control_flat_cast_then_use_still_detects_typo(self):
+        """CONTROL: never regressed (positional resolution always succeeds
+        here) -- included so the four-shape table has a same-index
+        baseline alongside the three previously-broken shapes."""
+        code = (
+            "def f(project):\n"
+            "    d = ILexDb(project)\n"
+            "    return d.EntriesOC\n"
+        )
+        self.assertTrue(self._has_typos(code), "flat cast-then-use typo must be detected (control)")
+
+    def test_p2_1_casting_gate_if_both_arms_used_after_suppressed(self):
+        """QC P2-1 companion (same mechanism, casting gate side): cast in
+        BOTH if/else arms, used after the conditional -- a real interface
+        satisfies, so detect_casting_needs must suppress, not
+        false-positive reject."""
+        index = {
+            "properties": {
+                "CategoryRA": {"defined_on": ["IWfiAnalysis"], "requires_cast_from": ["ICmObject"]},
+            },
+            "polymorphic_collections": {},
+        }
+        code = (
+            "def f(ana, cn):\n"
+            "    if cn == \"a\":\n"
+            "        wa = IWfiAnalysis(ana)\n"
+            "    else:\n"
+            "        wa = IWfiAnalysis(ana)\n"
+            "    return wa.CategoryRA\n"
+        )
+        result = detect_casting_needs(code, index)
+        self.assertEqual(result["casting_issues"], [], result["casting_issues"])
+
+    def test_p2_1_casting_gate_for_used_after_loop_suppressed(self):
+        """QC P2-1 companion: cast inside a `for` loop body, used after the
+        loop -- suppressed via the same candidate-union mechanism."""
+        index = {
+            "properties": {
+                "CategoryRA": {"defined_on": ["IWfiAnalysis"], "requires_cast_from": ["ICmObject"]},
+            },
+            "polymorphic_collections": {},
+        }
+        code = (
+            "def f(ana_list):\n"
+            "    for ana in ana_list:\n"
+            "        wa = IWfiAnalysis(ana)\n"
+            "    return wa.CategoryRA\n"
+        )
+        result = detect_casting_needs(code, index)
+        self.assertEqual(result["casting_issues"], [], result["casting_issues"])
+
 
 class TestParentsBindingUnderEmptyCastAliases(unittest.TestCase):
     """Issue #49 B-6: `_parents` in `detect_casting_needs` must be a

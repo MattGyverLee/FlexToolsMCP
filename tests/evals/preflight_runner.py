@@ -45,7 +45,6 @@ from server.validators import (
     validate_server_state,
     detect_partial_module_structure,
     certify_script_readonly,
-    detect_casting_needs,
     detect_undiscovered_entities,
     detect_undefined_variables,
     detect_missing_operations_imports,
@@ -54,6 +53,14 @@ from server.validators import (
     detect_getall_unsafe_idiom,
 )
 from server import kernel
+
+# Issue #39/#40 P1-2 (cycle 5): Gate 5 below must go through the SAME
+# shared casting-decision pipeline as handle_run_module and
+# _handle_validate_only (see execution._compute_casting_decision's
+# docstring). Previously this runner called detect_casting_needs directly
+# and never modeled detect_interface_attribute_typos at all -- its own
+# comment admitted Tier-1 evals were blind to the whole #39 typo class.
+from server.handlers.execution import _compute_casting_decision
 
 
 # ---------------------------------------------------------------------------
@@ -270,19 +277,22 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
         )
 
     # Gate 5: casting_issues_detected. Issue #40 B-1: on a READ-ONLY run, a
-    # casting issue set where EVERY issue is warning-tier (index-derived
-    # lookup only -- never a known-pattern hit, and this runner never calls
-    # detect_interface_attribute_typos so no typo-derived "error" issues are
-    # modeled either) is a non-blocking advisory, not a preflight reject. A
-    # write_enabled run always rejects regardless of severity. Mirrors
-    # execution.handle_run_module's post-#40-B-1 decision.
-    casting = detect_casting_needs(code, FAKE_API_INDEX.casting_index, tree)
+    # casting issue set where EVERY issue is warning-tier is a non-blocking
+    # advisory, not a preflight reject. A write_enabled run always rejects
+    # regardless of severity. Issue #39/#40 P1-2 (cycle 5): routed through
+    # the shared _compute_casting_decision pipeline (same one
+    # handle_run_module and _handle_validate_only use), which also runs
+    # detect_interface_attribute_typos against FAKE_API_INDEX -- this
+    # runner now models the typo class too, to the extent FAKE_API_INDEX's
+    # entities cover it (real-index-only interfaces still fall through as
+    # "unknown, can't check", same documented scope limit as every other
+    # index-aware gate here). Mirrors execution.handle_run_module's
+    # post-#40-B-1 / post-#39-P1-2 decision.
+    casting = _compute_casting_decision(code, FAKE_API_INDEX.casting_index, tree, FAKE_API_INDEX)
     advisories: list = []
     if casting["has_casting_issues"]:
         _casting_issues = casting["casting_issues"]
-        _has_error_severity = any(
-            (i.get("severity") == "error") for i in _casting_issues
-        )
+        _has_error_severity = casting["has_error_severity"]
         if write_enabled or _has_error_severity:
             return PreflightResult(
                 "preflight_reject",

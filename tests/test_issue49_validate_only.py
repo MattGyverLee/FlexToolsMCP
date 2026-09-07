@@ -370,18 +370,47 @@ class TestCastingGateAgreesWithRealGate:
         assert by_gate["casting"]["passed"] is False
 
 
-def test_validate_only_agrees_with_run_module_on_readonly_warning_tier_casting(monkeypatch, tmp_path):
-    """Issue #49 B-5, end-to-end: for the SAME code and write_enabled=False,
-    validate_only's verdict must match what handle_run_module(validate_only=
-    False) actually does. A warning-tier-only casting issue set is
-    downgraded (proceeds) by the real gate per issue #40 B-1; validate_only
-    must report `validated`, not `validation_failed`, for the identical
-    input."""
+class _RealCastingFakeIndex:
+    """Real-shaped stand-in used by the end-to-end validate_only/run_module
+    agreement tests below -- deliberately exercises REAL
+    `detect_casting_needs` AND REAL `detect_interface_attribute_typos`,
+    neither monkeypatched. Issue #39/#40 P1-2 (cycle 5): the predecessor of
+    these tests monkeypatched `detect_interface_attribute_typos` to always
+    return no typos, which made the test structurally unable to catch the
+    bug it existed to guard -- `_build_validate_only_checks`'s Gate 5 never
+    called that detector at all, so `validate_only` silently disagreed with
+    `run_module` on the whole #39 typo class. A test that stubs out the
+    component whose interaction is under test validates nothing.
+
+    `IWfiAnalysis.CategoryRA` backs the genuine warning-tier casting hit;
+    `ILexDb.Entries` (not `EntriesOC`) backs the genuine typo hit.
+    """
+
+    liblcm = {
+        "entities": {
+            "IWfiAnalysis": {"properties": [{"name": "CategoryRA"}], "methods": []},
+            "ILexDb": {"properties": [{"name": "Entries"}], "methods": []},
+        }
+    }
+    flexicon = {"entities": {}}
+    flexlibs_stable = {"entities": {}}
+    casting_index = {
+        "properties": {
+            "CategoryRA": {
+                "requires_cast_from": ["ICmObject"],
+                "defined_on": ["IWfiAnalysis"],
+            },
+        },
+        "polymorphic_collections": {},
+    }
+
+
+def _stub_agreement_env(monkeypatch, tmp_path):
     if kernel.get_operations_logger() is None:
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
     monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
-    monkeypatch.setattr(execution_mod, "get_api_index", lambda: None)
+    monkeypatch.setattr(execution_mod, "get_api_index", lambda: _RealCastingFakeIndex())
     monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
     monkeypatch.setattr(execution_mod, "validate_server_state", lambda: {"is_healthy": True, "issues": []})
     monkeypatch.setattr(
@@ -391,18 +420,6 @@ def test_validate_only_agrees_with_run_module_on_readonly_warning_tier_casting(m
             "mutating_calls": [], "unprotected_liblcm_calls": [],
         },
     )
-    monkeypatch.setattr(
-        execution_mod, "detect_casting_needs",
-        lambda code, casting_index, tree: {
-            "has_casting_issues": True,
-            "casting_issues": [{"property": "Foo", "line": 1, "severity": "warning", "fix": "cast it to IFoo"}],
-            "severity": "warning",
-        },
-    )
-    monkeypatch.setattr(
-        execution_mod, "detect_interface_attribute_typos",
-        lambda code_tree, api_idx: {"has_typos": False, "issues": [], "suggestion": ""},
-    )
 
     async def fake_run_script_async(path, timeout_seconds=None):
         return {
@@ -411,8 +428,21 @@ def test_validate_only_agrees_with_run_module_on_readonly_warning_tier_casting(m
         }
     monkeypatch.setattr(execution_mod, "run_script_async", fake_run_script_async)
 
+
+def test_validate_only_agrees_with_run_module_on_readonly_warning_tier_casting(monkeypatch, tmp_path):
+    """Issue #49 B-5, end-to-end, REAL detection (cycle 5 rewrite -- see
+    _RealCastingFakeIndex): for the SAME code and write_enabled=False,
+    validate_only's verdict must match what handle_run_module(validate_only=
+    False) actually does. A warning-tier-only casting issue set is
+    downgraded (proceeds) by the real gate per issue #40 B-1; validate_only
+    must report `validated`, not `validation_failed`, for the identical
+    input. `ana.CategoryRA` is uncast (no cast alias in scope), so REAL
+    detect_interface_attribute_typos naturally has nothing to check here --
+    this exercises the genuine downgrade path end to end, not a stub of it."""
+    _stub_agreement_env(monkeypatch, tmp_path)
+
     base_args = {
-        "code": "print('hi')\n",
+        "code": "def f(ana):\n    return ana.CategoryRA\n",
         "project_name": "TestProj",
         "write_enabled": False,
         "skip_api_check": True,
@@ -437,6 +467,51 @@ def test_validate_only_agrees_with_run_module_on_readonly_warning_tier_casting(m
     assert validate_data["status"] == "validated", validate_data
     by_gate = {c["gate"]: c for c in validate_data["checks"]}
     assert by_gate["casting"]["passed"] is True, by_gate["casting"]
+
+
+def test_validate_only_agrees_with_run_module_on_readonly_typo_class(monkeypatch, tmp_path):
+    """Issue #39/#40 P1-2 regression, REAL detection (cycle 5): a pure
+    attribute typo (`ILexDb.EntriesOC` -> `Entries`) is a genuine ERROR, not
+    a downgradeable warning -- it must hard-reject on BOTH run_module and
+    validate_only for the SAME read-only input.
+
+    Before the fix, `_build_validate_only_checks`'s Gate 5 never called
+    `detect_interface_attribute_typos` at all (only `handle_run_module`
+    did), so validate_only reported `passed: True` / "run_module would
+    proceed without rejecting" for code that run_module actually
+    hard-rejects -- a false reassurance across the whole #39 typo class.
+    Both call sites now share `_compute_casting_decision`, so this can no
+    longer drift."""
+    _stub_agreement_env(monkeypatch, tmp_path)
+
+    base_args = {
+        "code": "d = ILexDb(project)\nx = d.EntriesOC\n",
+        "project_name": "TestProj",
+        "write_enabled": False,
+        "skip_api_check": True,
+        "skip_module_check": True,
+    }
+
+    validate_result = asyncio.run(
+        execution_mod.handle_run_module({**base_args, "validate_only": True})
+    )
+    validate_data = _parse(validate_result)
+
+    run_result = asyncio.run(
+        execution_mod.handle_run_module({**base_args, "validate_only": False})
+    )
+    run_data = _parse(run_result)
+
+    # The real gate hard-rejects -- a genuine typo is "error" tier, never
+    # downgradeable regardless of write_enabled.
+    assert run_data.get("error_code") == "casting_issues_detected", run_data
+
+    # validate_only must agree, not silently pass -- this is the P1-2 bug.
+    assert validate_data["status"] == "validation_failed", validate_data
+    by_gate = {c["gate"]: c for c in validate_data["checks"]}
+    assert by_gate["casting"]["passed"] is False, by_gate["casting"]
+    reported = {ci.get("property") for ci in by_gate["casting"]["issues"]}
+    assert "EntriesOC" in reported, by_gate["casting"]
 
 
 # ---------------------------------------------------------------------------

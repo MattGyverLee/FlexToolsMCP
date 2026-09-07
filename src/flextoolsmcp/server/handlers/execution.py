@@ -1701,6 +1701,52 @@ def _has_error_severity_casting_issue(issues: List[Dict[str, Any]]) -> bool:
     return any((i.get("severity") == "error") for i in issues)
 
 
+def _compute_casting_decision(
+    code: str,
+    casting_index: Optional[Dict[str, Any]],
+    code_tree: Optional[ast.AST],
+    api_idx: Any,
+) -> Dict[str, Any]:
+    """Issue #39/#40 P1-2 (cycle 5): the SINGLE shared casting-decision
+    pipeline. Cycle 4's `handle_run_module` folded
+    `detect_interface_attribute_typos` into `casting_issues` and forced
+    `severity="error"` at its own call site; `_build_validate_only_checks`'s
+    Gate 5 (and the Tier-1 eval runner's own Gate 5) never called
+    `detect_interface_attribute_typos` at all. Only the has-error PREDICATE
+    (`_has_error_severity_casting_issue`) was shared -- sharing the
+    predicate but not the inputs is exactly what produced the P1-2 false
+    reassurance (`validate_only` said `passed: True` for code
+    `run_module` hard-rejects). Every caller that needs a casting
+    verdict -- `handle_run_module`, `_handle_validate_only`'s Gate 5, and
+    `tests/evals/preflight_runner.py`'s Gate 5 -- MUST go through this
+    function instead of calling `detect_casting_needs` +
+    `detect_interface_attribute_typos` separately.
+
+    Returns the same shape as `detect_casting_needs()`, with `casting_issues`
+    /`has_casting_issues`/`severity` updated to include any merged-in typo
+    issues, plus one new key:
+      - has_error_severity: bool -- the shared predicate's verdict, so
+        callers never re-derive it (and can't drift) either.
+    """
+    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    typo_check = detect_interface_attribute_typos(code_tree, api_idx)
+    if typo_check["has_typos"]:
+        # Issue #39: a pure attribute typo (e.g. ILexDb.EntriesOC) doesn't
+        # exist on ANY interface, so detect_casting_needs' casting_index
+        # lookup silently misses it -- merge it into the same
+        # casting_issues list/reject path so it can't slip through as a
+        # "warning"-tier issue eligible for the read-only downgrade below.
+        casting_check["casting_issues"] = (
+            casting_check.get("casting_issues") or []
+        ) + typo_check["issues"]
+        casting_check["has_casting_issues"] = True
+        casting_check["severity"] = "error"
+    casting_check["has_error_severity"] = _has_error_severity_casting_issue(
+        casting_check.get("casting_issues") or []
+    )
+    return casting_check
+
+
 def _build_validate_only_checks(
     *,
     code: str,
@@ -1780,18 +1826,26 @@ def _build_validate_only_checks(
         checks.append({"gate": "unprotected_writes", "passed": True})
 
     # --- Gate 5: casting ---
+    # Issue #39/#40 P1-2 (cycle 5): route through the SAME shared pipeline
+    # handle_run_module uses (_compute_casting_decision), not just the same
+    # PREDICATE. Cycle 4 shared only `_has_error_severity_casting_issue` and
+    # never called detect_interface_attribute_typos here at all, so a pure
+    # attribute typo (e.g. ILexDb.EntriesOC) was invisible to validate_only
+    # even though it hard-rejects in the real run_module call -- a false
+    # "passed: True" reassurance for the whole #39 typo class.
     casting_index = getattr(api_idx, "casting_index", None) if api_idx else None
-    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    casting_check = _compute_casting_decision(code, casting_index, code_tree, api_idx)
     if casting_check["has_casting_issues"]:
         issues = casting_check["casting_issues"]
         # Issue #49 B-5: this verdict must agree with what handle_run_module
         # would actually do for the same code and write_enabled value -- a
         # dry-run validator that disagrees with the real gate teaches users
-        # to ignore it (issue #40). Reuse the SAME predicate the real gate
-        # uses (see _has_error_severity_casting_issue) rather than keying on
+        # to ignore it (issue #40). Reuse the SAME predicate result the real
+        # gate uses (see _has_error_severity_casting_issue, computed once
+        # inside _compute_casting_decision) rather than keying on
         # has_casting_issues alone. Issues are still fully reported either
         # way; only the pass/fail verdict is affected.
-        _has_error = _has_error_severity_casting_issue(issues)
+        _has_error = casting_check["has_error_severity"]
         _downgraded = (not write_enabled) and not _has_error
         check_entry = {
             "gate": "casting",
@@ -2863,27 +2917,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
+    # Issue #39/#40 P1-2 (cycle 5): routes through the single shared
+    # _compute_casting_decision pipeline (detect_casting_needs +
+    # detect_interface_attribute_typos merge + severity="error" forcing +
+    # the has-error predicate) -- see that function's docstring. Every
+    # caller of a casting verdict (this function, _handle_validate_only's
+    # Gate 5, and the eval runner's Gate 5) MUST go through it so none of
+    # them can drift from what the others decide.
     api_idx = get_api_index()
     casting_index = api_idx.casting_index if api_idx else None
-    casting_check = detect_casting_needs(code, casting_index, code_tree)
-
-    # Issue #39: high-confidence attribute typos on a statically-typed
-    # receiver (ILexDb.EntriesOC -> Entries, fp.InflectionFeature ->
-    # InflectionFeatures where fp = FLExProject(...)) used to only surface as
-    # a runtime "hint" after the code had already crashed inside an open LCM
-    # transaction -- and the hint's own "resubmit, preflight will catch it"
-    # message was false, because detect_casting_needs' casting_index lookup
-    # only recognizes properties that genuinely require a cast, not pure
-    # typos that don't exist anywhere. Merge typo issues into the same
-    # casting_issues list/reject path so run_module rejects BEFORE execution,
-    # carrying casting_issues[*].rewrite same as a genuine casting issue.
-    typo_check = detect_interface_attribute_typos(code_tree, api_idx)
-    if typo_check["has_typos"]:
-        casting_check["casting_issues"] = (
-            casting_check.get("casting_issues") or []
-        ) + typo_check["issues"]
-        casting_check["has_casting_issues"] = True
-        casting_check["severity"] = "error"
+    casting_check = _compute_casting_decision(code, casting_index, code_tree, api_idx)
 
     if casting_check["has_casting_issues"]:
         issues = casting_check["casting_issues"]
@@ -2900,10 +2943,12 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         # exactly as before. This downgrade is GATE-LOCAL to the casting
         # gate's warning tier -- no other preflight gate (unprotected_writes,
         # hvo_literal_write_risk, nested_unit_of_work) is touched by it.
-        # _has_error_severity_casting_issue is a MODULE-LEVEL function shared
-        # with _build_validate_only_checks's Gate 5 (issue #49 B-5) so the
+        # has_error_severity was computed once inside _compute_casting_decision
+        # (issue #39/#40 P1-2, cycle 5) via the shared
+        # _has_error_severity_casting_issue predicate, also consumed by
+        # _build_validate_only_checks's Gate 5 (issue #49 B-5) so the
         # dry-run validator can never drift from this real decision again.
-        if (not write_enabled) and not _has_error_severity_casting_issue(issues):
+        if (not write_enabled) and not casting_check["has_error_severity"]:
             get_operations_logger().info(
                 f"Preflight casting: issues={len(issues)} severity=warning "
                 "(read-only run) -- proceeding without rejecting (issue #40 B-1)."

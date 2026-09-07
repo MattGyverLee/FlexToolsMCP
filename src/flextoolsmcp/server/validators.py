@@ -964,6 +964,12 @@ def detect_interface_attribute_typos(
     # usage. Only build the parent map when there's at least one cast alias
     # to resolve (cheap short-circuit for the common no-casts case).
     parents: Dict[ast.AST, ast.AST] = _build_parent_map(code_tree) if cast_aliases else {}
+    # P1-1 candidate-union fallback (see module comment above
+    # `_build_cast_candidate_set`): only built when there's at least one
+    # cast alias, matching the `parents` short-circuit above.
+    candidates: Dict[str, Set[str]] = (
+        _build_cast_candidate_set(code_tree) if cast_aliases else {}
+    )
 
     issues: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str]] = set()
@@ -974,20 +980,39 @@ def detect_interface_attribute_typos(
         if attr in _CASTING_ALWAYS_SAFE_MEMBERS or _is_multistring_value_member(attr):
             continue
 
-        interface: Optional[str] = None
+        resolved_interfaces: List[str] = []
         if isinstance(node.value, ast.Name) and node.value.id in cast_aliases:
-            interface = _resolve_cast_type_at(node.value, parents, node.value.id)
+            positional = _resolve_cast_type_at(node.value, parents, node.value.id)
+            if positional is not None:
+                # Preferred path: branch-aware resolution confidently
+                # picked a single interface -- behave exactly as before
+                # the P1-1 fix.
+                resolved_interfaces = [positional]
+            else:
+                # Positional resolution couldn't confidently attribute a
+                # single interface (e.g. cast in one `if`/`for`/`try` arm,
+                # used in a sibling arm or after). Fall back to the union
+                # of every interface this name is EVER cast to, anywhere
+                # in the tree, rather than dropping the check entirely --
+                # dropping it is exactly the P1-1 false-negative
+                # regression this fix closes.
+                resolved_interfaces = sorted(candidates.get(node.value.id, ()))
         elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             fid = node.value.func.id
             if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
-                interface = fid
+                resolved_interfaces = [fid]
 
-        if not interface:
+        if not resolved_interfaces:
             continue
 
-        members = _interface_member_names(interface, api_index)
+        members: Set[str] = set()
+        for iface in resolved_interfaces:
+            members |= _interface_member_names(iface, api_index)
         if not members or attr in members:
-            continue  # unknown interface (can't check) or genuinely valid member
+            # Unknown interface(s) (can't check), OR the attribute exists
+            # on at least one candidate -- flag only if it exists on NONE,
+            # per the lead's ruling.
+            continue
 
         close = _suggest_attribute_matches(attr, list(members), cutoff=_INTERFACE_TYPO_CUTOFF)
         if not close:
@@ -997,6 +1022,7 @@ def detect_interface_attribute_typos(
         if ratio < _INTERFACE_TYPO_MIN_RATIO:
             continue
 
+        interface = "/".join(resolved_interfaces)
         try:
             receiver_src = ast.unparse(node.value)
         except Exception:
@@ -2371,6 +2397,23 @@ def _scan_backward_for_cast(
                     found = _scan_backward_for_cast(sub, len(sub), var_name, parents)
                     if found is not None:
                         return found
+            # Issue #39/#97 P1-1 (d), QC P2-1: `ExceptHandler.body` is NOT
+            # reachable via body/orelse/finalbody -- each handler's body is
+            # its own statement list, one level deeper than Try's own
+            # fields, so it was silently skipped even though `stmt` here IS
+            # a `Try`. A cast made inside an `except:` clause, used AFTER
+            # the whole try/except, was invisible to backward scanning even
+            # though the try/except always finishes running one of its
+            # bodies before "after" code can run at all (an uncaught
+            # exception propagates instead). Safe unlike `ast.If`: each
+            # handler's body is its own list, so branch-awareness still
+            # applies to it.
+            for handler in getattr(stmt, "handlers", None) or ():
+                hbody = getattr(handler, "body", None)
+                if isinstance(hbody, list):
+                    found = _scan_backward_for_cast(hbody, len(hbody), var_name, parents)
+                    if found is not None:
+                        return found
     return None
 
 
@@ -2421,6 +2464,49 @@ def _resolve_cast_type_at(
         current = parents.get(stmt)
         if current is None:
             return None
+
+
+# Issue #39/#97 P1-1 + QC P2-1 -- candidate-union fallback ------------------
+#
+# `_resolve_cast_type_at` is deliberately branch-aware and returns `None`
+# whenever it can't confidently attribute a SINGLE interface to a usage
+# (e.g. mutually exclusive if/elif arms that both cast the same name, a cast
+# inside a `for`/`while` body used after the loop, or a cast in `try` used
+# in `except`). Cycle 4 found that when a caller's response to `None` is
+# "give up entirely" (as `detect_interface_attribute_typos` did), that
+# silently DROPS a genuine typo -- the property doesn't exist on ANY
+# interface, but the caller never checks any interface at all. The lead's
+# ruling (see specs/swahili-audit-2026-09/tasks-bugfix-campaign.md,
+# "CYCLE-4 GATE FINDINGS") is a candidate-union fallback: when positional
+# resolution fails but the name IS cast somewhere in the tree, collect
+# EVERY interface it's ever cast to (branch-unaware, deliberately coarse)
+# and flag/suppress based on membership across the whole set rather than
+# picking one arbitrarily. This is the same mechanism used both by the typo
+# detector (flag only if the attribute exists on NONE of the candidates)
+# and by the casting gate (suppress if it exists on AT LEAST one).
+#
+# Built LOCALLY by each caller that needs it -- deliberately NOT merged into
+# `_resolve_alias_maps`, which is shared with mutation detection and
+# `detect_hvo_literal_args`. Keeping out of other gates' blast radius is the
+# discipline that has held since cycle 1.
+def _build_cast_candidate_set(tree: ast.AST) -> Dict[str, Set[str]]:
+    """For every Name target directly assigned from an inline cast call
+    (`v = IFoo(...)`) ANYWHERE in `tree`, collect the set of interfaces that
+    name is ever cast to. Deliberately branch-UNAWARE (a flat scan, unlike
+    `_resolve_cast_type_at`) -- it exists only as a fallback for when the
+    branch-aware resolver can't confidently pick a single interface.
+    """
+    candidates: Dict[str, Set[str]] = {}
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+        ):
+            direct = _direct_cast_call_interface(node.value)
+            if direct is not None:
+                candidates.setdefault(node.targets[0].id, set()).add(direct)
+    return candidates
 
 
 # Issue #103: hvo instability. liblcm states this outright --
@@ -3622,11 +3708,17 @@ def detect_casting_needs(
     # recognized as a wrapper call, not a polymorphic property access.
     operations_aliases: Dict[str, str] = {}
     # Issue #97 Bug 2 / #40 item 3: (line_num, var_name) -> branch-aware cast
-    # interface, feeding the regex-based advanced casting_index loop below.
-    # A flat cast_aliases lookup there would suffer the exact same branch-
-    # conflation bug as detect_interface_attribute_typos (mutually exclusive
-    # if/elif arms casting the same variable name to different interfaces).
-    line_var_cast_types: Dict[Tuple[int, str], str] = {}
+    # interface(s), feeding the regex-based advanced casting_index loop
+    # below. A flat cast_aliases lookup there would suffer the exact same
+    # branch-conflation bug as detect_interface_attribute_typos (mutually
+    # exclusive if/elif arms casting the same variable name to different
+    # interfaces). Value is a SET, not a single str: when positional
+    # resolution can't confidently pick one interface (P1-1/P2-1 shapes --
+    # both if arms used after, cast in for used after the loop, cast in try
+    # used in except), this holds the candidate-union fallback instead, and
+    # every consumer below checks set membership/intersection rather than
+    # picking one arbitrarily.
+    line_var_cast_types: Dict[Tuple[int, str], Set[str]] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -3641,11 +3733,15 @@ def detect_casting_needs(
         # to leave empty when cast_aliases is empty -- that guard makes the
         # second loop's _parents read unreachable -- but a reader (and
         # Pyright) should not have to reconstruct that across two guards.
+        # Same reasoning applies to `_candidates` (P1-1/P2-1 fallback map),
+        # hoisted alongside it for the identical structural reason.
         _parents: Dict[ast.AST, ast.AST] = {}
+        _candidates: Dict[str, Set[str]] = {}
         if cast_aliases:
             # Built once and reused for every branch-aware resolution below --
             # cheap short-circuit for the common no-casts-anywhere case.
             _parents = _build_parent_map(tree)
+            _candidates = _build_cast_candidate_set(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
                     continue
@@ -3655,12 +3751,25 @@ def detect_casting_needs(
                 if root not in cast_aliases:
                     continue
                 resolved_iface = _resolve_cast_type_at(node.value, _parents, root)
-                if resolved_iface is None:
+                if resolved_iface is not None:
+                    ifaces = {resolved_iface}
+                else:
+                    # P1-1/P2-1 candidate-union fallback: positional
+                    # resolution couldn't confidently pick a branch, but
+                    # the name IS cast somewhere in the tree. Union every
+                    # interface it's ever cast to instead of dropping the
+                    # access entirely -- dropping it left the alias
+                    # untyped, which is what produced QC's false-positive
+                    # rejects (both if-arms used after; cast in for used
+                    # after the loop).
+                    ifaces = _candidates.get(root, set())
+                if not ifaces:
                     continue
-                alias_attr_accesses.setdefault(node.lineno, []).append(
-                    (node.attr, resolved_iface)
-                )
-                line_var_cast_types[(node.lineno, root)] = resolved_iface
+                for iface in ifaces:
+                    alias_attr_accesses.setdefault(node.lineno, []).append(
+                        (node.attr, iface)
+                    )
+                line_var_cast_types[(node.lineno, root)] = ifaces
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
                 continue
@@ -3674,9 +3783,13 @@ def detect_casting_needs(
             if isinstance(root, ast.Name) and root.id in cast_aliases:
                 # Branch-aware: only count the chain root as "typed" if a
                 # cast is actually in effect for THIS branch, not merely
-                # somewhere in the whole function.
+                # somewhere in the whole function -- OR the fallback
+                # candidate set is non-empty (positional resolution failed
+                # but the name is cast somewhere; this check only needs
+                # "typed at all", not which interface).
                 typed_root = (
                     _resolve_cast_type_at(root, _parents, root.id) is not None
+                    or bool(_candidates.get(root.id))
                 )
             elif isinstance(root, ast.Call) and isinstance(root.func, ast.Name):
                 fid = root.func.id
@@ -3844,8 +3957,13 @@ def detect_casting_needs(
                     # lookup here would misattribute this line's receiver to
                     # whatever branch happened to assign obj_var LAST in the
                     # whole function, not the branch this line is actually in.
-                    receiver_iface = line_var_cast_types.get((line_num, obj_var))
-                    if receiver_iface and receiver_iface in safe_ifaces:
+                    # P1-1/P2-1: value may be a candidate-union fallback set
+                    # rather than a single confidently-resolved interface --
+                    # suppress if ANY candidate satisfies (intersection),
+                    # matching the lead's "flag only if none of the
+                    # candidates satisfy" ruling.
+                    receiver_ifaces = line_var_cast_types.get((line_num, obj_var)) or set()
+                    if receiver_ifaces & safe_ifaces:
                         continue
 
                 # Check if this property is in the casting index and requires cast
@@ -3861,11 +3979,11 @@ def detect_casting_needs(
                     # properties like CategoryRA even after `wa = IWfiAnalysis(ana)`.
                     # Issue #97 Bug 2: resolved branch-aware via
                     # line_var_cast_types (see comment above), not the flat
-                    # whole-function cast_aliases dict.
-                    _receiver_iface_here = line_var_cast_types.get((line_num, obj_var))
-                    if _receiver_iface_here and (
-                        _receiver_iface_here in _extract_interface_names(defined_on)
-                    ):
+                    # whole-function cast_aliases dict. P1-1/P2-1: value may
+                    # be a candidate-union fallback set -- suppress if it
+                    # intersects defined_on at all.
+                    _receiver_ifaces_here = line_var_cast_types.get((line_num, obj_var)) or set()
+                    if _receiver_ifaces_here & _extract_interface_names(defined_on):
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
                         # Issue #21: pick a concrete interface from the

@@ -1,8 +1,8 @@
 {
   "feature": "swahili-audit-2026-09",
-  "status": "needs_human",
-  "last_cycle": 11,
-  "spurts_completed": 4,
+  "status": "feature_complete",
+  "last_cycle": 14,
+  "spurts_completed": 5,
   "branch": "feat/shared-mode-access",
   "tasks_done": [
     "A-4",
@@ -48,8 +48,15 @@
     "a83e1e4"
   ],
   "suite": "1138 passed, 4 skipped, 12 subtests (was 1133 at CP-D; +5 across spurt 4, no regressions)",
-  "commits_ahead_of_origin": 46,
-  "merge_ready": false,
+  "commits_ahead_of_origin": 0,
+  "merge_ready": true,
+  "merged": {
+    "pr": 114,
+    "sha": "ae73eef",
+    "method": "merge commit",
+    "date": "2026-09-07",
+    "ci_on_main": "green, run 34165957555, first green since 2026-08-12"
+  },
   "gates": {
     "verification_cycle11": "PASS on all 8 items, every number re-derived from code not from the report. Both new tests reproduced RED then GREEN. Symbol B verified through the SERVED path (handle_get_module_template), not by reading the template file.",
     "live": "STILL NOT RUN -- but the restart precondition is now MET, see resolved_blockers.mcp_server_restart"
@@ -83,18 +90,20 @@
     "operations_jsonl_carry_forward": "RESOLVED BY THE OTHER CREW, not us. fa289b7 removed the stray repo-root operations.jsonl after preserving a byte-identical copy at specs/logscan-2026-09-07/evidence/, inlined it into a comment on MCP#109, and added operations.jsonl*/operations.log* to .gitignore. It no longer appears in git status. The underlying log_dir_fn defect remains open as MCP#109.",
     "cp1_live_write_check_92": "CLEARED 2026-09-07 by the user's explicit authorization ('go. mutating Sena is fine'), FLEx closed (PID 38840 gracefully closed; it held 'Mbugwe LizzieHC practice', not Target). FLEXTOOLSMCP_E2E_SCRATCH_PROJECT='Sena 3' pytest tests/test_issue92_write_path_e2e.py -m requires_flex -> BOTH legs PASSED, 2 passed in 29.71s. Independent disk-level proof, not just the tests' assertions: marker cp1-asp-3e1d2c0a appears twice in Sena 3.fwdata (Definition + ScientificName), mtime 2026-09-07 12:33:28, size 55989135 -> 55989325 bytes. This was the BINDING merge blocker and it no longer blocks."
   },
-  "issues_open_none_closed": [
-    "#40",
-    "#80",
-    "#96",
-    "#97",
-    "#100",
-    "#101",
-    "#103",
-    "#107",
-    "#112",
-    "#113"
-  ],
+  "issues_open_none_closed": {
+    "#40": "OPEN, untouched by the merge",
+    "#74": "CLOSED -- already closed BEFORE the merge, not attributable to it",
+    "#80": "OPEN, untouched by the merge",
+    "#96": "OPEN, untouched by the merge",
+    "#97": "OPEN -- confirmed post-merge. The merge mechanically auto-closed #97 via pre-existing closing keywords in commit bodies 6e35204/97bd304; the main session ran `gh issue reopen 97` and left an explanatory comment (id 5576130418). Only Bug 1 is repaired; the issue itself stays open by design.",
+    "#100": "OPEN, untouched by the merge",
+    "#101": "OPEN, untouched by the merge",
+    "#103": "CLOSED -- expected auto-close from cb3f1b8, and left as-is; awaits a user ruling on whether to leave it closed",
+    "#107": "OPEN, untouched by the merge",
+    "#112": "OPEN, untouched by the merge",
+    "#113": "OPEN, untouched by the merge",
+    "#115": "OPEN, untouched by the merge, as expected"
+  },
   "issues_filed_spurt4": {
     "#112": "phantom CastingOperations.cast_to_concrete advertised in 5 user-facing hints (fixed same cycle, 1f8e90b)",
     "#113": "shipped LibLCM template crashed: wrong arity + non-exported ILexEntry (fixed same cycle, 1f8e90b)"
@@ -115,7 +124,12 @@
     "the ten reportOptionalMemberAccess findings in handlers/api.py are confirmed PRE-EXISTING and line-shifted (byte-identical to the parent's set); whether they are real latent issues is still an open decision",
     "extract_version annotation looseness (versioning.py:51, :59) -- tuple[int, ...] vs Tuple[int, int, int] from tuple(map(int, match.groups())). CONFIRMED PRE-EXISTING (absent from 36a5a1c's diff). NO ACTION; carry-forward only.",
     "discovery.py:180-181 two reportArgumentType findings -- CONFIRMED PRE-EXISTING via git blame (2026-03-16, outside the cycle-11 hunk), triaged with a confirming pytest run. NO ACTION.",
-    "tests/test_issue48_inline_casting.py was the campaign's own example of an assertion that passed both before AND after its bug. Tightened in 1f8e90b and verified to bite. Audit sibling substring-only assertions for the same weakness."
+    "tests/test_issue48_inline_casting.py was the campaign's own example of an assertion that passed both before AND after its bug. Tightened in 1f8e90b and verified to bite. Audit sibling substring-only assertions for the same weakness.",
+    "scripts/check_project_accessors.py implements the project-accessor drift check but is wired into ZERO CI workflows (grepped all 3 YAMLs). After cycle 13 marked TestAliasTableMatchesLiveInstall requires_flex, drift protection is local/manual-only. P2. Tracked conceptually by #115.",
+    "#100 is genuinely live: the tracked flexicon_api_v4.4.1.json does NOT carry access_path for MSAOperations. Cycle 13's programmer report claimed it did; cycle-13 verification disproved that by direct JSON inspection.",
+    "The 2 in-place full-suite failures in test_issue100_access_path.py are a working-tree artifact of the untracked v4.5.2 index sitting beside the committed v4.4.1 index. A clean git worktree at HEAD gives 1135 passed / 0 failed. Same phenomenon as cycle 12.",
+    "the flexicon 4.4.1 -> 4.5.2 index migration decision (moved down from merge_blockers, still awaiting a user call -- the user has stated new indexes will be built before the next release)",
+    "the cycle1-domain.md / cycle1-explore-nullmorph.md keep-or-drop user call is now RESOLVED (both were committed as 913bc73)"
   ],
   "cross_repo_report_only": [
     "flexicon #254 write-side twin: SetMorphType assigns bundle.MorphRA and its docstring example feeds it an IMoMorphType (WfiMorphBundleOperations.py:876-877, example :844-848) -- unfiled",
@@ -163,10 +177,5 @@
     "incidental": "Even the failed Target run showed the session opening with writeEnabled=True and an explicit undoable=False, preflight tier=none -- CP1's hardcoded fix is live in the running code.",
     "note": "#92 is already CLOSED on GitHub; this check validates the fix, it does not need a close."
   },
-  "merge_blockers_remaining": [
-    "the flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and undecided",
-    "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop call",
-    "STATUS.md's own stale-section reconciliation",
-    "NOTE: none of these are live-verification items. The binding live check is CLEARED."
-  ]
+  "merge_blockers_retired_cycle14": "All three previously-listed merge_blockers_remaining were non-binding and are now retired. (1) The flexicon 4.4.1 -> 4.5.2 index migration was UNTRACKED working-tree state -- untracked files cannot enter a merge, so it never blocked anything; it remains a deferred, undecided migration (see carry_forward) but not a merge blocker. (2) reviews/cycle1-domain.md and cycle1-explore-nullmorph.md were likewise UNTRACKED working-tree state at the time this was written; both are now committed (913bc73), resolving the keep-or-drop call. (3) STATUS.md's stale-section reconciliation was already performed (see the 2026-09-07 MERGE READINESS section). The only ever-binding blocker was the CP1 live write check for #92, cleared earlier in spurt 4 (see cp1_live_write_check_92 above)."
 }

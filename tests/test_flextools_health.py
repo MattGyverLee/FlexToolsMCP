@@ -212,6 +212,92 @@ class TestFileDiscoveryCacheInvalidation:
 
 
 # ---------------------------------------------------------------------------
+# Same-tick cache invalidation (cycle 10, CP-E)
+#
+# D-2 (cycle 7) introduced _bump_dir_mtime to force a distinguishable mtime
+# between the two writes in every TestFileDiscoveryCacheInvalidation test.
+# That made those tests reliable, but as a side effect it means the suite no
+# longer exercises the literal race QC and Verification measured against the
+# real production functions:
+#   - 40/300 (13.3%) stale reads through find_latest_versioned_api_file
+#     (cycle8-verification.md)
+#   - 58/200 (29%) rapid double-writes leaving st_mtime unchanged
+#     (cycle8-qc.md)
+# The tests below restore that coverage. Instead of relying on real
+# clock/filesystem timing to produce a same-tick collision (flaky by
+# nature -- that's the whole reason the rate is 13-29%, not 100%), they PIN
+# index_dir's mtime to an identical, fixed value across both writes via
+# os.utime(). This is a deterministic stand-in for "the filesystem failed to
+# advance mtime between two writes" -- not a mock of the functions under
+# test. find_versioned_api_file() / find_latest_versioned_api_file() are
+# called directly, unmocked, against a real tmp_path directory.
+# ---------------------------------------------------------------------------
+
+def _write_api_file_same_tick(lib_dir, prefix, version, frozen_mtime, entities=None):
+    """Like _write_api_file(), but PINS lib_dir's (and the new file's) mtime
+    to frozen_mtime instead of advancing it -- simulates two rapid writes
+    that the filesystem's mtime resolution failed to distinguish."""
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    path = lib_dir / f"{prefix}_v{version}.json"
+    data = {
+        "_schema": "unified-api-doc/2.0",
+        "entities": entities if entities is not None else {"ILexEntry": {}},
+    }
+    path.write_text(json.dumps(data), encoding="utf-8")
+    os.utime(lib_dir, (frozen_mtime, frozen_mtime))
+    os.utime(path, (frozen_mtime, frozen_mtime))
+    return path
+
+
+class TestSameTickCacheInvalidation:
+    """Restores the same-tick race coverage D-2's _bump_dir_mtime removed
+    (flagged cycle8-qc.md P2: 'same-tick invalidation is now covered
+    nowhere'). Both tests pin index_dir's mtime identically across two
+    writes, so a cache key built from bare st_mtime alone is guaranteed to
+    collide -- the fixed _dir_state_token() must still notice the new file
+    via a listing-shape signal (entry count / max child mtime), not mtime
+    alone."""
+
+    def test_new_exact_file_visible_same_dir_mtime(self, tmp_path):
+        lib_dir = tmp_path / "python"
+        frozen = 1_700_000_000.0
+        _write_api_file_same_tick(lib_dir, "flexicon_api", "4.1.0", frozen)
+
+        # First lookup: no exact match for 4.2.0 yet -- caches a miss.
+        assert versioning.find_versioned_api_file(lib_dir, "flexicon_api", "4.2.0") is None
+
+        # Second write pinned to the SAME directory mtime as the first --
+        # a bare st_mtime cache key cannot observe this as a change.
+        _write_api_file_same_tick(lib_dir, "flexicon_api", "4.2.0", frozen)
+
+        found = versioning.find_versioned_api_file(lib_dir, "flexicon_api", "4.2.0")
+        assert found is not None, (
+            "stale cache: lookup after a same-mtime write still returned the "
+            "pre-write miss (the regression measured in cycle8-qc.md: "
+            "58/200, 29%; cycle8-verification.md: 40/300, 13.3%)"
+        )
+        assert found.name == "flexicon_api_v4.2.0.json"
+
+    def test_new_latest_file_visible_same_dir_mtime(self, tmp_path):
+        lib_dir = tmp_path / "python"
+        frozen = 1_700_000_000.0
+        _write_api_file_same_tick(lib_dir, "flexicon_api", "4.0.0", frozen)
+
+        first = versioning.find_latest_versioned_api_file(lib_dir, "flexicon_api")
+        assert first.name == "flexicon_api_v4.0.0.json"
+
+        # Same frozen mtime as the first write -- st_mtime alone is blind
+        # to this write.
+        _write_api_file_same_tick(lib_dir, "flexicon_api", "4.5.0", frozen)
+
+        second = versioning.find_latest_versioned_api_file(lib_dir, "flexicon_api")
+        assert second is not None and second.name == "flexicon_api_v4.5.0.json", (
+            "stale cache: expected v4.5.0 after a same-mtime write, got "
+            f"{second.name if second else None}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # handle_flextools_health(): end-to-end warnings behavior
 # ---------------------------------------------------------------------------
 

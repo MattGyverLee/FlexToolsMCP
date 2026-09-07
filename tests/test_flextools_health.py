@@ -39,12 +39,27 @@ from server.handlers.diagnostic_health import compute_library_match
 # resolution/rounding the stdlib surfaces there is coarse enough that the
 # second write can land in the same observable mtime as the first, so the
 # cache silently keeps serving the stale (pre-second-write) result. That is
-# an intrinsic race (~15-25% in true isolation, confirmed empirically for
-# cycle-7 CP-D D-2 -- see specs/swahili-audit-2026-09/reviews/
-# cycle7-programmer-p2.md), not a sibling-test interaction, and not
-# something a production cache-key fix belongs to (a monotonic per-write
-# directory-content hash would be a legitimate production fix, but that's
-# out of scope / out of this task's lock set).
+# an intrinsic race, not a sibling-test interaction, and not something a
+# production cache-key fix belongs to (a monotonic per-write directory-
+# content hash would be a legitimate production fix, but that's out of
+# scope / out of this task's lock set).
+#
+# Measured rates (cycle 9, P2: the earlier "~15-25% ... confirmed
+# empirically" range here was unsupported -- these are the real numbers,
+# each from a distinct measurement, not interchangeable):
+#   - 5/40 (12.5%) and 1/40 (2.5%): pre-fix, 40 isolated single-process runs
+#     each of test_new_exact_file_visible_after_write and
+#     test_new_latest_file_visible_after_write respectively
+#     (specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md).
+#   - 40/300 (13.3%): a standalone probe calling the real production
+#     find_latest_versioned_api_file back-to-back (write v1, prime cache,
+#     write v2 immediately, re-lookup) -- the production-function analogue
+#     of this fixture's race, not the test fixture itself
+#     (specs/swahili-audit-2026-09/reviews/cycle8-verification.md).
+#   - 58/200 (29%): rapid double-writes where st_mtime was observed
+#     unchanged across the pair -- the underlying filesystem-resolution
+#     mechanism this whole comment describes
+#     (specs/swahili-audit-2026-09/reviews/cycle8-qc.md).
 #
 # _bump_dir_mtime() sidesteps filesystem timestamp-resolution entirely: it
 # sets an EXPLICIT, strictly-increasing mtime via os.utime() rather than

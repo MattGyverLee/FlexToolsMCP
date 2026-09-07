@@ -360,25 +360,66 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
     top-level importable too, so advertising the bare import is never wrong
     for them today.
 
-    MSAOperations is the one flexicon Operations class that IS facade-only
-    (no top-level import) -- but it is deliberately absent from
-    KNOWN_OPERATIONS, so the unconditional-import branch never fires for it;
-    the correct guidance for MSAOperations flows through access_path via
-    _build_entity_import's other call sites instead (see
-    TestBuildEntityImportAccessPath above).
+    Widened cycle 9 (P1-1): the hazard is bigger than "MSAOperations is the
+    one facade-only class". Of ALL 64 flexicon `*Operations` classes, 13 are
+    facade-only (no top-level import -- e.g. MSAOperations, reachable only
+    via `project.MSA`) and 8 more are unreachable by either route (measured
+    with `_extract_facade_access_paths` against the installed flexicon
+    4.5.2, same helper `TestExtractFacadeAccessPaths` above exercises).
+    `test_msa_operations_deliberately_excluded_from_known_operations` used
+    to pin a single hardcoded name; it now asserts KNOWN_OPERATIONS is
+    disjoint from the FULL live-computed facade-only/unreachable set, so it
+    still fires (hasattr-based) if ANY of those 21 classes -- not just
+    MSAOperations -- is ever added to KNOWN_OPERATIONS.
 
     This pins the invariant that makes today's api.py is_operations_class
     branch a documented no-op. If it ever fails, KNOWN_OPERATIONS has gained
-    a facade-only member and that branch needs the access_path-aware fix
-    that was deferred in cycle 7 (see
+    a facade-only or unreachable member and that branch needs the
+    access_path-aware fix that was deferred in cycle 7 (see
     specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md for the full
     analysis)."""
+
+    @staticmethod
+    def _live_facade_only_and_unreachable_operations():
+        """Recompute the full facade-only/unreachable *Operations set live
+        against the installed flexicon package + shipped index (not a
+        hardcoded list), mirroring cycle8-qc.md's P1-1 measurement."""
+        import flexicon
+        from flextoolsmcp.flexicon_analyzer import _extract_facade_access_paths
+
+        idx_path = (
+            Path(__file__).parent.parent
+            / "src" / "flextoolsmcp" / "index" / "python" / "flexicon_api_v4.5.2.json"
+        )
+        with open(idx_path, encoding="utf-8") as f:
+            data = json.load(f)
+        ops_names = sorted(n for n in data.get("entities", {}) if n.endswith("Operations"))
+
+        flexicon_code_base = Path(flexicon.__file__).parent / "code"
+        facade = _extract_facade_access_paths(flexicon_code_base)
+
+        hazardous = set()
+        for name in ops_names:
+            if not hasattr(flexicon, name):
+                # Not top-level importable -- facade-only or unreachable,
+                # either way an unconditional `from flexicon import {name}`
+                # would be broken.
+                hazardous.add(name)
+        return hazardous
 
     def test_every_known_operations_member_is_top_level_importable(self):
         try:
             import flexicon
         except Exception as exc:
-            self.skipTest(f"flexicon not importable in this environment: {exc}")
+            # P3 (cycle8-qc.md): a bare skipTest leaves this tripwire
+            # unguarded in a flexicon-less CI with no visible signal beyond
+            # the skip reason. Make it loud: the message states plainly
+            # that the invariant is UNCHECKED this run, not just why.
+            self.skipTest(
+                f"flexicon not importable in this environment ({exc}) -- "
+                "KNOWN_OPERATIONS top-level-importability tripwire is "
+                "UNGUARDED for this run."
+            )
 
         from flextoolsmcp.server.constants import KNOWN_OPERATIONS
 
@@ -395,13 +436,34 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
             "deferred fix." % not_importable,
         )
 
-    def test_msa_operations_deliberately_excluded_from_known_operations(self):
-        """Documents WHY the import-advertising branch is inert today: the
-        one facade-only class flexicon actually has is not a member of the
-        set that branch reads."""
+    def test_known_operations_disjoint_from_full_facade_only_set(self):
+        """Widened P1-1 tripwire: not just MSAOperations -- KNOWN_OPERATIONS
+        must contain none of the 21 (13 facade-only + 8 unreachable)
+        flexicon `*Operations` classes that are NOT top-level importable."""
+        try:
+            hazardous = self._live_facade_only_and_unreachable_operations()
+        except Exception as exc:
+            self.skipTest(
+                f"could not compute live facade-only set in this "
+                f"environment ({exc}) -- widened tripwire is UNGUARDED for "
+                "this run."
+            )
+
         from flextoolsmcp.server.constants import KNOWN_OPERATIONS
 
-        self.assertNotIn("MSAOperations", KNOWN_OPERATIONS)
+        overlap = sorted(KNOWN_OPERATIONS & hazardous)
+        self.assertEqual(
+            overlap,
+            [],
+            "KNOWN_OPERATIONS contains facade-only/unreachable class(es) "
+            "%r -- server/handlers/api.py's is_operations_class branch now "
+            "advertises a broken top-level import for these; needs the "
+            "access_path-aware fix deferred in "
+            "cycle7-programmer-p2.md." % overlap,
+        )
+        # Documents the previously-pinned single fact as a sanity check that
+        # the live computation still agrees with the measured baseline.
+        self.assertIn("MSAOperations", hazardous)
 
 
 if __name__ == "__main__":

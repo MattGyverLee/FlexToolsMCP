@@ -3411,6 +3411,23 @@ _CASTING_CONDITIONAL_SAFE = {
 }
 
 
+def _clean_interface_head(entry: str) -> Optional[str]:
+    """Normalize one `defined_on`/`available_on` entry to its bare LCM
+    interface name, or None if the entry isn't an I-prefixed interface.
+
+    Splits on whitespace and "(" to drop descriptive suffixes like
+    "ILexSense (raw LCM)", then keeps the head only if it follows the
+    LibLCM "I..." naming convention. Shared by `_pick_cast_interface` and
+    `_casting_candidates_for_fix` (Swahili audit CP-D P2, cycle 9): they
+    used to hand-roll identical head-split logic independently, which a
+    stale comment claimed was "reuse" -- it wasn't. Both call this now so
+    there is exactly one normalizer to keep correct."""
+    if not entry:
+        return None
+    head = entry.split()[0].split("(")[0].strip()
+    return head if head.startswith("I") else None
+
+
 def _pick_cast_interface(
     property_name: str,
     available_on: List[str],
@@ -3436,10 +3453,8 @@ def _pick_cast_interface(
     """
     cleaned: List[str] = []
     for entry in available_on or ():
-        if not entry:
-            continue
-        head = entry.split()[0].split("(")[0].strip()
-        if head.startswith("I"):
+        head = _clean_interface_head(entry)
+        if head:
             cleaned.append(head)
     if len(cleaned) == 1:
         return cleaned[0]
@@ -3481,11 +3496,14 @@ def _pick_cast_interface(
     return None
 
 
-# Issue #97 Bug 1: candidate list for the ambiguous-fix message. Reuses the
-# exact same cleaning _pick_cast_interface applies to `defined_on` (head-split
-# on whitespace and "(", keep I-prefixed) rather than hand-rolling a second
-# normalizer -- this is display-only, it never influences which interface
-# (if any) gets picked as `cast_interface`.
+# Issue #97 Bug 1: candidate list for the ambiguous-fix message. Calls the
+# shared `_clean_interface_head()` -- the SAME normalizer `_pick_cast_interface`
+# uses on `defined_on` (head-split on whitespace and "(", keep I-prefixed) --
+# rather than hand-rolling a second one. (Swahili audit CP-D P2, cycle 9: an
+# earlier version of this function duplicated that logic inline despite this
+# comment already claiming reuse; the duplication is now real, not aspirational.)
+# This is display-only, it never influences which interface (if any) gets
+# picked as `cast_interface`.
 def _casting_candidates_for_fix(defined_on: List[str]) -> List[str]:
     """Deduped, order-preserving list of I-prefixed interface names from
     `defined_on`, for use when `_pick_cast_interface` returns None and the
@@ -3494,10 +3512,8 @@ def _casting_candidates_for_fix(defined_on: List[str]) -> List[str]:
     seen: set = set()
     out: List[str] = []
     for entry in defined_on or ():
-        if not entry:
-            continue
-        head = entry.split()[0].split("(")[0].strip()
-        if head.startswith("I") and head not in seen:
+        head = _clean_interface_head(entry)
+        if head and head not in seen:
             seen.add(head)
             out.append(head)
     return out
@@ -4113,20 +4129,56 @@ def detect_casting_needs(
                         if cast_iface:
                             fix_msg = f"Cast {obj_var} to {cast_iface}"
                         else:
+                            # Swahili audit CP-D P1-2/P1-3 (cycle 9): the old
+                            # message truncated to a 4-item alphabetical head
+                            # ("+N more") -- for high-candidate-count props
+                            # (e.g. Name, 36 candidates) that reintroduced the
+                            # exact wrong-first-pick bias #97 Bug 1 was fixed
+                            # for, by leading with an alphabetically-early but
+                            # unrelated interface (ICmAgent). Two-tier
+                            # replacement: above the display cap, name NO
+                            # candidates at all (a short list is misleading
+                            # when the true count is 30+); at or below it,
+                            # name them all but explicitly call out that the
+                            # order is alphabetical, not a ranking, so a
+                            # reader/model does not default to "pick the
+                            # first". Neither tier references
+                            # flextools_resolve_property(context_entity=...):
+                            # per P1-3 that escape hatch is circular here (it
+                            # needs the answer as its own input), and a bare
+                            # `context_entity=...` is literal `Ellipsis` --
+                            # copy-paste-broken Python -- so it must never be
+                            # emitted un-filled.
                             _fix_candidates = _casting_candidates_for_fix(
                                 casting_info.get("defined_on", [])
                             )
                             if _fix_candidates:
-                                _MAX_SHOWN = 4
-                                _shown = _fix_candidates[:_MAX_SHOWN]
-                                _remaining = len(_fix_candidates) - len(_shown)
-                                _tail = f", +{_remaining} more" if _remaining > 0 else ""
-                                fix_msg = (
-                                    f"Cast {obj_var} to one of: "
-                                    f"{', '.join(_shown)}{_tail} -- ambiguous, call "
-                                    f"flextools_resolve_property(property_name='{prop_name}', "
-                                    "context_entity=...) to confirm"
-                                )
+                                _MAX_SHOWN = 6
+                                if len(_fix_candidates) > _MAX_SHOWN:
+                                    fix_msg = (
+                                        f"Cast {obj_var} to the concrete "
+                                        f"interface it actually is. "
+                                        f"{len(_fix_candidates)} interfaces "
+                                        f"declare '{prop_name}' -- too many "
+                                        f"to guess. Determine it from where "
+                                        f"{obj_var} came from (the wrapper "
+                                        f"method's return type that produced "
+                                        f"it), or dispatch at runtime on "
+                                        f"{obj_var}.ClassName."
+                                    )
+                                else:
+                                    fix_msg = (
+                                        f"Cast {obj_var} to one of: "
+                                        f"{', '.join(_fix_candidates)} -- "
+                                        f"this list is ALPHABETICAL, NOT "
+                                        f"ranked by likelihood; do not just "
+                                        f"pick the first. Determine the "
+                                        f"correct one from where {obj_var} "
+                                        f"came from (the wrapper method's "
+                                        f"return type that produced it), or "
+                                        f"dispatch at runtime on "
+                                        f"{obj_var}.ClassName."
+                                    )
                             else:
                                 # No usable I-prefixed candidate at all --
                                 # degrade to the old placeholder rather than

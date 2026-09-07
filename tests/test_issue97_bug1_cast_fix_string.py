@@ -203,5 +203,93 @@ class TestConfirmedWrongPairingsNoLongerConfident(unittest.TestCase):
         self.assertIsNone(_CONFIDENT_SINGLE_INTERFACE_FIX.match(issue["fix"]))
 
 
+class TestTwoTierAmbiguousMessage(unittest.TestCase):
+    """Swahili audit CP-D P1-2/P1-3 (cycle 9): the truncated-to-4-alphabetical
+    -head message reintroduced the exact wrong-first-pick bias #97 Bug 1 was
+    fixed for (`Name`'s 36 candidates led with `ICmAgent`, an unrelated but
+    alphabetically-early interface). Two-tier replacement: >6 candidates
+    names none of them; 2..6 names them all with an explicit not-ranked
+    warning. Neither tier can ever emit a bare `context_entity=...`."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.casting_index = _load_casting_index()
+
+    def test_more_than_six_candidates_emits_no_interface_names(self):
+        """(a) `Name` has 36 candidates (well above the cap of 6) -- the fix
+        message must name none of them, only the count."""
+        if self.casting_index is None:
+            self.skipTest("shipped casting_index_liblcm-v11.0.0.json not found")
+        code = "n = morph_type.Name\n"
+        result = detect_casting_needs(code, self.casting_index)
+        issues = [i for i in result["casting_issues"] if i["property"] == "Name"]
+        self.assertEqual(len(issues), 1)
+        fix = issues[0]["fix"]
+        self.assertIsNone(issues[0]["cast_interface"])
+        self.assertIn("36 interfaces declare", fix)
+        self.assertIn("too many to guess", fix)
+        # No I-prefixed interface name should appear anywhere in the message
+        # -- not even the correct one, since none is confidently correct.
+        self.assertIsNone(
+            re.search(r"\bI[A-Z][A-Za-z0-9_]*\b", fix),
+            f"Expected no interface names in the >6-candidate message, got: {fix!r}",
+        )
+
+    def test_two_to_six_candidates_emits_names_with_not_ranked_warning(self):
+        """(b) `Gloss` has 3 candidates (within the 2..6 cap) -- the fix
+        message must name them AND explicitly warn the order is
+        alphabetical/not a ranking."""
+        if self.casting_index is None:
+            self.skipTest("shipped casting_index_liblcm-v11.0.0.json not found")
+        code = "g = unrecognized_receiver_zz.Gloss\n"
+        result = detect_casting_needs(code, self.casting_index)
+        issues = [i for i in result["casting_issues"] if i["property"] == "Gloss"]
+        self.assertEqual(len(issues), 1)
+        fix = issues[0]["fix"]
+        self.assertIsNone(issues[0]["cast_interface"])
+        for iface in ("ILexEtymology", "ILexSense", "ISenseOrEntry"):
+            self.assertIn(iface, fix)
+        self.assertIn("ALPHABETICAL", fix)
+        self.assertIn("do not just pick the first", fix)
+
+    def test_no_message_ever_contains_bare_context_entity(self):
+        """(c) A bare `context_entity=...` is literal `Ellipsis` -- valid,
+        meaningless, copy-paste-broken Python (P1-3). Sweep every ambiguous
+        fix message the broad 136-property sweep produces and confirm none
+        contains it."""
+        if self.casting_index is None:
+            self.skipTest("shipped casting_index_liblcm-v11.0.0.json not found")
+        props = self.casting_index.get("properties", {})
+        receiver = "unrecognized_receiver_zz"
+        names = [
+            name for name, info in props.items() if info.get("requires_cast_from")
+        ]
+        code = "\n".join(f"{receiver}.{name}" for name in names)
+        result = detect_casting_needs(code, self.casting_index)
+        offenders = [
+            i["property"] for i in result["casting_issues"]
+            if "context_entity=..." in i.get("fix", "")
+        ]
+        self.assertEqual(
+            offenders, [],
+            f"fix message(s) contain a bare context_entity=...: {offenders!r}",
+        )
+
+    def test_name_no_longer_leads_candidate_list_with_icmagent(self):
+        """(d) `Name` specifically must not lead with `ICmAgent` -- the exact
+        pairing #97 cited. Under the >6 tier this holds trivially (no names
+        shown at all), which is itself the fix: a short alphabetical head
+        of a 36-candidate list implied a confidence that wasn't there."""
+        if self.casting_index is None:
+            self.skipTest("shipped casting_index_liblcm-v11.0.0.json not found")
+        code = "n = morph_type.Name\n"
+        result = detect_casting_needs(code, self.casting_index)
+        issues = [i for i in result["casting_issues"] if i["property"] == "Name"]
+        self.assertEqual(len(issues), 1)
+        fix = issues[0]["fix"]
+        self.assertNotIn("ICmAgent", fix)
+        self.assertFalse(fix.startswith(f"Cast morph_type to one of: ICmAgent"))
+
+
 if __name__ == "__main__":
     unittest.main()

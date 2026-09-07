@@ -205,11 +205,34 @@ this change) is now consulted at the reject decision:
 
 Rationale: a read-only script that guesses a required cast wrong raises a
 `TypeError` at runtime -- costing one iteration, with no risk of data
-corruption. The `"warning"` severity tier is exactly the low-confidence path
-(its `fix` string is built from `defined_on[0]`, an arbitrary selection --
-see issue #97 Bug 1, not yet repaired). Forcing a hard preflight reject for
-that tier was disproportionate to the risk and was the single largest
-source of false preflight rejections observed in practice.
+corruption. The `"warning"` severity tier is exactly the low-confidence path.
+Forcing a hard preflight reject for that tier was disproportionate to the
+risk and was the single largest source of false preflight rejections
+observed in practice.
+
+As of this branch, issue #97 Bug 1 (the `fix` string used to confidently
+name a single, sometimes-wrong interface even when the underlying pick was
+genuinely ambiguous) is repaired -- `fix` no longer picks `defined_on[0]`
+unconditionally. It is instead built from a three-way outcome, matching
+whether the same candidate set could be resolved to one definite interface:
+
+- **Resolved** -- exactly one interface can be determined (from
+  `available_on`, the casting index, or a receiver-name tie-break): `fix` is
+  `"Cast {obj} to {interface}"`, naming the identical interface reported in
+  the issue's `cast_interface` field.
+- **Ambiguous** -- multiple candidate interfaces remain and none can be
+  singled out: `fix` names the candidate set (or, above a display cap,
+  states the count without listing them) and explicitly flags that no
+  single one is a confident pick. `cast_interface` is `null` in this case --
+  `fix` and `cast_interface` never disagree.
+- **No usable candidate** -- no I-prefixed interface is available at all:
+  `fix` degrades to a generic "concrete type" placeholder rather than
+  ever raising an `IndexError` or naming a definite target with no
+  evidence.
+
+(Note: issue #97 itself tracks more than this one bug and is **not**
+closed -- only Bug 1, the `fix`-string construction described above, is
+repaired here.)
 
 This downgrade is **gate-local to the casting gate's warning tier only**.
 No other preflight gate is affected: `unprotected_writes`,

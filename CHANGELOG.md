@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Fixed: writes are no longer refused on a project FieldWorks has open in shared mode (#93)
+
+The write gate refused on the mere *existence* of a `.fwdata.lock` file
+(issue #33). That was an over-correction, and it made the server unusable for
+its single most valuable workflow -- editing the lexicon and watching the
+change land in the FLEx UI. With `projectSharing="true"` in the project's
+`SharedSettings\LexiconSettings.plsx`, LCM promotes the backend to
+`SharedXMLBackendProvider` (`LcmCache.cs:211-226`) and our process attaches as
+a non-master peer that reads and writes through the shared commit log. The
+lock file's presence says nothing about whether that is possible.
+
+- **The gate is now driven by `project_access.probe_project_access()`**
+  (added detection-only in CP2, previously wired into
+  `flextools_health(verbose=True)` and nothing else). Verdict table:
+  `free` -> proceed; `open_shared` -> **proceed**; `stale_lock` (claimed PID
+  is dead) -> **proceed**; `open_exclusive` (live FieldWorks, sharing off) ->
+  refuse; `held_by_other` (live non-FieldWorks holder) -> refuse.
+- **`project_locked` rejections now carry the facts behind the verdict** --
+  `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy`, and
+  `lock_file_path` (response-shape addition; `ProjectLockedDetail` is
+  `extra="forbid"`, so the model was extended first). The remedy for
+  `open_exclusive` is the enable-sharing recipe, and it states that
+  re-submitting the same call re-checks the setting and continues
+  automatically. The server still never writes `LexiconSettings.plsx` itself.
+  Where the lock file is unreadable and no holder can be identified, the
+  remedy says so rather than blaming FieldWorks.
+- **Successful runs that went through a live peer or over a stale lock carry
+  a `shared_mode` block** naming the verdict, the holder, and the caveat that
+  custom-field and writing-system changes are *not* safe from a non-master
+  peer.
+- **The pre-write backup note is honest about what it is.** With FieldWorks
+  attached, the `.fwdata` on disk lags FLEx's unsaved in-memory state, so the
+  copy is a floor to fall back to, not a snapshot of what the UI is showing.
+- Read-only runs are unaffected: they were never gated, and the probe is not
+  even called for them.
+- Covered by `tests/test_shared_mode_write_gate.py` (15 tests: the remedy
+  builder, every verdict's effect on `handle_run_module`, the read-only
+  bypass, and the backup note).
+
 ### Fixed: writes silently failed under `undoable=True`; undo machinery removed (#92)
 
 Issue #55 Rung 1 made `undoable=True` the default whenever `write_enabled=True`.
@@ -40,6 +79,41 @@ from an empty stack.
   (`tests/test_issue92_write_path_e2e.py`, marked `requires_flex`, skipped by
   default): drives the real `flextools_run_module` handler to `SetGloss`,
   close the project, reopen it, and assert the value persisted.
+
+### Added: pre-flight gate refuses raw liblcm UnitOfWork nesting (#92 follow-up)
+
+CP1's `undoable=False` hardcode means a write-enabled run now always has one
+non-undoable `UnitOfWork` open for the whole session (flexicon's
+`OpenProject()` calls `MainCacheAccessor.BeginNonUndoableTask()` once,
+closed once at `CloseProject()`). A script that opens its OWN raw
+`UnitOfWork` on top of that -- `UndoableUnitOfWorkHelper` /
+`NonUndoableUnitOfWorkHelper` (constructor or static `.Do*()` calls), or a
+bare `IActionHandler.BeginUndoTask()`/`BeginNonUndoableTask()` -- nests a
+second task inside the runner's own; liblcm rolls back the already-open
+task first (discarding the whole run's writes) before the second call
+throws. Worked previously under the old `undoable=True` default; is a
+silent-data-loss regression surface now.
+
+- New AST-based detector `validators.detect_nested_unit_of_work()` --
+  flags the raw constructs above regardless of any `if modifyAllowed:`
+  guard (a guard does not fix the nesting collision). A construct name
+  appearing only in a comment or string literal is not flagged (AST-based,
+  not regex/line-blind). flexicon's own `project.Transaction()` /
+  `project.UndoableOperation()` wrappers are nesting-aware and never
+  false-positive.
+- New hard-refuse gate in `handle_run_module`, error code
+  `nested_unit_of_work`, wired beside the `partial_module_structure` gate.
+  Fires **only** on write-enabled runs: flexicon's `OpenProject()` only
+  opens that `UnitOfWork` when `writeEnabled=True`, so a read-only run has
+  nothing open to nest into.
+- New `NestedUnitOfWorkDetail` response model (`extra="forbid"`) plus
+  `AnyDetail` union entry, golden fixture, `TOOL-CONTRACT.md` row, and
+  `_ASSISTANCE_HINTS_BY_ERROR_CODE` entry -- the error-code count in
+  `docs/TOOL-CONTRACT.md` and `tests/test_response_contract.py` moves from
+  16 to 17.
+- New `tests/test_nested_uow_gate.py`: one case per sibling construct,
+  guard-does-not-suppress, comment/string non-false-positive, an ordinary
+  guarded write not refused, and the read-only-not-refused condition above.
 
 ### Fixed: `project.LexSense` was blessed by the pre-flight gate but does not exist (#84)
 

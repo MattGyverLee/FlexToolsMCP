@@ -45,7 +45,6 @@ from server.validators import (
     validate_server_state,
     detect_partial_module_structure,
     certify_script_readonly,
-    detect_casting_needs,
     detect_undiscovered_entities,
     detect_undefined_variables,
     detect_missing_operations_imports,
@@ -54,6 +53,14 @@ from server.validators import (
     detect_getall_unsafe_idiom,
 )
 from server import kernel
+
+# Issue #39/#40 P1-2 (cycle 5): Gate 5 below must go through the SAME
+# shared casting-decision pipeline as handle_run_module and
+# _handle_validate_only (see execution._compute_casting_decision's
+# docstring). Previously this runner called detect_casting_needs directly
+# and never modeled detect_interface_attribute_typos at all -- its own
+# comment admitted Tier-1 evals were blind to the whole #39 typo class.
+from server.handlers.execution import _compute_casting_decision
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +147,38 @@ class _FakeAPIIndex:
             },
             "polymorphic_collections": {},
         }
+
+        # Cycle 6 (QC P2-2 / campaign P2-2): this dict was EMPTY, so
+        # `_interface_member_names` (validators.py) returned `set()` for
+        # every interface and `detect_interface_attribute_typos` could
+        # NEVER fire in this corpus -- Gate 5 above calls it via
+        # `_compute_casting_decision`, but a real typo (e.g. `ILexDb.
+        # EntriesOC`) had nothing to be measured against. Populated here
+        # with a SMALL number of REAL interface entities, shaped exactly
+        # like `src/flextoolsmcp/index/liblcm/liblcm_api_v11.0.0.json`
+        # (property/method dicts keyed by "name", verified against that
+        # file, NOT copied wholesale and NOT regenerated -- this file is
+        # off-limits to this campaign). `ILexDb.Entries` is real;
+        # `EntriesOC` is issue #39's verbatim typo and exists on NEITHER
+        # entity below, so the corpus fixture exercising it can actually
+        # go red if typo detection breaks (see
+        # issue39_typo_ilexdb_entriesoc.yaml and this file's own
+        # demonstrated red/green proof in the cycle-6 report).
+        self.liblcm: Dict[str, Any] = {
+            "entities": {
+                "ILexDb": {
+                    "properties": [{"name": "Entries"}],
+                    "methods": [],
+                    "interfaces": [],
+                },
+                "IWfiAnalysis": {
+                    "properties": [{"name": "CategoryRA"}],
+                    "methods": [],
+                    "interfaces": [],
+                },
+            }
+        }
+        self.flexlibs_stable: Dict[str, Any] = {"entities": {}}
 
     def ensure_casting_index_loaded(self) -> None:
         pass
@@ -269,15 +308,35 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
             str(cert["mutating_calls"] + cert["unprotected_liblcm_calls"]),
         )
 
-    # Gate 5: casting_issues_detected.
-    casting = detect_casting_needs(code, FAKE_API_INDEX.casting_index, tree)
+    # Gate 5: casting_issues_detected. Issue #40 B-1: on a READ-ONLY run, a
+    # casting issue set where EVERY issue is warning-tier is a non-blocking
+    # advisory, not a preflight reject. A write_enabled run always rejects
+    # regardless of severity. Issue #39/#40 P1-2 (cycle 5): routed through
+    # the shared _compute_casting_decision pipeline (same one
+    # handle_run_module and _handle_validate_only use), which also runs
+    # detect_interface_attribute_typos against FAKE_API_INDEX -- this
+    # runner now models the typo class too. Cycle 6: FAKE_API_INDEX.liblcm
+    # used to be EMPTY, so this coverage claim was false (typo detection
+    # could never fire against it at all); it now carries a small number of
+    # real-shaped liblcm entities (`ILexDb`, `IWfiAnalysis`) specifically so
+    # a genuine typo like `ILexDb.EntriesOC` (issue #39's verbatim repro)
+    # can be caught here. Interfaces NOT in that small set still fall
+    # through as "unknown, can't check", same documented scope limit as
+    # every other index-aware gate here. Mirrors execution.handle_run_module's
+    # post-#40-B-1 / post-#39-P1-2 decision.
+    casting = _compute_casting_decision(code, FAKE_API_INDEX.casting_index, tree, FAKE_API_INDEX)
+    advisories: list = []
     if casting["has_casting_issues"]:
-        return PreflightResult(
-            "preflight_reject",
-            "casting_issues_detected",
-            "casting_issues_detected",
-            str(casting["casting_issues"]),
-        )
+        _casting_issues = casting["casting_issues"]
+        _has_error_severity = casting["has_error_severity"]
+        if write_enabled or _has_error_severity:
+            return PreflightResult(
+                "preflight_reject",
+                "casting_issues_detected",
+                "casting_issues_detected",
+                str(_casting_issues),
+            )
+        advisories.append("casting_warning")
 
     # Gate 6: api_discovery_required (WRITE runs only -- hard gate, no
     # auto-discovery exception; see module docstring re issues #47/#80 scope).
@@ -334,8 +393,8 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
     # Non-blocking advisory (getall-contract SPEC §6 Level 3): never rejects,
     # so it only runs once every reject-gate above has already passed --
     # mirrors execution.handle_run_module, which computes it right before
-    # building the response `warnings` list.
-    advisories = []
+    # building the response `warnings` list. `advisories` may already carry
+    # "casting_warning" from the Gate 5 downgrade above.
     getall_check = detect_getall_unsafe_idiom(tree, api_mode, FAKE_API_INDEX)
     if getall_check["has_unsafe_idiom"]:
         advisories.append("getall_unsafe_idiom")

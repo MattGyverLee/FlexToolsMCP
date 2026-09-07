@@ -1,13 +1,52 @@
 {
   "version": 1,
-  "last_scan": "2026-07-20T00:00:00Z",
-  "last_scan_by": "lex-logscan",
+  "last_scan": "2026-09-07T00:00:00Z",
+  "last_scan_by": "lex-logscan (2 windows) + lex-lead synthesis",
   "scanned_through": {
-    "operations_log_bytes": 2994063,
-    "operations_log_new_lines": 10600,
-    "max_log_date": "2026-07-20",
-    "operations_jsonl_lines": 236,
-    "operations_jsonl_new_records": 187
+    "operations_log_bytes": 5084909,
+    "operations_log_rotated_predecessor": {
+      "file": "operations.log.1",
+      "bytes": 5242870,
+      "max_date": "2026-08-10"
+    },
+    "operations_jsonl_lines": 648,
+    "max_log_date": "2026-09-07",
+    "coverage_notes": [
+      "No unscanned gap between the merged windows: no log directories exist for 2026-08-29 through 2026-09-05 (verified: only 2026-08-10..08-11..08-12..08-13..08-14..08-15..08-16..08-18..08-19..08-21..08-26..08-28 then 2026-09-06, 2026-09-07 exist), so the August and September window scans are contiguous over all real data.",
+      "operations.log has a REAL 10-day hole, 2026-08-11 through 2026-08-20 (log.1 ends 2026-08-10T11:05:36 local, live log starts 2026-08-21T08:42:57 local, zero matching lines in either file for that span), while operations.jsonl covers it with 157 records and per-session log dirs exist for those days -- operations_log_bytes is NOT a trustworthy cursor for that span. Filed as MCP#110 (fingerprint f4f1db54e896).",
+      "operations.jsonl `ts` is UTC while operations.log and per-session log files are local time -- bucket accordingly in future scans (this ledger records raw evidence timestamps as sourced from each report; where a report distinguished local/UTC that distinction is carried in this entry's notes).",
+      "CLEANUP (2026-09-07, cycle 3 follow-up): a stray repo-root operations.jsonl (5 synthetic rows, see MCP#109 fingerprint bb05277778ee) existed at the repository root; it was NOT part of this ledger's scan cursor (which tracks ~/.flextoolsmcp/logs/, not the repo root). Preserved byte-identically at specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl and inlined into a comment on MCP#109, then removed from the working tree with user authorization. .gitignore now carries `operations.jsonl*` / `operations.log*` (verified via git check-ignore -v), closing the accidental-commit exposure but NOT the underlying log_dir_fn=None defect tracked by MCP#109. Recorded here so a future scan does not rediscover the (now-absent) repo-root file as a novel finding."
+    ],
+    "session_logs_scanned": {
+      "august_window": {
+        "dates": [
+          "2026-08-10",
+          "2026-08-11",
+          "2026-08-12",
+          "2026-08-13",
+          "2026-08-14",
+          "2026-08-15",
+          "2026-08-16",
+          "2026-08-18",
+          "2026-08-19",
+          "2026-08-21",
+          "2026-08-26",
+          "2026-08-28"
+        ],
+        "total_session_files": 514,
+        "real_sessions": 29,
+        "excluded_as_noise_fixture_reruns": 485
+      },
+      "september_window": {
+        "dates": [
+          "2026-09-06",
+          "2026-09-07"
+        ],
+        "real_sessions": 3,
+        "note": "session_183210_auto-Claude-Swahili.log (2026-09-06) already triaged into F1-F6/MCP#100,#101,#102/flexicon#257,#258 by the prior 2026-09-06T21:35:00Z scan; not re-scanned here. New real sessions this window: session_230055 (09-06), session_013534 and session_024114 (09-07).",
+        "excluded_as_noise_harness_rerun_pairs": 33
+      }
+    }
   },
   "filed": {
     "e3906b436990": {
@@ -36,9 +75,18 @@
       "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69",
       "signature": "invalid_api_chain low-confidence did-you-mean suggestion for project.LangProject accessor (match_ratio~0.15, suggests PossibilityLists/PossibilityList instead of project.lp)",
       "first_seen": "2026-06-24T08:16:17Z",
-      "last_seen": "2026-07-10T23:36:42Z",
-      "occurrences": 2,
-      "state": "open"
+      "last_seen": "2026-08-21T08:43:40Z",
+      "occurrences": 3,
+      "state": "regression-reopened",
+      "close_date": "2026-07-20T09:09:30Z",
+      "reopened_date": "2026-09-07",
+      "recurrence_dates": [
+        "2026-08-21T08:43:40Z"
+      ],
+      "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69#issuecomment-5568170194",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/69#issuecomment-5572013895",
+      "reopen_rank": 4,
+      "notes": "| STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #69 actually closed 2026-07-20T09:09:30Z. REGRESSION (2026-09-07): recurred 2026-08-21 with the same root confusion (guessing at the raw ILangProject accessor), compounded by a second wrong guess in the same session that also missed the documented project.lp accessor. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 4 of 5): recurred 2026-08-21T08:43:40Z ('FLExProject' object has no attribute 'LangProject'); the same session's very next attempt was a second wrong guess at the same target (project.project.Cache.LangProject), so the user was never steered to the documented project.lp accessor in either attempt -- two consecutive misses on one target is a suggestion-quality failure, not a one-off. The second guess is counted once elsewhere (under #39 and MCP#108) to avoid triple-counting a single log line. Ranked reopen list actioned in full 2026-09-07: #84 > #39 > #80 > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f)."
     },
     "83105d5ecbd9": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -57,10 +105,27 @@
       "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/39",
       "signature": "Preflight emits polymorphic-property hint (literal template text) but lets code execute anyway; PolymorphicAttributeError recurs (EntriesOC, InflectionFeature, GetInstance, BestAnalysisVernacularAlternative, ...)",
       "first_seen": "2026-06-20T22:00:17Z",
-      "last_seen": "2026-07-20T00:00:00Z",
-      "occurrences": 13,
-      "state": "open",
-      "notes": "Not newly filed this scan; pre-existing open issue re-observed recurring in-window (2026-07-01, 07-05, 07-08, 07-11). Ledger entry added so future scans dedup against it without re-querying GitHub."
+      "last_seen": "2026-08-28T16:44:57Z",
+      "occurrences": 23,
+      "state": "regression-reopened",
+      "notes": "Not newly filed this scan; pre-existing open issue re-observed recurring in-window (2026-07-01, 07-05, 07-08, 07-11). Ledger entry added so future scans dedup against it without re-querying GitHub. | STATE CORRECTION (2026-09-07): ledger carried a stale state:open from the 2026-07-20 write; #39 actually closed 2026-07-21T07:38:02Z (~14h after that write, within the ~36h window covering all six stale entries corrected this cycle). REGRESSION (2026-09-07): recurred 10 times 2026-08-11 through 2026-08-28 with the identical pre-fix hint template every time, matching the operations.jsonl PolymorphicAttributeError tally exactly; comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 2 of 5): 10 recurrences in the 2026-08-10..08-28 window is the whole window's PolymorphicAttributeError tally, every one with the identical hint template; beyond volume, at least two were NOT user casting mistakes -- 'LcmCache'.GetObject was a library-internal flexicon bug (now flexicon#261) and 'LcmCache'.Cache is a recurring discoverability trap (now MCP#108 facet a), so the emitted 'resubmit' hint was actively misleading for those two. Scope boundary preserved: #39 is about execution GATING (hint emitted but code runs anyway); MCP#108 is about hint CONTENT and COVERAGE. Ranked reopen list actioned in full 2026-09-07: #84 > #39 (reopened) > #80 > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f).",
+      "close_date": "2026-07-21T07:38:02Z",
+      "reopened_date": "2026-09-07",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/39#issuecomment-5572009878",
+      "recurrence_dates": [
+        "2026-08-11T09:18:23Z",
+        "2026-08-13T00:02:20Z",
+        "2026-08-15T20:51:44Z",
+        "2026-08-15T20:53:19Z",
+        "2026-08-15T20:53:51Z",
+        "2026-08-21T08:43:40Z",
+        "2026-08-21T08:44:34Z",
+        "2026-08-26T16:02:57Z",
+        "2026-08-26T16:03:13Z",
+        "2026-08-28T16:44:57Z"
+      ],
+      "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/39#issuecomment-5568161494",
+      "reopen_rank": 2
     },
     "48c9b7e2a115": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -68,10 +133,11 @@
       "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/48",
       "signature": "casting_issues_detected preflight rejections recur at high frequency across nearly every session",
       "first_seen": "2026-06-17T02:22:18Z",
-      "last_seen": "2026-07-20T00:00:00Z",
-      "occurrences": 61,
-      "state": "open",
-      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window at very high frequency. Approximate occurrence count from Reason code: casting_issues_detected tally in operations.log. CORRECTION (2026-07-20 Phase B): GH issue #48 is actually CLOSED and is a get_object_api casting-metadata inline spec, not literally a tracker for raw casting_issues_detected volume — this ledger entry's 'open'/high-occurrence framing was inaccurate and should be treated as an approximate aggregate bucket only. The ExtendedNoteTypesOA *OA false-positive sub-case (Ejagham Mini, 2026-07-12 11:01:25/11:01:37) has been un-folded from this aggregate and filed individually as FlexToolsMCP#76 (see fingerprint oa-castfp-extnotetypes-e5a1 below); it cross-references the actually-relevant closed issue #40 (Preflight casting gate over-rejects safe read-only property access incl. *OA), not #48. Future scans should attribute *OA-shaped casting false positives to #76/#40, not this bucket."
+      "last_seen": "2026-09-07T02:42:10Z",
+      "occurrences": 95,
+      "state": "closed-not-a-tracker",
+      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window at very high frequency. Approximate occurrence count from Reason code: casting_issues_detected tally in operations.log. CORRECTION (2026-07-20 Phase B): GH issue #48 is actually CLOSED and is a get_object_api casting-metadata inline spec, not literally a tracker for raw casting_issues_detected volume — this ledger entry's 'open'/high-occurrence framing was inaccurate and should be treated as an approximate aggregate bucket only. The ExtendedNoteTypesOA *OA false-positive sub-case (Ejagham Mini, 2026-07-12 11:01:25/11:01:37) has been un-folded from this aggregate and filed individually as FlexToolsMCP#76 (see fingerprint oa-castfp-extnotetypes-e5a1 below); it cross-references the actually-relevant closed issue #40 (Preflight casting gate over-rejects safe read-only property access incl. *OA), not #48. Future scans should attribute *OA-shaped casting false positives to #76/#40, not this bucket. | STATE CORRECTION (2026-09-07): ledger carried a stale state:open from the 2026-07-20 write; #48 actually closed 2026-07-12T05:51:45Z, well before that write. CAUSAL NOTE: the September scanner mis-deduped fresh casting_issues_detected volume against this bucket BECAUSE the stale open state made #48 look like a live tracker -- it is a closed spec/enhancement about inlining casting metadata and was never a defect tracker; recorded here so this mis-dedup cannot recur. OCCURRENCE MERGE (2026-09-07): 61 (prior aggregate) + 31 (August window, per cycle1-logscan-august.md dedup table, distinct ops, last_seen 2026-08-28T16:44:39Z) + >=3 (September window: session_230055 op#1 23:01:31, session_013534 op#1, session_024114 op#1 02:42:10, per cycle1-logscan-september.md dedup table, which uses 'etc.' after these three examples without an exhaustive count -- this September figure is therefore a FLOOR, not exact; flagged as a discrepancy in the archivist report). Volume is a SYMPTOM of the open #40/#97 casting-gate work, not an independent defect -- nothing filed for it.",
+      "close_date": "2026-07-12T05:51:45Z"
     },
     "oa-castfp-extnotetypes-e5a1": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -86,14 +152,29 @@
     },
     "53d4e6f0b229": {
       "repo": "MattGyverLee/FlexToolsMCP",
-      "issue": 53,
-      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/53",
+      "issue": 80,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/80",
       "signature": "api_discovery_required preflight rejections recur across sessions, including 4-deep in a single session before the AI gives up",
       "first_seen": "2026-06-17T01:46:22Z",
-      "last_seen": "2026-07-20T00:00:00Z",
+      "last_seen": "2026-08-15T17:49:55Z",
       "occurrences": 31,
-      "state": "open",
-      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window. Notable case: 2026-07-09 10:57:05-10:57:35, 4 consecutive ops rejected (3x casting_issues_detected then api_discovery_required on a trivial report.Info('hello') smoke test)."
+      "state": "regression-reopened",
+      "notes": "Not newly filed this scan; pre-existing open enhancement re-observed recurring in-window. Notable case: 2026-07-09 10:57:05-10:57:35, 4 consecutive ops rejected (3x casting_issues_detected then api_discovery_required on a trivial report.Info('hello') smoke test). | REGRESSION (2026-09-07, not a plain dedup): recurred 2026-08-11 and 2026-08-15 as a hard preflight_reject, after #80's 2026-07-21T06:30:06Z close -- the exact failure mode Part 1 of #80's fix was supposed to replace with a soft advisory redirect. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 3 of 5): recurred twice as a HARD preflight_reject on op #1 of a fresh session (2026-08-11 06:14:24 and 2026-08-15 20:49:55 local / 17:49:55Z), reproducing precisely the behavior Part 1 of #80's own fix was meant to replace with a soft advisory -- not a peripheral regression but a direct contradiction of the fix's stated behavior change. Ranked #3 of 5, moved up from #4 during triage on exactly this reasoning (a fix whose stated behavior change is directly contradicted is stronger evidence of a bad close than a higher-volume recurrence of a same-root confusion). Ranked reopen list actioned in full 2026-09-07: #84 > #39 > #80 (reopened) > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f).",
+      "close_date": "2026-07-21T06:30:06Z",
+      "reopened_date": "2026-09-07",
+      "recurrence_dates": [
+        "2026-08-11T06:14:24Z",
+        "2026-08-15T17:49:55Z"
+      ],
+      "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/80#issuecomment-5568168165",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/80#issuecomment-5572012012",
+      "reopen_rank": 3,
+      "correction": {
+        "prior_attribution": 53,
+        "corrected": "2026-09-07",
+        "reason": "#53 is about implicit read-only session auto-init and never mentions api_discovery_required; #80's body names it explicitly at execution.py:2240-2292 as the exact code path to reclassify turn-1 zero-discovery rejections as advisory. #53's own close date (2026-07-21T07:38:03Z) was previously recorded against this fingerprint under the wrong issue and is superseded by #80's actual close date above.",
+        "occurrences_note": "occurrences: 31 was tallied under the wrong issue (#53) and is carried forward as-is on this entry rather than silently rewritten; it does not include the 2 new August recurrences listed in recurrence_dates above."
+      }
     },
     "222a1f9e6c73": {
       "repo": "MattGyverLee/flexicon",
@@ -114,8 +195,10 @@
       "first_seen": "2026-07-20T00:00:00Z",
       "last_seen": "2026-07-20T00:00:00Z",
       "occurrences": 42,
-      "state": "open",
-      "notes": "P1 telemetry pollution: tests/test_issue42_session_identity.py:129-136,152-159 call _log_preflight_reject directly and only patch get_operations_logger, not get_log_dir, so real test-op-001/test-op-002 rows land in production operations.jsonl."
+      "state": "residual-not-strict-regression",
+      "notes": "P1 telemetry pollution: tests/test_issue42_session_identity.py:129-136,152-159 call _log_preflight_reject directly and only patch get_operations_logger, not get_log_dir, so real test-op-001/test-op-002 rows land in production operations.jsonl. | STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #74 actually closed 2026-07-20T23:31:52Z. CLASSIFICATION (2026-09-07): residual-not-strict-regression, not a plain regression -- production operations.jsonl was NOT polluted this time and the stray row ids were op-* (op-014227325-001 .. op-014240211-004), not #74's original test-op-* signature, so #74's fix partially held; the leak went to a cwd-relative operations.jsonl at the repo root instead (see cycle1-explore-stray-jsonl.md). Comment posted on #74 (comment-only, NOT reopened): https://github.com/MattGyverLee/FlexToolsMCP/issues/74#issuecomment-5568185095. MCP#109 filed this cycle as the tracking issue for the residual cwd-relative log_dir_fn=None gap.",
+      "close_date": "2026-07-20T23:31:52Z",
+      "tracking_issue": 109
     },
     "d905780c9f6f": {
       "repo": "MattGyverLee/FlexToolsMCP",
@@ -123,10 +206,29 @@
       "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/75",
       "signature": "pythonnet overload-resolution failure No method matches given arguments not hinted by preflight/resolve_property (GetFields, Create)",
       "first_seen": "2026-07-20T00:00:00Z",
-      "last_seen": "2026-07-20T00:00:00Z",
-      "occurrences": 3,
+      "last_seen": "2026-08-11T06:15:37Z",
+      "occurrences": 4,
+      "state": "regression-closed-superseded",
+      "notes": "P2 enhancement: distinct failure class from polymorphic-cast gates (#39/#48) - pythonnet overload resolution, not currently detected by preflight. Seen on IFwMetaDataCache.GetFields and IPartOfSpeechFactory.Create. | STATE CORRECTION (2026-09-07): stale state:open from the 2026-07-20 write; #75 actually closed 2026-07-20T23:31:51Z. REGRESSION (2026-09-07): recurred once 2026-08-11 at a NEW, third call site (ISilDataAccess.BeginUndoTask) rather than the originally reported ones (GetFields/Create) -- weakest case of the five for reopening this specific issue vs. filing a follow-on for site generalization. Comment posted (see comment_url); ranked reopen recommendation: #84 > #39 > #80 > #69 > #75 (#75 ranked last). | DELIBERATELY NOT REOPENED 2026-09-07 (user-authorized triage decision, ranked #5 of 5 -- the one candidate recommended against reopening): the recurrence is at a THIRD call site, not either of the two originally reported (GetFields, Create), so the original fix holds for its known sites while the underlying gap generalizes -- a scope limitation, not a failed fix. Reopening would misrepresent that. Tracked instead by NEW issue MCP#111 (fingerprint 51a3e9827ef5), which asks for a general mechanism (parse the pythonnet overload-failure shape, emit candidate signatures from the liblcm index) rather than a per-site allowlist. #75 stays CLOSED; comment recording this decision and linking #111 posted 2026-09-07T14:23:59Z.",
+      "close_date": "2026-07-20T23:31:51Z",
+      "recurrence_dates": [
+        "2026-08-11T06:15:37Z"
+      ],
+      "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/75#issuecomment-5568163038",
+      "not_reopened_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/75#issuecomment-5572032974",
+      "tracking_issue": 111,
+      "reopen_rank": 5
+    },
+    "51a3e9827ef5": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 111,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/111",
+      "signature": "No method matches given arguments for ISilDataAccess.BeginUndoTask",
+      "first_seen": "2026-08-11T06:15:37 (local)",
+      "last_seen": "2026-08-11T06:15:37 (local)",
+      "occurrences": 1,
       "state": "open",
-      "notes": "P2 enhancement: distinct failure class from polymorphic-cast gates (#39/#48) - pythonnet overload resolution, not currently detected by preflight. Seen on IFwMetaDataCache.GetFields and IPartOfSpeechFactory.Create."
+      "notes": "New ledger entry (2026-09-07, cycle 3 follow-up write, filed after user authorization of the reopen/cleanup recommendations). Filed as a deliberate ALTERNATIVE to reopening closed #75 (see fingerprint d905780c9f6f, state regression-closed-superseded): the recurrence is at a third call site (ISilDataAccess.BeginUndoTask) not enumerated by #75's original two (GetFields, Create), so #75's fix holds for its known sites while the underlying gap generalizes. Evidence: logs/2026-08-11/session_091536_auto-Ejagham_Full_GT-Test.log, op-091543-001, 'No method matches given arguments for ISilDataAccess.BeginUndoTask: (<class 'str'>)'. Timestamp is LOCAL time per the UTC/local skew documented in MCP#110 (fingerprint f4f1db54e896) -- deliberately NOT given a trailing Z, to avoid falsely implying UTC. The ask is a general mechanism (parse the pythonnet OverloadResolutionError shape, emit candidate signatures from the liblcm index at src/flextoolsmcp/index/liblcm/liblcm_api_v11.0.0.json) rather than a per-site allowlist. Cross-references closed #75 and MCP#108 (hint content/coverage quality, same DX family, different emitter). Labels: bug, log-triage. P2."
     },
     "b9f95446acf2": {
       "signature": "undefined_variables preflight rejection - low-volume pattern",
@@ -139,10 +241,10 @@
     "e9be15c60f2e": {
       "signature": "partial_module_structure preflight rejection - low-volume pattern",
       "first_seen": "2026-07-12T00:00:00Z",
-      "last_seen": "2026-07-20T00:00:00Z",
-      "occurrences": 2,
+      "last_seen": "2026-08-26T14:48:33Z",
+      "occurrences": 5,
       "state": "deferred",
-      "notes": "Noted, not filed: low-volume in this window (x2). Ledger entry added so future scans dedup against it without re-proposing."
+      "notes": "Noted, not filed: low-volume in this window (x2). Ledger entry added so future scans dedup against it without re-proposing. | Updated 2026-09-07: occurrences 2 -> 5 (+3 in the August window: 08-18 21:39:42 Ejagham Mini, 08-26 14:48:33 GT038_NKP2_Throwaway, one more same-shape instance). GRADUATION THRESHOLD: file as an issue if cumulative occurrences exceed 8 in a future scan."
     },
     "d007f4911a7a": {
       "signature": "undiscovered_entity preflight rejection - low-volume pattern",
@@ -151,6 +253,235 @@
       "occurrences": 1,
       "state": "deferred",
       "notes": "Noted, not filed: low-volume in this window. Ledger entry added so future scans dedup against it without re-proposing."
+    },
+    "0d7917c944e2": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 100,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/100",
+      "signature": "Index entities missing access_path field; Operations/Collection classes reachable via project facade but not exported from flexicon top level (MSAOperations and 20 siblings, 9 Collection classes)",
+      "first_seen": "2026-08-18T21:41:14Z",
+      "last_seen": "2026-09-06T20:19:27Z",
+      "occurrences": 2,
+      "state": "open",
+      "notes": "F1 (MCP half). Session session_183210_auto-Claude-Swahili.log op #30: ImportError cannot import name 'MSAOperations' from flexicon (Did you mean POSOperations); op #31 recovered via undocumented `project.MSA` facade access. Sibling flexicon-side fingerprint: da50b2947f5d (flexicon#257, comment, not filed new -- peer session had already opened it). | BACKDATE (2026-09-07): first_seen moved from 2026-09-06T20:17:09Z to 2026-08-18T21:41:14Z (19 days earlier), occurrences +1. NOTE: the 2026-08-18 evidence is the ReversalIndexOperations variant of this import failure, while this fingerprint's stored signature text is the MSAOperations string -- same defect family (Operations/Collection classes not exported from flexicon top level), different class name. Do not read this as the identical string having been observed on 08-18."
+    },
+    "da50b2947f5d": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 257,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/257#issuecomment-5564202943",
+      "signature": "ImportError: cannot import name 'MSAOperations' from flexicon (Did you mean POSOperations); Operations/Collection classes not exported from flexicon __init__",
+      "first_seen": "2026-08-18T21:41:14Z",
+      "last_seen": "2026-09-06T20:17:09Z",
+      "occurrences": 2,
+      "state": "commented-existing",
+      "notes": "F1 (flexicon half). Not filed new: peer session had already opened flexicon#257 for this exact defect before we could act; posted a comment instead (full 64-vs-43 export sweep, exclusion of 9 *Collection classes, cross-link to MCP#100/0d7917c944e2). Repo-and-issue fields point at the comment permalink, not a standalone issue we own. | BACKDATE (2026-09-07): first_seen moved from 2026-09-06T20:17:09Z to 2026-08-18T21:41:14Z (19 days earlier), occurrences +1. NOTE: the 2026-08-18 evidence is the ReversalIndexOperations variant of this import failure, while this fingerprint's stored signature text is the MSAOperations string -- same defect family, different class name; not the identical string."
+    },
+    "d297f59ec7ce": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 40,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/40",
+      "signature": "Preflight casting gate over-rejects already-cast property access when sibling if/elif branches reuse the same variable name (ClassName-dispatch idiom, e.g. MSA subtype branches) -- regression of closed #40",
+      "first_seen": "2026-09-06T19:16:46Z",
+      "last_seen": "2026-09-06T19:16:46Z",
+      "occurrences": 1,
+      "state": "regression-reopened",
+      "notes": "F2. Regression of this issue's own original scope, confirmed 2026-09-06: op #9, describe_msa() casts shared var `m` across four correctly-typed MSA branches (IMoStemMsa/IMoInflAffMsa/IMoDerivAffMsa/IMoUnclassifiedAffixMsa), gate rejected issues=5 in 0.031s. Root cause traced to _resolve_alias_maps (validators.py:2167-2215) keying casts by variable name only, from an unscoped whole-tree ast.walk in _collect_assign_call_nodes (validators.py:2151-2164). Reopened 2026-09-06 with regression,log-triage labels; comment posted requesting a regression test built on the op #9 snippet, and cross-referencing #97 (peer session's concurrent report of the same defect class, comment: https://github.com/MattGyverLee/FlexToolsMCP/issues/97#issuecomment-5564206141). Maintainer to decide which of #40/#97 stays canonical."
+    },
+    "d1344b380445": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 97,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/97#issuecomment-5564206141",
+      "signature": "Casting gate suggests a wrong cast interface (e.g. property Form resolved to ILexEtymology instead of the actual producing type IWfiGloss), ignoring documented flexicon return types",
+      "first_seen": "2026-09-06T19:16:15Z",
+      "last_seen": "2026-09-06T19:16:15Z",
+      "occurrences": 1,
+      "state": "commented-existing",
+      "notes": "F3. Not filed new: peer's pre-existing #97 already covers wrong-suggested-interface as one of its two headline bugs. Posted as part of the combined comment on #97 (op #8: `g.Form` resolved to ILexEtymology though `g` is IWfiGloss per WfiAnalysisOperations.GetGlosses() return type)."
+    },
+    "ea077be8e1b0": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 97,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/97#issuecomment-5564206141",
+      "signature": "Casting gate rejects unambiguous already-typed property access outside branch conflation (MorphoSyntaxAnalysisRA, MorphRA) and double-counts bare/OA-suffixed property name variants as separate issues",
+      "first_seen": "2026-09-06T20:07:32Z",
+      "last_seen": "2026-09-06T20:14:32Z",
+      "occurrences": 3,
+      "state": "commented-existing",
+      "notes": "F4. Over-reject half (ops #24 MorphRA, #27 MorphoSyntaxAnalysisRA) is the same defect class as d297f59ec7ce/#40 -- not a separate ledger track, cross-ref only. OA/RA double-counting half (op #21: `e.LexemeFormOA` counted twice, once as LexemeForm and once as LexemeFormOA, inflating issues 2->3) is a genuinely new sub-bug, not previously in #97's body; posted in the same combined comment on #97 along with the alphabetical defined_on[0] root-cause trace and a severity-based REJECT->WARN mitigation proposal."
+    },
+    "3969b046e421": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 101,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/101",
+      "signature": "IMoInflAffixSlot / IMoInflAffixTemplate are not ICmPossibility despite exposing Name; resolve_property/resolve_type does not warn -- extends #87 polymorphic-collection discovery gap to inflectional-affix family",
+      "first_seen": "2026-09-06T19:18:18Z",
+      "last_seen": "2026-09-07T02:49:45Z",
+      "occurrences": 3,
+      "state": "open",
+      "notes": "F5. Filed new (bug,log-triage) rather than folded into #87, since #87 is scoped to feature structures (IFsFeatStruc.FeatureSpecsOC) and this is a distinct entity family. Cross-references #87 in-body; a comment was also posted on #87 noting the adjacency. TypeError: object does not implement ICmPossibility at op #12 (slots, 19:18:18) and again at 19:21:03 (templates). Also the false-positive/false-negative pairing: casting gate rejected 4 correctly-cast MSA branches (op #9, see d297f59ec7ce) while passing (tier=none) the two scripts that actually contained this bad ICmPossibility cast. | Fresh recurrence +1 (2026-09-07T02:49:45Z local, session_024114 op#7): TypeError: object does not implement IMoInflAffixTemplate, casting gate passed tier=none. Comment posted: https://github.com/MattGyverLee/FlexToolsMCP/issues/101#issuecomment-5568184155."
+    },
+    "76e652c1c67f": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 258,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/258",
+      "signature": "MSAOperations has no slot-editing method (SetInflAffMsaSlots) to add/remove entries in SlotsRC on an existing IMoInflAffMsa, unlike the existing SetStemMsaPos/SetDerivAffMsaPos pair",
+      "first_seen": "2026-09-06T20:17:09Z",
+      "last_seen": "2026-09-06T20:19:27Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "F6 (flexicon half). Filed new (enhancement,log-triage). Confirmed distinct from flexicon#251/#252/#231 (none mention slot editing). Cross-references peer session's adjacent flexicon#255 (inflectional affix slot/template creation, not editing) in-body. Repair code from ops #30/#31 used raw IMoInflAffMsa(msa).SlotsRC.Remove/Add."
+    },
+    "751c971b840f": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 102,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/102",
+      "signature": "No worked example/recipe for auditing and repairing malformed inflectional-affix MSAs; find_examples surfaces nothing for this operation shape",
+      "first_seen": "2026-09-06T20:17:09Z",
+      "last_seen": "2026-09-06T20:19:27Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "F6 (MCP half). Filed new (enhancement,dx,log-triage), references flexicon#258 (76e652c1c67f). Session's real diagnosis (5 malformed affix MSAs in a 116-analysis text) is the worked motivating case; ~2.5h end-to-end."
+    },
+    "15e120d04d11": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 84,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/84",
+      "signature": "Official flexicon module template uses nonexistent project.LexSense accessor; did_you_mean hint is circular",
+      "first_seen": "2026-08-12T22:03:12Z",
+      "last_seen": "2026-08-12T22:03:12Z",
+      "occurrences": 1,
+      "state": "regression-reopened",
+      "close_date": "2026-08-12T21:05:10Z",
+      "reopened_date": "2026-09-07",
+      "recurrence_dates": [
+        "2026-08-12T22:03:12Z"
+      ],
+      "close_to_recurrence_minutes": 58,
+      "comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/84#issuecomment-5568158117",
+      "reopen_comment_url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/84#issuecomment-5572007779",
+      "reopen_rank": 1,
+      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): recurred 2026-08-12T22:03:12Z, only 58 minutes after the 2026-08-12T21:05:10Z close -- `session_215659_auto-Claude-Swahili.log` op-220305383-003, 'FLExProject' object has no attribute 'LexSense'. `gh issue view 84` shows the merged fix was documentation-only (no template code diff), which does not plausibly explain the identical error firing under an hour later -- STRONGEST reopen candidate of the five ranked this cycle. Comment posted (see comment_url). | REOPENED 2026-09-07 (user-authorized, rank 1 of 5, strongest candidate): the merged fix was documentation-only with no diff to the served template, so a docs change cannot alter runtime behavior -- the recurrence of the identical AttributeError 58 minutes later was structurally guaranteed, not merely likely. The close premise itself, not just the outcome, was in question. Ranked reopen list actioned in full 2026-09-07: #84 (reopened) > #39 (reopened) > #80 (reopened) > #69 (reopened); #75 (deliberately not reopened, see fingerprint d905780c9f6f)."
+    },
+    "3393ffcc9d96": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 34,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/34",
+      "signature": "Cookbook: ILcmServiceLocator generic methods unreachable via pythonnet GetInstance[T]() -- must use reflection or GetService(Type)",
+      "first_seen": "2026-08-26T16:03:13Z",
+      "last_seen": "2026-08-26T16:03:13Z",
+      "occurrences": 1,
+      "state": "regression-closed-deliverable-was-correct",
+      "close_date": "2026-05-27T01:13:58Z",
+      "recurrence_dates": [
+        "2026-08-26T16:03:13Z"
+      ],
+      "comment_url": "https://github.com/MattGyverLee/flexicon/issues/34#issuecomment-5568171084",
+      "not_reopened_comment_url": "https://github.com/MattGyverLee/flexicon/issues/34#issuecomment-5572080207",
+      "notes": "New ledger entry (2026-09-07, no prior filed entry existed): closed 2026-05-27T01:13:58Z as a documentation/cookbook fix (not a code fix); recurred verbatim 2026-08-26T16:03:13Z (3 months later), `session_160242_auto-Ejagham_W_Mini.log`: 'ILcmServiceLocator' object has no attribute 'GetInstance'. Suggests the cookbook recipe isn't surfacing through find_examples/search_by_capability when someone actually needs it -- comment posted noting discoverability, not a reopen request; not part of the 5-issue MCP reopen ranking (flexicon repo). | DELIBERATELY NOT REOPENED 2026-09-07 (archivist's own call, not lex-lead's -- lead left it as an open question): this is a COOKBOOK issue, so documentation was the correct deliverable and it was in fact delivered. The verbatim 3-month-later recurrence indicates the recipe is not SURFACING (find_examples / search_by_capability), not that the fix was wrong -- reopening would ask for the recipe to be rewritten, which addresses nothing. CONTRAST with MCP#84 (fingerprint 15e120d04d11), which WAS reopened in this same pass on the opposite reasoning: there a documentation-only change was merged against a defect with a runtime symptom, so the docs fix could never have prevented the recurrence; here the docs fix was the right shape and only the delivery mechanism failed. OPEN FOLLOW-UP CANDIDATE (not yet filed, recorded here so a future scan does not lose it): a FlexToolsMCP-side issue that find_examples/search_by_capability should surface this ILcmServiceLocator.GetInstance[T]() cookbook recipe for queries that should hit it -- scope decision pending, no issue number assigned as of 2026-09-07."
+    },
+    "7c7b4c05e2b1": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 98,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/98",
+      "signature": "'ILangProject' object has no attribute 'WordformInventoryOA'",
+      "first_seen": "2026-08-13T00:02:12Z",
+      "last_seen": "2026-09-06T20:19:27Z",
+      "occurrences": 2,
+      "state": "open",
+      "notes": "New ledger entry (2026-09-07): #98 had no `filed` entry despite existing on GitHub. first_seen 2026-08-13T00:02:12Z (spans midnight from `session_235236_auto-Claude-Swahili.log`, 2026-08-12 file) per cycle1-logscan-august.md, which predates the 2026-09-06 filing. occurrences=2: 1 (August window) + 1 (the 2026-09-06 instance that triggered the original filing, filed by a peer session outside this scan's scope; exact intra-window timestamp not available from the reports read -- last_seen approximated to the session_183210 batch time used for sibling F1-F6 entries from that same scan). Comment posted 2026-09-07: https://github.com/MattGyverLee/FlexToolsMCP/issues/98#issuecomment-5568184647."
+    },
+    "70b131eb301c": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 260,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/260",
+      "signature": "AllomorphOperations.__GetAllomorphObject does not cast to IMoForm before GetForm accesses .Form",
+      "first_seen": "2026-09-07T02:05:27Z",
+      "last_seen": "2026-09-07T02:06:48Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N1 (cycle1-logscan-september.md #1). Evidence: logs/2026-09-07/session_013534_auto-Claude-Swahili.log op#2 (02:05:27) 'ICmObject' object has no attribute 'Form'; op#3 (02:06:48) shows the user's workaround (explicit IMoForm(obj) cast). Filed bug,log-triage; cross-references closed sweeps #133/#176 and cites sibling suspect __GetEnvironmentObject at AllomorphOperations.py:1114."
+    },
+    "39c206b4c315": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 261,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/261",
+      "signature": "AttributeError: LcmCache has no attribute GetObject in DataNotebookOperations.__GetRecordObject",
+      "first_seen": "2026-08-15T20:53:51Z",
+      "last_seen": "2026-08-15T20:53:51Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N2 (cycle1-logscan-august.md #2). Evidence: logs/2026-08-15/session_204945_auto-Target.log:443-465, op ending 17:53:51Z -- DataNotebookOperations.py:182 __GetRecordObject calls self.project.project.GetObject(hvo); self.project.project is the raw LcmCache (same identity #193 established), which has no GetObject. Library-internal bug, not user-fixable by any cast; cross-referenced on MCP#108 and vice versa (see cross-link comments)."
+    },
+    "5dc1029cc399": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 262,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/262",
+      "signature": "FLExProject.Object raises undocumented KeyNotFoundException for stale-but-well-formed GUID instead of returning None",
+      "first_seen": "2026-09-07T02:08:57Z",
+      "last_seen": "2026-09-07T02:11:26Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N3 (cycle1-logscan-september.md #2). Evidence: logs/2026-09-07/session_013534_auto-Claude-Swahili.log op#4 (02:08:57), FLExProject.py:3224 Object() -> ServiceLocator.GetObject raises raw CLR KeyNotFoundException for a well-formed but stale GUID; user wrote a local try/except workaround at op#5 (02:11:26)."
+    },
+    "abb91b059956": {
+      "repo": "MattGyverLee/flexicon",
+      "issue": 263,
+      "url": "https://github.com/MattGyverLee/flexicon/issues/263",
+      "signature": "AttributeError: FLExProject has no attribute WriteEnabled (stub declares capitalized, impl is lowercase writeEnabled)",
+      "first_seen": "2026-08-15T20:51:09Z",
+      "last_seen": "2026-08-15T20:51:09Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N4 (cycle1-logscan-august.md #1). Evidence: logs/2026-08-15/session_204945_auto-Target.log:87-96, op-205103531-003 (17:51:09Z). FLExProject.pyi:72 declares WriteEnabled: bool; the real runtime attribute is lowercase writeEnabled (confirmed against flexicon's own CLAUDE.md)."
+    },
+    "a9895b83b6a4": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 108,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/108",
+      "signature": "Polymorphic-cast hint quality: three gaps in one emitter (redundant .Cache hop, silent on interface-cast TypeError, unresolvable rewrite promise for nonexistent property)",
+      "first_seen": "2026-08-21T08:44:34Z",
+      "last_seen": "2026-09-07T00:29:37Z",
+      "occurrences": 6,
+      "state": "open",
+      "notes": "Proposal N5, merging cycle1-logscan-august.md #3 (redundant .Cache hop, 4 occurrences: 08-21 08:44:34, 08-26 16:02:57, 08-28 16:44:57 x2) with cycle1-logscan-september.md #3 facets (a) silent on interface-cast TypeError (session_230055 op#100, 2026-09-07T00:29:05) and (b/c) unresolvable rewrite promise for a plain attribute typo with no matching property anywhere in the liblcm schema (session_230055 op#101, 2026-09-07T00:29:37, ICmAgentEvaluation.Accepted -- real property is Approves). #97-FOLD DECISION: facet (c) was KEPT here rather than folded into #97 -- #97's two bugs are both about *which interface* to suggest among candidates that plausibly exist (wrong-interface ranking, and if/elif branch conflation); facet (c) is a did_you_mean-shaped gap where NO candidate exists at all (plain attribute-name typo), a different failure mode. Cross-referenced #97 in-body. Labels: enhancement, dx, log-triage. Cross-link comments posted: this issue <-> flexicon#261 (see comment URLs below)."
+    },
+    "bb05277778ee": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 109,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/109",
+      "signature": "Harness telemetry leaks to a cwd-relative operations.jsonl; four log_dir_fn=None params still default to the production log dir",
+      "first_seen": "2026-09-07T06:42:27Z",
+      "last_seen": "2026-09-07T06:42:40Z",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N6, based on cycle1-explore-stray-jsonl.md (repo-root `operations.jsonl` VERDICT). 5 synthetic records (op-014227325-001 .. op-014240211-004, ts range above, UTC) written to a cwd-relative operations.jsonl during an ad-hoc harness/verification run; execution.py:693,744,903,963 log_dir_fn=None params still silently default to the real production log dir when a caller omits the override. Same root cause class as #74 but NOT the same signature (op-* ids, not test-op-*; see #74's residual-not-strict-regression classification, fingerprint f3827601b213). Labels: bug, log-triage, telemetry. Body explicitly defers the .gitignore edit and stray-file removal to user confirmation."
+    },
+    "f4f1db54e896": {
+      "repo": "MattGyverLee/FlexToolsMCP",
+      "issue": 110,
+      "url": "https://github.com/MattGyverLee/FlexToolsMCP/issues/110",
+      "signature": "operations.log silently lost 10 days of activity across rotation, while jsonl and per-session logs kept it",
+      "first_seen": "2026-09-07",
+      "last_seen": "2026-09-07",
+      "occurrences": 1,
+      "state": "open",
+      "notes": "Proposal N7, escalated from cycle1-logscan-august.md's rotation-gap observation (originally logged there as low-severity/not-proposed). Structural finding, not a per-op recurrence: operations.log has a REAL 10-day hole, 2026-08-11 through 2026-08-20 (log.1 ends 2026-08-10T11:05:36 local, live log starts 2026-08-21T08:42:57 local, zero matching lines in either file for that span), while operations.jsonl covers it with 157 records and per-session log dirs exist for those days -- so operations_log_bytes is NOT a trustworthy cursor for that span. Labels: bug, log-triage, telemetry."
+    },
+    "d447c0f2dd76": {
+      "signature": "type object 'IMoAffixProcessFactory' has no attribute 'GetMethods' (static call on factory type instead of .GetType().GetMethods())",
+      "first_seen": "2026-08-19T04:24:43Z",
+      "last_seen": "2026-08-19T04:24:43Z",
+      "occurrences": 1,
+      "state": "deferred",
+      "notes": "New deferred low-confidence one-off (2026-09-07), from cycle1-logscan-august.md 'Excluded as noise'. Ejagham Mini session: user called a static .GetMethods() on the factory TYPE instead of .GetType().GetMethods(). One occurrence, no clear fix target -- not filed. Ledger entry added so future scans dedup cleanly."
+    },
+    "08d1786ff5ea": {
+      "signature": "cannot import name 'IMultiUnicode' from 'SIL.LCModel.Core.KernelInterfaces' (wrong import path guess)",
+      "first_seen": "2026-08-19T08:50:46Z",
+      "last_seen": "2026-08-19T08:50:46Z",
+      "occurrences": 1,
+      "state": "deferred",
+      "notes": "New deferred low-confidence one-off (2026-09-07), from cycle1-logscan-august.md 'Excluded as noise'. Ejagham Mini session: wrong import path guess for IMultiUnicode. One occurrence, no clear fix target -- not filed. Ledger entry added so future scans dedup cleanly."
     }
   },
   "history": [
@@ -181,6 +512,38 @@
       "regressions": 1,
       "roadblocks": 0,
       "notes": "Phase B addendum (user-approved un-fold): filed FlexToolsMCP#76 (P2 bug: preflight casting gate false-positive on lexdb.ExtendedNoteTypesOA, a plain *OA owning-atomic property, code-shape sensitive to try/indent vs top-level). Un-folded from the 48c9b7e2a115 aggregate casting_issues_detected bucket previously misattributed to closed issue #48; verification found the correct near-exact precedent is closed issue #40, and this occurrence (2026-07-12) recurred 4 days after #40 closed (2026-07-08) — flagged as a regression. Corrected the 48c9b7e2a115 ledger note to stop misattributing #48 as an open casting_issues_detected tracker."
+    },
+    {
+      "scan": "2026-09-06T21:35:00Z",
+      "new": 4,
+      "deduped": 4,
+      "regressions": 1,
+      "roadblocks": 0,
+      "notes": "MSA-friction triage of session_183210_auto-Claude-Swahili.log (35 ops, 18:32-20:26; FlexToolsMCP 2.9.1 / flexicon 4.5.2 / LibLCM 11.0.0), findings F1-F6. Filed new: MCP#100 (0d7917c944e2, access_path), MCP#101 (3969b046e421, ICmPossibility gap, cross-refs #87), flexicon#258 (76e652c1c67f, MSA slot-editing method), MCP#102 (751c971b840f, worked repair recipe, refs flexicon#258). Regression: reopened closed MCP#40 (d297f59ec7ce) -- casting gate over-rejects already-cast property access across sibling if/elif branches sharing a variable name (MSA ClassName-dispatch idiom); root-caused to validators.py _resolve_alias_maps/_collect_assign_call_nodes; comment posted requesting a regression test. Deduped/comment-only (peer-session collision, not filed new): F1's flexicon half on peer's pre-existing flexicon#257 (da50b2947f5d), F3 wrong-suggested-cast and F4's OA/RA double-count half on peer's pre-existing MCP#97 (d1344b380445, ea077be8e1b0) -- #97 substance-matches this scan's F2-F4 branch-conflation/wrong-suggestion class. Out of scope, not recorded as our findings: 5 non-MSA log errors excluded per dossier scope guard (SegmentOperations.GetSegments, IAnalysis.Form, WordformInventoryOA, undoable=False stderr, 'ungar' typo); peer session separately filed WordformInventoryOA as MCP#98 and read-after-write staleness as MCP#96 -- covered by peer session, outside this scan's scope, not ledgered here."
+    },
+    {
+      "scan": "2026-09-07T00:00:00Z",
+      "new": 8,
+      "deduped": 5,
+      "regressions": 6,
+      "residual": 1,
+      "excluded_as_noise": {
+        "fixture_and_harness_reruns": 518,
+        "itemised_one_offs": 9
+      },
+      "deferred_low_volume": 3,
+      "reopened": 4,
+      "closed_deliberately": 2,
+      "cleanup": {
+        "stray_jsonl_removed": true,
+        "evidence_preserved": [
+          "specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl",
+          "https://github.com/MattGyverLee/FlexToolsMCP/issues/109 (comment, contents inlined)"
+        ],
+        "gitignore_updated": true
+      },
+      "scan_by": "lex-logscan (2 windows) + lex-lead synthesis",
+      "notes": "Merged August window (2026-08-10 -> 2026-08-28) + September window (2026-09-06/09-07) log scans, filed by 3 parallel peer agents (flexicon scope, MCP scope, regression-comments scope), consolidated into this single ledger write by the archivist (cycle 2), then followed up (cycle 3, 2026-09-07) once the user authorized lex-lead's reopen/cleanup recommendations. New (8, was 7 in the cycle-2 write): flexicon#260-263 (N1-N4), MCP#108-110 (N5-N7), plus MCP#111 (filed in this cycle-3 follow-up as the deliberate alternative to reopening #75 -- see fingerprint 51a3e9827ef5). Deduped (5): #48 aggregate merge (occurrences 61->95, see fingerprint 48c9b7e2a115), MCP#100/flexicon#257 first_seen backdate (0d7917c944e2/da50b2947f5d), new MCP#98 filed-entry creation, #101 occurrence bump (3969b046e421). Regressions (6, all now resolved): #84, #39, #80 (retargeted from the wrong #53 attribution, see fingerprint 53d4e6f0b229's `correction` field), #69 -- REOPENED 2026-09-07 with ranks 1-4 of 5 respectively (see each fingerprint's REOPENED note for rationale); #75 -- state regression-closed-superseded, deliberately NOT reopened (rank 5 of 5), tracked instead by new MCP#111; flexicon#34 -- state regression-closed-deliverable-was-correct, deliberately NOT reopened (archivist's own call), cookbook fix was correct and the gap is an un-filed FlexToolsMCP-side recipe-surfacing follow-up candidate (recorded on fingerprint 3393ffcc9d96, not yet filed). Residual (1): #74 (residual-not-strict-regression, not a strict regression -- see fingerprint f3827601b213, unchanged, no action). LEDGER CORRECTIONS applied in cycle 2: six stale state:open entries (39a2f8c1d004/#39, 48c9b7e2a115/#48, 53d4e6f0b229/#80, b68be869d2c2/#69, d905780c9f6f/#75, f3827601b213/#74) all verified closed within ~36h of the 2026-07-20 ledger write; fingerprint 53d4e6f0b229 retargeted from its prior #53 attribution to the correct #80. CLEANUP executed in cycle 3 (user-authorized): the stray repo-root operations.jsonl was removed after a byte-identical copy was preserved at specs/logscan-2026-09-07/evidence/stray-root-operations-2026-09-07.jsonl and its contents inlined into a comment on MCP#109; .gitignore now ignores operations.jsonl*/operations.log* (verified via git check-ignore -v), closing the accidental-commit exposure (not the underlying log_dir_fn defect, still tracked by MCP#109)."
     }
   ]
 }

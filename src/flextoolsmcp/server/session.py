@@ -72,6 +72,14 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
         "wrapper entirely and submit the body as a bare snippet."
     ),
+    "nested_unit_of_work": (
+        "drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
+        "the runner already has a UnitOfWork open for the whole run. Just "
+        "perform the mutation directly under `if modifyAllowed:`; use "
+        "project.UndoableOperation()/project.Transaction() instead if you "
+        "need FLEx Ctrl+Z grouping."
+    ),
 }
 
 

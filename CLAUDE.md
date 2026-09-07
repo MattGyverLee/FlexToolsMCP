@@ -12,13 +12,13 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Refresh all API indexes from source (generates versioned files)
-python src/refresh.py
+python -m flextoolsmcp.refresh
 
 # Test the MCP server loads correctly
-python -c "from src.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexicon.get(\"entities\",{}))} Flexicon entities')"
+python -c "from flextoolsmcp.server import APIIndex, get_index_dir; i=APIIndex.load(get_index_dir()); print(f'Loaded {len(i.flexicon.get(\"entities\",{}))} Flexicon entities')"
 
 # Run the MCP server (for Claude Code integration)
-python src/server.py
+flextoolsmcp
 ```
 
 ## Project Overview
@@ -108,7 +108,7 @@ The server exposes 6 tools:
 - `list_categories` - List API categories (lexicon, grammar, texts, etc.)
 - `list_entities_in_category` - List entities in a category
 
-Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md) for the envelope shape, all 16 error codes, and the deprecation timeline for the nested `error` object (drops at `tool-responses/2.0`).
+Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md) for the envelope shape, all 18 error codes, and the deprecation timeline for the nested `error` object (drops at `tool-responses/2.0`).
 
 ## Refreshing Indexes
 
@@ -116,7 +116,7 @@ When LibLCM, FlexLibs stable, or Flexicon changes, refresh the indexes:
 
 ```bash
 # Refresh all indexes (there is no per-library flag anymore)
-python src/refresh.py
+python -m flextoolsmcp.refresh
 ```
 
 This always scans every available API in one pass. The reverse mapping

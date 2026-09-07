@@ -71,10 +71,11 @@ def Main(project, report, modify):
 
 **Example:**
 ```python
-from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
+from flexicon.code.lcm_casting import cast_to_concrete
+from SIL.LCModel import ILexEntry  # not re-exported by lcm_casting
 
 def Main(project, report, modify):
-    entry = cast_to_concrete(entry_obj, ILexEntry)
+    entry = cast_to_concrete(entry_obj)
     form_text = entry.LexemeForm.VernacularForm.Text
 ```
 
@@ -155,7 +156,7 @@ if not form:  # Empty check is normal Python
 ### LibLCM
 ```python
 # Direct C# property access
-entry_obj = cast_to_concrete(entry, ILexEntry)
+entry_obj = cast_to_concrete(entry)
 form_text = entry_obj.LexemeForm.VernacularForm.Text
 # Must check for "***" again
 form = "" if form_text == "***" else form_text

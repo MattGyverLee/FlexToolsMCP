@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 16 codes below |
+| `error_code` | string | one of the 18 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -100,14 +100,16 @@ authoritative. All detail fields are optional unless noted.
 | `server_state_error` | `server_state`, `component`, `state_description` |
 | `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding` |
 | `unprotected_writes` | `mutating_calls` (list), `write_certification_required` |
-| `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` |
+| `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` -- issue #40 B-1: on a READ-ONLY run (`write_enabled=false`), this code is emitted (and the run rejected) only if at least one `casting_issues[*].severity` is `"error"` (a known-pattern hit, or a genuine attribute typo). If every issue is `"warning"` (an index-derived lookup with no corroborating known pattern), the run **proceeds instead of rejecting** -- see "Read-only casting severity downgrade" below. WRITE-enabled runs are unaffected: this code still rejects at every severity. |
 | `api_discovery_required` | `detected_candidates` (list), `session`, `missing_entity`, `suggested_tool_call` |
 | `undiscovered_entity` | `undiscovered`, `imported_undiscovered` (list), `session`, `closest_matches` (list) |
 | `undefined_variables` | `undefined_vars` (list), `guidance` |
 | `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` |
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
-| `project_locked` | `guidance` (required string), `lock_file_path` |
+| `nested_unit_of_work` | `constructs` (list), `guidance` |
+| `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
+| `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
 | `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`) |
@@ -175,6 +177,71 @@ include the following optional fields when read-only auto-discovery occurred
 These fields are defined in `RunModuleSuccess` (`response_models.py`) with
 aliases matching the key strings above. The `_inline_discovery` alias uses the
 `KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
+
+---
+
+## Read-only casting severity downgrade (`run_module`, issue #40 B-1)
+
+**Contract change:** `casting_issues_detected` no longer fires on every
+READ-ONLY run that has a casting issue. The casting gate's per-issue
+`severity` field (already present in `casting_issues[*].severity` before
+this change) is now consulted at the reject decision:
+
+- **WRITE-enabled runs (`write_enabled=true`):** unchanged. Any casting
+  issue, at any severity, still hard-rejects with `casting_issues_detected`.
+- **READ-ONLY runs (`write_enabled=false`):**
+  - If **any** issue is `severity: "error"` (a known-pattern hit from
+    `KNOWN_CASTING_PATTERNS`, or a genuine attribute typo merged in from
+    `detect_interface_attribute_typos`), the run still hard-rejects exactly
+    as before.
+  - If **every** issue is `severity: "warning"` (found only via the
+    index-derived `casting_index` lookup, with no corroborating known
+    pattern), the run **no longer rejects**. It proceeds, and the issues are
+    surfaced instead as non-blocking advisories in the success response's
+    `warnings` (list[string]) field, each formatted as
+    `"[casting] N polymorphic property access issue(s) were detected but did
+    NOT block this READ-ONLY run..."` followed by one `"  line L: property --
+    fix"` line per issue (capped at 10).
+
+Rationale: a read-only script that guesses a required cast wrong raises a
+`TypeError` at runtime -- costing one iteration, with no risk of data
+corruption. The `"warning"` severity tier is exactly the low-confidence path.
+Forcing a hard preflight reject for that tier was disproportionate to the
+risk and was the single largest source of false preflight rejections
+observed in practice.
+
+As of this branch, issue #97 Bug 1 (the `fix` string used to confidently
+name a single, sometimes-wrong interface even when the underlying pick was
+genuinely ambiguous) is repaired -- `fix` no longer picks `defined_on[0]`
+unconditionally. It is instead built from a three-way outcome, matching
+whether the same candidate set could be resolved to one definite interface:
+
+- **Resolved** -- exactly one interface can be determined (from
+  `available_on`, the casting index, or a receiver-name tie-break): `fix` is
+  `"Cast {obj} to {interface}"`, naming the identical interface reported in
+  the issue's `cast_interface` field.
+- **Ambiguous** -- multiple candidate interfaces remain and none can be
+  singled out: `fix` names the candidate set (or, above a display cap,
+  states the count without listing them) and explicitly flags that no
+  single one is a confident pick. `cast_interface` is `null` in this case --
+  `fix` and `cast_interface` never disagree.
+- **No usable candidate** -- no I-prefixed interface is available at all:
+  `fix` degrades to a generic "concrete type" placeholder rather than
+  ever raising an `IndexError` or naming a definite target with no
+  evidence.
+
+(Note: issue #97 itself tracks more than this one bug and is **not**
+closed -- only Bug 1, the `fix`-string construction described above, is
+repaired here.)
+
+This downgrade is **gate-local to the casting gate's warning tier only**.
+No other preflight gate is affected: `unprotected_writes`,
+`hvo_literal_write_risk`, and `nested_unit_of_work` all continue to
+hard-reject exactly as before, on both read-only and write-enabled runs, at
+every severity they detect. Detection and reporting for the casting gate
+itself are also unaffected -- `casting_issues`, `rewrite`, and
+`imports_needed` are computed identically regardless of whether the run
+ultimately rejects or proceeds with a warning.
 
 ---
 

@@ -107,15 +107,19 @@ def Main(project, report, modify):
 
 ### Example
 ```python
-from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
+from flexicon.code.lcm_casting import cast_to_concrete
+# ILexEntry comes from the C# assembly, not from flexicon.code.lcm_casting --
+# lcm_casting imports it internally but does not re-export it.
+from SIL.LCModel import ILexEntry
 
 def Main(project, report, modify):
     # Direct C# access via pythonnet
     all_entries = project.ServiceLocator.GetInstance("ILexdbAccess").AllInstances("LexEntry")
 
     for entry in all_entries:
-        # Cast to concrete C# interface
-        lex_entry = cast_to_concrete(entry, ILexEntry)
+        # Cast to concrete C# interface (cast_to_concrete resolves the
+        # interface itself from the object's C# ClassName -- one argument)
+        lex_entry = cast_to_concrete(entry)
         form = lex_entry.LexemeForm.VernacularForm.Text
         report.Info(form)
 ```
@@ -160,8 +164,9 @@ form = project.LexEntry.GetLexemeForm(entry)
 form = project.LexEntry.GetLexemeForm(entry)  # Returns normalized string
 
 # After (LibLCM)
-from flexicon.code.lcm_casting import cast_to_concrete, ILexEntry
-entry_obj = cast_to_concrete(entry, ILexEntry)
+from flexicon.code.lcm_casting import cast_to_concrete
+from SIL.LCModel import ILexEntry  # not re-exported by lcm_casting
+entry_obj = cast_to_concrete(entry)
 raw_form = entry_obj.LexemeForm.VernacularForm.Text  # Raw C# access
 # Must handle "***" yourself
 if raw_form == "***":
@@ -176,7 +181,7 @@ If you have LibLCM code, wrap it with flexicon for better UX:
 
 ```python
 # Before (LibLCM raw)
-entry_obj = cast_to_concrete(entry, ILexEntry)
+entry_obj = cast_to_concrete(entry)
 raw_form = entry_obj.LexemeForm.VernacularForm.Text
 
 # After (Flexicon wrapper)

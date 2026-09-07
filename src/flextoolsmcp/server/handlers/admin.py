@@ -211,6 +211,84 @@ RUNTIME_PRIMER = {
         ),
         "note": "Prefer wrapper getters. Mixing the two styles in one script is the most common source of empty-string bugs.",
     },
+    "hvo_stability": {
+        "description": (
+            "An hvo is valid only WITHIN a single flextools_run_module call. It is "
+            "a session-scoped handle, not a durable identifier -- liblcm renumbers "
+            "it on every cache load. To refer to an object ACROSS calls, carry its "
+            "GUID and re-resolve -- liblcm guarantees identity only by GUID."
+        ),
+        "why": (
+            "liblcm says this outright, verbatim, in three files including "
+            "src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44: "
+            "\"The hvo values are true 'handles' in that they are valid for one "
+            "session, but may not be the same integer for another session for the "
+            "'same' object. Therefore, one should not use them for multi-session "
+            "identity. CmObject identity can only be guaranteed by using their "
+            "Guids (or using '==' in code).\" Field evidence (issue #103): 2440/2440 "
+            "entry hvos changed between two consecutive READ-ONLY run_module calls "
+            "with zero writes between them; 0/2440 guids changed. A stale hvo does "
+            "NOT raise an error -- it resolves to a real, different, live object, so "
+            "a write built on it silently lands on the wrong entry."
+        ),
+        "round_trip": (
+            "GetGuid(obj) -> str is the forward direction (already documented per-"
+            "Operations-class). project.Object(hvo_or_guid) is the INVERSE -- it "
+            "accepts an int (hvo, same-run only), a str GUID, or a System.Guid, and "
+            "resolves to the live CmObject. Prefer the str-GUID form when crossing "
+            "a call boundary: project.Object(guid_str)."
+        ),
+        "pattern": (
+            "Call 1: guid = project.LexEntry.GetGuid(entry); report.Info(headword, "
+            "project.BuildGotoURL(entry))  # stash the GUID string, not entry.Hvo\n"
+            "Call 2: entry = project.Object(guid_str)  # NOT project.Object(stale_hvo_int)"
+        ),
+        "note": (
+            "An hvo read and used WITHIN the same run_module call (e.g. "
+            "`entry.Hvo` passed straight into another call in the same script) is "
+            "fine -- the cache load is stable for the life of one call. The risk is "
+            "specifically an integer literal or a value carried in from a PRIOR "
+            "call or the FLEx UI."
+        ),
+    },
+    "shared_mode_read_back": {
+        "description": (
+            "In FLEx's shared-mode setup, a fresh read-only session under a live "
+            "FLEx master shows the last master save, not your write."
+        ),
+        "why": (
+            "FieldWorks project sharing uses a shared commit log "
+            "(SharedXMLBackendProvider). Exactly one peer is the 'master', "
+            "responsible for writing the on-disk .fwdata file; every other peer's "
+            "commit lands only in the shared commit log, not on disk. A brand-new "
+            "session's startup reads the .fwdata file (ReadInSurrogates) and never "
+            "replays commit-log records -- it registers at the file's last-written "
+            "generation and stops there. So a write made by a non-master peer is "
+            "durable and visible to other LIVE peers as soon as each of them next "
+            "commits, but it is invisible to any FRESH, independent session until "
+            "the master itself flushes the file. The master's own flush "
+            "(SaveOnIdle) is gated on human actions in the FLEx UI (an idle period "
+            "with no open edit and no pending-reconciliation prompt), so there is "
+            "NO reliable interval and NO retry count that guarantees the write has "
+            "become visible -- the window is unbounded, not merely long."
+        ),
+        "note": (
+            "Do not treat a stale read-back as a dropped write: the data is safely "
+            "in the shared commit log the whole time. Do not paper over this by "
+            "polling a fresh session and waiting N seconds -- there is no N that is "
+            "safe. In-session verification of a shared-mode write is not currently "
+            "possible with run_module: every call opens a brand-new session, and a "
+            "brand-new READ-ONLY session only ever sees the last master flush "
+            "(a write-enabled fresh session that calls SaveChanges() first may "
+            "see the write via Commit-driven reconciliation, but this path is "
+            "untested). Instead, check "
+            "the FLEx UI on the master peer -- it sees the write through its own "
+            "live cache (Commit / ReconcileForeignChanges), not through a fresh "
+            "read. If the write must be confirmed programmatically, that requires a "
+            "session that stays open and calls Commit again; run_module cannot "
+            "provide one."
+        ),
+    },
     "namespace_helpers": {
         "description": "These helpers are pre-injected into the execution namespace. No import required.",
         "available": [

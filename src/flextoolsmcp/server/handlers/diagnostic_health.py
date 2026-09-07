@@ -69,9 +69,9 @@ except ImportError:
     )
 
 try:
-    from ..project_discovery import check_project_locked
+    from ..project_access import probe_project_access
 except (ImportError, ValueError):
-    from server.project_discovery import check_project_locked
+    from server.project_access import probe_project_access
 
 try:
     from . import op_telemetry
@@ -273,15 +273,40 @@ def _check_pythonnet_available() -> Dict[str, Any]:
         return {"available": False, "error": str(exc)}
 
 
-def _build_project_lock_block() -> Dict[str, Any]:
+def _build_project_access_block() -> Dict[str, Any]:
+    """Composed shared-mode access probe (issue #93 CP2, T2.7).
+
+    Pure composition of project_access.probe_project_access(): filesystem +
+    stdlib only, never opens the project, no side effects. Replaces the old
+    "locked: bool" block with the full verdict (free / open_shared /
+    open_exclusive / stale_lock / held_by_other) plus the facts it was
+    composed from, so a human reading flextools_health(verbose=True) can see
+    *why* a project is or isn't accessible without guessing.
+    """
     project_name = session_state.project_name or ""
     if not project_name:
-        return {"project": None, "locked": False, "lock_file_path": None}
-    lock_path = check_project_locked(project_name)
+        return {
+            "project": None,
+            "verdict": None,
+            "sharing_enabled": None,
+            "holder": None,
+            "lock_age_seconds": None,
+        }
+
+    access = probe_project_access(project_name)
+    holder = None
+    if access.holder is not None:
+        holder = {
+            "pid": access.holder.pid,
+            "process_name": access.holder.process_name,
+            "timestamp_ticks": access.holder.timestamp_ticks,
+        }
     return {
-        "project": project_name,
-        "locked": lock_path is not None,
-        "lock_file_path": str(lock_path) if lock_path else None,
+        "project": access.project_name,
+        "verdict": access.verdict,
+        "sharing_enabled": access.sharing_enabled,
+        "holder": holder,
+        "lock_age_seconds": access.lock_age_seconds,
     }
 
 
@@ -305,7 +330,7 @@ def _build_recent_operations(limit: int = 5) -> List[Dict[str, Any]]:
 
 def _build_verbose_block() -> Dict[str, Any]:
     return {
-        "project_lock": _build_project_lock_block(),
+        "project_access": _build_project_access_block(),
         "flexinit_importable": _check_flexinit_importable(),
         "pythonnet_available": _check_pythonnet_available(),
         "recent_operations": _build_recent_operations(5),

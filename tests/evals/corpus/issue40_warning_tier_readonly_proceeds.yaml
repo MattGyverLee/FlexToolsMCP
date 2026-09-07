@@ -1,0 +1,24 @@
+intent: "Warning-tier casting issue on a READ-ONLY run proceeds with a non-blocking advisory (issue #40 B-1)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import LexEntryOperations
+  for ana in LexEntryOperations(project).GetAll():
+      cat3 = ana.CategoryRA
+      report.Info(str(cat3))
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+  advisories: [casting_warning]
+notes: >
+  Issue #40 B-1: detect_casting_needs() still DETECTS this access as needing
+  a cast (CategoryRA has no prior cast establishing the receiver's type, so
+  the casting_index-driven advanced lookup flags it exactly as before), but
+  the issue is warning-tier only (an index-derived lookup, not a
+  KNOWN_CASTING_PATTERNS hit or an attribute typo). On a READ-ONLY run this
+  no longer hard-rejects -- a wrong guess here raises a TypeError at
+  runtime, costing one iteration, with no data-corruption risk. See
+  issue40_negative_control_uncast_category_rejected.yaml for the matching
+  WRITE-enabled case, which still rejects at every severity.
+issue: 40

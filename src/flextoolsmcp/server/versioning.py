@@ -7,6 +7,7 @@ Consolidates version detection for multiple library types (C# assemblies, Python
 and provides efficient, cached file discovery for versioned API indexes.
 """
 
+import os
 import re
 import logging
 from pathlib import Path
@@ -17,8 +18,16 @@ try:
 except ImportError:
     from server.kernel import operations_logger
 
-# File discovery cache to avoid repeated glob operations
-_file_discovery_cache: Dict[Tuple[str, str], Optional[Path]] = {}
+# A directory "state token" used to key the file-discovery cache below.
+# (dir_mtime, entry_count, max_child_mtime) -- see _dir_state_token().
+_DirStateToken = Tuple[float, int, float]
+
+# File discovery cache to avoid repeated glob operations.
+# Keyed on (index_dir, lookup_key, _DirStateToken) -- note the annotation
+# below was already out of sync with the real 3-element key before this
+# fix (it declared a 2-tuple key with a bare Path value); corrected here
+# rather than compounding it with a 4th mismatched element type.
+_file_discovery_cache: Dict[Tuple[str, str, _DirStateToken], Optional[Path]] = {}
 
 
 # Safe logging helper for operations_logger (may be None during early init)
@@ -274,26 +283,74 @@ def find_api_files(
     return files
 
 
-def _dir_state_token(index_dir: Path) -> float:
-    """Return a cheap freshness token (mtime) for a directory.
+def _dir_state_token(index_dir: Path) -> _DirStateToken:
+    """Return a cheap freshness token for a directory, used to key the
+    file-discovery cache.
 
-    Used to key the file-discovery cache so that a write to ``index_dir``
-    (e.g. ``auto_refresh_missing_api_file()`` writing a newly-generated
-    versioned JSON file, whether from this process or an external
-    ``refresh.py`` run) naturally invalidates any previously-cached lookup
-    for that directory -- no explicit ``clear_file_discovery_cache()`` call
-    required. Creating/removing an entry inside a directory updates that
-    directory's mtime on both Windows and POSIX, which is exactly the
-    "index changed" signal we need.
+    CORRECTION (cycle 10, CP-E): earlier revisions of this docstring
+    claimed that creating/removing an entry "updates that directory's
+    mtime on both Windows and POSIX, which is exactly the 'index changed'
+    signal we need." That was overclaimed. Measured directly (cycle8-qc.md):
+    **58/200 (29%) of rapid double-writes left ``st_mtime`` unchanged** --
+    filesystem mtime granularity/rounding means two writes made close
+    together can be indistinguishable by mtime alone. Verification measured
+    the real-world consequence against these exact production functions
+    (cycle8-verification.md): **40/300 (13.3%) stale reads**, perfectly
+    correlated with the unchanged-mtime cases. The race is real, not
+    theoretical.
 
-    Falls back to ``0.0`` when the directory doesn't exist (or stat fails);
-    that's a stable, valid token in its own right -- lookups against a
-    still-missing directory stay cheap until it's created.
+    Fix: the token is now ``(dir_mtime, entry_count, max_child_mtime)``
+    rather than bare ``dir_mtime``. A new file changes ``entry_count``
+    immediately, independent of mtime resolution, which is exactly the
+    scenario this cache exists to catch (``auto_refresh_missing_api_file()``
+    writing a newly-generated versioned JSON file, in this process or an
+    external ``refresh.py`` run). An in-place overwrite of an existing
+    filename (same entry count) is caught by ``max_child_mtime`` instead.
+    All three values come from a single ``os.scandir()`` pass, so this
+    stays cheap relative to the full ``glob()`` + version-sort a cache miss
+    performs, and far cheaper than hashing file contents (which would
+    require reading every versioned JSON on every lookup on a hot discovery
+    path -- rejected for cost). A pure write-counter (bumped only by this
+    process's own writes) was also rejected: it cannot see an out-of-band
+    ``refresh.py`` run in a different process, which is the primary
+    scenario this cache-invalidation mechanism exists to cover.
+
+    A residual gap remains out of scope: overwriting an existing filename
+    with new content while pinning both the file's and the directory's
+    mtime (a same-name, same-tick rewrite) would not change any of the
+    three signals. No measured or reported defect exercises this -- the
+    versioned-filename convention means "new API version" always means "new
+    filename," so this cache never needs to detect same-name content
+    churn.
+
+    Falls back to ``(0.0, 0, 0.0)`` when the directory doesn't exist (or
+    stat fails); that's a stable, valid token in its own right -- lookups
+    against a still-missing directory stay cheap until it's created.
     """
     try:
-        return index_dir.stat().st_mtime
+        dir_mtime = index_dir.stat().st_mtime
     except OSError:
-        return 0.0
+        return (0.0, 0, 0.0)
+
+    entry_count = 0
+    max_child_mtime = 0.0
+    try:
+        with os.scandir(index_dir) as it:
+            for entry in it:
+                entry_count += 1
+                try:
+                    child_mtime = entry.stat().st_mtime
+                except OSError:
+                    continue
+                if child_mtime > max_child_mtime:
+                    max_child_mtime = child_mtime
+    except OSError:
+        # Directory vanished between stat() and scandir(), or became
+        # unreadable -- fall back to mtime-only for this token; the next
+        # lookup will retry the full scan.
+        pass
+
+    return (dir_mtime, entry_count, max_child_mtime)
 
 
 def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Path]:
@@ -310,14 +367,17 @@ def find_latest_versioned_api_file(index_dir: Path, prefix: str) -> Optional[Pat
         Path to latest versioned file, or None if not found
 
     Caching:
-        - Keyed on (index_dir, prefix, directory mtime) -- a write to
-          index_dir (new/removed file) changes the mtime and transparently
-          invalidates stale cache entries for that directory, so a refresh
-          that happens between calls (in this process or another) is
-          picked up on the next lookup without requiring callers to call
+        - Keyed on (index_dir, prefix, directory state token) -- see
+          _dir_state_token() for what the token contains and why bare
+          mtime alone (the pre-cycle-10 behavior) was measured to miss
+          29% of rapid same-tick writes. A write to index_dir (new/removed
+          file) changes the token and transparently invalidates stale
+          cache entries for that directory, so a refresh that happens
+          between calls (in this process or another) is picked up on the
+          next lookup without requiring callers to call
           clear_file_discovery_cache() themselves.
         - clear_file_discovery_cache() remains available for tests that
-          want a hard reset regardless of mtime granularity.
+          want a hard reset regardless of the token's granularity.
         - Single-threaded use (safe in normal MCP server context)
     """
     cache_key = (str(index_dir), f"{prefix}_latest", _dir_state_token(index_dir))
@@ -343,8 +403,9 @@ def find_versioned_api_file(
     Tries exact match in main directory, then archive directory.
     Handles both underscore (_) and hyphen (-) naming patterns.
     Results are cached to avoid repeated filesystem operations, keyed on
-    (index_dir, prefix, version, directory mtime) so a write to index_dir
-    invalidates stale entries (see find_latest_versioned_api_file docstring).
+    (index_dir, prefix, version, directory state token) so a write to
+    index_dir invalidates stale entries (see find_latest_versioned_api_file
+    docstring and _dir_state_token()).
 
     Args:
         index_dir: Parent directory (e.g., index/liblcm)

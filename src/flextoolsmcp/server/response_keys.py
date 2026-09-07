@@ -56,6 +56,7 @@ __all__ = [
     # Handler-specific API discovery
     'KEY_SOURCES_SEARCHED', 'KEY_FALLBACK_USED', 'KEY_API_MODE', 'KEY_API_MODE_DESCRIPTION',
     'KEY_SEARCH_METHOD', 'KEY_SEMANTIC_AVAILABLE', 'KEY_IMPORT_STATEMENT', 'KEY_IMPORT_REQUIRED',
+    'KEY_ACCESS_PATH', 'KEY_NOT_CMPOSSIBILITY_WARNING',
     'KEY_TOTAL_METHODS', 'KEY_RETURNED_METHODS', 'KEY_TOTAL_PROPERTIES', 'KEY_RETURNED_PROPERTIES', 'KEY_HAS_MORE', 'KEY_NEXT_OFFSET',
     'KEY_SOURCE_FILE', 'KEY_SESSION_CONTEXT', 'KEY_DETECTED', 'KEY_AUTO_RESOLVED',
     'KEY_SELECTED', 'KEY_REASONING', 'KEY_ALTERNATIVES', 'KEY_METHOD_NAME',
@@ -237,6 +238,15 @@ KEY_SEARCH_METHOD = "search_method"
 KEY_SEMANTIC_AVAILABLE = "semantic_available"
 KEY_IMPORT_STATEMENT = "import_statement"
 KEY_IMPORT_REQUIRED = "import_required"
+# Issue #100: facade-only classes (e.g. MSAOperations, reachable only via
+# `project.MSA`) carry this so callers can advertise the working access
+# route instead of a `from <lib> import <Entity>` line that raises
+# ImportError. Absent on entities without a recorded facade property.
+KEY_ACCESS_PATH = "access_path"
+# Issue #101: present only for the curated set of CmObject-derived types
+# whose own `Name` field collides in name (not inheritance) with
+# ICmPossibility.Name -- see handlers/api.py's NOT_CMPOSSIBILITY_NAME_COLLISION.
+KEY_NOT_CMPOSSIBILITY_WARNING = "not_cmpossibility_warning"
 KEY_TOTAL_METHODS = "total_methods"
 KEY_RETURNED_METHODS = "returned_methods"
 KEY_TOTAL_PROPERTIES = "total_properties"

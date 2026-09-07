@@ -7,7 +7,8 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 16 per-code detail models (12 existing + 4 folded in)
+- 18 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -259,12 +260,45 @@ class InvalidApiChainDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class NestedUnitOfWorkDetail(BaseModel):
+    """Detail payload for nested_unit_of_work rejections (issue #92 follow-up).
+
+    Fires when write-enabled code opens its own raw liblcm UnitOfWork
+    (UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper, or a bare
+    IActionHandler.BeginUndoTask()/BeginNonUndoableTask() call), which would
+    nest inside the runner's already-open non-undoable task and discard the
+    whole run's writes. See validators.detect_nested_unit_of_work().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"
+    constructs: List[Any] = Field(default_factory=list)
+    guidance: Optional[str] = None
+
+
 class ProjectLockedDetail(BaseModel):
-    """Detail payload for project_locked rejections."""
+    """Detail payload for project_locked rejections.
+
+    Issue #93 CP3 (T3.5) / CP4 (T4.1): the mere existence of a .fwdata.lock
+    file is no longer the reason for this rejection -- it is now raised only
+    for the two verdicts a write genuinely cannot survive
+    (``open_exclusive`` and ``held_by_other``). The probe facts that produced
+    the verdict travel with the payload so the caller can tell "FLEx has it
+    and sharing is off" (fixable by the user in 20 seconds) apart from
+    "another python process has it" (not fixable by toggling a checkbox).
+
+    The model is ``extra="forbid"``, so these fields had to exist before
+    the handler could send them.
+    """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["project_locked"] = "project_locked"
     guidance: str = ""
     lock_file_path: Optional[str] = None
+    # project_access.probe_project_access() facts behind the refusal.
+    verdict: Optional[str] = None
+    sharing_enabled: Optional[bool] = None
+    holder_pid: Optional[int] = None
+    holder_process: Optional[str] = None
+    remedy: Optional[str] = None
 
 
 class ProjectDriveUnavailableDetail(BaseModel):
@@ -304,8 +338,27 @@ class RuntimeErrorDetail(BaseModel):
     error_type: Optional[str] = None
 
 
+
+
+class HvoLiteralWriteRiskDetail(BaseModel):
+    """Detail payload for hvo_literal_write_risk rejections (issue #103).
+
+    Fires when write-enabled code passes a bare integer literal to an
+    `*_or_hvo` parameter. An hvo is a session-scoped handle that liblcm
+    renumbers on every cache load, so a literal carried across run_module
+    calls silently resolves to a real but DIFFERENT object -- the write
+    lands on the wrong target with no exception. Only GUIDs are stable;
+    re-resolve with project.Object(guid_str). See
+    validators.detect_hvo_literal_args().
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["hvo_literal_write_risk"] = "hvo_literal_write_risk"
+    findings: List[Any] = Field(default_factory=list)
+    next_steps: List[Any] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
-# Discriminated union over all 16 per-code detail models
+# Discriminated union over all 18 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -320,11 +373,13 @@ AnyDetail = Union[
     MissingImportsDetail,
     WrongLibraryImportsDetail,
     InvalidApiChainDetail,
+    NestedUnitOfWorkDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
     ProjectPathMismatchDetail,
     ProjectNotFoundDetail,
     RuntimeErrorDetail,
+    HvoLiteralWriteRiskDetail,
 ]
 
 
@@ -367,7 +422,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              16 known codes, plus any per-code detail fields.
+              18 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

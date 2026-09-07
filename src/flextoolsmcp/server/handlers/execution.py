@@ -18,7 +18,6 @@ import json
 import sys
 import subprocess
 import tempfile
-from datetime import datetime
 import os
 import ast
 import hashlib
@@ -70,7 +69,8 @@ try:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload,
+        build_writeability_payload, detect_nested_unit_of_work,
+        detect_hvo_literal_args,
     )
 except ImportError:
     from server.validators import (
@@ -84,8 +84,20 @@ except ImportError:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload,
+        build_writeability_payload, detect_nested_unit_of_work,
+        detect_hvo_literal_args,
     )
+
+# Issue #93 CP4 (T4.2): backup honesty. With FieldWorks attached as a live
+# peer, the .fwdata on disk lags FLEx's unsaved in-memory state, so a file
+# copy is a floor -- the oldest state we could restore to -- not a snapshot
+# of what you see in the UI right now.
+_PEER_BACKUP_CAVEAT = (
+    " NOTE: FieldWorks currently has this project open, so the .fwdata on "
+    "disk lags FLEx's unsaved in-memory state. This copy is a floor to fall "
+    "back to, not a snapshot of what the FLEx UI is showing."
+)
+
 
 # Issue #55 (Rung 2): automatic pre-write backup.
 try:
@@ -1674,6 +1686,66 @@ def _log_validate_only_close(
     )
 
 
+def _has_error_severity_casting_issue(issues: List[Dict[str, Any]]) -> bool:
+    """Issue #40 B-1 / #49 B-5: True if ANY casting issue is 'error' severity.
+
+    Shared predicate for the read-only warning-tier downgrade. A
+    known-pattern hit (or a genuine attribute typo merged in by
+    handle_run_module) is 'error'; an index-derived lookup with no
+    corroborating known pattern is 'warning'. handle_run_module (the real
+    gate) and _build_validate_only_checks (the dry-run preview) BOTH call
+    this -- do not reimplement the severity check at either call site, or
+    the two will drift apart again (issue #49 B-5).
+    """
+    return any((i.get("severity") == "error") for i in issues)
+
+
+def _compute_casting_decision(
+    code: str,
+    casting_index: Optional[Dict[str, Any]],
+    code_tree: Optional[ast.AST],
+    api_idx: Any,
+) -> Dict[str, Any]:
+    """Issue #39/#40 P1-2 (cycle 5): the SINGLE shared casting-decision
+    pipeline. Cycle 4's `handle_run_module` folded
+    `detect_interface_attribute_typos` into `casting_issues` and forced
+    `severity="error"` at its own call site; `_build_validate_only_checks`'s
+    Gate 5 (and the Tier-1 eval runner's own Gate 5) never called
+    `detect_interface_attribute_typos` at all. Only the has-error PREDICATE
+    (`_has_error_severity_casting_issue`) was shared -- sharing the
+    predicate but not the inputs is exactly what produced the P1-2 false
+    reassurance (`validate_only` said `passed: True` for code
+    `run_module` hard-rejects). Every caller that needs a casting
+    verdict -- `handle_run_module`, `_handle_validate_only`'s Gate 5, and
+    `tests/evals/preflight_runner.py`'s Gate 5 -- MUST go through this
+    function instead of calling `detect_casting_needs` +
+    `detect_interface_attribute_typos` separately.
+
+    Returns the same shape as `detect_casting_needs()`, with `casting_issues`
+    /`has_casting_issues`/`severity` updated to include any merged-in typo
+    issues, plus one new key:
+      - has_error_severity: bool -- the shared predicate's verdict, so
+        callers never re-derive it (and can't drift) either.
+    """
+    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    typo_check = detect_interface_attribute_typos(code_tree, api_idx)
+    if typo_check["has_typos"]:
+        # Issue #39: a pure attribute typo (e.g. ILexDb.EntriesOC) doesn't
+        # exist on ANY interface, so detect_casting_needs' casting_index
+        # lookup silently misses it -- merge it into the same
+        # casting_issues list/reject path so it can't slip through as a
+        # "warning"-tier issue eligible for the read-only downgrade below.
+        casting_check["casting_issues"] = (
+            casting_check.get("casting_issues") or []
+        ) + typo_check["issues"]
+        casting_check["has_casting_issues"] = True
+        casting_check["severity"] = "error"
+    casting_check["has_error_severity"] = _has_error_severity_casting_issue(
+        casting_check.get("casting_issues") or []
+    )
+    return casting_check
+
+
 def _build_validate_only_checks(
     *,
     code: str,
@@ -1753,15 +1825,39 @@ def _build_validate_only_checks(
         checks.append({"gate": "unprotected_writes", "passed": True})
 
     # --- Gate 5: casting ---
+    # Issue #39/#40 P1-2 (cycle 5): route through the SAME shared pipeline
+    # handle_run_module uses (_compute_casting_decision), not just the same
+    # PREDICATE. Cycle 4 shared only `_has_error_severity_casting_issue` and
+    # never called detect_interface_attribute_typos here at all, so a pure
+    # attribute typo (e.g. ILexDb.EntriesOC) was invisible to validate_only
+    # even though it hard-rejects in the real run_module call -- a false
+    # "passed: True" reassurance for the whole #39 typo class.
     casting_index = getattr(api_idx, "casting_index", None) if api_idx else None
-    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    casting_check = _compute_casting_decision(code, casting_index, code_tree, api_idx)
     if casting_check["has_casting_issues"]:
-        checks.append({
+        issues = casting_check["casting_issues"]
+        # Issue #49 B-5: this verdict must agree with what handle_run_module
+        # would actually do for the same code and write_enabled value -- a
+        # dry-run validator that disagrees with the real gate teaches users
+        # to ignore it (issue #40). Reuse the SAME predicate result the real
+        # gate uses (see _has_error_severity_casting_issue, computed once
+        # inside _compute_casting_decision) rather than keying on
+        # has_casting_issues alone. Issues are still fully reported either
+        # way; only the pass/fail verdict is affected.
+        _has_error = casting_check["has_error_severity"]
+        _downgraded = (not write_enabled) and not _has_error
+        check_entry = {
             "gate": "casting",
-            "passed": False,
-            "issues": casting_check["casting_issues"],
+            "passed": _downgraded,
+            "issues": issues,
             "severity": casting_check.get("severity"),
-        })
+        }
+        if _downgraded:
+            check_entry["note"] = (
+                "read-only run; only warning-tier casting issues -- "
+                "run_module would proceed without rejecting (issue #40 B-1)"
+            )
+        checks.append(check_entry)
     else:
         checks.append({"gate": "casting", "passed": True})
 
@@ -2504,6 +2600,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # Accumulator for auto-fix records; populated when auto-fix succeeds.
     _auto_fixes_applied: Optional[List[Dict[str, Any]]] = None
     _auto_fix_note: Optional[str] = None
+    # Issue #40 B-1: populated when the casting gate is downgraded to a
+    # non-blocking advisory (read-only run, no issue at "error" severity).
+    # Surfaced in the response `warnings` list instead of rejecting.
+    _casting_readonly_warnings: Optional[List[Dict[str, Any]]] = None
     # Issue #80: provenance. 'existing' code (from disk / pasted by the human)
     # skips the two API-DISCOVERY gates -- verifying every API the model didn't
     # author is expensive LLM work we don't need. This is a COST lever ONLY:
@@ -2683,6 +2783,58 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
 
+    # Nested-UnitOfWork check (issue #92 follow-up): CP1 hardcoded
+    # undoable=False at the generated OpenProject() call, so a write-enabled
+    # run now always has ONE non-undoable UnitOfWork open for the whole
+    # session (opened once at OpenProject(), closed once at CloseProject()).
+    # A script that opens its OWN raw UnitOfWork on top of that --
+    # UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper or a bare
+    # IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a
+    # second task inside the runner's own; liblcm rolls back the
+    # already-open task first, discarding the whole run's writes, before it
+    # throws. Only meaningful when write_enabled: flexicon's OpenProject()
+    # only opens that UnitOfWork when writeEnabled=True (undoable=False is
+    # unconditional per CP1), so a read-only run has no open UnitOfWork to
+    # nest into. An `if modifyAllowed:` guard does NOT fix this -- the
+    # nesting collision happens regardless of guard state once the code
+    # actually executes -- so this fires unconditionally on the construct,
+    # not just on unprotected occurrences of it (see detect_cud_operations
+    # below for the separate protected-vs-unprotected write-safety concern).
+    if write_enabled:
+        nested_uow_check = detect_nested_unit_of_work(code, code_tree)
+        if nested_uow_check["has_nested_uow_risk"]:
+            constructs = nested_uow_check["constructs"]
+            _log_preflight_reject(
+                op_id, seq, time.monotonic() - t_start,
+                "nested_unit_of_work",
+                f"constructs={[c.get('construct') for c in constructs[:5]]}",
+            )
+            return _attach_assistance_if_loop(
+                error_response(
+                    "nested_unit_of_work",
+                    "Code opens its own raw liblcm UnitOfWork, which nests inside "
+                    "the runner's already-open non-undoable task and will discard "
+                    "this run's writes.",
+                    constructs=constructs,
+                    next_steps=[
+                        "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
+                        "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
+                        "the runner already opens a UnitOfWork for the whole run.",
+                        "2. Just perform the mutation directly (guarded by "
+                        "`if modifyAllowed:` as usual); it will be captured by the "
+                        "runner's own UnitOfWork.",
+                        "3. If you need FLEx Ctrl+Z grouping for this specific change, "
+                        "use `project.UndoableOperation(label)` / `project.Transaction(label)` "
+                        "instead of the raw liblcm helper -- those join an already-open "
+                        "UnitOfWork instead of nesting a second one.",
+                        "4. Re-run flextools_run_module()",
+                    ],
+                    op_id=op_id,
+                ),
+                error_code="nested_unit_of_work",
+                code_size_bytes=_code_size_bytes,
+            )
+
     # Check for unprotected mutations - HARD BLOCK if found
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, get_api_index(), code_tree)
@@ -2703,162 +2855,246 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             code_size_bytes=_code_size_bytes,
         )
 
+    # Issue #103: hvo instability. An hvo is a session-scoped handle --
+    # liblcm renumbers it on every cache load (DomainDataByFlid.cs:40-44:
+    # "valid for one session, but may not be the same integer for another
+    # session for the 'same' object"; field evidence: 2440/2440 entry hvos
+    # changed across two consecutive read-only run_module calls, 0/2440
+    # guids changed). A bare integer literal reaching an `*_or_hvo`
+    # parameter (or project.Object(<int>)) can only have been copied from a
+    # PRIOR call's output or the FLEx UI -- there is no reason to hand-type
+    # one from a live object read this run. That is exactly the stale-hvo
+    # silent-wrong-target scenario the issue documents.
+    #
+    # Read-only runs: WARNING only (surfaced in the `warnings` list below,
+    # not a rejection) -- a stray literal in exploratory/read code cannot
+    # corrupt anything.
+    # Write-enabled runs: HARD BLOCK. A wrong-target WRITE is precisely the
+    # silent-corruption scenario #103 documents (the reporter's own
+    # near-miss was a write script using stale hvo literals as targets), and
+    # this preflight already hard-blocks write-shaped risk unconditionally
+    # elsewhere (unprotected_writes above, nested_unit_of_work before it) --
+    # a warning-only response written into the same *_or_hvo parameter this
+    # call has already accepted a write through fails the same way a
+    # missing modifyAllowed guard would. Blocking here is consistent with
+    # that existing posture rather than a new architecture.
+    hvo_literal_check = detect_hvo_literal_args(code, code_tree, get_api_index())
+    if hvo_literal_check["has_hvo_literal_risk"] and write_enabled:
+        findings = hvo_literal_check["findings"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "hvo_literal_write_risk",
+            f"findings={[f.get('detail') for f in findings[:5]]}",
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "hvo_literal_write_risk",
+                "An integer literal is being passed to an hvo-accepting "
+                "parameter in a WRITE-enabled run. hvos are session-scoped "
+                "handles -- liblcm renumbers them on every cache load, so a "
+                "literal copied from a prior call's output (or typed from "
+                "the FLEx UI) may now resolve to a different, real object. "
+                "A write against it would silently target the wrong entry.",
+                findings=findings,
+                next_steps=[
+                    "1. Replace the integer literal with the GUID string "
+                    "captured for that object (e.g. from a prior GetGuid() "
+                    "call or report output).",
+                    "2. Re-resolve the live object THIS run via "
+                    "project.Object(guid_str) -- accepts str/System.Guid, "
+                    "not just int/hvo (see FLExProject.Object).",
+                    "3. Pass the re-resolved object (or its CURRENT .Hvo, "
+                    "read this same run) to the *_or_hvo parameter instead "
+                    "of the literal.",
+                    "4. Re-run flextools_run_module()",
+                ],
+                op_id=op_id,
+            ),
+            error_code="hvo_literal_write_risk",
+            code_size_bytes=_code_size_bytes,
+        )
+
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
+    # Issue #39/#40 P1-2 (cycle 5): routes through the single shared
+    # _compute_casting_decision pipeline (detect_casting_needs +
+    # detect_interface_attribute_typos merge + severity="error" forcing +
+    # the has-error predicate) -- see that function's docstring. Every
+    # caller of a casting verdict (this function, _handle_validate_only's
+    # Gate 5, and the eval runner's Gate 5) MUST go through it so none of
+    # them can drift from what the others decide.
     api_idx = get_api_index()
     casting_index = api_idx.casting_index if api_idx else None
-    casting_check = detect_casting_needs(code, casting_index, code_tree)
-
-    # Issue #39: high-confidence attribute typos on a statically-typed
-    # receiver (ILexDb.EntriesOC -> Entries, fp.InflectionFeature ->
-    # InflectionFeatures where fp = FLExProject(...)) used to only surface as
-    # a runtime "hint" after the code had already crashed inside an open LCM
-    # transaction -- and the hint's own "resubmit, preflight will catch it"
-    # message was false, because detect_casting_needs' casting_index lookup
-    # only recognizes properties that genuinely require a cast, not pure
-    # typos that don't exist anywhere. Merge typo issues into the same
-    # casting_issues list/reject path so run_module rejects BEFORE execution,
-    # carrying casting_issues[*].rewrite same as a genuine casting issue.
-    typo_check = detect_interface_attribute_typos(code_tree, api_idx)
-    if typo_check["has_typos"]:
-        casting_check["casting_issues"] = (
-            casting_check.get("casting_issues") or []
-        ) + typo_check["issues"]
-        casting_check["has_casting_issues"] = True
-        casting_check["severity"] = "error"
+    casting_check = _compute_casting_decision(code, casting_index, code_tree, api_idx)
 
     if casting_check["has_casting_issues"]:
-        # Format issues with clear fixes for all 3 API flavors
         issues = casting_check["casting_issues"]
-        # Log the casting findings before rejecting so the .log captures the WHY.
-        get_operations_logger().info(
-            f"Preflight casting: issues={len(issues)} (rejected)"
-        )
-        for issue in issues[:10]:
-            get_operations_logger().debug(
-                f"  casting: line={issue.get('line')} property={issue.get('property')} "
-                f"pattern={issue.get('pattern','')[:80]!r}"
+        # Issue #40 B-1: gate-local read-only severity downgrade. Per-issue
+        # severity already exists in the data (a known-pattern hit, or a
+        # genuine attribute typo merged in above, is "error"; an index-
+        # derived lookup with no corroborating known pattern is "warning").
+        # If NO issue here is "error", a read-only run does not reject --
+        # the run proceeds and the issues are surfaced as non-blocking
+        # advisories instead. A wrong guess in read-only code raises a
+        # TypeError at runtime (one iteration, no data risk); it cannot
+        # corrupt anything. Any "error"-severity issue still hard-rejects,
+        # and EVERY write-enabled run still hard-rejects at every severity,
+        # exactly as before. This downgrade is GATE-LOCAL to the casting
+        # gate's warning tier -- no other preflight gate (unprotected_writes,
+        # hvo_literal_write_risk, nested_unit_of_work) is touched by it.
+        # has_error_severity was computed once inside _compute_casting_decision
+        # (issue #39/#40 P1-2, cycle 5) via the shared
+        # _has_error_severity_casting_issue predicate, also consumed by
+        # _build_validate_only_checks's Gate 5 (issue #49 B-5) so the
+        # dry-run validator can never drift from this real decision again.
+        if (not write_enabled) and not casting_check["has_error_severity"]:
+            get_operations_logger().info(
+                f"Preflight casting: issues={len(issues)} severity=warning "
+                "(read-only run) -- proceeding without rejecting (issue #40 B-1)."
             )
-
-        # Issue #46: attempt safe auto-fix for read-only runs.
-        if effective_auto_fix:
-            _af_result = _try_auto_fix_casting(code, issues, api_idx, code_tree)
-            if _af_result is not None:
-                _patched = _af_result["patched_code"]
-                _fix_records = _af_result["fixes"]
-                if _validate_patched_code(_patched, api_idx, casting_index):
-                    # Telemetry: log both original and patched sha256
-                    _orig_sha = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
-                    _patched_sha = hashlib.sha256(_patched.encode("utf-8", errors="replace")).hexdigest()[:12]
-                    get_operations_logger().info(
-                        f"[AUTO-FIX] casting: applied {len(_fix_records)} rewrite(s). "
-                        f"original_sha256={_orig_sha} patched_sha256={_patched_sha}"
-                    )
-                    # Record success signal so the retry-loop detector resets.
-                    # (None error_code = success, resets the loop counter.)
-                    session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
-                    # Replace code + tree with patched version and continue preflight
-                    code = _patched
-                    code_tree = ast.parse(code)
-                    casting_check = detect_casting_needs(code, casting_index, code_tree)
-                    # CP2 fix: re-derive `issues` from the post-fix casting_check so
-                    # the still-has-issues branch below (signature, enrichment,
-                    # how_to_fix, error_response) reflects only the RESIDUAL issues,
-                    # not the stale pre-fix set captured at line 2077.
-                    issues = casting_check["casting_issues"]
-                    _auto_fixes_applied = _fix_records
-                    _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
-                    # Proceed to rest of preflight with patched code
-                else:
-                    get_operations_logger().info(
-                        "[AUTO-FIX] casting: patch did not pass re-preflight; falling back to rejection"
-                    )
-
-        # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
-        if casting_check["has_casting_issues"]:
-            # Diagnostic-report CP2: thread a real per-issue signature (built
-            # from property + missing-interface + cast-interface) into the
-            # JSONL record instead of leaving casting_signature blank. Without
-            # this, two UNRELATED casting issues in the same turn (e.g. a bad
-            # Gloss access, then later an unrelated bad Definition access)
-            # both fall through to the bare "casting_issues_detected" code and
-            # collapse into a single false recurrence.
-            _casting_sig = compute_casting_signature(issues)
-            _log_preflight_reject(
-                op_id, seq, time.monotonic() - t_start,
-                "casting_issues_detected",
-                f"{len(issues)} polymorphic property access issue(s) require casting.",
-                casting_signature=_casting_sig,
-            )
-            # Issue #21: each issue carries an inline rewrite + imports_needed so
-            # the LLM doesn't need to call flextools_resolve_property to recover.
-            # Issue #22: retarget the hint at the inlined rewrite, not the tool.
-            has_any_rewrite = any(i.get("rewrite") for i in issues)
-            first_rewrite = next(
-                (i for i in issues if i.get("rewrite")), None
-            )
-            if has_any_rewrite and first_rewrite is not None:
-                how_to_fix = [
-                    f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
-                    f"`{first_rewrite['rewrite']}`",
-                    "2. Add the imports listed in casting_issues[*].imports_needed",
-                    "3. Re-run your code",
-                ]
-                hint_msg = (
-                    "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
-                    "expression) and `imports_needed` (the SIL.LCModel imports to add). "
-                    "Apply them line-by-line and re-run."
+            for issue in issues[:10]:
+                get_operations_logger().debug(
+                    f"  casting[warn]: line={issue.get('line')} property={issue.get('property')} "
+                    f"pattern={issue.get('pattern','')[:80]!r}"
                 )
-            else:
-                # Fall back to the old guidance when the AST-rewrite path didn't
-                # produce anything (e.g. chained receivers).
-                how_to_fix = [
-                    "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
-                        issues[0]["property"],
-                        issues[0].get("context_entity", "ICmObject"),
-                    ),
-                    "2. Apply the suggested cast from the tool response",
-                    "3. Re-run your code",
-                ]
-                hint_msg = (
-                    "No automatic rewrite was emitted (likely because the property "
-                    "is accessed via a chained or call-rooted receiver). Use "
-                    "flextools_resolve_property to resolve manually."
+            _casting_readonly_warnings = issues
+            # Issue #28: record a SUCCESS signal so the retry-loop detector
+            # resets -- the loops it was catching here were largely this
+            # gate's own false rejects, and a run that proceeds is a genuine
+            # success by the detector's own documented contract
+            # (record_op_signal docstring: "On success: pass error_code=None").
+            session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+        else:
+            # Format issues with clear fixes for all 3 API flavors
+            # Log the casting findings before rejecting so the .log captures the WHY.
+            get_operations_logger().info(
+                f"Preflight casting: issues={len(issues)} (rejected)"
+            )
+            for issue in issues[:10]:
+                get_operations_logger().debug(
+                    f"  casting: line={issue.get('line')} property={issue.get('property')} "
+                    f"pattern={issue.get('pattern','')[:80]!r}"
                 )
-            # Issue #54: enrich each casting issue with the #54-spec detail keys.
-            # correct_cast_expression is the ready-to-paste rewrite (issue #21
-            # already computes it as `rewrite`; we alias here rather than duplicate).
-            # base_type / concrete_type are derived from the existing keys.
-            for _ci in issues:
-                if "correct_cast_expression" not in _ci:
-                    _ci["correct_cast_expression"] = _ci.get("rewrite")
-                if "base_type" not in _ci:
-                    _missing = _ci.get("missing_on")
-                    _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
-                if "concrete_type" not in _ci:
-                    _ci["concrete_type"] = _ci.get("cast_interface")
 
-            # Issue #28: wrap the rejection with the retry-loop detector so
-            # repeated casting failures surface _assistance hints.
-            return _attach_assistance_if_loop(
-                error_response(
+            # Issue #46: attempt safe auto-fix for read-only runs.
+            if effective_auto_fix:
+                _af_result = _try_auto_fix_casting(code, issues, api_idx, code_tree)
+                if _af_result is not None:
+                    _patched = _af_result["patched_code"]
+                    _fix_records = _af_result["fixes"]
+                    if _validate_patched_code(_patched, api_idx, casting_index):
+                        # Telemetry: log both original and patched sha256
+                        _orig_sha = hashlib.sha256(code.encode("utf-8", errors="replace")).hexdigest()[:12]
+                        _patched_sha = hashlib.sha256(_patched.encode("utf-8", errors="replace")).hexdigest()[:12]
+                        get_operations_logger().info(
+                            f"[AUTO-FIX] casting: applied {len(_fix_records)} rewrite(s). "
+                            f"original_sha256={_orig_sha} patched_sha256={_patched_sha}"
+                        )
+                        # Record success signal so the retry-loop detector resets.
+                        # (None error_code = success, resets the loop counter.)
+                        session_state.record_op_signal(error_code=None, code_size_bytes=_code_size_bytes)
+                        # Replace code + tree with patched version and continue preflight
+                        code = _patched
+                        code_tree = ast.parse(code)
+                        casting_check = detect_casting_needs(code, casting_index, code_tree)
+                        # CP2 fix: re-derive `issues` from the post-fix casting_check so
+                        # the still-has-issues branch below (signature, enrichment,
+                        # how_to_fix, error_response) reflects only the RESIDUAL issues,
+                        # not the stale pre-fix set captured at line 2077.
+                        issues = casting_check["casting_issues"]
+                        _auto_fixes_applied = _fix_records
+                        _auto_fix_note = _build_auto_fix_note(_fix_records, source_hint="<submitted code>")
+                        # Proceed to rest of preflight with patched code
+                    else:
+                        get_operations_logger().info(
+                            "[AUTO-FIX] casting: patch did not pass re-preflight; falling back to rejection"
+                        )
+
+            # If still has issues after auto-fix attempt (or auto-fix disabled/failed)
+            if casting_check["has_casting_issues"]:
+                # Diagnostic-report CP2: thread a real per-issue signature (built
+                # from property + missing-interface + cast-interface) into the
+                # JSONL record instead of leaving casting_signature blank. Without
+                # this, two UNRELATED casting issues in the same turn (e.g. a bad
+                # Gloss access, then later an unrelated bad Definition access)
+                # both fall through to the bare "casting_issues_detected" code and
+                # collapse into a single false recurrence.
+                _casting_sig = compute_casting_signature(issues)
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start,
                     "casting_issues_detected",
-                    f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
-                    severity=casting_check["severity"],
-                    casting_issues=issues,  # canonical key matching validator output
-                    issues=issues,           # back-compat alias
-                    general_guidance={
-                        "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
-                        "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
-                        "how_to_fix": how_to_fix,
-                    },
-                    hint=hint_msg,
-                    next_steps=hint_msg,
-                    op_id=op_id,
-                ),
-                error_code="casting_issues_detected",
-                code_size_bytes=_code_size_bytes,
-            )
+                    f"{len(issues)} polymorphic property access issue(s) require casting.",
+                    casting_signature=_casting_sig,
+                )
+                # Issue #21: each issue carries an inline rewrite + imports_needed so
+                # the LLM doesn't need to call flextools_resolve_property to recover.
+                # Issue #22: retarget the hint at the inlined rewrite, not the tool.
+                has_any_rewrite = any(i.get("rewrite") for i in issues)
+                first_rewrite = next(
+                    (i for i in issues if i.get("rewrite")), None
+                )
+                if has_any_rewrite and first_rewrite is not None:
+                    how_to_fix = [
+                        f"1. Apply the inlined rewrite at line {first_rewrite['line']}: "
+                        f"`{first_rewrite['rewrite']}`",
+                        "2. Add the imports listed in casting_issues[*].imports_needed",
+                        "3. Re-run your code",
+                    ]
+                    hint_msg = (
+                        "Each entry in casting_issues carries `rewrite` (the cast-wrapped "
+                        "expression) and `imports_needed` (the SIL.LCModel imports to add). "
+                        "Apply them line-by-line and re-run."
+                    )
+                else:
+                    # Fall back to the old guidance when the AST-rewrite path didn't
+                    # produce anything (e.g. chained receivers).
+                    how_to_fix = [
+                        "1. Call flextools_resolve_property(property_name='{}', context_entity='{}') to get the exact casting solution".format(
+                            issues[0]["property"],
+                            issues[0].get("context_entity", "ICmObject"),
+                        ),
+                        "2. Apply the suggested cast from the tool response",
+                        "3. Re-run your code",
+                    ]
+                    hint_msg = (
+                        "No automatic rewrite was emitted (likely because the property "
+                        "is accessed via a chained or call-rooted receiver). Use "
+                        "flextools_resolve_property to resolve manually."
+                    )
+                # Issue #54: enrich each casting issue with the #54-spec detail keys.
+                # correct_cast_expression is the ready-to-paste rewrite (issue #21
+                # already computes it as `rewrite`; we alias here rather than duplicate).
+                # base_type / concrete_type are derived from the existing keys.
+                for _ci in issues:
+                    if "correct_cast_expression" not in _ci:
+                        _ci["correct_cast_expression"] = _ci.get("rewrite")
+                    if "base_type" not in _ci:
+                        _missing = _ci.get("missing_on")
+                        _ci["base_type"] = _missing[0] if isinstance(_missing, list) and _missing else None
+                    if "concrete_type" not in _ci:
+                        _ci["concrete_type"] = _ci.get("cast_interface")
+
+                # Issue #28: wrap the rejection with the retry-loop detector so
+                # repeated casting failures surface _assistance hints.
+                return _attach_assistance_if_loop(
+                    error_response(
+                        "casting_issues_detected",
+                        f"Found {len(issues)} polymorphic property access issue(s) that require casting.",
+                        severity=casting_check["severity"],
+                        casting_issues=issues,  # canonical key matching validator output
+                        issues=issues,           # back-compat alias
+                        general_guidance={
+                            "why": "In C# (LibLCM), base interface types like ICmObject don't expose all properties. You must cast to concrete types (ILexEntry, IMultiString, etc.) to access them.",
+                            "applies_to": "All 3 API flavors (flexlibs_stable, flexicon, liblcm) - this is a C# type system issue, not wrapper-specific",
+                            "how_to_fix": how_to_fix,
+                        },
+                        hint=hint_msg,
+                        next_steps=hint_msg,
+                        op_id=op_id,
+                    ),
+                    error_code="casting_issues_detected",
+                    code_size_bytes=_code_size_bytes,
+                )
 
     # Issue #47 accumulators: populated when read-only auto-discovery fires.
     _auto_discovered_entities: Optional[List[str]] = None
@@ -3299,6 +3535,43 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             warnings.append(f"[GetAll() container contract] {issue['suggestion']}")
         warnings.append("")
 
+    # Issue #103: reaching this point with hvo_literal_check risk set means
+    # write_enabled was False (a write-enabled run with this risk already
+    # hard-blocked above with error_code='hvo_literal_write_risk') --
+    # surface it as a non-blocking advisory instead.
+    if hvo_literal_check["has_hvo_literal_risk"]:
+        warnings.append(
+            "[hvo stability] An integer literal is being passed to an "
+            "hvo-accepting parameter. hvos are session-scoped -- liblcm "
+            "renumbers them on every cache load, so a literal copied from a "
+            "prior call's output may now resolve to a DIFFERENT object. "
+            "Carry the GUID instead and re-resolve with "
+            "project.Object(guid_str)."
+        )
+        for finding in hvo_literal_check["findings"]:
+            warnings.append(f"  line {finding['line']}: {finding['detail']}")
+        warnings.append("")
+
+    # Issue #40 B-1: casting issues downgraded from a hard reject to a
+    # non-blocking advisory (read-only run, no issue at "error" severity --
+    # see the gate-local downgrade above). Still surfaced here so the caller
+    # sees them even though preflight let the run proceed.
+    if _casting_readonly_warnings:
+        warnings.append(
+            f"[casting] {len(_casting_readonly_warnings)} polymorphic property "
+            "access issue(s) were detected but did NOT block this READ-ONLY "
+            "run (index-derived guess, not a known casting pattern or "
+            "attribute typo). A wrong guess raises a TypeError at runtime -- "
+            "it cannot corrupt data. Set write_enabled=True and these WILL "
+            "be rejected."
+        )
+        for issue in _casting_readonly_warnings[:10]:
+            warnings.append(
+                f"  line {issue.get('line')}: {issue.get('property')} -- "
+                f"{issue.get('fix', '')}"
+            )
+        warnings.append("")
+
     # Create the runner script that will be executed in a subprocess
     # (Large script template - hardcoded imports to avoid placeholder/indentation issues)
     runner_script = '''# -*- coding: utf-8 -*-
@@ -3491,9 +3764,37 @@ def run_module():
 
     project = None
 
+    # Create reporter early: setup steps below (the ui= fallback check) need
+    # somewhere visible to report a degraded-but-working state, and the
+    # OpenProject failure path also benefits from returning any such warning.
+    report = SimpleReporter()
+
     try:
         # API Mode-specific imports
         from flexicon import FLExInitialize, FLExCleanup, FLExProject
+
+        # Issue #96 (A-8): a generated runner has no WinForms message pump.
+        # Passing no `ui=` to OpenProject() falls back to flexicon's WinForms
+        # FwLcmUI, whose ConflictingSave() opens a modal dialog with no
+        # owner -- an indefinite hang in this headless subprocess (flexicon
+        # issue #238). HeadlessLcmUI never blocks a conflicting save; it
+        # raises FP_ConflictingSaveError instead, which the teardown path
+        # below now surfaces as a real failure instead of swallowing it.
+        # Older flexicon builds may not ship the module yet -- degrade to
+        # the historical FwLcmUI rather than hard-failing the whole run, but
+        # make the degradation visible instead of silent.
+        try:
+            from flexicon.code.headless_ui import HeadlessLcmUI
+            _lcm_ui = HeadlessLcmUI()
+        except ImportError:
+            _lcm_ui = None
+            report.Warning(
+                "flexicon.code.headless_ui.HeadlessLcmUI is not available in "
+                "this flexicon build; falling back to the WinForms FwLcmUI. "
+                "A ConflictingSave() in this headless subprocess can hang "
+                "indefinitely instead of raising (issue #96 / flexicon "
+                "#238). Upgrade flexicon to remove this hazard."
+            )
 
         FLExInitialize()
 
@@ -3505,13 +3806,17 @@ def run_module():
             # multi-mutation method and simple setter raise (see CP1 / issue
             # #92). undoable=False is the only path that actually persists
             # writes.
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False)
+            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False, ui=_lcm_ui)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
+            result["messages"] = report.messages
+            result["summary"] = {
+                "info_count": report.messageCounts[SimpleReporter.INFO],
+                "warning_count": report.messageCounts[SimpleReporter.WARNING],
+                "error_count": report.messageCounts[SimpleReporter.ERROR],
+                "total_messages": len(report.messages)
+            }
             return result
-
-        # Create reporter
-        report = SimpleReporter()
 
         # FLEx uses '***' as placeholder for empty/unset multilingual string values
         FLEX_EMPTY_PLACEHOLDER = "***"
@@ -3682,11 +3987,37 @@ def run_module():
             result["error"] = "Execution error: {}\\n{}".format(error_msg, traceback.format_exc())
 
     finally:
+        # Issue #96 (A-7): CloseProject() is where the write actually commits
+        # (EndNonUndoableTask() -> UnitOfWorkService.Save() -> Dispose()).
+        # A bare `except: pass` here used to swallow a commit failure while
+        # `result["success"]` had already been set True above -- silent
+        # data loss reported as success. Capture the failure and demote the
+        # run instead of discarding it. Preserve any prior error/messages
+        # rather than clobbering them, since a teardown failure can follow
+        # either a successful or an already-failed script body.
         if project:
             try:
                 project.CloseProject()
-            except:
-                pass
+            except Exception as e:
+                _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
+                _teardown_tb = traceback.format_exc()
+                if result.get("error"):
+                    result["error"] = (
+                        "{}\\n\\nAdditionally, project teardown failed (writes "
+                        "may not have been committed): {}\\n{}"
+                    ).format(result["error"], _teardown_msg, _teardown_tb)
+                else:
+                    result["error"] = (
+                        "Project teardown failed after script execution "
+                        "(writes may not have been committed): {}\\n{}"
+                    ).format(_teardown_msg, _teardown_tb)
+                result["success"] = False
+                result["error_type"] = "TeardownError"
+                result["teardown_error"] = {
+                    "type": type(e).__name__,
+                    "message": str(e),
+                    "traceback": _teardown_tb,
+                }
         try:
             FLExCleanup()
         except:
@@ -3745,6 +4076,26 @@ MODULE_CODE = {code}
         is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
         needs_lock = write_enabled and is_mutating_script
 
+        # Issue #93 CP4 (T4.1): probe the project's real access state ONCE,
+        # here, ahead of the confirmation gate. The probe is pure filesystem
+        # (the .fwdata.lock JSON + SharedSettings\LexiconSettings.plsx) and
+        # never opens a project, so it is safe this early -- and both the
+        # confirmation preview's backup note (T4.2) and the lock gate below
+        # need its verdict. Ordering is deliberate: an unconfirmed run against
+        # an exclusively-held project still gets confirmation_required first,
+        # exactly as before. Only computed under write intent; read-only runs
+        # have never been gated and still are not (T4.3).
+        _access = None
+        if needs_lock:
+            try:
+                from ..project_access import probe_project_access, build_access_remedy
+                from ..project_discovery import check_project_locked
+            except (ImportError, ValueError):
+                from server.project_access import probe_project_access, build_access_remedy
+                from server.project_discovery import check_project_locked
+            _access = probe_project_access(project_name)
+        _live_fw_peer = _access is not None and _access.verdict == "open_shared"
+
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an
         # unconfirmed mutating run executes NOTHING -- no lock taken, no
@@ -3786,11 +4137,14 @@ MODULE_CODE = {code}
                         backup={
                             "intent": bool(_backup_would_run),
                             "note": (
-                                "A pre-write backup will be taken on the CONFIRMED "
-                                "execution, not on this preview."
-                                if _backup_would_run else
-                                "No new backup will be taken (already backed up this "
-                                "session for this project, or backup_before_write=False)."
+                                (
+                                    "A pre-write backup will be taken on the CONFIRMED "
+                                    "execution, not on this preview."
+                                    if _backup_would_run else
+                                    "No new backup will be taken (already backed up this "
+                                    "session for this project, or backup_before_write=False)."
+                                )
+                                + (_PEER_BACKUP_CAVEAT if (_backup_would_run and _live_fw_peer) else "")
                             ),
                         },
                         op_id=op_id,
@@ -3799,33 +4153,102 @@ MODULE_CODE = {code}
                     code_size_bytes=_code_size_bytes,
                 )
 
-        # Issue #33: fail fast if a .fwdata.lock file exists AND we intend to mutate.
-        # Read-only probes are allowed through to LCM, which permits shared-project
-        # access when FLEx has the database open in shared mode. Only an exclusive
-        # write would actually collide, so we gate the pre-flight on write intent
-        # and let LCM arbitrate the rest (LcmFileLockedException is caught downstream).
-        if needs_lock:
-            try:
-                from ..project_discovery import check_project_locked
-            except (ImportError, ValueError):
-                from server.project_discovery import check_project_locked
-            _lock_path = check_project_locked(project_name)
-            if _lock_path is not None:
+        # Issue #93 CP4 (T4.1): write gate, driven by the access probe rather
+        # than by the bare existence of a .fwdata.lock file.
+        #
+        # Issue #33 originally refused any write whenever a lock file existed.
+        # That was an over-correction: with projectSharing="true" in the
+        # project's SharedSettings\LexiconSettings.plsx, LCM promotes the
+        # backend to SharedXMLBackendProvider (LcmCache.cs:211-226) and our
+        # process attaches as a non-master peer that reads and writes through
+        # the shared commit log -- which is the whole point, since the change
+        # then shows up live in the FLEx UI. Refuse only the two verdicts a
+        # write genuinely cannot survive:
+        #
+        #   free           -> proceed (unchanged)
+        #   open_shared    -> proceed, with a shared_mode advisory on the result
+        #   stale_lock     -> proceed; the claimed PID is dead and LCM treats a
+        #                     stale lock as acquirable
+        #   open_exclusive -> refuse; the user can fix this in FLEx in seconds
+        #   held_by_other  -> refuse; a live non-FieldWorks holder is a real
+        #                     collision
+        #
+        # Read-only runs never reach here (needs_lock is False), so exploring a
+        # project while FLEx has it open keeps working regardless of verdict.
+        _shared_mode = None
+        if needs_lock and _access is not None:
+            if _access.verdict in ("open_exclusive", "held_by_other"):
+                _holder_pid = _access.holder.pid if _access.holder else None
+                _holder_proc = _access.holder.process_name if _access.holder else None
+                _lock_path = check_project_locked(project_name)
+                _remedy = build_access_remedy(_access)
                 _lock_msg = (
-                    f"Project '{project_name}' is locked by FieldWorks (found "
-                    f"{_lock_path.name}) and this script requests write access. "
-                    f"Close FieldWorks or run the script read-only, then retry."
+                    f"Project '{project_name}' is held for exclusive access "
+                    f"(verdict: {_access.verdict}) and this script requests "
+                    f"write access."
                 )
-                _log_preflight_reject(op_id, seq, time.monotonic() - t_start, "project_locked", _lock_msg)
+                _log_preflight_reject(
+                    op_id, seq, time.monotonic() - t_start, "project_locked",
+                    f"verdict={_access.verdict} sharing_enabled={_access.sharing_enabled} "
+                    f"holder_pid={_holder_pid} holder_process={_holder_proc}",
+                )
                 return _attach_assistance_if_loop(
                     error_response(
                         "project_locked",
                         _lock_msg,
-                        guidance="Close FieldWorks (or delete the .lock file only if no FW process is running), then retry. Read-only operations do not require closing FieldWorks.",
+                        guidance=(
+                            _remedy
+                            or "Close FieldWorks, then retry. Read-only operations "
+                               "do not require closing FieldWorks."
+                        ),
+                        lock_file_path=str(_lock_path) if _lock_path else None,
+                        verdict=_access.verdict,
+                        sharing_enabled=_access.sharing_enabled,
+                        holder_pid=_holder_pid,
+                        holder_process=_holder_proc,
+                        remedy=_remedy,
                         op_id=op_id,
                     ),
                     error_code="project_locked",
                     code_size_bytes=_code_size_bytes,
+                )
+
+            if _access.verdict == "open_shared":
+                _shared_mode = {
+                    "verdict": "open_shared",
+                    "sharing_enabled": True,
+                    "holder_pid": _access.holder.pid if _access.holder else None,
+                    "holder_process": _access.holder.process_name if _access.holder else None,
+                    "note": (
+                        "FieldWorks has this project open with sharing enabled, "
+                        "so this run attached as a non-master LCM peer and wrote "
+                        "through the shared commit log. The change should be "
+                        "visible in the FLEx UI. Custom-field and writing-system "
+                        "changes are NOT safe from a peer and are not covered by "
+                        "this path."
+                    ),
+                }
+                get_operations_logger().info(
+                    f"[SHARED] '{project_name}' open_shared (holder PID "
+                    f"{_shared_mode['holder_pid']}); proceeding with the write "
+                    "as a non-master peer."
+                )
+            elif _access.verdict == "stale_lock":
+                _shared_mode = {
+                    "verdict": "stale_lock",
+                    "sharing_enabled": _access.sharing_enabled,
+                    "holder_pid": _access.holder.pid if _access.holder else None,
+                    "holder_process": _access.holder.process_name if _access.holder else None,
+                    "note": (
+                        "A .fwdata.lock file is present but the process that "
+                        "claimed it is no longer running, so the lock is stale. "
+                        "Proceeding: LCM treats a stale lock as acquirable. This "
+                        "server never deletes lock files."
+                    ),
+                }
+                get_operations_logger().warning(
+                    f"[SHARED] '{project_name}' stale_lock (dead PID "
+                    f"{_shared_mode['holder_pid']}); proceeding with the write."
                 )
 
         # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
@@ -3837,6 +4260,8 @@ MODULE_CODE = {code}
             _backup_result = perform_pre_write_backup(project_name, backup_before_write=_backup_arg)
             _bk_logger = get_operations_logger()
             if _backup_result.get("created"):
+                if _live_fw_peer:
+                    _backup_result["note"] = _PEER_BACKUP_CAVEAT.strip()
                 session_state.record_backup(project_name)
                 _bk_logger.info(f"[BACKUP] '{project_name}' -> {_backup_result['path']}")
             elif _backup_result.get("skipped_reason") == "insufficient_disk_space":
@@ -3930,6 +4355,10 @@ MODULE_CODE = {code}
         # was the first mutating run for this (session, project)).
         if _backup_result is not None:
             execution_result["backup"] = _backup_result
+        # Issue #93 CP4 (T4.1): tell the caller the write went through a live
+        # FLEx peer / over a stale lock rather than against an idle project.
+        if _shared_mode is not None:
+            execution_result["shared_mode"] = _shared_mode
 
         # Include write certification result
         execution_result["write_certification"] = {

@@ -99,7 +99,7 @@ AUTO_FIX_GOLDEN_FIXTURES: dict[str, dict] = {
     },
 }
 
-# Canonical minimal payload for each of the 16 known error codes.
+# Canonical minimal payload for each of the 17 known error codes.
 # Keys must NOT overlap with canonical envelope keys (status, error_code,
 # message, _contract, error) -- those are injected by error_response().
 GOLDEN_FIXTURES: dict[str, dict] = {
@@ -148,9 +148,19 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "message": "Invalid API method chain detected",
         "issues": [],
     },
+    "nested_unit_of_work": {
+        "message": "Code opens its own raw liblcm UnitOfWork, which nests inside the runner's already-open non-undoable task and will discard this run's writes.",
+        "constructs": [],
+    },
     "project_locked": {
-        "message": "FieldWorks project is locked by another process",
-        "guidance": "Close FieldWorks and try again",
+        "message": "Project 'Demo' is held for exclusive access (verdict: open_exclusive) and this script requests write access.",
+        "guidance": "FieldWorks has this project open and project sharing is OFF...",
+        "lock_file_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\Demo\\Demo.fwdata.lock",
+        "verdict": "open_exclusive",
+        "sharing_enabled": False,
+        "holder_pid": 68436,
+        "holder_process": "FieldWorks",
+        "remedy": "FieldWorks has this project open and project sharing is OFF...",
     },
     "project_drive_unavailable": {
         "message": "Project drive is not available",

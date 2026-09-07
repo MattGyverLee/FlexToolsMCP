@@ -14,7 +14,7 @@ Provides checks for code structure, safety, and correctness:
 import re
 import ast
 import textwrap
-from typing import Dict, List, Set, Optional, Any, Tuple
+from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard
 
 try:
     from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
@@ -441,6 +441,114 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
     }
 
 
+# ============================================================
+# Nested-UnitOfWork detection (issue #92 follow-up)
+# ============================================================
+#
+# CP1 (issue #92) hardcoded `undoable=False` at the generated OpenProject()
+# call so flexicon takes the working BeginNonUndoableTask() path (see
+# handlers/execution.py's generated run_module() body). That means a
+# write-enabled run now always has ONE non-undoable UnitOfWork open for the
+# whole session -- opened once at OpenProject(), closed once at
+# CloseProject() (flexicon's FLExProject.py: `writeEnabled and not
+# _undoable` branch calls `MainCacheAccessor.BeginNonUndoableTask()`/
+# `EndNonUndoableTask()`). A user script that opens its OWN raw UnitOfWork
+# on top of that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper
+# (constructor or static .Do*() calls), or a bare
+# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
+# task inside the runner's own. liblcm does not merge tasks opened this
+# way (only flexicon's OWN Transaction()/UndoableOperation() context
+# managers check ActionHandlerAccessor.CurrentDepth and join instead of
+# nesting -- see flexicon's transaction.py / undoable_operation.py). A
+# second raw BeginUndoTask/BeginNonUndoableTask call rolls back the
+# ALREADY-OPEN unit of work first, before it throws (UndoStack.cs), which
+# discards every mutation the runner's own outer task was holding, for the
+# whole run -- silently, if the script also swallows the exception.
+#
+# This gate fires ONLY on write-enabled runs. flexicon's OpenProject() only
+# calls BeginNonUndoableTask() when writeEnabled=True and undoable=False
+# (which is now unconditional per CP1); a read-only run opens no
+# UnitOfWork at all, so there is nothing open to nest into and no
+# rollback-and-discard risk -- see FLExProject.py's OpenProject() body.
+
+_NESTED_UOW_HELPER_NAMES = ("UndoableUnitOfWorkHelper", "NonUndoableUnitOfWorkHelper")
+_NESTED_UOW_RAW_METHODS = ("BeginUndoTask", "BeginNonUndoableTask")
+
+
+def detect_nested_unit_of_work(code: str, tree: Optional[ast.AST] = None) -> dict:
+    """Detect scripts that open their own raw liblcm UnitOfWork.
+
+    AST-based (not regex/line-blind) so a construct name that only appears
+    inside a string literal or a comment is never flagged -- Python's own
+    parser never turns string/comment contents into ast.Call nodes, so
+    there is nothing here to explicitly strip.
+
+    Detects, regardless of any `if modifyAllowed:` guard (a guard does not
+    fix the nesting problem -- see the module comment above this function):
+      - `UndoableUnitOfWorkHelper(...)` / `NonUndoableUnitOfWorkHelper(...)`
+        direct construction.
+      - `UndoableUnitOfWorkHelper.Do(...)` / `.DoSomehow(...)` / etc. (any
+        static method reached off either helper class name).
+      - `<anything>.BeginUndoTask(...)` / `<anything>.BeginNonUndoableTask(...)`
+        raw calls, regardless of the owning expression. flexicon's own
+        `project.Transaction()` / `project.UndoableOperation()` wrappers
+        never call these two methods by name (they ask
+        `ActionHandlerAccessor.CurrentDepth` instead), so ordinary guarded
+        flexicon writes never false-positive here.
+
+    Args:
+        code: Python source code string.
+        tree: Optional pre-parsed AST (avoids redundant parsing when the
+            caller already parsed the code).
+
+    Returns:
+        dict with:
+          has_nested_uow_risk: bool - True if any construct was found
+          constructs: [{"construct": str, "line": int}, ...]
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {"has_nested_uow_risk": False, "constructs": []}
+
+    constructs: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, int]] = set()
+
+    def _record(label: str, node: ast.AST) -> None:
+        line = getattr(node, "lineno", 0)
+        key = (label, line)
+        if key not in seen:
+            seen.add(key)
+            constructs.append({"construct": label, "line": line})
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+
+        # Direct construction: UndoableUnitOfWorkHelper(...) / NonUndoableUnitOfWorkHelper(...)
+        if isinstance(func, ast.Name) and func.id in _NESTED_UOW_HELPER_NAMES:
+            _record(f"{func.id}(...)", node)
+            continue
+
+        if isinstance(func, ast.Attribute):
+            # Static method reached off either helper class name:
+            # HelperName.Do(...), HelperName.DoSomehow(...), etc.
+            if isinstance(func.value, ast.Name) and func.value.id in _NESTED_UOW_HELPER_NAMES:
+                _record(f"{func.value.id}.{func.attr}(...)", node)
+                continue
+            # Raw IActionHandler calls, any owner expression:
+            # x.BeginUndoTask(...), x.y.ActionHandlerAccessor.BeginNonUndoableTask(...), etc.
+            if func.attr in _NESTED_UOW_RAW_METHODS:
+                _record(f"...{func.attr}(...)", node)
+
+    return {
+        "has_nested_uow_risk": bool(constructs),
+        "constructs": constructs,
+    }
+
+
 def _project_accessors(api_index: Optional[Any] = None) -> List[str]:
     """Valid project.<X> accessor names.
 
@@ -844,6 +952,23 @@ def detect_interface_attribute_typos(
 
     assigns, _ = _collect_assign_call_nodes(code_tree)
     _, cast_aliases = _resolve_alias_maps(assigns)
+    # Issue #97 Bug 2: cast_aliases above is a single whole-function dict, so
+    # mutually exclusive if/elif/else branches that cast the SAME variable
+    # name to different interfaces collapse onto whichever branch assigned
+    # last in document order -- misattributing every earlier branch's usage
+    # to the LAST branch's interface (reported as e.g. "'SlotsRC' does not
+    # exist on 'IMoUnclassifiedAffixMsa'" for a property that's actually
+    # valid on an EARLIER branch's own cast). _resolve_cast_type_at walks
+    # outward through the enclosing body/orelse lists instead, so a sibling
+    # branch's assignment is never visible while resolving this branch's
+    # usage. Only build the parent map when there's at least one cast alias
+    # to resolve (cheap short-circuit for the common no-casts case).
+    parents: Dict[ast.AST, ast.AST] = _build_parent_map(code_tree) if cast_aliases else {}
+    # P1-1 candidate-union fallback (see module comment above
+    # `_build_cast_candidate_set`): built PER USAGE, scoped to that usage's
+    # lexical scope chain, only when positional resolution fails below --
+    # cycle 6 fix for the cross-function leak (a whole-tree build here would
+    # let a cast+typo in an unrelated function satisfy this one).
 
     issues: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str]] = set()
@@ -854,20 +979,42 @@ def detect_interface_attribute_typos(
         if attr in _CASTING_ALWAYS_SAFE_MEMBERS or _is_multistring_value_member(attr):
             continue
 
-        interface: Optional[str] = None
+        resolved_interfaces: List[str] = []
         if isinstance(node.value, ast.Name) and node.value.id in cast_aliases:
-            interface = cast_aliases[node.value.id]
+            positional = _resolve_cast_type_at(node.value, parents, node.value.id)
+            if positional is not None:
+                # Preferred path: branch-aware resolution confidently
+                # picked a single interface -- behave exactly as before
+                # the P1-1 fix.
+                resolved_interfaces = [positional]
+            else:
+                # Positional resolution couldn't confidently attribute a
+                # single interface (e.g. cast in one `if`/`for`/`try` arm,
+                # used in a sibling arm or after). Fall back to the union
+                # of every interface this name is EVER cast to WITHIN THIS
+                # USAGE'S LEXICAL SCOPE CHAIN (see `_build_cast_candidate_set`),
+                # rather than dropping the check entirely -- dropping it is
+                # exactly the P1-1 false-negative regression this fix closes,
+                # and a whole-tree union is exactly the cross-function leak
+                # cycle 6 fixes.
+                scoped_candidates = _build_cast_candidate_set(node.value, parents, code_tree)
+                resolved_interfaces = sorted(scoped_candidates.get(node.value.id, ()))
         elif isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
             fid = node.value.func.id
             if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
-                interface = fid
+                resolved_interfaces = [fid]
 
-        if not interface:
+        if not resolved_interfaces:
             continue
 
-        members = _interface_member_names(interface, api_index)
+        members: Set[str] = set()
+        for iface in resolved_interfaces:
+            members |= _interface_member_names(iface, api_index)
         if not members or attr in members:
-            continue  # unknown interface (can't check) or genuinely valid member
+            # Unknown interface(s) (can't check), OR the attribute exists
+            # on at least one candidate -- flag only if it exists on NONE,
+            # per the lead's ruling.
+            continue
 
         close = _suggest_attribute_matches(attr, list(members), cutoff=_INTERFACE_TYPO_CUTOFF)
         if not close:
@@ -877,6 +1024,7 @@ def detect_interface_attribute_typos(
         if ratio < _INTERFACE_TYPO_MIN_RATIO:
             continue
 
+        interface = "/".join(resolved_interfaces)
         try:
             receiver_src = ast.unparse(node.value)
         except Exception:
@@ -2162,6 +2310,464 @@ def _find_cast_alias_property_writes(
     return mutations
 
 
+# Issue #97 Bug 2 (branch-aware cast tracking) ------------------------------
+#
+# `_resolve_alias_maps` above builds a single, whole-function `cast_aliases`
+# dict keyed only by variable name: iterating every Assign in document order
+# via `ast.walk`, the LAST assignment to a given name silently overwrites all
+# earlier ones. That is correct for straight-line code but wrong across
+# mutually exclusive `if`/`elif`/`else` arms that all cast the SAME variable
+# name to a DIFFERENT interface -- every arm's usage gets attributed to
+# whichever arm's cast happened to come last in the source, producing
+# spurious "does not exist on <wrong interface>" rejections on code that was
+# actually correct in its own arm.
+#
+# The functions below are a branch-aware REPLACEMENT lookup used only by the
+# two casting-gate functions (`detect_casting_needs`,
+# `detect_interface_attribute_typos`) that were shown to misfire on this
+# shape. They are deliberately NOT wired into `_resolve_alias_maps` itself or
+# into `certify_script_readonly` (the unprotected_writes / mutation-detection
+# gate) -- that gate's blast radius is out of scope for this fix and the flat
+# dict's "false positives over false negatives" posture (see
+# `_resolve_alias_maps`'s own docstring) is deliberate there.
+#
+# Algorithm: given the AST node where a variable is USED, walk outward
+# through the enclosing statement lists (function body, then the enclosing
+# if-body/orelse if any, then whatever contains THAT, ...). At each level,
+# scan backward through the statements that come BEFORE the current position
+# in that SAME list for an assignment to the variable. Because each
+# if/elif/else arm's statements live in that arm's OWN `body`/`orelse` list
+# (never in a sibling arm's list), an assignment in one arm is structurally
+# invisible while resolving a usage in a different arm -- it is only visible
+# to later statements in the SAME arm, or via a list that CONTAINS the whole
+# if/elif chain (i.e. code before the conditional altogether, which
+# legitimately applies to every arm).
+
+
+def _direct_cast_call_interface(rhs: ast.AST) -> Optional[str]:
+    """If `rhs` is `I<Concrete>(...)`, return the interface name, else None."""
+    if (
+        isinstance(rhs, ast.Call)
+        and isinstance(rhs.func, ast.Name)
+        and len(rhs.func.id) >= 2
+        and rhs.func.id[0] == "I"
+        and rhs.func.id[1].isupper()
+        and len(rhs.args) >= 1
+    ):
+        return rhs.func.id
+    return None
+
+
+# Compound statements safe to recurse into when scanning backward for a
+# prior cast: a `try`/`with` block always attempts (or fully runs) its body
+# on the taken path. Deliberately EXCLUDES `ast.If` (mutually exclusive arms
+# -- the whole point of this fix) and `ast.For`/`ast.While` (the body may run
+# zero times, so an assignment inside one is not guaranteed).
+_CAST_SCAN_RECURSE_INTO = (ast.Try, ast.With)
+
+
+def _scan_backward_for_cast(
+    stmt_list: List[ast.stmt],
+    upto_index: int,
+    var_name: str,
+    parents: Dict[ast.AST, ast.AST],
+) -> Optional[str]:
+    """Scan `stmt_list[:upto_index]` in reverse for the nearest assignment
+    that types `var_name`. Handles a direct cast call (`v = IFoo(...)`) and
+    a chained rebind (`v = other`), resolving the rebind's source
+    recursively AT THE REBIND'S OWN POSITION (via `_resolve_cast_type_at`)
+    so branch-awareness and further chaining both apply. A rebind to
+    anything else stops the scan -- a genuine reassignment must not let a
+    stale, earlier cast of the same name leak forward."""
+    for stmt in reversed(stmt_list[:upto_index]):
+        if (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+            and stmt.targets[0].id == var_name
+        ):
+            direct = _direct_cast_call_interface(stmt.value)
+            if direct is not None:
+                return direct
+            if isinstance(stmt.value, ast.Name):
+                return _resolve_cast_type_at(stmt, parents, stmt.value.id)
+            return None
+        if isinstance(stmt, _CAST_SCAN_RECURSE_INTO):
+            for field in ("body", "orelse", "finalbody"):
+                sub = getattr(stmt, field, None)
+                if isinstance(sub, list):
+                    found = _scan_backward_for_cast(sub, len(sub), var_name, parents)
+                    if found is not None:
+                        return found
+            # Issue #39/#97 P1-1 (d), QC P2-1: `ExceptHandler.body` is NOT
+            # reachable via body/orelse/finalbody -- each handler's body is
+            # its own statement list, one level deeper than Try's own
+            # fields, so it was silently skipped even though `stmt` here IS
+            # a `Try`. A cast made inside an `except:` clause, used AFTER
+            # the whole try/except, was invisible to backward scanning even
+            # though the try/except always finishes running one of its
+            # bodies before "after" code can run at all (an uncaught
+            # exception propagates instead). Safe unlike `ast.If`: each
+            # handler's body is its own list, so branch-awareness still
+            # applies to it.
+            for handler in getattr(stmt, "handlers", None) or ():
+                hbody = getattr(handler, "body", None)
+                if isinstance(hbody, list):
+                    found = _scan_backward_for_cast(hbody, len(hbody), var_name, parents)
+                    if found is not None:
+                        return found
+    return None
+
+
+def _find_enclosing_stmt_list(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST]
+) -> Tuple[Optional[ast.AST], Optional[List[ast.stmt]]]:
+    """Climb from `node` to the nearest ancestor that is itself a direct
+    element of some ancestor's body/orelse/finalbody list. Returns
+    (stmt, list) or (None, None) once we reach the tree root."""
+    current = node
+    while current in parents:
+        parent = parents[current]
+        for field in ("body", "orelse", "finalbody"):
+            lst = getattr(parent, field, None)
+            if isinstance(lst, list) and current in lst:
+                return current, lst
+        current = parent
+    return None, None
+
+
+def _build_parent_map(tree: ast.AST) -> Dict[ast.AST, ast.AST]:
+    """Map each AST node to its immediate parent, for `_resolve_cast_type_at`."""
+    parents: Dict[ast.AST, ast.AST] = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parents[child] = node
+    return parents
+
+
+def _resolve_cast_type_at(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], var_name: str
+) -> Optional[str]:
+    """Issue #97 Bug 2: branch-aware replacement for a flat `cast_aliases`
+    lookup. Resolves the interface `var_name` was cast to, as OBSERVED AT
+    `node`'s position in the source, by walking outward through the
+    enclosing statement lists rather than consulting a single whole-function
+    dict. See the module comment above `_direct_cast_call_interface` for the
+    full rationale."""
+    current = node
+    while True:
+        stmt, lst = _find_enclosing_stmt_list(current, parents)
+        if stmt is None:
+            return None
+        idx = lst.index(stmt)
+        found = _scan_backward_for_cast(lst, idx, var_name, parents)
+        if found is not None:
+            return found
+        current = parents.get(stmt)
+        if current is None:
+            return None
+
+
+# Issue #39/#97 P1-1 + QC P2-1 -- candidate-union fallback ------------------
+#
+# `_resolve_cast_type_at` is deliberately branch-aware and returns `None`
+# whenever it can't confidently attribute a SINGLE interface to a usage
+# (e.g. mutually exclusive if/elif arms that both cast the same name, a cast
+# inside a `for`/`while` body used after the loop, or a cast in `try` used
+# in `except`). Cycle 4 found that when a caller's response to `None` is
+# "give up entirely" (as `detect_interface_attribute_typos` did), that
+# silently DROPS a genuine typo -- the property doesn't exist on ANY
+# interface, but the caller never checks any interface at all. The lead's
+# ruling (see specs/swahili-audit-2026-09/tasks-bugfix-campaign.md,
+# "CYCLE-4 GATE FINDINGS") is a candidate-union fallback: when positional
+# resolution fails but the name IS cast somewhere in the tree, collect
+# EVERY interface it's ever cast to (branch-unaware, deliberately coarse)
+# and flag/suppress based on membership across the whole set rather than
+# picking one arbitrarily. This is the same mechanism used both by the typo
+# detector (flag only if the attribute exists on NONE of the candidates)
+# and by the casting gate (suppress if it exists on AT LEAST one).
+#
+# Built LOCALLY by each caller that needs it -- deliberately NOT merged into
+# `_resolve_alias_maps`, which is shared with mutation detection and
+# `detect_hvo_literal_args`. Keeping out of other gates' blast radius is the
+# discipline that has held since cycle 1.
+#
+# Cycle 6 (QC P2-1 + the lead's refinement): the walk below is NOT whole-tree
+# any more. A whole-tree walk leaks casts across `def` boundaries in BOTH
+# directions -- a cast+typo in one function's body wrongly satisfies a typo
+# check in an unrelated function (209 such false-positive combos among just
+# 12 common interfaces), AND a cast of the same variable NAME in an unrelated
+# function wrongly suppresses a genuine uncast access in another (the P1-1
+# false-negative direction). QC's literal suggestion -- "scope to the nearest
+# enclosing FunctionDef" -- breaks two dominant shapes if implemented that
+# way: bare module-level snippets (CLAUDE.md's documented "Lightweight op
+# form", no `def` anywhere) would get an EMPTY candidate map, and a
+# module-level cast legitimately used inside a function would be lost. The
+# correct scope is the usage's LEXICAL SCOPE CHAIN -- see
+# `_lexical_scope_chain` -- which always ends at the module root, so both of
+# those shapes keep full coverage while sibling/unrelated function bodies are
+# excluded.
+_SCOPE_DEF_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+_SCOPE_BOUNDARY_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+
+
+def _owning_scope(node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST) -> ast.AST:
+    """Nearest STRICT ancestor of `node` that is a FunctionDef /
+    AsyncFunctionDef / Lambda, or `tree` (the module root) if none exists --
+    e.g. a module-level bare snippet with no `def` anywhere, or `node` itself
+    being a top-level statement."""
+    current = parents.get(node)
+    while current is not None:
+        if isinstance(current, _SCOPE_DEF_TYPES):
+            return current
+        current = parents.get(current)
+    return tree
+
+
+def _lexical_scope_chain(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST
+) -> List[ast.AST]:
+    """`[innermost_scope, ..., tree]` for `node`: its own nearest enclosing
+    FunctionDef/AsyncFunctionDef/Lambda, then each further enclosing
+    function outward (so a nested helper still sees its enclosing
+    function's casts), then the module root `tree`. `tree` is always the
+    last element, so a usage with no enclosing `def` at all -- or a usage
+    inside a function that closes over a module-level cast -- still resolves
+    against module scope. Sibling and unrelated function bodies never appear
+    in this chain."""
+    chain: List[ast.AST] = []
+    scope = _owning_scope(node, parents, tree)
+    while True:
+        chain.append(scope)
+        if scope is tree:
+            break
+        scope = _owning_scope(scope, parents, tree)
+    return chain
+
+
+def _walk_scope_body(scope: ast.AST) -> Iterator[ast.AST]:
+    """Yield every node lexically owned by `scope` (its own statements,
+    including inside `if`/`for`/`while`/`try` -- those don't create a new
+    scope in Python), WITHOUT descending into a nested
+    FunctionDef/AsyncFunctionDef/Lambda/ClassDef -- each of those is a
+    separate scope, walked on its own when ITS chain is resolved. `scope`
+    itself is not yielded, only its descendants."""
+    stack = list(ast.iter_child_nodes(scope))
+    while stack:
+        n = stack.pop()
+        yield n
+        if isinstance(n, _SCOPE_BOUNDARY_TYPES):
+            continue
+        stack.extend(ast.iter_child_nodes(n))
+
+
+def _build_cast_candidate_set(
+    node: ast.AST, parents: Dict[ast.AST, ast.AST], tree: ast.AST
+) -> Dict[str, Set[str]]:
+    """For every Name target directly assigned from an inline cast call
+    (`v = IFoo(...)`) visible to `node`'s LEXICAL SCOPE CHAIN (see
+    `_lexical_scope_chain`), collect the set of interfaces that name is
+    ever cast to. Deliberately branch-UNAWARE within each scope in the
+    chain (a flat scan, unlike `_resolve_cast_type_at`) -- it exists only as
+    a fallback for when the branch-aware resolver can't confidently pick a
+    single interface.
+    """
+    candidates: Dict[str, Set[str]] = {}
+    for scope in _lexical_scope_chain(node, parents, tree):
+        for n in _walk_scope_body(scope):
+            if (
+                isinstance(n, ast.Assign)
+                and len(n.targets) == 1
+                and isinstance(n.targets[0], ast.Name)
+            ):
+                direct = _direct_cast_call_interface(n.value)
+                if direct is not None:
+                    candidates.setdefault(n.targets[0].id, set()).add(direct)
+    return candidates
+
+
+# Issue #103: hvo instability. liblcm states this outright --
+# `src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44`:
+#   "The hvo values are true 'handles' in that they are valid for one
+#    session, but may not be the same integer for another session for the
+#    'same' object. Therefore, one should not use them for multi-session
+#    identity. CmObject identity can only be guaranteed by using their
+#    Guids (or using '==' in code)."
+# Field evidence: 2440/2440 entry hvos changed across two consecutive
+# read-only run_module calls (0 writes between them); 0/2440 guids
+# changed. flexicon suffixes every hvo-accepting parameter name with
+# `_or_hvo` (verified against the live index: entry_or_hvo, sense_or_hvo,
+# agent_or_hvo, ...), so a static AST check can key off that suffix
+# without needing a live LCM connection.
+_HVO_PARAM_SUFFIX = "_or_hvo"
+
+
+def _method_param_names(
+    api_index: Optional[Any], operations_class: str, method_name: str
+) -> Optional[List[str]]:
+    """Ordered positional parameter names for `operations_class.method_name`.
+
+    Returns None (not an empty list) when the method can't be found, so
+    callers can distinguish "no params" from "unresolved" -- an unresolved
+    method must not silently suppress the check on args it does have.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(operations_class, {})
+    for m in entity.get("methods", []) or []:
+        if m.get("name") == method_name:
+            return [p.get("name", "") for p in (m.get("parameters") or [])]
+    return None
+
+
+def _is_int_literal(node: Optional[ast.AST]) -> TypeGuard[ast.Constant]:
+    """True for a bare integer literal (excludes bool -- isinstance(True, int) is True).
+
+    Typed as a TypeGuard so callers that branch on this get `.value` narrowed
+    to `ast.Constant` without a separate isinstance check at the call site.
+    """
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
+    )
+
+
+def detect_hvo_literal_args(
+    code: str, tree: Optional[ast.AST] = None, api_index: Optional[Any] = None
+) -> dict:
+    """Detect an integer LITERAL reaching an `*_or_hvo` parameter (issue #103).
+
+    Within a single run_module call, any hvo the script legitimately holds
+    comes from a live object read THIS run (`entry.Hvo`) -- there is no
+    reason to spell one as a bare integer literal in source. A literal
+    integer reaching an `*_or_hvo` parameter (or `project.Object(<int>)`)
+    can therefore only have been copied from a PRIOR call's output or typed
+    by hand from the FLEx UI -- exactly the situation where the hvo may now
+    resolve to a different, real object, silently, because liblcm
+    renumbers hvos on every cache load (see the module comment above
+    `_HVO_PARAM_SUFFIX`). A variable holding `.Hvo` is NOT flagged --
+    only literal digits written directly in the call.
+
+    Detects:
+      - `<call>(..., some_or_hvo=123, ...)` -- keyword arg name ending in
+        `_or_hvo` bound to an integer literal.
+      - `<call>(123, ...)` where the resolved method's positional
+        parameter at that index is named `*_or_hvo`. Resolution covers
+        `project.<Accessor>.<Method>(...)`, `<OpsClass>(project).<Method>(...)`,
+        and local aliases (`x = <OpsClass>(project)`); unresolvable
+        receivers are skipped rather than guessed at (false negatives are
+        safer here than false positives on plain non-hvo integer args).
+      - `project.Object(123)` -- the GUID/hvo round-trip helper itself,
+        called with a bare int literal instead of a GUID string.
+
+    Args:
+        code: Python source (used only if `tree` is not supplied).
+        tree: Optional pre-parsed AST.
+        api_index: APIIndex instance, used to resolve positional parameter
+            names for non-keyword calls. Keyword-arg and `project.Object(...)`
+            detection work even when this is None.
+
+    Returns:
+        dict with:
+          has_hvo_literal_risk: bool
+          findings: [{"line": int, "detail": str}, ...]
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {"has_hvo_literal_risk": False, "findings": []}
+
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    assigns, calls = _collect_assign_call_nodes(tree)
+    operations_aliases, _casts = _resolve_alias_maps(assigns)
+
+    findings: List[Dict[str, Any]] = []
+    seen: Set[Tuple[int, str]] = set()
+
+    def _record(line: int, detail: str) -> None:
+        key = (line, detail)
+        if key not in seen:
+            seen.add(key)
+            findings.append({"line": line, "detail": detail})
+
+    def _resolve_ops_class(receiver: ast.AST) -> Optional[str]:
+        # project.<Accessor>
+        if (
+            isinstance(receiver, ast.Attribute)
+            and isinstance(receiver.value, ast.Name)
+            and receiver.value.id == "project"
+        ):
+            return accessor_to_ops.get(receiver.attr)
+        # <OpsClass>(project) inline construction
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
+            if receiver.func.id.endswith("Operations"):
+                return receiver.func.id
+        # local alias: x = <OpsClass>(project)
+        if isinstance(receiver, ast.Name) and receiver.id in operations_aliases:
+            return operations_aliases[receiver.id]
+        return None
+
+    for node in calls:
+        func = node.func
+        if not isinstance(func, ast.Attribute):
+            continue
+        method_name = func.attr
+
+        # project.Object(<int literal>) -- the round-trip helper itself.
+        if (
+            isinstance(func.value, ast.Name)
+            and func.value.id == "project"
+            and method_name == "Object"
+            and node.args
+            and _is_int_literal(node.args[0])
+        ):
+            _record(
+                node.lineno,
+                f"project.Object({node.args[0].value}) -- hvo literal passed "
+                "directly to the round-trip helper; pass the GUID string "
+                "instead (project.Object(guid_str)) -- hvos are not stable "
+                "across run_module calls, only GUIDs are.",
+            )
+            continue
+
+        # Keyword args named *_or_hvo bound to an integer literal.
+        for kw in node.keywords:
+            if kw.arg and kw.arg.endswith(_HVO_PARAM_SUFFIX) and _is_int_literal(kw.value):
+                _record(
+                    node.lineno,
+                    f"{method_name}({kw.arg}={kw.value.value}) -- integer "
+                    "literal passed to an *_or_hvo parameter; hvos are "
+                    "session-scoped and unstable across run_module calls. "
+                    "Carry the GUID and re-resolve with project.Object(guid_str).",
+                )
+
+        # Positional args -- only when the receiver's Operations class and
+        # the method's parameter names are both resolvable.
+        if node.args:
+            ops_class = _resolve_ops_class(func.value)
+            if ops_class:
+                param_names = _method_param_names(api_index, ops_class, method_name)
+                if param_names:
+                    for i, arg in enumerate(node.args):
+                        if i >= len(param_names):
+                            break
+                        if param_names[i].endswith(_HVO_PARAM_SUFFIX) and _is_int_literal(arg):
+                            _record(
+                                node.lineno,
+                                f"{ops_class}.{method_name}(...) positional arg "
+                                f"{i} ('{param_names[i]}') received integer "
+                                f"literal {arg.value}; hvos are session-scoped "
+                                "and unstable across run_module calls. Carry "
+                                "the GUID and re-resolve with "
+                                "project.Object(guid_str).",
+                            )
+
+    return {"has_hvo_literal_risk": bool(findings), "findings": findings}
+
+
 def _extract_interface_names(entries: List[str]) -> set:
     """Pull bare interface names out of `acceptable_interfaces` strings.
 
@@ -2805,6 +3411,23 @@ _CASTING_CONDITIONAL_SAFE = {
 }
 
 
+def _clean_interface_head(entry: str) -> Optional[str]:
+    """Normalize one `defined_on`/`available_on` entry to its bare LCM
+    interface name, or None if the entry isn't an I-prefixed interface.
+
+    Splits on whitespace and "(" to drop descriptive suffixes like
+    "ILexSense (raw LCM)", then keeps the head only if it follows the
+    LibLCM "I..." naming convention. Shared by `_pick_cast_interface` and
+    `_casting_candidates_for_fix` (Swahili audit CP-D P2, cycle 9): they
+    used to hand-roll identical head-split logic independently, which a
+    stale comment claimed was "reuse" -- it wasn't. Both call this now so
+    there is exactly one normalizer to keep correct."""
+    if not entry:
+        return None
+    head = entry.split()[0].split("(")[0].strip()
+    return head if head.startswith("I") else None
+
+
 def _pick_cast_interface(
     property_name: str,
     available_on: List[str],
@@ -2830,10 +3453,8 @@ def _pick_cast_interface(
     """
     cleaned: List[str] = []
     for entry in available_on or ():
-        if not entry:
-            continue
-        head = entry.split()[0].split("(")[0].strip()
-        if head.startswith("I"):
+        head = _clean_interface_head(entry)
+        if head:
             cleaned.append(head)
     if len(cleaned) == 1:
         return cleaned[0]
@@ -2873,6 +3494,29 @@ def _pick_cast_interface(
     if cleaned:
         return cleaned[0]
     return None
+
+
+# Issue #97 Bug 1: candidate list for the ambiguous-fix message. Calls the
+# shared `_clean_interface_head()` -- the SAME normalizer `_pick_cast_interface`
+# uses on `defined_on` (head-split on whitespace and "(", keep I-prefixed) --
+# rather than hand-rolling a second one. (Swahili audit CP-D P2, cycle 9: an
+# earlier version of this function duplicated that logic inline despite this
+# comment already claiming reuse; the duplication is now real, not aspirational.)
+# This is display-only, it never influences which interface (if any) gets
+# picked as `cast_interface`.
+def _casting_candidates_for_fix(defined_on: List[str]) -> List[str]:
+    """Deduped, order-preserving list of I-prefixed interface names from
+    `defined_on`, for use when `_pick_cast_interface` returns None and the
+    fix message needs to name the (ambiguous) candidate set without
+    claiming any single one is definite."""
+    seen: set = set()
+    out: List[str] = []
+    for entry in defined_on or ():
+        head = _clean_interface_head(entry)
+        if head and head not in seen:
+            seen.add(head)
+            out.append(head)
+    return out
 
 
 # Issue #21 follow-up: some LCM interfaces live OUTSIDE SIL.LCModel.
@@ -2995,7 +3639,7 @@ def _build_cast_rewrite(
 
 _POLY_ITERATION_NOTE = (
     "Items are heterogeneous; cast each item: "
-    "concrete = CastingOperations.cast_to_concrete(item)"
+    "concrete = cast_to_concrete(item)  # from flexicon.code.lcm_casting"
 )
 
 
@@ -3178,6 +3822,18 @@ def detect_casting_needs(
     # so a method call captured by the property regex (segOps.IsLabel(seg)) is
     # recognized as a wrapper call, not a polymorphic property access.
     operations_aliases: Dict[str, str] = {}
+    # Issue #97 Bug 2 / #40 item 3: (line_num, var_name) -> branch-aware cast
+    # interface(s), feeding the regex-based advanced casting_index loop
+    # below. A flat cast_aliases lookup there would suffer the exact same
+    # branch-conflation bug as detect_interface_attribute_typos (mutually
+    # exclusive if/elif arms casting the same variable name to different
+    # interfaces). Value is a SET, not a single str: when positional
+    # resolution can't confidently pick one interface (P1-1/P2-1 shapes --
+    # both if arms used after, cast in for used after the loop, cast in try
+    # used in except), this holds the candidate-union fallback instead, and
+    # every consumer below checks set membership/intersection rather than
+    # picking one arbitrarily.
+    line_var_cast_types: Dict[Tuple[int, str], Set[str]] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -3186,7 +3842,17 @@ def detect_casting_needs(
     if tree is not None:
         ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
         operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
+        # Issue #49 B-6: hoisted out of `if cast_aliases:` so the binding is
+        # structural, not a correlation between this guard and the SECOND
+        # walk loop's `root.id in cast_aliases` guard ~30 lines below. Safe
+        # to leave empty when cast_aliases is empty -- that guard makes the
+        # second loop's _parents read unreachable -- but a reader (and
+        # Pyright) should not have to reconstruct that across two guards.
+        _parents: Dict[ast.AST, ast.AST] = {}
         if cast_aliases:
+            # Built once and reused for every branch-aware resolution below --
+            # cheap short-circuit for the common no-casts-anywhere case.
+            _parents = _build_parent_map(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
                     continue
@@ -3195,9 +3861,30 @@ def detect_casting_needs(
                 root = node.value.id
                 if root not in cast_aliases:
                     continue
-                alias_attr_accesses.setdefault(node.lineno, []).append(
-                    (node.attr, cast_aliases[root])
-                )
+                resolved_iface = _resolve_cast_type_at(node.value, _parents, root)
+                if resolved_iface is not None:
+                    ifaces = {resolved_iface}
+                else:
+                    # P1-1/P2-1 candidate-union fallback: positional
+                    # resolution couldn't confidently pick a branch, but
+                    # the name IS cast SOMEWHERE VISIBLE TO THIS USAGE'S
+                    # LEXICAL SCOPE CHAIN (cycle 6: scoped, not whole-tree --
+                    # see `_build_cast_candidate_set`). Union every interface
+                    # it's ever cast to in that chain instead of dropping the
+                    # access entirely -- dropping it left the alias untyped,
+                    # which is what produced QC's false-positive rejects
+                    # (both if-arms used after; cast in for used after the
+                    # loop).
+                    ifaces = _build_cast_candidate_set(node.value, _parents, tree).get(
+                        root, set()
+                    )
+                if not ifaces:
+                    continue
+                for iface in ifaces:
+                    alias_attr_accesses.setdefault(node.lineno, []).append(
+                        (node.attr, iface)
+                    )
+                line_var_cast_types[(node.lineno, root)] = ifaces
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
                 continue
@@ -3209,7 +3896,17 @@ def detect_casting_needs(
                 root = root.value
             typed_root = False
             if isinstance(root, ast.Name) and root.id in cast_aliases:
-                typed_root = True
+                # Branch-aware: only count the chain root as "typed" if a
+                # cast is actually in effect for THIS branch, not merely
+                # somewhere in the whole function -- OR the fallback
+                # candidate set, scoped to THIS usage's lexical scope chain,
+                # is non-empty (positional resolution failed but the name is
+                # cast somewhere visible; this check only needs "typed at
+                # all", not which interface).
+                typed_root = (
+                    _resolve_cast_type_at(root, _parents, root.id) is not None
+                    or bool(_build_cast_candidate_set(root, _parents, tree).get(root.id))
+                )
             elif isinstance(root, ast.Call) and isinstance(root.func, ast.Name):
                 fid = root.func.id
                 if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
@@ -3372,8 +4069,17 @@ def detect_casting_needs(
                 # interface, skip; otherwise keep the flag.
                 if prop_name in _CASTING_CONDITIONAL_SAFE:
                     safe_ifaces = _CASTING_CONDITIONAL_SAFE[prop_name]
-                    receiver_iface = cast_aliases.get(obj_var)
-                    if receiver_iface and receiver_iface in safe_ifaces:
+                    # Issue #97 Bug 2: branch-aware -- a flat cast_aliases
+                    # lookup here would misattribute this line's receiver to
+                    # whatever branch happened to assign obj_var LAST in the
+                    # whole function, not the branch this line is actually in.
+                    # P1-1/P2-1: value may be a candidate-union fallback set
+                    # rather than a single confidently-resolved interface --
+                    # suppress if ANY candidate satisfies (intersection),
+                    # matching the lead's "flag only if none of the
+                    # candidates satisfy" ruling.
+                    receiver_ifaces = line_var_cast_types.get((line_num, obj_var)) or set()
+                    if receiver_ifaces & safe_ifaces:
                         continue
 
                 # Check if this property is in the casting index and requires cast
@@ -3387,9 +4093,13 @@ def detect_casting_needs(
                     # so descriptive entries ("IWfiAnalysis (raw LCM)") still match
                     # -- the raw `in defined_on` check missed those, re-flagging
                     # properties like CategoryRA even after `wa = IWfiAnalysis(ana)`.
-                    if cast_aliases.get(obj_var) and (
-                        cast_aliases[obj_var] in _extract_interface_names(defined_on)
-                    ):
+                    # Issue #97 Bug 2: resolved branch-aware via
+                    # line_var_cast_types (see comment above), not the flat
+                    # whole-function cast_aliases dict. P1-1/P2-1: value may
+                    # be a candidate-union fallback set -- suppress if it
+                    # intersects defined_on at all.
+                    _receiver_ifaces_here = line_var_cast_types.get((line_num, obj_var)) or set()
+                    if _receiver_ifaces_here & _extract_interface_names(defined_on):
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
                         # Issue #21: pick a concrete interface from the
@@ -3407,6 +4117,74 @@ def detect_casting_needs(
                         ) if cast_iface else None
                         imports_needed = _imports_for_interface(cast_iface)
 
+                        # Issue #97 Bug 1: the fix string used to pick
+                        # `defined_on[0]` regardless of whether cast_iface
+                        # resolved -- an arbitrary alphabetical-ish pick that
+                        # confidently named the WRONG interface whenever
+                        # _pick_cast_interface (above) had already determined
+                        # the case was ambiguous and returned None. Reuse
+                        # cast_iface here instead of re-deriving it, and when
+                        # it's None, name the real (ambiguous) candidate set
+                        # rather than asserting a single definite target.
+                        if cast_iface:
+                            fix_msg = f"Cast {obj_var} to {cast_iface}"
+                        else:
+                            # Swahili audit CP-D P1-2/P1-3 (cycle 9): the old
+                            # message truncated to a 4-item alphabetical head
+                            # ("+N more") -- for high-candidate-count props
+                            # (e.g. Name, 36 candidates) that reintroduced the
+                            # exact wrong-first-pick bias #97 Bug 1 was fixed
+                            # for, by leading with an alphabetically-early but
+                            # unrelated interface (ICmAgent). Two-tier
+                            # replacement: above the display cap, name NO
+                            # candidates at all (a short list is misleading
+                            # when the true count is 30+); at or below it,
+                            # name them all but explicitly call out that the
+                            # order is alphabetical, not a ranking, so a
+                            # reader/model does not default to "pick the
+                            # first". Neither tier references
+                            # flextools_resolve_property(context_entity=...):
+                            # per P1-3 that escape hatch is circular here (it
+                            # needs the answer as its own input), and a bare
+                            # `context_entity=...` is literal `Ellipsis` --
+                            # copy-paste-broken Python -- so it must never be
+                            # emitted un-filled.
+                            _fix_candidates = _casting_candidates_for_fix(
+                                casting_info.get("defined_on", [])
+                            )
+                            if _fix_candidates:
+                                _MAX_SHOWN = 6
+                                if len(_fix_candidates) > _MAX_SHOWN:
+                                    fix_msg = (
+                                        f"Cast {obj_var} to the concrete "
+                                        f"interface it actually is. "
+                                        f"{len(_fix_candidates)} interfaces "
+                                        f"declare '{prop_name}' -- too many "
+                                        f"to guess. Determine it from where "
+                                        f"{obj_var} came from (the wrapper "
+                                        f"method's return type that produced "
+                                        f"it), or dispatch at runtime on "
+                                        f"{obj_var}.ClassName."
+                                    )
+                                else:
+                                    fix_msg = (
+                                        f"Cast {obj_var} to one of: "
+                                        f"{', '.join(_fix_candidates)} -- "
+                                        f"this list is ALPHABETICAL, NOT "
+                                        f"ranked by likelihood; do not just "
+                                        f"pick the first. Determine the "
+                                        f"correct one from where {obj_var} "
+                                        f"came from (the wrapper method's "
+                                        f"return type that produced it), or "
+                                        f"dispatch at runtime on "
+                                        f"{obj_var}.ClassName."
+                                    )
+                            else:
+                                # No usable I-prefixed candidate at all --
+                                # degrade to the old placeholder rather than
+                                # ever IndexError / crash.
+                                fix_msg = f"Cast {obj_var} to concrete type"
+
                         # New issue not caught by known patterns
                         issues.append({
                             "property": prop_name,
@@ -3415,7 +4193,7 @@ def detect_casting_needs(
                             "found_at": line_content.strip()[:120],
                             "missing_on": requires_cast,
                             "available_on": casting_info.get("defined_on", []),
-                            "fix": f"Cast {obj_var} to {casting_info.get('defined_on', ['concrete type'])[0]}",
+                            "fix": fix_msg,
                             "flexicon_helper": "Use resolve_property() tool to find exact casting requirements",
                             "severity": "warning",
                             "rewrite": rewrite,

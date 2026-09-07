@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.3.0"
+    "version": "4.4.1"
   },
   "categories": {
     "discourse": {
@@ -29,6 +29,7 @@
         "CellarPropertyType",
         "EnumerableWrapper",
         "FLExProject",
+        "FP_ConflictingSaveError",
         "FP_FileLockedError",
         "FP_FileNotFoundError",
         "FP_MigrationRequired",
@@ -41,6 +42,7 @@
         "FP_WritingSystemError",
         "FilterOperations",
         "FilterTypes",
+        "HeadlessLcmUI",
         "LCMObjectWrapper",
         "MediaOperations",
         "MediaType",
@@ -1865,7 +1867,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name is empty."
+                "when": "_ParameterError: If name is empty, or if guid was supplied"
               }
             ],
             "notes": [
@@ -1888,16 +1890,23 @@
               "description": "Optional writing system handle. Defaults to analysis WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new agent, as a ``System.Guid`` or string. Use this when REPRODUCING an agent from another project so it keeps its original identity -- useful with the ``flexlibs2/sync/`` engine for preserving which agent evaluated an analysis across a transfer or merge. None (the default) mints a fresh GUID. Note that the 3 bootstrap agents (``kguidAgentDefUser``, ``kguidAgentXAmpleParser``, ``kguidAgentComputer``) already exist in every project, so passing one of their GUIDs will hit the duplicate-GUID fallback below.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If name is None.",
-            "FP_ParameterError: If name is empty."
+            "FP_ParameterError: If name is empty, or if guid was supplied",
+            "but is not a valid GUID."
           ],
           "return_type": "ICmAgent",
           "returns": "ICmAgent: The newly created agent object. ",
-          "signature": "Create(name, wsHandle=None)",
+          "signature": "Create(name, wsHandle=None, guid=None)",
           "summary": "Create a new agent in AnalyzingAgentsOC.",
           "usage_hint": "creation"
         },
@@ -1982,6 +1991,12 @@
               "description": "Ignored for OC collections (no ordered insert); the duplicate is always appended.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Agent has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -1990,7 +2005,7 @@
           ],
           "return_type": "ICmAgent",
           "returns": "ICmAgent: The newly created duplicate agent with a new GUID. ",
-          "signature": "Duplicate(agent_or_hvo, insert_after=True)",
+          "signature": "Duplicate(agent_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate an agent, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -2404,7 +2419,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Ignored. Accepted for backwards compatibility only -- ICmAgent.Version is a monolingual Unicode property, so there is no per-writing-system alternative to select.",
               "name": "wsHandle",
               "type": ""
             }
@@ -2590,7 +2605,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Ignored. Accepted for backwards compatibility only -- ICmAgent.Version is a monolingual Unicode property, so there is no per-writing-system alternative to set.",
               "name": "wsHandle",
               "type": ""
             }
@@ -3381,8 +3396,10 @@
       "id": "AllomorphOperations",
       "lcm_dependencies": [
         "ILexEntry",
+        "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory",
         "IMoForm",
+        "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
         "IPhEnvironment",
         "ITsString",
@@ -3644,6 +3661,12 @@
               "description": "If True (default), insert after the source allomorph. If False, insert at end of parent's alternate forms list.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Allomorph has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -3652,7 +3675,7 @@
           ],
           "return_type": "IMoForm",
           "returns": "IMoForm: The newly created duplicate allomorph with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate an allomorph, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -15201,8 +15224,15 @@
             },
             {
               "default": true,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
               "name": "insert_after",
-              "type": ""
+              "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -15210,7 +15240,7 @@
           ],
           "return_type": "",
           "returns": "",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for custom fields.",
           "usage_hint": null
         },
@@ -20675,6 +20705,12 @@
               "description": "If True (default), insert after the source etymology. If False, insert at end of entry's etymology list.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Etymology has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -20683,7 +20719,7 @@
           ],
           "return_type": "ILexEtymology",
           "returns": "ILexEtymology: The newly created duplicate etymology with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate an etymology, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -23088,6 +23124,53 @@
         "XmlTranslatedLists"
       ],
       "methods": [
+        {
+          "description": "Discard every uncommitted change in the currently open unit of work.\n\nWraps liblcm's one real revert primitive, ``IActionHandler.Rollback(0)``\n(task A3, `specs/write-path-transactions/spec.md` section A3). It is\ncoarse -- it reverts the *whole* open unit of work, not a selected\nsubset -- but under ``undoable=False`` that unit is the entire session,\nwhich is exactly the granularity that mode's atomicity story needs and\nwhich was previously unreachable from flexicon.\n\nWhat it does NOT do: it cannot revert anything already written to\ndisk -- data that was on disk when the session opened, or anything a\nprior ``CloseProject()`` committed. \"Uncommitted\" here means \"still\nonly in this process's cache\".\n\nUnder ``undoable=False`` that window is unusually wide, and for two\nreasons worth knowing. The session envelope holds the FSM in\n``ProcessingDataChanges``, which blocks the auto-save timer outright\n(`UnitOfWorkService.cs:240`), so nothing is quietly committed behind\nyour back between operations. For the same reason ``SaveChanges()``\ncannot be used to commit mid-session either: it reaches\n``CheckReadyForCommit(\"Commit at wrong place.\")``\n(`UnitOfWorkService.cs:304`), which requires ``ReadyForBeginTask``.\nThe practical consequence is that in this mode essentially the whole\nsession is abortable, right up to ``CloseProject()``.\n\nMode-dependent behavior (read this before relying on it):\n\n* ``undoable=False`` (the legacy opt-out; you must ask for it\nexplicitly since 4.4.0): this is the intended mode. The\nsession-long ``BeginNonUndoableTask()`` opened at ``OpenProject()``\nis the open unit of work, so this rolls the session back to its\nstate at open (or at the last commit) and then **reopens the\nenvelope**, so the session stays usable and ``CloseProject()``'s\nmatching ``EndNonUndoableTask()`` still has a task to end. See the\nO2 catch below for why reopening is not optional.\n* ``undoable=True``: rollback is already automatic and per-operation\n(``UndoableOperation()`` / ``_TransactionCM`` roll back their own\nblock on exception), so there is no session-wide uncommitted state\nfor this method to abort. Between operations nothing is open and\nthis returns ``False``. Inside an open block it raises\n``FP_TransactionError`` rather than rolling back -- see below.\n\nThe O2 catch (`UndoStack.cs:705-724`, recorded in `spec.md` O2 and\n`reviews/cycle2-explore-liblcm-facts.md` F5c):\n\n1. ``Rollback(int nDepth)`` ignores ``nDepth`` entirely -- the\nparameter is documented \"[Not used.]\" -- so it always reverts the\nwhole open unit. There is no partial rollback.\n2. It requires ``CurrentProcessingState == ProcessingDataChanges`` and\notherwise throws ``InvalidOperationException(\"Rollback not\nsupported in the current state.\")``. ``CurrentDepth`` is exactly\nthat state expressed as 1-or-0 (`UndoStack.cs:731-734`), so the\n``CurrentDepth == 0`` check below is the precondition test, not a\nheuristic.\n3. On success it leaves the FSM in ``ReadyForBeginTask`` -- i.e. it\n**terminates** the open task rather than merely emptying it. In\n``undoable=False`` that would silently end the session envelope,\nand ``CloseProject()`` would then call ``EndNonUndoableTask()``\nagainst a state that has no task to end. This method therefore\nreopens ``BeginNonUndoableTask()`` immediately, making the abort\nnon-terminal in that mode.\n\nWhy ``undoable=True`` refuses instead of rolling back: in that mode\nan open unit of work is always owned by an ``UndoableUnitOfWorkHelper``\n(there is no session envelope). Rolling back underneath it would leave\nthat helper's ``Dispose()`` to call ``Rollback``/``EndUndoTask``\nagainst a FSM already back in ``ReadyForBeginTask``, raising a second\nexception from the ``with`` block's exit and masking whatever the\ncaller was actually handling. Refusing loudly is the honest option;\nthe correct tool inside a block is to let the exception propagate,\nwhich rolls that block back by design.\n",
+          "example": "            # NOTE the explicit undoable=False. Under the 4.4.0 default this\n            # method has nothing session-wide to abort -- see the mode table\n            # above -- and each Create() rolls itself back instead.\n            project.OpenProject(\"MyProject\", writeEnabled=True, undoable=False)\n            try:\n                for word, gloss in messy_input:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            except Exception:\n                project.AbortSession()   # discard the whole partial import\n                raise\n            else:\n                project.SaveChanges()\n\n        See Also:\n            Undo() - reverse one committed ``UndoableOperation``\n                (``undoable=True`` only, in-process only).\n            UndoableOperation() - per-operation rollback, the finer-grained\n                and preferred mechanism once ``undoable=True`` is in use.",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "AbortSession",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If the project is not write-enabled."
+              },
+              {
+                "exception": "FP",
+                "when": "_TransactionError: If ``undoable=True`` and a unit of work is"
+              },
+              {
+                "exception": "FP",
+                "when": "_ProjectError: If the ``undoable=False`` envelope could not be"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "bool: True if a unit of work was open and was rolled back. False if nothing was open (nothing to abort) -- calling ``Rollback`` in that state would raise, so it is not called.",
+              "type": "bool"
+            }
+          },
+          "parameters": [],
+          "raises": [
+            "FP_ReadOnlyError: If the project is not write-enabled.",
+            "FP_TransactionError: If ``undoable=True`` and a unit of work is",
+            "open (see above), or if the underlying LCM ``Rollback(0)``",
+            "call fails unexpectedly.",
+            "FP_ProjectError: If the ``undoable=False`` envelope could not be",
+            "reopened after a successful rollback. The rollback itself has",
+            "already taken effect at that point; the session is left",
+            "without an open task and should be closed."
+          ],
+          "return_type": "bool",
+          "returns": "bool: True if a unit of work was open and was rolled back. False if nothing was open (nothing to abort) -- calling ``Rollback`` in that state would raise, so it is not called. ",
+          "signature": "AbortSession()",
+          "summary": "Discard every uncommitted change in the currently open unit of work.",
+          "usage_hint": "validation"
+        },
         {
           "description": "Generic string function for `MultiUnicode` and `MultiString`\nobjects, returning the best analysis or vernacular string.\n",
           "example": "",
@@ -25984,7 +26067,7 @@
           "usage_hint": null
         },
         {
-          "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\nEnable full undo stack integration with FLEx Ctrl+Z.\nWhen True, operations wrapped in UndoableOperation() will appear\nin FLEx's Undo menu. When False (default), uses rollback-only\ntransactions via Transaction().\n\nOnly valid when writeEnabled=True. Ignored if False.\n\nPhase 2 feature: requires LCM BeginUndoTask/EndUndoTask support.\nSee docs/internal/RESEARCH_NEEDED.md for details.\n",
+          "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\n**Default since 4.4.0: True.** Each write runs inside its own\nnamed, nesting-aware LCM unit of work, so an exception escaping\nan operation rolls that operation's mutations back, and the\noperation appears in FLEx's Ctrl+Z menu under its own label.\nThis is the mode the write path is designed for (decision D3 in\n`specs/write-path-transactions/tasks.md`).\n\nOnly meaningful when writeEnabled=True; ignored otherwise.\n\nPassing ``undoable=False`` opts back into the legacy Phase 1\nbehaviour: one session-long ``BeginNonUndoableTask()`` envelope,\nin which ``Transaction()`` is a labelling/nesting construct only\nand **nothing rolls back** -- the atomicity unit becomes the\nwhole session (issue #236). It is retained for callers that\ndepend on the old semantics, and it warns once per\n``OpenProject()`` call. Do not use it when the project may be\nopen in FLEx or another process (D3).\n\nTwo consequences of the default worth knowing before you rely on\nper-operation rollback:\n\n* Nested blocks **join** the outer unit of work rather than\nopening an independent one, so catching an exception from an\ninner block while still inside the outer block commits that\ninner block's partial writes. See `docs/EXCEPTION_HANDLING.md`.\n* ``AbortSession()`` is an ``undoable=False`` primitive. Under\nthis default it returns False between operations and raises\n``FP_TransactionError`` inside one (D8) -- per-operation\nrollback covers that ground instead.\n\nui:\nOptional `ILcmUI` implementation, passed through to\n`FLExLCM.OpenProject()`. When None (the default, unchanged for\nbackward compatibility), LCM is given the WinForms `FwLcmUI`,\nwhich opens modal dialogs and marshals through\n`Control.Invoke` -- fine for an interactive FLEx-hosted\nprocess, but unsafe in a headless one (issue #238): a\nconflicting save can block the commit thread on a dialog with\nno owner, or silently discard this session's unsaved changes.\n\nHeadless callers (services, scripts, MCP servers) should pass\n`HeadlessLcmUI()` from `flexicon.code.headless_ui`:\n\nfrom flexicon.code.headless_ui import HeadlessLcmUI\nproject.OpenProject(\"MyProject\", writeEnabled=True,\nui=HeadlessLcmUI())\n\n`HeadlessLcmUI` never blocks and never silently reverts; a\nconflicting save raises `FP_ConflictingSaveError` instead.\n",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -26009,15 +26092,20 @@
               "type": ""
             },
             {
-              "default": false,
+              "default": true,
               "name": "undoable",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "ui",
               "type": ""
             }
           ],
           "raises": [],
           "return_type": "",
           "returns": "",
-          "signature": "OpenProject(projectName, writeEnabled=False, undoable=False)",
+          "signature": "OpenProject(projectName, writeEnabled=False, undoable=True, ui=None)",
           "summary": "Open a project.",
           "usage_hint": null
         },
@@ -26072,7 +26160,7 @@
           "usage_hint": null
         },
         {
-          "description": "Redo the last undone UndoableOperation.\n\nRe-applies a change reversed by Undo().\nOnly valid when the project was opened with undoable=True.\n",
+          "description": "Redo the last undone UndoableOperation.\n\nRe-applies a change reversed by Undo().\nOnly valid when the project was opened with undoable=True.\n\nScope -- IN-PROCESS ONLY (issue #235): the same RAM-only limitation\ndocumented on ``Undo()`` applies here. liblcm's redo stack lives\nentirely in this process's ``LcmCache.ActionHandlerAccessor``; there\nis no cross-process or cross-session redo, and a freshly opened\nproject never has anything to redo.\n",
           "example": "            with project.UndoableOperation(\"Add entry\"):\n                project.LexEntry.Create(\"word\", \"stem\")\n\n            project.Undo()   # Removes the entry\n            project.Redo()   # Restores the entry",
           "is_classmethod": false,
           "is_mutating": false,
@@ -26084,24 +26172,71 @@
             "failure": [
               {
                 "exception": "FP",
-                "when": "_TransactionError: If project not opened with undoable=True"
+                "when": "_TransactionError: If project not opened with undoable=True,"
               }
             ],
             "notes": [],
             "success": {
-              "description": "bool: True if redo succeeded, False if nothing to redo.",
+              "description": "bool: True if redo succeeded, False if there was nothing to redo (``CanRedo()`` was False).",
               "type": "bool"
             }
           },
           "parameters": [],
           "raises": [
-            "FP_TransactionError: If project not opened with undoable=True"
+            "FP_TransactionError: If project not opened with undoable=True,",
+            "or if the underlying LCM ``Redo()`` call fails unexpectedly."
           ],
           "return_type": "bool",
-          "returns": "bool: True if redo succeeded, False if nothing to redo. ",
+          "returns": "bool: True if redo succeeded, False if there was nothing to redo (``CanRedo()`` was False). ",
           "signature": "Redo()",
           "summary": "Redo the last undone UndoableOperation.",
           "usage_hint": "validation"
+        },
+        {
+          "description": "Reconcile in-memory state with a foreign change and unblock auto-save.\n\nWraps `IUndoStackManager.Refresh()`, obtained via the same\n`ObjectRepository(IUndoStackManager)` accessor used by `SaveChanges()`\nand `CloseProject()`.\n\nRationale (issue A4, `specs/write-path-transactions/spec.md` D3):\n`UnitOfWorkService.cs:245` in liblcm refuses to auto-save while\n`m_pendingReconciliation` is non-null -- LCM's own comment is\n\"don't auto-save until the user Refreshes.\" In FLEx a human clicks\nEdit > Refresh. Headless, nothing ever calls the equivalent, so once\nanother client (typically FLEx itself, opened on the same project in\nshared mode) saves a change that this session must reconcile, saving\nis wedged for the remainder of the session -- in BOTH `undoable=True`\nand `undoable=False` modes, since the guard is in the shared\n`UnitOfWorkService`, not in either undo-stack implementation. Calling\nthis method after a detected (or suspected) foreign change clears\nthat pending-reconciliation state so subsequent saves proceed.\n",
+          "example": "            project.OpenProject(\"MyProject\", writeEnabled=True)\n            # ... FLEx (or another client) saves a conflicting change ...\n            project.RefreshFromDisk()\n            project.SaveChanges()  # No longer wedged",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "RefreshFromDisk",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not write-enabled."
+              },
+              {
+                "exception": "Note",
+                "when": "on the write-enabled guard:"
+              },
+              {
+                "exception": "The",
+                "when": "failure mode this method exists to fix -- auto-save"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [
+            "FP_ReadOnlyError: If project is not write-enabled.",
+            "Note on the write-enabled guard:",
+            "The failure mode this method exists to fix -- auto-save",
+            "permanently refusing to run -- is only possible while a",
+            "write-enabled session holds an open UnitOfWork envelope",
+            "(`BeginNonUndoableTask()`/`BeginUndoTask()`). A read-only",
+            "session never saves, so there is nothing for a pending",
+            "reconciliation to block. Guarding here matches `SaveChanges()`,",
+            "which raises `FP_ReadOnlyError` for the same reason: the",
+            "operation is meaningless outside a write-enabled session."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "RefreshFromDisk()",
+          "summary": "Reconcile in-memory state with a foreign change and unblock auto-save.",
+          "usage_hint": null
         },
         {
           "description": "Save all pending changes to disk without closing the project.\n\nThis is equivalent to what CloseProject() does internally before Dispose().\nUseful after a successful Transaction block to ensure changes are persisted.\n",
@@ -26246,8 +26381,8 @@
           "usage_hint": null
         },
         {
-          "description": "Return a context manager for a safe rollback transaction.\n\nIf an exception occurs inside the `with` block, all LCM changes made\nwithin that block are rolled back to the state at the start of the block.\nIf no exception occurs, changes are committed (saved at CloseProject).\n\nThis is Phase 1 (rollback-only) behavior. Transactions do NOT appear\nin the FLEx Ctrl+Z undo menu; they are programmatic safety nets only.\n",
-          "example": "            project = FLExProject()\n            project.OpenProject(\"MyProject\", writeEnabled=True)\n            try:\n                with project.Transaction(\"import batch\"):\n                    for word, gloss in data:\n                        entry = project.LexEntry.Create(word, \"stem\")\n                        project.Senses.Create(entry, gloss, \"en\")\n            except Exception as e:\n                print(f\"Import failed and was rolled back: {e}\")\n            project.CloseProject()\n",
+          "description": "Return a context manager for labelling and nesting a group of writes.\n\nMode-dependent semantics (read this before relying on it for safety):\n\n* ``undoable=False`` (the legacy opt-out mode; the default is\n``undoable=True`` since 4.4.0): **there is no rollback.**\nliblcm exposes no reachable \"roll back to a mark\" primitive in\nthis mode (issue #236; confirmed by reflection over\n`SIL.LCModel.dll` -- see `specs/write-path-transactions/spec.md`\nsection 2 and D1 for the specific API name checked and confirmed\nabsent). ``Transaction()`` still opens and closes cleanly, and nested\n``with`` blocks (including the per-method\n``BaseOperations._TransactionCM`` blocks used internally by\nOperations methods) still compose without error, but no exception\nraised inside the block undoes anything. The atomicity unit in\nthis mode is the **whole session**: a mid-operation exception\nleaves every mutation applied up to that point sitting in the\nin-memory cache, and it will be written to disk on the next\n``SaveChanges()``/``CloseProject()``. A per-session warning to this\neffect is logged once per ``OpenProject()`` call (not once per\nprocess or per instance -- a second ``OpenProject()`` call in the\nsame session re-logs it), rather than on every ``Transaction()``\ncall. See\n`docs/EXCEPTION_HANDLING.md`.\n* ``undoable=True``: this method itself is unchanged by the B1\nrewrite -- calling ``project.Transaction(label)`` directly still\nalways returns the Phase 1, no-rollback ``_FLExTransaction``\nabove (see ``test_transaction_body_always_passes_none_none``,\nwhich locks this). What changed under B1 is the internal\n``BaseOperations._TransactionCM()`` wrapper that most Operations\nmethods use: it no longer calls this method at all in\n``undoable=True`` mode, and instead delegates to\n``_NestingAwareTransaction``, which is genuinely transactional --\nbacked directly by liblcm's ``UndoableUnitOfWorkHelper``, an\nexception rolls back everything written inside the block. See\n``UndoableOperation()`` for the equivalent public, directly\ncallable entry point in this mode.\n\nThe name is kept (see D4 in `specs/write-path-transactions/tasks.md`):\nan earlier draft of this spec preferred renaming this method to\navoid over-promising, but once the ``undoable=True`` rewrite lands\nthe name is accurate for the mode this project is migrating\ntowards, so renaming it away would make the name wrong exactly\nwhere it will soon be right.\n",
+          "example": "            project = FLExProject()\n            project.OpenProject(\"MyProject\", writeEnabled=True)\n            with project.Transaction(\"import batch\"):\n                for word, gloss in data:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            project.CloseProject()\n\n        See Also:\n            UndoableOperation() - the ``undoable=True`` path; adds to FLEx Ctrl+Z menu.",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -26281,11 +26416,11 @@
           "return_type": "_FLExTransaction",
           "returns": "_FLExTransaction: Context manager ",
           "signature": "Transaction(label='transaction')",
-          "summary": "Return a context manager for a safe rollback transaction.",
+          "summary": "Return a context manager for labelling and nesting a group of writes.",
           "usage_hint": null
         },
         {
-          "description": "Undo the last UndoableOperation.\n\nReverses the changes of the last operation added with UndoableOperation().\nOnly valid when the project was opened with undoable=True.\n",
+          "description": "Undo the last UndoableOperation.\n\nReverses the changes of the last operation added with UndoableOperation().\nOnly valid when the project was opened with undoable=True.\n\nScope -- IN-PROCESS ONLY (issue #235): liblcm's undo stack\n(``IActionHandler``, obtained here from\n``LcmCache.ActionHandlerAccessor``) lives entirely in this process's\nRAM and holds live ``ICmObject`` references. Nothing serializes undo\nrecords into ``.fwdata``; a freshly opened ``LcmCache`` always starts\nat ``UndoableActionCount == 0``. There is no cross-process and no\ncross-session undo: closing and reopening the project -- even within\nthe same script -- loses the entire stack. Cross-*session* reversal\nis a separate, still-open concern tracked at the wrapper layer\n(``flexicon/sync/engine.py``'s ``create_snapshot``/``Snapshot``\nstubs), not here.\n",
           "example": "            with project.UndoableOperation(\"Add entry\"):\n                project.LexEntry.Create(\"word\", \"stem\")\n\n            project.Undo()  # Removes the entry",
           "is_classmethod": false,
           "is_mutating": false,
@@ -26297,21 +26432,22 @@
             "failure": [
               {
                 "exception": "FP",
-                "when": "_TransactionError: If project not opened with undoable=True"
+                "when": "_TransactionError: If project not opened with undoable=True,"
               }
             ],
             "notes": [],
             "success": {
-              "description": "bool: True if undo succeeded, False if nothing to undo.",
+              "description": "bool: True if undo succeeded, False if there was nothing to undo (``CanUndo()`` was False).",
               "type": "bool"
             }
           },
           "parameters": [],
           "raises": [
-            "FP_TransactionError: If project not opened with undoable=True"
+            "FP_TransactionError: If project not opened with undoable=True,",
+            "or if the underlying LCM ``Undo()`` call fails unexpectedly."
           ],
           "return_type": "bool",
-          "returns": "bool: True if undo succeeded, False if nothing to undo. ",
+          "returns": "bool: True if undo succeeded, False if there was nothing to undo (``CanUndo()`` was False). ",
           "signature": "Undo()",
           "summary": "Undo the last UndoableOperation.",
           "usage_hint": "validation"
@@ -28899,6 +29035,56 @@
       "type": "class",
       "usage_hint": "Class for working with general data in FieldWorks"
     },
+    "FP_ConflictingSaveError": {
+      "base_classes": [
+        "FP_RuntimeError"
+      ],
+      "category": "general",
+      "description": "Raised when LCM reports that another client saved changes which cannot be\nreconciled with this session's unsaved changes.\n\nRaised by ``flexicon.code.headless_ui.HeadlessLcmUI.ConflictingSave()``.\nRaising is deliberate: the alternatives LCM offers are to block on a\nmodal dialog or to discard the caller's unsaved work; neither is\nacceptable unattended. The caller is expected to abandon or retry the\noperation.\n\nSubclasses ``FP_RuntimeError`` (rather than ``FP_ProjectError``) because\nthe condition is discovered mid-session, on a save that occurs after the\nproject is already open and in use -- it is a runtime failure of an\nin-progress write, not a problem opening the project.",
+      "example": "",
+      "id": "FP_ConflictingSaveError",
+      "lcm_dependencies": [],
+      "methods": [
+        {
+          "description": "Performs __init__ operation with message",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "message",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(message)",
+          "summary": "Performs __init__ operation with message",
+          "usage_hint": null
+        }
+      ],
+      "name": "FP_ConflictingSaveError",
+      "namespace": "flexicon.code.exceptions",
+      "properties": [],
+      "source_file": "exceptions",
+      "summary": "Raised when LCM reports that another client saved changes which cannot be\nreconciled with this session's unsaved changes.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
     "FP_FileLockedError": {
       "base_classes": [
         "FP_ProjectError"
@@ -29647,8 +29833,15 @@
             },
             {
               "default": true,
+              "description": "Accepted for API uniformity across Operations classes. Filters are stored as a dict keyed by GUID with no positional ordering, so this parameter is ignored.",
               "name": "insert_after",
-              "type": ""
+              "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Filter criteria are stored as a plain dict and already copied wholesale, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -29657,7 +29850,7 @@
           ],
           "return_type": "dict",
           "returns": "dict: The newly created duplicate filter with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate a filter, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -31060,6 +31253,486 @@
       ],
       "type": "class",
       "usage_hint": "Provides operations for working with grammar data in FieldWorks"
+    },
+    "HeadlessLcmUI": {
+      "base_classes": [
+        "ILcmUI"
+      ],
+      "category": "general",
+      "description": "``ILcmUI`` that makes non-destructive decisions without blocking.\n\nImplements all ten methods and both properties of ``SIL.LCModel.ILcmUI``.",
+      "example": "",
+      "id": "HeadlessLcmUI",
+      "lcm_dependencies": [
+        "FileSelection",
+        "ILcmUI",
+        "MessageType",
+        "YesNoCancel"
+      ],
+      "methods": [
+        {
+          "description": "Returns OkNo - skip restoring linked files. The least destructive of\nthe three branches.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "CannotRestoreLinkedFilesToOriginalLocation",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "CannotRestoreLinkedFilesToOriginalLocation()",
+          "summary": "Returns OkNo - skip restoring linked files.",
+          "usage_hint": "validation"
+        },
+        {
+          "description": "Choose Files To Use operation",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ChooseFilesToUse",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "ChooseFilesToUse()",
+          "summary": "Choose Files To Use operation",
+          "usage_hint": null
+        },
+        {
+          "description": "Report whether to revert this session's changes to the saved state.\n\nReturns False -- never revert -- and by default raises so the caller\nlearns that a reconcile failed. LCM calls this only after\n``ChangeReconciler.OkToReconcileChanges()`` has already determined the\nforeign changes cannot be merged, so by this point some manual\nresolution is required either way.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ConflictingSave",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "ConflictingSave()",
+          "summary": "Report whether to revert this session's changes to the saved state.",
+          "usage_hint": null
+        },
+        {
+          "description": "Performs DisplayCircularRefBreakerReport operation with msg, caption",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "DisplayCircularRefBreakerReport",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "msg",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "caption",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "DisplayCircularRefBreakerReport(msg, caption)",
+          "summary": "Performs DisplayCircularRefBreakerReport operation with msg, caption",
+          "usage_hint": null
+        },
+        {
+          "description": "Performs DisplayMessage operation with type, message",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "DisplayMessage",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "type",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "message",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "caption",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "helpTopic",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "DisplayMessage(type, message, caption, helpTopic)",
+          "summary": "Performs DisplayMessage operation with type, message",
+          "usage_hint": null
+        },
+        {
+          "description": "Returns False. Restoring from a backup unattended would overwrite the\nproject; that decision belongs to a human.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "OfferToRestore",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "projectPath",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "backupPath",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "OfferToRestore(projectPath, backupPath)",
+          "summary": "Returns False.",
+          "usage_hint": null
+        },
+        {
+          "description": "Creates a copy of the object report guids",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ReportDuplicateGuids",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "errorText",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "ReportDuplicateGuids(errorText)",
+          "summary": "Creates a copy of the object report guids",
+          "usage_hint": null
+        },
+        {
+          "description": "Returns False: do not attempt to continue after a lethal error.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ReportException",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "error",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "isLethal",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "ReportException(error, isLethal)",
+          "summary": "Returns False: do not attempt to continue after a lethal error.",
+          "usage_hint": null
+        },
+        {
+          "description": "Returns False -- leave linked files at their original location.\n\nTrue would move/restore linked files into the project folder, an\nunattended file-system side effect. False is the non-destructive\nbranch: linked files are left where they already are.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "RestoreLinkedFilesInProjectFolder",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "RestoreLinkedFilesInProjectFolder()",
+          "summary": "Returns False -- leave linked files at their original location.",
+          "usage_hint": null
+        },
+        {
+          "description": "Returns False. Retrying unattended risks an unbounded loop on a\npersistent condition such as a locked file.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Retry",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "msg",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "caption",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "Retry(msg, caption)",
+          "summary": "Returns False.",
+          "usage_hint": null
+        },
+        {
+          "description": "Record caller activity. ``UnitOfWorkService.SaveOnIdle`` consults\n``LastActivityTime`` to decide whether to defer an auto-save, so a\nlong-running caller should touch this periodically.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "TouchActivity",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "TouchActivity()",
+          "summary": "Record caller activity.",
+          "usage_hint": null
+        },
+        {
+          "description": "Performs __init__ operation with raise_on_conflicting_save=True",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": true,
+              "description": "When True (default), ``ConflictingSave()`` raises ``FP_ConflictingSaveError``. When False it logs and returns False, which tells LCM to keep this session's changes and skip ``RevertToSavedState()``.",
+              "name": "raise_on_conflicting_save",
+              "type": "bool"
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(raise_on_conflicting_save=True)",
+          "summary": "Performs __init__ operation with raise_on_conflicting_save=True",
+          "usage_hint": null
+        },
+        {
+          "description": "get_ Last Activity Time operation",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "get_LastActivityTime",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "get_LastActivityTime()",
+          "summary": "get_ Last Activity Time operation",
+          "usage_hint": null
+        },
+        {
+          "description": "get_ Synchronize Invoke operation",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "get_SynchronizeInvoke",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "get_SynchronizeInvoke()",
+          "summary": "get_ Synchronize Invoke operation",
+          "usage_hint": null
+        }
+      ],
+      "name": "HeadlessLcmUI",
+      "namespace": "flexicon.code.headless_ui",
+      "properties": [
+        {
+          "description": "None - nothing may marshal to a UI thread that does not exist.\n\nReturning None is what keeps ``DisplayMessage`` off the deadlock path\ndescribed in the module docstring.",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [],
+            "utilities_used": []
+          },
+          "name": "SynchronizeInvoke",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "SynchronizeInvoke()",
+          "summary": "None - nothing may marshal to a UI thread that does not exist.",
+          "usage_hint": null
+        },
+        {
+          "description": "Last Activity Time operation",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [],
+            "utilities_used": []
+          },
+          "name": "LastActivityTime",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "LastActivityTime()",
+          "summary": "Last Activity Time operation",
+          "usage_hint": null
+        }
+      ],
+      "source_file": "headless_ui",
+      "summary": "``ILcmUI`` that makes non-destructive decisions without blocking.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
     },
     "InflectionFeatureOperations": {
       "base_classes": [
@@ -38407,7 +39080,7 @@
             "FP_NullParameterError: If sense_or_hvo is None."
           ],
           "return_type": "",
-          "returns": "IPartOfSpeech | None: The POS object on the sense's MSA's ``PartOfSpeechRA``, or ``None`` if the sense has no MSA, or if the MSA is a derivational-affix variant that exposes only ``FromPartOfSpeechRA`` / ``ToPartOfSpeechRA`` (issue #87 covers the derivational-affix asymmetry separately). ",
+          "returns": "IPartOfSpeech | None: The POS object for all four recognized MSA subtypes (``MoStemMsa``, ``MoInflAffMsa``, ``MoDerivAffMsa``, ``MoUnclassifiedAffixMsa``). For ``MoDerivAffMsa`` this is the *output* category (``ToPartOfSpeechRA``), consistent with :meth:`SetPartOfSpeech`. Returns ``None`` if the sense has no MSA, or if the MSA's subtype is not one of the four recognized POS-bearing types (a warning is logged in that case). ",
           "signature": "GetPartOfSpeechObject(sense_or_hvo)",
           "summary": "Get the part of speech LCM object for a sense (symmetric to\n:meth:`SetPartOfSpeech`).",
           "usage_hint": "retrieval"
@@ -46006,6 +46679,12 @@
               "description": "If True (default), insert after the source natural class. If False, insert at end of natural classes list.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Feature-based natural classes own FeaturesOA, but it is always cloned regardless of this flag, so it is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -46014,7 +46693,7 @@
           ],
           "return_type": "IPhNaturalClass",
           "returns": "IPhNaturalClass: The newly created duplicate. Returns IPhNCSegments for a segment-based source, IPhNCFeatures for a feature-based source. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate a natural class, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -49260,6 +49939,12 @@
               "description": "Writing system handle. If None, uses the default vernacular writing system. Can also be a language tag string.",
               "name": "wsHandle",
               "type": "int, optional"
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new paragraph, as a ``System.Guid`` or string. Use this when REPRODUCING a paragraph from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -49269,7 +49954,7 @@
           ],
           "return_type": "IStTxtPara",
           "returns": "IStTxtPara: The newly created paragraph object. ",
-          "signature": "Create(text_or_hvo, content, wsHandle=None)",
+          "signature": "Create(text_or_hvo, content, wsHandle=None, guid=None)",
           "summary": "Create a new paragraph and append it to a text.",
           "usage_hint": "creation"
         },
@@ -50217,6 +50902,12 @@
               "description": "If True (default), insert after the source person. If False, insert at end of people collection.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Person has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -50225,7 +50916,7 @@
           ],
           "return_type": "ICmPerson",
           "returns": "ICmPerson: The newly created duplicate person with a new GUID. ",
-          "signature": "Duplicate(person_or_hvo, insert_after=True)",
+          "signature": "Duplicate(person_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate a person, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -56268,6 +56959,12 @@
               "description": "If True (default), insert after the source item. If False, insert at end of list.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. CmPossibility has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -56276,7 +56973,7 @@
           ],
           "return_type": "ICmPossibility",
           "returns": "ICmPossibility: The newly created duplicate item with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate an item, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -58326,8 +59023,15 @@
             },
             {
               "default": true,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
               "name": "insert_after",
-              "type": ""
+              "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -58335,7 +59039,7 @@
           ],
           "return_type": "",
           "returns": "",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for project settings.",
           "usage_hint": null
         },
@@ -61489,7 +62193,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If form is empty"
+                "when": "_ParameterError: If form is empty, or guid was supplied but"
               }
             ],
             "notes": [
@@ -61515,7 +62219,7 @@
             },
             {
               "default": null,
-              "description": "Optional ILexSense object to link to",
+              "description": "Optional ILexSense object to link to. Must already be an ILexSense resolved in the TARGET project -- SensesRS is a reference, not an owning relationship, and a reference cannot span two LcmCache instances. Resolve the correct target-project sense yourself before calling.",
               "name": "sense",
               "type": ""
             },
@@ -61524,16 +62228,23 @@
               "description": "Optional writing system handle. Defaults to index's WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new entry, as a ``System.Guid`` or string. Use this when REPRODUCING an entry from another project so it keeps its original identity. Transport-only: like WordformOperations.Create, this method performs NO deduplication -- neither by guid nor by form -- so callers must call Find() first if they need to avoid duplicates. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_NullParameterError: If index_or_hvo or form is None",
-            "FP_ParameterError: If form is empty"
+            "FP_ParameterError: If form is empty, or guid was supplied but",
+            "is not a valid GUID."
           ],
           "return_type": "IReversalIndexEntry",
           "returns": "IReversalIndexEntry: The newly created reversal entry ",
-          "signature": "Create(index_or_hvo, form, sense=None, wsHandle=None)",
+          "signature": "Create(index_or_hvo, form, sense=None, wsHandle=None, guid=None)",
           "summary": "Create a new reversal index entry.",
           "usage_hint": "creation"
         },
@@ -62041,7 +62752,7 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If name is empty or index already exists for WS"
+                "when": "_ParameterError: If name is empty, an index already exists"
               }
             ],
             "notes": [
@@ -62064,16 +62775,24 @@
               "description": "Writing system handle (must be analysis WS)",
               "name": "writing_system",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new index, as a ``System.Guid`` or string. Use this when REPRODUCING an index from another project so it keeps its original identity -- e.g. to re-link ``ReversalIndexEntry`` owner-refs and downstream sense cross-references by identity instead of re-deriving from the WS string. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_NullParameterError: If name or writing_system is None",
-            "FP_ParameterError: If name is empty or index already exists for WS"
+            "FP_ParameterError: If name is empty, an index already exists",
+            "for the writing system, or guid was supplied but is not a",
+            "valid GUID."
           ],
           "return_type": "IReversalIndex",
           "returns": "IReversalIndex: The newly created reversal index ",
-          "signature": "Create(name, writing_system)",
+          "signature": "Create(name, writing_system, guid=None)",
           "summary": "Create a new reversal index for an analysis writing system.",
           "usage_hint": "creation"
         },
@@ -65396,6 +66115,12 @@
               "description": "Optional writing system handle. Defaults to project default vernacular WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new segment, as a ``System.Guid`` or string. Use this when REPRODUCING a segment from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -65405,7 +66130,7 @@
           ],
           "return_type": "ISegment",
           "returns": "ISegment: The newly created segment object. ",
-          "signature": "AppendSentence(paragraph_or_hvo, text, wsHandle=None)",
+          "signature": "AppendSentence(paragraph_or_hvo, text, wsHandle=None, guid=None)",
           "summary": "Append a new sentence to a paragraph, creating a new segment.",
           "usage_hint": null
         },
@@ -68849,6 +69574,18 @@
               "description": "Genre classification for the text. If provided, must be a valid ICmPossibility from the project's genre list. Defaults to None.",
               "name": "genre",
               "type": "ICmPossibility, optional"
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new text, as a ``System.Guid`` or string. Use this when REPRODUCING a text from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
+            },
+            {
+              "default": null,
+              "description": "GUID for the text's owned StText contents object. Same semantics as ``guid``.",
+              "name": "contents_guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -68858,7 +69595,7 @@
           ],
           "return_type": "IText",
           "returns": "IText: The newly created text object. ",
-          "signature": "Create(name, genre=None)",
+          "signature": "Create(name, genre=None, guid=None, contents_guid=None)",
           "summary": "Create a new text in the project.",
           "usage_hint": "creation"
         },
@@ -70638,6 +71375,12 @@
               "description": "If True (default), insert after the source variant. If False, insert at end of parent's entry refs list.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Variant has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -70646,7 +71389,7 @@
           ],
           "return_type": "ILexEntryRef",
           "returns": "ILexEntryRef: The newly created duplicate variant reference with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate a variant reference, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -71534,6 +72277,12 @@
               "description": "Either an IWfiWordform object or its HVO",
               "name": "wordform_or_hvo",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new analysis, as a ``System.Guid`` or string. Use this when REPRODUCING a analysis from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -71543,7 +72292,7 @@
           ],
           "return_type": "IWfiAnalysis",
           "returns": "IWfiAnalysis: The newly created analysis object ",
-          "signature": "Create(wordform_or_hvo)",
+          "signature": "Create(wordform_or_hvo, guid=None)",
           "summary": "Create a new analysis for a wordform.",
           "usage_hint": "creation"
         },
@@ -72876,6 +73625,12 @@
               "description": "Optional writing system handle. Defaults to analysis WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new gloss, as a ``System.Guid`` or string. Use this when REPRODUCING a gloss from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -72885,7 +73640,7 @@
           ],
           "return_type": "IWfiGloss",
           "returns": "IWfiGloss: The newly created gloss object ",
-          "signature": "Create(analysis_or_hvo, form, wsHandle=None)",
+          "signature": "Create(analysis_or_hvo, form, wsHandle=None, guid=None)",
           "summary": "Create a new gloss for a wordform analysis.",
           "usage_hint": "creation"
         },
@@ -72975,6 +73730,12 @@
               "description": "Ignored. MeaningsOC is an unordered ILcmOwningCollection with no Insert() method and no concept of positional ordering. The duplicate is always appended via Add().",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. WfiGloss has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -72983,7 +73744,7 @@
           ],
           "return_type": "IWfiGloss",
           "returns": "IWfiGloss: The newly created duplicate gloss with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=False)",
+          "signature": "Duplicate(item_or_hvo, insert_after=False, deep=False)",
           "summary": "Duplicate a wordform gloss, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -73675,6 +74436,12 @@
               "description": "The IWfiAnalysis object or HVO.",
               "name": "analysis_or_hvo",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new morph bundle, as a ``System.Guid`` or string. Use this when REPRODUCING a morph bundle from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -73683,7 +74450,7 @@
           ],
           "return_type": "IWfiMorphBundle",
           "returns": "IWfiMorphBundle: The newly created morph bundle object. ",
-          "signature": "Create(analysis_or_hvo)",
+          "signature": "Create(analysis_or_hvo, guid=None)",
           "summary": "Create a new morph bundle for a wordform analysis.",
           "usage_hint": "creation"
         },
@@ -73768,6 +74535,12 @@
               "description": "If True (default), insert after the source bundle. If False, insert at end of analysis's bundle sequence.",
               "name": "insert_after",
               "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. WfiMorphBundle has no owned objects, so this parameter is ignored.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -73776,7 +74549,7 @@
           ],
           "return_type": "IWfiMorphBundle",
           "returns": "IWfiMorphBundle: The newly created duplicate bundle with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate a morph bundle, creating a new copy with a new GUID.",
           "usage_hint": null
         },
@@ -74834,6 +75607,12 @@
               "description": "Optional writing system handle. Defaults to vernacular WS.",
               "name": "wsHandle",
               "type": ""
+            },
+            {
+              "default": null,
+              "description": "GUID to assign to the new wordform, as a ``System.Guid`` or string. Use this when REPRODUCING a wordform from another project so it keeps its original identity. None (the default) mints a fresh GUID.",
+              "name": "guid",
+              "type": "optional"
             }
           ],
           "raises": [
@@ -74842,7 +75621,7 @@
           ],
           "return_type": "IWfiWordform",
           "returns": "IWfiWordform: The newly created wordform object ",
-          "signature": "Create(form, wsHandle=None)",
+          "signature": "Create(form, wsHandle=None, guid=None)",
           "summary": "Create a new wordform in the FLEx project.",
           "usage_hint": "creation"
         },
@@ -75782,8 +76561,15 @@
             },
             {
               "default": true,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
               "name": "insert_after",
-              "type": ""
+              "type": "bool"
+            },
+            {
+              "default": false,
+              "description": "Accepted for API uniformity across Operations classes. Ignored -- this method always raises.",
+              "name": "deep",
+              "type": "bool"
             }
           ],
           "raises": [
@@ -75791,7 +76577,7 @@
           ],
           "return_type": "",
           "returns": "",
-          "signature": "Duplicate(item_or_hvo, insert_after=True)",
+          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for writing systems.",
           "usage_hint": null
         },
@@ -76679,10 +77465,12 @@
     "_FLExTransaction": {
       "base_classes": [],
       "category": "general",
-      "description": "Context manager providing safe rollback transactions on a FLEx project.\n\nMarks a point in the LCM undo stack (if supported) and rolls back to\nthat mark if an exception occurs inside the block.\n\nThis is Phase 1 (rollback-only) behavior. The transaction does NOT\nappear in the FLEx Ctrl+Z undo menu - it is a programmatic safety net.\n\nUsage::\n\nwith project.Transaction(\"Import entries\") as txn:\nproject.LexEntry.Create(\"run\", \"stem\")\nproject.LexEntry.Create(\"walk\", \"stem\")\n# If any line raises, all changes in the block are rolled back.\n\nNesting Behavior:\nNested transactions are allowed but share outer-level semantics:\na rollback in an inner transaction rolls back to the outer mark.\nThis is documented behavior, not an error.\n",
+      "description": "Context manager for FLExProject.Transaction() -- labelling/nesting only.\n\nIf constructed with a real ``mark_fn``/``rollback_fn`` pair, marks a\npoint in the LCM undo stack and rolls back to it on exception. In the\ncurrent build, ``FLExProject.Transaction()`` always constructs this\nclass with ``(None, None)``: no such LCM rollback-to-mark API exists\n(issue #236; see `specs/write-path-transactions/spec.md` section 2 for\nthe specific API confirmed absent by reflection). So in\npractice today this class provides labelling and safe nesting only --\nit does NOT roll anything back. See ``FLExProject.Transaction()``'s\ndocstring for the full mode-dependent explanation, and\n``docs/EXCEPTION_HANDLING.md`` for the atomicity-unit consequence.\n\nThis does NOT appear in the FLEx Ctrl+Z undo menu regardless of mode -\nit is (or, once real, would be) a programmatic safety net only.\n\nUsage::\n\nwith project.Transaction(\"Import entries\") as txn:\nproject.LexEntry.Create(\"run\", \"stem\")\nproject.LexEntry.Create(\"walk\", \"stem\")\n# No exception here is rolled back in the current build (see above).\n",
       "example": "",
       "id": "_FLExTransaction",
-      "lcm_dependencies": [],
+      "lcm_dependencies": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "methods": [
         {
           "description": "Initialize transaction.\n",
@@ -76741,7 +77529,7 @@
       "namespace": "flexicon.code.transaction",
       "properties": [],
       "source_file": "transaction",
-      "summary": "Context manager providing safe rollback transactions on a FLEx project.",
+      "summary": "Context manager for FLExProject.",
       "tags": [
         "general"
       ],
@@ -76751,10 +77539,12 @@
     "_FLExUndoableOperation": {
       "base_classes": [],
       "category": "general",
-      "description": "Context manager for undoable operations that appear in FLEx's Ctrl+Z menu.\n\nUnlike Phase 1 Transaction (rollback-only), Phase 2 UndoableOperation:\n- Changes made inside the block appear as ONE named operation in FLEx Ctrl+Z\n- Ctrl+Z in FLEx will undo the entire operation\n- Ctrl+Y in FLEx will redo the entire operation\n- The project MUST be opened with undoable=True\n\nUsage::\n\nproject.OpenProject(\"MyProject\", writeEnabled=True, undoable=True)\n\nwith project.UndoableOperation(\"Add entry 'run'\"):\nentry = project.LexEntry.Create(\"run\", \"stem\")\nproject.Senses.Create(entry, \"to move\", \"en\")\n\n# Now \"Add entry 'run'\" appears in FLEx Edit > Undo menu\n# User can Ctrl+Z to undo both the entry AND sense creation together\n",
+      "description": "Context manager for undoable operations that appear in FLEx's Ctrl+Z menu.\n\nUnlike Phase 1 Transaction (rollback-only), Phase 2 UndoableOperation:\n- Changes made inside the block appear as ONE named operation in FLEx Ctrl+Z\n- Ctrl+Z in FLEx will undo the entire operation\n- Ctrl+Y in FLEx will redo the entire operation\n- The project MUST be opened with undoable=True\n\nUsage::\n\nproject.OpenProject(\"MyProject\", writeEnabled=True, undoable=True)\n\nwith project.UndoableOperation(\"Add entry 'run'\"):\nentry = project.LexEntry.Create(\"run\", \"stem\")\nproject.Senses.Create(entry, \"to move\", \"en\")\n\n# Now \"Add entry 'run'\" appears in FLEx Edit > Undo menu\n# User can Ctrl+Z to undo both the entry AND sense creation together\n\nImplementation (issue #233 -- ``BeginUndoTask`` arity bug):\nThis used to discover a ``BeginUndoTask``/``EndUndoTask`` callable\npair (``FLExProject._GetUndoRedoAPI()``) and call\n``begin_undo_fn(label)`` with a single argument, against liblcm's\nactual two-argument ``IActionHandler.BeginUndoTask(String undoText,\nString redoText)``. That discovery layer is gone; this class now\nconstructs liblcm's own ``UndoableUnitOfWorkHelper`` directly\n(``SIL.LCModel.Infrastructure``), whose constructor takes both\nstrings, so the one-argument call can no longer occur. It also\njoins an already-open UnitOfWork (``ActionHandlerAccessor.CurrentDepth\n> 0``) instead of opening a second one -- the same idiom\n``_NestingAwareTransaction`` uses in ``transaction.py`` and liblcm's\nown ``UndoableUnitOfWorkHelper.DoUsingNewOrCurrentUOW``\n(``UndoableUnitOfWorkHelper.cs:91-98``). See\n`specs/write-path-transactions/spec.md` B1.\n",
       "example": "",
       "id": "_FLExUndoableOperation",
-      "lcm_dependencies": [],
+      "lcm_dependencies": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "methods": [
         {
           "description": "Initialize undoable operation.\n",
@@ -76784,27 +77574,15 @@
             },
             {
               "default": null,
-              "description": "Operation name shown in FLEx undo menu",
+              "description": "Operation name shown in FLEx undo menu, used as both the undo text and the redo text passed to liblcm's ``UndoableUnitOfWorkHelper`` constructor.",
               "name": "label",
               "type": "str"
-            },
-            {
-              "default": null,
-              "description": "Callable(label) to start undoable task",
-              "name": "begin_undo_fn",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Callable() to end undoable task",
-              "name": "end_undo_fn",
-              "type": ""
             }
           ],
           "raises": [],
           "return_type": "None",
           "returns": "",
-          "signature": "__init__(project, label: str, begin_undo_fn, end_undo_fn)",
+          "signature": "__init__(project, label: str)",
           "summary": "Initialize undoable operation.",
           "usage_hint": null
         }
@@ -76846,10 +77624,12 @@
     "_NestingAwareTransaction": {
       "base_classes": [],
       "category": "general",
-      "description": "Phase-aware, nesting-safe wrapper returned by ``BaseOperations._TransactionCM``.\n\nChooses the underlying context manager at ``__enter__`` time based on the\nproject mode and the current nesting depth, then maintains the depth count:\n\n* Phase 1 (``_undoable`` False): always delegates to\n``project.Transaction()``. Phase 1 nests safely - each block marks an\nindependent rollback point on the LCM undo stack, so nested blocks are\nfine at any depth.\n* Phase 2 (``_undoable`` True), OUTERMOST block (depth 0): delegates to\n``project.UndoableOperation()``, opening a single named FLEx undo task.\n* Phase 2, NESTED block (depth > 0): becomes a NO-OP. ``BeginUndoTask`` /\n``EndUndoTask`` cannot nest - opening a second undo task inside an\nactive one corrupts the undo stack. The outermost ``UndoableOperation``\nalready groups every inner mutation into its single named task, which\nis exactly the Phase 2 contract (recover via FLEx Ctrl+Z), so the inner\nblock must touch no undo API at all.\n\nDepth is tracked on the project (``project._transaction_depth``) rather than\non the Operations instance, because nesting routinely crosses Operations\nboundaries (e.g. ``LexEntry.Create`` calling ``Senses.Create``).",
+      "description": "Phase-aware, nesting-safe wrapper returned by ``BaseOperations._TransactionCM``.\n\nChooses behavior at ``__enter__`` time based on the project mode:\n\n* Phase 1 (``_undoable`` False): always delegates to\n``project.Transaction()``, regardless of nesting depth. ``Transaction()``\nnever opens an LCM undo task itself -- the single non-undoable\nenvelope for the whole session is opened once, at ``OpenProject()``\n(``MainCacheAccessor.BeginNonUndoableTask()``), and stays open until\n``CloseProject()``. So nested ``with`` blocks in this mode compose\nwithout any LCM-level nesting concern; there is nothing to join or\nopen per block.\n* Phase 2 (``_undoable`` True): joins or opens a real liblcm\n``UndoableUnitOfWorkHelper`` UnitOfWork, following the *exact* idiom\nliblcm itself uses in\n``UndoableUnitOfWorkHelper.DoUsingNewOrCurrentUOW``\n(``UndoableUnitOfWorkHelper.cs:91-98``)::\n\nif (actionHandler.CurrentDepth > 0) task();\nelse Do(undoText, redoText, actionHandler, task);\n\nNesting depth is asked of LCM itself\n(``cache.ActionHandlerAccessor.CurrentDepth``) at every\n``__enter__`` call -- it is never tracked locally in Python. This\nis deliberate: a hand-maintained depth counter, formerly stored on\nthe project instance, is exactly what issue #234 was -- it\npermanently leaked when an inner ``__enter__`` raised, because\nnothing on that path ever decremented it. There is no longer any\nlocal counter to leak; ``CurrentDepth`` also correctly reflects a\ntask opened by ANY caller (e.g.\n``FLExProject.UndoableOperation()`` called directly, not just\nthrough this class), which the old Python-side counter could not\nsee. See ``docs/EXCEPTION_HANDLING.md`` and\n``specs/write-path-transactions/spec.md`` section 5, B1.\n\nA second ``BeginUndoTask`` while one is already open does not merely\nraise in liblcm -- ``UndoStack.cs:209-216`` rolls back the *already-open*\nUnitOfWork first (discarding its changes), resets the FSM, and only then\nthrows. Joining (never opening a second task while one is active) is\ntherefore not an optional nicety; it is what keeps this class from\nsilently destroying whatever the outer block already did.",
       "example": "",
       "id": "_NestingAwareTransaction",
-      "lcm_dependencies": [],
+      "lcm_dependencies": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "methods": [
         {
           "description": "Performs __init__ operation with project, label: str",
@@ -76909,7 +77689,9 @@
       "description": "Internal error when Undo/Redo APIs are not available.",
       "example": "",
       "id": "_UndoRedoNotSupportedError",
-      "lcm_dependencies": [],
+      "lcm_dependencies": [
+        "UndoableUnitOfWorkHelper"
+      ],
       "methods": [],
       "name": "_UndoRedoNotSupportedError",
       "namespace": "flexicon.code.undoable_operation",
@@ -76977,7 +77759,7 @@
   "metadata": {
     "categories": {
       "discourse": 7,
-      "general": 36,
+      "general": 38,
       "grammar": 18,
       "lexicon": 15,
       "lists": 8,
@@ -76987,11 +77769,12 @@
       "system": 7,
       "texts": 10
     },
-    "files_analyzed": 92,
+    "files_analyzed": 93,
     "lcm_interfaces_used": [
       "CellarPropertyType",
       "CellarPropertyTypeFilter",
       "DsConstChartTags",
+      "FileSelection",
       "FwObjDataTypes",
       "GenDate",
       "IAnalysis",
@@ -77063,6 +77846,7 @@
       "IFsSymFeatValFactory",
       "IFwMetaDataCacheManaged",
       "ILangProject",
+      "ILcmUI",
       "ILexEntry",
       "ILexEntryFactory",
       "ILexEntryRef",
@@ -77084,6 +77868,7 @@
       "ILexSense",
       "ILexSenseFactory",
       "ILexSenseRepository",
+      "IMoAffixAllomorph",
       "IMoAffixAllomorphFactory",
       "IMoDerivAffMsa",
       "IMoDerivAffMsaFactory",
@@ -77097,6 +77882,7 @@
       "IMoInflClassFactory",
       "IMoMorphSynAnalysis",
       "IMoMorphType",
+      "IMoStemAllomorph",
       "IMoStemAllomorphFactory",
       "IMoStemMsa",
       "IMoStemMsaFactory",
@@ -77189,6 +77975,7 @@
       "LexExampleSentenceTags",
       "LexRefTypeTags",
       "LexSenseTags",
+      "MessageType",
       "MoFormTags",
       "MsaType",
       "Opinions",
@@ -77199,23 +77986,25 @@
       "SpecialWritingSystemCodes",
       "TextTags",
       "TsStringUtils",
+      "UndoableUnitOfWorkHelper",
       "WfiAnalysisTags",
       "WfiGlossTags",
       "WfiMorphBundleTags",
       "WfiWordformTags",
       "WorkerThreadException",
       "XmlList",
-      "XmlTranslatedLists"
+      "XmlTranslatedLists",
+      "YesNoCancel"
     ],
     "mapping_types": {
-      "composite": 115,
-      "convenience": 209,
+      "composite": 111,
+      "convenience": 211,
       "direct": 601,
-      "pure_python": 589
+      "pure_python": 608
     },
-    "methods_with_return_type": 890,
-    "total_classes": 116,
-    "total_methods": 1514,
-    "total_properties": 152
+    "methods_with_return_type": 891,
+    "total_classes": 118,
+    "total_methods": 1531,
+    "total_properties": 154
   }
 }

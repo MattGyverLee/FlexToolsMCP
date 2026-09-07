@@ -249,10 +249,11 @@ standalone and it does -- but only once the live check passes.
 
 ### MERGE READINESS (asked by the user, answered 2026-09-06; reconciled 2026-09-07): READY
 
-The branch is 48 commits ahead of `origin/main` and unpushed (re-derived
-2026-09-07 via `git rev-list --count origin/main..HEAD`; the earlier "10
-commits" figure was stale). The four items that previously blocked a merge
-are now resolved or explicitly deferred by the user:
+The branch is 50+ commits ahead of `origin/main` and unpushed; re-derive the
+exact count with `git rev-list --count origin/main..HEAD` rather than
+trusting a recorded figure (the earlier "10" and "48" figures both went
+stale within a day). The four items that previously blocked a merge are now
+resolved or explicitly deferred by the user:
 
 1. ~~**The CP1 live write check for #92 has still never been run**~~ -- **CLEARED
    2026-09-07.** The check was run with the user's explicit authorization and
@@ -279,18 +280,24 @@ are now resolved or explicitly deferred by the user:
    `specs/swahili-audit-2026-09/reviews/cycle1-domain.md` and
    `cycle1-explore-nullmorph.md` are committed this cycle.
 
-Safe on merge -- CORRECTED: the "cb3f1b8 is the ONLY auto-close" claim above
-was FALSE. There are FOUR closing-keyword mentions across THREE commits in
-`origin/main..HEAD`: `6e35204`'s body ("closes #97 Bug 1"), `97bd304`'s body
-("(closes #97 Bug 1)"), `cb3f1b8`'s subject ("(closes #103)"), and
-`250469c`'s body (`"closes #103"`, quoting cb3f1b8). GitHub parses closing
-keywords anywhere in a commit message, not just the first one, so a merge to
-`main` will auto-close BOTH #97 and #103. #103's close is expected and
-accepted -- this document's own "#103 genuinely is fixed" finding stands.
-#97 is NOT resolved (only Bug 1 of #97 is; Bug 2's ranking fix is deliberately
-deferred as B-3) and must be REOPENED immediately after the merge lands.
-Nothing in range auto-closes #96, #40, #100 or #101 -- those four remain open
-by design.
+Safe on merge -- CORRECTED (cycle 12 adjudication, see
+`specs/swahili-audit-2026-09/reviews/cycle12-adjudication.md`): the "FOUR
+closing-keyword mentions across THREE commits" claim above was itself
+stale. A full re-scan of `origin/main..HEAD` found FIVE closing-keyword
+mentions across FIVE commits, targeting THREE distinct issue numbers:
+`97bd304`'s body ("(closes #97 Bug 1)"), `6e35204`'s body ("closes #97 Bug
+1"), `cb3f1b8`'s subject ("(closes #103)"), `250469c`'s body ("closes #103",
+quoting cb3f1b8), and `69e0260`'s body ("residual of closed #74"). GitHub
+parses closing keywords anywhere in a commit message, not just the first
+one, so a merge to `main` will auto-close #97, #103, and re-trigger a close
+action on #74. The `69e0260`/#74 mention is a no-op: issue 74 is already
+CLOSED going into the merge, so it is expected to remain CLOSED and
+untouched in substance -- see the adjudication doc for the full four-ground
+ruling. #103's close is expected and accepted -- this document's own "#103
+genuinely is fixed" finding stands. #97 is NOT resolved (only Bug 1 of #97
+is; Bug 2's ranking fix is deliberately deferred as B-3) and must be
+REOPENED immediately after the merge lands. Nothing in range auto-closes
+#96, #40, #100 or #101 -- those four remain open by design.
 
 ### RESOLVED -- the CP1 live write check (2026-09-07): BOTH LEGS PASS
 

@@ -385,7 +385,6 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
         against the installed flexicon package + shipped index (not a
         hardcoded list), mirroring cycle8-qc.md's P1-1 measurement."""
         import flexicon
-        from flextoolsmcp.flexicon_analyzer import _extract_facade_access_paths
 
         idx_path = (
             Path(__file__).parent.parent
@@ -394,9 +393,6 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
         with open(idx_path, encoding="utf-8") as f:
             data = json.load(f)
         ops_names = sorted(n for n in data.get("entities", {}) if n.endswith("Operations"))
-
-        flexicon_code_base = Path(flexicon.__file__).parent / "code"
-        facade = _extract_facade_access_paths(flexicon_code_base)
 
         hazardous = set()
         for name in ops_names:

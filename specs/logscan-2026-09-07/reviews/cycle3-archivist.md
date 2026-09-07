@@ -204,6 +204,8 @@ Staged exactly: `.gitignore`, `docs/logscan-state.json`, `STATUS.md`,
 that no unrelated files (the flexicon 4.4.1->4.5.2 index migration, the
 swahili-audit-2026-09 cycle1 files) were swept in.
 
-Commit sha: see the immediate follow-up commit touching only this file, in the
-style of this repo's precedent at `eb2a1f2` ("record the cycle-6 fix commit
-sha in its own report").
+Commit sha: `fa289b7` ("chore(logscan): reopen 4 regressions, file MCP#111,
+clean up stray operations.jsonl"), on `feat/shared-mode-access`, 6 files
+changed (+345/-26). Recorded here in an immediate follow-up commit touching
+only this file, in the style of this repo's precedent at `eb2a1f2` ("record
+the cycle-6 fix commit sha in its own report").

@@ -706,3 +706,62 @@ closed, commented on, or reopened this spurt; only #112/#113 were filed. The
 never-run CP1 live write check for `#92` remains the **binding** merge blocker.
 The flexicon 4.4.1 -> 4.5.2 index migration and both `cycle1-*.md` reports are
 still preserved byte-for-byte, awaiting a user call.
+
+## Campaign closed: swahili-audit-2026-09 + shared-mode-access merged as PR #114 (2026-09-07)
+
+The combined branch `feat/shared-mode-access` -- carrying both the
+shared-mode-access feature and the swahili-audit-2026-09 bugfix campaign --
+merged to `main` as **PR #114, merge SHA `ae73eef`**, a true two-parent merge
+(parents `f0089a4` and `7a75232`; not a squash, not a rebase). The branch was
+fully absorbed (`git diff origin/main origin/feat/shared-mode-access --stat`
+is empty) and left on the remote, undeleted. The binding merge blocker -- the
+never-run CP1 live write check for #92 -- was cleared earlier in spurt 4
+(both legs PASSED against `Sena 3`, with disk-level confirmation); nothing
+else in `merge_blockers_remaining` was ever binding, since the index
+migration and the two `cycle1-*.md` reviews were untracked working-tree
+state that cannot enter a merge, and the STATUS.md stale-section
+reconciliation was already done. See `.crew-handoff.json`'s
+`merge_blockers_retired_cycle14` for the full accounting.
+
+**Post-merge CI on `main` is GREEN across all three matrix jobs** (run
+`34165957555`: py3.10-windows 3m36s, py3.12-windows 3m31s, py3.12-ubuntu-no-flex
+2m31s) -- the **first green run on `main` since 2026-08-12**.
+
+**Issue states after the merge** (`gh issue view <n> --json number,state`,
+independently re-derived, not trusted from any report):
+
+| Issue | State | Why |
+|-------|-------|-----|
+| #97   | **OPEN** | The merge mechanically auto-closed it via pre-existing closing keywords in commit bodies `6e35204`/`97bd304`; the main session ran `gh issue reopen 97` immediately and left an explanatory comment (id `5576130418`). #97 stays open on purpose: only Bug 1 (the ranking/`fix`-string leak) is repaired -- Bug 2's variable-typing fix landed separately in CP-B/C -- and only the user closes issues. |
+| #103  | CLOSED | Expected auto-close from `cb3f1b8`. Substantively reasonable (18 new tests, an `hvo_stability` primer block, and a hard write-gate all target the issue's stated defect), but it does not change liblcm's underlying per-session hvo renumbering and one cross-repo flexicon doc example remains unfixed -- so whether #103 should stay closed or be reopened to track that follow-up is a **user call**, not decided here. |
+| #74   | CLOSED | Already closed *before* this merge; not attributable to it. |
+| #115  | OPEN | Untouched by the merge, as expected. |
+| #100  | OPEN | Untouched by the merge. Genuinely still live: the tracked `flexicon_api_v4.4.1.json` does not carry `access_path` for `MSAOperations` (a prior programmer report claiming otherwise was disproved by direct JSON inspection at cycle 13 verification). Depends on the index migration below. |
+| #96   | OPEN | Untouched by the merge. Staleness remains **unverified** -- the restart precondition is met (a fresh MCP server PID postdates every fix) but the live repro itself was never authorized or run. |
+| #80   | OPEN | Untouched by the merge. Reopened by a separate crew as a hard `preflight_reject` recurrence; this campaign's cycle 10 proved the reject fires at `execution.py:3138`, and designed (but did not implement) a safe conjunction-predicate fix -- see below. |
+
+**Remaining USER decisions** (nothing further is dispatchable without one):
+
+1. **MCP#80 gate-design authorization.** The fix at `execution.py:3138` is
+   designed and proven (`mcp80_fix_design` in `.crew-handoff.json`) but
+   relaxes a hard gate on a **write-enabled** session -- a step beyond the
+   user-approved B-1 precedent, which only relaxed read-only runs. Needs
+   explicit authorization before any code change; `execution.py:3138`
+   remains in `do_not_touch` until then.
+2. **#96 live repro authorization.** Preconditions are now met (server
+   restarted, postdates every relevant fix), but this campaign will not run
+   a live, potentially dialog-hanging repro without the user's go-ahead.
+3. **The flexicon 4.4.1 -> 4.5.2 index migration.** Deferred by the user's
+   own prior decision ("we'll build new indexes before the next release");
+   the working tree's v4.4.1 files are the committed, load-bearing index and
+   must not be replaced ad hoc. Blocks #100 from going fully live.
+4. **Whether #103 stays closed.** The auto-close is substantively reasonable
+   but incomplete (see table above); a user ruling decides whether to leave
+   it closed or reopen to track the unfixed flexicon-side follow-up.
+
+Two carried process notes worth keeping visible: `scripts/check_project_accessors.py`'s
+drift check is wired into zero CI workflows (local/manual-only protection,
+conceptually tracked by #115), and the two in-place `test_issue100_access_path.py`
+full-suite failures are a working-tree artifact of the untracked v4.5.2 index
+sitting beside the committed v4.4.1 index -- a clean worktree at `HEAD` gives
+1135 passed / 0 failed.

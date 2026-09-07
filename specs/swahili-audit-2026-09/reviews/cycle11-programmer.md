@@ -2,9 +2,13 @@
 
 Both `cast_to_concrete` advisory bugs from cycle10-phantom.md are fixed.
 Pre-existing failure class, same as #103 (advisory text drifted from the
-real API). Commit shas below (added in a small follow-up doc commit once
-the code commits existed; the report itself was committed first per
-instructions).
+real API).
+
+Commits (report committed first, per protocol; shas added here in this
+follow-up doc commit once the code commits existed):
+- `5a71102` docs: this report
+- `1f8e90b` fix: rewrite cast_to_concrete phantom advisories (Symbol A + B)
+- `ffafb8c` test: drop dead facade assignment (bundled freebie, separate)
 
 ## Symbol A - true phantom `CastingOperations` (re-derived lines)
 

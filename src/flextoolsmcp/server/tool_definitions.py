@@ -254,6 +254,19 @@ If code defines Main(), it will be called. Otherwise, code runs as-is.
 
 SAFETY: write_enabled defaults to False (dry-run mode). Set to True only after testing!
 
+HVO WARNING (issue #103): an hvo is valid ONLY within a single run_module call --
+liblcm renumbers it on every cache load (a fresh subprocess per call), so it is
+NOT a durable identifier. Never hardcode an hvo integer literal into an
+`*_or_hvo` parameter or into project.Object(...); a stale one resolves to a
+real but DIFFERENT object, silently -- no exception. To refer to an object
+across calls, capture its GUID this run (GetGuid(obj) -> str) and re-resolve
+next run with project.Object(guid_str) (also accepts System.Guid). An hvo read
+and reused WITHIN the same call (e.g. entry.Hvo passed to another call in the
+same script) is fine. A write-enabled run with a literal hvo in an *_or_hvo
+argument is rejected at preflight (error_code='hvo_literal_write_risk'); a
+read-only run gets a warning instead. See the `hvo_stability` block in
+flextools_start's runtime_primer for the full liblcm citation.
+
 All code has access to:
 - project: FLExProject instance
 - report: Output mechanism (report.Info/Warning/Error)

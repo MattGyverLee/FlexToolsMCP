@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 17 codes below |
+| `error_code` | string | one of the 18 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -108,6 +108,7 @@ authoritative. All detail fields are optional unless noted.
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
 | `nested_unit_of_work` | `constructs` (list), `guidance` |
+| `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
 | `project_locked` | `guidance` (required string), `lock_file_path`, `verdict`, `sharing_enabled`, `holder_pid`, `holder_process`, `remedy` |
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |

@@ -211,6 +211,46 @@ RUNTIME_PRIMER = {
         ),
         "note": "Prefer wrapper getters. Mixing the two styles in one script is the most common source of empty-string bugs.",
     },
+    "hvo_stability": {
+        "description": (
+            "An hvo is valid only WITHIN a single flextools_run_module call. It is "
+            "a session-scoped handle, not a durable identifier -- liblcm renumbers "
+            "it on every cache load. To refer to an object ACROSS calls, carry its "
+            "GUID and re-resolve -- liblcm guarantees identity only by GUID."
+        ),
+        "why": (
+            "liblcm says this outright, verbatim, in three files including "
+            "src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44: "
+            "\"The hvo values are true 'handles' in that they are valid for one "
+            "session, but may not be the same integer for another session for the "
+            "'same' object. Therefore, one should not use them for multi-session "
+            "identity. CmObject identity can only be guaranteed by using their "
+            "Guids (or using '==' in code).\" Field evidence (issue #103): 2440/2440 "
+            "entry hvos changed between two consecutive READ-ONLY run_module calls "
+            "with zero writes between them; 0/2440 guids changed. A stale hvo does "
+            "NOT raise an error -- it resolves to a real, different, live object, so "
+            "a write built on it silently lands on the wrong entry."
+        ),
+        "round_trip": (
+            "GetGuid(obj) -> str is the forward direction (already documented per-"
+            "Operations-class). project.Object(hvo_or_guid) is the INVERSE -- it "
+            "accepts an int (hvo, same-run only), a str GUID, or a System.Guid, and "
+            "resolves to the live CmObject. Prefer the str-GUID form when crossing "
+            "a call boundary: project.Object(guid_str)."
+        ),
+        "pattern": (
+            "Call 1: guid = project.LexEntry.GetGuid(entry); report.Info(headword, "
+            "project.BuildGotoURL(entry))  # stash the GUID string, not entry.Hvo\n"
+            "Call 2: entry = project.Object(guid_str)  # NOT project.Object(stale_hvo_int)"
+        ),
+        "note": (
+            "An hvo read and used WITHIN the same run_module call (e.g. "
+            "`entry.Hvo` passed straight into another call in the same script) is "
+            "fine -- the cache load is stable for the life of one call. The risk is "
+            "specifically an integer literal or a value carried in from a PRIOR "
+            "call or the FLEx UI."
+        ),
+    },
     "namespace_helpers": {
         "description": "These helpers are pre-injected into the execution namespace. No import required.",
         "available": [

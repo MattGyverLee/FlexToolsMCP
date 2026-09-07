@@ -71,6 +71,7 @@ try:
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload, detect_nested_unit_of_work,
+        detect_hvo_literal_args,
     )
 except ImportError:
     from server.validators import (
@@ -85,6 +86,7 @@ except ImportError:
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
         build_writeability_payload, detect_nested_unit_of_work,
+        detect_hvo_literal_args,
     )
 
 # Issue #93 CP4 (T4.2): backup honesty. With FieldWorks attached as a live
@@ -2766,6 +2768,65 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             code_size_bytes=_code_size_bytes,
         )
 
+    # Issue #103: hvo instability. An hvo is a session-scoped handle --
+    # liblcm renumbers it on every cache load (DomainDataByFlid.cs:40-44:
+    # "valid for one session, but may not be the same integer for another
+    # session for the 'same' object"; field evidence: 2440/2440 entry hvos
+    # changed across two consecutive read-only run_module calls, 0/2440
+    # guids changed). A bare integer literal reaching an `*_or_hvo`
+    # parameter (or project.Object(<int>)) can only have been copied from a
+    # PRIOR call's output or the FLEx UI -- there is no reason to hand-type
+    # one from a live object read this run. That is exactly the stale-hvo
+    # silent-wrong-target scenario the issue documents.
+    #
+    # Read-only runs: WARNING only (surfaced in the `warnings` list below,
+    # not a rejection) -- a stray literal in exploratory/read code cannot
+    # corrupt anything.
+    # Write-enabled runs: HARD BLOCK. A wrong-target WRITE is precisely the
+    # silent-corruption scenario #103 documents (the reporter's own
+    # near-miss was a write script using stale hvo literals as targets), and
+    # this preflight already hard-blocks write-shaped risk unconditionally
+    # elsewhere (unprotected_writes above, nested_unit_of_work before it) --
+    # a warning-only response written into the same *_or_hvo parameter this
+    # call has already accepted a write through fails the same way a
+    # missing modifyAllowed guard would. Blocking here is consistent with
+    # that existing posture rather than a new architecture.
+    hvo_literal_check = detect_hvo_literal_args(code, code_tree, get_api_index())
+    if hvo_literal_check["has_hvo_literal_risk"] and write_enabled:
+        findings = hvo_literal_check["findings"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "hvo_literal_write_risk",
+            f"findings={[f.get('detail') for f in findings[:5]]}",
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "hvo_literal_write_risk",
+                "An integer literal is being passed to an hvo-accepting "
+                "parameter in a WRITE-enabled run. hvos are session-scoped "
+                "handles -- liblcm renumbers them on every cache load, so a "
+                "literal copied from a prior call's output (or typed from "
+                "the FLEx UI) may now resolve to a different, real object. "
+                "A write against it would silently target the wrong entry.",
+                findings=findings,
+                next_steps=[
+                    "1. Replace the integer literal with the GUID string "
+                    "captured for that object (e.g. from a prior GetGuid() "
+                    "call or report output).",
+                    "2. Re-resolve the live object THIS run via "
+                    "project.Object(guid_str) -- accepts str/System.Guid, "
+                    "not just int/hvo (see FLExProject.Object).",
+                    "3. Pass the re-resolved object (or its CURRENT .Hvo, "
+                    "read this same run) to the *_or_hvo parameter instead "
+                    "of the literal.",
+                    "4. Re-run flextools_run_module()",
+                ],
+                op_id=op_id,
+            ),
+            error_code="hvo_literal_write_risk",
+            code_size_bytes=_code_size_bytes,
+        )
+
     # Check for polymorphic casting issues - detect and suggest fixes BEFORE running
     # This catches errors like: sense.Owner.HeadWord (ICmObject doesn't have HeadWord)
     api_idx = get_api_index()
@@ -3360,6 +3421,23 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     if getall_check["has_unsafe_idiom"]:
         for issue in getall_check["issues"]:
             warnings.append(f"[GetAll() container contract] {issue['suggestion']}")
+        warnings.append("")
+
+    # Issue #103: reaching this point with hvo_literal_check risk set means
+    # write_enabled was False (a write-enabled run with this risk already
+    # hard-blocked above with error_code='hvo_literal_write_risk') --
+    # surface it as a non-blocking advisory instead.
+    if hvo_literal_check["has_hvo_literal_risk"]:
+        warnings.append(
+            "[hvo stability] An integer literal is being passed to an "
+            "hvo-accepting parameter. hvos are session-scoped -- liblcm "
+            "renumbers them on every cache load, so a literal copied from a "
+            "prior call's output may now resolve to a DIFFERENT object. "
+            "Carry the GUID instead and re-resolve with "
+            "project.Object(guid_str)."
+        )
+        for finding in hvo_literal_check["findings"]:
+            warnings.append(f"  line {finding['line']}: {finding['detail']}")
         warnings.append("")
 
     # Create the runner script that will be executed in a subprocess

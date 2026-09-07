@@ -14,7 +14,7 @@ Provides checks for code structure, safety, and correctness:
 import re
 import ast
 import textwrap
-from typing import Dict, List, Set, Optional, Any, Tuple
+from typing import Dict, List, Set, Optional, Any, Tuple, TypeGuard
 
 try:
     from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
@@ -2268,6 +2268,188 @@ def _find_cast_alias_property_writes(
                 'context': f'{current.id}.{chain_str} = ...',
             })
     return mutations
+
+
+# Issue #103: hvo instability. liblcm states this outright --
+# `src/SIL.LCModel/Application/Impl/DomainDataByFlid.cs:40-44`:
+#   "The hvo values are true 'handles' in that they are valid for one
+#    session, but may not be the same integer for another session for the
+#    'same' object. Therefore, one should not use them for multi-session
+#    identity. CmObject identity can only be guaranteed by using their
+#    Guids (or using '==' in code)."
+# Field evidence: 2440/2440 entry hvos changed across two consecutive
+# read-only run_module calls (0 writes between them); 0/2440 guids
+# changed. flexicon suffixes every hvo-accepting parameter name with
+# `_or_hvo` (verified against the live index: entry_or_hvo, sense_or_hvo,
+# agent_or_hvo, ...), so a static AST check can key off that suffix
+# without needing a live LCM connection.
+_HVO_PARAM_SUFFIX = "_or_hvo"
+
+
+def _method_param_names(
+    api_index: Optional[Any], operations_class: str, method_name: str
+) -> Optional[List[str]]:
+    """Ordered positional parameter names for `operations_class.method_name`.
+
+    Returns None (not an empty list) when the method can't be found, so
+    callers can distinguish "no params" from "unresolved" -- an unresolved
+    method must not silently suppress the check on args it does have.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(operations_class, {})
+    for m in entity.get("methods", []) or []:
+        if m.get("name") == method_name:
+            return [p.get("name", "") for p in (m.get("parameters") or [])]
+    return None
+
+
+def _is_int_literal(node: Optional[ast.AST]) -> TypeGuard[ast.Constant]:
+    """True for a bare integer literal (excludes bool -- isinstance(True, int) is True).
+
+    Typed as a TypeGuard so callers that branch on this get `.value` narrowed
+    to `ast.Constant` without a separate isinstance check at the call site.
+    """
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
+    )
+
+
+def detect_hvo_literal_args(
+    code: str, tree: Optional[ast.AST] = None, api_index: Optional[Any] = None
+) -> dict:
+    """Detect an integer LITERAL reaching an `*_or_hvo` parameter (issue #103).
+
+    Within a single run_module call, any hvo the script legitimately holds
+    comes from a live object read THIS run (`entry.Hvo`) -- there is no
+    reason to spell one as a bare integer literal in source. A literal
+    integer reaching an `*_or_hvo` parameter (or `project.Object(<int>)`)
+    can therefore only have been copied from a PRIOR call's output or typed
+    by hand from the FLEx UI -- exactly the situation where the hvo may now
+    resolve to a different, real object, silently, because liblcm
+    renumbers hvos on every cache load (see the module comment above
+    `_HVO_PARAM_SUFFIX`). A variable holding `.Hvo` is NOT flagged --
+    only literal digits written directly in the call.
+
+    Detects:
+      - `<call>(..., some_or_hvo=123, ...)` -- keyword arg name ending in
+        `_or_hvo` bound to an integer literal.
+      - `<call>(123, ...)` where the resolved method's positional
+        parameter at that index is named `*_or_hvo`. Resolution covers
+        `project.<Accessor>.<Method>(...)`, `<OpsClass>(project).<Method>(...)`,
+        and local aliases (`x = <OpsClass>(project)`); unresolvable
+        receivers are skipped rather than guessed at (false negatives are
+        safer here than false positives on plain non-hvo integer args).
+      - `project.Object(123)` -- the GUID/hvo round-trip helper itself,
+        called with a bare int literal instead of a GUID string.
+
+    Args:
+        code: Python source (used only if `tree` is not supplied).
+        tree: Optional pre-parsed AST.
+        api_index: APIIndex instance, used to resolve positional parameter
+            names for non-keyword calls. Keyword-arg and `project.Object(...)`
+            detection work even when this is None.
+
+    Returns:
+        dict with:
+          has_hvo_literal_risk: bool
+          findings: [{"line": int, "detail": str}, ...]
+    """
+    if tree is None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return {"has_hvo_literal_risk": False, "findings": []}
+
+    accessor_to_ops = _accessor_to_ops_map(api_index)
+    assigns, calls = _collect_assign_call_nodes(tree)
+    operations_aliases, _casts = _resolve_alias_maps(assigns)
+
+    findings: List[Dict[str, Any]] = []
+    seen: Set[Tuple[int, str]] = set()
+
+    def _record(line: int, detail: str) -> None:
+        key = (line, detail)
+        if key not in seen:
+            seen.add(key)
+            findings.append({"line": line, "detail": detail})
+
+    def _resolve_ops_class(receiver: ast.AST) -> Optional[str]:
+        # project.<Accessor>
+        if (
+            isinstance(receiver, ast.Attribute)
+            and isinstance(receiver.value, ast.Name)
+            and receiver.value.id == "project"
+        ):
+            return accessor_to_ops.get(receiver.attr)
+        # <OpsClass>(project) inline construction
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
+            if receiver.func.id.endswith("Operations"):
+                return receiver.func.id
+        # local alias: x = <OpsClass>(project)
+        if isinstance(receiver, ast.Name) and receiver.id in operations_aliases:
+            return operations_aliases[receiver.id]
+        return None
+
+    for node in calls:
+        func = node.func
+        if not isinstance(func, ast.Attribute):
+            continue
+        method_name = func.attr
+
+        # project.Object(<int literal>) -- the round-trip helper itself.
+        if (
+            isinstance(func.value, ast.Name)
+            and func.value.id == "project"
+            and method_name == "Object"
+            and node.args
+            and _is_int_literal(node.args[0])
+        ):
+            _record(
+                node.lineno,
+                f"project.Object({node.args[0].value}) -- hvo literal passed "
+                "directly to the round-trip helper; pass the GUID string "
+                "instead (project.Object(guid_str)) -- hvos are not stable "
+                "across run_module calls, only GUIDs are.",
+            )
+            continue
+
+        # Keyword args named *_or_hvo bound to an integer literal.
+        for kw in node.keywords:
+            if kw.arg and kw.arg.endswith(_HVO_PARAM_SUFFIX) and _is_int_literal(kw.value):
+                _record(
+                    node.lineno,
+                    f"{method_name}({kw.arg}={kw.value.value}) -- integer "
+                    "literal passed to an *_or_hvo parameter; hvos are "
+                    "session-scoped and unstable across run_module calls. "
+                    "Carry the GUID and re-resolve with project.Object(guid_str).",
+                )
+
+        # Positional args -- only when the receiver's Operations class and
+        # the method's parameter names are both resolvable.
+        if node.args:
+            ops_class = _resolve_ops_class(func.value)
+            if ops_class:
+                param_names = _method_param_names(api_index, ops_class, method_name)
+                if param_names:
+                    for i, arg in enumerate(node.args):
+                        if i >= len(param_names):
+                            break
+                        if param_names[i].endswith(_HVO_PARAM_SUFFIX) and _is_int_literal(arg):
+                            _record(
+                                node.lineno,
+                                f"{ops_class}.{method_name}(...) positional arg "
+                                f"{i} ('{param_names[i]}') received integer "
+                                f"literal {arg.value}; hvos are session-scoped "
+                                "and unstable across run_module calls. Carry "
+                                "the GUID and re-resolve with "
+                                "project.Object(guid_str).",
+                            )
+
+    return {"has_hvo_literal_risk": bool(findings), "findings": findings}
 
 
 def _extract_interface_names(entries: List[str]) -> set:

@@ -51,11 +51,43 @@ reassigned OUTSIDE this crew mid-spurt. The flexicon repo is under an advisory
 file lock; this crew must not edit it. Cross-repo findings are recorded in the
 tasks file rather than actioned.
 
-### Next pickup -- CP-C (#100 / #101 discoverability)
+**CP-B + CP-C -- CLOSED GREEN (2026-09-07, spurt 2, cycles 3-6).**
 
-CP-B (the casting gate, #40/#97) is the user's higher priority but is **blocked on
-a user decision**; CP-C is unblocked, so it is next. Details, line numbers and the
-confirmed `_build_entity_import` wrinkle are in the tasks file.
+Commits: `b5f41d8` (casting gate: read-only severity downgrade for #40, plus
+branch-aware variable typing for #97 Bug 2), `cea0ca6` (#100 `access_path` +
+#101 non-ICmPossibility warning), `aba84d8` (primer + teardown test),
+`d1f30da` (`validate_only` alignment + resolver hardening), `a1f6897` (the
+cycle-4 P1 pair), `ffd4bf4` (primer scoping), `1e30148` (lexical-scope candidate
+map + unblinded Tier-1 evals), plus report commits and `69626b9` (CLAUDE.md Quick
+Start: three commands referenced paths that no longer exist, and "17 error codes"
+was 18).
+
+Final gate state: suite **1121 passed / 4 skipped**, eval corpus **35 passed / 2
+skipped**. Verification PASS on every commit; QC no P0 across three passes.
+
+- **#40 / #97 Bug 2 (the casting gate) is fixed.** Read-only runs no longer
+  hard-reject on warning-tier casting issues; write runs still reject at every
+  severity; detection and reporting are fully intact. Branch-aware variable typing
+  eliminated #97 Bug 2's false positives (4/4 -> 0/4). Two P1s were found and
+  closed along the way, both instances of one root defect -- the typo detector's
+  inputs and the casting gate's inputs were not the same set. The most dangerous
+  was a FALSE-NEGATIVE regression: the new resolver silently stopped reporting real
+  typos in three code shapes on both read-only and write runs.
+- **#97 IS NOT CLOSED.** Bug 1 (`_pick_cast_interface` picks a
+  plausible-but-arbitrary interface, so `"fix": "Cast x to Y"` is frequently wrong)
+  is deliberately deferred. Do not report #97 as resolved.
+- **#100 / #101 are fixed.** `access_path` now records the real `project.X` facade
+  path, and the load-bearing half was the read path -- `_build_entity_import` had
+  four call sites that ignored the index entirely. #101 uses a curated set of the
+  three trap types; `IMoMorphType`, which genuinely IS an `ICmPossibility`, is
+  explicitly not flagged. #100 is DORMANT until someone runs an index refresh,
+  which is entangled with the undecided v4.4.1 deletion below.
+
+### Next pickup -- spurt 3
+
+No checkpoint is blocked by us. Start with **B-3 (#97 Bug 1)**, then the carried
+P2 list in `specs/swahili-audit-2026-09/tasks-bugfix-campaign.md`. The #96 live
+repro remains available only after the user restarts the MCP server.
 
 ### BLOCKERS -- all three need the user
 

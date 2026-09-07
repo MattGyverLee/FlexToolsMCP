@@ -1,29 +1,50 @@
 {
   "feature": "swahili-audit-2026-09",
   "status": "in_progress",
-  "last_cycle": 2,
-  "spurts_completed": 1,
+  "last_cycle": 6,
+  "spurts_completed": 2,
   "branch": "feat/shared-mode-access",
-  "tasks_done": ["A-4", "A-5", "A-6", "A-7", "A-8", "A-9"],
+  "tasks_done": [
+    "A-4",
+    "A-5",
+    "A-6",
+    "A-7",
+    "A-8",
+    "A-9",
+    "B-1",
+    "B-2",
+    "B-4",
+    "B-5",
+    "B-6",
+    "C-1",
+    "C-1a",
+    "C-2",
+    "C-3"
+  ],
   "checkpoints": {
     "CP-A": "closed_green",
-    "CP-B": "blocked_on_user",
-    "CP-C": "ready"
+    "CP-B": "closed_green_except_B-3",
+    "CP-C": "closed_green"
   },
-  "commits_this_spurt": ["cb3f1b8", "0c9a59b", "80630d8", "8f72b9f"],
-  "suite": "1052 passed, 4 skipped",
+  "commits_this_spurt": [
+    "cb3f1b8",
+    "0c9a59b",
+    "80630d8",
+    "8f72b9f"
+  ],
+  "suite": "1121 passed, 4 skipped",
   "gates": {
     "qc": "no P0; one P1 found and fixed in 8f72b9f; 7 P2 carryover",
     "verification": "PASS on cb3f1b8 and 0c9a59b, non-live claims only",
     "live": "not run -- #96 repro user-blocked"
   },
-  "next_checkpoint": "CP-C",
-  "next_entry": "Start CP-C (#100 access_path + the confirmed _build_entity_import wrinkle at api.py:352-363 with its four call sites, and #101 the not-ICmPossibility inheritance facts). CP-B is the user's higher priority but is blocked on their severity-downgrade answer; CP-C has no gate. Read tasks-bugfix-campaign.md first -- it holds the rebase math, the crew-mechanics corrections, and the merge-readiness assessment.",
+  "next_checkpoint": "spurt 3 -- B-3 (#97 Bug 1) then the carried P2 list",
+  "next_entry": "Start B-3: _pick_cast_interface picks defined_on[0], a plausible-but-arbitrary interface, so 'Cast x to Y' is frequently wrong (IWfiGloss->ILexEtymology, morph type->ICmAgent, IMoMorphSynAnalysis->IMoDerivStepMsa, IFsClosedValue.FeatureRA->ICmAgent). Either repair the ranking or soften to candidates-with-uncertainty. The resolver has now settled across two cycles, so it is safe to build on. #97 MUST stay marked not-closed until this lands.",
   "scope_change": "flexicon #254 reassigned outside this crew mid-spurt; the flexicon repo is under an advisory file lock and must not be edited from here",
   "blockers_needing_user": [
-    "#96 live repro: Target has projectSharing=false and is not open in FLEx, so the authorized repro cannot run yet",
-    "CP-B read-only casting-severity downgrade: lets previously-rejected scripts execute, so it is the user's call",
-    "authorization to file the new liblcm WriteCommitWork/FileGeneration bug"
+    "MCP SERVER RESTART: PID 19808 started 2026-09-06 22:41:49, predating every fix. Until it restarts, the #96 live repro cannot run safely (modal-dialog hang) or produce trustworthy evidence (A-7 is the instrumentation it depends on).",
+    "the flexicon v4.4.1 index deletion decision -- also gates #100 becoming live, since access_path needs a refresh",
+    "STATUS.md's never-run CP1 live write check for #92 -- the BINDING merge blocker; no amount of static green touches it"
   ],
   "merge_ready": false,
   "merge_blockers": [
@@ -43,5 +64,48 @@
     "new liblcm bug: WriteCommitWork FileGeneration set after an early return (XMLBackendProvider.cs:518-527 vs SharedXMLBackendProvider.cs:499)",
     "#96's real fix (cache-bypassing verification read) was called flexicon-dependent, but that was not stress-tested -- check whether the generated runner can call SaveChanges() right after OpenProject before accepting the blocker"
   ],
-  "updated": "2026-09-06"
+  "updated": "2026-09-07",
+  "resolved_blockers": {
+    "cp_b_severity_downgrade": "APPROVED by the user 2026-09-06 ('sharing on, fix and file at your discretion'), as scoped",
+    "liblcm_bug": "FILED as FlexToolsMCP#107 (MattGyverLee/liblcm has issues disabled); reporting to sillsdev/liblcm remains a separate, untaken decision",
+    "target_preconditions": "MET -- projectSharing=true, open in FLEx PID 13272, .fwdata at Aug-18 baseline"
+  },
+  "live_verification_preconditions": [
+    "project sharing on",
+    "FLEx parked on a non-editing view (TopMarkHandle == 0)",
+    "MCP SERVER RESTARTED after any runner-code change -- else evidence is about code that is not running"
+  ],
+  "commits_spurt2": [
+    "b5f41d8",
+    "cea0ca6",
+    "aba84d8",
+    "d1f30da",
+    "a1f6897",
+    "ffd4bf4",
+    "1e30148",
+    "69626b9"
+  ],
+  "eval_corpus": "35 passed, 2 skipped",
+  "commits_ahead_of_origin": 24,
+  "issues_open_none_closed": [
+    "#40",
+    "#96",
+    "#97",
+    "#100",
+    "#101",
+    "#103",
+    "#107"
+  ],
+  "only_autoclose_in_range": "cb3f1b8 closes #103 -- a merge closes #103 ONLY",
+  "carry_forward": [
+    "B-3 (#97 Bug 1) _pick_cast_interface ranking -- #97 STAYS NOT-CLOSED",
+    "#96 live staleness itself: root-caused and two MCP-side halves fixed, but the staleness is UNVERIFIED pending the server restart",
+    "QC cycle-5 P2-2: slash-joined pseudo-interface label, validators.py:1022, cosmetic (imports_needed=[] / cast_interface=None keep auto-fix out)",
+    "QC cycle-5 P2-3: primer parenthetical wording nit, admin.py:278-289, self-limiting",
+    "the EIGHTH import-advertising surface: paginate_entity's is_operations_class branch -- inert for MSAOperations, live for any facade-only class in constants.KNOWN_OPERATIONS",
+    "#101's curated frozenset is a stopgap; the general facility waits on #87's interpretation/caveats field, which does not exist yet",
+    "the versioning-cache flake: CORRECTED as intrinsic (15-25% in true isolation), NOT a sibling interaction; proposed fix is to set explicit distinct mtimes instead of trusting filesystem timestamp resolution",
+    "cross-repo item 6: whether the generated runner can call SaveChanges() right after OpenProject -- execution.py:3810 is the anchor",
+    "flexicon #254 write-side twin (SetMorphType) is still UNFILED -- relay to whoever owns #254"
+  ]
 }

@@ -15,6 +15,41 @@ the campaign stays on this branch.)
   task that must WRITE a report to a path, use `general-purpose` (or accept that the
   coordinator relays the body, which defeats the path-relay rule). `lex-programmer`
   and `lex-verification` both dispatch and write fine.
+- **Do NOT treat a static-analysis diagnostic as a finding while a parallel task is
+  mid-edit.** Cycle 3 burned three investigations on stale Pyright output: `re`
+  reported undefined when the import was present, and a duplicate/None-based class
+  declaration reported in a file with a single declaration and all 15 tests
+  collecting fine. All three were false alarms against mid-edit saves. **Confirm
+  with `pytest --collect-only` or a targeted run BEFORE reporting it.**
+- **The versioning-cache flake: CORRECTED CHARACTERIZATION (cycle 6). The version
+  cycles 4 and 5 both relied on was WRONG.** Those cycles said it "passes in
+  isolation", implying an inter-test interaction. Measured in cycle 6:
+  `TestFileDiscoveryCacheInvalidation` run 20x in TRUE single-test isolation
+  failed **3/20 (15%)**, alternating between
+  `test_new_exact_file_visible_after_write` and
+  `test_new_latest_file_visible_after_write`; and
+  `test_new_exact_file_visible_after_write` run completely alone 8x failed
+  **2/8 (25%)**. So it is an mtime-granularity race **intrinsic to each test**, not
+  a sibling interaction. It survived two cycles as received wisdom -- exactly the
+  kind of false premise that makes a future cycle dismiss a real failure.
+  **"Rerun and move on" is weaker guidance than we assumed.** At a 25% base rate,
+  two consecutive failures are ~6% likely, which a future agent could easily
+  misread as a genuine regression. Decision rule instead: treat it as the known
+  flake only if it fails NON-deterministically with the SAME mtime-comparison
+  assertion; treat as a real finding if it fails 10/10, or if the assertion or
+  error differs at all.
+  **Proposed real fix (cheap, unclaimed):** stop depending on filesystem timestamp
+  resolution -- set explicit, distinct mtimes (or use a monotonic counter / injected
+  clock) in the cache-invalidation tests instead of writing files and hoping the
+  mtime advances. This is now the campaign's oldest recurring noise source and it
+  has cost several investigations.
+- **The untracked-artifact failure RECURRED at the spurt-2 handoff.** Five gate
+  reports from cycles 4-6 -- `bugfix-cycle4-qc.md`, `bugfix-cycle4-verification.md`,
+  `bugfix-cycle5-qc.md`, `bugfix-cycle5-verification.md`,
+  `bugfix-cycle6-verification.md` -- were all still UNTRACKED, i.e. every artifact
+  that justifies this campaign's green board. Committed at handoff. The
+  `git ls-files` check earned its place; run it EVERY checkpoint, and note that
+  writing a report is not the same as committing it.
 - **Untracked report files are a real loss risk.** At the CP-A handoff,
   `reviews/bugfix-cycle1-explore-96.md` (the #96 root cause -- the single most
   valuable artifact of the spurt), `SPEC.md`, and this tasks file were all still
@@ -94,20 +129,89 @@ gate. Under the lock registry these cannot be held concurrently, so CP-A and CP-
 run in separate spurts rather than in parallel. This is a lock constraint, not a
 logical one.
 
-## Open blockers -- plan AROUND these, not through them
+## Open blockers -- RESOLVED 2026-09-06, except the live repro
 
-1. **#96 live repro: authorized by the user for `Target`, but preconditions
-   UNMET.** `Target` has `projectSharing="false"`, so it would open exclusive and
-   the write would be refused by the #93 access gate -- reproducing nothing -- and
-   `Target` is not currently open in FLEx. Awaiting the user's authorization to flip
-   `projectSharing` and to park FLEx on a non-editing view so
-   `TopMarkHandle == 0` (`UnitOfWorkService.cs:249`). **Do not dispatch the repro
-   until both are true.** Also: land A-8 (`ui=HeadlessLcmUI()`) FIRST, or repro
-   step 4's `SaveChanges()` can hit `ConflictingSave()` as a modal dialog and hang.
-2. **CP-B (item 3) severity downgrade: awaiting the user's answer.** See CP-B.
-3. **Filing the liblcm `WriteCommitWork`/`FileGeneration` issue: awaiting the
-   user's authorization.** Confirmed in source; citations ready in cross-repo item
-   5 below. Do not file unprompted.
+The user granted blanket discretion: *"sharing on, fix and file at your
+discretion."* That cleared all three CP-A blockers:
+
+1. **CP-B severity downgrade: APPROVED**, as scoped -- gate-local to the casting
+   gate's warning tier, read-only runs only, detection and reporting fully intact,
+   write runs keep hard-rejecting at every severity. The guardrail against a
+   generic "read-only downgrades all preflight gates" refactor still stands.
+2. **The liblcm bug is FILED as FlexToolsMCP#107.** `MattGyverLee/liblcm` has
+   issues disabled, so it was filed on the active tracker, clearly marked as an
+   upstream liblcm defect. Reporting it to `sillsdev/liblcm` remains a SEPARATE
+   decision, deliberately not taken. Both code sites were independently
+   re-verified before filing: `SharedXMLBackendProvider.cs:490-503` calls
+   `base.WriteCommitWork`, which early-returns at `XMLBackendProvider.cs:528`
+   without writing, and `FileGeneration` is then set unconditionally.
+3. **`Target` sharing preconditions: MET.** `projectSharing="true"`, open in FLEx
+   under PID 13272, `.fwdata` still at its Aug-18 baseline.
+
+### STILL NOT RUNNABLE -- the live repro, for a NEW reason. RECORD THIS PATTERN.
+
+**The running MCP server is stale.** PID 19808 started 2026-09-06 22:41:49, which
+predates `cb3f1b8` (23:16), `0c9a59b` (23:34) and `8f72b9f` (23:47). Python imports
+a module once per process, so the live server is still executing the OLD
+`execution.py`: no `ui=HeadlessLcmUI()`, and the old teardown that swallows commit
+failures. Running the repro against it would be actively harmful twice over:
+
+- repro step 4 calls `SaveChanges()`, which is exactly the `ConflictingSave()` ->
+  modal WinForms dialog path that A-8 removes, so it can HANG a headless
+  subprocess; and
+- A-7 is the very instrumentation the repro depends on to observe teardown
+  failures, so any evidence gathered would be untrustworthy.
+
+**The MCP server must be RESTARTED before any live verification of runner-code
+changes.** The server is client-managed, so no agent can restart it from a tool
+call -- it is a user action.
+
+**This is a general precondition, not a one-off.** It will recur on EVERY future
+spurt that fixes generated-runner or server code and then tries to verify it live.
+Add "restart the MCP server" to the live-verification preconditions permanently,
+alongside sharing-on and the non-editing-view requirement. A live check run against
+a stale server is worse than no live check, because it produces confident evidence
+about code that is not running.
+
+### CP-B blast radius -- MEASURED at spurt 2 planning, bigger than "flip a check"
+
+Two findings that a naive B-1 implementation would get wrong:
+
+1. **#97's worst symptom is NOT defused by B-1.** #97 Bug 2's false positives on
+   correct code surface as `'SlotsRC' does not exist on 'IMoUnclassifiedAffixMsa'`
+   -- the *`detect_interface_attribute_typos`* shape, and `execution.py:2852`
+   merges those in with `severity = "error"` deliberately. So they hard-reject even
+   on read-only runs, and B-1 leaves them fully intact. The item that actually
+   unblocks correct code is **B-4** (flow-sensitive variable typing), not B-1.
+   Keep `severity = "error"` for genuine typos -- a property that exists nowhere is
+   a real error; the bug is the *branch conflation* that misattributes it.
+2. **B-2's local-cast tracking and B-4's branch flow-sensitivity are the same
+   capability** -- assignment- and branch-aware variable typing. Implement them
+   together or they will fight each other.
+
+Existing tests/fixtures that pin the current reject behavior (triage each, do NOT
+flip fixtures to make tests pass):
+`tests/evals/corpus/06_reject_casting_issues_headword.yaml`,
+`20_reject_casting_lexeme_form_no_cast.yaml`,
+`issue40_negative_control_uncast_category_rejected.yaml`,
+`issue15_cast_alias_satisfies_chain.yaml`,
+`issue30_receiver_suffix_naming_skip.yaml`, `tests/evals/preflight_runner.py`,
+`tests/evals/test_corpus.py`, `tests/golden/responses/casting_issues_detected.json`,
+`tests/golden/responses/auto_fix_ambiguous_not_applied.json`,
+`tests/make_golden.py`, `tests/test_retry_loop_detection.py` (11 refs),
+`tests/test_diagnostic_report_foundation.py` (7), `test_diagnostic_report_reconstruction.py` (10),
+`tests/test_response_contract.py` (5).
+Most should NOT change: known-pattern hits stay `severity: "error"`
+(`validators.py:3598`) and keep rejecting. Only the index-derived **warning** tier
+(`:3710`) flips, and only on read-only runs. Check each fixture's tier first.
+`issue40_negative_control_*` is a deliberate negative control -- understand it
+before touching it; if it legitimately flips, say why.
+
+Also expect a **retry-loop interaction**: loop detection keys on repeated
+`error_code`s via `record_op_signal`. Read-only casting rejects becoming warnings
+means the detector sees success and resets. That is probably correct (the loops it
+detected were largely this gate's own false rejects) but it is a behavior change
+that `test_retry_loop_detection.py` pins.
 
 **CP-C IS NOT BLOCKED.** Items #100 and #101 have no user gate and no flexicon
 dependency (see cross-repo item 2 -- flexicon#257 explicitly does not gate them).
@@ -255,7 +359,272 @@ Content is unchanged in both. Post-`cb3f1b8` numbers -- USE THESE:
 | casting severity logic (`validators.py`) | 3416 / 3549 | **3598 / 3731** (also 3439, 3710) |
 | `casting_check["severity"] = "error"` (`execution.py`) | ~2793 | **2852** |
 
-- [ ] B-1  #40: stop hard-rejecting on warning-severity casting issues. Per-issue
+**CP-B / CP-C LANDED (spurt 2, cycle 3).** Commits: `b5f41d8` (casting gate),
+`cea0ca6` (#100/#101), `aba84d8` (the two P2s), plus report commits. Suite
+**1100 passed, 4 skipped, 12 subtests**. Gates run in cycle 4.
+
+### The fixture-change STANDARD, established cycle 3 -- follow it from now on
+
+`issue40_negative_control_uncast_category_rejected.yaml` was the highest-risk edit
+in the whole campaign: a deliberate negative control whose expected outcome the fix
+would flip. It was NOT flipped to `outcome: ok`. Instead `write_enabled` was flipped
+`false -> true`, so the fixture still proves detection is active AND now
+additionally proves write runs reject the warning tier -- and a NEW fixture
+(`issue40_warning_tier_readonly_proceeds.yaml`) covers the read-only path. The
+reasoning went into the fixture's own `notes`.
+**Rule: when a fix changes a fixture's outcome, change the SCENARIO to preserve
+what the fixture was protecting, and add a new fixture for the new behavior. Never
+flip the expected outcome to make a test pass.** Only one existing fixture changed
+out of the fourteen candidates flagged at planning; the rest were correctly left
+alone because known-pattern hits stay `error` tier.
+
+### CYCLE-4 GATE FINDINGS: two P1s, ONE root defect. Lead's design ruling.
+
+No P0. Verification PASS on all four commits at unit/eval level (1107 passed / 4
+skipped / 12 subtests; eval corpus 34 passed / 2 skipped; both casting safety
+quadrants intact; #97 Bug 2 at 0/4 false positives, was 4/4). But two P1s, and
+they are **the same root defect seen twice**: *the typo detector's inputs and the
+casting gate's inputs are not the same set, and neither the new resolver nor
+Gate 5 accounts for that.* Fix as ONE work item.
+
+- **P1-1 (`b5f41d8`, `validators.py:976/983`) -- the resolver made typo detection
+  WEAKER, in the FALSE-NEGATIVE direction.** `_resolve_cast_type_at` can return
+  `None` for a name that IS in `cast_aliases`, and `:983 if not interface:
+  continue` then drops the issue entirely. Reproduced independently twice, with
+  `d = ILexDb(project)` and typo `EntriesOC`: cast-in-`if`-used-after,
+  cast-in-`try`-used-in-`except`, and cast-in-`for`-used-after all went
+  `has_typos=True` -> `False`. All three previously hard-rejected on read-only AND
+  write runs. The commit message's "write runs still hard-reject, unchanged" is
+  true of the DECISION but not of what reaches it. **Over-refusal is annoying;
+  under-detection is a data risk.** This is strictly the worse direction.
+- **P1-2 (`d1f30da`, `execution.py:1783` vs `:2880`) -- `validate_only` shares the
+  predicate but NOT the inputs.** `handle_run_module` folds
+  `detect_interface_attribute_typos` into `casting_issues` and forces
+  `severity="error"` at `:2880-2886`; Gate 5 never calls it at all. So for
+  `d = ILexDb(project); d.EntriesOC` at `write_enabled=False`, `run_module`
+  REJECTS while `validate_only` returns `passed: True` plus the note "run_module
+  would proceed without rejecting". B-5 replaced a pessimistic disagreement with a
+  **false reassurance** across the whole #39 typo class -- worse than the bug it
+  fixed. The agreement test cannot catch it because it monkeypatches
+  `detect_interface_attribute_typos` to return no typos, so it validates the wrong
+  thing.
+
+#### RULING -- the fix is a CANDIDATE-UNION FALLBACK, not "recurse into `if` too"
+
+A specialist's instinct will be to add `ast.If` to `_CAST_SCAN_RECURSE_INTO`
+(`validators.py:2338`, currently `(ast.Try, ast.With)`). **That is wrong and
+reintroduces #97 Bug 2.** `_scan_backward_for_cast` returns the FIRST cast it
+finds, so recursing into an `If` picks an arbitrary arm -- last-wins -- which is
+precisely the branch-conflation defect. Do not do it.
+
+The correct rule, which fixes P1-1 and QC's P2-1 false positives with one
+mechanism:
+
+1. **Positional resolution stays the PREFERRED path.** When
+   `_resolve_cast_type_at` resolves a single interface confidently, behave exactly
+   as today. That is what kills Bug 2 and it works.
+2. **When positional resolution returns `None` but the name is known to be cast
+   somewhere, fall back to the CANDIDATE SET** -- every interface that name is
+   cast to anywhere in the tree.
+3. **Flag only if the property exists on NONE of the candidates.** If it exists on
+   at least one, suppress.
+
+Why this is right, checked against all four repros:
+- Bug 2's 4-branch MSA case: candidates `{IMoStemMsa, IMoInflAffMsa,
+  IMoDerivAffMsa, IMoUnclassifiedAffixMsa}`; `SlotsRC` exists on `IMoInflAffMsa`
+  -> suppressed. Still 0 false positives.
+- P1-1's case: candidates `{ILexDb}`; `EntriesOC` exists nowhere -> still flagged.
+  False negative closed.
+- Genuinely ambiguous `if`/`else` both assigning, then `InflectionClassRA` after:
+  exists on `IMoStemMsa` -> suppressed. Accepts a false negative to avoid a false
+  positive on code that is only conditionally correct. Correct trade for a gate
+  whose over-refusal cost 2.5 hours.
+- QC P2-1's new casting-gate false positives (cast in both `if` arms used after;
+  cast in `for` used after) resolve the same way -- a candidate satisfies, so
+  suppress.
+
+Build the candidate map LOCALLY. Do NOT extend `_resolve_alias_maps` -- it is
+shared with mutation detection and `detect_hvo_literal_args`, and keeping out of
+other gates' blast radius is the discipline that has held for four cycles.
+
+4. **Separately, add `handlers` to the `Try` traversal.** QC P2-1 established that
+   `ExceptHandler` is unreachable via `body`/`orelse`/`finalbody`, so
+   `_CAST_SCAN_RECURSE_INTO` never helped the `try`/`except` shape at all. Each
+   `ExceptHandler.body` is its own statement list, so branch-awareness applies to
+   it naturally -- this is a safe addition, unlike `ast.If`.
+5. **For P1-2, share the PIPELINE, not the predicate.** Extract the whole casting
+   decision -- `detect_casting_needs`, the `detect_interface_attribute_typos`
+   merge, the `severity="error"` forcing, and the has-error predicate -- into ONE
+   function that `handle_run_module`, `_handle_validate_only` AND
+   `tests/evals/preflight_runner.py` Gate 5 all call. Sharing only the predicate is
+   what produced P1-2; QC's P2-2 notes Gate 5 models no typo-derived issues either,
+   so Tier-1 evals are blind to the same class.
+
+### CYCLE-5 GATES CLEAN. The candidate-union ruling was validated with DATA.
+
+Both cycle-4 P1s genuinely closed. Verification PASS on all six commits: suite
+**1115 passed / 4 skipped / 12 subtests**, corpus **34 passed / 2 skipped**, the
+P1-1 matrix **4/4 detected** against the real 118-entity index (and with
+`did_you_mean=[Entries]`, so it suggests the correction rather than merely
+flagging), Bug 2 independently 0 false positives, all four casting quadrants
+intact including both safety cells, and the #103 hvo gate unaffected by the
+neighbouring edits. QC: no P0, no P1.
+
+**The union-breadth risk I flagged in the ruling was answered empirically, not
+rhetorically.** Genuine-typo detection held at ~99% for N = 1, 2, 3, 4, 6, 8, 12,
+16, 24 and 32 candidate interfaces (200 mutated-real-member trials per N). The
+mechanism: LCM interfaces share a large inherited base, so the union grows
+SUB-linearly -- Bug 2's 4-way MSA union goes 72 -> 83 names -- while a
+*nonexistent* attribute stays absent from all of them. So no N kills detection,
+and suppression bites only real properties valid on one arm, which is exactly the
+trade the ruling accepted. Record this: it is the empirical basis for keeping the
+union fallback, and it means the design does not need revisiting if candidate sets
+grow.
+
+### CYCLE 6 -- ACCEPTED: fix P2-1 and P2-2 before handing off
+
+QC rated the cross-function candidate leak P2 because both shapes merely RESTORE
+the pre-`b5f41d8` flat lookup, so it is not a regression. That reasoning is
+correct about regression status and wrong about priority. **Regression status is
+about blame; priority is about harm.** Three reasons to fix it now:
+
+1. "Hard-rejects correct code at error tier" is issue #40's complaint verbatim.
+   Shipping item 3 as fixed while leaving **209 known false-positive combos among
+   just 12 common interfaces** in the same gate undercuts the deliverable.
+2. **My own ruling under-specified this, and made one direction worse.** I said
+   "build the candidate map LOCALLY", meaning do not touch `_resolve_alias_maps` --
+   I never specified what the walk should be scoped TO, so the implementer walked
+   the whole tree, which is defensible against what I wrote. And while the
+   false-POSITIVE half is the four-cycle norm, the union rule adds a NEW
+   false-negative direction on top of it: a cast of the same name in an unrelated
+   function now SUPPRESSES a genuine uncast access (`_candidates` feeds
+   `typed_root` `:3791` and the `& safe_ifaces` intersections `:3961`/`:3985`).
+   That direction is new, and it is the dangerous one.
+3. It is exactly the class of long-standing baseline defect that never gets fixed
+   later, because it is nobody's regression.
+
+#### REFINEMENT to QC's suggested fix -- "nearest enclosing FunctionDef" is NOT enough
+
+QC proposes scoping the map to the nearest enclosing `FunctionDef`. Implemented
+literally, that breaks two dominant real shapes:
+
+- **Bare snippets have no `def` at all.** CLAUDE.md documents the "Lightweight op
+  form (no `Main`)" as the primitive for exploration, where everything sits at
+  module level. Nearest-enclosing-FunctionDef is `None` there, so a naive
+  implementation yields an EMPTY candidate map and loses detection for the most
+  common exploratory form outright.
+- **A cast at module level used inside a function** is legitimately visible per
+  Python scoping, and would be lost.
+
+**Correct rule: scope the candidate map to the usage's LEXICAL SCOPE CHAIN** --
+the innermost enclosing `FunctionDef`/`AsyncFunctionDef`/`Lambda`, then each
+enclosing function outward (so nested helpers still see their enclosing
+function's casts), then Module. Sibling and unrelated function bodies are
+excluded, which is precisely what kills the 209 combos. Module scope is always in
+the chain, so bare snippets keep full detection.
+
+#### P2-2 is the SECOND structurally-blind test this campaign. Treat it as a class.
+
+Tier-1 evals remain 100% blind to #39: the pipeline is correctly rewired, but
+`FAKE_API_INDEX.liblcm["entities"] == []` (`preflight_runner.py:73-155`), so
+`_interface_member_names` returns `set()` for every interface and the typo
+detector can NEVER fire. `:285-287`'s hedge -- "to the extent FAKE_API_INDEX's
+entities cover it" -- covers nothing. Cycle-4's P2-2 was rewired, not fixed.
+
+This is the second time in this campaign a test appeared to cover a bug class
+while being structurally incapable of detecting it; the monkeypatched agreement
+test was the first. **CREW RULE: a test that cannot fail is worse than no test,
+because it consumes the credibility of coverage.** When a gate claims to cover a
+bug class, PROVE the fixture can fire -- disable the detection and show the test
+goes red. A coverage claim without a demonstrated failure mode is not evidence.
+
+### CYCLE 6 CLOSED CLEAN -- spurt 2 ends here
+
+Commits `1e30148` (fix) + `eb2a1f2` (report). Verification PASS, no regression
+across the nine earlier campaign commits. Suite **1121 passed / 4 skipped**;
+corpus **35 passed / 2 skipped**, up from 34 with the new #39 fixture.
+
+- Cross-function FALSE POSITIVE gone: the 209-combo shape is correct code and is
+  no longer flagged.
+- Cross-function FALSE NEGATIVE gone: the genuine uncast access is detected again
+  (`casting_issues == 1`).
+- **The lead's refinement was load-bearing.** QC's literal "nearest enclosing
+  FunctionDef" would have killed detection for CLAUDE.md's documented bare-snippet
+  "Lightweight op form"; the lexical chain includes Module scope, and the
+  bare-snippet case is now an explicit test. Record the general lesson: **when a
+  review names a fix, check it against the codebase's documented usage shapes
+  before implementing it verbatim.**
+- P1-1 matrix 4/4 within one function; #97 Bug 2 still 0 false positives.
+- **The "prove it can fail" requirement did its job.** The RED/GREEN eval-coverage
+  proof held under the gate's own independent reconstruction, so the new #39 corpus
+  coverage is real rather than illusory -- unlike the two structurally-blind tests
+  that preceded it. Keep requiring this.
+- The gate disclosed two self-inflicted repro errors on its first pass, corrected
+  and re-verified. That is the behavior to reward in a gate: a gate that hides its
+  own mistakes is worth less than one that reports them.
+
+### CARRIED P2s -- explicitly not fixed, do not lose these
+
+- **QC P2-2 (`validators.py:1022`) slash-joined pseudo-interface label.**
+  `"/".join(...)` reaches the user-facing message and
+  `object_type`/`missing_on`/`available_on` (`:1053-1058`) as a name no index
+  contains. Cosmetic: `imports_needed=[]` / `cast_interface=None` keep auto-fix
+  out of it.
+- **QC P2-3 (`admin.py:278-289`) primer wording nit.** The parenthetical omits
+  that remedy 1 needs `SaveChanges()` BEFORE the `undoable=False` envelope
+  (`execution.py:3810`), making the path unreachable from `run_module` today --
+  but the same sentence opens by saying exactly that, so it is self-limiting
+  rather than misleading. `why` is byte-unchanged, no digit+unit duration.
+- **Cross-repo item 6 stays OPEN**: whether the generated runner could call
+  `SaveChanges()` right after `OpenProject` was never stress-tested, and
+  `execution.py:3810` is now a concrete anchor for that question.
+
+### CP-B residual -- NOT done, carry to the next spurt
+
+- [ ] B-3  #97 Bug 1: `_pick_cast_interface` still picks a plausible-but-arbitrary
+      interface (`defined_on[0]`), so `"fix": "Cast x to Y"` is frequently wrong
+      (`IWfiGloss` -> "ILexEtymology", morph type -> "ICmAgent",
+      `IMoMorphSynAnalysis` -> "IMoDerivStepMsa", `IFsClosedValue.FeatureRA` ->
+      "ICmAgent"). Deferred deliberately from cycle 3: it changes suggestion
+      CONTENT rather than the block/warn decision, it builds on the brand-new
+      `_resolve_cast_type_at` machinery that the cycle-4 gates have not yet vetted,
+      and mixing it into cycle 3 would have made the fixture triage ambiguous.
+      **Item 3 is therefore NOT fully fixed** -- do not report #97 as closed.
+- [ ] B-5  **`_handle_validate_only` now DISAGREES with the real gate.**
+      `execution.py:1771`'s casting check still reports `passed: False` for ANY
+      issue regardless of severity or `write_enabled`, so the dry-run tool tells a
+      user their read-only script will be refused when `run_module` would now run
+      it. A preflight validator that contradicts preflight is a trust bug of the
+      same kind #40 complained about. Flagged by the cycle-3 programmer as outside
+      the CP-B ruling; needs its own fixture triage in
+      `tests/test_issue49_validate_only.py`.
+- [ ] B-6  Fragility in the new CP-B code (Pyright flags it possibly-unbound):
+      `validators.py:3641` assigns `_parents` inside `if cast_aliases:` at `:3638`,
+      but the second walk loop from `:3657` is OUTSIDE that block and uses
+      `_parents` at `:3672`, guarded only by `root.id in cast_aliases` at `:3667`.
+      Safe TODAY only because an empty `cast_aliases` makes `:3672` unreachable --
+      i.e. the safety depends on correlating two guards ~30 lines apart, and it
+      breaks silently the moment a third `_parents` use appears under a different
+      condition. Hoist it or pass it explicitly.
+
+- [x] B-1  #40: stop hard-rejecting on warning-severity casting issues. DONE in
+      `b5f41d8`, gate-local as ruled -- the downgrade lives entirely inside
+      `handle_run_module`'s casting block; `unprotected_writes`,
+      `hvo_literal_write_risk` and `nested_unit_of_work` are provably untouched,
+      and `_resolve_alias_maps` was left alone as another gate's blast radius.
+      Retry-loop interaction handled per `record_op_signal`'s own documented
+      on-success contract (`error_code=None` resets).
+- [x] B-2 + B-4  DONE in `b5f41d8` via a PARALLEL resolver
+      (`_resolve_cast_type_at` / `_scan_backward_for_cast` /
+      `_find_enclosing_stmt_list` / `_build_parent_map`), wired into
+      `detect_interface_attribute_typos` and `detect_casting_needs`. It walks
+      outward through enclosing statement lists and recurses into `try`/`with` but
+      NOT `if`/`for`/`while`, so a sibling branch's cast is structurally invisible
+      to a usage in another arm. #97 Bug 2's verbatim 4-branch MSA repro: 0 false
+      positives, versus 4/4 with the fix reverted.
+
+- [x] B-1 (original description, retained for the record) #40: stop hard-rejecting
+      on warning-severity casting issues. Per-issue
       severity ALREADY exists in the data (`validators.py:3598` = `"error"` for
       known patterns, `:3710` = `"warning"` for index-derived lookups) but `:3731`
       overwrites it with `"error" if issues else "none"`, and
@@ -326,6 +695,14 @@ protection unchanged.
       (`flexicon_analyzer.py:1277-1344`) from `FLExProject.py`'s `@property` bodies
       (`self._x_ops = ClassName(self)`). Note: `access_path` currently greps clean
       across the whole MCP codebase -- it is a genuinely new key.
+- [ ] C-1a #100 groundwork verified at spurt-2 planning: `access_path` does NOT
+      exist in the codebase, and no existing index field substitutes for it.
+      `usage_hint` is present on all 118 flexicon entities but is a generic
+      template ("Provides operations for working with lexicon data in FieldWorks")
+      and mentions `project.` in **0 of 118**. So the new key is genuinely needed.
+      Entity keys today: `base_classes, category, description, example, id,
+      lcm_dependencies, methods, name, namespace, properties, source_file, summary,
+      tags, type, usage_hint`.
 - [ ] C-2  #100 wrinkle -- CONFIRMED by the lead, with proof.
       `_build_entity_import` (`server/handlers/api.py:352-363`) ends in an
       unconditional `return f"from {library} import {entity_name}"` for flexicon and
@@ -337,6 +714,55 @@ protection unchanged.
       advertise `project.MSA` instead of a bogus import line; then confirm
       `paginate_entity`'s summary-mode field allowlist carries the new key
       (`handle_get_object_api`, `api.py:839-908`).
+      **SIXTH AND SEVENTH SURFACES, found at spurt-2 planning:**
+      `execution.py:1397` (`_inline_discovery_docs`, from `:1324`) and
+      `execution.py:1493` (`_search_capability_inline`, from `:1450` -- an in-file
+      CLONE of the search_by_capability row builder) both read
+      `entity.get("import_statement")`. Verified that **0 of 118 index entities
+      carry an `import_statement` key**, so both currently emit `null` -- they do
+      NOT advertise a bogus import today, which is why CP-C can stay
+      `execution.py`-free. They are a latent gap (no import guidance at all rather
+      than wrong guidance); fix in a later checkpoint, and do not touch
+      `execution.py` from CP-C while CP-B holds it.
+**CP-C LANDED (cycle 3, `cea0ca6`).** Six files, zero touches to `execution.py`,
+`validators.py`, `TOOL-CONTRACT.md` or any index JSON -- the lock discipline held.
+New keys `access_path` and `not_cmpossibility_warning` are additive and optional,
+so no contract-shape change was needed.
+
+Corrections and discoveries from the implementation, all worth keeping:
+1. **A premise in my own briefing was WRONG and the implementer caught it.** I said
+   the index's `base_classes` already carried #101's inheritance fact. It does not
+   -- `base_classes` is empty `[]` for all six relevant entities, because this
+   extractor populates `interfaces` for interface entities, not `base_classes`. The
+   real signal is `entity["interfaces"]` not containing `"ICmPossibility"`, which
+   IS in the shipped index, so the read-path fix still needed no regeneration.
+2. **#100's unverified suspicion was correct: `paginate_entity` DID need a fix.**
+   It builds its own result dict rather than passing the raw entity through, so
+   `access_path` did not surface via `get_object_api` in either mode until added
+   explicitly.
+3. **An EIGHTH import-advertising surface exists**: `paginate_entity`'s own
+   `import_statement` builder on the `is_operations_class` branch. Left untouched
+   because `MSAOperations` is not in `constants.KNOWN_OPERATIONS`, so it never fired
+   for this bug -- but any facade-only class that IS in `KNOWN_OPERATIONS` would
+   still be advertised with a bogus import. Latent; carry it.
+4. **#101 is fixed with a CURATED frozenset, not a heuristic** -- and that was the
+   right call. A structural rule ("own `Name` + no `ICmPossibility`") matches 76
+   other liblcm entities (`CmAgent`, `CmFile`, `LangProject`, ...) that nobody ever
+   mistakes for possibility lists. But a curated list is a maintenance liability: it
+   cannot catch a fourth type with the same trap, which is exactly why #101
+   pre-emptively included `IMoInflClass`. **#87's `interpretation`/`caveats`
+   mechanism does NOT exist yet** (grepped clean), so the general facility is still
+   owed. Revisit when #87 is picked up.
+5. `access_path` lands on **55 of 118** flexicon entities, deliberately including
+   classes that are ALSO top-level importable (`LexEntryOperations` is both), since
+   `project.X` is always valid once a project exists and is what flexicon's own
+   docs teach. Only `MSAOperations` is genuinely broken to import.
+6. **CLAUDE.md's Quick Start smoke one-liner does not work as written** --
+   `from src.server import ...` does not resolve because there is no
+   `src/__init__.py`. The equivalent `from flextoolsmcp.server import ...` works.
+   Pre-existing doc/packaging mismatch in the file every agent is told to read
+   first. Cheap to fix; not this campaign's bug.
+
 - [ ] C-3  #101: record the inheritance fact that `IMoInflAffixSlot`,
       `IMoInflAffixTemplate` and `IMoInflClass` are NOT `ICmPossibility` (their
       `Name` is each class's own `basic` attribute, a mere name collision with

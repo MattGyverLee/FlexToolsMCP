@@ -686,6 +686,26 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     if not_cmpossibility_warning:
         result[KEY_NOT_CMPOSSIBILITY_WARNING] = not_cmpossibility_warning
 
+    # Cycle-7 CP-D D-3 triage: this unconditionally advertises a by-name
+    # import for every object_type in OPERATIONS_CLASSES, without consulting
+    # `access_path` (the issue #100 facade truth just computed above at
+    # `result[KEY_ACCESS_PATH]`) the way `_build_entity_import`'s other call
+    # sites do. That was flagged as a potential 8th import-advertising gap
+    # -- but it is a confirmed NO-OP today: every current OPERATIONS_CLASSES
+    # member (43/43, checked at runtime against the installed flexicon
+    # package, not by reading names) is genuinely top-level importable, so
+    # `from {library} import {object_type}` is never wrong here. 42 of the
+    # 43 additionally have a facade access_path (e.g. LexEntryOperations ->
+    # project.LexEntry) but remain top-level importable too -- having BOTH
+    # is normal (see flexicon_analyzer.py's `_extract_facade_access_paths`
+    # docstring). MSAOperations is the one flexicon Operations class that
+    # IS facade-only (no top-level import) -- but it is deliberately absent
+    # from OPERATIONS_CLASSES/KNOWN_OPERATIONS, so this branch never fires
+    # for it. TestKnownOperationsImportInvariant in
+    # tests/test_issue100_access_path.py pins this: if OPERATIONS_CLASSES
+    # ever gains a facade-only member, that test fails and this branch then
+    # needs the access_path-aware fix that was deferred here (see
+    # specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md).
     is_operations_class = object_type in OPERATIONS_CLASSES
     if is_operations_class:
         result[KEY_IMPORT_STATEMENT] = f"from {library} import {object_type}"

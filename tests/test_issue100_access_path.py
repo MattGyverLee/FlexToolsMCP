@@ -342,5 +342,67 @@ class TestRealIndexPreRefreshState(unittest.TestCase):
         self.assertEqual(result, "from flexicon import MSAOperations")
 
 
+# ---------------------------------------------------------------------------
+# Cycle-7 CP-D D-3: paginate_entity's is_operations_class import-advertising
+# branch (server/handlers/api.py:689-712-ish) -- confirmed no-op triage
+# ---------------------------------------------------------------------------
+
+class TestKnownOperationsImportInvariant(unittest.TestCase):
+    """paginate_entity's `is_operations_class` branch unconditionally emits
+    `from {library} import {object_type}` for every object_type in
+    constants.KNOWN_OPERATIONS, without consulting entity["access_path"]
+    (the issue #100 facade truth computed a few lines above it in the same
+    function). That is only safe because every current KNOWN_OPERATIONS
+    member is ALSO genuinely top-level importable from flexicon -- confirmed
+    here at runtime against the installed package (flexicon 4.5.2), not by
+    reading names. 42 of the 43 members additionally have a facade
+    access_path (e.g. LexEntryOperations -> project.LexEntry) but remain
+    top-level importable too, so advertising the bare import is never wrong
+    for them today.
+
+    MSAOperations is the one flexicon Operations class that IS facade-only
+    (no top-level import) -- but it is deliberately absent from
+    KNOWN_OPERATIONS, so the unconditional-import branch never fires for it;
+    the correct guidance for MSAOperations flows through access_path via
+    _build_entity_import's other call sites instead (see
+    TestBuildEntityImportAccessPath above).
+
+    This pins the invariant that makes today's api.py is_operations_class
+    branch a documented no-op. If it ever fails, KNOWN_OPERATIONS has gained
+    a facade-only member and that branch needs the access_path-aware fix
+    that was deferred in cycle 7 (see
+    specs/swahili-audit-2026-09/reviews/cycle7-programmer-p2.md for the full
+    analysis)."""
+
+    def test_every_known_operations_member_is_top_level_importable(self):
+        try:
+            import flexicon
+        except Exception as exc:
+            self.skipTest(f"flexicon not importable in this environment: {exc}")
+
+        from flextoolsmcp.server.constants import KNOWN_OPERATIONS
+
+        not_importable = sorted(
+            name for name in KNOWN_OPERATIONS if not hasattr(flexicon, name)
+        )
+        self.assertEqual(
+            not_importable,
+            [],
+            "KNOWN_OPERATIONS contains facade-only class(es) that are NOT "
+            "top-level importable from flexicon: %r -- server/handlers/"
+            "api.py's is_operations_class branch now advertises a broken "
+            "import for these; see cycle7-programmer-p2.md STEP 2 for the "
+            "deferred fix." % not_importable,
+        )
+
+    def test_msa_operations_deliberately_excluded_from_known_operations(self):
+        """Documents WHY the import-advertising branch is inert today: the
+        one facade-only class flexicon actually has is not a member of the
+        set that branch reads."""
+        from flextoolsmcp.server.constants import KNOWN_OPERATIONS
+
+        self.assertNotIn("MSAOperations", KNOWN_OPERATIONS)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -81,8 +81,10 @@ def Main(project, report, modifyAllowed):
 
             for i, entry_hvo in enumerate(entry_collection):
                 try:
-                    # Cast to concrete LexEntry interface
-                    entry = cast_to_concrete(entry_hvo, ILexEntry)
+                    # Cast to concrete LexEntry interface (cast_to_concrete
+                    # resolves the interface itself from the object's C#
+                    # ClassName -- it takes exactly ONE argument)
+                    entry = cast_to_concrete(entry_hvo)
 
                     # Access C# properties directly
                     form_ws = entry.LexemeForm
@@ -110,7 +112,7 @@ def Main(project, report, modifyAllowed):
 
                     # Process senses
                     for j, sense_hvo in enumerate(senses_collection or []):
-                        sense = cast_to_concrete(sense_hvo, ILexSense)
+                        sense = cast_to_concrete(sense_hvo)
 
                         # Access C# gloss property
                         gloss_ws = sense.Gloss
@@ -171,19 +173,22 @@ def get_multistring_safe(multistring, writing_system_id=None):
         return ""
 
 
-def cast_to_interface(obj, interface_type):
+def cast_to_interface(obj):
     """
     Helper to cast C# object to concrete interface.
 
+    cast_to_concrete resolves the concrete interface itself from the
+    object's C# ClassName -- it takes exactly ONE argument, not an
+    interface_type to cast to.
+
     Args:
         obj: Raw C# object
-        interface_type: Interface class from flexicon.code.lcm_casting
 
     Returns:
         Casted object or None if cast fails
     """
     try:
-        return cast_to_concrete(obj, interface_type)
+        return cast_to_concrete(obj)
     except Exception as e:
         return None
 
@@ -255,7 +260,7 @@ COMMON PATTERNS:
 
 2. Iterate collections:
    for item in collection:
-       casted = cast_to_concrete(item, ILexEntry)
+       casted = cast_to_concrete(item)
 
 3. Handle MultiString fields:
    if field.Text == "***":
@@ -296,13 +301,13 @@ BUILDGOTOURL - CLICKABLE LINKS:
   Creates FLExTools-clickable links for instant navigation.
 
   Works with C# objects just like flexicon:
-    entry = cast_to_concrete(entry_hvo, ILexEntry)
+    entry = cast_to_concrete(entry_hvo)
     url = project.BuildGotoURL(entry)  # Works with cast object
     url = project.BuildGotoURL(entry_hvo)  # Also works with HVO
 
   Example usage:
     for entry_hvo in entry_collection:
-        entry = cast_to_concrete(entry_hvo, ILexEntry)
+        entry = cast_to_concrete(entry_hvo)
         form_text = entry.LexemeForm.VernacularForm.Text
         try:
             url = project.BuildGotoURL(entry_hvo)  # Use HVO directly
@@ -327,7 +332,7 @@ WHEN FLEXICON IS NOT ENOUGH:
   form = project.LexEntry.GetLexemeForm(entry)  # Returns ""
 
   # LibLCM (harder)
-  entry_obj = cast_to_concrete(entry, ILexEntry)
+  entry_obj = cast_to_concrete(entry)
   form_text = entry_obj.LexemeForm.VernacularForm.Text
   if form_text == "***":
       form = ""

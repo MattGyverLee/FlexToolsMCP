@@ -21,7 +21,9 @@ Coverage:
 """
 
 import copy
+import re
 import unittest
+from pathlib import Path
 
 from server.validators import (
     annotate_properties_with_casting,
@@ -30,6 +32,9 @@ from server.validators import (
     detect_casting_needs,
 )
 from server.handlers.api import paginate_entity
+
+# Templates directory shipped to users via flextools_get_module_template.
+_TEMPLATES_DIR = Path(__file__).parent.parent / "src" / "flextoolsmcp" / "templates"
 
 
 # Controlled stand-in for the real (986-entry) casting index. Only the shapes
@@ -89,7 +94,15 @@ class TestAnnotateProperties(unittest.TestCase):
         out, count = annotate_properties_with_casting(props, FAKE_CASTING_INDEX)
         self.assertEqual(count, 1)
         self.assertTrue(out[0]["polymorphic"])
-        self.assertIn("cast_to_concrete", out[0]["iteration_note"])
+        # Bare substring "cast_to_concrete" passes both before and after the
+        # #103-class phantom fix (the broken text was
+        # "CastingOperations.cast_to_concrete(item)" -- a substring match
+        # can't tell that apart from the real call). Pin the FULL, real call
+        # form instead: `flexicon.code.lcm_casting.cast_to_concrete` is a
+        # bare module-level function, not a `CastingOperations` method
+        # (that class does not exist anywhere in pyflexicon).
+        self.assertIn("concrete = cast_to_concrete(item)", out[0]["iteration_note"])
+        self.assertNotIn("CastingOperations", out[0]["iteration_note"])
         # Not a receiver-cast property -> no requires_cast key.
         self.assertNotIn("requires_cast", out[0])
 
@@ -220,6 +233,93 @@ class TestPaginateEntityWiring(unittest.TestCase):
         for p in result["properties"]:
             self.assertNotIn("requires_cast", p)
             self.assertNotIn("cast_example", p)
+
+
+class TestShippedLiblcmTemplateCastingArity(unittest.TestCase):
+    """Regression coverage for the Symbol-B half of the cast_to_concrete
+    phantom (specs/swahili-audit-2026-09/reviews/cycle10-phantom.md):
+
+      1. flexicon.code.lcm_casting.cast_to_concrete(obj) takes exactly ONE
+         argument, but every shipped call site in 3-liblcm-template.py
+         (live code AND prose "examples") passed TWO. Two args would raise
+         TypeError the moment a user ran the generated module.
+      2. ILexEntry is function-local inside flexicon's internal
+         _ensure_interfaces() and is never exported from
+         flexicon.code.lcm_casting, so `from flexicon.code.lcm_casting
+         import ILexEntry` raises ImportError before Main() ever runs.
+
+    This template is served verbatim to users by
+    flextools_get_module_template(flavor='liblcm'/'advanced'), so a wrong
+    call form here is code users actually run, not just documentation.
+    """
+
+    _CAST_CALL_RE = re.compile(r"cast_to_concrete\(([^()]*)\)")
+    _BAD_IMPORT_RE = re.compile(
+        r"from\s+flexicon\.code\.lcm_casting\s+import\s+([^\n]+)"
+    )
+
+    def _liblcm_template_text(self):
+        path = _TEMPLATES_DIR / "3-liblcm-template.py"
+        self.assertTrue(path.exists(), f"shipped template missing: {path}")
+        return path.read_text(encoding="utf-8")
+
+    def test_every_cast_to_concrete_call_site_takes_one_argument(self):
+        """Every cast_to_concrete(...) call in the shipped liblcm template --
+        live code and prose examples alike -- must pass exactly one
+        positional argument. flexicon's cast_to_concrete resolves the
+        concrete interface itself from the object's C# ClassName; a second
+        argument is not part of its signature and raises TypeError."""
+        text = self._liblcm_template_text()
+        calls = self._CAST_CALL_RE.findall(text)
+        self.assertTrue(calls, "expected at least one cast_to_concrete(...) call in the template")
+
+        bad_sites = []
+        for raw_args in calls:
+            args = [a for a in (p.strip() for p in raw_args.split(",")) if a]
+            if len(args) != 1:
+                bad_sites.append((raw_args, len(args)))
+
+        self.assertEqual(
+            bad_sites, [],
+            f"cast_to_concrete call(s) with wrong arity (expected 1 arg): {bad_sites}",
+        )
+
+    def test_no_template_imports_ilexentry_from_lcm_casting(self):
+        """flexicon.code.lcm_casting never re-exports ILexEntry (it is
+        function-local inside the package's internal _ensure_interfaces()).
+        `from flexicon.code.lcm_casting import ILexEntry` is an ImportError
+        that kills the module before Main() runs. ILexEntry must come from
+        `SIL.LCModel` instead (see the already-correct import block at the
+        top of 3-liblcm-template.py)."""
+        text = self._liblcm_template_text()
+        for match in self._BAD_IMPORT_RE.finditer(text):
+            imported_names = [n.strip() for n in match.group(1).split(",")]
+            self.assertNotIn(
+                "ILexEntry", imported_names,
+                f"template imports ILexEntry from flexicon.code.lcm_casting: {match.group(0)!r}",
+            )
+
+    def test_live_flexicon_cast_to_concrete_signature_is_single_arg(self):
+        """Ground truth check against the actual installed flexicon package
+        (not just the template text) so this test cannot drift from
+        reality the way the phantom template text did."""
+        try:
+            import inspect
+
+            from flexicon.code.lcm_casting import cast_to_concrete
+        except Exception as exc:
+            self.skipTest(f"flexicon not importable in this environment ({exc})")
+            return
+
+        sig = inspect.signature(cast_to_concrete)
+        params = [
+            p for p in sig.parameters.values()
+            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        ]
+        self.assertEqual(
+            len(params), 1,
+            f"cast_to_concrete signature changed -- expected 1 positional param, got {sig}",
+        )
 
 
 if __name__ == "__main__":

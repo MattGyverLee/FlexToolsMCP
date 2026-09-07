@@ -1618,7 +1618,7 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                 KEY_NOT_AVAILABLE_ON: casting_info.get(KEY_REQUIRES_CAST, []),
                 KEY_WARNING: f"Property '{property_name}' is NOT available on base interfaces: {', '.join(casting_info.get(KEY_REQUIRES_CAST, []))}. You must cast to a concrete interface first.",
                 KEY_PATTERN: "concrete = InterfaceType(obj)  # Cast based on obj.ClassName",
-                KEY_FLEXICON_HELPER: "Use CastingOperations.cast_to_concrete(obj) from flexicon"
+                KEY_FLEXICON_HELPER: "Use cast_to_concrete(obj) from flexicon.code.lcm_casting"
             }
 
             if property_name in prop_to_concrete:
@@ -1633,7 +1633,7 @@ async def handle_resolve_property(args: dict) -> list[TextContent]:
                         KEY_CONCRETE_TYPES: coll_info.get(KEY_CONCRETE_TYPES, []),
                         KEY_UNIQUE_PROPERTIES_BY_TYPE: coll_info.get(KEY_UNIQUE_PROPERTIES_BY_TYPE, {}),
                         KEY_CASTING_HINT: coll_info.get(KEY_CASTING_HINT, ""),
-                        KEY_EXAMPLE: f"for item in obj.{coll_name}:\n    concrete = CastingOperations.cast_to_concrete(item)\n    # Now access derived properties"
+                        KEY_EXAMPLE: f"for item in obj.{coll_name}:\n    concrete = cast_to_concrete(item)  # from flexicon.code.lcm_casting\n    # Now access derived properties"
                     }
                     break
 

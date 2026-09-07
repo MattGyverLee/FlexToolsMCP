@@ -160,13 +160,13 @@ def _add_polymorphic_warnings(result: dict, steps: list) -> None:
                 KEY_CONCRETE_TYPES: concrete_types,
                 KEY_MESSAGE: f"The {property_name} property returns {base_type}. "
                              f"You may need to cast to a concrete type: {', '.join(concrete_types)}",
-                "suggestion": "Use CastingOperations.cast_to_concrete(obj) to cast to the concrete type."
+                "suggestion": "Use cast_to_concrete(obj) from flexicon.code.lcm_casting to cast to the concrete type."
             }
             warnings.append(warning)
 
     if warnings:
         result[KEY_CASTING_WARNINGS] = warnings
-        result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use CastingOperations from Flexicon to access type-specific properties."
+        result[KEY_CASTING_HINT] = "This path accesses polymorphic collections. Use cast_to_concrete from flexicon.code.lcm_casting to access type-specific properties."
 
 
 async def handle_get_navigation_path(args: dict) -> list[TextContent]:

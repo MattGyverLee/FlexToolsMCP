@@ -3639,7 +3639,7 @@ def _build_cast_rewrite(
 
 _POLY_ITERATION_NOTE = (
     "Items are heterogeneous; cast each item: "
-    "concrete = CastingOperations.cast_to_concrete(item)"
+    "concrete = cast_to_concrete(item)  # from flexicon.code.lcm_casting"
 )
 
 

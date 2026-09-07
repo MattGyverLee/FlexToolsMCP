@@ -1687,6 +1687,20 @@ def _log_validate_only_close(
     )
 
 
+def _has_error_severity_casting_issue(issues: List[Dict[str, Any]]) -> bool:
+    """Issue #40 B-1 / #49 B-5: True if ANY casting issue is 'error' severity.
+
+    Shared predicate for the read-only warning-tier downgrade. A
+    known-pattern hit (or a genuine attribute typo merged in by
+    handle_run_module) is 'error'; an index-derived lookup with no
+    corroborating known pattern is 'warning'. handle_run_module (the real
+    gate) and _build_validate_only_checks (the dry-run preview) BOTH call
+    this -- do not reimplement the severity check at either call site, or
+    the two will drift apart again (issue #49 B-5).
+    """
+    return any((i.get("severity") == "error") for i in issues)
+
+
 def _build_validate_only_checks(
     *,
     code: str,
@@ -1769,12 +1783,28 @@ def _build_validate_only_checks(
     casting_index = getattr(api_idx, "casting_index", None) if api_idx else None
     casting_check = detect_casting_needs(code, casting_index, code_tree)
     if casting_check["has_casting_issues"]:
-        checks.append({
+        issues = casting_check["casting_issues"]
+        # Issue #49 B-5: this verdict must agree with what handle_run_module
+        # would actually do for the same code and write_enabled value -- a
+        # dry-run validator that disagrees with the real gate teaches users
+        # to ignore it (issue #40). Reuse the SAME predicate the real gate
+        # uses (see _has_error_severity_casting_issue) rather than keying on
+        # has_casting_issues alone. Issues are still fully reported either
+        # way; only the pass/fail verdict is affected.
+        _has_error = _has_error_severity_casting_issue(issues)
+        _downgraded = (not write_enabled) and not _has_error
+        check_entry = {
             "gate": "casting",
-            "passed": False,
-            "issues": casting_check["casting_issues"],
+            "passed": _downgraded,
+            "issues": issues,
             "severity": casting_check.get("severity"),
-        })
+        }
+        if _downgraded:
+            check_entry["note"] = (
+                "read-only run; only warning-tier casting issues -- "
+                "run_module would proceed without rejecting (issue #40 B-1)"
+            )
+        checks.append(check_entry)
     else:
         checks.append({"gate": "casting", "passed": True})
 
@@ -2870,10 +2900,10 @@ async def handle_run_module(args: dict) -> list[TextContent]:
         # exactly as before. This downgrade is GATE-LOCAL to the casting
         # gate's warning tier -- no other preflight gate (unprotected_writes,
         # hvo_literal_write_risk, nested_unit_of_work) is touched by it.
-        _has_error_severity_casting_issue = any(
-            (i.get("severity") == "error") for i in issues
-        )
-        if (not write_enabled) and not _has_error_severity_casting_issue:
+        # _has_error_severity_casting_issue is a MODULE-LEVEL function shared
+        # with _build_validate_only_checks's Gate 5 (issue #49 B-5) so the
+        # dry-run validator can never drift from this real decision again.
+        if (not write_enabled) and not _has_error_severity_casting_issue(issues):
             get_operations_logger().info(
                 f"Preflight casting: issues={len(issues)} severity=warning "
                 "(read-only run) -- proceeding without rejecting (issue #40 B-1)."

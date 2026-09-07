@@ -30,6 +30,7 @@ from server.validators import (
     detect_casting_needs,
     detect_interface_attribute_typos,
     _is_multistring_value_member,
+    _resolve_cast_type_at,
 )
 
 
@@ -318,6 +319,39 @@ class TestBranchAwareVariableTyping(unittest.TestCase):
             f"flag, not the IMoInflAffMsa (correct-interface) branch on "
             f"line 7; got: {result['casting_issues']}"
         )
+
+
+class TestParentsBindingUnderEmptyCastAliases(unittest.TestCase):
+    """Issue #49 B-6: `_parents` in `detect_casting_needs` must be a
+    structural binding (always a dict, even `{}`), not a correlation
+    between the `if cast_aliases:` guard that builds it and the SECOND
+    walk loop's `root.id in cast_aliases` guard ~30 lines below that reads
+    it. Safe TODAY only because an empty cast_aliases makes the read
+    unreachable -- these tests exercise that path directly so a future
+    change to either guard can't silently reintroduce an unbound read."""
+
+    def test_resolve_cast_type_at_with_empty_parents_returns_none(self):
+        """Direct proof `_parents`'s hoisted empty-dict initial value is
+        itself safe to pass to `_resolve_cast_type_at` -- it must degrade to
+        None rather than raise, since the pre-fix code never even bound the
+        name in this case (it relied on the caller never dereferencing it)."""
+        tree = ast.parse("x = 1\n")
+        node = tree.body[0]
+        self.assertIsNone(_resolve_cast_type_at(node, {}, "x"))
+
+    def test_multi_level_attribute_chain_with_no_cast_aliases_at_all(self):
+        """The second walk loop (typed_chain_segments) always runs,
+        regardless of cast_aliases -- exercise it with code that has NO
+        assignments anywhere (cast_aliases stays {}) and a 2+-level
+        attribute chain, which is exactly the shape that would dereference
+        `_parents` if the `root.id in cast_aliases` guard were ever
+        loosened. Must complete without raising and report no false
+        positive (no assignment means no cast, so nothing here should be
+        misattributed to a stale/absent cast)."""
+        code = "def f(wf):\n    return wf.Form.BestVernacularAlternative.Text\n"
+        result = detect_casting_needs(code, casting_index=None, tree=ast.parse(code))
+        self.assertIsInstance(result, dict)
+        self.assertIn("has_casting_issues", result)
 
 
 class TestWhitelistedMembersNotFlagged(unittest.TestCase):

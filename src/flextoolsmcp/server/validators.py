@@ -3635,10 +3635,17 @@ def detect_casting_needs(
     if tree is not None:
         ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
         operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
+        # Issue #49 B-6: hoisted out of `if cast_aliases:` so the binding is
+        # structural, not a correlation between this guard and the SECOND
+        # walk loop's `root.id in cast_aliases` guard ~30 lines below. Safe
+        # to leave empty when cast_aliases is empty -- that guard makes the
+        # second loop's _parents read unreachable -- but a reader (and
+        # Pyright) should not have to reconstruct that across two guards.
+        _parents: Dict[ast.AST, ast.AST] = {}
         if cast_aliases:
             # Built once and reused for every branch-aware resolution below --
             # cheap short-circuit for the common no-casts-anywhere case.
-            _parents: Dict[ast.AST, ast.AST] = _build_parent_map(tree)
+            _parents = _build_parent_map(tree)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Attribute):
                     continue

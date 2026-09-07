@@ -55,7 +55,6 @@ import subprocess
 import sys
 import textwrap
 
-import pytest
 
 from flextoolsmcp.server import kernel, project_discovery
 from flextoolsmcp.server.handlers import execution as execution_mod

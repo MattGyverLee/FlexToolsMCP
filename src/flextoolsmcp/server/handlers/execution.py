@@ -18,7 +18,6 @@ import json
 import sys
 import subprocess
 import tempfile
-from datetime import datetime
 import os
 import ast
 import hashlib

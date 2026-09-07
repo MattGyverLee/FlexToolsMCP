@@ -39,7 +39,6 @@ import ast
 import asyncio
 import json
 
-import pytest
 
 from flextoolsmcp.server import kernel, project_discovery
 from flextoolsmcp.server.handlers import execution as execution_mod

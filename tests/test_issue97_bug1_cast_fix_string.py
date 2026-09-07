@@ -288,7 +288,7 @@ class TestTwoTierAmbiguousMessage(unittest.TestCase):
         self.assertEqual(len(issues), 1)
         fix = issues[0]["fix"]
         self.assertNotIn("ICmAgent", fix)
-        self.assertFalse(fix.startswith(f"Cast morph_type to one of: ICmAgent"))
+        self.assertFalse(fix.startswith("Cast morph_type to one of: ICmAgent"))
 
 
 if __name__ == "__main__":

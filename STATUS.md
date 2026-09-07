@@ -405,3 +405,44 @@ cover this case) and then filed with explicit user authorization.
 committed, and verified; #86 and #85/#88 are closed; CP3 is filed and
 tracked as its own issue for future work. The repo's active feature reverts
 to diagnostic-report (line 3).
+
+## Log-triage run: 2026-09-07 (merged August + September window scan)
+
+Three peer `/lex-logscan` agents scanned in parallel (August window
+2026-08-10 -> 2026-08-28, September window 2026-09-06/09-07) and filed
+concurrently; this archivist pass performed the single consolidated write to
+`docs/logscan-state.json` plus two cross-link comments. Full ledger detail
+and before/after values: `specs/logscan-2026-09-07/reviews/cycle2-archivist.md`.
+
+**Filed (7 new issues):** flexicon #260-#263 (AllomorphOperations missing
+IMoForm cast; DataNotebookOperations raw `LcmCache.GetObject`; undocumented
+`KeyNotFoundException` on a stale GUID; `FLExProject.pyi` `WriteEnabled`
+stub/impl casing drift) and MCP #108-#110 (polymorphic-cast hint quality,
+three merged facets; harness telemetry leak to a cwd-relative
+`operations.jsonl`; `operations.log` silently lost 10 days across rotation).
+
+**Commented (14 targets, no state changes):** flexicon#34, flexicon#257;
+MCP #93, #70, #40, #101, #100, #98, #74 (comment-only, not reopened); MCP
+#84, #39, #75, #80, #69 (regression comments on closed issues, comment-only).
+
+**Ledger corrections applied:** six stale `state: open` entries (issues #39,
+#48, #80 [retargeted from a wrong #53 attribution], #69, #75, #74) were
+verified against live GitHub and corrected to their real closed states,
+all closing within ~36 hours of the 2026-07-20 ledger write that went stale.
+The #48 aggregate bucket was re-marked `closed-not-a-tracker` with a causal
+note (the stale state is what caused the September scanner's mis-dedup
+against it).
+
+**Awaiting user confirmation (nothing below was acted on without it):**
+1. `.gitignore` edit to add `operations.jsonl*` / `operations.log*` -- not
+   made this run (out of this agent's authorized scope).
+2. Removal of the stray repo-root `operations.jsonl` (harness leak, see
+   MCP#109) -- not deleted; a copy should be preserved as evidence first if
+   removal is approved.
+3. The ranked reopen recommendation for the five regression-commented closed
+   issues: **#84 > #39 > #80 > #69 > #75** (differs from the lead's original
+   ordering -- #80 was moved up because its recurrence is a hard
+   `preflight_reject`, the exact behavior #80's own fix was supposed to
+   replace with a soft advisory). No issue was reopened.
+4. Explicit decision **NOT** to close #40 -- it stays open for facets beyond
+   the B-1 mitigation already confirmed live in production this scan.

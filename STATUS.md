@@ -1,12 +1,75 @@
 # Project Status
 
-Active feature: **shared-mode-access** (let the user keep FLEx open).
-Spec: `specs/shared-mode-access/SPEC.md`. Branch: `feat/shared-mode-access`.
+Active feature: **swahili-audit-2026-09 bugfix campaign** (cross-repo defect
+follow-through from the live Claude-Swahili audit).
+Spec: `specs/swahili-audit-2026-09/SPEC.md`.
+Tasks + all durable crew state: `specs/swahili-audit-2026-09/tasks-bugfix-campaign.md`.
+Branch: `feat/shared-mode-access` (shared with the feature below -- #96 is
+shared-mode territory, so the campaign did not branch away).
+
+Also active, same branch: **shared-mode-access** (let the user keep FLEx open).
+Spec: `specs/shared-mode-access/SPEC.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
 Paused (not abandoned): **diagnostic-report**, which is green through CP3 and
 whose next pickup is CP4 (docs + demo). Its section is retained below.
+
+## Active campaign: swahili-audit-2026-09 bugfix
+
+**CP-A -- data integrity: CLOSED GREEN (2026-09-06, spurt 1, cycles 1-2).**
+
+Commits on `feat/shared-mode-access`: `cb3f1b8` (#103, closes it),
+`0c9a59b` (#96 MCP-side halves), `8f72b9f` (contract drift found by QC),
+`80630d8` (report). Suite **1052 passed / 4 skipped**. QC: no P0. Verification:
+PASS on both code commits, non-live claims only.
+
+- **#103 (hvo instability) is FIXED.** The GUID round-trip already shipped in
+  flexicon -- `FLExProject.Object(hvoOrGuid)` accepts `str`/`System.Guid`
+  (`FLExProject.py:3212-3226`) -- so no flexicon change was needed, only
+  advertising it. Added the primer/tool-description warning plus a preflight gate:
+  a bare int literal in an `*_or_hvo` position WARNS on read-only runs and HARD
+  BLOCKS write runs (`hvo_literal_write_risk`, error codes 17 -> 18). QC ran 20
+  adversarial snippets against the live index and could not construct a realistic
+  false positive.
+- **#96 (read-after-write staleness) root cause is CONFIRMED, and the bug is NOT
+  fixed.** It is worse than filed: a non-master peer's commit lands only in the
+  in-memory shared commit log, `.fwdata` advances only when the master writes, and
+  a fresh open reads `.fwdata` and NEVER replays commit-log records. So a fresh
+  read-only session **structurally cannot** see a peer's write, and the staleness
+  window is **unbounded**, not 18 seconds -- the master's `SaveOnIdle` guards are
+  human-gated. Full citations: `specs/swahili-audit-2026-09/reviews/bugfix-cycle1-explore-96.md`.
+  Consequence for docs: never promise a safe read-back interval; there is no N
+  that is safe.
+- Two MCP-side halves of #96 fixed in `0c9a59b`: teardown commit failures no
+  longer report success under a bare `except: pass`, and the generated runner now
+  passes `ui=HeadlessLcmUI()` -- previously it passed no `ui=` at all, so a
+  `ConflictingSave()` in a headless subprocess was a modal dialog, i.e. a hang.
+
+**Scope note:** flexicon #254 (`GetMorphType` returns the allomorph) was
+reassigned OUTSIDE this crew mid-spurt. The flexicon repo is under an advisory
+file lock; this crew must not edit it. Cross-repo findings are recorded in the
+tasks file rather than actioned.
+
+### Next pickup -- CP-C (#100 / #101 discoverability)
+
+CP-B (the casting gate, #40/#97) is the user's higher priority but is **blocked on
+a user decision**; CP-C is unblocked, so it is next. Details, line numbers and the
+confirmed `_build_entity_import` wrinkle are in the tasks file.
+
+### BLOCKERS -- all three need the user
+
+1. **#96 live repro.** Authorized in principle for project `Target`, but
+   preconditions unmet: `Target` has `projectSharing="false"` (so the write would
+   be refused by the #93 gate, reproducing nothing) and is not open in FLEx. Needs
+   authorization to flip `projectSharing` and to park FLEx on a non-editing view.
+2. **CP-B's read-only casting-severity downgrade.** It lets previously-rejected
+   scripts execute, so it is the user's call. Recommendation is with them.
+3. **Filing the new liblcm bug.** `XMLBackendProvider.WriteCommitWork:518-527`
+   returns without writing when the file changed underneath it, but
+   `SharedXMLBackendProvider.WriteCommitWork:499` sets `FileGeneration`
+   unconditionally afterwards -- metadata claims a flush that never happened.
+   Confirmed in source; filing needs authorization.
 
 ## Active feature: shared-mode-access
 
@@ -66,6 +129,40 @@ Predates CP1. Issue filing needs the user's authorization.
 **CP2-CP6 are UNSTARTED.** No access probe, no read-only-always-works path, no
 shared-mode writes, no close-FLEx gate, no docs. CP1 was specced to ship
 standalone and it does -- but only once the live check passes.
+
+> **CORRECTION (2026-09-06, recorded at the bugfix campaign's CP-A close).** The
+> paragraph above is STALE. Commits have since landed on this branch for CP2
+> (`39d1caf`, access probe -- detection only) and CP4 (`6dc459a` + `4b70f74` +
+> `db52c3a`, shared-peer write path with live evidence). Do not reason about merge
+> scope from the "CP2-CP6 UNSTARTED" claim; reconcile this section against
+> `git log origin/main..HEAD` first. The CP1 live-write blocker below is unaffected
+> and still stands.
+
+### MERGE READINESS (asked by the user, answered 2026-09-06): NOT READY
+
+The branch is 10 commits ahead of `origin/main` and unpushed. Four things block a
+merge; only the last two came from the bugfix campaign:
+
+1. **The CP1 live write check for #92 has still never been run** -- see the blocker
+   immediately below, which says in its own words "Do not merge
+   `feat/shared-mode-access` to `main` until this passes." This is the binding one.
+2. **This section is stale** (see the correction above) -- reconcile before
+   reasoning about what merging would ship.
+3. **The flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and undecided**:
+   3 deleted v4.4.1 files, 3 untracked v4.5.2 replacements, plus modified
+   `liblcm_api_v11.0.0.json` and `reverse_mapping_liblcm-v11.0.0.json`. Commit it
+   deliberately or revert it; never sweep it into a code commit. Because this repo
+   supports multiple index versions side by side (`docs/VERSIONING.md`), deleting
+   the v4.4.1 files is a real decision -- anyone still on flexicon 4.4.1 loses
+   their index. `docs/logscan-state.json` is also modified and belongs to logscan,
+   not to either feature here.
+4. **Two prior-session spec artifacts await a keep-or-drop call**:
+   `specs/swahili-audit-2026-09/reviews/cycle1-domain.md` and
+   `cycle1-explore-nullmorph.md`, left untracked on purpose so the user decides.
+
+Safe on merge: `cb3f1b8` is the ONLY commit in `origin/main..HEAD` carrying an
+auto-close keyword (`closes #103`), and #103 genuinely is fixed. Nothing
+auto-closes #96, #40, #97, #100 or #101 -- all six remain open by design.
 
 ### BLOCKER -- needs the user: the CP1 live write check
 

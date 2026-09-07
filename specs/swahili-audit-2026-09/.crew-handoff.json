@@ -1,0 +1,47 @@
+{
+  "feature": "swahili-audit-2026-09",
+  "status": "in_progress",
+  "last_cycle": 2,
+  "spurts_completed": 1,
+  "branch": "feat/shared-mode-access",
+  "tasks_done": ["A-4", "A-5", "A-6", "A-7", "A-8", "A-9"],
+  "checkpoints": {
+    "CP-A": "closed_green",
+    "CP-B": "blocked_on_user",
+    "CP-C": "ready"
+  },
+  "commits_this_spurt": ["cb3f1b8", "0c9a59b", "80630d8", "8f72b9f"],
+  "suite": "1052 passed, 4 skipped",
+  "gates": {
+    "qc": "no P0; one P1 found and fixed in 8f72b9f; 7 P2 carryover",
+    "verification": "PASS on cb3f1b8 and 0c9a59b, non-live claims only",
+    "live": "not run -- #96 repro user-blocked"
+  },
+  "next_checkpoint": "CP-C",
+  "next_entry": "Start CP-C (#100 access_path + the confirmed _build_entity_import wrinkle at api.py:352-363 with its four call sites, and #101 the not-ICmPossibility inheritance facts). CP-B is the user's higher priority but is blocked on their severity-downgrade answer; CP-C has no gate. Read tasks-bugfix-campaign.md first -- it holds the rebase math, the crew-mechanics corrections, and the merge-readiness assessment.",
+  "scope_change": "flexicon #254 reassigned outside this crew mid-spurt; the flexicon repo is under an advisory file lock and must not be edited from here",
+  "blockers_needing_user": [
+    "#96 live repro: Target has projectSharing=false and is not open in FLEx, so the authorized repro cannot run yet",
+    "CP-B read-only casting-severity downgrade: lets previously-rejected scripts execute, so it is the user's call",
+    "authorization to file the new liblcm WriteCommitWork/FileGeneration bug"
+  ],
+  "merge_ready": false,
+  "merge_blockers": [
+    "the CP1 live write check for #92 has never been run; STATUS.md forbids merging until it passes",
+    "STATUS.md's shared-mode section is stale (claims CP2-CP6 unstarted; 39d1caf and 6dc459a have landed)",
+    "flexicon 4.4.1 -> 4.5.2 index migration uncommitted and undecided (3 deletions, 3 untracked, 2 modified)",
+    "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop decision"
+  ],
+  "crew_mechanics": {
+    "lex-qc": "NOT dispatchable in this environment (skill only) -- run the QC brief under general-purpose",
+    "Explore": "has no Write tool -- use general-purpose for any task that must write its own report",
+    "artifact_check": "verify report files with `git ls-files specs/<feature>/`, not `ls` -- at CP-A close the #96 root cause, SPEC.md and the tasks file were all untracked while believed committed"
+  },
+  "cross_repo_report_only": [
+    "flexicon #254 write-side twin: SetMorphType assigns bundle.MorphRA and its docstring example feeds it an IMoMorphType (WfiMorphBundleOperations.py:876-877, example :844-848) -- unfiled",
+    "flexicon MediaOperations.GetHvo docstring teaches the #103 anti-pattern (MediaOperations.py:1497-1516) and it is re-served from our generated index at flexicon_api_v4.5.2.json:44013",
+    "new liblcm bug: WriteCommitWork FileGeneration set after an early return (XMLBackendProvider.cs:518-527 vs SharedXMLBackendProvider.cs:499)",
+    "#96's real fix (cache-bypassing verification read) was called flexicon-dependent, but that was not stress-tested -- check whether the generated runner can call SaveChanges() right after OpenProject before accepting the blocker"
+  ],
+  "updated": "2026-09-06"
+}

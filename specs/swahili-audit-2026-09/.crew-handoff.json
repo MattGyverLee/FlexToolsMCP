@@ -5,11 +5,29 @@
   "spurts_completed": 4,
   "branch": "feat/shared-mode-access",
   "tasks_done": [
-    "A-4", "A-5", "A-6", "A-7", "A-8", "A-9",
-    "B-1", "B-2", "B-3", "B-4", "B-5", "B-6",
-    "C-1", "C-1a", "C-2", "C-3",
-    "D-1", "D-2", "D-3",
-    "E-1", "E-2", "E-3", "E-4"
+    "A-4",
+    "A-5",
+    "A-6",
+    "A-7",
+    "A-8",
+    "A-9",
+    "B-1",
+    "B-2",
+    "B-3",
+    "B-4",
+    "B-5",
+    "B-6",
+    "C-1",
+    "C-1a",
+    "C-2",
+    "C-3",
+    "D-1",
+    "D-2",
+    "D-3",
+    "E-1",
+    "E-2",
+    "E-3",
+    "E-4"
   ],
   "checkpoints": {
     "CP-A": "closed_green",
@@ -19,8 +37,15 @@
     "CP-E": "closed_green"
   },
   "commits_spurt4": [
-    "0686c38", "36a5a1c", "77bc76f", "f9ac2c4",
-    "5a71102", "1f8e90b", "ffafb8c", "40b5a44", "a83e1e4"
+    "0686c38",
+    "36a5a1c",
+    "77bc76f",
+    "f9ac2c4",
+    "5a71102",
+    "1f8e90b",
+    "ffafb8c",
+    "40b5a44",
+    "a83e1e4"
   ],
   "suite": "1138 passed, 4 skipped, 12 subtests (was 1133 at CP-D; +5 across spurt 4, no regressions)",
   "commits_ahead_of_origin": 46,
@@ -45,7 +70,6 @@
   "blockers_needing_user": [
     "MCP#80 DESIGN AUTHORIZATION (new, spurt 4) -- the primary blocker. The fix is designed, proven, and ready, but it relaxes a gate on a WRITE-ENABLED session, whereas the user-approved B-1 precedent only relaxed on read-only runs where no write was possible even if the checker erred. That difference is material: a certifier false negative here CAN permit an undiscovered write. The gate's own comment (execution.py:3139-3140) reads 'Write isolation is non-negotiable; issue #80 leaves this unchanged', i.e. it was left alone deliberately. By this campaign's own precedent -- CP-B escalated 'lets previously-rejected scripts execute' to the user rather than deciding it -- this needs the user, and the standing 'fix and file at your discretion' delegation does not cleanly extend across the read-only/write-enabled line. LEAD RECOMMENDATION: authorize, using mcp80_fix_design.safe_predicate.",
     "#96 REPRO AUTHORIZATION -- the restart precondition is now MET (see resolved_blockers). Only the user's go-ahead for the live repro remains, because it can raise a modal dialog and hang. #96 staleness remains UNVERIFIED.",
-    "STATUS.md's never-run CP1 live write check for #92 -- the BINDING merge blocker. No amount of static green touches it.",
     "the flexicon v4.4.1 -> v4.5.2 index deletion decision (3 deleted, 3 untracked, 2 modified, all still preserved byte-for-byte) -- also gates #100 becoming live, since access_path needs a refresh",
     "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop call"
   ],
@@ -56,9 +80,21 @@
     "cp_b_severity_downgrade": "APPROVED by the user 2026-09-06 ('sharing on, fix and file at your discretion'), as scoped",
     "liblcm_bug": "FILED as FlexToolsMCP#107 (MattGyverLee/liblcm has issues disabled)",
     "target_preconditions": "MET -- projectSharing=true, open in FLEx PID 13272, .fwdata at Aug-18 baseline",
-    "operations_jsonl_carry_forward": "RESOLVED BY THE OTHER CREW, not us. fa289b7 removed the stray repo-root operations.jsonl after preserving a byte-identical copy at specs/logscan-2026-09-07/evidence/, inlined it into a comment on MCP#109, and added operations.jsonl*/operations.log* to .gitignore. It no longer appears in git status. The underlying log_dir_fn defect remains open as MCP#109."
+    "operations_jsonl_carry_forward": "RESOLVED BY THE OTHER CREW, not us. fa289b7 removed the stray repo-root operations.jsonl after preserving a byte-identical copy at specs/logscan-2026-09-07/evidence/, inlined it into a comment on MCP#109, and added operations.jsonl*/operations.log* to .gitignore. It no longer appears in git status. The underlying log_dir_fn defect remains open as MCP#109.",
+    "cp1_live_write_check_92": "CLEARED 2026-09-07 by the user's explicit authorization ('go. mutating Sena is fine'), FLEx closed (PID 38840 gracefully closed; it held 'Mbugwe LizzieHC practice', not Target). FLEXTOOLSMCP_E2E_SCRATCH_PROJECT='Sena 3' pytest tests/test_issue92_write_path_e2e.py -m requires_flex -> BOTH legs PASSED, 2 passed in 29.71s. Independent disk-level proof, not just the tests' assertions: marker cp1-asp-3e1d2c0a appears twice in Sena 3.fwdata (Definition + ScientificName), mtime 2026-09-07 12:33:28, size 55989135 -> 55989325 bytes. This was the BINDING merge blocker and it no longer blocks."
   },
-  "issues_open_none_closed": ["#40", "#80", "#96", "#97", "#100", "#101", "#103", "#107", "#112", "#113"],
+  "issues_open_none_closed": [
+    "#40",
+    "#80",
+    "#96",
+    "#97",
+    "#100",
+    "#101",
+    "#103",
+    "#107",
+    "#112",
+    "#113"
+  ],
   "issues_filed_spurt4": {
     "#112": "phantom CastingOperations.cast_to_concrete advertised in 5 user-facing hints (fixed same cycle, 1f8e90b)",
     "#113": "shipped LibLCM template crashed: wrong arity + non-exported ILexEntry (fixed same cycle, 1f8e90b)"
@@ -115,5 +151,22 @@
     "Claude-Swahili -- live linguistic data, strictly off limits",
     "src/flextoolsmcp/server/handlers/execution.py:3138 -- do NOT edit until the user authorizes the MCP#80 design (see blockers_needing_user item 1)"
   ],
-  "updated": "2026-09-07"
+  "updated": "2026-09-07",
+  "cp1_92_live_check": {
+    "result": "PASS -- both legs",
+    "date": "2026-09-07",
+    "project": "Sena 3 (1464 entries / 1728 senses)",
+    "command": "FLEXTOOLSMCP_E2E_SCRATCH_PROJECT=\"Sena 3\" pytest tests/test_issue92_write_path_e2e.py -m requires_flex -v",
+    "disk_evidence": "cp1-asp-3e1d2c0a x2 in Sena 3.fwdata; mtime 2026-09-07 12:33:28; 55989135 -> 55989325 bytes",
+    "target_cannot_host_it": "A first run against Target FAILED both legs with IndexError: list index out of range at entry = entries[0]. Target has 0 LexEntry and 0 LexSense records (verified in its .fwdata); so does GT038 NKP2 Throwaway. The handoff's target_preconditions:MET is about #96 and does NOT extend to #92. Use Sena 3 for any future #92 re-run.",
+    "status_md_was_stale": "STATUS.md claimed the ApplySyncableProperties leg had no automated coverage and needed a manual run. FALSE -- test_applysyncableproperties_persists_across_close_and_reopen exists and covers the multi-mutation TypeError path. One pytest command is all of SPEC Verification step 1. Corrected in STATUS.md.",
+    "incidental": "Even the failed Target run showed the session opening with writeEnabled=True and an explicit undoable=False, preflight tier=none -- CP1's hardcoded fix is live in the running code.",
+    "note": "#92 is already CLOSED on GitHub; this check validates the fix, it does not need a close."
+  },
+  "merge_blockers_remaining": [
+    "the flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and undecided",
+    "reviews/cycle1-domain.md and cycle1-explore-nullmorph.md need a keep-or-drop call",
+    "STATUS.md's own stale-section reconciliation",
+    "NOTE: none of these are live-verification items. The binding live check is CLEARED."
+  ]
 }

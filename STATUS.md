@@ -252,9 +252,10 @@ standalone and it does -- but only once the live check passes.
 The branch is 10 commits ahead of `origin/main` and unpushed. Four things block a
 merge; only the last two came from the bugfix campaign:
 
-1. **The CP1 live write check for #92 has still never been run** -- see the blocker
-   immediately below, which says in its own words "Do not merge
-   `feat/shared-mode-access` to `main` until this passes." This is the binding one.
+1. ~~**The CP1 live write check for #92 has still never been run**~~ -- **CLEARED
+   2026-09-07.** The check was run with the user's explicit authorization and
+   **BOTH legs PASSED**. See "RESOLVED -- the CP1 live write check" below. This
+   was the binding blocker; it no longer blocks.
 2. **This section is stale** (see the correction above) -- reconcile before
    reasoning about what merging would ship.
 3. **The flexicon 4.4.1 -> 4.5.2 index migration is uncommitted and undecided**:
@@ -273,9 +274,50 @@ Safe on merge: `cb3f1b8` is the ONLY commit in `origin/main..HEAD` carrying an
 auto-close keyword (`closes #103`), and #103 genuinely is fixed. Nothing
 auto-closes #96, #40, #97, #100 or #101 -- all six remain open by design.
 
-### BLOCKER -- needs the user: the CP1 live write check
+### RESOLVED -- the CP1 live write check (2026-09-07): BOTH LEGS PASS
 
-**Do not merge `feat/shared-mode-access` to `main` until this passes.** CP1 is
+**This no longer blocks a merge.** Run 2026-09-07 with the user's explicit
+authorization ("go. mutating Sena is fine"), FLEx closed:
+
+```
+FLEXTOOLSMCP_E2E_SCRATCH_PROJECT="Sena 3"
+pytest tests/test_issue92_write_path_e2e.py -m requires_flex -v
+-> test_setgloss_persists_across_close_and_reopen              PASSED
+-> test_applysyncableproperties_persists_across_close_and_reopen PASSED
+   2 passed in 29.71s
+```
+
+Independent disk-level confirmation, not just the tests' own assertions: the
+marker `cp1-asp-3e1d2c0a` appears twice in `Sena 3.fwdata` (the `Definition`
+and `ScientificName` writes), file mtime 2026-09-07 12:33:28, size grown
+55989135 -> 55989325 bytes. So the multi-mutation path reached DISK, which is
+the whole point of the check.
+
+Two corrections to what this section used to say:
+
+- **The scratch project cannot be `Target`.** A first run against `Target`
+  failed both legs with `IndexError: list index out of range` at
+  `entry = entries[0]`. `Target` has **0 LexEntry and 0 LexSense records**
+  (verified directly in its `.fwdata`); so does `GT038 NKP2 Throwaway`. Neither
+  can host this test. `Sena 3` has 1464 entries / 1728 senses. Note the
+  campaign handoff's `target_preconditions: MET` was about **#96** and does not
+  extend to #92.
+- **The "gap to close by hand" below is stale.** Both legs are automated now --
+  `test_applysyncableproperties_persists_across_close_and_reopen` exists and
+  covers the multi-mutation `TypeError` path alongside the simple-setter
+  `InvalidOperationException` path. There is no manual leg; the single pytest
+  command above is the whole of SPEC Verification step 1.
+
+Incidental evidence from the failed `Target` run, still worth keeping: the
+session opened with `writeEnabled=True with an explicit undoable=False` and
+preflight passed at `tier=none`, i.e. CP1's hardcoded fix was demonstrably
+live in the running code even before the passing run.
+
+The original blocker text follows, kept for the procedure and the rationale.
+
+---
+
+**(HISTORICAL)** Do not merge `feat/shared-mode-access` to `main` until this passes. CP1 is
 a write-path fix whose entire point is that writes reach disk; every test that
 currently passes stubs `run_script_async`, which is exactly why the original
 #92 breakage survived 27 `write_enabled: true` runs undetected. A static-only
@@ -308,7 +350,11 @@ will not run it unattended; only the user authorizes it.
 
 ## Next pickup -- shared-mode-access
 
-1. User runs the CP1 live write check above and reports the result.
+1. ~~User runs the CP1 live write check above and reports the result.~~ **DONE
+   2026-09-07 -- PASSED (both legs, against `Sena 3`). See the RESOLVED section
+   above.** The remaining merge blockers are the index migration, the
+   `cycle1-*.md` keep-or-drop call, and the stale-section reconciliation --
+   none of which are live-verification items.
 2. On pass: merge CP1 to `main` closing #92, then start **CP2 -- access probe**
    (`project_access.py`, `read_lock_holder`, `probe_project_access`), which is
    new detection with no behavior change.

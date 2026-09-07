@@ -14,7 +14,10 @@ Covers:
 """
 
 import asyncio
+import itertools
 import json
+import os
+import time
 
 import pytest
 
@@ -26,7 +29,47 @@ from server.handlers.diagnostic_health import compute_library_match
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Cycle-7 CP-D D-2: versioning._dir_state_token() keys the file-discovery
+# cache on `index_dir.stat().st_mtime`. The TestFileDiscoveryCacheInvalidation
+# tests below write a file, look it up (caching a result keyed to the
+# directory's current mtime), then write a SECOND file and expect the next
+# lookup to see it. That only works if the directory's mtime visibly changes
+# between the two writes. Two writes made microseconds apart do not reliably
+# produce two distinguishable `st_mtime` values on Windows/NTFS -- the
+# resolution/rounding the stdlib surfaces there is coarse enough that the
+# second write can land in the same observable mtime as the first, so the
+# cache silently keeps serving the stale (pre-second-write) result. That is
+# an intrinsic race (~15-25% in true isolation, confirmed empirically for
+# cycle-7 CP-D D-2 -- see specs/swahili-audit-2026-09/reviews/
+# cycle7-programmer-p2.md), not a sibling-test interaction, and not
+# something a production cache-key fix belongs to (a monotonic per-write
+# directory-content hash would be a legitimate production fix, but that's
+# out of scope / out of this task's lock set).
+#
+# _bump_dir_mtime() sidesteps filesystem timestamp-resolution entirely: it
+# sets an EXPLICIT, strictly-increasing mtime via os.utime() rather than
+# trusting the filesystem to have advanced its clock (or its rounding) far
+# enough between two writes. A module-level monotonic counter guarantees
+# every call produces a value later than the last, regardless of how fast
+# the test runs or how coarse the OS's mtime granularity is.
+_mtime_counter = itertools.count(1)
+
+
+def _bump_dir_mtime(dir_path) -> None:
+    """Force dir_path's mtime strictly forward so cache-key lookups that
+    read it (versioning._dir_state_token) observe a real, distinguishable
+    change -- see the module-level comment above for why this can't be left
+    to the filesystem alone."""
+    new_time = time.time() + next(_mtime_counter)
+    os.utime(dir_path, (new_time, new_time))
+
+
 def _write_api_file(lib_dir, prefix, version, entities=None):
+    """Write a versioned API fixture file, then explicitly bump lib_dir's
+    mtime (see _bump_dir_mtime) so a subsequent file-discovery cache lookup
+    against lib_dir is guaranteed to observe this write as a change, even
+    when two writes happen inside the same filesystem mtime-resolution
+    window."""
     lib_dir.mkdir(parents=True, exist_ok=True)
     path = lib_dir / f"{prefix}_v{version}.json"
     data = {
@@ -34,6 +77,7 @@ def _write_api_file(lib_dir, prefix, version, entities=None):
         "entities": entities if entities is not None else {"ILexEntry": {}},
     }
     path.write_text(json.dumps(data), encoding="utf-8")
+    _bump_dir_mtime(lib_dir)
     return path
 
 

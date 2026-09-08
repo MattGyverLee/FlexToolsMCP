@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "companion": {
+      "version": "0.21.0",
+      "source": "local",
+      "manifest_hash": "sha256:05502a3fd1eb40921640244e962507a6923373ffa8e5c3c446a7c251fbde8e9b",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {},
+      "registered_skills": [],
+      "installed_at": "2026-09-08T00:42:09.463960+00:00"
+    }
+  }
+}

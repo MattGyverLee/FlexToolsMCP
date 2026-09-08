@@ -1258,3 +1258,299 @@ touching domains 1 and 2:
 Both standard domains were restored exactly, so no residue remains, but the
 `Create`-a-custom-domain route (leg C) was the lower-risk way to answer Q2 and
 should be preferred if Q2 is ever re-run.
+
+## Item 5 -- Q1, writing system create + modify with FLEx open
+
+**Verdict: `FLEx UI corrupted` -- FieldWorks CRASHED. Class A by necessity:
+this operation MUST be refused with `requires_exclusive_access`.**
+
+This is the most severe result in the session and the strongest justification
+for the CP5 gate. It is not a staleness or visibility nuisance -- it takes the
+application down.
+
+The user predicted this before the run, from field experience:
+
+> "Creating (maybe modifying) a WS and adding custom fields ae (so far) the only
+> operations that fail to happen in a shared session."
+
+### Before-state (op `op-102635313-003`)
+
+```
+tag='en'                name='English'         font='Times New Roman' size=12.0 rtl=False
+tag='pt'                name='Portuguese'      font='Times New Roman' size=12.0 rtl=False
+tag='seh'               name='Sena'            font='Doulos SIL'      size=12.0 rtl=False
+tag='seh-fonipa-x-etic' name='Sena (Phonetic)' font='Charis SIL'      size=12.0 rtl=False
+analysis   = ['en', 'pt']
+vernacular = ['seh', 'seh-fonipa-x-etic']
+Exists('fr') before = False
+```
+
+### The write -- accepted with no refusal, FLEx open, `open_shared`, holder PID 40568
+
+```
+legB: en font size before = 12.0
+  legB SetFontSize OK -> 14.0
+legA Create OK -> tag='fr' name='French'
+analysis after   = ['en', 'pt', 'fr']
+Exists('fr') after = True
+```
+
+`lcm_undoable_action_count: 3`. The response carried the standard advisory --
+"Custom-field and writing-system changes are NOT safe from a peer and are not
+covered by this path" -- as a **note**, not a refusal. Nothing blocked the
+write.
+
+### Both legs reached disk, contradicting "it does not happen"
+
+Checked independently of the LCM read-back:
+
+```
+fr.ldml   51,564 bytes  Sep  8 10:26   <- created by the peer run
+en.ldml      803 bytes  Sep  8 10:26   <- rewritten (the font-size change)
+```
+
+and `SharedSettings/LexiconSettings.plsx` gained:
+
+```xml
+<WritingSystem id="fr">
+  <Abbreviation>fr</Abbreviation>
+  <LanguageName>French</LanguageName>
+</WritingSystem>
+```
+
+So at the file level the WS creation demonstrably *did* happen -- LDML store and
+shared settings both written. The user's "fails to happen" is therefore about
+the *outcome in FLEx*, not about the write being dropped.
+
+### FLEx CRASHED
+
+Roughly one minute after the write, on window activation, FieldWorks threw:
+
+```
+Msg: Something went wrong trying to invoke
+     SIL.FieldWorks.XWorks.WritingSystemListHandler:OnDisplayWritingSystemList().
+Class: System.Exception
+**Inner Exception:
+Msg: Object reference not set to an instance of an object.
+Class: System.NullReferenceException
+Stack: at SIL.FieldWorks.XWorks.WritingSystemListHandler.AddWritingSystemList(
+           UIListDisplayProperties display, IEnumerable`1 list)
+           in Src/xWorks/TextListeners.cs:line 286
+       at SIL.FieldWorks.XWorks.WritingSystemListHandler.OnDisplayWritingSystemList(
+           Object parameter, UIListDisplayProperties& display)
+           in Src/xWorks/TextListeners.cs:line 268
+FWVersion: 9.3.10.1448  2026-07-09 (64 bit)
+ProjectName: Sena 3   ProjectObjectCount: 152226
+```
+
+FLEx's own log gives an unambiguous timeline:
+
+```
+10:20:53 AM  App Launched
+10:20:58 AM  Created new window [Sena 3]
+             (peer run added 'fr' and rewrote en.ldml at 10:26)
+10:27:05 AM  Activated window [Sena 3]
+10:27:05 AM  Exception: ... OnDisplayWritingSystemList(). Object reference not
+             set to an instance of an object.
+```
+
+The crash is in the **toolbar/menu writing-system list population**, reached
+from `XWindow.SynchronizedOnIdleTime` -> `ReBarAdapter.OnIdle` ->
+`ChoiceGroup.Populate`. A peer added a writing system underneath a live master;
+the master's WS list handler then dereferenced null while building its combo.
+
+**Mechanism note:** the crash is on a *display* path, not a write path, so the
+crash itself is not expected to have corrupted data -- and no data damage was
+observed. The damage is to FLEx's usability: the project cannot be worked in
+while the extra WS is present, because the toolbar list is rebuilt on idle.
+
+**Classification.** Q1 is **Class A -- must be refused by construction**. The
+current behaviour (proceed, with an advisory note in the response) is not
+adequate: the advisory is machine-readable text in a JSON field that the user
+never sees, and the consequence is an application crash. CP5's
+`requires_exclusive_access` refusal is exactly right for this row, and this is
+its acceptance evidence.
+
+### FINDING (k) -- `_pid_is_alive` reports a freshly-dead process as ALIVE
+
+Discovered while cleaning up, and it is a genuine #93 bug.
+
+After FieldWorks was fully closed (`Get-Process -Name FieldWorks` count **0**;
+`tasklist /FI "PID eq 40568"` -> "No tasks are running which match"), the probe
+still reported:
+
+```json
+"project_access": {
+  "project": "Sena 3",
+  "verdict": "open_shared",
+  "sharing_enabled": true,
+  "holder": {"pid": 40568, "process_name": "FieldWorks",
+             "timestamp_ticks": 639244596539187867},
+  "lock_age_seconds": 512.646733
+}
+```
+
+and the health warning asserted outright: *"held by FieldWorks (PID 40568),
+**process still running**."* Per the documented decision table a dead PID must
+win and yield `stale_lock`.
+
+Root cause, from `project_access.py:161-178`:
+
+```python
+if sys.platform == "win32":
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if handle:
+        kernel32.CloseHandle(handle)
+        return True
+```
+
+`OpenProcess` **succeeds on a terminated-but-not-yet-reaped process**. Windows
+keeps the process kernel object alive while any handle to it remains open --
+here almost certainly the crash reporter. `tasklist`/`Get-Process` do not list
+such a process, but `OpenProcess` still returns a valid handle, so
+`_pid_is_alive` returns True for a dead PID.
+
+This also explains why the four stale **python** locks in the same health
+response were classified correctly (`"process no longer running (stale)"`):
+those PIDs died 15,000-31,000 minutes ago and have been fully reaped, so
+`OpenProcess` fails for them.
+
+**The bug is time-dependent, and worst exactly when it matters most** -- the
+seconds-to-minutes window right after a crash, which is precisely when a user
+needs stale-lock detection to tell them the project is free.
+
+Impact on #93 specifically:
+
+- **CP5** would refuse a WS / custom-field write with `requires_exclusive_access`
+  claiming FieldWorks is running when it is not, leaving the user stuck with no
+  remedy except deleting the lock file by hand.
+- **CP4** tells the user "writes through the shared commit log are expected to
+  succeed without closing FieldWorks" when FieldWorks is already closed.
+- The `stale_lock` verdict that CP2/CP3 depend on cannot fire in the
+  post-crash window at all.
+
+**Fix:** follow a successful `OpenProcess` with `GetExitCodeProcess` and treat
+any value other than `STILL_ACTIVE` (259) as dead. Note the existing
+access-denied branch below line 176 is correct and should be preserved -- the
+new check applies only where the handle was obtained.
+
+Incidentally: the lock file cleared itself once the cleanup write session
+closed, so no manual lock deletion was needed.
+
+### FINDING (l) -- `WritingSystemOperations.Delete` is incomplete
+
+Cleanup ran with FieldWorks closed (op `op-102954903-005`):
+
+```
+restored en font size -> 12.0
+deleted the 'fr' writing system
+=== after ===
+  tag='en' size=12.0
+  tag='pt' size=12.0
+  tag='seh' size=12.0
+  tag='seh-fonipa-x-etic' size=12.0
+Exists('fr') after = False
+analysis after = ['en', 'pt']
+```
+
+The LCM model is clean. **The filesystem is not:**
+
+```
+fr.ldml                 51,564 bytes  Sep 8 10:26   STILL PRESENT
+LexiconSettings.plsx    <WritingSystem id="fr">      STILL PRESENT
+WritingSystemStore/trash/                            fr.ldml NOT moved here
+```
+
+`Delete` removes the writing system from the LCM model but leaves both the LDML
+file and the `SharedSettings/LexiconSettings.plsx` entry behind. It also does
+not use the `trash/` mechanism that FLEx itself uses (seven older LDMLs sit in
+`trash/` from Sep 7), so there is not even a tidy-away path.
+
+**Consequence:** a project can be left with an LDML file and a shared-settings
+entry for a writing system LCM says does not exist. On the next FLEx open there
+is a real risk FLEx re-ingests `fr` from either source, resurrecting the WS --
+and, given finding (k)'s crash, crashing again in the same handler.
+
+`Create` therefore is not cleanly reversible through the API, which compounds
+the Class A argument: if the operation cannot be safely undone, it should not be
+permitted from a peer at all.
+
+Residue was flagged to the user for an explicit decision rather than removed
+silently, because clearing it means hand-editing project internals and the
+server's own remedy text states it "never writes LexiconSettings.plsx on your
+behalf".
+
+### Residue removal (authorised explicitly by the user: "yes, remove them")
+
+Both files were backed up first, so the step is reversible:
+
+```
+<scratchpad>/ws-residue-backup/fr.ldml                    51,564 bytes
+<scratchpad>/ws-residue-backup/LexiconSettings.plsx.before  1,292 bytes
+```
+
+Actions taken outside the MCP, by hand:
+
+1. `WritingSystemStore/fr.ldml` deleted (recycled, so also recoverable from the
+   Recycle Bin).
+2. The `<WritingSystem id="fr">` block removed from
+   `SharedSettings/LexiconSettings.plsx` with a byte-level regex, so the rest of
+   the file is preserved byte-for-byte (1292 -> 1159 bytes).
+
+Verified afterwards:
+
+```
+blocks removed: 1
+remaining WritingSystem ids: ['en', 'grc', 'hbo', 'pt', 'seh-fonipa-x-etic', 'seh']
+projectSharing = true
+plsx id="fr" count: 0
+fr.ldml present? no (removed)
+```
+
+The remaining id set matches the original exactly (compare the 0a pre-flight
+read at the top of this session), the file still parses as XML, and
+`projectSharing="true"` survived the edit.
+
+### FINDING (m) -- peer writes record no provenance in the WS change log
+
+`WritingSystemStore/idchangelog.xml` retains one entry from the test:
+
+```xml
+<Add Producer="???" ProducerVersion="unknown" TimeStamp="2026-09-08T15:26:40Z">
+  <Id>fr</Id>
+</Add>
+```
+
+Every entry FLEx itself wrote carries real provenance, e.g.
+`Producer="FieldWorks" ProducerVersion="Version 8.3.9 (apparent build date:
+24-Jul-2017)"`. The flexicon/MCP write supplied neither, logging `"???"` /
+`"unknown"`.
+
+Minor, but worth fixing if writing systems are ever legitimately writable: an
+audit log that cannot attribute a change is of limited use precisely when
+someone is trying to work out what modified a project.
+
+**This entry was deliberately left in place.** `idchangelog.xml` is an
+append-only history, not authoritative state -- demonstrated by the fact that it
+contains `<Delete>` records for `en`, `grc`, `hbo`, `pt` and `seh`, every one of
+which is currently present and working. Removing a history entry would falsify
+the log rather than restore the project.
+
+### Sena 3 final state -- restored, with one deliberate exception
+
+| Object | State |
+|---|---|
+| `bubu bubu` sense 1 gloss | `gaguez` (original) -- verified in the FLEx UI by the user |
+| Reversal indexes | `English`/`en`, `Portuguese`/`pt`, correct in both WSs; the `seh` index deleted |
+| Semantic domains | domain 1 `Universe, creation`/`''`, domain 2 `Person`, domain 10 deleted |
+| Writing systems | `en`, `pt`, `seh`, `seh-fonipa-x-etic`; `en` font size back to 12.0; `fr` gone from LCM, LDML store and plsx |
+| `.fwdata.lock` | cleared itself when the last write session closed |
+
+**The one deliberate exception:** `projectSharing` is still `"true"`. `Sena 3`
+began this session with **no** `projectSharing` attribute (sharing OFF) -- it was
+enabled by the user through the FLEx UI to run item 4 part 2. It has been left
+on rather than reverted, because turning it back off is a FLEx UI action and is
+the user's call. Note that re-running item 4 part 1 (the CP3 checkpoint) requires
+a sharing-OFF project, so `Sena 3` is no longer in a state to reproduce that
+specific test until sharing is turned off again.

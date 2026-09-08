@@ -757,3 +757,232 @@ Set write_enabled=True and these WILL be rejected.
 The graduated behaviour (warn on read, reject on write) worked exactly as
 documented, and the raw-access probe that produced these warnings still ran and
 returned the values that diagnosed finding (g).
+
+## Item 7 -- Q3, reversal index create / rename with FLEx open
+
+**Before-state** (op `op-094242681-010`), 2 indexes, both empty:
+
+```
+name='Portuguese' ws='pt' entries=0
+name='English'    ws='en' entries=0
+```
+
+Sena 3 writing systems: analysis = `en`, `pt`; vernacular = `seh`,
+`seh-fonipa-x-etic`. Default analysis WS is `pt`.
+
+### Write 1 (op `op-094443435-013`), FLEx open, `open_shared`
+
+```
+rename leg: 'en' index currently 'English'
+  SetName OK -> 'CP4LIVE-Reversal-2026-09-08'
+Create(pt) raised FP_ParameterError: Reversal index already exists for writing system pt
+Create(seh) OK -> name='CP4LIVE-new-seh'
+```
+
+`lcm_undoable_action_count: 3`.
+
+- The **duplicate-WS guard works**: `Create` on `pt`, which already had an
+  index, was refused cleanly with an accurate message.
+- The **analysis-vs-vernacular guard does not exist**: `Create` on `seh`, a
+  *vernacular* WS, succeeded, against the method's own docstring ("Create a new
+  reversal index for an **analysis** writing system"). See finding (h).
+
+### First human observation, FLEx still open
+
+The user reported: **"there seem to be 2 english reversals and one Portuguese.
+No SEH"**.
+
+The peer session, meanwhile, read back three indexes. Re-read verbatim
+(op `op-095721984-015`), per-writing-system names:
+
+```
+index 0: ws='pt'   GetName(en)='Portuguese'  GetName(pt)='Portuguese'   guid=07a79808-...
+index 1: ws='seh'  GetName(en)=''            GetName(pt)='CP4LIVE-new-seh'  guid=bde3f661-...
+index 2: ws='en'   GetName(en)='English'     GetName(pt)='CP4LIVE-Reversal-2026-09-08'  guid=c475581c-...
+```
+
+Two things fell out of this:
+
+1. **`SetName` with no `wsHandle` wrote into `pt`, not `en`.** Index 2 still
+   held `'English'` in the `en` WS; the new name went to the analysis-default
+   WS. Same root cause as finding (g) -- flexicon resolves the default WS to
+   the analysis-default, which is `pt` in this project.
+2. The `seh` index had **no English name at all** (`GetName(en) == ''`).
+
+### Write 2 -- the decisive test (op `op-095814713-016`)
+
+To separate "wrong WS" from "peer write not visible", both names were set
+again with an **explicit `en` handle**:
+
+```
+seh index: en-name before = ''
+  SetName(en WS) OK -> 'CP4LIVE-SEH-2026-09-08'
+en index:  en-name before = 'English'
+  SetName(en WS) OK -> 'CP4LIVE-EN-2026-09-08'
+
+=== final state (en-WS names) ===
+  ws='pt'  en-name='Portuguese'             default-name='Portuguese'
+  ws='seh' en-name='CP4LIVE-SEH-2026-09-08' default-name='CP4LIVE-new-seh'
+  ws='en'  en-name='CP4LIVE-EN-2026-09-08'  default-name='CP4LIVE-Reversal-2026-09-08'
+```
+
+### Second human observation, FLEx still open -- **the actual finding**
+
+The user reported: **"In the main 'Reversal Index' view, there is only English
+and Portuguese. When I go to manage layouts, that's where I see English,
+English, Portuguese"**.
+
+This is conclusive on two points, and it corrects the working hypothesis:
+
+**(1) FLEx's reversal UI does not read the `Name` field at all.** After
+`SetName` was applied to the `en` writing system explicitly -- the exact WS the
+UI displays -- the main view *still* read "English". The label is derived from
+the index's **writing system**, not its `Name`. Therefore
+`ReversalIndexOperations.SetName` can never be observed in that view,
+regardless of writing system. The earlier "wrong WS" reading was only half
+right: the WS default is a genuine trap (see finding g/k) but is *not* what
+made the rename invisible here.
+
+**(2) A peer-created reversal index on a non-analysis WS leaves FLEx in an
+inconsistent UI state.** The `seh` index demonstrably exists in the data
+(three indexes, `ws='seh'`, distinct GUID `bde3f661-c058-40cd-bf15-4000e4364bda`),
+and FLEx renders it in **manage layouts** (3 entries) but **not** in the main
+Reversal Index view (2 entries) -- and labels it **"English"** rather than
+"Sena". So the object is half-visible and mislabelled.
+
+**Classification for SPEC Section 3 (pre-restart):** this is *not* the `#96
+silently_lost` shape. Both writes landed and are readable. The failure mode is
+different and previously uncatalogued:
+
+- the **rename** is `applied, persists, but is unobservable in the FLEx UI by
+  design` -- the UI does not surface that field;
+- the **create-on-vernacular-WS** is `applied, but produces an inconsistent /
+  mislabelled FLEx UI state`.
+
+The second argues that `ReversalIndexes.Create` should **refuse** a
+non-analysis writing system (Class A -- safe by construction) rather than
+permit it, since the resulting object is not fully representable in FLEx.
+
+**Restart observation: PENDING** -- required to complete the four-outcome
+verdict (does either change survive a full FLEx close/reopen).
+
+**Cleanup owed** (not yet performed, deliberately -- deleting before the
+restart check would destroy the observation):
+
+- restore index 2's name to `'English'` in **both** `en` and `pt`
+  (the `pt` alternative was overwritten by write 1, and originally held
+  `'English'`);
+- delete the `seh` index (`guid=bde3f661-c058-40cd-bf15-4000e4364bda`);
+- note that all writes ran `undoable=False`, so there is no rollback -- cleanup
+  is by explicit compensating write only.
+
+### Restart observation -- **item 7 verdict: MIXED, and one leg is `silently_lost`**
+
+The user closed FieldWorks completely, reopened `Sena 3`, and reported:
+**"after restarting flex, same state"** -- i.e. main Reversal Index view still
+showed only English + Portuguese, and manage layouts still showed
+English / English / Portuguese.
+
+The UI *appearance* was indeed unchanged. But the **data** was not, and this was
+initially mis-scored as "applied and survives restart" before the values were
+diffed properly. Corrected verdict below.
+
+Pre-restart state (op `op-095814713-016`) vs post-restart state
+(op `op-100237428-017`, read at the top of the cleanup run):
+
+| index | alternative | pre-restart | post-restart | outcome |
+|---|---|---|---|---|
+| ws=`en` | `en` name | `CP4LIVE-EN-2026-09-08` | `CP4LIVE-EN-2026-09-08` | **survived** |
+| ws=`en` | `pt` name | `CP4LIVE-Reversal-2026-09-08` | `English` | **REVERTED** |
+| ws=`seh` | `en` name | `CP4LIVE-SEH-2026-09-08` | `CP4LIVE-SEH-2026-09-08` | **survived** |
+| ws=`seh` | `pt` name | `CP4LIVE-new-seh` | `Sena` | **REVERTED** |
+| ws=`pt` | both | `Portuguese` | `Portuguese` | untouched (control) |
+
+Post-restart raw read, verbatim:
+
+```
+=== before cleanup ===
+  ws='pt'  en='Portuguese'             pt='Portuguese'
+  ws='seh' en='CP4LIVE-SEH-2026-09-08' pt='Sena'
+  ws='en'  en='CP4LIVE-EN-2026-09-08'  pt='English'
+```
+
+**On reopening the project, FLEx reset the `pt` alternative of both modified
+reversal indexes to the writing system's language name** (`English`, `Sena`),
+discarding the peer-written values. The `en` alternatives were left alone.
+Mechanism not established from here -- most likely FLEx's own reversal-index
+name maintenance regenerating the name in the default analysis WS on load.
+
+**Why this is the dangerous case.** `pt` is Sena 3's **analysis-default**
+writing system, which is exactly the alternative that
+`SetName(ix, "new")` writes to when `wsHandle` is omitted -- the naive,
+obvious call. So:
+
+- `SetName(ix, name)` (default WS) -> **applied, then silently lost** on the
+  next FLEx open. No error, no warning, and a read-back in the same session
+  confirms success.
+- `SetName(ix, name, WSHandle("en"))` (explicit WS) -> **applied and
+  survives**.
+
+**Classification: Class B (`silently_lost`) for the default-WS path**, and this
+row therefore *does* need CP5 gating or an API-level fix. This reverses the
+interim reading recorded above, which had concluded "not the #96 shape".
+
+The `Create` leg is classified separately and differently:
+
+- `Create` on a non-analysis WS -> **applied, survives restart** (the `seh`
+  index was still present after the restart; it had to be explicitly deleted
+  during cleanup), but leaves FLEx **persistently inconsistent**: present in
+  manage layouts, absent from the main Reversal Index view, and labelled
+  "English" rather than "Sena".
+- This is **not** a shared-mode failure. `ReversalIndexes.Create` performs no
+  analysis-vs-vernacular validation at all (finding h), so the same
+  half-representable object would be produced with FLEx closed. It is a
+  flexicon argument-validation bug and should be fixed by refusing a
+  non-analysis WS -- **not** by a CP5 exclusive-access gate.
+
+**Open question, explicitly not settled.** All three indexes held **0 entries**
+throughout. Emptiness is ruled out as *the* reason the `seh` index was hidden
+from the main view -- `en` and `pt` were equally empty and both displayed, so
+emptiness was constant while visibility was not. What remains untested is
+whether a rule of the form "display if analysis WS **or** has entries" is in
+play, i.e. whether the `seh` index would have appeared had it contained a
+reversal entry. Testing this requires recreating the index and adding an entry.
+Raised by the user during the session and recorded rather than assumed.
+
+### Cleanup performed (op `op-100237428-017`)
+
+```
+restored 'en' index name to 'English' in both en and pt
+deleted the seh reversal index
+=== after cleanup ===
+  ws='pt' en='Portuguese' pt='Portuguese'
+  ws='en' en='English'    pt='English'
+```
+
+`lcm_undoable_action_count: 4`. Sena 3's reversal indexes are back to the
+two-index before-state, correct in both writing systems.
+
+### Bonus: the item 4 part 2 open question is now settled
+
+The FLEx restart rewrote the lock file:
+
+```
+before: {"PID":35236,"ProcessName":"FieldWorks","Timestamp":639244562327878323}
+after:  {"PID":45352,"ProcessName":"FieldWorks","Timestamp":639244584865398293}
+```
+
+FLEx PID 45352 started 10:01:24; the pre-restart holder 35236 started 09:23:51.
+
+So **a genuine FLEx project reopen does rewrite the Palaso lock file** (new PID,
+new timestamp). At item 4 part 2 the lock file was byte-identical before and
+after the sharing flag flip, which therefore proves FLEx did **not** reopen the
+project then -- and the peer open succeeded anyway.
+
+**Conclusion: reopening FLEx is NOT required for the `projectSharing` flag to
+take effect for a peer.** The peer reads the flag at its own cache-open.
+`ENABLE_SHARING_REMEDY` currently tells the user "FLEx will ask to reopen the
+project -- let it, because the flag is read once when the cache opens
+(LcmCache.cs:219)", which overstates a requirement. Recommend softening that
+sentence to note the reopen matters for FLEx's own cache, not for the server's
+ability to attach.

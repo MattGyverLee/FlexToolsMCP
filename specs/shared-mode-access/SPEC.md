@@ -181,6 +181,17 @@ Session 2 preconditions in `evidence/live-session-checklist.md`.
 
 ### 3c. Class C -- LCM permits it and it crashes the FLEx holder (`failure_class: crashes_holder`, NEW 2026-09-08)
 
+> **RATIFIED by lex-lead, cycle 8 (2026-09-08).** The cycle-8 brief asked for
+> this row to be filed under Class A; `lex-doc` declined and created Class C
+> instead. That deviation is **upheld and is now spec-normative.** Class A is
+> defined by a *mechanism* -- LCM raises before anything is written -- and its
+> prose entitlement ("safe by construction... needs no alarm") follows from
+> that mechanism, not from the row's topic. This row's write reached disk on
+> both legs with nothing refusing it, so filing it under Class A would have
+> attached "needs no alarm" to the one row in the table that must be REFUSED.
+> Classify by mechanism, never by outcome-similarity; the scoping note under
+> the Class A bullet above is the guard against a repeat.
+
 Neither prior class fits this outcome: the write is not `refused` (both
 legs reached disk, verified independently of the LCM read-back) and it is
 not `silently_lost` (nothing was lost -- it landed and stayed landed). The
@@ -430,12 +441,19 @@ genuine FieldWorks holder rather than a leftover python process.
 >    state and of shared mode, because `OpenProject()` holds a non-undoable
 >    UnitOfWork open until `CloseProject()`. Assuming exclusivity costs
 >    nothing here: the operation cannot succeed as a peer regardless.
-> 3. **The write gate cannot currently be relied on to catch either.** A live
->    schema mutation executed with `confirmed=False` because
->    `is_mutating_script` came back `false` for a method the API index marks
->    `is_mutating: true`. Until that is fixed, a policy that depends on the
->    gate recognising these calls would be resting on a detector that
->    demonstrably misses them.
+> 3. **The write gate could not be relied on to catch either -- FIXED
+>    `ee53b11`, but the policy stands regardless.** A live schema mutation
+>    executed with `confirmed=False` because `is_mutating_script` came back
+>    `false` for a method the API index marks `is_mutating: true`. `ee53b11`
+>    closed that hole (Step 1c resolves `project.<Accessor>` through the index;
+>    `compute_is_mutating_script()` is now the single formula behind both the
+>    Rung-3 preview and the `needs_lock` gate), and
+>    `project.CustomFields.CreateField(...)` guarded by `if modifyAllowed:` now
+>    reports `is_mutating_script: true` with a populated `mutations_detected`.
+>    This removes the *reason the policy was urgent*; it does not remove the
+>    policy. Detecting the call is not the same as refusing it on access
+>    grounds -- there is still no `requires_exclusive_access` code, so the
+>    assumption remains documentation and review policy until CP5 ships.
 >
 > **This settles the open scope call in T5.1's scoping note.** That note left
 > "whether writing systems join the custom-fields-only core now or ship as a
@@ -691,3 +709,40 @@ gap). The remaining entries are draft notes with no GitHub issue, by ruling.
   (`is_project_sharing_enabled`, `build_access_remedy`; both internally
   exception-tolerant, so the added risk is small). One-line fix: wrap the
   loop body in `except Exception: continue`, or guard the call site.
+- **P1, cycle 8, NEW, live-observed, OWNED -- the `flextools_health`
+  `warnings` array is frozen for the life of the server process and can
+  contradict its own response body.** Live evidence:
+  `evidence/live-session2.md` Item G. In one and the same `verbose=True`
+  payload the `warnings` array asserted a live FieldWorks holder ("53 s
+  old ... process still running") while that response's own
+  `verbose.project_access` read `verdict: "free"`, `holder: null`,
+  `lock_age_seconds: null`, with no lock file on disk. Confirmed from code by
+  cycle-8 verification (B3), three sites: `sweep_stale_locks()` runs **once**
+  at startup (`server.py:1048-1050`) into `api_index.startup_lock_warnings`;
+  `_build_warnings()` (`diagnostic_health.py:245`) re-reads that frozen list
+  on every call without recomputing; and `validate_server_state()`
+  (`validators.py:221`, run on every `run_module` preflight) reads the SAME
+  frozen attribute, so **CP2 and CP3 share this stale cache too**. Severity is
+  above cosmetic for two reasons: the warnings array is the first surface a
+  user or assistant reads, and it is the exact sentence ("process still
+  running") that finding (k) was about -- an observer can read a stale warning
+  as evidence that the `a8cf35b` fix failed when it has not. **OWNER: the next
+  spurt's `lex-programmer`, as the first item of the CP6 cleanup pass**, ahead
+  of the two P3s. Bounded fix: recompute the sweep inside `_build_warnings()`
+  (or attach a timestamp + short TTL to `startup_lock_warnings`) so the
+  warnings and `verbose.project_access` cannot disagree within one response;
+  `validators.py:221` must pick up the same freshening. No GitHub issue -- it
+  is inside #93's scope and this row is the durable record.
+- **P2, cycle 8, NEW -- #105's third evidence block is NOT fixed by
+  `ee53b11`.** `write_certification.mutating_calls_detected`
+  (`handlers/execution.py:4502`) filters `cert["mutating_calls"]` only and
+  never reads the new `cert["protected_calls"]`, so a properly-guarded
+  mutation still reports `mutating_calls_detected: []` alongside
+  `is_certified_readonly: true` on a real (non-`validate_only`) run. That is
+  exactly #105's third repro. The sibling `writeability.mutations_detected`
+  IS fixed and verified. Fixing this one changes the published semantics of a
+  contract field (`mutating_calls_detected` currently means "unprotected
+  mutating calls"), so it needs a deliberate decision -- either surface
+  `protected_calls` there tagged `protected: true`, matching
+  `mutations_detected`, or document the narrower meaning in
+  `docs/TOOL-CONTRACT.md`. Do not fold it into an unrelated cycle.

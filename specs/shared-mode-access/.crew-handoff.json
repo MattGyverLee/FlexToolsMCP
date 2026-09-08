@@ -1,11 +1,11 @@
 {
   "feature": "shared-mode-access",
   "status": "needs_human",
-  "last_cycle": 7,
-  "spurts_completed": 4,
-  "branch": "main, PUSHED. origin/main == local main == a805e91. The seven commits (6677fd8, 520dba4, ad1d50c, d0b360f, d278cc6, 7a4fa5c, a805e91) are no longer local-only. No PR open for #93.",
-  "branch_tip": "a805e91 (docs); code tip is 7a4fa5c",
-  "main_at": "a805e91 (was 433f3a0 before the 2026-09-08 direct push)",
+  "last_cycle": 8,
+  "spurts_completed": 5,
+  "branch": "main. Everything through 502ab92 is PUSHED (origin/main == 502ab92, verified by lex-lead at cycle-8 close via git rev-list --left-right --count). A cycle-8 report claimed '14 commits ahead, NOTHING PUSHED' -- that claim is FALSE. The ONLY unpushed commit is the cycle-8 close docs commit itself, HEAD, titled 'docs: close spurt 5 (cycle 8) -- CP4 signed off live, three rulings (#93)'. Push it at the start of the next spurt; it carries no closing keyword, so it will not re-close #93. No PR open for #93.",
+  "branch_tip": "HEAD = the cycle-8 close docs commit (LOCAL); last pushed is 502ab92; code tip is ee53b11",
+  "main_at": "502ab92",
   "tasks_done": [
     "T1.1 -- undoable=False hardcoded at the generated OpenProject call; undoable session flag + plumbing removed",
     "T1.2 -- flextools_undo_last_operation removed (tool def, dispatch entry, input model, handler, undo_subprocess.py)",
@@ -30,9 +30,16 @@
     "Cycle 7 -- lex-lead read the 7a4fa5c diff itself and re-ran the five lock-related test files (83 passed, 2 subtests) rather than dispatching a fourth judgement pass over a bug class that now has a mechanical artifact.",
     "Cycle 7 (user-directed, outside the plan) -- STATUS.md self-contradiction struck [d278cc6]: item 5 listed the CastingOperations.cast_to_concrete phantom remedy as OPEN while the same file already recorded it fixed and filed in 1f8e90b as #112/#113. Re-verified: zero CastingOperations occurrences in src/ or docs/; surviving advertisements name flexicon.code.lcm_casting; cast_to_concrete is real and unary at flexicon/code/lcm_casting.py:408. Two dependent counts corrected.",
     "Cycle 7 -- specs/shared-mode-access/evidence/live-session-checklist.md written: the SINGLE consolidated, ordered live checklist (pre-flight + backup, CP4-a/b/c, CP3 sharing-off both parts, OPEN Q1/Q2/Q3, wrap-up) with exact commands and per-item pass criteria. CP5-a is explicitly Session 2, after the CP5 gate exists.",
-    "Cycle 7 -- SPEC.md Section 8 extended with four deferred entries: the fail-open issue (with the recommended probed/unknown/always-emit-blocking shape), the execution.py `blocking`-omission residual, the check_project_locked rename, and the new unguarded-startup-sweep P3."
+    "Cycle 7 -- SPEC.md Section 8 extended with four deferred entries: the fail-open issue (with the recommended probed/unknown/always-emit-blocking shape), the execution.py `blocking`-omission residual, the check_project_locked rename, and the new unguarded-startup-sweep P3.",
+    "Cycle 8 -- finding (k) FIXED [a8cf35b]: _pid_is_alive now calls GetExitCodeProcess, so a freshly-dead PID whose kernel handle is still retained (the crash-reporter shape) no longer reports ALIVE. ENABLE_SHARING_REMEDY reopen claim softened. tests/test_shared_mode_access.py 30 -> 33. Verified by an independent throwaway-process reproduction (verification B2): OLD True/True/True at t=0/5/30s on a dead PID, NEW False/False/False.",
+    "Cycle 8 -- SAFETY FIX [ee53b11]: two stacked gaps in write certification. (1) build_writeability_payload() never read the protected_* lists, so a guarded write produced 'would mutate the database (0 mutation(s) detected)'. (2) MORE SEVERE, found live: project.<Accessor>.<Method> calls never reached the index lookup at all, so a guarded project.CustomFields.CreateField(...) evaluated needs_lock == False and a schema mutation EXECUTED with write_enabled=True, confirmed=False, no lock, no confirmation. Only flexicon's internal transaction guard stopped the write. Fixed with Step 1c index-based access_path resolution plus a shared compute_is_mutating_script() behind BOTH the preview builder and the real needs_lock gate. Verification confirms the fix is index-authoritative (AgentOperations.Duplicate: is_cud False, zero regex overlap, still detected), not a verb-list patch.",
+    "Cycle 8 -- CP3 and CP4 SIGNED OFF by lex-doc [e829d8b]; SPEC Section 3 reclassified into 3a (refused) / 3a-ii (safe) / 3b (silently_lost) / 3c (crashes_holder) / 3d (retired).",
+    "Cycle 8 -- CP4 CONFIRMED LIVE against a real FieldWorks master (PID 40664, sharing ON): validate_only returned verdict=open_shared, blocking=false, all 11 gates passing. The load-bearing 'write visible in the FLEx UI without a restart' observation PASSED.",
+    "Cycle 8 -- 13 findings DRAFTED to specs/shared-mode-access/issues/DRAFT-issues.md [4677aa0]. NOTHING FILED. Dedup (run separately; the drafting agent had no shell) cuts 13 to ~5-6 new.",
+    "Cycle 8 -- CP5 interim conservative policy adopted BY THE USER and recorded as a CP5 status block in SPEC.md [502ab92]: BOTH writing-system AND custom-field operations are ASSUMED to require exclusive access, as documentation and review policy only, nothing enforcing it in code.",
+    "Cycle 8 close -- lex-lead RATIFIED lex-doc's Class C / crashes_holder deviation as spec-normative, reopened #93 (auto-closed a SECOND time), corrected the false 'nothing pushed' claim, added two new SPEC Section 8 rows (the Item G stale-warnings P1, OWNED; the #105 residual P2), and updated CP5 point 3 now that ee53b11 has landed."
   ],
-  "checkpoint_reached": "CP4 (code); CP2 complete; CP3 code complete",
+  "checkpoint_reached": "CP2, CP3 and CP4 ALL SIGNED OFF (CP4 confirmed live). CP5 OPEN by user decision, unimplemented. CP6 partial.",
   "cp1_verified": "LIVE PASS (fbeb3ab) -- static_only superseded",
   "gates": {
     "verification": "CP1 live write check PASS (fbeb3ab); CP4 LCM premise verified live (evidence/live-cp4.md, re-run under flexicon 4.4.1 per db52c3a)",
@@ -42,11 +49,14 @@
     "domain": "PASS (cycle 2)",
     "scope_creep": "PASS",
     "live_write_check": "PASS (fbeb3ab) -- CP1 merge blocker cleared",
-    "cp4_live_open_shared": "NOT RUN -- needs FieldWorks running and holding a sharing-enabled project; the 'visibly appears in the FLEx UI' half is a human observation (evidence/live-cp4.md section 6). This is the only red gate.",
-    "cp3_live_sharing_off": "NOT RUN -- read-only run against a sharing-off, FLEx-open project must return the enable-sharing recipe (SPEC Verification step 5, final bullet). Human/live gate. Blocks CP3 SIGN-OFF only, not CP5/CP6 code work.",
-    "spec_step6_regression": "PASS @ 7a4fa5c -- 1148 passed / 4 skipped (baseline 1144/4; delta is exactly the 4 new TestValidateOnlyProjectLockEnrichment cases, no regressions). validate_integrity.py all exit 0. lex-lead independently re-ran the 5 lock-related test files: 83 passed, 2 subtests passed.",
+    "cp4_live_open_shared": "PASS -- SIGNED OFF 2026-09-08. Confirmed live against a real FieldWorks master (PID 40664, sharing ON): verdict=open_shared, blocking=false, 11/11 gates. The human UI observation (write visible after F5, no FLEx restart) PASSED. This was the feature's last red gate and it is now green.",
+    "cp3_live_sharing_off": "PASS -- SIGNED OFF 2026-09-08 by lex-doc [e829d8b], citing evidence/live-cp4.md line refs.",
+    "spec_step6_regression": "PASS @ ee53b11 -- 1159 passed / 4 skipped (baseline 1148/4). All +11 mapped to named tests: test_shared_mode_access.py +3, test_script_certification.py +5, test_issue49_validate_only.py +2, test_issue55_write_safety_ladder.py +1. No drops, no new skips. validate_integrity.py all 5 checks exit 0.",
     "cp3_code": "ACCEPTED (CODE), UNCONDITIONAL -- the P1-1 atomicity condition from cycle 5 has landed (520dba4) and is QC-confirmed. SIGN-OFF still blocked on cp3_live_sharing_off (human/live only). The two new cycle-6 P1s do NOT reopen CP3: neither is in T3.1-T3.5's code path. Cycle 7 adds nothing to reopen it.",
-    "cycle7_close": "ACCEPTED. No further verification pass over 7a4fa5c is required or wanted -- a fourth judgement review of a bug class that now has a mechanical artifact is precisely the waste the gate was created to end."
+    "cycle7_close": "ACCEPTED. No further verification pass over 7a4fa5c is required or wanted -- a fourth judgement review of a bug class that now has a mechanical artifact is precisely the waste the gate was created to end.",
+    "verification_cycle8": "PASS (reviews/cycle8-verification.md) on both a8cf35b and ee53b11. Both adversarial reads confirmed FROM CODE. One harmless discrepancy: the mutations report claimed test_script_certification.py +7; the diff adds exactly 5 (21 -> 26 via pytest --collect-only). Suite total unaffected.",
+    "write_gate_safety": "WAS BREACHED LIVE, NOW CLOSED [ee53b11]. The Rung-3 gate was BYPASSED on a live schema mutation. This CONTRADICTS the finding (d) scope bound carried from earlier cycles ('not a safety hole') -- that bound held for SetGloss and did NOT generalise. Do not re-adopt it.",
+    "class_b_empirical": "UNOBSERVED and UNRUNNABLE as designed. CP5-a is WITHDRAWN, not merely blocked -- see cp5_a_withdrawn."
   },
   "commits": {
     "8a4fae5": "fix: writes silently fail under undoable=True; remove dead undo machinery (closes #92) -- d17105f amended to carry the pattern audit",
@@ -66,13 +76,17 @@
   },
   "issues": {
     "cp1_bug": "#92 -- CLOSED (live write check passed; fix merged in PR #114)",
-    "cp2_cp6_enhancement": "#93 -- OPEN (correctly: CP3 partial, CP5 unstarted, CP6 partial)"
+    "cp2_cp6_enhancement": "#93 -- OPEN. AUTO-CLOSED TWICE on 2026-09-08 and reopened twice. STANDING RULE: reference it as a bare '(#93)' ONLY. Both 7a4fa5c ('closes #93 P1s') and ee53b11 ('closes #93 findings (a)/(d)') put a closing keyword in front of the number; GitHub ignores the qualifying words and closes the whole feature issue. Reopened by the user at 15:56Z, re-closed by the ee53b11 push at 16:13Z, reopened by lex-lead at cycle-8 close with an explanatory comment. No closing keyword until CP5 AND CP6 are both done.",
+    "105_ruling": "ee53b11 does NOT fully close #105 -- do not close it. VERIFIED EMPIRICALLY by lex-lead at cycle-8 close (ran build_writeability_payload + certify_script_readonly against #105's own repros): both of #105's writeability repros -- 'infl = InflectionFeatureOperations(project); infl.Create(...)' and 'sns.SetGloss(...)', both guarded -- now return is_mutating_script true WITH a populated mutations_detected, reached via Step 1b alias detection (so aliased receivers were already covered; Step 1c adds the facade form). BUT #105's THIRD evidence block is untouched: write_certification.mutating_calls_detected at handlers/execution.py:4502 filters cert['mutating_calls'] only and never reads the new cert['protected_calls'], so a guarded mutation still reports mutating_calls_detected: [] with is_certified_readonly: true on a real run. ACTION: comment on #105 with the ee53b11 evidence and NARROW it to that residual; keep it open. Comment is DRAFTED but NOT POSTED -- outbound issue writes need the user.",
+    "104": "OPEN, unaffected. #104 is the boolean being WRONG for raw-LCM property assignment; ee53b11 addressed enumeration plus the accessor-idiom gate, not raw property assignment. Not re-tested this cycle. Leave open.",
+    "92_answers_undoable": "FlexToolsMCP #92 (CLOSED) already answers the undoable=False question affirmatively. flexicon #236 is CLOSED and is about Transaction()/RollbackToMark, NOT undoable=False -- it is the WRONG comment target. Do not comment there.",
+    "118_119": "Both still open, filed 2026-09-08 (fail-open probe; TOOL-CONTRACT envelope gap). Untouched this cycle."
   },
   "blocker": {
-    "what": "The live FieldWorks session (specs/shared-mode-access/evidence/live-session-checklist.md, session 1). It is the only gate on CP3 and CP4 sign-off and the crew is barred from live-FLEx work.",
-    "binding_item": "Checklist item 3 leg 3 -- a write with FLEx actually open appearing in the FLEx UI without a restart. Never verified. evidence/live-cp4.md proved only the LCM premise (a second process CAN write to a projectSharing=true project), not the open_shared code path under a real FLEx master.",
-    "also_needs_the_user": "RESOLVED except for the live session. The push is DONE (direct to main, 433f3a0..a805e91, user-directed) and both deferred issues are FILED (#118 fail-open probe, #119 TOOL-CONTRACT envelope gap). The ONLY outstanding human item is the live FieldWorks session itself.",
-    "does_not_block": "CP5 implementation, CP6 docs, or the two P3 cleanups. A crew spurt can proceed on all of those with FieldWorks closed."
+    "what": "TWO USER-ONLY items, plus the user's explicit request to close this session. (1) AUTHORIZE THE ISSUE-FILING BATCH -- roughly 5-6 new issues, NOT the 13 drafted in specs/shared-mode-access/issues/DRAFT-issues.md (see dedup_results_cycle8), plus the drafted but unposted #105 narrowing comment. Draft the three incidental library findings into the batch BEFORE asking, so the user approves one complete list rather than two. (2) RESTART THE MCP SERVER -- the crew cannot; the sandbox auto-mode classifier denies Stop-Process. The running server (PID 15852, started 10:39:09) predates BOTH cycle-8 fixes, so no post-fix live verification is possible until the user restarts it.",
+    "important_CP6_is_NOT_blocked": "The next checkpoint's code and docs work (Item G stale-warnings P1, the two P3 cleanups, docs/SHARED-MODE.md) needs neither of the above and neither needs FieldWorks. status is needs_human because the USER asked to close the session and these two asks are genuinely queued -- not because CP6 is gated. Resume CP6 the moment the user says go.",
+    "no_longer_a_blocker": "The live FieldWorks session is DONE. Both sittings ran; CP3 and CP4 are signed off, CP4 confirmed live. This was the feature's standing blocker since spurt 3 and it is retired.",
+    "do_not_do_unattended": "Any live mutating write to Sena 3. The user declined the wider mutating group this cycle. A live custom-field or writing-system write is destructive-class work and needs explicit per-run authorization."
   },
   "merge_gate": "CLEARED. PR #114 merged (ae73eef); the seven follow-on commits were then pushed DIRECT TO MAIN by user direction on 2026-09-08 (433f3a0..a805e91). origin/main == local main == a805e91.",
   "deferred_no_issue_filed": [
@@ -91,8 +105,8 @@
     "CP5": "SCOPED (cycle5-cp5-scope.md) + SPEC AMENDED [d0b360f]. NOT IMPLEMENTED -- this is the next CREW work, and it is NOT blocked by the live session: implement a CUSTOM-FIELDS-ONLY core (T5.2-T5.6) against the one certain Class B row. Writing systems / possibility lists / reversal indexes are ROWS added later without touching the gate; live items 5-7 only classify those rows. Rulings in cp5_rulings stand.",
     "CP6": "PARTIAL -- T6.5 (CHANGELOG) done; docs/SHARED-MODE.md does not exist; T6.1-T6.4, T6.6, T6.7 outstanding"
   },
-  "next_checkpoint": "CP5 -- exclusive-access gate (custom-fields-only core), T5.2-T5.6",
-  "next_entry": "Spurt 4 closed GREEN. Of the three asks queued for the user, TWO ARE DONE: the seven commits were pushed directly to main per the user's direction (433f3a0..a805e91, clean fast-forward -- see push_pr_ruling.OUTCOME), and both deferred issues are filed (#118 fail-open probe, labels bug/P1; #119 run_module envelope gap, labels bug/documentation/P2). The user is running the live session (evidence/live-session-checklist.md session 1) NOW. WATCH FOR: checklist item 3 leg 3 -- a write with FLEx open appearing in the FLEx UI after F5 WITHOUT a FLEx restart. If legs 1-2 pass but leg 3 FAILS, that is the #96 commit-log staleness shape and CP4's 'writes are expected to succeed' wording MUST be re-ruled before CP5 is built on it -- stop before checklist item 5. The next CREW spurt, which is NOT blocked by the live session, implements CP5 T5.2-T5.6 (custom-fields-only core) against the amended SPEC, then CP6 docs (docs/SHARED-MODE.md does not exist yet) plus the two P3 cleanups (check_project_locked -> find_lock_file rename, 16 occurrences; guard the unguarded sweep_stale_locks loop at server.py:1048).",
+  "next_checkpoint": "CP6 -- docs plus cleanup (docs/SHARED-MODE.md does not exist), led by the Item G stale-warnings P1 fix",
+  "next_entry": "Spurt 5 CLOSED GREEN. CP2/CP3/CP4 are all SIGNED OFF and CP4 is confirmed live -- the feature's last red gate went green this cycle. CP5 is OPEN BY THE USER'S DECISION and is NOT the next work: the interim conservative policy (both writing systems and custom fields assumed exclusive-access) is recorded in SPEC.md and stands unimplemented, and CP5-a is WITHDRAWN as unrunnable (see cp5_a_withdrawn), so Class B stays unobserved. THE NEXT SPURT IS CP6, and it starts with the Item G stale-warnings P1 (SPEC Section 8, OWNED, three sites: server.py:1048-1050, diagnostic_health.py:245, validators.py:221) -- that one is user-visible and self-contradictory, so it goes ahead of the two P3 cleanups (check_project_locked -> find_lock_file, 16 occurrences; the unguarded sweep_stale_locks loop). Then docs/SHARED-MODE.md (T6.1-T6.4, T6.6, T6.7). TWO ITEMS NEED THE USER FIRST AND ARE THE ONLY REASON THIS IS NOT feature_complete: (1) AUTHORIZE THE ISSUE-FILING BATCH -- roughly 5-6 new issues, not the 13 drafted; see dedup_results_cycle8, and draft the three incidental library findings into the batch before asking; the #105 comment is drafted but unposted and needs the same authorization. (2) RESTART THE MCP SERVER -- the crew cannot (Stop-Process is denied), and the running server predates both cycle-8 fixes, so no live post-fix verification is possible until the user does it.",
   "updated": "2026-09-08",
   "spec_kit_note": "This file is AUTHORITATIVE for the feature. specs/shared-mode-access/.spec-context.json and the spec-kit companion resolver are unreliable here -- ignore them.",
   "cp5_rulings": {
@@ -144,5 +158,31 @@
     "note_for_the_record": "This bypassed the repo's PR-per-change convention (PRs #114/#116/#117). The concern was raised to the user before the push and the user reaffirmed the direct push; it is their call. No PR exists for the CP3/CP4 work, so the live sign-off status is tracked in issue #93 and STATUS.md only -- there is no PR body carrying 'live sign-off pending'.",
     "superseded_recommendation": "Was: branch fix/shared-mode-lock-diagnosis-93 at the tip, reset local main to 433f3a0, push the branch, open a PR referencing but not closing #93."
   },
-  "environment_note_cycle7": "The installed `flexicon` resolves to the SIBLING SOURCE REPO at D:\\Github\\_Projects\\_LEX\\flexicon\\flexicon (editable/source install, branch main at 7e0fdf2, PAST the 4.5.2 release), NOT a site-packages wheel. CLAUDE.md states flexicon is PyPI-only and 'no longer a cloned sibling repo' -- that is NOT what this machine runs. Consequence: any claim of the form 'verified against flexicon 4.5.2' on this machine is really 'verified against main@7e0fdf2'. Re-check before trusting the index migration (accd5a1) or any live evidence file's version line, and state the resolved path explicitly in future live evidence."
+  "environment_note_cycle7": "The installed `flexicon` resolves to the SIBLING SOURCE REPO at D:\\Github\\_Projects\\_LEX\\flexicon\\flexicon (editable/source install, branch main at 7e0fdf2, PAST the 4.5.2 release), NOT a site-packages wheel. CLAUDE.md states flexicon is PyPI-only and 'no longer a cloned sibling repo' -- that is NOT what this machine runs. Consequence: any claim of the form 'verified against flexicon 4.5.2' on this machine is really 'verified against main@7e0fdf2'. Re-check before trusting the index migration (accd5a1) or any live evidence file's version line, and state the resolved path explicitly in future live evidence.",
+  "cp5_a_withdrawn": {
+    "ruling": "CP5-a's acceptance test is WITHDRAWN, not deferred. Do not re-queue it as written.",
+    "why": "CustomFieldOperations.CreateField refuses UNCONDITIONALLY with FP_TransactionError in Phase 1 transaction mode -- independent of FLEx state and of shared mode -- because OpenProject() holds a non-undoable UnitOfWork open until CloseProject(). CP5-a asks for refusal with FLEx open, then SUCCESS with FLEx closed. The second leg cannot pass, and the first leg would pass for entirely the wrong reason (transactional refusal, not access refusal).",
+    "consequence": "Class B (silently_lost, custom fields) remains UNOBSERVED. CP5, if built, rests on the liblcm-source derivation in SPEC Section 3b for that row, not on live evidence. Say so in the CP5 docs.",
+    "if_you_want_class_b_live": "You need a route to a custom-field write that is NOT behind the Phase 1 transaction refusal -- raw LCM through a separately-opened cache, or a flexicon change. Design that first; do not just re-run CP5-a."
+  },
+  "dedup_results_cycle8": {
+    "headline": "13 drafted, roughly 5-6 genuinely new. Do NOT file 13.",
+    "flexicon_NEW": "findings 3, 4, 5, 6, 8",
+    "flexicon_NOT_new": "finding 2 is a recurrence of EXPLICITLY-DECLINED scope in closed #183 (do not refile as a bug; if raised at all, raise it as a decision-revisit). finding 1 partially overlaps closed #100. finding 7 partially overlaps closed #179. finding 9 sits inside an active open cluster (#262/#269/#270) -- comment there, do not open a tenth.",
+    "flexicon_merge": "Rows 2+3 merge into ONE issue (shared default-WS resolution root cause, read side plus write side, same fix location). Row 5 stays SEPARATE (ReversalIndex.Name is a FLEx-derived field regenerated on open -- different root cause, different fix). lex-lead ACCEPTS the drafting agent's 2-issues-for-3-rows recommendation.",
+    "flextoolsmcp_NEW": "findings 1, 3, 4",
+    "flextoolsmcp_dup": "the mutations_detected finding is a near-exact DUPLICATE of open #105 (same SetGloss repro). See issues.105_ruling -- comment on #105, do not open a new issue.",
+    "three_more_not_in_the_13": "From live-session2.md 'Incidental library findings', NOT yet drafted: (1) ReversalIndexOperations has no GetAllEntries (it is GetEntries) and NO method to create a reversal entry at all -- which means Session 2 test 3 CANNOT BE EXECUTED through flexicon; (2) ReversalIndexOperations has no GetGuid; (3) CustomFieldOperations.GetFieldName/GetFieldType/GetOwnerClass ALL raise TypeError on the elements GetAllFields returns. Draft these INTO the batch before asking the user, so they approve one complete list rather than two."
+  },
+  "environment_limitations_cycle8": [
+    "MCP server restart is NOT available to the crew: the sandbox auto-mode classifier DENIES Stop-Process (verification B1). Consequence: the live MCP server (PID 15852, started 10:39:09) predates BOTH cycle-8 fixes, so every live observation in live-session2.md is PRE-FIX. Any post-fix live re-test needs the USER to restart the server.",
+    "The installed flexicon resolves to the SIBLING SOURCE REPO at D:\\Github\\_Projects\\_LEX\\flexicon\\flexicon (editable install), NOT a site-packages wheel, contrary to CLAUDE.md. 'Verified against 4.5.2' on this machine really means 'verified against main@<sha>'. Unchanged from cycle 7."
+  ],
+  "machine_state_at_close": {
+    "fieldworks": "CLOSED",
+    "sena3_sharing": "ON (as-found; the USER set it, not the crew). Leave it.",
+    "lock_file": "none on disk",
+    "sena3_data": "UNMUTATED this cycle. The user declined the wider live mutating group; only Class B was approved and it was blocked. No restore needed.",
+    "mcp_server": "PID 15852, running PRE-FIX code. Needs a user-initiated restart before any post-fix live claim."
+  }
 }

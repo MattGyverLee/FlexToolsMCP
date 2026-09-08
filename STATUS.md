@@ -390,6 +390,11 @@ will not run it unattended; only the user authorizes it.
 
 ## Next pickup -- shared-mode-access
 
+> **SUPERSEDED 2026-09-08 (cycle 8).** This section is a historical record of the
+> CP1 hand-off. The live authority is the final section of this file,
+> "shared-mode-access (#93) -- spurt 5 CLOSED GREEN (cycle 8)", plus
+> `specs/shared-mode-access/.crew-handoff.json`.
+
 1. ~~User runs the CP1 live write check above and reports the result.~~ **DONE
    2026-09-07 -- PASSED (both legs, against `Sena 3`). See the RESOLVED section
    above.** The remaining merge blockers are the index migration, the
@@ -876,3 +881,137 @@ site-packages wheel -- contrary to CLAUDE.md, which says flexicon is PyPI-only
 and no longer a cloned sibling. Any "verified against flexicon 4.5.2" claim made
 on this machine is really "verified against main@7e0fdf2". State the resolved
 path explicitly in future live evidence.
+
+
+## shared-mode-access (#93) -- spurt 5 CLOSED GREEN (cycle 8, 2026-09-08)
+
+**The feature's last red gate went green.** CP2, CP3 and CP4 are all SIGNED OFF,
+and CP4 was confirmed *live* against a real FieldWorks master (PID 40664,
+sharing ON): `validate_only` returned `verdict=open_shared`, `blocking=false`,
+11/11 gates, and the load-bearing human observation -- a peer write visible in
+the FLEx UI after F5 with no FLEx restart -- PASSED. The live FieldWorks session
+that has blocked this feature since spurt 3 is retired.
+
+**Two fixes landed, one of them a genuine safety hole.**
+
+- `a8cf35b` -- finding (k). `_pid_is_alive` now calls `GetExitCodeProcess`, so a
+  freshly-dead PID whose kernel handle is still retained (the crash-reporter
+  shape) no longer reports ALIVE. Confirmed by an independent throwaway-process
+  reproduction: old code `True/True/True` at t=0/5/30 s on a dead PID, new code
+  `False/False/False`. An earlier claim that (k) was reproduced live was
+  **withdrawn** -- a *graceful* FLEx close deletes the `.fwdata.lock`, so the
+  verdict correctly collapses to `free`; (k) needs a crashed or hard-killed
+  holder.
+- `ee53b11` -- **the Rung-3 write gate was BYPASSED on a live schema mutation.**
+  A guarded `project.CustomFields.CreateField(...)` ran with
+  `write_enabled=True, confirmed=False` and no lock, because
+  `is_mutating_script` came back `false` for a method the API index marks
+  `is_mutating: true`: the `project.<Accessor>.<Method>` facade idiom never
+  reached the index lookup at all. Only flexicon's internal transaction guard
+  stopped the write. Fixed with index-based `access_path` resolution plus a
+  shared `compute_is_mutating_script()` behind *both* the confirmation preview
+  and the real `needs_lock` gate. **This contradicts the earlier finding-(d)
+  scope bound that this was "not a safety hole" -- that bound held for
+  `SetGloss` and did not generalise. Do not re-adopt it.** Suite
+  **1159 passed / 4 skipped** (baseline 1148/4, all +11 mapped to named tests);
+  `validate_integrity.py` clean.
+
+**CP5 is OPEN by the user's decision, and that is deliberate.** Rather than
+implement a gate, the user adopted an interim conservative policy, now recorded
+as a CP5 status block in `SPEC.md` (`502ab92`): **both writing-system and
+custom-field operations are assumed to require exclusive access** -- as
+documentation and review policy only, with nothing enforcing it in code. This
+settles the scope question T5.1 left open: writing systems and custom fields are
+both in CP5's scope from the start, not a custom-fields-only core with a
+fast-follow row.
+
+**CP5-a is WITHDRAWN, not blocked.** `CustomFieldOperations.CreateField` refuses
+*unconditionally* with `FP_TransactionError` in Phase 1 transaction mode --
+independent of FLEx state and of shared mode -- because `OpenProject()` holds a
+non-undoable UnitOfWork open until `CloseProject()`. CP5-a's second leg ("close
+FLEx, re-submit, succeeds") therefore cannot pass, and its first leg would pass
+for entirely the wrong reason. **Class B (`silently_lost`, custom fields)
+remains UNOBSERVED**; SPEC Section 3b rests on the liblcm-source derivation, not
+on live evidence. Do not re-queue CP5-a as written.
+
+**Section 3 was reclassified, and lex-lead ratified a deviation.** The table is
+now 3a `refused` / 3a-ii `safe` / 3b `silently_lost` / 3c `crashes_holder` /
+3d retired. The writing-system row went to a **new Class C**, not Class A as the
+cycle-8 brief proposed: Class A is defined by its *mechanism* (LCM raises before
+anything is written) and carries the entitlement "safe by construction, needs no
+alarm". The WS write reached disk on both legs with nothing refusing it and then
+crashed the live FLEx holder (`NullReferenceException`,
+`WritingSystemListHandler.AddWritingSystemList`, `TextListeners.cs:286`). Filing
+it under Class A would have attached "needs no alarm" to the one row that must
+be REFUSED. **Classify by mechanism, never by outcome-similarity.**
+
+**One new bug, unfixed, now OWNED.** The `flextools_health` `warnings` array is
+computed once at server startup and frozen for the life of the process, so a
+single response can contradict its own body -- it asserted a live FieldWorks
+holder ("53 s old ... process still running") in a payload whose own
+`verbose.project_access` read `verdict: "free"`, `holder: null`, with no lock
+file on disk. Three sites: `server.py:1048-1050`, `diagnostic_health.py:245`,
+and `validators.py:221` (so CP2/CP3 share the stale cache). Recorded as a P1 in
+`SPEC.md` Section 8 and **assigned to the next spurt's programmer as the first
+item of the CP6 cleanup pass**, ahead of the two P3s.
+
+**`#93` was auto-closed TWICE in one day.** Both `7a4fa5c` ("closes #93 P1s")
+and `ee53b11` ("closes #93 findings (a)/(d)") lead with a closing keyword;
+GitHub ignores the qualifying words and closes the whole feature issue. The user
+reopened it at 15:56Z, the `ee53b11` push re-closed it at 16:13Z, and lex-lead
+reopened it again at cycle-8 close with an explanatory comment. **Standing rule:
+reference it as a bare `(#93)` only -- no `closes`/`fixes`/`resolves` until CP5
+and CP6 are both done.**
+
+**Correction to a cycle-8 report:** the claim that main was "14 commits ahead of
+origin/main, NOTHING PUSHED" is **false**. Verified at close:
+`origin/main == local main == 502ab92`, 0 ahead / 0 behind. Everything is pushed.
+
+**Issue filing: 13 drafted, roughly 5-6 genuinely new.** Nothing is filed;
+drafts live in `specs/shared-mode-access/issues/DRAFT-issues.md`. Dedup found
+the FlexToolsMCP `mutations_detected` draft is a near-duplicate of open
+[#105](https://github.com/MattGyverLee/FlexToolsMCP/issues/105); flexicon
+finding 2 recurs explicitly-declined scope in closed #183; findings 1, 7 and 9
+overlap closed #100 / closed #179 / the open #262-#269-#270 cluster. Genuinely
+new: flexicon 3, 4, 5, 6, 8 and FlexToolsMCP 1, 3, 4. Three further library
+findings from this sitting are not yet drafted at all (see the handoff json's
+`dedup_results_cycle8.three_more_not_in_the_13`) -- notably that
+`ReversalIndexOperations` has **no method to create a reversal entry**, which
+means Session 2 test 3 cannot be executed through flexicon.
+
+**Ruling on #105: `ee53b11` does NOT close it.** Verified empirically at close
+by running #105's own repros through `build_writeability_payload` /
+`certify_script_readonly`: both of its `writeability` repros now report
+`is_mutating_script: true` with a populated `mutations_detected`. But its third
+evidence block is untouched -- `write_certification.mutating_calls_detected`
+(`handlers/execution.py:4502`) filters `cert["mutating_calls"]` only and never
+reads the new `cert["protected_calls"]`, so a guarded mutation still reports
+`[]` alongside `is_certified_readonly: true` on a real run. Comment on #105 and
+narrow it; keep it open. The comment is drafted but **not posted** -- outbound
+issue writes need the user.
+
+### Next pickup (spurt 6) -- CP6
+
+1. **Item G, the stale-warnings P1** (SPEC Section 8, owner assigned). Recompute
+   the sweep inside `_build_warnings()`, or give `startup_lock_warnings` a
+   timestamp and short TTL; `validators.py:221` must pick up the same freshening.
+2. The two P3 cleanups: `check_project_locked` -> `find_lock_file` (16
+   occurrences, zero behaviour change) and the unguarded `sweep_stale_locks()`
+   loop at `server.py:1048`.
+3. `docs/SHARED-MODE.md` (T6.1-T6.4, T6.6, T6.7) -- it does not exist yet.
+
+**Two items need the user, and they are the only reason this is not
+`feature_complete`:**
+
+- **Authorize the issue-filing batch** (~5-6 issues, not 13) plus the #105
+  comment. Draft the three incidental library findings into the batch *first* so
+  the user approves one complete list rather than two.
+- **Restart the MCP server.** The crew cannot -- the sandbox classifier denies
+  `Stop-Process` -- and the running server (PID 15852, started 10:39:09)
+  predates both cycle-8 fixes, so no post-fix live verification is possible
+  until the user restarts it.
+
+**Machine state at close:** FieldWorks CLOSED. `Sena 3` project sharing ON
+(as-found; the *user* set it -- leave it). No lock file on disk. `Sena 3`
+UNMUTATED this cycle -- the user declined the wider live mutating group, so no
+restore is needed.

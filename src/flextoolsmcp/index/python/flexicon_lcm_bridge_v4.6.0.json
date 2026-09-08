@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.5.2"
+    "version": "4.6.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -646,7 +646,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -1593,7 +1594,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -1612,6 +1614,75 @@
       ],
       "properties_accessed": [
         "PhoneEnvRC (ReferenceCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "AllomorphOperations.ApplySyncableProperties": {
+      "class": "AllomorphOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
+          "item": [
+            "arg[0] of __GetAllomorphObject()"
+          ],
+          "props": [
+            "arg[0] of isinstance()",
+            "arg[3] of __ApplyFeatureStrucProp()",
+            "arg[0] of type()"
+          ],
+          "ws_map": [
+            "arg[2] of ApplySyncableProperties()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorphFactory",
+        "ILexEntry",
+        "IPhEnvironment",
+        "ITsString",
+        "TsStringUtils",
+        "IMoStemAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
+        "IMoAffixAllomorphFactory"
+      ],
+      "mapping_type": "direct",
+      "method": "ApplySyncableProperties",
+      "methods_called": [],
+      "properties_accessed": [
+        "ClassName"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -1659,7 +1730,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -1758,7 +1830,8 @@
         ]
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -1822,7 +1895,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -1908,7 +1982,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -1975,7 +2050,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2052,7 +2128,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2125,7 +2202,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2185,7 +2263,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2245,7 +2324,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2278,10 +2358,11 @@
         ],
         "param_usage": {
           "item": [
-            "arg[0] of hasattr()"
+            "arg[0] of __GetAllomorphObject()"
           ]
         },
         "properties_accessed": [
+          "ClassName",
           "Form",
           "Guid",
           "MorphTypeRA",
@@ -2313,7 +2394,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2331,6 +2413,7 @@
         ".get_String()"
       ],
       "properties_accessed": [
+        "ClassName",
         "Form",
         "Guid",
         "MorphTypeRA",
@@ -2373,7 +2456,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2453,7 +2537,8 @@
         ]
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2530,7 +2615,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2588,7 +2674,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -2629,7 +2716,8 @@
         "utilities_used": []
       },
       "lcm_deps": [
-        "IMoForm",
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
         "IMoStemAllomorphFactory",
         "IMoAffixAllomorphFactory",
         "ILexEntry",
@@ -5821,11 +5909,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -9211,6 +9294,7 @@
         },
         "properties_accessed": [
           "CellsOS (OwningSequence)",
+          "ClassName",
           "ColumnRA (ReferenceAtomic)",
           "Hvo"
         ],
@@ -9234,6 +9318,7 @@
       "methods_called": [],
       "properties_accessed": [
         "CellsOS (OwningSequence)",
+        "ClassName",
         "ColumnRA (ReferenceAtomic)",
         "Hvo"
       ],
@@ -9255,7 +9340,8 @@
           ]
         },
         "properties_accessed": [
-          "CellsOS (OwningSequence)"
+          "CellsOS (OwningSequence)",
+          "ClassName"
         ],
         "repositories_used": [],
         "transformations": [],
@@ -9271,7 +9357,8 @@
       "method": "GetAll",
       "methods_called": [],
       "properties_accessed": [
-        "CellsOS (OwningSequence)"
+        "CellsOS (OwningSequence)",
+        "ClassName"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -9940,13 +10027,7 @@
         "param_usage": {},
         "properties_accessed": [],
         "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          }
-        ],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -11518,16 +11599,11 @@
           ]
         },
         "properties_accessed": [
-          "CellsOS (OwningSequence)"
+          "CellsOS (OwningSequence)",
+          "ClassName"
         ],
         "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          }
-        ],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -11542,7 +11618,8 @@
       "method": "GetWordGroups",
       "methods_called": [],
       "properties_accessed": [
-        "CellsOS (OwningSequence)"
+        "CellsOS (OwningSequence)",
+        "ClassName"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -11923,18 +12000,14 @@
           ]
         },
         "properties_accessed": [
-          "CellsOS (OwningSequence)"
+          "CellsOS (OwningSequence)",
+          "ClassName"
         ],
         "repositories_used": [],
         "transformations": [
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -11951,7 +12024,8 @@
       "method": "GetAll",
       "methods_called": [],
       "properties_accessed": [
-        "CellsOS (OwningSequence)"
+        "CellsOS (OwningSequence)",
+        "ClassName"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -14914,11 +14988,6 @@
             "type": "type_conversion"
           },
           {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          },
-          {
             "description": "Converts to ITsString",
             "pattern": "ITsString",
             "type": "type_conversion"
@@ -14967,11 +15036,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           },
           {
@@ -22150,7 +22214,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "AbortSession",
@@ -22222,7 +22290,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "BestStr",
@@ -22303,7 +22375,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "BuildGotoURL",
@@ -22373,7 +22449,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "CloseProject",
@@ -22440,7 +22520,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetAllAnalysisWSs",
@@ -22517,7 +22601,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetAllSemanticDomains",
@@ -22584,7 +22672,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetAllVernacularWSs",
@@ -22672,7 +22764,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "GetAudioPath",
@@ -22786,7 +22882,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "GetCustomFieldValue",
@@ -22855,7 +22955,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetDateLastModified",
@@ -22922,7 +23026,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetDefaultAnalysisWS",
@@ -22995,7 +23103,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetDefaultAnalysisWSHandle",
@@ -23062,7 +23174,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetDefaultVernacularWS",
@@ -23135,7 +23251,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetDefaultVernacularWSHandle",
@@ -23155,7 +23275,8 @@
         "param_usage": {
           "interface_type": [
             "arg[0] of GetInstance()",
-            "arg[0] of GetClrType()"
+            "arg[0] of GetClrType()",
+            "arg[0] of GetService()"
           ]
         },
         "properties_accessed": [],
@@ -23207,7 +23328,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetFactory",
@@ -23281,7 +23406,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetFieldID",
@@ -23348,7 +23477,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetLexicalRelationTypes",
@@ -23421,7 +23554,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetLinkedFilesDir",
@@ -23490,7 +23627,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "GetPartsOfSpeech",
@@ -23559,7 +23700,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetPublications",
@@ -23630,7 +23775,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetService",
@@ -23697,7 +23846,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "GetWritingSystems",
@@ -23764,7 +23917,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "HasOpenSessionTask",
@@ -23844,7 +24001,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ImportLocalizedLists",
@@ -23921,7 +24082,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ImportLocalizedListsForEnabledWS",
@@ -24003,7 +24168,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "IsAudioWritingSystem",
@@ -24097,7 +24266,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconAddAllomorph",
@@ -24110,22 +24283,18 @@
     },
     "FLExProject.LexiconAddComplexForm": {
       "class": "FLExProject",
-      "factories_used": [
-        "ILexEntryRefFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": false,
-        "factories_used": [
-          "ILexEntryRefFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "convenience",
         "methods_called": [
           ".Add()",
           ".Create()"
         ],
         "param_usage": {
           "complex_form_type": [
-            "arg[0] of Append()"
+            "arg[0] of Add()"
           ],
           "components": [
             "arg[0] of len()"
@@ -24184,9 +24353,13 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "LexiconAddComplexForm",
       "methods_called": [
         ".Add()",
@@ -24292,7 +24465,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconAddEntry",
@@ -24385,7 +24562,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconAddPronunciation",
@@ -24476,7 +24657,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconAddSense",
@@ -24552,7 +24737,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconAddTagToField",
@@ -24646,7 +24835,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconAddVariantForm",
@@ -24721,7 +24914,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconAllAllomorphs",
@@ -24788,7 +24985,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconAllEntries",
@@ -24861,7 +25062,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconAllEntriesSorted",
@@ -24946,7 +25151,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconClearField",
@@ -25023,7 +25232,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconClearListFieldSingle",
@@ -25102,7 +25315,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "convenience",
       "method": "LexiconDeleteObject",
@@ -25179,7 +25396,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconEntryAnalysesCount",
@@ -25250,7 +25471,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconFieldIsAnyStringType",
@@ -25321,7 +25546,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconFieldIsMultiType",
@@ -25392,7 +25621,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconFieldIsStringType",
@@ -25459,7 +25692,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetAllomorphCustomFields",
@@ -25550,7 +25787,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetAllomorphForms",
@@ -25647,7 +25888,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "convenience",
       "method": "LexiconGetAlternateForm",
@@ -25732,7 +25977,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetCitationForm",
@@ -25815,7 +26064,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconGetComplexFormType",
@@ -25884,7 +26137,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetEntry",
@@ -25955,7 +26212,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetEntryCustomFieldNamed",
@@ -26022,7 +26283,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetEntryCustomFields",
@@ -26102,7 +26367,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetExample",
@@ -26169,7 +26438,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetExampleCustomFields",
@@ -26263,7 +26536,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconGetExampleTranslation",
@@ -26358,7 +26635,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetFieldText",
@@ -26435,7 +26716,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetHeadWord",
@@ -26506,7 +26791,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetHeadword",
@@ -26586,7 +26875,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetLexemeForm",
@@ -26663,7 +26956,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetMorphType",
@@ -26743,7 +27040,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetPronunciation",
@@ -26820,7 +27121,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetPronunciations",
@@ -26887,7 +27192,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetPublishInCount",
@@ -26973,7 +27282,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSense",
@@ -27072,7 +27385,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseByName",
@@ -27149,7 +27466,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseCustomFieldNamed",
@@ -27222,7 +27543,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseCustomFields",
@@ -27307,7 +27632,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseDefinition",
@@ -27392,7 +27721,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseGloss",
@@ -27469,7 +27802,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseNumber",
@@ -27546,7 +27883,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSensePOS",
@@ -27623,7 +27964,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetSenseSemanticDomains",
@@ -27700,7 +28045,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconGetVariantType",
@@ -27767,7 +28116,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconNumberOfEntries",
@@ -27849,7 +28202,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconNumberOfSenses",
@@ -27920,7 +28277,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSenseAnalysesCount",
@@ -27935,13 +28296,14 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "convenience",
         "methods_called": [
+          ".Add()",
           ".Clear()"
         ],
         "param_usage": {
           "complex_form_type": [
-            "arg[0] of Append()"
+            "arg[0] of Add()"
           ],
           "entry_ref": [
             "arg[0] of hasattr()"
@@ -27998,11 +28360,16 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "convenience",
       "method": "LexiconSetComplexFormType",
       "methods_called": [
+        ".Add()",
         ".Clear()"
       ],
       "properties_accessed": [
@@ -28085,7 +28452,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSetExample",
@@ -28165,7 +28536,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSetFieldInteger",
@@ -28263,7 +28638,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "convenience",
       "method": "LexiconSetFieldText",
@@ -28350,7 +28729,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSetLexemeForm",
@@ -28435,7 +28818,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconSetListFieldMultiple",
@@ -28521,7 +28908,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "LexiconSetListFieldSingle",
@@ -28598,7 +28989,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSetMorphType",
@@ -28681,7 +29076,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "LexiconSetSenseGloss",
@@ -28760,7 +29159,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "ListFieldLookup",
@@ -28838,7 +29241,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "ListFieldPossibilities",
@@ -28912,7 +29319,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ListFieldPossibilityList",
@@ -28993,7 +29404,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "Object",
@@ -29066,7 +29481,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ObjectCountFor",
@@ -29137,7 +29556,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ObjectRepository",
@@ -29208,7 +29631,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ObjectsIn",
@@ -29301,7 +29728,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "OpenProject",
@@ -29370,7 +29801,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "ProjectName",
@@ -29441,7 +29876,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "PublicationType",
@@ -29508,7 +29947,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "Redo",
@@ -29575,7 +30018,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "RefreshFromDisk",
@@ -29642,7 +30089,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "SaveChanges",
@@ -29674,9 +30125,17 @@
             "description": "Applies default writing system if not specified",
             "pattern": "WSHandle",
             "type": "ws_default"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
           }
         ],
-        "utilities_used": []
+        "utilities_used": [
+          "TsStringUtils.MakePropsBldr",
+          "TsStringUtils.MakeStrBldr"
+        ]
       },
       "lcm_deps": [
         "ICmObjectRepository",
@@ -29722,7 +30181,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "convenience",
       "method": "SetAudioPath",
@@ -29732,7 +30195,10 @@
       ],
       "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": []
+      "utilities_used": [
+        "TsStringUtils.MakePropsBldr",
+        "TsStringUtils.MakeStrBldr"
+      ]
     },
     "FLExProject.TextsGetAll": {
       "class": "FLExProject",
@@ -29811,7 +30277,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "TextsGetAll",
@@ -29881,7 +30351,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "TextsNumberOfTexts",
@@ -29958,7 +30432,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "Transaction",
@@ -30025,7 +30503,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "Undo",
@@ -30096,7 +30578,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "UndoableOperation",
@@ -30183,7 +30669,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "direct",
       "method": "UnpackNestedPossibilityList",
@@ -30263,7 +30753,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "WSHandle",
@@ -30336,7 +30830,11 @@
         "ReflectionHelper",
         "XmlTranslatedLists",
         "ILexEntryRefFactory",
-        "FwObjDataTypes"
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
       ],
       "mapping_type": "pure_python",
       "method": "WSUIName",
@@ -30947,7 +31445,8 @@
         "methods_called": [],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -32069,11 +32568,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -34504,15 +34998,11 @@
     },
     "LexEntryOperations.AddComplexFormComponent": {
       "class": "LexEntryOperations",
-      "factories_used": [
-        "ILexEntryRefFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ILexEntryRefFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "convenience",
         "methods_called": [
           ".Add()",
           ".Create()"
@@ -34557,7 +35047,7 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "AddComplexFormComponent",
       "methods_called": [
         ".Add()",
@@ -35947,11 +36437,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -46473,7 +46958,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -47839,6 +48325,78 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "MSAOperations.ApplySyncableProperties": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "fill_gaps": [
+            "fill_gaps= of ApplySyncableProperties()"
+          ],
+          "item": [
+            "arg[0] of __GetMsaObject()"
+          ],
+          "props": [
+            "arg[0] of isinstance()",
+            "arg[3] of __ApplyFeatureStrucProp()",
+            "arg[0] of type()"
+          ],
+          "ws_map": [
+            "arg[2] of ApplySyncableProperties()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "ws_map",
+            "type": "default_value"
+          },
+          {
+            "default": "False",
+            "param": "fill_gaps",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "direct",
+      "method": "ApplySyncableProperties",
+      "methods_called": [],
+      "properties_accessed": [
+        "ClassName"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "MSAOperations.ChangeAffixVariant": {
       "class": "MSAOperations",
       "factories_used": [],
@@ -48175,6 +48733,52 @@
       "methods_called": [],
       "properties_accessed": [
         "MainPOS (OwningSequence)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "MSAOperations.GetSyncableProperties": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "item": [
+            "arg[0] of __GetMsaObject()"
+          ]
+        },
+        "properties_accessed": [
+          "ClassName"
+        ],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "direct",
+      "method": "GetSyncableProperties",
+      "methods_called": [],
+      "properties_accessed": [
+        "ClassName"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -49331,7 +49935,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "media_or_hvo": [
@@ -49340,9 +49944,7 @@
             "arg[0] of Object()"
           ]
         },
-        "properties_accessed": [
-          "Owner"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -49362,12 +49964,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetOwners",
       "methods_called": [],
-      "properties_accessed": [
-        "Owner"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -53018,16 +53618,15 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "note": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of _GetTypedOwner()"
           ]
         },
-        "properties_accessed": [
-          "Owner"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -53052,12 +53651,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetOwner",
       "methods_called": [],
-      "properties_accessed": [
-        "Owner"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -54069,10 +54666,12 @@
             "fill_gaps= of ApplySyncableProperties()"
           ],
           "item": [
-            "arg[0] of ApplySyncableProperties()"
+            "arg[0] of __ResolveObject()"
           ],
           "props": [
-            "arg[1] of ApplySyncableProperties()"
+            "arg[3] of __ApplyFeatureStrucProp()",
+            "arg[0] of isinstance()",
+            "arg[0] of type()"
           ],
           "ws_map": [
             "arg[2] of ApplySyncableProperties()"
@@ -54090,6 +54689,10 @@
             "default": "False",
             "param": "fill_gaps",
             "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
           }
         ],
         "utilities_used": []
@@ -62655,7 +63258,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -62700,13 +63304,7 @@
           "PossibilitiesOS (OwningSequence)"
         ],
         "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          }
-        ],
+        "transformations": [],
         "utilities_used": []
       },
       "lcm_deps": [
@@ -63209,15 +63807,11 @@
     },
     "PossibilityListOperations.CreateList": {
       "class": "PossibilityListOperations",
-      "factories_used": [
-        "ICmPossibilityListFactory"
-      ],
+      "factories_used": [],
       "inline": {
         "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ICmPossibilityListFactory"
-        ],
-        "mapping_type": "composite",
+        "factories_used": [],
+        "mapping_type": "convenience",
         "methods_called": [
           ".Create()",
           ".set_String()"
@@ -63265,7 +63859,7 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "composite",
+      "mapping_type": "convenience",
       "method": "CreateList",
       "methods_called": [
         ".Create()",
@@ -63444,7 +64038,8 @@
             "arg[0] of GetItems()"
           ],
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -63497,7 +64092,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],
@@ -63987,11 +64583,6 @@
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -64250,11 +64841,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -67215,11 +67801,6 @@
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -67349,11 +67930,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           },
           {
@@ -67779,11 +68355,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
             "type": "type_conversion"
           }
         ],
@@ -73973,7 +74544,8 @@
         ],
         "param_usage": {
           "name": [
-            "arg[0] of _ValidateParam()"
+            "arg[0] of _ValidateParam()",
+            "arg[0] of normalize_match_key()"
           ]
         },
         "properties_accessed": [],

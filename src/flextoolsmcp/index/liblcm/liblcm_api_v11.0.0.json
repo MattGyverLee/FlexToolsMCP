@@ -70052,6 +70052,14 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
             "class": "InflectionFeatureOperations",
             "methods": []
           },
@@ -70060,11 +70068,19 @@
             "methods": []
           },
           {
+            "class": "OperationsMethod",
+            "methods": []
+          },
+          {
             "class": "PhonFeatureOperations",
             "methods": []
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
             "methods": []
           }
         ],
@@ -70106,7 +70122,23 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
             "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "NaturalClassOperations",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
             "methods": []
           },
           {
@@ -70115,6 +70147,10 @@
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
             "methods": []
           }
         ],
@@ -70368,6 +70404,27 @@
           "type": "IFsAbstractStructure"
         }
       ],
+      "python_wrappers": {
+        "flexlibs_2": [
+          {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
+            "methods": []
+          }
+        ],
+        "flexlibs_stable": null
+      },
       "relationships": {
         "children": [
           {
@@ -70401,6 +70458,27 @@
       "name": "IFsComplexValueFactory",
       "namespace": "SIL.LCModel",
       "properties": [],
+      "python_wrappers": {
+        "flexlibs_2": [
+          {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
+            "methods": []
+          }
+        ],
+        "flexlibs_stable": null
+      },
       "relationships": [],
       "summary": "Interface for FsComplexValueFactory operations",
       "tags": [
@@ -71312,7 +71390,23 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
             "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "NaturalClassOperations",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
             "methods": []
           },
           {
@@ -71321,6 +71415,10 @@
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
             "methods": []
           }
         ],
@@ -71731,7 +71829,23 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
+            "class": "BaseOperations",
+            "methods": []
+          },
+          {
+            "class": "EnumerableWrapper",
+            "methods": []
+          },
+          {
             "class": "InflectionFeatureOperations",
+            "methods": []
+          },
+          {
+            "class": "NaturalClassOperations",
+            "methods": []
+          },
+          {
+            "class": "OperationsMethod",
             "methods": []
           },
           {
@@ -71740,6 +71854,10 @@
           },
           {
             "class": "PhonemeOperations",
+            "methods": []
+          },
+          {
+            "class": "wrap_enumerable",
             "methods": []
           }
         ],
@@ -90498,15 +90616,15 @@
       "python_wrappers": {
         "flexlibs_2": [
           {
-            "class": "AllomorphOperations",
-            "methods": []
-          },
-          {
             "class": "CustomFieldOperations",
             "methods": []
           },
           {
             "class": "LexEntryOperations",
+            "methods": []
+          },
+          {
+            "class": "WfiMorphBundleOperations",
             "methods": []
           }
         ],
@@ -94500,10 +94618,6 @@
           },
           {
             "class": "LexEntryOperations",
-            "methods": []
-          },
-          {
-            "class": "WfiMorphBundleOperations",
             "methods": []
           }
         ],

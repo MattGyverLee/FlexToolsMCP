@@ -254,8 +254,14 @@ class TestShippedLiblcmTemplateCastingArity(unittest.TestCase):
     """
 
     _CAST_CALL_RE = re.compile(r"cast_to_concrete\(([^()]*)\)")
+    # Matches an ILexEntry pulled from ANY flexicon module path, not just the
+    # deep flexicon.code.lcm_casting one. The template now imports
+    # cast_to_concrete from the top-level `flexicon` (public since 4.6.0,
+    # #271); a regex pinned to the old deep path would match nothing here and
+    # let this guard pass vacuously -- a silent regression, which is worse
+    # than a red test. Group 1 is the module path, group 2 the imported names.
     _BAD_IMPORT_RE = re.compile(
-        r"from\s+flexicon\.code\.lcm_casting\s+import\s+([^\n]+)"
+        r"from\s+((?:flexicon|flexlibs2)(?:\.[A-Za-z_][\w.]*)?)\s+import\s+([^\n]+)"
     )
 
     def _liblcm_template_text(self):
@@ -293,20 +299,25 @@ class TestShippedLiblcmTemplateCastingArity(unittest.TestCase):
         top of 3-liblcm-template.py)."""
         text = self._liblcm_template_text()
         for match in self._BAD_IMPORT_RE.finditer(text):
-            imported_names = [n.strip() for n in match.group(1).split(",")]
+            module_path = match.group(1)
+            imported_names = [n.strip() for n in match.group(2).split(",")]
             self.assertNotIn(
                 "ILexEntry", imported_names,
-                f"template imports ILexEntry from flexicon.code.lcm_casting: {match.group(0)!r}",
+                f"template imports ILexEntry from {module_path}: {match.group(0)!r}",
             )
 
     def test_live_flexicon_cast_to_concrete_signature_is_single_arg(self):
         """Ground truth check against the actual installed flexicon package
         (not just the template text) so this test cannot drift from
-        reality the way the phantom template text did."""
+        reality the way the phantom template text did.
+
+        Imports via the top-level `flexicon` -- the path this server now
+        advertises and the template now uses -- so the check exercises the
+        public export rather than a path users are no longer pointed at."""
         try:
             import inspect
 
-            from flexicon.code.lcm_casting import cast_to_concrete
+            from flexicon import cast_to_concrete
         except Exception as exc:
             self.skipTest(f"flexicon not importable in this environment ({exc})")
             return
@@ -319,6 +330,36 @@ class TestShippedLiblcmTemplateCastingArity(unittest.TestCase):
         self.assertEqual(
             len(params), 1,
             f"cast_to_concrete signature changed -- expected 1 positional param, got {sig}",
+        )
+
+    def test_public_and_deep_cast_to_concrete_are_the_same_object(self):
+        """Flexicon 4.6.0 (#271) re-exported cast_to_concrete at the top level
+        and documents all three paths as the same function object. This
+        server's casting guidance now advertises the public
+        `from flexicon import cast_to_concrete`, so that equivalence is a
+        contract we depend on: if a future flexicon makes the top-level name
+        a wrapper (or drops it), every hint we emit points somewhere with
+        different behaviour than the path this suite's other checks exercise.
+        Fails loudly rather than letting the guidance rot silently."""
+        try:
+            import flexicon
+            from flexicon.code.lcm_casting import cast_to_concrete as deep
+        except Exception as exc:
+            self.skipTest(f"flexicon not importable in this environment ({exc})")
+            return
+
+        public = getattr(flexicon, "cast_to_concrete", None)
+        self.assertIsNotNone(
+            public,
+            "flexicon no longer exports cast_to_concrete at the top level; the "
+            "casting guidance in handlers/api.py, handlers/discovery.py, "
+            "validators.py and 3-liblcm-template.py advertises that import",
+        )
+        self.assertIs(
+            public, deep,
+            "flexicon.cast_to_concrete is no longer the same object as "
+            "flexicon.code.lcm_casting.cast_to_concrete; the advertised public "
+            "import may not behave like the path verified above",
         )
 
 

@@ -50,13 +50,12 @@
     },
     "AllomorphOperations": {
       "category": "lexicon",
-      "method_count": 16,
+      "method_count": 17,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
         "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory",
-        "IMoForm",
         "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
         "IPhEnvironment",
@@ -126,6 +125,12 @@
       "method_count": 11,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsComplexValue",
+        "IFsComplexValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "ITsString"
       ]
     },
@@ -351,6 +356,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsComplexValue",
+        "IFsComplexValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "ITsString"
       ]
     },
@@ -391,7 +402,7 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 105,
+      "method_count": 106,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -594,7 +605,7 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 9,
+      "method_count": 11,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -667,6 +678,9 @@
       "methods": {},
       "wraps_interfaces": [
         "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "IPhNCFeatures",
         "IPhNCFeaturesFactory",
         "IPhNCSegments",
@@ -695,6 +709,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsComplexValue",
+        "IFsComplexValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "ITsString"
       ]
     },
@@ -1127,13 +1147,13 @@
     },
     "WfiMorphBundleOperations": {
       "category": "texts",
-      "method_count": 24,
+      "method_count": 26,
       "methods": {},
       "wraps_interfaces": [
         "ILexSense",
+        "IMoForm",
         "IMoInflClass",
         "IMoMorphSynAnalysis",
-        "IMoMorphType",
         "ITsString",
         "IWfiAnalysis",
         "IWfiMorphBundle",
@@ -1201,6 +1221,12 @@
       "method_count": 1,
       "methods": {},
       "wraps_interfaces": [
+        "IFsClosedValue",
+        "IFsClosedValueFactory",
+        "IFsComplexValue",
+        "IFsComplexValueFactory",
+        "IFsFeatStruc",
+        "IFsFeatStrucFactory",
         "ITsString"
       ]
     }
@@ -2513,6 +2539,14 @@
     "IFsClosedValue": {
       "flexlibs_2": [
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
           "class": "InflectionFeatureOperations",
           "methods": []
         },
@@ -2521,11 +2555,19 @@
           "methods": []
         },
         {
+          "class": "OperationsMethod",
+          "methods": []
+        },
+        {
           "class": "PhonFeatureOperations",
           "methods": []
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],
@@ -2534,7 +2576,23 @@
     "IFsClosedValueFactory": {
       "flexlibs_2": [
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
           "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "NaturalClassOperations",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
           "methods": []
         },
         {
@@ -2543,6 +2601,10 @@
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],
@@ -2562,6 +2624,48 @@
       },
       "flexlibs_stable": null
     },
+    "IFsComplexValue": {
+      "flexlibs_2": [
+        {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
+    "IFsComplexValueFactory": {
+      "flexlibs_2": [
+        {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
+          "methods": []
+        }
+      ],
+      "flexlibs_stable": null
+    },
     "IFsFeatDefn": {
       "flexlibs_2": {
         "class": "InflectionFeatureOperations",
@@ -2572,7 +2676,23 @@
     "IFsFeatStruc": {
       "flexlibs_2": [
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
           "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "NaturalClassOperations",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
           "methods": []
         },
         {
@@ -2581,6 +2701,10 @@
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],
@@ -2589,7 +2713,23 @@
     "IFsFeatStrucFactory": {
       "flexlibs_2": [
         {
+          "class": "BaseOperations",
+          "methods": []
+        },
+        {
+          "class": "EnumerableWrapper",
+          "methods": []
+        },
+        {
           "class": "InflectionFeatureOperations",
+          "methods": []
+        },
+        {
+          "class": "NaturalClassOperations",
+          "methods": []
+        },
+        {
+          "class": "OperationsMethod",
           "methods": []
         },
         {
@@ -2598,6 +2738,10 @@
         },
         {
           "class": "PhonemeOperations",
+          "methods": []
+        },
+        {
+          "class": "wrap_enumerable",
           "methods": []
         }
       ],
@@ -3445,15 +3589,15 @@
     "IMoForm": {
       "flexlibs_2": [
         {
-          "class": "AllomorphOperations",
-          "methods": []
-        },
-        {
           "class": "CustomFieldOperations",
           "methods": []
         },
         {
           "class": "LexEntryOperations",
+          "methods": []
+        },
+        {
+          "class": "WfiMorphBundleOperations",
           "methods": []
         }
       ],
@@ -3515,10 +3659,6 @@
         },
         {
           "class": "LexEntryOperations",
-          "methods": []
-        },
-        {
-          "class": "WfiMorphBundleOperations",
           "methods": []
         }
       ],

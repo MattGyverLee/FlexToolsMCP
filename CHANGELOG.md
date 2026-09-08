@@ -2,6 +2,103 @@
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-09-08
+
+Index-refresh release: the bundled Flexicon API index is regenerated against
+**Flexicon 4.6.0**, the `pyflexicon` floor is raised to match, and the casting
+guidance this server emits moves to Flexicon's newly-public `cast_to_concrete`
+export.
+
+### Changed: `pyflexicon` floor raised to `>=4.6.0,<5`
+
+The floor was `>=4.3.0`, but the bundled index had drifted well past it: 2.10.0
+shipped an index built against Flexicon **4.5.2**, a version that never reached
+PyPI. Flexicon tagged 4.5.0/4.5.1/4.5.2 in its changelog but never pushed the
+tags, so its `publish.yml` never fired and **4.4.1 was the last version actually
+published**. A user installing 2.10.0 therefore resolved Flexicon 4.4.1 while
+the index described 4.5.2 -- documenting methods the installed library did not
+have.
+
+Flexicon 4.6.0 ships that whole backlog (4.5.0 through 4.6.0) in one published
+release, which closes the gap. Raising the floor to `>=4.6.0` makes the shipped
+index and the minimum resolvable library the same version for the first time
+since 2.9.x. Still a floor rather than a pin, so upgrading FLExToolsMCP
+re-resolves to the latest Flexicon.
+
+**This is why the bump is minor, not patch:** a fresh install of 2.11.0 will
+pull Flexicon 4.6.0, which contains six behavioural breaking changes relative
+to 4.4.1 -- among them `OpenProject(..., ui=None)` now defaulting to
+`HeadlessLcmUI`, `FLExProject.SaveChanges()` now raising instead of returning
+falsy, and whitespace-stripping name-field writers. None is an API-signature
+break; each is a correctness repair. Scripts generated against 4.4.1 that
+relied on the old behaviour should be re-checked against Flexicon's own 4.6.0
+changelog before upgrading.
+
+### Changed: Flexicon index regenerated at 4.6.0
+
+`flexicon_api_v4.6.0.json`, `flexicon_lcm_bridge_v4.6.0.json`, and
+`common_patterns_flexicon-v4.6.0.json` replace their 4.5.2 counterparts (the
+4.5.2 files move to `index/python/archive/`). The LibLCM index stays at
+**11.0.0** and the stable-FlexLibs index at **1.2.8**; both were re-scanned and
+only their cross-reference annotations changed.
+
+Index diff -- 118 entities unchanged, three new methods, none removed:
+
+- `MSAOperations.GetSyncableProperties` / `ApplySyncableProperties` (Flexicon
+  #251) -- `MSAOperations` previously had no sync methods at all, so every MSA
+  synced across projects with a correct `ClassName`/POS but a permanently null
+  feature structure.
+- `AllomorphOperations.ApplySyncableProperties` -- Task T8 of Flexicon's
+  `specs/feature-structure-sync-gap`. Flexicon's changelog deliberately cites
+  the task rather than an issue number: it is an unfiled P0, and filing it is
+  an outstanding decision on their side.
+
+### Changed: casting guidance now advertises the public `cast_to_concrete`
+
+Flexicon 4.6.0 re-exported `cast_to_concrete` at the top level (#271), so every
+hint this server emits, and the shipped LibLCM template, now say
+`from flexicon import cast_to_concrete` instead of reaching into
+`flexicon.code.lcm_casting`. Eight sites: two in `handlers/api.py`, two in
+`handlers/discovery.py`, two in `server/validators.py`, and the import plus its
+comment in `templates/3-liblcm-template.py`.
+
+Guidance text only -- no logic changed. `_FLEXICON_IMPORT_ROOTS` already
+accepted the `flexicon` root, so user code written against the new hint
+satisfies the discovery gate unchanged. Flexicon documents all three paths
+(`flexicon`, `flexicon.code`, `flexicon.code.lcm_casting`) as the same function
+object and leaves the deep one supported, so scripts already written against it
+keep working.
+
+Flexicon #271 exists because consumers -- this server among them -- reached
+into that private path or guessed at public names that never existed. It also
+confirms there has never been a `CastingOperations` module, the stale name
+behind the `ImportError` in 3 of 10 sessions that motivated 2.10.0's gate work
+(#120).
+
+Two test changes came with it, in `tests/test_issue48_inline_casting.py`:
+
+- `_BAD_IMPORT_RE` was pinned to `from flexicon.code.lcm_casting import ...`.
+  Moving the template off that path would have left it matching nothing, so
+  `test_no_template_imports_ilexentry_from_lcm_casting` would have passed
+  **vacuously** -- a silent regression rather than a red test. It now matches
+  any `flexicon` / `flexlibs2` module path, which makes it strictly stronger:
+  it catches `from flexicon import ILexEntry`, which the old pattern missed.
+- New `test_public_and_deep_cast_to_concrete_are_the_same_object` pins the
+  #271 equivalence. The advertised public import is now load-bearing for every
+  casting hint, so if a future Flexicon makes the top-level name a wrapper or
+  drops it, this fails loudly instead of letting the guidance rot.
+
+### Verification
+
+- `pytest`: 1157 passed, 7 skipped, 14 subtests passed.
+- `python scripts/validate_integrity.py all`: clean -- 21 tools registered,
+  43/43 Operations classes import, flexicon runtime contract reports 4.6.0.
+- Flexicon 4.6.0 confirmed installable from PyPI (wheel fetched fresh,
+  `pyflexicon>=4.6.0,<5` resolves).
+- eval: Tier-2 live task evals NOT run for this release. Index content changed,
+  so the pre-release checklist nominally requires them; the Tier-2 runner is a
+  documented contract, not a wired harness, and the run is manual.
+
 ## [2.10.0] - 2026-09-08
 
 97 commits since 2.9.1. The headline is that **2.9.1 shipped a pre-flight

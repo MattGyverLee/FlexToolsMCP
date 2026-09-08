@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.5.2"
+    "version": "4.6.0"
   },
   "categories": {
     "discourse": {
@@ -3400,7 +3400,6 @@
         "ILexEntry",
         "IMoAffixAllomorph",
         "IMoAffixAllomorphFactory",
-        "IMoForm",
         "IMoStemAllomorph",
         "IMoStemAllomorphFactory",
         "IPhEnvironment",
@@ -3456,6 +3455,64 @@
           "signature": "AddPhoneEnv(allomorph_or_hvo, env_or_hvo)",
           "summary": "Add a phonological environment to an allomorph.",
           "usage_hint": "creation"
+        },
+        {
+          "description": "Apply syncable properties (from GetSyncableProperties) onto an\nallomorph.\n\nHandles the single C1 \"MoAffixAllomorph\" feature-struct key-pair\n(``MsEnvFeatures``/``MsEnvFeaturesGuid``) directly; everything\nelse in ``props`` (the pre-existing ``Form``/``IsAbstract``/\n``MorphTypeRA`` shape) is delegated to\n``BaseOperations.ApplySyncableProperties`` unchanged.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ApplySyncableProperties",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``item`` is None, ``props`` is not a"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Target allomorph (already created + owned + GUID- assigned by the caller), or its HVO (int) -- resolved and cast via ``__GetAllomorphObject`` (C2).",
+              "name": "item",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "dict produced by GetSyncableProperties (or built by a caller following the same shape).",
+              "name": "props",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional source->target writing-system Id mapping, passed through to the base loop.",
+              "name": "ws_map",
+              "type": ""
+            },
+            {
+              "default": false,
+              "description": "Passed through to the base loop.",
+              "name": "fill_gaps",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If ``item`` is None, ``props`` is not a",
+            "dict, or (C7) the ``MsEnvFeatures``/``MsEnvFeaturesGuid``",
+            "spec references a feature, value, or feature-structure-",
+            "type GUID that does not exist in the target project --",
+            "naming the unresolved GUID."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
+          "summary": "Apply syncable properties (from GetSyncableProperties) onto an\nallomorph.",
+          "usage_hint": null
         },
         {
           "description": "Compare two allomorphs and return their differences.\n",
@@ -3904,7 +3961,7 @@
         },
         {
           "description": "Get all syncable properties of an allomorph for comparison.\n",
-          "example": "            >>> allo = list(project.Allomorphs.GetAll(entry))[0]\n            >>> props = project.Allomorphs.GetSyncableProperties(allo)\n            >>> print(props['Form'])  # MultiString\n            {'en': 'run', 'fr': 'courir'}\n            >>> print(props['IsAbstract'])  # Boolean\n            True",
+          "example": "            >>> allo = list(project.Allomorphs.GetAll(entry))[0]\n            >>> props = project.Allomorphs.GetSyncableProperties(allo)\n            >>> print(props['Form'])  # MultiString\n            {'en': 'run', 'fr': 'courir'}\n            >>> print(props['IsAbstract'])  # Boolean\n            True\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -3920,21 +3977,21 @@
             ],
             "notes": [],
             "success": {
-              "description": "dict: Dictionary mapping property names to their values: - MultiString properties as dicts {ws: text} - Atomic properties as simple values - Reference Atomic (RA) properties as GUID strings - Does NOT include Owning Sequence (OS) properties",
+              "description": "dict: Dictionary mapping property names to their values: - MultiString properties as dicts {ws: text} - Atomic properties as simple values - Reference Atomic (RA) properties as GUID strings - Does NOT include Owning Sequence (OS) properties - For a ``MoAffixAllomorph`` ONLY (C1 table row, T8): ``MsEnvFeatures`` / ``MsEnvFeaturesGuid`` -- C4 recursive-dict spec of ``MsEnvFeaturesOA`` / str GUID. Emitted only when the owning property is non-None (C6 presence, not truthiness); a present-but-empty struct still emits both keys (C4 -- ``_GetFeatureStruc`` never returns ``None`` for a non-None struct). A ``MoStemAllomorph`` (or any other ``ClassName``) emits neither key and never reaches the resolver.",
               "type": "dict"
             }
           },
           "parameters": [
             {
               "default": null,
-              "description": "The IMoForm object (allomorph).",
+              "description": "The IMoForm object (allomorph), or its HVO (int) -- resolved and cast via ``__GetAllomorphObject`` (contract C2).",
               "name": "item",
               "type": ""
             }
           ],
           "raises": [],
           "return_type": "dict",
-          "returns": "dict: Dictionary mapping property names to their values: - MultiString properties as dicts {ws: text} - Atomic properties as simple values - Reference Atomic (RA) properties as GUID strings - Does NOT include Owning Sequence (OS) properties ",
+          "returns": "dict: Dictionary mapping property names to their values: - MultiString properties as dicts {ws: text} - Atomic properties as simple values - Reference Atomic (RA) properties as GUID strings - Does NOT include Owning Sequence (OS) properties - For a ``MoAffixAllomorph`` ONLY (C1 table row, T8): ``MsEnvFeatures`` / ``MsEnvFeaturesGuid`` -- C4 recursive-dict spec of ``MsEnvFeaturesOA`` / str GUID. Emitted only when the owning property is non-None (C6 presence, not truthiness); a present-but-empty struct still emits both keys (C4 -- ``_GetFeatureStruc`` never returns ``None`` for a non-None struct). A ``MoStemAllomorph`` (or any other ``ClassName``) emits neither key and never reaches the resolver. ",
           "signature": "GetSyncableProperties(item)",
           "summary": "Get all syncable properties of an allomorph for comparison.",
           "usage_hint": "retrieval"
@@ -23147,6 +23204,7 @@
         "CellarPropertyType",
         "CellarPropertyTypeFilter",
         "FwObjDataTypes",
+        "FwTextPropType",
         "ICmObjectRepository",
         "ICmPossibilityList",
         "ICmPossibilityRepository",
@@ -23173,6 +23231,7 @@
         "LcmFileLockedException",
         "LcmInvalidClassException",
         "LcmInvalidFieldException",
+        "LexEntryRefTags",
         "LexEntryTags",
         "LexExampleSentenceTags",
         "LexSenseTags",
@@ -26166,7 +26225,7 @@
           "usage_hint": null
         },
         {
-          "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\n**Default since 4.4.0: True.** Each write runs inside its own\nnamed, nesting-aware LCM unit of work, so an exception escaping\nan operation rolls that operation's mutations back, and the\noperation appears in FLEx's Ctrl+Z menu under its own label.\nThis is the mode the write path is designed for (decision D3 in\n`specs/write-path-transactions/tasks.md`).\n\nOnly meaningful when writeEnabled=True; ignored otherwise.\n\nPassing ``undoable=False`` opts back into the legacy Phase 1\nbehaviour: one session-long ``BeginNonUndoableTask()`` envelope,\nin which ``Transaction()`` is a labelling/nesting construct only\nand **nothing rolls back** -- the atomicity unit becomes the\nwhole session (issue #236). It is retained for callers that\ndepend on the old semantics, and it warns once per\n``OpenProject()`` call. Do not use it when the project may be\nopen in FLEx or another process (D3).\n\nTwo consequences of the default worth knowing before you rely on\nper-operation rollback:\n\n* Nested blocks **join** the outer unit of work rather than\nopening an independent one, so catching an exception from an\ninner block while still inside the outer block commits that\ninner block's partial writes. See `docs/EXCEPTION_HANDLING.md`.\n* ``AbortSession()`` is an ``undoable=False`` primitive. Under\nthis default it returns False between operations and raises\n``FP_TransactionError`` inside one (D8) -- per-operation\nrollback covers that ground instead.\n\nui:\nOptional `ILcmUI` implementation, passed through to\n`FLExLCM.OpenProject()`. When None (the default, unchanged for\nbackward compatibility), LCM is given the WinForms `FwLcmUI`,\nwhich opens modal dialogs and marshals through\n`Control.Invoke` -- fine for an interactive FLEx-hosted\nprocess, but unsafe in a headless one (issue #238): a\nconflicting save can block the commit thread on a dialog with\nno owner, or silently discard this session's unsaved changes.\n\nHeadless callers (services, scripts, MCP servers) should pass\n`HeadlessLcmUI()` from `flexicon.code.headless_ui`:\n\nfrom flexicon.code.headless_ui import HeadlessLcmUI\nproject.OpenProject(\"MyProject\", writeEnabled=True,\nui=HeadlessLcmUI())\n\n`HeadlessLcmUI` never blocks and never silently reverts; a\nconflicting save raises `FP_ConflictingSaveError` instead.\n",
+          "description": "Open a project. The project must be closed with `CloseProject()` to\nsave any changes, and release the lock.\n\nprojectName:\n- Either the full path including \".fwdata\" suffix, or\n- The name only, to open from the default project location.\n\nwriteEnabled:\nEnables changes to be written to the project, which will be\nsaved on a call to `CloseProject()`.\nLCM will raise an exception if changes are attempted without\nopening the project in this mode.\n\nundoable:\n**Default since 4.4.0: True.** Each write runs inside its own\nnamed, nesting-aware LCM unit of work, so an exception escaping\nan operation rolls that operation's mutations back, and the\noperation appears in FLEx's Ctrl+Z menu under its own label.\nThis is the mode the write path is designed for (decision D3 in\n`specs/write-path-transactions/tasks.md`).\n\nOnly meaningful when writeEnabled=True; ignored otherwise.\n\nPassing ``undoable=False`` opts back into the legacy Phase 1\nbehaviour: one session-long ``BeginNonUndoableTask()`` envelope,\nin which ``Transaction()`` is a labelling/nesting construct only\nand **nothing rolls back** -- the atomicity unit becomes the\nwhole session (issue #236). It is retained for callers that\ndepend on the old semantics, and it warns once per\n``OpenProject()`` call. Do not use it when the project may be\nopen in FLEx or another process (D3).\n\nTwo consequences of the default worth knowing before you rely on\nper-operation rollback:\n\n* Nested blocks **join** the outer unit of work rather than\nopening an independent one, so catching an exception from an\ninner block while still inside the outer block commits that\ninner block's partial writes. See `docs/EXCEPTION_HANDLING.md`.\n* ``AbortSession()`` is an ``undoable=False`` primitive. Under\nthis default it returns False between operations and raises\n``FP_TransactionError`` inside one (D8) -- per-operation\nrollback covers that ground instead.\n\nui:\nOptional `ILcmUI` implementation, passed through to\n`FLExLCM.OpenProject()`. **Default since issue #285: a bare\n`HeadlessLcmUI()`.** It never blocks and never silently\nreverts; a conflicting save raises `FP_ConflictingSaveError`\ninstead of discarding this session's unsaved changes.\n\nfrom flexicon import FLExProject\nproject = FLExProject()\nproject.OpenProject(\"MyProject\", writeEnabled=True)\n# ui=None -> HeadlessLcmUI() -> conflicting save raises\n# FP_ConflictingSaveError\n\nInteractive, FLEx-hosted callers that genuinely want the\nWinForms dialogs should opt in explicitly:\n\nfrom SIL.FieldWorks.FdoUi import FwLcmUI\nfrom SIL.FieldWorks.Common.FwUtils import ThreadHelper\nproject.OpenProject(\"MyProject\", writeEnabled=True,\nui=FwLcmUI(None, ThreadHelper()))\n\n`FwLcmUI` opens modal dialogs and marshals through\n`Control.Invoke` -- fine for an interactive FLEx-hosted\nprocess, but unsafe in a headless one (issue #238): a\nconflicting save can block the commit thread on a dialog with\nno owner, or silently discard this session's unsaved changes.\n",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -31828,7 +31887,7 @@
       "namespace": "flexicon.code.headless_ui",
       "properties": [
         {
-          "description": "None - nothing may marshal to a UI thread that does not exist.\n\nReturning None is what keeps ``DisplayMessage`` off the deadlock path\ndescribed in the module docstring.",
+          "description": "None - nothing may marshal to a UI thread that does not exist.\n\nReturning None is what keeps ``DisplayMessage`` off the deadlock path\ndescribed in the module docstring.\n\nCONTINGENCY (cycle-1 domain audit, issue #285): ``None`` here is\ndereferenced unguarded at exactly two liblcm sites --\n``UnitOfWorkService.SendPropChangedNotifications``\n(``UnitOfWorkService.cs:537``, reached via ``UnitOfWork.cs:307/422``\nand ``UndoStack.cs:343``) and\n``UndoStack.DoTasksForEndOfPropChanged`` (``UndoStack.cs:383``). Both\nare no-ops for flexicon TODAY only because (1) nothing in the current\nOperations surface calls ``AddNotification`` to register an\n``IVwNotifyChange`` subscriber, and (2) nothing touches ``Scripture``,\nliblcm's sole ``IPropertyChangeNotifier`` implementer. If a future\nfeature adds a change-watcher or touches Scripture, re-check both\ncall sites before assuming ``None`` is still safe here.",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34348,7 +34407,7 @@
         },
         {
           "description": "Get all components of a complex form.\n",
-          "example": "            >>> idiom = project.LexEntry.Find(\"kick the bucket\")\n            >>> components = project.LexEntry.GetComplexFormComponents(idiom)\n            >>> for comp in components:\n            ...     if isinstance(comp, ILexEntry):\n            ...         print(project.LexEntry.GetHeadword(comp))\n",
+          "example": "            >>> idiom = project.LexEntry.Find(\"kick the bucket\")\n            >>> components = project.LexEntry.GetComplexFormComponents(idiom)\n            >>> for comp in components:\n            ...     # Branch on ClassName, not isinstance: ComponentLexemesRS\n            ...     # is declared over ICmObject and mixes entries and\n            ...     # senses, and ClassName is the one discriminator that is\n            ...     # readable on either (issue #270).\n            ...     if comp.ClassName == \"LexEntry\":\n            ...         print(project.LexEntry.GetHeadword(comp))\n            ...     elif comp.ClassName == \"LexSense\":\n            ...         print(project.Senses.GetGloss(comp))\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -43196,6 +43255,76 @@
       ],
       "methods": [
         {
+          "description": "Apply syncable properties (from GetSyncableProperties) onto an MSA.\n\nHandles the four C1 MSA feature-struct key-pairs\n(``MsFeatures``/``MsFeaturesGuid``, ``InflFeats``/\n``InflFeatsGuid``, ``FromMsFeatures``/``FromMsFeaturesGuid``,\n``ToMsFeatures``/``ToMsFeaturesGuid``) directly; everything else in\n``props`` (currently nothing, since ``GetSyncableProperties`` emits\nonly these keys, but a caller-constructed ``props`` dict may carry\nmore) is delegated to ``BaseOperations.ApplySyncableProperties``\nunchanged.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ApplySyncableProperties",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``item`` is None, ``props`` is not a"
+              },
+              {
+                "exception": "GUID",
+                "when": "and instructing the caller to sync the feature system"
+              },
+              {
+                "exception": "MSA",
+                "when": "feature structure incomplete with no visible error"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Target MSA (already created + owned + GUID-assigned by the caller), or its HVO/GUID (cast via ``__GetMsaObject``, C2).",
+              "name": "item",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "dict produced by GetSyncableProperties (or built by a caller following the same shape).",
+              "name": "props",
+              "type": ""
+            },
+            {
+              "default": null,
+              "description": "Optional source->target writing-system Id mapping. Unused by the feature-struct branches (which resolve by GUID, not writing system); passed through to the base loop for forward compatibility with any future plain scalar/multistring MSA property.",
+              "name": "ws_map",
+              "type": ""
+            },
+            {
+              "default": false,
+              "description": "Passed through to the base loop. Has no additional effect on the feature-struct branches, which are always purely additive/idempotent by GUID (mirrors NaturalClassOperations' equivalent note).",
+              "name": "fill_gaps",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If ``item`` is None, ``props`` is not a",
+            "dict, or (C7) a ``<Name>``/``<Name>Guid`` spec references a",
+            "feature, value, or feature-structure-type GUID that does",
+            "not exist in the target project -- naming the unresolved",
+            "GUID and instructing the caller to sync the feature system",
+            "first. Silently dropping a spec would leave the target's",
+            "MSA feature structure incomplete with no visible error",
+            "(same bug class as the NaturalClassOperations/#222",
+            "lineage)."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
+          "summary": "Apply syncable properties (from GetSyncableProperties) onto an MSA.",
+          "usage_hint": null
+        },
+        {
           "description": "Convert an existing affix MSA to a different affix variant.\n\nCreates a new MSA of the requested kind, copies the fields that\ntransfer across the conversion, warns about fields that will be\nlost (only when they actually carry data), repoints all\nILexSenses in the owning entry whose MorphoSyntaxAnalysisRA\npoints at the old MSA, and removes the old MSA from\nMorphoSyntaxAnalysesOC when no senses remain referencing it.\n",
           "example": "",
           "is_classmethod": false,
@@ -43426,6 +43555,43 @@
           "signature": "CreateUnclassifiedAffix(sense, pos)",
           "summary": "Create an IMoUnclassifiedAffixMsa, attach it to the sense.",
           "usage_hint": "creation"
+        },
+        {
+          "description": "Get dictionary of syncable properties for cross-project\nsynchronization of an MSA's feature structure(s).\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetSyncableProperties",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "dict: Keyed by ``ClassName`` (frozen C1 table rows for MSA):  - ``MoStemMsa``: ``MsFeatures`` (C4 recursive-dict spec of ``MsFeaturesOA``) / ``MsFeaturesGuid`` (str GUID). - ``MoInflAffMsa``: ``InflFeats`` / ``InflFeatsGuid`` (``InflFeatsOA``). - ``MoDerivAffMsa``: BOTH ``FromMsFeatures``/ ``FromMsFeaturesGuid`` (``FromMsFeaturesOA``) AND ``ToMsFeatures``/``ToMsFeaturesGuid`` (``ToMsFeaturesOA``) -- a derivational affix MSA has two independent feature-struct slots (C1 ``slot=\"From\"``/``\"To\"``), each captured independently; either, both, or neither key-pair may be present depending on which slots are actually populated. - ``MoUnclassifiedAffixMsa``: always ``{}`` -- confirmed by the live probe to carry NO feature-struct property at all (R2). This ClassName is discriminated FIRST, before any resolver call, so capturing one of these (routinely created by ``CreateUnclassifiedAffix``) never raises. - Any other ``ClassName`` (e.g. ``MoDerivStepMsa`` -- out of the C1 table by design): always ``{}``. The resolver is never consulted for an out-of-table ClassName either, so this defensive fallback cannot raise -- mirrors ``NaturalClassOperations.GetSyncableProperties``'s own unknown-``ClassName`` fallback.  An owning property that is present but genuinely empty (an ``IFsFeatStruc`` with zero ``FeatureSpecsOC`` entries) still emits BOTH its ``<Name>``/``<Name>Guid`` keys -- ``<Name>`` serialises to ``{\"TypeGuid\": ..., \"specs\": {}}``, never ``None`` (C4). A NULL owning property (e.g. ``MsFeaturesOA`` was never populated) omits both keys entirely -- gate on key PRESENCE (C6), never on the value's truthiness.",
+              "type": "dict"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "An IMoStemMsa / IMoInflAffMsa / IMoDerivAffMsa / IMoUnclassifiedAffixMsa (or its HVO/GUID -- resolved and cast to the concrete interface via ``__GetMsaObject``, contract C2).",
+              "name": "item",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "dict",
+          "returns": "dict: Keyed by ``ClassName`` (frozen C1 table rows for MSA):  - ``MoStemMsa``: ``MsFeatures`` (C4 recursive-dict spec of ``MsFeaturesOA``) / ``MsFeaturesGuid`` (str GUID). - ``MoInflAffMsa``: ``InflFeats`` / ``InflFeatsGuid`` (``InflFeatsOA``). - ``MoDerivAffMsa``: BOTH ``FromMsFeatures``/ ``FromMsFeaturesGuid`` (``FromMsFeaturesOA``) AND ``ToMsFeatures``/``ToMsFeaturesGuid`` (``ToMsFeaturesOA``) -- a derivational affix MSA has two independent feature-struct slots (C1 ``slot=\"From\"``/``\"To\"``), each captured independently; either, both, or neither key-pair may be present depending on which slots are actually populated. - ``MoUnclassifiedAffixMsa``: always ``{}`` -- confirmed by the live probe to carry NO feature-struct property at all (R2). This ClassName is discriminated FIRST, before any resolver call, so capturing one of these (routinely created by ``CreateUnclassifiedAffix``) never raises. - Any other ``ClassName`` (e.g. ``MoDerivStepMsa`` -- out of the C1 table by design): always ``{}``. The resolver is never consulted for an out-of-table ClassName either, so this defensive fallback cannot raise -- mirrors ``NaturalClassOperations.GetSyncableProperties``'s own unknown-``ClassName`` fallback.  An owning property that is present but genuinely empty (an ``IFsFeatStruc`` with zero ``FeatureSpecsOC`` entries) still emits BOTH its ``<Name>``/``<Name>Guid`` keys -- ``<Name>`` serialises to ``{\"TypeGuid\": ..., \"specs\": {}}``, never ``None`` (C4). A NULL owning property (e.g. ``MsFeaturesOA`` was never populated) omits both keys entirely -- gate on key PRESENCE (C6), never on the value's truthiness. ",
+          "signature": "GetSyncableProperties(item)",
+          "summary": "Get dictionary of syncable properties for cross-project\nsynchronization of an MSA's feature structure(s).",
+          "usage_hint": "retrieval"
         },
         {
           "description": "Remove MSAs that are no longer referenced by any sense or morph\nbundle.\n\nSetPartOfSpeech and ChangeAffixVariant detach a sense's\nMorphoSyntaxAnalysisRA from an old MSA when reassigning or\nconverting it, but the old MSA can remain in its owning entry's\nMorphoSyntaxAnalysesOC. That is safe to leave in place ONLY if\nnothing else still points at it. This method performs the\nproject-wide safety check and removes any MSA that is truly\nunreferenced.\n\nAn MSA is considered orphaned iff it is referenced by NEITHER:\n1. Any ILexSense.MorphoSyntaxAnalysisRA (entry-local senses), NOR\n2. Any IWfiMorphBundle.MsaRA (project-wide, across all\ninterlinear texts).\n",
@@ -49091,7 +49257,7 @@
           "usage_hint": "creation"
         },
         {
-          "description": "Apply syncable properties (from GetSyncableProperties) onto a POS.\n\nInherited from BaseOperations; declared here so static API indexers\n(e.g. the FLExToolsMCP validator) see it on the concrete class. The\nBaseOperations implementation handles every property shape that\nPOSOperations.GetSyncableProperties emits (multi-WS Name/Abbreviation/\nDescription + plain-string CatalogSourceId), so no per-class\ncustomisation is needed.",
+          "description": "Apply syncable properties (from GetSyncableProperties) onto a POS.\n\nHandles the two C1 \"PartOfSpeech\" feature-struct key-pairs\n(``DefaultFeatures``/``DefaultFeaturesGuid``,\n``InherFeatVal``/``InherFeatValGuid``) directly; everything else in\n``props`` (the pre-existing multi-WS Name/Abbreviation/Description\n+ plain-string CatalogSourceId shape) is delegated to\n``BaseOperations.ApplySyncableProperties`` unchanged.\n",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -49100,33 +49266,53 @@
           "name": "ApplySyncableProperties",
           "output_behavior": {
             "empty": null,
-            "failure": [],
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If ``item`` is None, ``props`` is not a"
+              },
+              {
+                "exception": "GUID",
+                "when": "and instructing the caller to sync the feature system"
+              }
+            ],
             "notes": [],
             "success": {}
           },
           "parameters": [
             {
               "default": null,
+              "description": "Target POS (already created + owned + GUID-assigned by the caller), or its HVO (int) -- resolved and cast via ``__ResolveObject`` (C2).",
               "name": "item",
               "type": ""
             },
             {
               "default": null,
+              "description": "dict produced by GetSyncableProperties (or built by a caller following the same shape).",
               "name": "props",
               "type": ""
             },
             {
               "default": null,
+              "description": "Optional source->target writing-system Id mapping. Unused by the feature-struct branches (which resolve by GUID, not writing system); passed through to the base loop.",
               "name": "ws_map",
               "type": ""
             },
             {
               "default": false,
+              "description": "Passed through to the base loop. Has no additional effect on the feature-struct branches, which are always purely additive/idempotent by GUID.",
               "name": "fill_gaps",
               "type": ""
             }
           ],
-          "raises": [],
+          "raises": [
+            "FP_ParameterError: If ``item`` is None, ``props`` is not a",
+            "dict, or (C7) a ``<Name>``/``<Name>Guid`` spec references a",
+            "feature, value, or feature-structure-type GUID that does",
+            "not exist in the target project -- naming the unresolved",
+            "GUID and instructing the caller to sync the feature system",
+            "first."
+          ],
           "return_type": "",
           "returns": "",
           "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
@@ -49814,21 +50000,21 @@
             ],
             "notes": [],
             "success": {
-              "description": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values.",
+              "description": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values. In addition to the pre-existing scalar/multistring keys, emits (per the frozen C1 \"PartOfSpeech\" table row, when the owning property is non-None -- C6 presence, not truthiness):  - ``DefaultFeatures`` / ``DefaultFeaturesGuid`` -- ``DefaultFeaturesOA`` (C4 recursive-dict spec / str GUID). - ``InherFeatVal`` / ``InherFeatValGuid`` -- ``InherFeatValOA``.  An owning property that is present but genuinely empty (an ``IFsFeatStruc`` with zero ``FeatureSpecsOC`` entries) still emits BOTH its keys -- ``_GetFeatureStruc`` never returns ``None`` for a non-None struct (C4). A NULL owning property omits both keys entirely.",
               "type": "dict"
             }
           },
           "parameters": [
             {
               "default": null,
-              "description": "The IPartOfSpeech object.",
+              "description": "The IPartOfSpeech object, or its HVO (int) -- resolved and cast via ``__ResolveObject`` (contract C2).",
               "name": "item",
               "type": ""
             }
           ],
           "raises": [],
           "return_type": "dict",
-          "returns": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values. ",
+          "returns": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values. In addition to the pre-existing scalar/multistring keys, emits (per the frozen C1 \"PartOfSpeech\" table row, when the owning property is non-None -- C6 presence, not truthiness):  - ``DefaultFeatures`` / ``DefaultFeaturesGuid`` -- ``DefaultFeaturesOA`` (C4 recursive-dict spec / str GUID). - ``InherFeatVal`` / ``InherFeatValGuid`` -- ``InherFeatValOA``.  An owning property that is present but genuinely empty (an ``IFsFeatStruc`` with zero ``FeatureSpecsOC`` entries) still emits BOTH its keys -- ``_GetFeatureStruc`` never returns ``None`` for a non-None struct (C4). A NULL owning property omits both keys entirely. ",
           "signature": "GetSyncableProperties(item)",
           "summary": "Get dictionary of syncable properties for cross-project synchronization.",
           "usage_hint": "retrieval"
@@ -66309,7 +66495,7 @@
           "usage_hint": null
         },
         {
-          "description": "Append a new sentence to a paragraph, creating a new segment.\n\nEdits IStTxtPara.Contents first (firing AnalysisAdjuster on existing\nsegments), then adds the new ISegment to SegmentsOS.\n\nA sentence terminator ('. ') is automatically inserted before the new\ntext when the current paragraph Contents is non-empty and does not\nalready end with one of {. ! ?}. When the paragraph is empty, the\ntext is written directly.\n",
+          "description": "Append a new sentence to a paragraph, creating a new segment.\n\nEdits IStTxtPara.Contents first (firing AnalysisAdjuster on existing\nsegments), then adds the new ISegment to SegmentsOS.\n\nA sentence terminator is automatically inserted before the new text\nwhen the current paragraph Contents is non-empty and does not\nalready end with one of {. ! ?}. The test is applied to the last\nNON-WHITESPACE character, and the terminator is anchored there, so\ntrailing whitespace in the existing Contents is preserved rather\nthan written over (#242 C12). What gets inserted depends on whether\nthat trailing whitespace is present: '. ' when it is absent (the\nperiod supplies its own separating space), or '.' alone when it is\npresent (the existing whitespace already separates the sentences).\nWhen the paragraph is empty, the text is written directly. See the",
           "example": "            >>> para = project.Object(para_hvo)\n            >>> seg = project.Segments.AppendSentence(para, \"A new sentence.\")\n            >>> print(project.Segments.GetBaselineText(seg))\n            A new sentence.\n\n        See Also:\n            SplitSegment, MergeSegments, ReparseParagraph\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -78130,6 +78316,7 @@
       "DsConstChartTags",
       "FileSelection",
       "FwObjDataTypes",
+      "FwTextPropType",
       "GenDate",
       "IAnalysis",
       "ICmAgent",
@@ -78353,14 +78540,14 @@
       "YesNoCancel"
     ],
     "mapping_types": {
-      "composite": 109,
-      "convenience": 211,
+      "composite": 106,
+      "convenience": 215,
       "direct": 603,
-      "pure_python": 611
+      "pure_python": 613
     },
-    "methods_with_return_type": 893,
+    "methods_with_return_type": 894,
     "total_classes": 118,
-    "total_methods": 1534,
+    "total_methods": 1537,
     "total_properties": 155
   }
 }

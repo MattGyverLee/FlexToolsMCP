@@ -28,10 +28,12 @@ DATE:
 # pythonnet for C# interop
 import clr
 
-# Flexicon casting utilities
-from flexicon.code.lcm_casting import cast_to_concrete
+# Flexicon casting utilities. Public top-level export since Flexicon 4.6.0
+# (Flexicon issue #271); the older flexicon.code.lcm_casting path resolves to
+# the very same function object.
+from flexicon import cast_to_concrete
 
-# LCM interfaces come from the C# assembly, NOT from flexicon -- lcm_casting
+# LCM interfaces come from the C# assembly, NOT from flexicon -- flexicon
 # imports them internally but does not re-export them, so pulling them from
 # there is an ImportError that kills the module before Main() runs.
 from SIL.LCModel import (

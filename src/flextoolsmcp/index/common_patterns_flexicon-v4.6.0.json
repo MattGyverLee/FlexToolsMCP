@@ -130,7 +130,7 @@
       },
       {
         "class": "LexEntryOperations",
-        "code": "idiom = project.LexEntry.Find(\"kick the bucket\")\ncomponents = project.LexEntry.GetComplexFormComponents(idiom)\nfor comp in components:\n    if isinstance(comp, ILexEntry):\n        print(project.LexEntry.GetHeadword(comp))",
+        "code": "idiom = project.LexEntry.Find(\"kick the bucket\")\ncomponents = project.LexEntry.GetComplexFormComponents(idiom)\nfor comp in components:\n    # Branch on ClassName, not isinstance: ComponentLexemesRS\n    # is declared over ICmObject and mixes entries and\n    # senses, and ClassName is the one discriminator that is\n    # readable on either (issue #270).\n    if comp.ClassName == \"LexEntry\":\n        print(project.LexEntry.GetHeadword(comp))\n    elif comp.ClassName == \"LexSense\":\n        print(project.Senses.GetGloss(comp))",
         "description": "Get all components of a complex form.",
         "method": "GetComplexFormComponents",
         "object_type": "ILexEntry",

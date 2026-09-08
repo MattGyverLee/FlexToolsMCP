@@ -3798,7 +3798,7 @@ def _build_cast_rewrite(
 
 _POLY_ITERATION_NOTE = (
     "Items are heterogeneous; cast each item: "
-    "concrete = cast_to_concrete(item)  # from flexicon.code.lcm_casting"
+    "concrete = cast_to_concrete(item)  # from flexicon import cast_to_concrete"
 )
 
 
@@ -4083,7 +4083,7 @@ def detect_casting_needs(
             "available_on": ["ILexEntry"],
             "pattern_sources": [r"\.Owner\s*\.\s*HeadWord", r"entry\s*\.\s*HeadWord"],
             "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nheadword = entry.HeadWord.Text",
-            "flexicon_helper": "Use cast_to_concrete(obj) from flexicon.code.lcm_casting"
+            "flexicon_helper": "Use cast_to_concrete(obj) -- from flexicon import cast_to_concrete"
         },
         "LexemeForm": {
             "helper": "get_lexeme_form",  # ← Which helper to inject if needed

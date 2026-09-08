@@ -133,12 +133,15 @@ cycle-9 re-gate returned **no P0**.
 
 No checkpoint is blocked by us. The carried P2/P3 list is in
 `specs/swahili-audit-2026-09/tasks-bugfix-campaign.md` under "CP-D carryover".
-Three items there need a USER DECISION before the crew can act (see BLOCKERS
-below): the versioning stale-read race, the `cast_to_concrete` phantom remedy,
-and the still-unrestarted MCP server. The #96 live repro remains available only
+Two items there need a USER DECISION before the crew can act (see BLOCKERS
+below): the versioning stale-read race and the still-unrestarted MCP server.
+(The `cast_to_concrete` phantom remedy was struck 2026-09-07 -- resolved by
+`1f8e90b` / issues #112, #113; see item 5.) The #96 live repro remains available only
 after the user restarts the MCP server.
 
-### NEW BLOCKERS from spurt 3 -- both need the user, neither is code
+### NEW BLOCKERS from spurt 3 -- one needs the user, neither is code
+<!-- Was "both need the user"; item 5 struck 2026-09-07 as already resolved. -->
+
 
 4. **A real latent production defect in the index cache, measured twice by two
    independent methods.** `versioning._dir_state_token`
@@ -157,14 +160,23 @@ after the user restarts the MCP server.
    admit a 13% race without either a fix or an issue to link would be worse than
    bundling both. **Needs: a design call (listing hash vs. write counter vs.
    bypass-cache-on-miss) and authorization to file.**
-5. **A phantom remedy advertised in five places.**
+5. ~~**A phantom remedy advertised in five places.**
    `CastingOperations.cast_to_concrete` is advertised to users in FIVE locations
    (including `handlers/discovery.py:163`) but was proven **NONEXISTENT** in
-   flexicon 4.5.2. This is the #103 / import-advertising failure class again: the
-   tool tells users to call something that isn't there. Found because the cycle-9
-   brief required verifying a remedy before advertising it -- the programmer
-   checked before adding a sixth advertisement and the check failed. PRE-EXISTING,
-   not introduced by CP-D. **Needs: authorization to file as a new issue.**
+   flexicon 4.5.2.~~ -- **RESOLVED; superseded by this file's own later entry.**
+   The CP-D framing conflated two symbols with different statuses, and the real
+   defect was fixed and filed in `1f8e90b` as issues **#112** and **#113**. No
+   authorization is outstanding. Re-verified 2026-09-07 against the current tree:
+   `CastingOperations` has **zero** occurrences in `src/` or `docs/` (the phantom
+   Symbol A is gone), and every surviving advertisement -- `handlers/api.py:1621,1636`,
+   `handlers/discovery.py:163,169`, `validators.py:3642,3927`,
+   `templates/00-FLAVOR-GUIDE.md:110,167` -- names the correct
+   `flexicon.code.lcm_casting` path. Symbol B is real and unary:
+   `from flexicon.code.lcm_casting import cast_to_concrete` imports cleanly with
+   signature `(obj)` (`flexicon/code/lcm_casting.py:408`). Caveat: verified against
+   the sibling checkout on `main` (`7e0fdf2`), which is past the 4.5.2 release;
+   `cast_to_concrete` predates the `flexlibs2 -> flexicon` rename (`9b82ffaf`),
+   so it is long-standing rather than newly added.
 
 ### BLOCKERS -- all three need the user
 

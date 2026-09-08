@@ -215,14 +215,108 @@ No database change resulted, so no restore was required.
 
 ---
 
+## Item F -- finding (k) post-close leg: ATTEMPTED, and it does not arise on a clean close
+
+FieldWorks was closed normally and the probe sampled either side of it, on the
+pre-fix server (PID 15852).
+
+Sample 1, health call followed a few seconds later by the OS check:
+
+```
+probe   : verdict "open_shared", holder {pid 40664, process_name "FieldWorks"},
+          lock_age_seconds 1032.26
+warning : "...held by FieldWorks (PID 40664), process still running."
+
+[10:55:43] PID 40664 GONE from Get-Process
+[10:55:43] FieldWorks-like processes: 0
+--- tasklist cross-check ---
+INFO: No tasks are running which match the specified criteria.
+```
+
+Sample 2, immediately after:
+
+```
+verdict          : "free"
+holder           : null
+lock_age_seconds : null
+```
+
+And on disk:
+
+```
+NO .fwdata.lock -- FieldWorks removed it on clean close
+```
+
+**This is NOT a reproduction of finding (k), and must not be recorded as one.**
+Two reasons, both disqualifying:
+
+1. **Ordering.** The health call ran several seconds BEFORE the `Get-Process`
+   check. FieldWorks may have been genuinely alive at the instant the probe
+   sampled and exited in the gap. The observation is consistent with a correct
+   probe and therefore proves nothing.
+2. **The scenario does not arise on a graceful close.** FieldWorks deletes its
+   own `.fwdata.lock` when it shuts down cleanly, so there is no lock file left
+   to misclassify -- hence `verdict: free`, not a false `open_shared`. Finding
+   (k) requires a holder that died **without** removing its lock file, i.e. a
+   crash or a hard kill, with a handle still open against the terminated
+   process object. The original (k) observation followed a FieldWorks *crash*,
+   with the Windows crash reporter holding the handle.
+
+Consequence: the post-close window cannot be exercised by asking a user to
+close FieldWorks normally. A faithful live re-test needs a **crashed or
+force-killed** holder. That was not attempted here: force-killing the user's
+FieldWorks was outside the approved scope for this sitting.
+
+What this sitting DOES establish for (k) is the true-positive leg (Item A) and
+the clean-close leg (verdict correctly collapses to `free`). The unit tests
+committed with the fix in `a8cf35b` cover the freshly-dead branch directly by
+patching the kernel32 seam, which is the appropriate level for it.
+
+---
+
+## Item G -- the health `warnings` array is stale and self-contradictory (new)
+
+Across all three `flextools_health(verbose=True)` calls in this sitting, the
+`warnings` entry for `Sena 3` was **byte-identical**:
+
+```
+"Lock detected: ...\\Sena 3\\Sena 3.fwdata.lock (53 s old), held by FieldWorks
+ (PID 40664), process still running. Project sharing is enabled, so writes
+ through the shared commit log are expected to succeed without closing
+ FieldWorks."
+```
+
+That text was wrong in two different ways at two different times:
+
+- On call 1 it said "53 s old" while `verbose.project_access.lock_age_seconds`
+  in the SAME response read `535.03`; on call 2, `1032.26`.
+- On call 3 it still asserted a live FieldWorks holder while
+  `verbose.project_access` in the SAME response read
+  `verdict: "free", holder: null, lock_age_seconds: null`, and the lock file
+  no longer existed on disk.
+
+So a single health response can contain a warning that directly contradicts
+its own probe block. The warnings appear to be computed once and cached for
+the life of the server process, while `verbose.project_access` is probed
+fresh per call.
+
+This matters beyond cosmetics: the warnings array is the surface a user or
+assistant reads first, and it is the one asserting "process still running" --
+the same sentence finding (k) is about. An observer could easily attribute a
+stale *warning* to the `_pid_is_alive` defect and conclude the fix had failed
+when it had not. Worth filing separately from (k), and worth checking whether
+the CP2/CP3 warning paths share the cache.
+
+---
+
 ## Not completed in this sitting
 
-- **Finding (k) post-close leg.** Requires FieldWorks to be closed and the
-  probe sampled in the window immediately afterwards. FieldWorks was still
-  open when this sitting ended. The pre-fix baseline (Item A) and the pre-fix
-  server (PID 15852) are both recorded above so the comparison can still be
-  made like-for-like.
-- **Class B empirical confirmation.** Blocked by Item D.
+- **Class B empirical confirmation.** Blocked by Item D; still unobserved.
+- **A faithful finding (k) post-close reproduction.** See Item F -- needs a
+  crashed or force-killed holder, not a clean close.
+- **Post-fix re-test on a restarted server.** The server ran the pre-fix code
+  (PID 15852, predating `a8cf35b`) throughout, which is why every result above
+  is labelled pre-fix.
 - **UI before-readings** (reversal layout list, main Reversal Index view).
   Not captured; these need a human reading the FLEx screen. Per the process
   lesson carried forward from the previous sitting, no UI surface may be cited

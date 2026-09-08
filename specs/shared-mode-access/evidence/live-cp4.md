@@ -1054,3 +1054,61 @@ findings in this section were all diffed pre/post and none of them needed
 correcting; only the UI-side inference did. Future items should capture a
 before-state for every UI surface that will be cited, not just for the
 database.
+
+### REFRAMING -- ReversalIndex.Name is very likely a FLEx-derived field
+
+Raised by the user, and it supplies the mechanism the item 7 write-up was
+missing:
+
+> "yes, that makes sense that we need to add a language as analysis to do a
+> reversal, but a reversal it the default WS and language makes no sense...
+> that's jut circular"
+
+A reversal index *is* the lexicon reversed into an analysis language, so its
+`Name` duplicates information already carried by its writing system. Naming the
+English index "English" adds nothing. That implies FLEx treats
+`IReversalIndex.Name` as a **derived / self-maintained** field, and that single
+hypothesis predicts every observation in this section:
+
+- FLEx regenerates the name **in the default analysis WS only** (`pt` here)
+  from the writing system's language name on project open, which is exactly the
+  observed `CP4LIVE-Reversal-2026-09-08` -> `English` and `CP4LIVE-new-seh` ->
+  `Sena`;
+- it leaves **other** alternatives untouched, which is why the explicit `en`
+  writes (`CP4LIVE-EN-...`, `CP4LIVE-SEH-...`) both survived;
+- the untouched `pt` index kept `Portuguese` in both alternatives throughout,
+  consistent with the field already sitting at its regenerated value.
+
+**If this holds, the Class B `silently_lost` classification recorded above is
+the wrong frame.** The write is not being lost to shared-mode staleness; it is
+being overwritten by the application's own maintenance of a field it owns. The
+consequences differ sharply:
+
+- it is **not** a CP5 concern -- FLEx would regenerate the name on its next
+  open regardless of which process wrote it, and regardless of whether FLEx was
+  running at the time;
+- the correct remedy is to document `ReversalIndexes.SetName` as ineffective
+  for reversal indexes (or remove it), **not** to gate it behind exclusive
+  access;
+- combined with the `Create` argument-validation gap, that removes **Q3
+  entirely** from the CP5 Section 3 table: one row becomes a `Create` WS
+  check, the other a `SetName` documentation/API fix.
+
+**Stated as a hypothesis, with a named discriminator.** Semantic domain names
+are not derived from anything, so item 6's restart check settles it:
+
+| Item 6 restart outcome | Conclusion |
+|---|---|
+| domain 1's `pt` name **survives** | reversal revert was FLEx regenerating a derived field; no general default-WS loss; Q3 leaves the CP5 table |
+| domain 1's `pt` name is **also reverted** | a genuine general mechanism discards default-WS writes; Class B confirmed; CP5 must gate it |
+
+A second, independent confirmation would be to run the same default-WS
+`SetName` on a reversal index with **FLEx closed**, then open FLEx and re-read.
+If the name is still reverted with no peer involved at any point, the derived-
+field explanation is proven and shared mode is conclusively irrelevant. That
+test is cheap and belongs in Session 2 alongside CP5-a.
+
+The user's design point also independently supports the other half of the
+finding: requiring an analysis writing system for a reversal index is the
+correct domain constraint, so `ReversalIndexes.Create` refusing a non-analysis
+WS is the right behaviour to enforce, not merely a defensive nicety.

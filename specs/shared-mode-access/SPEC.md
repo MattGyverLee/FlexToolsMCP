@@ -479,18 +479,27 @@ and `CHANGELOG.md` carrying the `[Unreleased]` entry for this feature.
 
 ## 8. Deferred follow-ups
 
-Draft notes only -- no GitHub issue filed yet; the user authorizes issue
-filing separately.
+The two entries that needed the user's authorization to file were FILED on
+2026-09-08 as **#118** (fail-open probe) and **#119** (TOOL-CONTRACT envelope
+gap). The remaining entries are draft notes with no GitHub issue, by ruling.
 
-- **P2, pre-existing, out of this feature's scope:**
+- **P2, pre-existing, out of this feature's scope -- FILED as #119:**
   `docs/TOOL-CONTRACT.md:13-26` claims all success responses carry
-  `_contract`/`status`/`op_id`, but `run_module`'s raw success dict
-  (`execution.py:3482-3490,3699`) is returned verbatim and never carries
-  any of those fields -- only `success`/`error`/`error_type`. This gap
-  predates CP1 (confirmed by cycle-2 QC review) and is worth its own issue
-  later, either to add the missing envelope fields to `run_module`'s
-  return path or to carve out an explicit exception in
-  `docs/TOOL-CONTRACT.md` for that one response shape.
+  `_contract`/`status`/`op_id`, but `run_module`'s raw success dict is
+  returned verbatim at `execution.py:4723` and never carries any of those
+  fields -- only `success`/`error`/`error_type`. It never passes through
+  `build_response_with_context()` (`response_utils.py:128`), which is the
+  sole `_contract` stamper (`:142`); `grep -n '_contract'
+  src/flextoolsmcp/server/handlers/execution.py` returns zero hits. Note
+  that the same handler *does* stamp its discovery-redirect (`:1056`) and
+  `validate_only` (`:2107`) exits correctly, and that
+  `build_response_with_context` stamps only `_contract` -- never `status`
+  or `op_id` -- so the doc's three "guaranteed keys" are broader than any
+  code path delivers. This gap predates CP1 (confirmed by cycle-2 QC
+  review). Fix in either direction: add the envelope to `run_module`'s
+  return path, or carve out an explicit exception in
+  `docs/TOOL-CONTRACT.md`. Sibling exits to check: `:4166`, `:4403`,
+  `:4731`, `:4746`.
 - **P2-4, cycle-6 QC, declined to action:** the "an unreadable PID" branch
   in `build_lock_diagnosis()` (`project_access.py:308`) is untested -- none
   of `probe_project_access()`'s `ProjectAccess(...)` construction sites
@@ -505,8 +514,7 @@ filing separately.
   drift hazard for a future maintainer reconciling the two payload shapes,
   but lex-lead ruled against changing either shape mid-feature. Left for a
   future cycle.
-- **P1-class, pre-existing, NEEDS AN ISSUE (user authorization required):**
-  the fail-open probe. `probe_project_access()` returns `verdict="free"`
+- **P1-class, pre-existing -- FILED as #118:** the fail-open probe. `probe_project_access()` returns `verdict="free"`
   when `get_projects_directory()` returns `None` -- i.e. it reports "not
   blocking" *without ever inspecting a lock file*. Cycle 7 landed a
   strictly-bounded interim patch (`ProjectAccess.probed: bool = True`, set
@@ -527,14 +535,20 @@ filing separately.
   probe raises, leaving the bare `locked` boolean unqualified. Safe-direction
   (a consumer over-blocks rather than under-blocks) and enumerated as a
   "note" row -- not a DEFECT row -- in `reviews/lock-site-inventory.md`.
-  Folds into the fail-open issue above, item (3).
+  Folds into #118 (the fail-open issue above), item (3).
 - **P3, cycle 7, deferred with the contract documented in place:**
   `project_discovery.py:262` `check_project_locked()`'s *name* asserts a
   conclusion its return value cannot support (a lock file may be stale or
   shared). It is the proximate cause of two of the three historical
   bare-lock misses. Cycle 7 stated the correct contract in its docstring but
-  deferred the rename to `find_lock_file()` -- ~9 call sites across `src/`
-  and `tests/`, zero behaviour change. Do it as a standalone mechanical
+  deferred the rename to `find_lock_file()` -- **16 occurrences** across
+  `src/` and `tests/`, zero behaviour change. Verified breakdown
+  (`grep -rn check_project_locked src/ tests/ --include=*.py`, 2026-09-08):
+  7 in `src/` (the definition at `project_discovery.py:262`, four
+  dual-path imports and two calls in `handlers/execution.py`) and 9 in
+  `tests/` (7 `monkeypatch.setattr` string references across five test
+  files, plus 2 prose mentions in comments/docstrings). The earlier
+  "~9 call sites" estimate undercounted. Do it as a standalone mechanical
   commit in the CP6 cleanup pass; no GitHub issue (it is inside #93's
   scope and carries a durable row in `reviews/lock-site-inventory.md`).
 - **P3, cycle 7, new:** `sweep_stale_locks()` runs at server startup

@@ -242,10 +242,13 @@ siblings (a safe-direction `modifyAllowed=False` default whose sole call site
 always passes explicitly, and a flexicon index docstring that already
 self-documents an identical landmine) are FYI only.
 
-**Deferred, no issue filed** (SPEC.md Section 8): pre-existing P2 --
+**Deferred -- NOW FILED as [#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)**
+(2026-09-08, SPEC.md Section 8): pre-existing P2 --
 `docs/TOOL-CONTRACT.md:13-26` claims all success responses carry
 `_contract`/`status`/`op_id`, but `run_module`'s raw success dict never does.
-Predates CP1. Issue filing needs the user's authorization.
+Verified at `execution.py:4723`: it returns `execution_result` verbatim and
+never passes through `build_response_with_context()`, the sole `_contract`
+stamper. Predates CP1.
 
 **CP2-CP6 are UNSTARTED.** No access probe, no read-only-always-works path, no
 shared-mode writes, no close-FLEx gate, no docs. CP1 was specced to ship
@@ -800,11 +803,16 @@ is unreliable here and should be ignored).
 - CP6: partial -- CHANGELOG entries (T6.5) done; `docs/SHARED-MODE.md` and
   T6.1-T6.4/T6.6/T6.7 outstanding.
 
-**Unpushed / unopened:** seven local commits (`6677fd8`, `520dba4`, `ad1d50c`,
-`d0b360f`, `d278cc6`, `7a4fa5c`, and this cycle-7 close commit) sit on `main`,
-unpushed, and there is no open PR for #93. lex-lead's ruling: push and open a PR **now**, do not wait on the
-live gate -- but the user has not authorized it, so ask first. Mechanics and
-rationale in `.crew-handoff.json` -> `push_pr_ruling`.
+**Unpushed / unopened -- RESOLVED 2026-09-08.** The seven commits (`6677fd8`,
+`520dba4`, `ad1d50c`, `d0b360f`, `d278cc6`, `7a4fa5c`, `a805e91`) were **pushed
+directly to `main`** at the user's direction: `433f3a0..a805e91`, a clean
+fast-forward (`origin/main` was a strict ancestor of `HEAD`; no force, no
+reset). `origin/main` == local `main` == `a805e91`. lex-lead had recommended a
+branch + PR instead; the user was told this bypasses the repo's PR-per-change
+convention (PRs #114/#116/#117) and directed the direct push anyway. There is
+consequently **no PR for #93**, so live sign-off status lives only in issue #93
+and this file -- no PR body carries "live sign-off pending". See
+`.crew-handoff.json` -> `push_pr_ruling.OUTCOME`.
 
 ## shared-mode-access (#93) -- spurt 4 CLOSED GREEN on a human gate (cycle 7)
 
@@ -834,21 +842,29 @@ a mechanical commit in the CP6 cleanup pass) and a new P3, that
 `sweep_stale_locks()` runs at server startup with no `try/except` around its
 per-lock loop. Both are in SPEC.md Section 8.
 
-**Remaining human gates -- three, in priority order:**
-1. **The live FieldWorks session.**
-   `specs/shared-mode-access/evidence/live-session-checklist.md` is now a
-   single ordered checklist for one sitting: pre-flight backup, CP4-a/b/c,
-   CP3's sharing-off recipe check (both parts), and the three OPEN questions
+**Remaining human gates -- ONE. Two of the original three closed 2026-09-08:**
+1. **The live FieldWorks session -- STILL OPEN, and now the only gate.**
+   `specs/shared-mode-access/evidence/live-session-checklist.md` is a single
+   ordered checklist for one sitting: pre-flight backup, CP4-a/b/c, CP3's
+   sharing-off recipe check (both parts), and the three OPEN questions
    (writing systems, possibility lists, reversal indexes) that classify SPEC
    Section 3c. The binding item is 3 leg 3 -- a write with FLEx actually open
-   appearing in the FLEx UI without a restart. CP5-a is Session 2, after the
-   gate code exists.
-2. **Push + PR authorization** (see above).
-3. **Authorization to file two issues:** the fail-open probe
-   (`probe_project_access` reporting `verdict="free"` without ever inspecting a
-   lock file; interim `probed` flag has landed, the `verdict="unknown"` enum
-   widening is the real fix) and the pre-existing `docs/TOOL-CONTRACT.md`
-   vs `run_module` envelope gap.
+   appearing in the FLEx UI without a restart. If legs 1-2 pass and leg 3
+   fails, STOP before item 5: that is the #96 commit-log staleness shape and
+   CP4's "writes are expected to succeed" wording must be re-ruled before CP5
+   is built on it. CP5-a is Session 2, after the gate code exists.
+2. ~~**Push + PR authorization**~~ -- **CLOSED 2026-09-08**: pushed direct to
+   `main` per the user's direction (see above).
+3. ~~**Authorization to file two issues**~~ -- **CLOSED 2026-09-08, both
+   FILED**: [#118](https://github.com/MattGyverLee/FlexToolsMCP/issues/118)
+   (the fail-open probe -- `probe_project_access` reporting `verdict="free"`
+   without ever inspecting a lock file; the interim `probed` flag has landed,
+   the `verdict="unknown"` enum widening is the real fix; labels `bug`, `P1`)
+   and [#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119) (the
+   pre-existing `docs/TOOL-CONTRACT.md` vs `run_module` envelope gap; labels
+   `bug`, `documentation`, `P2`). Both issue bodies carry the recorded
+   rulings and the verified line references, so the rationale does not need
+   relitigating.
 
 **Next crew work needs none of the above:** CP5 T5.2-T5.6, a custom-fields-only
 core against the amended SPEC, then CP6 docs plus the two P3 cleanups.

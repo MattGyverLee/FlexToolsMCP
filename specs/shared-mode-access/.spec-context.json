@@ -3,7 +3,30 @@
   "specName": "shared-mode-access",
   "branch": "shared-mode-access",
   "selectedAt": "2026-08-15T16:48:58.409Z",
-  "currentStep": "specify",
-  "status": "draft",
-  "history": []
+  "currentStep": "implement",
+  "status": "in-progress",
+  "history": [
+    {
+      "step": "specify",
+      "status": "specified",
+      "at": "2026-08-15",
+      "note": "SPEC.md written; CP1-CP6 checkpoints defined",
+      "kind": "start"
+    },
+    {
+      "step": "tasks",
+      "status": "ready-to-implement",
+      "at": "2026-08-15",
+      "note": "Task breakdown recorded inline in SPEC.md (no separate tasks.md)",
+      "kind": "start"
+    },
+    {
+      "step": "implement",
+      "status": "in-progress",
+      "at": "2026-09-08",
+      "note": "CP1 DONE (8a4fae5, live-verified fbeb3ab, closes #92); CP2 DONE (39d1caf); CP3 CODE COMPLETE + cycle-7 hardened (6677fd8, 520dba4, ad1d50c, 7a4fa5c), sign-off blocked only on the live sharing-off check; CP4 code done, live open_shared gate outstanding; CP5 SCOPED + SPEC amended (d0b360f) but NOT IMPLEMENTED -- next crew work; CP6 PARTIAL (CHANGELOG done, docs/SHARED-MODE.md missing). All work pushed to main (433f3a0..a805e91). Deferred issues filed: #118 (fail-open probe), #119 (run_module envelope gap). NOTE: .crew-handoff.json is AUTHORITATIVE for this feature, not this file.",
+      "kind": "start"
+    }
+  ],
+  "telemetryInstanceId": "cb5ac7b0-8659-4fbf-91b3-d1813fdb29f3"
 }

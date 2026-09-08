@@ -169,18 +169,51 @@ not cover at all.
 
 ## Session 2 (later, ~20 minutes; item 1 only after CP5 code lands)
 
-### 1. CP5-a -- the original acceptance test (needs CP5 code)
+### 1. CP5-a -- WITHDRAWN as written; needs redesign before it can be scheduled
 
-With FLEx open on the sharing-ON project, call
-`CustomFieldOperations.CreateField`.
-**PASS:** refused with `requires_exclusive_access` (not a silent no-op, not a
-generic lock error). Then close FLEx, re-submit the **identical** call ->
-succeeds. Reopen FLEx and confirm the new custom field is present in the UI.
-This is the acceptance test for the whole CP5 gate and cannot be run before the
-gate exists.
+> **Updated 2026-09-08 (second sitting).** This test is invalid as specified,
+> and the reason is not that the CP5 gate is missing. **Its second leg cannot
+> pass no matter what CP5 does.** Do not schedule it, and do not treat a
+> first-leg pass as evidence for CP5.
 
-*Note from session 1:* `Sena 3` already carries custom fields (`Plural` and
-`Singular` on LexEntry, `Parsing Note` on LexSense), so pick an unused name.
+The test as originally written:
+
+> With FLEx open on the sharing-ON project, call
+> `CustomFieldOperations.CreateField`.
+> **PASS:** refused with `requires_exclusive_access` (not a silent no-op, not a
+> generic lock error). Then close FLEx, re-submit the **identical** call ->
+> succeeds. Reopen FLEx and confirm the new custom field is present in the UI.
+
+**Why it cannot work.** `CreateField` refuses unconditionally with
+`FP_TransactionError`, independent of FLEx state and of shared mode, because
+Phase 1 transaction mode opens a non-undoable UnitOfWork at `OpenProject()`
+that stays open until `CloseProject()`, and LCM forbids schema mutation inside
+an active task. So:
+
+- the "close FLEx, re-submit -> **succeeds**" leg fails with FLEx closed too;
+- and a first-leg refusal would be the *transactional* refusal, not an
+  access-based one -- the right outcome for the wrong reason, which is worse
+  than a clean failure because it looks like CP5 working.
+
+Verbatim evidence: `evidence/live-session2.md`, Item D.
+
+**What a redesigned CP5-a needs.** An exclusive-only operation that genuinely
+*can* succeed when FLEx is closed, so the refuse/resume cycle is observable
+end to end. `CreateField` is not that operation. Candidates should be checked
+against the same transaction constraint before being adopted -- the constraint
+is a property of Phase 1 mode, not of custom fields specifically, so any other
+schema mutation is likely to hit it too. Redesigning this is a prerequisite
+for CP5, not a follow-up to it.
+
+**Interim policy (user decision, 2026-09-08):** CP5 stays open, and in the
+meantime both writing-system and custom-field operations are *assumed* to
+require exclusive access. See the CP5 status block in `SPEC.md`. That is a
+documentation and review policy; nothing enforces it in code today.
+
+*Note from session 1, still valid for any future custom-field test:* `Sena 3`
+already carries custom fields (`Plural` and `Singular` on LexEntry,
+`Parsing Note` on LexSense), so pick an unused name. Confirmed again in the
+second sitting: LexEntry 2, LexSense 1, `ClassBProbe93` unused.
 
 ### 2. Derived-field confirmation -- no CP5 code needed
 

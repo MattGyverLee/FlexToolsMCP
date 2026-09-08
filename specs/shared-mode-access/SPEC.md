@@ -404,6 +404,58 @@ genuine FieldWorks holder rather than a leftover python process.
 
 ### CP5 -- The "close FLEx briefly" gate
 
+> **STATUS: OPEN, and deliberately so. Interim policy adopted 2026-09-08 by
+> the user.**
+>
+> CP5 is **not implemented** and is not being implemented yet. Until it
+> ships, the project operates on a **conservative assumption**, adopted
+> without waiting for proof:
+>
+> **Both writing-system operations and custom-field operations are assumed to
+> require exclusive access.** Treat them as unsafe for a peer to perform while
+> FieldWorks holds the project, in code, docs, recipes and review.
+>
+> This is an *assumption*, chosen because the failure modes are severe and the
+> cost of being wrong in the safe direction is a user closing FLEx briefly.
+> Three independent lines of live evidence support it, and none contradicts it:
+>
+> 1. **Writing systems -- proven harmful.** A peer WS change crashes
+>    FieldWorks 9.3.10 (`NullReferenceException` in
+>    `WritingSystemListHandler.AddWritingSystemList`, `TextListeners.cs:286`).
+>    Both legs of the write reached disk; nothing refused it. See 3c
+>    (`crashes_holder`).
+> 2. **Custom fields -- already impossible via the wrapper anyway.**
+>    `CustomFieldOperations.CreateField` refuses unconditionally with
+>    `FP_TransactionError` in Phase 1 transaction mode, independent of FLEx
+>    state and of shared mode, because `OpenProject()` holds a non-undoable
+>    UnitOfWork open until `CloseProject()`. Assuming exclusivity costs
+>    nothing here: the operation cannot succeed as a peer regardless.
+> 3. **The write gate cannot currently be relied on to catch either.** A live
+>    schema mutation executed with `confirmed=False` because
+>    `is_mutating_script` came back `false` for a method the API index marks
+>    `is_mutating: true`. Until that is fixed, a policy that depends on the
+>    gate recognising these calls would be resting on a detector that
+>    demonstrably misses them.
+>
+> **This settles the open scope call in T5.1's scoping note.** That note left
+> "whether writing systems join the custom-fields-only core now or ship as a
+> fast-follow row" undecided. Under this policy both are in scope from the
+> start; CP5, when it is built, gates writing systems and custom fields
+> together. The custom-fields-only framing below predates this decision.
+>
+> **CP5-a's acceptance test is invalid as written and must be redesigned
+> before CP5 is built against it.** It asks that `CreateField` be refused with
+> `requires_exclusive_access` while FLEx is open and then **succeed with FLEx
+> closed**. The second leg cannot pass -- see point 2 above; the refusal is
+> transactional, not access-related, so the test would pass its first leg for
+> entirely the wrong reason and fail its second no matter what CP5 does.
+> Evidence: `evidence/live-session2.md`, Item D.
+>
+> **Consequence while CP5 is open:** the assumption is documentation and
+> review policy, not an enforced gate. Nothing in the code refuses these
+> operations on access grounds today. Do not describe the protection as
+> shipped.
+
 **New error code `requires_exclusive_access`** -- the one place we ask the
 user to close FLEx, and only when they actually requested a blocked
 operation.

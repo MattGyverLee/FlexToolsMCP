@@ -2,6 +2,239 @@
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-09-08
+
+97 commits since 2.9.1. The headline is that **2.9.1 shipped a pre-flight
+casting gate that hard-rejects safe read-only code, and advertises a helper
+that does not exist** -- ten production sessions between 2026-09-02 and
+2026-09-08 hit the `CastingOperations` ImportError in 3 of 10, and a false
+`casting_issues_detected` rejection in 4 of 10 (issue #120). Everything below
+was already fixed on `main`; this release is what puts it in users' hands.
+
+### Fixed: a guarded write could bypass the write gate entirely (#93 findings (a)/(d))
+
+`build_writeability_payload()` read only `cert['mutating_calls']` /
+`'unprotected_liblcm_calls'` and never the `protected_*` lists that
+`certify_script_readonly()` already populated, so a correctly-guarded write
+(`if modifyAllowed: project.Senses.SetGloss(...)`) produced a
+self-contradictory Rung-3 refusal: *"would mutate the database (0 mutation(s)
+detected)"*.
+
+A live escalation during the cycle raised the severity well past a wording
+bug. For the property-accessor idiom -- `project.<Accessor>.<Method>`, e.g.
+`project.CustomFields.CreateField(...)` -- the call never reached Step 1's
+Operations-classname index lookup at all, and the line-blind CUD regex missed
+the `Create*`-suffixed verb too. The old gate formula
+(`(not cert['is_certified_readonly']) or cud_info['is_cud']`) therefore
+evaluated **False** for the guarded form: **a schema mutation could run with
+`write_enabled=True`, `confirmed=False`, and no lock.**
+
+- **New Step 1c in `certify_script_readonly()`** resolves `project.<Accessor>`
+  to its Operations class through the index's `access_path` metadata (the #100
+  facade scan below), so these calls get the same authoritative `is_mutating`
+  lookup as a literal `*Operations` call, regardless of how the receiver is
+  spelled.
+- **New `protected_calls` list** tracks guarded wrapper mutations instead of
+  dropping them through a bare `pass`.
+- **`build_writeability_payload()` now surfaces both `protected_liblcm_calls`
+  and `protected_calls`**, so `mutations_detected` is populated for guarded
+  scripts and the refusal text stops contradicting itself.
+
+Note: this does **not** close [#105](https://github.com/MattGyverLee/FlexToolsMCP/issues/105).
+Its third evidence block is untouched -- `write_certification.mutating_calls_detected`
+filters `cert["mutating_calls"]` only and still never reads `cert["protected_calls"]`,
+so a guarded mutation can still report `[]` alongside `is_certified_readonly: true`
+on a real run.
+
+### Fixed: the pre-flight casting gate over-rejected safe read-only code (#40, #97, #39)
+
+On 2.9.1 the gate is an unconditional `if casting_check["has_casting_issues"]:`.
+Safe read-only property access -- `project.Cache.LangProject.LexDbOA.ComplexEntryTypesOA`,
+`poss.Name.BestAnalysisAlternative.Text` -- was hard-rejected with
+`casting_issues_detected`. Six commits closed this out:
+
+- **Severity is now consulted on read-only runs.** A read-only run rejects only
+  if at least one issue is severity `error` (a known-pattern hit, or a genuine
+  attribute typo); an all-warning set (index-derived lookup only) proceeds, with
+  the issues surfaced as non-blocking `warnings`. **Write-enabled runs still
+  hard-reject at every severity, unchanged.** The downgrade is gate-local, and
+  records a success signal so the retry-loop detector resets.
+- **Variable typing is now assignment- and branch-aware.** Mutually exclusive
+  `if`/`elif`/`else` arms casting the *same* variable name to different
+  interfaces no longer conflate onto the last arm in document order -- #97
+  Bug 2's exact repro (four MSA-interface branches falsely flagged against
+  `IMoUnclassifiedAffixMsa`) goes from 4/4 false positives to 0/4.
+- **The candidate-union fallback closed a false-*negative* regression.** When
+  positional resolution legitimately returns `None` for a name that IS cast
+  somewhere, `detect_interface_attribute_typos` had responded by dropping the
+  check entirely, silently weakening the #39 typo gate on both read-only and
+  write runs. This was the more dangerous of the two P1s found mid-fix.
+- **That fallback is scoped to the lexical scope chain.** Walking the whole
+  module tree produced 209 false-positive combinations among just 12 common
+  interfaces -- issue #40's complaint verbatim, at error tier. Resolution now
+  walks the innermost enclosing function outward, then Module, so bare
+  module-level snippets still resolve.
+- **`validate_only` agrees with the real gate.** Gate 5 rejected on any casting
+  issue regardless of severity or `write_enabled`, disagreeing with
+  `handle_run_module` after the downgrade above. Both call sites now share one
+  extracted predicate so they cannot drift apart again.
+- **The `fix` string names the interface that was actually resolved** (#97
+  Bug 1). It previously took `defined_on[0]` unconditionally, so a payload
+  could print a confident "Cast x to ILexEtymology" **next to a
+  `cast_interface: null` on the same payload**. Ambiguous cases now emit a
+  two-tier candidates-with-uncertainty message: 2-6 candidates are listed with
+  an explicit "alphabetical, not ranked, do not pick the first" warning, and
+  **more than 6 candidates emits no interface names at all** -- a 4-of-36
+  alphabetical slice used to lead with `ICmAgent` for `Name`, the exact wrong
+  pairing #97 cited. Severity, `cast_interface`, `rewrite`, `imports_needed`
+  and `available_on` are byte-identical; this is a message-only change.
+
+### Fixed: `CastingOperations` was advertised in five places and does not exist (#112, #113)
+
+Verified at runtime against pyflexicon 4.5.2: `from flexicon import
+CastingOperations` raises `ImportError`, and five advisory strings named it --
+`handlers/api.py:1621,1636`, `handlers/discovery.py:163,169`, and
+`validators.py:3642` (`_POLY_ITERATION_NOTE`, which on 2.9.1 reads *"Items are
+heterogeneous; cast each item: concrete = CastingOperations.cast_to_concrete(item)"*).
+All five now name the real call form from `flexicon.code.lcm_casting`.
+
+A second, worse defect rode along: **the shipped liblcm template did not run.**
+`cast_to_concrete` takes exactly one argument and every call site in the
+template passed two, and `ILexEntry` was imported from a module that never
+re-exports it. That template is served verbatim by
+`flextools_get_module_template(flavor='liblcm'/'advanced')`, so it is code
+users execute, not prose. Fixed at all call sites (live code and examples) in
+`templates/3-liblcm-template.py`, `templates/00-FLAVOR-GUIDE.md`, and
+`templates/README.md`, with a new regex-scanning regression test shown RED
+against 7 bad sites before the fix.
+
+### Added: hvo-stability guard and the GUID round trip (#103)
+
+`hvo` is a session-scoped handle -- liblcm renumbers it on every cache load --
+yet every `*_or_hvo` parameter accepts one and nothing warned about the risk.
+The inverse of `GetGuid` already shipped as `FLExProject.Object(hvoOrGuid)`
+(it accepts `str` / `System.Guid` too); it was simply undiscoverable.
+
+- **An `hvo_stability` block in the runtime primer** and a prominent warning in
+  the `flextools_run_module` tool description, quoting liblcm's own wording and
+  the `project.Object(guid_str)` round trip.
+- **`validators.detect_hvo_literal_args()`** -- an AST preflight for a bare
+  integer *literal* reaching an `*_or_hvo` parameter or `project.Object(<int>)`.
+  A `.Hvo` value read during the same run is never flagged; only a literal,
+  which can only have come from a prior session or the FLEx UI.
+- **A new gate**, wired like `unprotected_writes` / `nested_unit_of_work`:
+  **hard block** (`error_code='hvo_literal_write_risk'`) on write-enabled runs,
+  non-blocking warning on read-only runs.
+- **The new code is in the response contract**, not just the docs.
+  `HvoLiteralWriteRiskDetail` was added to the `AnyDetail` union with
+  round-trip coverage, and the error-code count corrected from 17 to 18.
+  `ALL_17_CODES` was renamed `ALL_ERROR_CODES` -- a count baked into an
+  identifier goes stale every time a code is added, which is how the gap
+  survived.
+
+### Fixed: teardown commit failures were reported as success; headless runs could hang (#96, MCP side)
+
+- **The generated runner set `result["success"] = True` before `CloseProject()`
+  ran, under a bare `except: pass`.** `CloseProject()` is where the commit
+  actually happens (`EndNonUndoableTask` -> `UnitOfWorkService.Save` ->
+  `Dispose`), so a commit failure during teardown was invisible and reported as
+  a successful write. The `finally` block now captures the exception, demotes
+  `success` to `False`, and surfaces the error without clobbering prior messages.
+- **`OpenProject()` was generated with no `ui=` argument**, so flexicon fell
+  back to the WinForms `FwLcmUI`, whose `ConflictingSave()` is a modal dialog
+  with no owner in a headless subprocess -- an indefinite hang. The runner now
+  passes `ui=HeadlessLcmUI()`, guarded by `except ImportError` so an older
+  flexicon still runs, with the fallback reported via `report.Warning()` rather
+  than silently.
+- **The primer stopped prescribing an impossible remedy.** #96's root cause is
+  structural and the staleness window is *unbounded*, not 18 seconds: a
+  non-master peer's commit lands only in the in-memory shared commit log,
+  `.fwdata` advances only when the master writes, and a fresh open reads
+  `.fwdata` and never replays commit-log records. The primer now states the
+  truthful rule with **no promised interval and no retry count** -- there is no
+  N that is safe.
+
+`#96` itself remains open: the read-back half needs a live repro.
+
+### Added: shared-mode access probe and verdict-specific lock diagnosis (#93 CP2, CP3)
+
+- **New `server/project_access.py`** composes a per-project access verdict from
+  three independently-fallible facts using only the filesystem and stdlib -- it
+  never opens a `.fwdata` and never touches LCM: the `.fwdata.lock` JSON payload
+  (PID / ProcessName / Timestamp, in real .NET ticks, not Unix epoch), whether
+  that PID is actually alive (`ctypes OpenProcess` on Windows, `os.kill(pid, 0)`
+  elsewhere -- no `psutil`), and `projectSharing="true"` in
+  `SharedSettings\LexiconSettings.plsx`. Verdicts: `free` / `open_shared` /
+  `open_exclusive` / `stale_lock` / `held_by_other`.
+- **`_diagnose_project_open_error()` now uses that verdict** instead of always
+  returning the same generic "Close FieldWorks" hint. `open_exclusive` gets the
+  enable-sharing recipe, `stale_lock` names the dead holder PID, `held_by_other`
+  gets the holder-collision message, and everything else falls back to the
+  previous generic hint.
+- **`_pid_is_alive` now checks `GetExitCodeProcess`.** `OpenProcess` succeeding
+  is not proof of liveness on Windows -- a handle to an exited-but-not-reaped
+  process opens fine, which reported a dead holder as live.
+- **Bare-lock false positives swept** out of the `check_project_locked` sibling.
+
+### Fixed: facade-only Operations classes advertised an import that raises (#100, #101)
+
+- **`access_path`.** `MSAOperations` and its peers are reachable only through a
+  `FLExProject` facade property and are not re-exported at flexicon's top level,
+  so the `from flexicon import MSAOperations` line the server advertised raised
+  `ImportError`. The generator now records `entity["access_path"]` from a
+  facade-property scan of `FLExProject.py`, and the server prefers it. The
+  load-bearing half was the *read* path: `_build_entity_import` had four call
+  sites that ignored the index entirely.
+- **Non-`ICmPossibility` warning.** `IMoInflAffixSlot`, `IMoInflAffixTemplate`
+  and `IMoInflClass` are `CmObject`-derived despite each having its own `Name`
+  field -- a naming coincidence with `CmPossibility.Name` that invites a runtime
+  `TypeError` when code casts via `ICmPossibility` to read it. Gated on a
+  curated set rather than a structural heuristic, which would have
+  false-positived on ~76 unrelated entities; `IMoMorphType`, which genuinely
+  *is* an `ICmPossibility`, stays unflagged.
+
+### Fixed: `get_navigation_path` never returned a path (#85, #88)
+
+The Wave 3 parent-tracking rewrite left the `target == end` branch
+reconstructing the path from `parent[end]`, which is never recorded, so **every
+query returned `[]`**. Fixed by seeding the path with the final edge and walking
+`parent` backwards from `current`. `IFsFeatStruc -> IFsFeatDefn` now resolves
+its genuine 2-hop path, verified live through `server.call_tool`.
+`ILexSense -> IFsSymFeatVal` still correctly returns `found: false` -- that is a
+missing downcast edge, tracked separately as #91.
+
+### Fixed: the index file-discovery cache served stale results
+
+`versioning._dir_state_token()` keyed the cache on bare
+`index_dir.stat().st_mtime`. Filesystem mtime granularity meant rapid writes
+could leave `st_mtime` unchanged -- measured **58/200 (29%)** for double-writes,
+and **40/300 (13.3%)** stale reads through the real production
+`find_versioned_api_file()` / `find_latest_versioned_api_file()`. The token is
+now `(dir_mtime, entry_count, max_child_mtime)` from a single `os.scandir()`
+pass: a new file changes `entry_count` immediately regardless of mtime
+resolution, and an in-place overwrite is caught by `max_child_mtime`.
+
+This is the exact path a release-time `refresh.py` run exercises -- an
+out-of-band writer against a running server.
+
+### Changed: bundled flexicon index migrated 4.4.1 -> 4.5.2
+
+Same 118 entities, but **55 of them now carry `access_path`** (4.4.1 carried
+zero) -- the #100 fix reaching the shipped index. Retires the superseded 4.4.1
+files, matching the one-live-version-per-library convention already followed by
+flexlibs (1.2.8) and liblcm (11.0.0).
+
+### Added: dependency cap canary
+
+Upper bounds protect fresh installs from the mcp 2.0.0 class of break, but
+`dependabot.yml` scopes pip updates to development dependencies, so a cap
+otherwise buys total silence -- nothing reports that it has started excluding a
+usable release. `scripts/cap_canary.py` asks PyPI for the latest stable release
+of every capped runtime dep and reports which caps now exclude one; the monthly
+workflow then force-installs each excluded version past our own pin, runs the
+suite against it, and records the verdict. Prereleases and yanked releases are
+skipped.
+
 ### Fixed: writes are no longer refused on a project FieldWorks has open in shared mode (#93)
 
 The write gate refused on the mere *existence* of a `.fwdata.lock` file

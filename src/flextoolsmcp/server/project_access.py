@@ -44,6 +44,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+if sys.platform == "win32":
+    import ctypes.wintypes  # noqa: E402 -- platform-gated, must follow sys import
+
 from .project_discovery import get_projects_directory, _FWDATA_EXT
 
 # .NET DateTime ticks are 100-nanosecond units since 0001-01-01T00:00:00.
@@ -55,6 +58,10 @@ _TICKS_EPOCH = datetime(1, 1, 1)
 # exists -- no handle to memory, threads, or termination rights needed.
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _ERROR_ACCESS_DENIED = 5
+# GetExitCodeProcess() returns this sentinel while the process has not yet
+# terminated. Any other exit code means the process object is a corpse that
+# Windows simply hasn't garbage-collected yet (see _pid_is_alive docstring).
+_STILL_ACTIVE = 259
 
 
 @dataclass(frozen=True)
@@ -163,6 +170,17 @@ def _pid_is_alive(pid: Optional[int]) -> bool:
 
     subprocess_helpers.py:29 records the deliberate decision to keep psutil
     out of runtime deps; adding it here would undo that.
+
+    Issue #93 finding (k), live-cp4.md: a successful OpenProcess() is NOT
+    proof the process is still running. Windows keeps a terminated
+    process's kernel object alive for as long as ANY handle to it remains
+    open -- in the live session that was the crash reporter attached to a
+    FieldWorks process that tasklist/Get-Process had already stopped
+    listing. The bug is worst in the seconds-to-minutes window right after
+    a crash, which is exactly when stale-lock detection matters most. So a
+    successful OpenProcess is only the start of the check: we additionally
+    call GetExitCodeProcess on the handle and require STILL_ACTIVE before
+    declaring the process alive.
     """
     if pid is None or pid <= 0:
         return False
@@ -171,8 +189,23 @@ def _pid_is_alive(pid: Optional[int]) -> bool:
         kernel32 = ctypes.windll.kernel32
         handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
         if handle:
-            kernel32.CloseHandle(handle)
-            return True
+            try:
+                exit_code = ctypes.wintypes.DWORD()
+                ok = kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                if not ok:
+                    # Could not query the exit code at all (rare); fall back
+                    # to the pre-fix behavior of trusting the open handle
+                    # rather than guessing.
+                    return True
+                # NOTE: STILL_ACTIVE (259) is ambiguous by design in the
+                # Win32 API -- a genuinely running process cannot be told
+                # apart from one that happened to exit with status code
+                # 259. We accept that known ambiguity deliberately; it is
+                # narrower than the bug this fixes (any dead PID with a
+                # lingering handle previously read as alive).
+                return exit_code.value == _STILL_ACTIVE
+            finally:
+                kernel32.CloseHandle(handle)
         # OpenProcess failing with "access denied" still means the process
         # exists (we just can't query it, e.g. a higher-privilege process);
         # any other error (invalid parameter, etc.) means no such PID. Call
@@ -243,10 +276,13 @@ ENABLE_SHARING_REMEDY = (
     "this server write while you keep FLEx open: in FieldWorks go to File > "
     "Project Management > FieldWorks Project Properties > Sharing tab, tick "
     "\"Share project contents with programs on this computer\", and click OK. "
-    "FLEx will ask to reopen the project -- let it, because the flag is read "
-    "once when the cache opens (LcmCache.cs:219). Then re-submit this same "
-    "call: it re-checks the setting and continues automatically. This server "
-    "never writes LexiconSettings.plsx on your behalf."
+    "If FLEx offers to reopen the project, accepting is recommended for its "
+    "own cache coherence, but it is not required for this server to attach: "
+    "a live #93 session observed the peer open succeed immediately after only "
+    "the .plsx flag flip, with no reopen and no lock-file change. Then "
+    "re-submit this same call: it re-checks the setting and continues "
+    "automatically. This server never writes LexiconSettings.plsx on your "
+    "behalf."
 )
 
 

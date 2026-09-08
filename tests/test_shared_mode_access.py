@@ -10,6 +10,7 @@ Real-shaped .fwdata.lock JSON (including the "__type" key, and a genuine
 monkeypatched for the alive/dead split so nothing here depends on a real PID.
 """
 
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -381,6 +382,85 @@ class TestPidIsAlive:
         assert _pid_is_alive(0) is False
         assert _pid_is_alive(-1) is False
         assert _pid_is_alive(None) is False
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="kernel32 seam is Windows-only")
+class TestPidIsAliveWindowsExitCode:
+    """Issue #93 finding (k), live-cp4.md: a successful OpenProcess() is not
+    proof of life -- Windows keeps a terminated process's kernel object
+    alive while any handle (e.g. the crash reporter) remains open. These
+    tests mock the kernel32 seam directly (never shelling out, never
+    touching a real PID) to pin the GetExitCodeProcess follow-up check."""
+
+    def test_open_process_succeeds_but_exit_code_is_dead(self, monkeypatch):
+        """The finding (k) reproduction: OpenProcess returns a valid handle
+        for a freshly-dead, not-yet-reaped process, but GetExitCodeProcess
+        reports a real exit code (not STILL_ACTIVE) -- must be DEAD."""
+        import server.project_access as pa
+
+        fake_kernel32 = _FakeKernel32(handle=1234, exit_code=0)
+        monkeypatch.setattr(pa.ctypes, "windll", _FakeWindll(fake_kernel32))
+
+        assert pa._pid_is_alive(40568) is False
+        assert fake_kernel32.closed_handles == [1234]
+
+    def test_open_process_succeeds_and_still_active(self, monkeypatch):
+        """A genuinely live process: OpenProcess succeeds AND
+        GetExitCodeProcess reports STILL_ACTIVE (259)."""
+        import server.project_access as pa
+
+        fake_kernel32 = _FakeKernel32(handle=5678, exit_code=259)
+        monkeypatch.setattr(pa.ctypes, "windll", _FakeWindll(fake_kernel32))
+
+        assert pa._pid_is_alive(5678) is True
+        assert fake_kernel32.closed_handles == [5678]
+
+    def test_access_denied_branch_still_reports_alive(self, monkeypatch):
+        """Regression: the pre-existing ERROR_ACCESS_DENIED branch (a
+        higher-privilege process we cannot query) must be unaffected by the
+        GetExitCodeProcess addition -- OpenProcess returning a null handle
+        with GetLastError() == ERROR_ACCESS_DENIED still means alive, and
+        GetExitCodeProcess must never even be called in that path."""
+        import server.project_access as pa
+
+        fake_kernel32 = _FakeKernel32(handle=0, last_error=pa._ERROR_ACCESS_DENIED)
+        monkeypatch.setattr(pa.ctypes, "windll", _FakeWindll(fake_kernel32))
+
+        assert pa._pid_is_alive(999) is True
+        assert fake_kernel32.get_exit_code_calls == []
+
+
+class _FakeWindll:
+    def __init__(self, kernel32):
+        self.kernel32 = kernel32
+
+
+class _FakeKernel32:
+    """Minimal stand-in for ctypes.windll.kernel32, exercising only the
+    three calls _pid_is_alive makes: OpenProcess, GetExitCodeProcess,
+    CloseHandle, GetLastError."""
+
+    def __init__(self, handle, exit_code=None, last_error=0):
+        self._handle = handle
+        self._exit_code = exit_code
+        self._last_error = last_error
+        self.closed_handles = []
+        self.get_exit_code_calls = []
+
+    def OpenProcess(self, desired_access, inherit_handle, pid):
+        return self._handle
+
+    def GetExitCodeProcess(self, handle, exit_code_ref):
+        self.get_exit_code_calls.append(handle)
+        exit_code_ref._obj.value = self._exit_code
+        return 1  # non-zero == success, per Win32 BOOL convention
+
+    def CloseHandle(self, handle):
+        self.closed_handles.append(handle)
+        return 1
+
+    def GetLastError(self):
+        return self._last_error
 
 
 # ---------------------------------------------------------------------------

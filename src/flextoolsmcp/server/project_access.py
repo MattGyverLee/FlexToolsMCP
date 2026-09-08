@@ -24,9 +24,12 @@ verdict from three independently-fallible facts:
 This module is detection-only: it composes facts, and never deletes a lock
 file, writes LexiconSettings.plsx, or opens a project. Consumers decide what
 to do with a verdict. As of CP4 those consumers are
-flextools_health(verbose=True) (a read-only diagnostic) and the write gate in
-handlers/execution.py, which refuses only on "open_exclusive" and
-"held_by_other" -- see build_access_remedy().
+flextools_health(verbose=True) (a read-only diagnostic), the write gate in
+handlers/execution.py (which refuses only on "open_exclusive" and
+"held_by_other" -- see build_access_remedy()), and (CP3) the post-hoc
+diagnosis of a live LcmFileLockedException/FP_FileLockedError in
+_diagnose_project_open_error(), which additionally needs to say something
+about "stale_lock" -- see build_lock_diagnosis().
 """
 
 from __future__ import annotations
@@ -266,6 +269,53 @@ def build_access_remedy(access: "ProjectAccess") -> Optional[str]:
             "from an earlier run. This is a real collision, and enabling "
             "project sharing does not resolve it. Wait for that process to "
             "exit (or end it), then retry."
+        )
+    return None
+
+
+def build_lock_diagnosis(access: "ProjectAccess") -> Optional[str]:
+    """Full read-only diagnosis text for a live LcmFileLockedException /
+    FP_FileLockedError (CP3, issue #93 T3.1-T3.4).
+
+    build_access_remedy() answers a narrower question -- "what blocks a
+    WRITE" -- and by design returns None for "free", "open_shared", and
+    "stale_lock" because none of those block a write (see CP4's write gate
+    at handlers/execution.py:4180, which dispatches on ``access.verdict``
+    membership, NOT on "remedy is not None"; confirmed before adding this
+    function so widening build_access_remedy itself was ruled out -- doing
+    so would have flipped tests/test_shared_mode_write_gate.py::
+    TestBuildAccessRemedy::test_non_blocking_verdicts_have_no_remedy, which
+    asserts build_access_remedy(...) is None for exactly ["free",
+    "open_shared", "stale_lock"]).
+
+    This function answers a broader question -- "why did LCM just refuse
+    to open the project at all" -- which a stale lock DOES have an answer
+    for. So it covers:
+
+      - "open_exclusive" / "held_by_other": delegates to
+        build_access_remedy() so the wording can never drift between CP3
+        (this post-hoc diagnosis) and CP4 (the write gate).
+      - "stale_lock": new text naming the dead holder PID, since
+        build_access_remedy() deliberately has nothing to say here.
+      - "free" / "open_shared" / anything else: None. Neither is a state a
+        live lock error should be attributed to; callers fall back to
+        their own generic hint.
+    """
+    if access.verdict in ("open_exclusive", "held_by_other"):
+        return build_access_remedy(access)
+    if access.verdict == "stale_lock":
+        pid = access.holder.pid if access.holder else None
+        pid_text = f"PID {pid}" if pid is not None else "an unreadable PID"
+        return (
+            f"A .fwdata.lock file is present naming {pid_text}, but that "
+            "process is no longer running, so this is a stale lock, not a "
+            "live collision. LCM treats a stale lock as acquirable on the "
+            "next attempt, so simply retrying the same call often succeeds "
+            "now that the process holding it has exited. This server never "
+            "deletes lock files; if retries keep failing, delete "
+            f"'{access.project_name}'s .fwdata.lock file manually once you "
+            "have confirmed no FieldWorks or python process is actually "
+            "running."
         )
     return None
 

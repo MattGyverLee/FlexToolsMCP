@@ -1202,7 +1202,7 @@ def _diagnose_project_open_error(
         "currently in use",
     )
     if any(marker.lower() in raw_error.lower() for marker in locked_markers):
-        return {
+        diag: Dict[str, Any] = {
             "error_code": "project_locked",
             "message": (
                 f"Project '{project_name}' is currently locked by another process."
@@ -1216,6 +1216,53 @@ def _diagnose_project_open_error(
             ),
             "attempted_path": None,
         }
+
+        # Issue #93 CP3 (T3.1-T3.4): sharpen the generic hint above with the
+        # CP2 access probe when we can. probe_project_access() is pure
+        # filesystem (the .fwdata.lock JSON + SharedSettings\LexiconSettings
+        # .plsx) and never opens a project, so it is safe to call from this
+        # read-only diagnosis -- but it touches the registry (via
+        # get_projects_directory()) and the filesystem, both of which can
+        # raise or be unresolvable in ways we haven't enumerated. A
+        # diagnosis must never turn a lock error into a crash, so any
+        # failure here -- import, probe, or diagnosis -- degrades silently
+        # back to the generic hint set above.
+        try:
+            try:
+                from ..project_access import (
+                    build_access_remedy,
+                    build_lock_diagnosis,
+                    probe_project_access,
+                )
+            except (ImportError, ValueError):
+                from server.project_access import (
+                    build_access_remedy,
+                    build_lock_diagnosis,
+                    probe_project_access,
+                )
+            access = probe_project_access(project_name)
+            specific_hint = build_lock_diagnosis(access)
+            if specific_hint is not None:
+                # build_lock_diagnosis() only returns non-None for
+                # "open_exclusive", "held_by_other", and "stale_lock" --
+                # "free" / "open_shared" (and anything unrecognized) fall
+                # through and keep the generic dict built above.
+                holder = access.holder
+                diag["hint"] = specific_hint
+                diag["verdict"] = access.verdict
+                diag["sharing_enabled"] = access.sharing_enabled
+                diag["holder_pid"] = holder.pid if holder else None
+                diag["holder_process"] = holder.process_name if holder else None
+                # remedy mirrors build_access_remedy()'s own semantics (only
+                # non-None for the two verdicts that block a WRITE), which
+                # is narrower than "hint" on purpose: for stale_lock there
+                # is genuinely nothing the user must DO, just information
+                # that the lock has already been vacated.
+                diag["remedy"] = build_access_remedy(access)
+        except Exception:
+            pass
+
+        return diag
 
     # ----- Issue #23: path-resolution failure. ----------------------------
     path_failed_markers = (

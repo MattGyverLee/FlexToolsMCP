@@ -69,7 +69,7 @@ try:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, detect_nested_unit_of_work,
+        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 except ImportError:
@@ -84,7 +84,7 @@ except ImportError:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, detect_nested_unit_of_work,
+        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 
@@ -4171,10 +4171,17 @@ MODULE_CODE = {code}
         }, indent=2))]
 
     try:
-        # Determine if we need the write lock
-        # Use index-based certification as primary, regex-based as fallback
-        # Only lock if: write_enabled=True AND script is NOT certified readonly
-        is_mutating_script = (not cert["is_certified_readonly"]) or cud_info["is_cud"]
+        # Determine if we need the write lock. Issue #93 escalation: this
+        # MUST call the same compute_is_mutating_script() that
+        # build_writeability_payload() uses for the confirmation preview
+        # (below) -- the two used to be independently (re)computed inline
+        # here with a narrower formula, `(not cert['is_certified_readonly'])
+        # or cud_info['is_cud']`, which is blind to GUARDED mutations found
+        # only via the index (cert['protected_calls'] /
+        # 'protected_liblcm_calls'), e.g. `if modifyAllowed:
+        # project.CustomFields.CreateField(...)`. That gap let a live schema
+        # mutation run with confirmed=False and no lock at all.
+        is_mutating_script = compute_is_mutating_script(cert, cud_info)
         needs_lock = write_enabled and is_mutating_script
 
         # Issue #93 CP4 (T4.1): probe the project's real access state ONCE,
@@ -4186,14 +4193,23 @@ MODULE_CODE = {code}
         # an exclusively-held project still gets confirmation_required first,
         # exactly as before. Only computed under write intent; read-only runs
         # have never been gated and still are not (T4.3).
+        # Imports hoisted out of `if needs_lock:` so check_project_locked /
+        # build_access_remedy (used later, at line ~4284, under a SEPARATE
+        # `if needs_lock and _access is not None:` guard) are unconditionally
+        # bound here -- static analysis cannot prove the two independent
+        # `needs_lock` checks agree, so the old conditional import left them
+        # "possibly unbound" from a type-checker's perspective even though
+        # they are always bound in practice (probe_project_access() is still
+        # only CALLED, i.e. the actual filesystem probe only happens, when
+        # needs_lock is True).
+        try:
+            from ..project_access import probe_project_access, build_access_remedy
+            from ..project_discovery import check_project_locked
+        except (ImportError, ValueError):
+            from server.project_access import probe_project_access, build_access_remedy
+            from server.project_discovery import check_project_locked
         _access = None
         if needs_lock:
-            try:
-                from ..project_access import probe_project_access, build_access_remedy
-                from ..project_discovery import check_project_locked
-            except (ImportError, ValueError):
-                from server.project_access import probe_project_access, build_access_remedy
-                from server.project_discovery import check_project_locked
             _access = probe_project_access(project_name)
         _live_fw_peer = _access is not None and _access.verdict == "open_shared"
 
@@ -4219,11 +4235,29 @@ MODULE_CODE = {code}
                     and not session_state.was_backed_up(project_name)
                 )
                 _mutation_count = len(_writeability["mutations_detected"])
-                _confirm_msg = (
-                    f"This run would mutate the database ({_mutation_count} mutation(s) "
-                    "detected) but confirmed=False. Review `mutations_detected`, then "
-                    "resubmit the SAME call with confirmed=True to execute."
-                )
+                if _mutation_count > 0:
+                    # Normal case: mutations_detected enumerates the hit(s).
+                    _confirm_msg = (
+                        f"This run would mutate the database ({_mutation_count} "
+                        "mutation(s) detected) but confirmed=False. Review "
+                        "`mutations_detected`, then resubmit the SAME call with "
+                        "confirmed=True to execute."
+                    )
+                else:
+                    # Issue #93 findings (a)/(d): is_mutating_script can fire from
+                    # detect_cud_operations()'s line-blind signal even when no
+                    # line-aware detector (Flexicon-wrapper or raw-LibLCM) could
+                    # pin down and enumerate the specific call -- never claim a
+                    # count of "0 mutation(s) detected" while still refusing the
+                    # run as mutating; that is self-contradictory and sends the
+                    # user to review an empty list.
+                    _confirm_msg = (
+                        "This run was flagged as mutating the database, but the "
+                        "specific call(s) could not be individually enumerated "
+                        "(`mutations_detected` is empty), and confirmed=False. "
+                        "Review the script for write operations, then resubmit "
+                        "the SAME call with confirmed=True to execute."
+                    )
                 _log_preflight_reject(
                     op_id, seq, time.monotonic() - t_start,
                     "confirmation_required",

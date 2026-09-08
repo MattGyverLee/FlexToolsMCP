@@ -13,7 +13,7 @@ from functools import lru_cache
 
 import pytest
 
-from server.validators import certify_script_readonly
+from server.validators import certify_script_readonly, detect_cud_operations, compute_is_mutating_script
 
 # All tests in this module load the Flexicon API index from the on-disk index
 # directory.  That file ships inside the installed wheel (src/flextoolsmcp/index/)
@@ -350,6 +350,202 @@ def test_project_accessor_create_protected():
     print("[OK] Protected project.<X>.Create() certified clean")
 
 
+def test_project_accessor_setgloss_unprotected():
+    """project.Senses.SetGloss(...) outside a guard must be blocked.
+
+    Regression for issue #93 findings (a)/(d): the live CP4 write used
+    exactly this call shape (`project.<Accessor>.<Method>(...)`, the
+    documented FlexLibs2/Flexicon idiom, NOT a literal `*Operations`
+    classname) and it must be recognised as a raw-LCM mutation via
+    _LIBLCM_MUTABLE_PATTERNS' `project.*.Set/Update` pattern.
+    """
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        project.Senses.SetGloss(sense, "CP4LIVE-2026-09-08")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert not cert["is_certified_readonly"], (
+        f"Unguarded project.Senses.SetGloss should NOT be certified, got: {cert}"
+    )
+    assert len(cert["unprotected_liblcm_calls"]) > 0, (
+        f"Should flag project.Senses.SetGloss as unprotected, got: {cert['unprotected_liblcm_calls']}"
+    )
+
+    print("[OK] Unprotected project.Senses.SetGloss() detected correctly")
+
+
+def test_project_accessor_setgloss_protected():
+    """project.Senses.SetGloss(...) inside `if modifyAllowed:` certifies clean
+    AND is still recorded in protected_liblcm_calls.
+
+    Regression for issue #93 findings (a)/(d): the live write used exactly
+    this guarded shape. certify_script_readonly() itself correctly files the
+    guarded call under protected_liblcm_calls (this test locks that); the
+    part of the bug where build_writeability_payload() then silently dropped
+    protected_liblcm_calls from mutations_detected is covered separately in
+    tests/test_issue49_validate_only.py.
+    """
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            project.Senses.SetGloss(sense, "CP4LIVE-2026-09-08")
+            report.Info("Updated gloss")
+        else:
+            report.Info("(Would update gloss)")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], (
+        f"Guarded project.Senses.SetGloss should be certified readonly, got: {cert}"
+    )
+    assert len(cert["unprotected_liblcm_calls"]) == 0, (
+        f"Should have no unprotected calls when guarded, got: {cert['unprotected_liblcm_calls']}"
+    )
+    assert len(cert["protected_liblcm_calls"]) > 0, (
+        f"Should record the guarded mutation in protected_liblcm_calls, got: {cert['protected_liblcm_calls']}"
+    )
+
+    print("[OK] Protected project.Senses.SetGloss() certified clean and recorded")
+
+
+def test_protected_wrapper_call_tracked_in_protected_calls():
+    """A guarded literal *Operations classname mutation (e.g.
+    LexEntryOperations(project).SetLexemeForm(...)) must be excluded from
+    mutating_calls (unchanged behavior -- see test_protected_with_modifyallowed)
+    but now also recorded in the new `protected_calls` list so
+    build_writeability_payload() can still enumerate it (issue #93 findings
+    (a)/(d)). Before this fix, protected wrapper mutations were silently
+    dropped (`pass`) and invisible everywhere.
+    """
+    api_index = load_api_index()
+
+    code = """
+    def Main(project, report, modifyAllowed):
+        entries = LexEntryOperations(project).GetAll()
+        for entry in entries:
+            if modifyAllowed:
+                LexEntryOperations(project).SetLexemeForm(entry, "new_form")
+                report.Info("Updated")
+            else:
+                report.Info("(Would update)")
+    """
+
+    cert = certify_script_readonly(code, api_index)
+    assert cert["is_certified_readonly"], f"Should be certified readonly when protected, got: {cert}"
+    mutating = [m for m in cert["mutating_calls"] if m.get("is_mutating")]
+    assert len(mutating) == 0, f"Should have no UNPROTECTED mutations, but got: {mutating}"
+    protected = cert.get("protected_calls", [])
+    assert len(protected) > 0, f"Should record the guarded wrapper mutation in protected_calls, got: {cert}"
+    assert any(p["method"] == "SetLexemeForm" for p in protected)
+
+    print("[OK] Protected wrapper mutation tracked in protected_calls")
+
+
+def test_accessor_createfield_boolean_gate_guarded_and_unguarded():
+    """Issue #93 escalation: a LIVE schema mutation ran with confirmed=False
+    and no project lock because the Rung-3 boolean (`is_mutating_script`)
+    never fired for `project.CustomFields.CreateField(...)`. Root cause was
+    TWO gaps stacked: (1) Step 1's `*Operations`-classname regex never
+    matches the `project.<Accessor>` facade idiom at all (fixed by Step 1c's
+    access_path-based resolution -- this test's core assertion), and
+    (2) the boolean formula only OR'd in `cud_info['is_cud']`, whose
+    line-blind verb list didn't recognise `CreateField` (a `Create`-prefixed
+    method, but the old regex required an EXACT `Create(` match with no
+    suffix). Pin BOTH guarded and unguarded forms, and assert
+    compute_is_mutating_script() -- the single shared boolean both
+    build_writeability_payload() and handle_run_module()'s needs_lock now
+    call -- is True in both cases.
+    """
+    api_index = load_api_index()
+
+    code_unguarded = """
+    def Main(project, report, modifyAllowed):
+        project.CustomFields.CreateField("LexEntry", "ClassBProbe93", "String")
+    """
+    cert = certify_script_readonly(code_unguarded, api_index)
+    cud_info = detect_cud_operations(code_unguarded)
+    assert not cert["is_certified_readonly"], (
+        f"Unguarded project.CustomFields.CreateField should NOT be certified, got: {cert}"
+    )
+    assert any(m["method"] == "CreateField" for m in cert["mutating_calls"]), (
+        f"Should resolve project.CustomFields to CustomFieldOperations via access_path, got: {cert['mutating_calls']}"
+    )
+    assert compute_is_mutating_script(cert, cud_info) is True
+
+    code_guarded = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            project.CustomFields.CreateField("LexEntry", "ClassBProbe93", "String")
+            report.Info("Created")
+        else:
+            report.Info("(Would create field)")
+    """
+    cert2 = certify_script_readonly(code_guarded, api_index)
+    cud_info2 = detect_cud_operations(code_guarded)
+    assert cert2["is_certified_readonly"], (
+        f"Guarded project.CustomFields.CreateField should be certified readonly (unprotected_writes gate "
+        f"only cares about UNGUARDED mutations), got: {cert2}"
+    )
+    protected2 = cert2.get("protected_calls", [])
+    assert any(p["method"] == "CreateField" for p in protected2), (
+        f"Guarded CreateField should still be recorded in protected_calls, got: {cert2}"
+    )
+    assert compute_is_mutating_script(cert2, cud_info2) is True, (
+        "The Rung-3 boolean gate must fire for a GUARDED schema mutation too -- "
+        "this is the exact shape that ran live with confirmed=False and no lock"
+    )
+
+    print("[OK] project.CustomFields.CreateField() closes the boolean-gate bypass, guarded and unguarded")
+
+
+def test_accessor_mutation_verb_outside_any_regex_list():
+    """Sharper proof that Step 1c + compute_is_mutating_script() are
+    INDEX-authoritative, not just a wider hand-maintained verb list:
+    AgentOperations.Duplicate (accessed as project.Agents.Duplicate(...)) is
+    `is_mutating: true` in the index but matches NONE of the CUD/line-aware
+    regexes (no Set/Update/Modify/Change/Edit/Replace/Create/Delete/Add/
+    Remove/Clear prefix). detect_cud_operations() must therefore report
+    is_cud=False for this exact script -- proving compute_is_mutating_script()
+    is relying on the index, not on cud_info, to catch it.
+    """
+    api_index = load_api_index()
+
+    code_unguarded = """
+    def Main(project, report, modifyAllowed):
+        project.Agents.Duplicate(agent_id=1)
+    """
+    cud_info = detect_cud_operations(code_unguarded)
+    assert cud_info["is_cud"] is False, (
+        f"Sanity check: 'Duplicate' must NOT be caught by any line-blind regex, got: {cud_info}"
+    )
+    cert = certify_script_readonly(code_unguarded, api_index)
+    assert not cert["is_certified_readonly"]
+    assert any(m["method"] == "Duplicate" for m in cert["mutating_calls"])
+    assert compute_is_mutating_script(cert, cud_info) is True
+
+    code_guarded = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            project.Agents.Duplicate(agent_id=1)
+    """
+    cud_info2 = detect_cud_operations(code_guarded)
+    assert cud_info2["is_cud"] is False
+    cert2 = certify_script_readonly(code_guarded, api_index)
+    assert cert2["is_certified_readonly"]
+    assert any(p["method"] == "Duplicate" for p in cert2.get("protected_calls", []))
+    assert compute_is_mutating_script(cert2, cud_info2) is True, (
+        "compute_is_mutating_script() must be True here purely from the index's "
+        "protected_calls signal -- cud_info contributes nothing for this verb"
+    )
+
+    print("[OK] Index-authoritative detection catches a verb no regex list covers")
+
+
 def test_collection_mutations():
     """Test detection of collection mutations (Add, Remove, Clear, Insert)."""
     api_index = load_api_index()
@@ -479,6 +675,11 @@ if __name__ == "__main__":
         test_mixed_protected_and_unprotected()
         test_project_accessor_create_unprotected()
         test_project_accessor_create_protected()
+        test_project_accessor_setgloss_unprotected()
+        test_project_accessor_setgloss_protected()
+        test_protected_wrapper_call_tracked_in_protected_calls()
+        test_accessor_createfield_boolean_gate_guarded_and_unguarded()
+        test_accessor_mutation_verb_outside_any_regex_list()
         test_collection_mutations()
         test_alias_create_unprotected()
         test_alias_create_protected()

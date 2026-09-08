@@ -122,15 +122,89 @@ class TestBuildWriteabilityPayload:
         assert payload["would_require"] == {"write_enabled": True, "project_lock": True}
 
     def test_cud_regex_only_still_flags_mutating(self):
-        """A script flagged by detect_cud_operations() (line-blind regex) but
-        with no entries in cert's line-aware lists must still be reported as
-        mutating (is_mutating_script True), even though mutations_detected
-        may be empty (no line-aware source to report)."""
-        cert = {"is_certified_readonly": True, "mutating_calls": [], "unprotected_liblcm_calls": []}
+        """Genuine no-line-aware-source edge case: detect_cud_operations()
+        (line-blind regex) flags is_cud, but cert has NO matching entry in
+        ANY of its line-aware lists -- not mutating_calls, not
+        protected_calls, not unprotected_liblcm_calls, not
+        protected_liblcm_calls (all explicitly empty below). This must still
+        report is_mutating_script True (a locking gate must never let an
+        unenumerable-but-suspected write through), and mutations_detected is
+        legitimately empty here since there is truly nothing to enumerate.
+
+        NOTE: this is NOT the issue #93 findings (a)/(d) shape. That bug was
+        a properly *modifyAllowed*-guarded call (e.g. `if modifyAllowed:
+        project.Senses.SetGloss(...)`) which DOES have a line-aware match --
+        it landed in protected_liblcm_calls/protected_calls, which
+        build_writeability_payload() used to silently ignore. That case is
+        covered by test_protected_liblcm_call_surfaces_with_protected_flag
+        and test_protected_wrapper_call_surfaces_with_protected_flag below,
+        where mutations_detected is now correctly non-empty.
+        """
+        cert = {
+            "is_certified_readonly": True,
+            "mutating_calls": [],
+            "protected_calls": [],
+            "unprotected_liblcm_calls": [],
+            "protected_liblcm_calls": [],
+        }
         cud_info = {"is_cud": True}
         payload = build_writeability_payload("code", None, None, cud_info=cud_info, cert=cert)
         assert payload["is_mutating_script"] is True
         assert payload["would_require"]["write_enabled"] is True
+        assert payload["mutations_detected"] == []
+
+    def test_protected_liblcm_call_surfaces_with_protected_flag(self):
+        """Issue #93 findings (a)/(d): a raw-LCM mutation that IS guarded
+        (`if modifyAllowed: project.Senses.SetGloss(...)`) lands in cert's
+        protected_liblcm_calls, not unprotected_liblcm_calls. It must still
+        surface in mutations_detected (marked protected=True) so the Rung-3
+        confirmation preview is never self-contradictory ("would mutate the
+        database (0 mutation(s) detected)") for correctly-guarded write code
+        -- which is the documented, recommended style for FLExTools scripts.
+        """
+        cert = {
+            "is_certified_readonly": True,  # guarded, so the gate-4 check passes
+            "mutating_calls": [],
+            "protected_calls": [],
+            "unprotected_liblcm_calls": [],
+            "protected_liblcm_calls": [
+                {"method": "project.*.Set/Update", "line": 9,
+                 "context": 'project.Senses.SetGloss(sense, "CP4LIVE-2026-09-08")'},
+            ],
+        }
+        cud_info = {"is_cud": True, "operations": ["UPDATE (Set*())"]}
+        payload = build_writeability_payload("code", None, None, cud_info=cud_info, cert=cert)
+        assert payload["is_mutating_script"] is True
+        assert len(payload["mutations_detected"]) == 1
+        entry = payload["mutations_detected"][0]
+        assert entry["kind"] == "raw_lcm"
+        assert entry["protected"] is True
+        assert entry["line"] == 9
+
+    def test_protected_wrapper_call_surfaces_with_protected_flag(self):
+        """Same as above but for a guarded literal *Operations classname call
+        (e.g. `if modifyAllowed: LexEntryOperations(project).SetLexemeForm
+        (...)`) -- cert's new protected_calls list must also surface, kind
+        'wrapper', protected=True."""
+        cert = {
+            "is_certified_readonly": True,
+            "mutating_calls": [],
+            "protected_calls": [
+                {"class": "LexEntryOperations", "method": "SetLexemeForm",
+                 "is_mutating": True, "source": "index", "line": 4, "protected": True},
+            ],
+            "unprotected_liblcm_calls": [],
+            "protected_liblcm_calls": [],
+        }
+        cud_info = {"is_cud": True}
+        payload = build_writeability_payload("code", None, None, cud_info=cud_info, cert=cert)
+        assert payload["is_mutating_script"] is True
+        assert len(payload["mutations_detected"]) == 1
+        entry = payload["mutations_detected"][0]
+        assert entry["kind"] == "wrapper"
+        assert entry["protected"] is True
+        assert entry["call"] == "LexEntryOperations.SetLexemeForm"
+        assert entry["line"] == 4
 
     def test_computes_cud_info_and_cert_when_not_supplied(self):
         """When cud_info/cert are omitted, the builder computes them itself."""

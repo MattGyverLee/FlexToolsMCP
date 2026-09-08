@@ -42,7 +42,7 @@ _PATTERN_CREATE_COLLECTION = re.compile(
 _PATTERN_CREATE_GENERIC = re.compile(
     r'(entry|sense|wordform|analysis|bundle|gloss)\w*\.\w+\.\s*Add\s*\(', re.IGNORECASE
 )
-_PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\s*\(', re.IGNORECASE)
+_PATTERN_CREATE_PROJECT = re.compile(r'project\.\w+\.Create\w*\s*\(', re.IGNORECASE)
 _PATTERN_INSERT_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*Insert\s*\(', re.IGNORECASE
 )
@@ -50,7 +50,7 @@ _PATTERN_DELETE = re.compile(r'\.Delete\s*\(', re.IGNORECASE)
 _PATTERN_DELETE_COLLECTION = re.compile(
     r'\.(' + '|'.join(LCM_COLLECTION_NAMES) + r')\s*\.\s*(Remove|Clear)\s*\(', re.IGNORECASE
 )
-_PATTERN_DELETE_PROJECT = re.compile(r'project\.\w+\.Delete\s*\(', re.IGNORECASE)
+_PATTERN_DELETE_PROJECT = re.compile(r'project\.\w+\.Delete\w*\s*\(', re.IGNORECASE)
 _PATTERN_SET_STRING = re.compile(r'\.set_String\s*\(', re.IGNORECASE)
 _PATTERN_SET_PROPERTY = re.compile(
     r'\.Set(Occurrences|Form|Gloss|Definition|Category|Analysis)\s*\(', re.IGNORECASE
@@ -72,6 +72,12 @@ _PATTERN_REPORT_DIRECT = re.compile(r'report\s*\(')
 _PATTERN_KNOWN_OPS = re.compile(r'\b(' + '|'.join(KNOWN_OPERATIONS) + r')\b')
 _PATTERN_IMPORT_STMT = re.compile(r'from\s+\w+\s+import\s+([^#\n]+)')
 _PATTERN_OPERATIONS_CALL = re.compile(r'(\w+Operations)\s*(?:\(\s*\w+\s*\))?\s*\.\s*(\w+)\s*\(')
+# Generic `project.<Accessor>.<Method>(...)` idiom (issue #93 findings (a)/(d)
+# and the CreateField escalation). <Accessor> is resolved against the index's
+# access_path metadata at call time (Step 1c in certify_script_readonly), NOT
+# hardcoded here -- this regex only locates candidate call sites; it does not
+# itself decide what is mutating.
+_PATTERN_PROJECT_ACCESSOR_CALL = re.compile(r'project\s*\.\s*(\w+)\s*\.\s*(\w+)\s*\(')
 
 # Built-in variables (avoid recreating on every call)
 _BUILTIN_NAMES = {
@@ -102,8 +108,8 @@ _LIBLCM_MUTABLE_PATTERNS = [
     # These are wrapper calls but they still mutate the DB and must be guarded.
     # Without these, project.LexEntry.Create(...) was caught only by the
     # line-blind raw_lcm_patterns path and could not be certified-as-protected.
-    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Create\s*\(', re.IGNORECASE), 'project.*.Create', 'Create'),
-    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Delete\s*\(', re.IGNORECASE), 'project.*.Delete', 'Delete'),
+    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', re.IGNORECASE), 'project.*.Create', 'Create'),
+    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', re.IGNORECASE), 'project.*.Delete', 'Delete'),
     (re.compile(r'project\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE), 'project.*.Set/Update', 'Update'),
     # Raw LCM property setters / approval methods
     (re.compile(r'\.set_String\s*\('), 'set_String', 'Update'),
@@ -2968,7 +2974,10 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         {
           "is_certified_readonly": bool,           # True = no unprotected mutations
           "confidence": str,                       # "high" | "medium" | "low"
-          "mutating_calls": [                      # Detected Flexicon mutations
+          "mutating_calls": [                      # Detected Flexicon mutations (UNPROTECTED)
+              {"class": str, "method": str, "is_mutating": bool, "source": str}
+          ],
+          "protected_calls": [                     # Detected Flexicon mutations (GUARDED)
               {"class": str, "method": str, "is_mutating": bool, "source": str}
           ],
           "unprotected_liblcm_calls": [            # Raw LCM calls without guard
@@ -2985,6 +2994,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     code = textwrap.dedent(code)
 
     mutating_calls = []
+    protected_calls = []
     unknown_calls = []
     raw_lcm_patterns = []
     unprotected_liblcm_calls = []
@@ -3033,10 +3043,44 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                 if triple not in existing:
                     operations_calls_with_lines.append(triple)
 
-    # Step 2: Look up each call in the API index and check if protected
+    # Step 1c: Generic project.<Accessor>.<Method>(...) calls (issue #93
+    # findings (a)/(d), sharpened by the CreateField escalation). Step 1's
+    # regex above only matches a literal `*Operations` classname receiver
+    # (`SenseOperations(project).Method(` / `SenseOperations.Method(`); it
+    # never matches the documented, RECOMMENDED FLExProject facade idiom
+    # (`project.Senses.SetGloss(...)`, `project.CustomFields.CreateField
+    # (...)`), so those calls were previously invisible to the index lookup
+    # entirely -- classification depended solely on the much narrower,
+    # guard-blind line patterns in detect_cud_operations()/
+    # _LIBLCM_MUTABLE_PATTERNS, which only recognise a fixed, hand-maintained
+    # verb list and miss e.g. arbitrary Create*-suffixed schema methods.
+    # Resolve <Accessor> to its Operations class via the index's access_path
+    # metadata (issue #100 facade scan) so these calls get the SAME
+    # authoritative is_mutating lookup as literal Operations calls.
     if api_index and api_index.flexicon:
         entities = api_index.flexicon.get("entities", {})
+        accessor_to_class: Dict[str, str] = {}
+        for _cls_name, _ent in entities.items():
+            _access_path = _ent.get("access_path")
+            if _access_path and _access_path.startswith("project."):
+                accessor_to_class.setdefault(_access_path[len("project."):], _cls_name)
+        if accessor_to_class:
+            existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
+            for match in _PATTERN_PROJECT_ACCESSOR_CALL.finditer(code):
+                accessor_name, method_name = match.groups()
+                resolved_class = accessor_to_class.get(accessor_name)
+                if not resolved_class:
+                    continue
+                line_num = code[:match.start()].count('\n') + 1
+                triple = (resolved_class, method_name, line_num)
+                if triple not in existing:
+                    operations_calls_with_lines.append(triple)
+                    existing.add(triple)
+    else:
+        entities = {}
 
+    # Step 2: Look up each call in the API index and check if protected
+    if api_index and api_index.flexicon:
         for class_name, method_name, line_num in operations_calls_with_lines:
             # Check if this call is protected by a guard
             is_protected = _is_line_protected(line_num, protected_ranges)
@@ -3064,8 +3108,27 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                             })
                             confidence_sources["index"] += 1
                         elif is_mutating and is_protected:
-                            # Protected mutation - don't add to mutating_calls
-                            pass
+                            # Protected mutation (guarded by modifyAllowed/
+                            # writeEnabled). Not an unprotected_writes gate
+                            # violation, but it IS a real mutation that runs
+                            # whenever the guard is True -- track it
+                            # separately (not mixed into mutating_calls, so
+                            # is_certified_readonly / unprotected-writes
+                            # semantics are unchanged) so build_writeability_
+                            # payload() can still enumerate it. Issue #93
+                            # findings (a)/(d): a guarded write was correctly
+                            # flagged as mutating by is_mutating_script but
+                            # invisible to mutations_detected, producing a
+                            # self-contradictory "would mutate the database
+                            # (0 mutation(s) detected)" refusal.
+                            protected_calls.append({
+                                "class": class_name,
+                                "method": method_name,
+                                "is_mutating": True,
+                                "source": "index",
+                                "line": line_num,
+                                "protected": True
+                            })
                         else:
                             # Read-only call - still track it
                             mutating_calls.append({
@@ -3188,6 +3251,12 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         "confidence": confidence,
         "mutating_calls": [m for m in mutating_calls if m.get("is_mutating")],
         "readonly_calls": [m for m in mutating_calls if not m.get("is_mutating")],
+        # Guarded (modifyAllowed/writeEnabled-protected) Flexicon Operations
+        # mutating calls -- excluded from is_certified_readonly/mutating_calls
+        # (they don't violate the unprotected_writes gate) but still real
+        # mutations that build_writeability_payload() enumerates. See #93
+        # findings (a)/(d).
+        "protected_calls": protected_calls,
         "unprotected_liblcm_calls": unprotected_liblcm_calls,
         "protected_liblcm_calls": protected_liblcm_calls,
         "unknown_calls": unknown_calls,
@@ -3238,6 +3307,46 @@ def get_unprotected_write_guidance(cert: dict) -> dict:
     }
 
 
+def compute_is_mutating_script(cert: dict, cud_info: dict) -> bool:
+    """Single source of truth for "does this script mutate the database".
+
+    True whenever ANY of the following is non-empty/true:
+      - cert['mutating_calls']            unprotected Flexicon wrapper calls
+      - cert['protected_calls']           GUARDED Flexicon wrapper calls
+      - cert['unprotected_liblcm_calls']  unprotected raw LibLCM / project.<X> calls
+      - cert['protected_liblcm_calls']    GUARDED raw LibLCM / project.<X> calls
+      - cud_info['is_cud']                line-blind regex fallback signal
+
+    Both build_writeability_payload() (the #49/#55 preview builder) and
+    handle_run_module()'s Rung-3 `needs_lock` gate MUST call this same
+    function -- never re-derive the boolean locally -- so the two can never
+    drift apart again.
+
+    This closes the issue #93 CreateField escalation: a *guarded* call
+    (`if modifyAllowed: project.CustomFields.CreateField(...)`) is
+    `is_mutating: true` per the API index, but is correctly excluded from
+    `is_certified_readonly`'s unprotected-only check (it's not an
+    unprotected_writes gate violation) and was ALSO invisible to
+    `cud_info['is_cud']`, whose line-blind regexes only recognise a fixed,
+    hand-maintained verb list. The previous formula --
+    `(not cert['is_certified_readonly']) or cud_info['is_cud']` -- was blind
+    to protected mutations entirely, so a write_enabled run of that exact
+    script needed NO lock and NO confirmation: a live schema mutation could
+    execute with confirmed=False. Gating on protected_calls/
+    protected_liblcm_calls too (i.e. on ANY known mutation, protected or
+    not) means a write_enabled run of a genuinely mutating script -- guarded
+    or not -- always needs the lock and confirmation; only the SEPARATE
+    unprotected_writes gate (gate 4) cares whether it was guarded.
+    """
+    return bool(
+        cert.get("mutating_calls")
+        or cert.get("protected_calls")
+        or cert.get("unprotected_liblcm_calls")
+        or cert.get("protected_liblcm_calls")
+        or cud_info.get("is_cud")
+    )
+
+
 def build_writeability_payload(
     code: str,
     api_index,
@@ -3254,6 +3363,20 @@ def build_writeability_payload(
     raw LibLCM writes). This closes #44's self-contradictory count (a raw
     write surfacing in unprotected_liblcm_calls but NOT the flexicon-index
     "mutating" total) by making both counters visible in one structure.
+
+    Each entry also carries a ``protected`` bool. GUARDED mutations (inside
+    `if modifyAllowed:` / `writeEnabled` checks -- cert's `protected_calls` /
+    `protected_liblcm_calls`) are included here too, marked `protected: True`.
+    They correctly do NOT fail the separate unprotected_writes gate, but they
+    are still real mutations that execute whenever the guard evaluates True
+    (i.e. in the normal write_enabled=True run), so the Rung-3 confirmation
+    preview must show them. Omitting them was issue #93 findings (a)/(d): a
+    live run of a properly-guarded `if modifyAllowed: project.Senses.SetGloss
+    (...)` was flagged mutating via `cud_info["is_cud"]` (line-blind, guard-
+    unaware) while `mutations_detected` stayed empty (guarded hits were only
+    ever recorded in the protected_* lists, which this builder used to
+    ignore) -- producing the self-contradictory "This run would mutate the
+    database (0 mutation(s) detected)" refusal text.
 
     This is the SHARED builder: both the #49 validate_only response and the
     #55 Rung 3 confirmation_required rejection call this same function so the
@@ -3272,7 +3395,8 @@ def build_writeability_payload(
         {
           "is_mutating_script": bool,
           "mutations_detected": [
-              {"line": int|None, "call": str, "kind": "wrapper"|"raw_lcm"},
+              {"line": int|None, "call": str, "kind": "wrapper"|"raw_lcm",
+               "protected": bool},
               ...
           ],
           "would_require": {"write_enabled": bool, "project_lock": bool},
@@ -3293,6 +3417,16 @@ def build_writeability_payload(
             "line": m.get("line"),
             "call": call_name or m.get("method"),
             "kind": "wrapper",
+            "protected": False,
+        })
+
+    for m in cert.get("protected_calls", []) or []:
+        call_name = ".".join(part for part in (m.get("class"), m.get("method")) if part)
+        mutations_detected.append({
+            "line": m.get("line"),
+            "call": call_name or m.get("method"),
+            "kind": "wrapper",
+            "protected": True,
         })
 
     for c in cert.get("unprotected_liblcm_calls", []) or []:
@@ -3300,13 +3434,38 @@ def build_writeability_payload(
             "line": c.get("line"),
             "call": c.get("method"),
             "kind": "raw_lcm",
+            "protected": False,
         })
+
+    for c in cert.get("protected_liblcm_calls", []) or []:
+        mutations_detected.append({
+            "line": c.get("line"),
+            "call": c.get("method"),
+            "kind": "raw_lcm",
+            "protected": True,
+        })
+
+    # De-dup: Step 1c (index-based project.<Accessor>.<Method> resolution)
+    # and the line-blind project.*.Create/Delete/Set/Update patterns in
+    # _LIBLCM_MUTABLE_PATTERNS can both fire for the SAME call (e.g.
+    # `project.CustomFields.CreateField(...)` is now caught both as a
+    # "wrapper" hit via the index and as a "raw_lcm" hit via the generic
+    # project.*.Create regex). Prefer the index-confirmed "wrapper" entry --
+    # it names the exact class/method -- and drop the redundant same-line
+    # "raw_lcm" duplicate rather than showing the user two rows for one
+    # mutation.
+    _wrapper_lines = {
+        m["line"] for m in mutations_detected
+        if m["kind"] == "wrapper" and m.get("line") is not None
+    }
+    mutations_detected = [
+        m for m in mutations_detected
+        if not (m["kind"] == "raw_lcm" and m.get("line") in _wrapper_lines)
+    ]
 
     mutations_detected.sort(key=lambda m: (m.get("line") is None, m.get("line") or 0))
 
-    is_mutating_script = (
-        not cert.get("is_certified_readonly", True)
-    ) or bool(cud_info.get("is_cud"))
+    is_mutating_script = compute_is_mutating_script(cert, cud_info)
 
     return {
         "is_mutating_script": is_mutating_script,

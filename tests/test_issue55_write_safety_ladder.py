@@ -203,7 +203,89 @@ def _boom_subprocess(*a, **k):
     raise AssertionError("run_script_async must NOT be called")
 
 
+def _stub_guarded_index_only_mutation_env(monkeypatch, tmp_path):
+    """Issue #93 escalation repro at the handle_run_module() integration
+    level: a call the API index marks `is_mutating: true` but that is
+    GUARDED (so it lands in cert['protected_calls'], not 'mutating_calls')
+    AND matches none of detect_cud_operations()'s line-blind verb regexes
+    (is_cud=False) -- e.g. `if modifyAllowed:
+    project.CustomFields.CreateField(...)`. Before the fix, the OLD formula
+    `(not cert['is_certified_readonly']) or cud_info['is_cud']` evaluated to
+    `(not True) or False` == False, so needs_lock was False and this run
+    would proceed with NO lock and NO confirmation_required refusal --
+    which is exactly what happened live. compute_is_mutating_script() must
+    now return True here because protected_calls is non-empty.
+    """
+    if kernel.get_operations_logger() is None:
+        kernel.init_operations_logger()
+    monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
+    monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+
+    class _FakeIndex:
+        # Just enough for detect_invalid_project_chains()'s _project_accessors()
+        # to recognise `project.CustomFields` as a real accessor (the
+        # KNOWN_OPERATIONS-derived fallback used when api_index is None only
+        # gives "CustomField" singular, which would false-positive-reject
+        # this test's code on an UNRELATED gate before ever reaching Rung 3).
+        flexicon = {"entities": {"FLExProject": {"properties": [{"name": "CustomFields"}]}}}
+        casting_index = None
+
+    monkeypatch.setattr(execution_mod, "get_api_index", lambda: _FakeIndex())
+    monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
+    monkeypatch.setattr(execution_mod, "validate_server_state", lambda: {"is_healthy": True, "issues": []})
+    monkeypatch.setattr(
+        execution_mod, "certify_script_readonly",
+        lambda code, api_idx, tree: {
+            "is_certified_readonly": True,  # guarded -- passes the unprotected_writes gate
+            "mutating_calls": [],
+            "protected_calls": [
+                {"class": "CustomFieldOperations", "method": "CreateField",
+                 "is_mutating": True, "source": "index", "line": 2, "protected": True},
+            ],
+            "unprotected_liblcm_calls": [],
+            "protected_liblcm_calls": [],
+            "confidence": "high",
+        },
+    )
+    monkeypatch.setattr(
+        execution_mod, "detect_cud_operations",
+        lambda code: {"is_cud": False, "operations": []},
+    )
+    monkeypatch.setattr(execution_mod, "detect_casting_needs", lambda code, ci, tree: {"has_casting_issues": False, "casting_issues": []})
+
+
 class TestRung3ConfirmationEnforcement:
+    def test_guarded_index_only_mutation_still_refused_without_confirmed(self, monkeypatch, tmp_path):
+        """Regression for the issue #93 live escalation: a guarded schema
+        mutation (project.CustomFields.CreateField(...)) that the old
+        boolean formula missed entirely must now be refused with
+        confirmation_required -- no lock taken, no subprocess spawned --
+        exactly like the already-covered project.LexEntry.Create() case.
+        """
+        _stub_guarded_index_only_mutation_env(monkeypatch, tmp_path)
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)
+        monkeypatch.setattr(execution_mod, "run_script_async", _boom_subprocess)
+
+        args = {
+            "code": (
+                "if modifyAllowed:\n"
+                "    project.CustomFields.CreateField(\"LexEntry\", \"ClassBProbe93\", \"String\")\n"
+            ),
+            "project_name": "TestProj",
+            "write_enabled": True,
+            "confirmed": False,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        data = _parse(result)
+        assert data["error_code"] == "confirmation_required", (
+            f"Expected the guarded CreateField-shaped run to be refused, got: {data}"
+        )
+        assert "mutations_detected" in data
+        assert "writeability" in data
+        assert data["writeability"]["is_mutating_script"] is True
+
     def test_mutating_write_without_confirmed_is_refused(self, monkeypatch, tmp_path):
         _stub_mutating_write_env(monkeypatch, tmp_path)
         monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)

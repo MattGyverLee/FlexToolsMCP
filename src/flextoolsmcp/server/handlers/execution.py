@@ -1248,19 +1248,31 @@ def _diagnose_project_open_error(
                 # "free" / "open_shared" (and anything unrecognized) fall
                 # through and keep the generic dict built above.
                 holder = access.holder
-                diag["hint"] = specific_hint
-                diag["verdict"] = access.verdict
-                diag["sharing_enabled"] = access.sharing_enabled
-                diag["holder_pid"] = holder.pid if holder else None
-                diag["holder_process"] = holder.process_name if holder else None
-                # remedy mirrors build_access_remedy()'s own semantics (only
-                # non-None for the two verdicts that block a WRITE), which
-                # is narrower than "hint" on purpose: for stale_lock there
-                # is genuinely nothing the user must DO, just information
-                # that the lock has already been vacated.
-                diag["remedy"] = build_access_remedy(access)
-        except Exception:
-            pass
+                extra: Dict[str, Any] = {
+                    "hint": specific_hint,
+                    "verdict": access.verdict,
+                    "sharing_enabled": access.sharing_enabled,
+                    "holder_pid": holder.pid if holder else None,
+                    "holder_process": holder.process_name if holder else None,
+                    # remedy mirrors build_access_remedy()'s own semantics
+                    # (only non-None for the two verdicts that block a
+                    # WRITE), which is narrower than "hint" on purpose: for
+                    # stale_lock there is genuinely nothing the user must
+                    # DO, just information that the lock has already been
+                    # vacated.
+                    "remedy": build_access_remedy(access),
+                }
+                # Single atomic update so a failure in the block above (e.g.
+                # build_access_remedy() raising) can never leave `diag` with
+                # some CP3 keys set (verdict/hint/...) but no `remedy` --
+                # a third payload shape neither the generic nor CP3 path
+                # intends. See specs/shared-mode-access/reviews/cycle5-qc.md
+                # P1-1.
+                diag.update(extra)
+        except Exception as exc:
+            _diag_logger = get_operations_logger()
+            if _diag_logger is not None:
+                _diag_logger.debug(f"CP3 lock diagnosis unavailable: {exc!r}")
 
         return diag
 

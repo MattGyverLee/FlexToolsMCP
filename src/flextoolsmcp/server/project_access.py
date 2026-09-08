@@ -280,7 +280,7 @@ def build_lock_diagnosis(access: "ProjectAccess") -> Optional[str]:
     build_access_remedy() answers a narrower question -- "what blocks a
     WRITE" -- and by design returns None for "free", "open_shared", and
     "stale_lock" because none of those block a write (see CP4's write gate
-    at handlers/execution.py:4180, which dispatches on ``access.verdict``
+    at handlers/execution.py:4203-4299, which dispatches on ``access.verdict``
     membership, NOT on "remedy is not None"; confirmed before adding this
     function so widening build_access_remedy itself was ruled out -- doing
     so would have flipped tests/test_shared_mode_write_gate.py::

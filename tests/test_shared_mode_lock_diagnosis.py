@@ -69,7 +69,8 @@ class TestLockDiagnosisWiring(unittest.TestCase):
         assert diag is not None
         self.assertEqual(diag["verdict"], "stale_lock")
         self.assertEqual(diag["holder_pid"], 4242)
-        self.assertIn("4242", diag["hint"])
+        self.assertIn("PID 4242", diag["hint"])
+        self.assertNotIn("68436", diag["hint"])
         self.assertIn("stale", diag["hint"])
         # build_access_remedy() deliberately has nothing to say for a lock
         # that no longer blocks anything -- remedy stays None even though
@@ -82,7 +83,8 @@ class TestLockDiagnosisWiring(unittest.TestCase):
         )
         assert diag is not None
         self.assertEqual(diag["verdict"], "held_by_other")
-        self.assertIn("9999", diag["hint"])
+        self.assertIn("PID 9999", diag["hint"])
+        self.assertNotIn("68436", diag["hint"])
         self.assertIn("python", diag["hint"])
         self.assertIn("does not resolve it", diag["hint"])
         self.assertEqual(diag["remedy"], diag["hint"])

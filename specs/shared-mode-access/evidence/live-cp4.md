@@ -1112,3 +1112,149 @@ The user's design point also independently supports the other half of the
 finding: requiring an analysis writing system for a reversal index is the
 correct domain constraint, so `ReversalIndexes.Create` refusing a non-analysis
 WS is the right behaviour to enforce, not merely a defensive nicety.
+
+## Item 6 -- Q2, possibility-list (semantic domain) add + rename with FLEx open
+
+**Verdict: `applied and survives restart` -- Class A, safe. No CP5 gate needed.**
+
+Designed around item 7's result: one domain renamed via the **default** WS and a
+**different** domain via an **explicit `en`** WS, so the two paths stay
+independent (item 7 applied both to the same object, which muddied it).
+
+Domains were identified by `Find(number)`, not by name, because `FindByName` is
+unusable in this project -- see finding (g).
+
+### Write (op `op-100517520-018`), FLEx open, `open_shared`, holder PID 45352
+
+```
+=== before ===
+  domain 1 en='Universe, creation' pt='' default=''
+  domain 2 en='Person'             pt='' default=''
+legA SetName(DEFAULT ws) on domain '1' OK
+legB SetName(EXPLICIT en ws) on domain '2' OK
+chosen new domain number = '10'
+legC Create OK -> num='10' en='' default='CP4LIVE-DOM-NEW-2026-09-08'
+=== after ===
+  domain 1 en='Universe, creation' pt='CP4LIVE-DOM-DEFAULTWS-2026-09-08' default='CP4LIVE-DOM-DEFAULTWS-2026-09-08'
+  domain 2 en='CP4LIVE-DOM-ENWS-2026-09-08' pt='' default=''
+  new domain 10 en='' default='CP4LIVE-DOM-NEW-2026-09-08'
+```
+
+`lcm_undoable_action_count: 6`.
+
+Confirms the default-WS model established in item 7, and extends it to
+`Create`: **`Create(name, number)` writes the name into the analysis-default WS
+only**, leaving `en` empty -- so a domain created with the obvious call appears
+**unnamed** in the FLEx UI.
+
+### Human observation, FLEx still open -- all four predictions held
+
+Predictions were stated to the user *before* the check, deliberately, so they
+could not be rationalised afterwards. The user reported:
+
+> "domain 1's enlish is fine. portuguese is now CP4LIVE-DOM-DEFAULTWS-2026-09-08
+> the English of 2 is CP4LIVE-DOM-ENWS-2026-09-08. 10 has a blank english name."
+
+| Check | Predicted | Observed |
+|---|---|---|
+| domain 1 `en` | unchanged | `Universe, creation` -- correct |
+| domain 1 `pt` | holds the tag | tag present -- correct |
+| domain 2 `en` | renamed | tag present -- correct |
+| domain 10 `en` | blank | blank -- correct |
+
+Note the FLEx semantic-domain UI **does** surface the Portuguese alternative,
+so nothing was hidden pre-restart. The write went precisely where the API sent
+it; that simply is not where an English-reading user looks.
+
+### Restart observation -- **THE DISCRIMINATOR** (op `op-102120796-020`)
+
+FLEx was closed completely and `Sena 3` reopened. Restart confirmed from the
+lock file rather than taken on trust:
+
+```
+before: PID 45352, Timestamp 639244584865398293, started 10:01:24
+after:  PID 40568, Timestamp 639244596539187867, started 10:20:52
+```
+
+Post-restart read:
+
+```
+domain 1  en='Universe, creation'  pt='CP4LIVE-DOM-DEFAULTWS-2026-09-08'  default='CP4LIVE-DOM-DEFAULTWS-2026-09-08'
+domain 2  en='CP4LIVE-DOM-ENWS-2026-09-08'  pt=''  default=''
+domain 10 en=''  pt='CP4LIVE-DOM-NEW-2026-09-08'  default='CP4LIVE-DOM-NEW-2026-09-08'
+```
+
+**All three writes survived, including domain 1's default-WS (`pt`) name.**
+
+### Consequences -- this settles the item 7 hypothesis
+
+The derived-field hypothesis is **CONFIRMED**, and the earlier Class B
+`silently_lost` classification of item 7 is **withdrawn**:
+
+1. **There is no general mechanism discarding default-WS writes.** A peer write
+   to the analysis-default WS of an ordinary field persists across a full FLEx
+   close/reopen. Domain 1 is the direct control for the reversal-index case,
+   and it survived where the reversal name did not.
+2. Therefore the reversal-index revert was **FLEx regenerating its own derived
+   `Name` field** from the writing system, exactly as the user's circularity
+   argument predicted. It was never shared-mode staleness.
+3. **Q3 leaves the CP5 Section 3 table**, replaced by two library fixes: an
+   analysis-WS argument check on `ReversalIndexes.Create`, and a documentation
+   fix (or removal) for `ReversalIndexes.SetName`.
+4. **Q2 classifies as Class A / safe**: possibility-list mutation from a peer in
+   shared mode is applied, visible in the FLEx UI, and durable. It needs no CP5
+   gate.
+
+The remaining Q2-adjacent defect is not a shared-mode issue either: `Create`
+and `Set*` defaulting to the analysis-default WS means the naive call produces
+an object that looks unnamed/unchanged to an English-reading user. That is the
+same root cause as finding (g) and belongs with it in the flexicon tracker.
+
+### Cleanup performed (op `op-102412713-002`)
+
+```
+domain 1: cleared pt name via SetName('')
+domain 2: restored en name to 'Person'
+domain 10: deleted
+=== after cleanup ===
+  domain 1 en='Universe, creation' pt=''
+  domain 2 en='Person'             pt=''
+  domain 10 -> absent
+```
+
+Semantic domains are back to their exact before-state. Incidentally
+established: `SetName(d, "", wsHandle)` **clears** an alternative; only `None`
+raises `FP_NullParameterError`.
+
+### Incidental: MCP server restarted mid-session, dropping write discovery
+
+The first cleanup attempt was refused:
+
+```
+error_code: "api_discovery_required"
+session: {..., "discovered_api_count": 0}
+op_id: "op-102339089-001"
+```
+
+The `op_id` counter had reset to `-001` and `discovered_api_count` to 0,
+indicating the MCP server process restarted between calls. Read-only runs kept
+working throughout because they receive graceful auto-discovery; the **write**
+run did not, and was refused until `get_object_api` was called again.
+
+Handled well by the server: the refusal inlined the full
+`SemanticDomainOperations` surface under `_inline_discovery` ("Inlined for
+single-round-trip recovery"), so recovery needed no exploratory calls. Recorded
+as a note for operators: a server restart silently invalidates a session's
+write-discovery state, and the first write afterwards will be refused once.
+
+Also surfaced by that re-discovery, and worth heeding in future items -- the
+`SetName` docstring carries a warning this session should have quoted before
+touching domains 1 and 2:
+
+> "Modifying standard semantic domains (e.g., SIL domains) may cause
+> compatibility issues with other projects. Consider creating custom domains
+> instead of modifying standard ones."
+
+Both standard domains were restored exactly, so no residue remains, but the
+`Create`-a-custom-domain route (leg C) was the lower-risk way to answer Q2 and
+should be preferred if Q2 is ever re-run.

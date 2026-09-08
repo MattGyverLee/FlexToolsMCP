@@ -437,10 +437,20 @@ class TestSweepStaleLocksHolderAware:
         assert "54480" in warnings[0]
         assert "still running" in warnings[0]
 
-    def test_empty_lock_keeps_original_message_shape(self, fw_dir):
-        """Regression guard: tests/test_startup_lock_sweep.py's empty-lock
-        fixtures must keep matching the original "Stale lock detected"
-        wording (no holder info available)."""
+    def test_unreadable_lock_is_reported_as_exclusively_held(self, fw_dir):
+        """Issue #93 cycle 7 (P1-companion, lock-site-inventory.md /
+        cycle7-qc.md): this test used to assert "Stale lock detected" from
+        an empty/unreadable lock file, with a docstring claiming
+        tests/test_startup_lock_sweep.py required that exact wording.
+        That claim was independently verified FALSE by both lex-lead and
+        the mechanical inventory -- `grep -c "Stale lock detected"
+        tests/test_startup_lock_sweep.py` returns 0; that file's only
+        wording assertions (lines 47-62) check for the project name and
+        the substring ".fwdata.lock", both wording-agnostic. The original
+        wording was also the confirmed P1 defect: declaring "Stale" and
+        "Close FieldWorks" from an UNKNOWN holder inverts
+        probe_project_access's documented safe fallback (unknown holder
+        -> open_exclusive). This test now pins the corrected wording."""
         proj_dir = _make_project(fw_dir, "LockedProject")
         _write_lock(proj_dir, "LockedProject", "")
 
@@ -448,7 +458,9 @@ class TestSweepStaleLocksHolderAware:
         warnings = sweep_stale_locks()
 
         assert len(warnings) == 1
-        assert "Stale lock detected" in warnings[0]
+        assert "could not be identified" in warnings[0]
+        assert "exclusively held" in warnings[0]
+        assert "Stale lock detected" not in warnings[0]
         assert "LockedProject" in warnings[0]
         assert ".fwdata.lock" in warnings[0]
 

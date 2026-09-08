@@ -85,12 +85,22 @@ class ProjectAccess:
       "stale_lock"     -- lock file present but the claimed PID is dead
       "held_by_other"  -- lock held by a live process that is NOT FieldWorks
                           (e.g. a leftover MCP subprocess)
+
+    probed: False only when the projects directory itself could not be
+    resolved (get_projects_directory() returned None) -- in that case
+    verdict is reported as "free" WITHOUT ever inspecting a lock file, a
+    known fail-open gap (see specs/shared-mode-access/.crew-handoff.json
+    fail_open_ruling). True (the default) means a lock file check actually
+    ran, even if the result was "no lock file present". Callers that
+    surface `verdict`/`blocking` to a human or machine consumer should
+    treat probed=False as "unknown", not as a confirmed "free".
     """
     project_name: str
     verdict: str
     sharing_enabled: Optional[bool]
     holder: Optional[LockHolder]
     lock_age_seconds: Optional[float]
+    probed: bool = True
 
 
 def _lock_path_for(projects_dir, project_name: str) -> Path:
@@ -350,12 +360,20 @@ def probe_project_access(project_name: str) -> ProjectAccess:
     """
     dir_result = get_projects_directory()
     if dir_result is None:
+        # Fail-open gap (interim patch, issue #93 cycle 7): we cannot
+        # resolve the projects directory at all, so nothing was actually
+        # probed. verdict="free" here is a placeholder, not a finding --
+        # probed=False lets reporting sites tell "confirmed free" apart
+        # from "we never looked". Widening this into a real "unknown"
+        # verdict is deliberately DEFERRED (see fail_open_ruling); do not
+        # expand scope here.
         return ProjectAccess(
             project_name=project_name,
             verdict="free",
             sharing_enabled=None,
             holder=None,
             lock_age_seconds=None,
+            probed=False,
         )
 
     projects_dir, _source = dir_result

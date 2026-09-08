@@ -26,7 +26,8 @@ from flextoolsmcp.server.models import RunModuleInput
 from flextoolsmcp.server.validators import build_writeability_payload
 from flextoolsmcp.server.handlers import execution as execution_mod
 from flextoolsmcp.server.handlers.execution import _build_validate_only_checks
-from flextoolsmcp.server import kernel, project_discovery
+from flextoolsmcp.server import kernel, project_discovery, project_access
+from flextoolsmcp.server.project_access import LockHolder, ProjectAccess
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +44,21 @@ def _parse(resp_list):
     item = resp_list[0]
     text = item["text"] if isinstance(item, dict) else item.text
     return json.loads(text)
+
+
+def _access(verdict="free", *, pid=68436, process="FieldWorks", sharing=None, holder=False):
+    """Issue #93 cycle 7 (P1-A): a ProjectAccess factory for stubbing
+    probe_project_access() in validate_only tests, mirroring
+    tests/test_shared_mode_write_gate.py's `_access()`. Without this, the
+    validate_only project_lock enrichment (execution.py:2049-2076) probes
+    the LIVE HOST and its verdict/blocking fields are host-dependent."""
+    return ProjectAccess(
+        project_name="TestProj",
+        verdict=verdict,
+        sharing_enabled=sharing,
+        holder=LockHolder(pid=pid, process_name=process, timestamp_ticks=None) if holder else None,
+        lock_age_seconds=None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -410,6 +426,11 @@ def _stub_agreement_env(monkeypatch, tmp_path):
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
     monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    # Issue #93 cycle 7 (P1-A): this helper drives handle_run_module(...,
+    # validate_only=True), which reaches the project_lock enrichment;
+    # without stubbing probe_project_access too, that enrichment probes
+    # the live host.
+    monkeypatch.setattr(project_access, "probe_project_access", lambda name: _access("free"))
     monkeypatch.setattr(execution_mod, "get_api_index", lambda: _RealCastingFakeIndex())
     monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
     monkeypatch.setattr(execution_mod, "validate_server_state", lambda: {"is_healthy": True, "issues": []})
@@ -523,6 +544,13 @@ def _stub_validate_only_env(monkeypatch, tmp_path):
         kernel.init_operations_logger()
     monkeypatch.setattr(project_discovery, "resolve_or_explain", lambda name: (name, None))
     monkeypatch.setattr(project_discovery, "check_project_locked", lambda name: None)
+    # Issue #93 cycle 7 (P1-A, cycle6-qc.md / lock-site-inventory.md
+    # execution.py:2035-2047): the project_lock enrichment calls
+    # probe_project_access() too -- stub it alongside check_project_locked
+    # so verdict/blocking are deterministic instead of host-dependent.
+    # Individual tests can override this via monkeypatch.setattr(
+    # project_access, "probe_project_access", ...) for other verdicts.
+    monkeypatch.setattr(project_access, "probe_project_access", lambda name: _access("free"))
     monkeypatch.setattr(execution_mod, "get_api_index", lambda: None)
     monkeypatch.setattr(execution_mod, "get_log_dir", lambda: tmp_path)
 
@@ -549,6 +577,9 @@ class TestHandleRunModuleValidateOnly:
         assert all(c["passed"] for c in data["checks"])
         assert "project_lock" in data
         assert data["project_lock"]["locked"] is False
+        assert data["project_lock"]["verdict"] == "free"
+        assert data["project_lock"]["blocking"] is False
+
 
     def test_multi_fault_script_reports_validation_failed(self, monkeypatch, tmp_path):
         _stub_validate_only_env(monkeypatch, tmp_path)
@@ -651,3 +682,70 @@ class TestHandleRunModuleValidateOnly:
         # Side-effect free: nothing was marked discovered by validate_only.
         assert execution_mod.session_state.auto_discovered_apis == set()
         assert execution_mod.session_state.validated_apis == set()
+
+
+# ---------------------------------------------------------------------------
+# validate_only project_lock enrichment (issue #93 cycle 7, P1-A)
+# ---------------------------------------------------------------------------
+
+class TestValidateOnlyProjectLockEnrichment:
+    """Issue #93 cycle 7 (P1-A): the validate_only project_lock enrichment
+    (execution.py:2049-2076) was untested with a controlled probe -- every
+    existing test stubbed check_project_locked but not
+    probe_project_access, so verdict/blocking were whatever the live host
+    happened to report. These pin the emitted payload for the three
+    verdicts explicitly required by the cycle-7 fix, plus the fail-open
+    interim patch's unprobed case."""
+
+    def _run(self, monkeypatch, tmp_path, access):
+        _stub_validate_only_env(monkeypatch, tmp_path)
+        monkeypatch.setattr(project_access, "probe_project_access", lambda name: access)
+        args = {
+            "code": "x = 1\n",
+            "project_name": "TestProj",
+            "write_enabled": False,
+            "validate_only": True,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        return _parse(result)["project_lock"]
+
+    def test_free_is_not_blocking(self, monkeypatch, tmp_path):
+        payload = self._run(monkeypatch, tmp_path, _access("free"))
+        assert payload["verdict"] == "free"
+        assert payload["blocking"] is False
+
+    def test_open_shared_is_not_blocking(self, monkeypatch, tmp_path):
+        payload = self._run(
+            monkeypatch, tmp_path,
+            _access("open_shared", sharing=True, holder=True),
+        )
+        assert payload["verdict"] == "open_shared"
+        assert payload["blocking"] is False
+        assert payload["sharing_enabled"] is True
+
+    def test_open_exclusive_is_blocking(self, monkeypatch, tmp_path):
+        payload = self._run(
+            monkeypatch, tmp_path,
+            _access("open_exclusive", sharing=False, holder=True),
+        )
+        assert payload["verdict"] == "open_exclusive"
+        assert payload["blocking"] is True
+        assert payload["sharing_enabled"] is False
+
+    def test_unprobed_omits_verdict_and_reports_blocking_unknown(self, monkeypatch, tmp_path):
+        """Fail-open interim patch (cycle 7): when the probe never actually
+        ran (projects directory unresolvable), `verdict` must be omitted
+        entirely and `blocking` must be null, not a confident False."""
+        unprobed = ProjectAccess(
+            project_name="TestProj",
+            verdict="free",
+            sharing_enabled=None,
+            holder=None,
+            lock_age_seconds=None,
+            probed=False,
+        )
+        payload = self._run(monkeypatch, tmp_path, unprobed)
+        assert "verdict" not in payload
+        assert payload["blocking"] is None

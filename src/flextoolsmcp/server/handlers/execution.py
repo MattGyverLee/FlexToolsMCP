@@ -2042,7 +2042,7 @@ async def _handle_validate_only(
         _lock_path = check_project_locked(project_name) if project_name else None
     except Exception:
         _lock_path = None
-    project_lock = {"locked": _lock_path is not None}
+    project_lock: Dict[str, Any] = {"locked": _lock_path is not None}
     if _lock_path is not None:
         project_lock["lock_file"] = str(_lock_path)
 
@@ -2063,12 +2063,24 @@ async def _handle_validate_only(
             from server.project_access import probe_project_access
         _access = probe_project_access(project_name) if project_name else None
         if _access is not None:
-            project_lock["verdict"] = _access.verdict
             project_lock["sharing_enabled"] = _access.sharing_enabled
-            project_lock["blocking"] = _access.verdict in (
-                "open_exclusive",
-                "held_by_other",
-            )
+            if _access.probed:
+                project_lock["verdict"] = _access.verdict
+                project_lock["blocking"] = _access.verdict in (
+                    "open_exclusive",
+                    "held_by_other",
+                )
+            else:
+                # Fail-open interim patch (issue #93 cycle 7, STRICTLY
+                # BOUNDED -- see specs/shared-mode-access/.crew-handoff.json
+                # fail_open_ruling): the projects directory could not be
+                # resolved, so probe_project_access() never actually
+                # inspected a lock file. Its verdict="free" in that case
+                # is a placeholder, not a finding -- publishing it (or a
+                # confident blocking:false) here would assert something we
+                # don't know. Omit `verdict` entirely and report
+                # `blocking` as unknown rather than "not blocking".
+                project_lock["blocking"] = None
     except Exception as exc:
         _lock_logger = get_operations_logger()
         if _lock_logger is not None:

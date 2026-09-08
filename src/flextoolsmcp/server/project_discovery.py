@@ -262,6 +262,14 @@ def resolve_project_name(requested: str) -> ResolveResult:
 def check_project_locked(project_name: str) -> Optional[Path]:
     """Issue #33: check for a .fwdata.lock file before launching the subprocess.
 
+    Existence check ONLY -- a lock file may be stale or shared. Use
+    probe_project_access() for any accessibility decision (P3,
+    lock-site-inventory.md project_discovery.py:262-274: this function's
+    NAME asserts a conclusion its return value does not support; the
+    rename to find_lock_file() is deferred to a later cycle as it touches
+    ~9 call sites across src/ and tests/, but the contract is stated here
+    so a caller reads it correctly in the meantime).
+
     Returns the Path to the lock file if one exists, else None.
     Requires get_projects_directory() to succeed; if it can't determine the
     directory, returns None (let the subprocess surface its own error).
@@ -316,7 +324,14 @@ def sweep_stale_locks() -> list:
     # from this module at module load time, so importing it back at this
     # module's top level would be circular. Deferring the import to call
     # time (after both modules are fully loaded) breaks the cycle.
-    from .project_access import read_lock_holder, _pid_is_alive
+    from .project_access import (
+        read_lock_holder,
+        _pid_is_alive,
+        _is_fieldworks_process_name,
+        is_project_sharing_enabled,
+        build_access_remedy,
+        ProjectAccess,
+    )
 
     warnings: list = []
     dir_result = get_projects_directory()
@@ -346,12 +361,48 @@ def sweep_stale_locks() -> list:
             holder_desc = f"held by {holder.process_name or 'unknown process'} (PID {holder.pid})"
             status_desc = "still running" if alive else "no longer running (stale)"
             if alive:
-                msg = (
-                    f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
-                    f"process {status_desc}. "
-                    "Close FieldWorks (or delete the .lock file only if no FW process is running) "
-                    "to allow write operations on this project."
-                )
+                # Issue #93 cycle 7 (P2, lock-site-inventory.md
+                # project_discovery.py:344-354): the old wording said
+                # "Close FieldWorks" from a live PID alone, without
+                # checking whether the holder IS FieldWorks or whether
+                # project sharing is on -- wrong for a live non-FieldWorks
+                # holder (held_by_other, where closing FieldWorks changes
+                # nothing) and wrong for a sharing-enabled FieldWorks
+                # holder (open_shared, where the write is expected to
+                # succeed without closing anything). Branch on the
+                # process name and delegate the held_by_other wording to
+                # build_access_remedy() so it can never drift from the
+                # CP3/CP4 text.
+                if _is_fieldworks_process_name(holder.process_name):
+                    sharing_enabled = is_project_sharing_enabled(project_name)
+                    if sharing_enabled:
+                        msg = (
+                            f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                            f"process {status_desc}. Project sharing is enabled, so "
+                            "writes through the shared commit log are expected to "
+                            "succeed without closing FieldWorks."
+                        )
+                    else:
+                        msg = (
+                            f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                            f"process {status_desc}. "
+                            "Close FieldWorks (or delete the .lock file only if no FW process is running) "
+                            "to allow write operations on this project."
+                        )
+                else:
+                    remedy = build_access_remedy(
+                        ProjectAccess(
+                            project_name=project_name,
+                            verdict="held_by_other",
+                            sharing_enabled=None,
+                            holder=holder,
+                            lock_age_seconds=None,
+                        )
+                    )
+                    msg = (
+                        f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                        f"process {status_desc}. {remedy}"
+                    )
             else:
                 # Issue #93 sweep follow-up (see specs/shared-mode-access/
                 # reviews/cycle5-qc.md P1-2): the holder is confirmed dead,
@@ -370,10 +421,23 @@ def sweep_stale_locks() -> list:
                     "process is running."
                 )
         else:
+            # Issue #93 cycle 7 (P1, lock-site-inventory.md
+            # project_discovery.py:372-377 -- CONFIRMED defect): the lock
+            # file is empty/unreadable, so the holder is UNKNOWN, not
+            # proven dead. The old wording declared "Stale lock detected"
+            # from bare existence -- the exact inversion of
+            # probe_project_access's documented fallback (unknown holder
+            # -> open_exclusive, erring safe) -- and named FieldWorks
+            # specifically when no ProcessName was ever read. Mirrors
+            # build_access_remedy()'s unknown-holder branch
+            # (project_access.py:250-262) verbatim so the two can never
+            # drift apart.
             msg = (
-                f"Stale lock detected: {lock_path} ({age_str} old). "
-                "Close FieldWorks (or delete the .lock file only if no FW process is running) "
-                "to allow write operations on this project."
+                f"Lock detected: {lock_path} ({age_str} old), but the lock file is "
+                "empty or unreadable so the holder could not be identified. "
+                "Treating it as exclusively held. If no FieldWorks or python "
+                "process is actually running, the lock is stale -- delete it "
+                "manually and retry. This server never deletes lock files."
             )
 
         _sweep_log.warning("[STARTUP-LOCK-SWEEP] %s", msg)

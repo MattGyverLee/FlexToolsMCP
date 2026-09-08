@@ -800,25 +800,63 @@ is unreliable here and should be ignored).
 - CP6: partial -- CHANGELOG entries (T6.5) done; `docs/SHARED-MODE.md` and
   T6.1-T6.4/T6.6/T6.7 outstanding.
 
-**Unpushed / unopened:** three local commits (`6677fd8`, `520dba4`,
-`ad1d50c`) sit on `main`, unpushed, and there is no open PR for CP3.
+**Unpushed / unopened:** seven local commits (`6677fd8`, `520dba4`, `ad1d50c`,
+`d0b360f`, `d278cc6`, `7a4fa5c`, and this cycle-7 close commit) sit on `main`,
+unpushed, and there is no open PR for #93. lex-lead's ruling: push and open a PR **now**, do not wait on the
+live gate -- but the user has not authorized it, so ask first. Mechanics and
+rationale in `.crew-handoff.json` -> `push_pr_ruling`.
 
-**Two P1s open**, both attaching to the sweep work rather than CP3's core
-T3.1-T3.5 (see `.crew-handoff.json` `p1_open`): P1-A (`validate_only`
-enrichment's monkeypatch seam doesn't stub `probe_project_access`, so
-verdict/blocking are host-dependent in tests) and P1-B (`project_discovery.py`'s
-unknown-holder branch inverts the documented fail-safe direction versus
-`probe_project_access`). Both are being fixed this cycle.
+## shared-mode-access (#93) -- spurt 4 CLOSED GREEN on a human gate (cycle 7)
 
-**Process note:** the judgement-based lock-site sweep method was retired by
-lex-lead ruling after three consecutive sweeps each declared completeness and
-each was falsified by the next reviewer (a missed site every time). A
-mechanical enumeration artifact (`reviews/lock-site-inventory.md`, one row
-per lock-reading site with verbatim grep commands and raw hit counts) now
-gates that work instead of prose claims.
+**Both P1s are CLOSED** (`7a4fa5c`), along with both cycle-7 P2s. P1-A was the
+`validate_only` enrichment's half-mocked seam (now stubs `probe_project_access`
+in `_stub_validate_only_env`/`_stub_agreement_env`, with a 4-case
+`TestValidateOnlyProjectLockEnrichment`); P1-B was `project_discovery.py`'s
+unknown-holder branch declaring "Stale lock detected" + "Close FieldWorks" from
+bare lock existence, the exact inversion of `probe_project_access`'s documented
+safe fallback (now mirrors `build_access_remedy`'s unknown-holder text). Suite
+**1148 passed / 4 skipped** (baseline 1144/4; delta is exactly the 4 new tests);
+`validate_integrity.py all` exit 0.
 
-**Remaining human gate:** the `live_session_checklist` in
-`.crew-handoff.json` is the single remaining gate that cannot be automated --
-one FieldWorks session covering CP3's sharing-off recipe check, CP4's
-open-shared write-and-refresh observation, and (once CP5 lands) the
-exclusive-access refusal/retry cycle.
+**The `pattern_audit_gate` now PASSES.** The mechanical enumeration
+(`reviews/lock-site-inventory.md`, 38 sites: 26 in `src/`, 12 in `tests/`)
+reproduced the 26/21/152 grep baseline exactly, rediscovered both known defects
+independently, and found **two more** that three consecutive judgement-based
+sweeps never named -- including a test that justified its assertion by citing a
+dependency in another file that provably does not exist. The method is
+vindicated; that table is a living artifact and must be re-run and diffed before
+any future lock-related sweep claims completeness. Prose completeness claims stay
+inadmissible.
+
+**Deferred, deliberately:** the `check_project_locked` -> `find_lock_file`
+rename (P3; contract now documented in the docstring, no issue filed -- do it as
+a mechanical commit in the CP6 cleanup pass) and a new P3, that
+`sweep_stale_locks()` runs at server startup with no `try/except` around its
+per-lock loop. Both are in SPEC.md Section 8.
+
+**Remaining human gates -- three, in priority order:**
+1. **The live FieldWorks session.**
+   `specs/shared-mode-access/evidence/live-session-checklist.md` is now a
+   single ordered checklist for one sitting: pre-flight backup, CP4-a/b/c,
+   CP3's sharing-off recipe check (both parts), and the three OPEN questions
+   (writing systems, possibility lists, reversal indexes) that classify SPEC
+   Section 3c. The binding item is 3 leg 3 -- a write with FLEx actually open
+   appearing in the FLEx UI without a restart. CP5-a is Session 2, after the
+   gate code exists.
+2. **Push + PR authorization** (see above).
+3. **Authorization to file two issues:** the fail-open probe
+   (`probe_project_access` reporting `verdict="free"` without ever inspecting a
+   lock file; interim `probed` flag has landed, the `verdict="unknown"` enum
+   widening is the real fix) and the pre-existing `docs/TOOL-CONTRACT.md`
+   vs `run_module` envelope gap.
+
+**Next crew work needs none of the above:** CP5 T5.2-T5.6, a custom-fields-only
+core against the amended SPEC, then CP6 docs plus the two P3 cleanups.
+
+**Environment caveat found this cycle:** the installed `flexicon` resolves to
+the *sibling source repo* at `D:\Github\_Projects\_LEX\flexicon\flexicon`
+(editable install, `main` at `7e0fdf2`, past the 4.5.2 release), not a
+site-packages wheel -- contrary to CLAUDE.md, which says flexicon is PyPI-only
+and no longer a cloned sibling. Any "verified against flexicon 4.5.2" claim made
+on this machine is really "verified against main@7e0fdf2". State the resolved
+path explicitly in future live evidence.

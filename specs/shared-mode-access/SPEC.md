@@ -505,3 +505,43 @@ filing separately.
   drift hazard for a future maintainer reconciling the two payload shapes,
   but lex-lead ruled against changing either shape mid-feature. Left for a
   future cycle.
+- **P1-class, pre-existing, NEEDS AN ISSUE (user authorization required):**
+  the fail-open probe. `probe_project_access()` returns `verdict="free"`
+  when `get_projects_directory()` returns `None` -- i.e. it reports "not
+  blocking" *without ever inspecting a lock file*. Cycle 7 landed a
+  strictly-bounded interim patch (`ProjectAccess.probed: bool = True`, set
+  `False` only in that branch; the `validate_only` reporting site now emits
+  `blocking: None` and omits `verdict` when `probed` is false), so nothing
+  currently ships a confident false negative. The **full** fix is still
+  deferred because it widens an enum consumed by `build_access_remedy`,
+  `build_lock_diagnosis`, the CP4 gate, `diagnostic_health`,
+  `ProjectLockedDetail` and 30+ tests. Recommended shape when filed:
+  (1) keep `probed` as the additive flag; (2) add a real `verdict="unknown"`
+  with `blocking: null` only if a consumer actually needs to branch on it;
+  (3) make every reporting site emit `blocking` *unconditionally* alongside
+  `locked`, plus a `note` explaining that `locked` is bare lock-file
+  existence. Rationale and the decision trail are in
+  `.crew-handoff.json` -> `fail_open_ruling`; do not relitigate from scratch.
+- **P2 residual, cycle 7, accepted:** `execution.py`'s `validate_only`
+  enrichment omits `blocking` entirely when `project_name` is falsy or the
+  probe raises, leaving the bare `locked` boolean unqualified. Safe-direction
+  (a consumer over-blocks rather than under-blocks) and enumerated as a
+  "note" row -- not a DEFECT row -- in `reviews/lock-site-inventory.md`.
+  Folds into the fail-open issue above, item (3).
+- **P3, cycle 7, deferred with the contract documented in place:**
+  `project_discovery.py:262` `check_project_locked()`'s *name* asserts a
+  conclusion its return value cannot support (a lock file may be stale or
+  shared). It is the proximate cause of two of the three historical
+  bare-lock misses. Cycle 7 stated the correct contract in its docstring but
+  deferred the rename to `find_lock_file()` -- ~9 call sites across `src/`
+  and `tests/`, zero behaviour change. Do it as a standalone mechanical
+  commit in the CP6 cleanup pass; no GitHub issue (it is inside #93's
+  scope and carries a durable row in `reviews/lock-site-inventory.md`).
+- **P3, cycle 7, new:** `sweep_stale_locks()` runs at server startup
+  (`server.py:1048`) with **no** `try/except` around its per-lock loop and
+  none at the call site, so an unexpected exception there fails server
+  startup outright. Pre-existing shape (`read_lock_holder` / `_pid_is_alive`
+  were already unguarded), but cycle 7 added two more calls inside that loop
+  (`is_project_sharing_enabled`, `build_access_remedy`; both internally
+  exception-tolerant, so the added risk is small). One-line fix: wrap the
+  loop body in `except Exception: continue`, or guard the call site.

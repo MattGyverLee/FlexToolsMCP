@@ -1,10 +1,10 @@
 {
   "feature": "shared-mode-access",
-  "status": "in_progress",
-  "last_cycle": 6,
-  "spurts_completed": 3,
-  "branch": "main + 3 local commits (6677fd8, 520dba4, ad1d50c -- NOT pushed)",
-  "branch_tip": "ad1d50c",
+  "status": "needs_human",
+  "last_cycle": 7,
+  "spurts_completed": 4,
+  "branch": "main + 7 local commits (6677fd8, 520dba4, ad1d50c, d0b360f, d278cc6, 7a4fa5c, + the cycle-7 close commit = HEAD -- NOT pushed; no PR open for #93)",
+  "branch_tip": "the cycle-7 close commit (HEAD); code tip is 7a4fa5c",
   "main_at": "433f3a0",
   "tasks_done": [
     "T1.1 -- undoable=False hardcoded at the generated OpenProject call; undoable session flag + plumbing removed",
@@ -23,22 +23,30 @@
     "CP3 T3.1-T3.4 -- _diagnose_project_open_error (execution.py:1195-1265) now calls probe_project_access and emits verdict-specific hints; new build_lock_diagnosis() sibling in project_access.py:277-320 (build_access_remedy deliberately NOT widened: test_shared_mode_write_gate.py:77-80 asserts it returns None for stale_lock); tests/test_cp3_lock_diagnosis.py (6 tests) [6677fd8]",
     "Cycle 6 -- CP3 hardening [520dba4]: atomic extra/diag.update, guarded logger.debug on the swallow, tightened PID assertions, tests/test_cp3_lock_diagnosis.py -> tests/test_shared_mode_lock_diagnosis.py, project_access.py:283 pointer corrected to 4203-4299. QC CONFIRMS P1-1 CLOSED (diag is genuinely atomic).",
     "Cycle 6 -- sibling sweep [ad1d50c]: additive verdict/sharing_enabled/blocking on the validate_only project_lock (execution.py:2049-2076); project_discovery.py sweep_stale_locks dead-holder branch reworded. INCOMPLETE -- see p1_open.",
-    "Cycle 6 -- SPEC.md amended by lex-doc (Section 3 split Class A/B + unclassified + unreachable; T5.1/T5.3/T5.5 drift fixed; new T5.6; Section 8 += P2-4, P2-8). UNCOMMITTED at time of writing -- cycle 7 archivist task."
+    "Cycle 6 -- SPEC.md amended by lex-doc (Section 3 split Class A/B + unclassified + unreachable; T5.1/T5.3/T5.5 drift fixed; new T5.6; Section 8 += P2-4, P2-8). UNCOMMITTED at time of writing -- cycle 7 archivist task.",
+    "Cycle 7 -- SPEC.md Section 3/CP5 amendment COMMITTED by lex-archivist [d0b360f]: 10 files (SPEC.md, .crew-handoff.json, seven cycle5/cycle6 reviews, STATUS.md). Zero src/ or tests/ files staged; .spec-context.json and .specify/ deliberately untouched.",
+    "Cycle 7 -- MECHANICAL LOCK-SITE INVENTORY produced: reviews/lock-site-inventory.md (38 sites: 26 src/, 12 tests/) + reviews/cycle7-inventory.md (defect rows only). Greps reproduced the 26/21/152 baseline EXACTLY. Both known defects surfaced INDEPENDENTLY, plus TWO the three judgement-based sweeps never named (project_discovery.py:344-354; the false-justification test at test_shared_mode_access.py:442, whose cited dependency in test_startup_lock_sweep.py has ZERO occurrences of 'Stale lock detected'). The method is VINDICATED -- keep it.",
+    "Cycle 7 -- all six programmer items landed [7a4fa5c]: P1 project_discovery unknown-holder rewording (inventory's exact text), P1-companion test renamed to test_unreadable_lock_is_reported_as_exclusively_held with the false docstring struck, P1-A validate_only enrichment test coverage (TestValidateOnlyProjectLockEnrichment, 4 tests) + probe_project_access stubbed in _stub_validate_only_env/_stub_agreement_env, fail-open interim patch (ProjectAccess.probed), Dict[str, Any] annotation, and the P2 live-holder branch now branching on _is_fieldworks_process_name + is_project_sharing_enabled and delegating held_by_other wording to build_access_remedy. Tests 1144 -> 1148 passed / 4 skipped; validate_integrity.py all exit 0.",
+    "Cycle 7 -- lex-lead read the 7a4fa5c diff itself and re-ran the five lock-related test files (83 passed, 2 subtests) rather than dispatching a fourth judgement pass over a bug class that now has a mechanical artifact.",
+    "Cycle 7 (user-directed, outside the plan) -- STATUS.md self-contradiction struck [d278cc6]: item 5 listed the CastingOperations.cast_to_concrete phantom remedy as OPEN while the same file already recorded it fixed and filed in 1f8e90b as #112/#113. Re-verified: zero CastingOperations occurrences in src/ or docs/; surviving advertisements name flexicon.code.lcm_casting; cast_to_concrete is real and unary at flexicon/code/lcm_casting.py:408. Two dependent counts corrected.",
+    "Cycle 7 -- specs/shared-mode-access/evidence/live-session-checklist.md written: the SINGLE consolidated, ordered live checklist (pre-flight + backup, CP4-a/b/c, CP3 sharing-off both parts, OPEN Q1/Q2/Q3, wrap-up) with exact commands and per-item pass criteria. CP5-a is explicitly Session 2, after the CP5 gate exists.",
+    "Cycle 7 -- SPEC.md Section 8 extended with four deferred entries: the fail-open issue (with the recommended probed/unknown/always-emit-blocking shape), the execution.py `blocking`-omission residual, the check_project_locked rename, and the new unguarded-startup-sweep P3."
   ],
   "checkpoint_reached": "CP4 (code); CP2 complete; CP3 code complete",
   "cp1_verified": "LIVE PASS (fbeb3ab) -- static_only superseded",
   "gates": {
     "verification": "CP1 live write check PASS (fbeb3ab); CP4 LCM premise verified live (evidence/live-cp4.md, re-run under flexicon 4.4.1 per db52c3a)",
-    "qc": "87/100 FIX-ISSUES on the cycle-6 diff (cycle6-qc.md, 520dba4+ad1d50c). No P0. P1-1 from cycle 5 CONFIRMED CLOSED. Two NEW P1s opened -- see p1_open. Both attach to the SWEEP work, not to CP3 T3.1-T3.5.",
-    "pattern_audit_gate": "METHOD RETIRED by lex-lead ruling (cycle 6). Three consecutive judgement-based sweeps each declared completeness and each was falsified by the next reviewer (6677fd8 -> missed execution.py:2030; ad1d50c -> missed project_discovery.py:371-375). Cycle 7 requires a MECHANICAL ENUMERATION artifact (specs/shared-mode-access/reviews/lock-site-inventory.md): one table row per lock-reading site, with the verbatim grep commands + raw hit counts, and a per-row blocking/non-blocking justification. Prose 'no siblings found' claims are NO LONGER ACCEPTED as evidence. The universe is small and fully enumerable: 26 hits of '.lock' across 6 files in src/.",
+    "qc": "Cycle 7 CLOSED by lex-lead ruling. Both cycle-6 P1s CLOSED; both cycle-7 P2s CLOSED (one fully, one accepted-with-residual); P3 rename DEFERRED with the contract documented in place. No P0, no open P1.",
+    "pattern_audit_gate": "PASS (cycle 7). The mechanical artifact exists and satisfies every condition of the cycle-6 ruling: one row per lock-reading site (38), verbatim grep commands with raw hit counts that reproduce the 26/21/152 baseline exactly, a per-row blocking/non-blocking justification, and a re-verification protocol. It independently rediscovered both known defects and found two more. THE BARE-LOCK BUG CLASS IS CLOSED for src/ as enumerated, with two NAMED, documented residuals (execution.py's bare `locked` semantics; check_project_locked's misleading name) -- residuals, not unknowns. reviews/lock-site-inventory.md is a LIVING artifact: re-run its greps and diff the table before any future lock-related sweep claims completeness. Prose completeness claims remain inadmissible.",
     "p1_weakened_test": "RESOLVED",
     "domain": "PASS (cycle 2)",
     "scope_creep": "PASS",
     "live_write_check": "PASS (fbeb3ab) -- CP1 merge blocker cleared",
     "cp4_live_open_shared": "NOT RUN -- needs FieldWorks running and holding a sharing-enabled project; the 'visibly appears in the FLEx UI' half is a human observation (evidence/live-cp4.md section 6). This is the only red gate.",
     "cp3_live_sharing_off": "NOT RUN -- read-only run against a sharing-off, FLEx-open project must return the enable-sharing recipe (SPEC Verification step 5, final bullet). Human/live gate. Blocks CP3 SIGN-OFF only, not CP5/CP6 code work.",
-    "spec_step6_regression": "PASS @ ad1d50c (cycle6-programmer.md) -- 1144 passed / 4 skipped (identical to baseline; no new test functions, only tightened assertions + a rename); validate_integrity.py all exit 0. MUST be re-run after the cycle-7 fix commit.",
-    "cp3_code": "ACCEPTED (CODE), UNCONDITIONAL -- the P1-1 atomicity condition from cycle 5 has landed (520dba4) and is QC-confirmed. SIGN-OFF still blocked on cp3_live_sharing_off (human/live only). The two new cycle-6 P1s do NOT reopen CP3: neither is in T3.1-T3.5's code path."
+    "spec_step6_regression": "PASS @ 7a4fa5c -- 1148 passed / 4 skipped (baseline 1144/4; delta is exactly the 4 new TestValidateOnlyProjectLockEnrichment cases, no regressions). validate_integrity.py all exit 0. lex-lead independently re-ran the 5 lock-related test files: 83 passed, 2 subtests passed.",
+    "cp3_code": "ACCEPTED (CODE), UNCONDITIONAL -- the P1-1 atomicity condition from cycle 5 has landed (520dba4) and is QC-confirmed. SIGN-OFF still blocked on cp3_live_sharing_off (human/live only). The two new cycle-6 P1s do NOT reopen CP3: neither is in T3.1-T3.5's code path. Cycle 7 adds nothing to reopen it.",
+    "cycle7_close": "ACCEPTED. No further verification pass over 7a4fa5c is required or wanted -- a fourth judgement review of a bug class that now has a mechanical artifact is precisely the waste the gate was created to end."
   },
   "commits": {
     "8a4fae5": "fix: writes silently fail under undoable=True; remove dead undo machinery (closes #92) -- d17105f amended to carry the pattern audit",
@@ -50,35 +58,41 @@
     "ae73eef": "Merge PR #114 -- shared-mode access + swahili-audit Bug 1",
     "6677fd8": "CP3 T3.1-T3.4 -- wire probe_project_access into project-locked diagnosis (local, unpushed)",
     "520dba4": "fix: CP3 diagnosis hardening (#93) -- local, unpushed",
-    "ad1d50c": "fix: sweep the check_project_locked sibling for bare-lock false positives (#93) -- local, unpushed"
+    "ad1d50c": "fix: sweep the check_project_locked sibling for bare-lock false positives (#93) -- local, unpushed",
+    "d0b360f": "docs: amend SPEC Section 3 + CP5 tasks ahead of implementation (#93) -- local, unpushed",
+    "d278cc6": "docs: strike the resolved cast_to_concrete phantom-remedy blocker -- local, unpushed",
+    "7a4fa5c": "fix: close cycle-7 P1s in shared-mode lock diagnosis (#93) -- local, unpushed",
+    "HEAD (cycle-7 close)": "docs: close #93 cycle 7 -- both P1s fixed, pattern audit gate PASSES -- local, unpushed, docs-only"
   },
   "issues": {
     "cp1_bug": "#92 -- CLOSED (live write check passed; fix merged in PR #114)",
     "cp2_cp6_enhancement": "#93 -- OPEN (correctly: CP3 partial, CP5 unstarted, CP6 partial)"
   },
   "blocker": {
-    "what": "CP4 Verification step 5 -- the live open_shared write with FieldWorks actually RUNNING and holding a sharing-enabled project.",
-    "why_it_cannot_be_waived": "evidence/live-cp4.md proved the LCM premise (a second process can write to a projectSharing=true project) but NOT the open_shared code path under a real FLEx master, and the 'visibly appears in the FLEx UI' half is by definition a human observation. FieldWorks was not running on this machine when the CP4 evidence was gathered.",
-    "blocks": "CP4 sign-off AND (newly identified, cycle 5) CP3 sign-off -- SPEC.md:233-235 puts a live FLEx-open observation in CP3's checkpoint too. Batch both into one FieldWorks session. Does NOT block CP5 or CP6 code work.",
-    "cp3_half": "Sharing-OFF project + FLEx open -> read-only run_module must return the enable-sharing recipe, not the generic lock hint. Unit-proven at 6677fd8; live-unproven."
+    "what": "The live FieldWorks session (specs/shared-mode-access/evidence/live-session-checklist.md, session 1). It is the only gate on CP3 and CP4 sign-off and the crew is barred from live-FLEx work.",
+    "binding_item": "Checklist item 3 leg 3 -- a write with FLEx actually open appearing in the FLEx UI without a restart. Never verified. evidence/live-cp4.md proved only the LCM premise (a second process CAN write to a projectSharing=true project), not the open_shared code path under a real FLEx master.",
+    "also_needs_the_user": "A push/PR authorization (see push_pr_ruling) and authorization to file the two deferred issues. Neither blocks CP5 code work.",
+    "does_not_block": "CP5 implementation, CP6 docs, or the two P3 cleanups. A crew spurt can proceed on all of those with FieldWorks closed."
   },
   "merge_gate": "CLEARED -- PR #114 merged to main (ae73eef); git log origin/feat/shared-mode-access ^main is empty.",
   "deferred_no_issue_filed": [
     "[MED] execution.py:326 -- the liblcm-mode OpenProject stub ignores writeEnabled and has no undoable param. Dead today (_get_api_mode_imports has zero callers) but the same bug shape dormant; if rewired, CP1's hardcoded undoable=False call site would TypeError against it. Out of CP1 scope.",
     "[LOW] execution.py:3345 -- FlexToolsModule.Run modifyAllowed=False default; sole call site always passes WRITE_ENABLED explicitly. Safe-direction, unreachable.",
     "[LOW] index/common_patterns_flexicon-v4.3.0.json:1271 -- flexicon's own CreateField docstring documents an identical landmine. Not our code; FYI.",
-    "[P2, pre-existing] SPEC.md Section 8 -- docs/TOOL-CONTRACT.md:13-26 claims all success responses carry _contract/status/op_id, but run_module's raw success dict never does. Predates CP1. Needs the user's authorization to file.",
-    "[P1-class, pre-existing] probe_project_access verdict='free' on an unresolvable projects directory -- see fail_open_ruling. Needs the user's authorization to file as a new issue."
+    "[P2, pre-existing] SPEC.md Section 8 -- docs/TOOL-CONTRACT.md:13-26 claims all success responses carry _contract/status/op_id, but run_module's raw success dict never does. Predates CP1. NEEDS THE USER'S AUTHORIZATION TO FILE.",
+    "[P1-class, pre-existing] The FAIL-OPEN PROBE -- probe_project_access verdict='free' on an unresolvable projects directory. Interim patch LANDED (probed flag); the full fix is the verdict='unknown' enum widening. NEEDS THE USER'S AUTHORIZATION TO FILE -- see fail_open_ruling.recommended_shape_when_filed for the exact three-part shape.",
+    "[P3, cycle 7] check_project_locked -> find_lock_file rename. No issue wanted; do it in the CP6 cleanup pass. See p1_closed_cycle7.P3_check_project_locked_rename.",
+    "[P3, cycle 7, NEW] sweep_stale_locks() runs at server startup (server.py:1048) with no try/except around its per-lock loop and none at the call site -- an unexpected exception there fails server startup. Pre-existing shape; cycle 7 added two internally-safe calls inside the loop. One-line fix in the CP6 cleanup pass."
   ],
   "checkpoints_remaining": {
     "CP2": "DONE -- 39d1caf",
-    "CP3": "CODE ACCEPTED (unconditional). T3.1-T3.5 implemented + hardened [6677fd8, 520dba4], QC-confirmed atomic, regression green. SIGN-OFF blocked ONLY on the live slice (SPEC.md:233-235) -- batch with CP4 in one FieldWorks session.",
-    "CP4": "CODE DONE -- live open_shared gate outstanding (see blocker)",
-    "CP5": "SCOPED (cycle5-cp5-scope.md), NOT IMPLEMENTED. lex-lead ruling: SPEC must be amended FIRST (split Section 3 by failure_class, fix T5.1/T5.5 drift, add unclassified rows), then implement a CUSTOM-FIELDS-ONLY core -- T5.2-T5.5 in full against a one-certain-row table. Writing systems / possibility lists / reversal indexes are ROWS, not architecture: they are added later without touching the gate, so CP5 is NOT blocked on the live experiments.",
+    "CP3": "CODE ACCEPTED (unconditional) and cycle-7 hardened [6677fd8, 520dba4, ad1d50c, 7a4fa5c]. SIGN-OFF blocked ONLY on live-session-checklist item 4.",
+    "CP4": "CODE DONE. SIGN-OFF blocked ONLY on live-session-checklist items 1-3, of which item 3 leg 3 (visible in the FLEx UI without a restart) is the binding one.",
+    "CP5": "SCOPED (cycle5-cp5-scope.md) + SPEC AMENDED [d0b360f]. NOT IMPLEMENTED -- this is the next CREW work, and it is NOT blocked by the live session: implement a CUSTOM-FIELDS-ONLY core (T5.2-T5.6) against the one certain Class B row. Writing systems / possibility lists / reversal indexes are ROWS added later without touching the gate; live items 5-7 only classify those rows. Rulings in cp5_rulings stand.",
     "CP6": "PARTIAL -- T6.5 (CHANGELOG) done; docs/SHARED-MODE.md does not exist; T6.1-T6.4, T6.6, T6.7 outstanding"
   },
-  "next_checkpoint": "CP5 -- exclusive-access gate (custom-fields-only core), after cycle 7 closes the two P1s + the mechanical lock-site inventory.",
-  "next_entry": "Cycle 7 is dispatched: (a) lex-archivist commits the amended SPEC.md (dirty in the working tree, prepared message in cycle6-doc.md); (b) a MECHANICAL lock-site enumeration -> reviews/lock-site-inventory.md; then (c) one programmer commit closing P1-A, P1-B, every additional site the inventory names, the fail-open interim patch, and the Dict[str, Any] annotation. After cycle 7 returns green, the NEXT spurt implements CP5 T5.2-T5.6 against the amended SPEC.",
+  "next_checkpoint": "CP5 -- exclusive-access gate (custom-fields-only core), T5.2-T5.6",
+  "next_entry": "Cycle 7 is CLOSED GREEN and the spurt ends on a HUMAN GATE. Three asks are queued for the user, in priority order: (1) run specs/shared-mode-access/evidence/live-session-checklist.md session 1 -- one FieldWorks sitting, 8 items, backup first; (2) authorize the push + PR per push_pr_ruling (six green commits are unpushed on main); (3) authorize filing the two issues in deferred_no_issue_filed marked 'NEEDS THE USER'S AUTHORIZATION' (the fail-open probe, and the TOOL-CONTRACT run_module envelope gap). The next CREW spurt -- which needs NONE of the above -- implements CP5 T5.2-T5.6 (custom-fields-only core) against the amended SPEC, then CP6 docs plus the two P3 cleanups (check_project_locked rename, guard the startup sweep loop).",
   "updated": "2026-09-07",
   "spec_kit_note": "This file is AUTHORITATIVE for the feature. specs/shared-mode-access/.spec-context.json and the spec-kit companion resolver are unreliable here -- ignore them.",
   "cp5_rulings": {
@@ -97,30 +111,39 @@
     "Stale pointer: project_access.py:283 cites the write gate as execution.py:4180; it is :4203-4299."
   ],
   "live_session_checklist": {
-    "note": "ONE FieldWorks session covers all of this. Take a restorable backup of the scratch project FIRST -- items 5-7 are schema-level and may not be undoable.",
-    "on_Claude_Swahili_sharing_ON_FLEx_OPEN": [
-      "1. CP4-a: flextools_health(verbose=True) reports verdict 'open_shared' with FLEx's real PID.",
-      "2. CP4-b: read-only run_module listing entries succeeds.",
-      "3. CP4-c: write run_module setting a gloss succeeds AND the change appears in the FLEx UI after refresh. <- the single largest unverified assumption under CP4 and CP5 both.",
-      "4. CP5-a (only after CP5 code lands): CustomFieldOperations.CreateField is refused with requires_exclusive_access; close FLEx; re-submit the identical call -> succeeds; reopen FLEx; confirm the field exists.",
-      "5. OPEN Q1: writing-system add/change with FLEx open -- clobber, refusal, or reconcile? Determines whether WS belongs in T5.1 at all.",
-      "6. OPEN Q2: possibility-list item mutation (e.g. a semantic domain) with FLEx open -- does it survive a FLEx restart?",
-      "7. OPEN Q3: reversal index create/regenerate with FLEx open -- uncovered anywhere in SPEC."
+    "AUTHORITATIVE_FILE": "specs/shared-mode-access/evidence/live-session-checklist.md -- the single ordered, executable checklist for ONE FieldWorks sitting, with exact commands and per-item pass criteria. Use that file, not this summary.",
+    "session_1_covers": [
+      "0. Pre-flight: pick the sharing-ON project (Target or Claude-Swahili), TAKE A RESTORABLE BACKUP FIRST (items 5-7 are schema-level), pick/prepare a sharing-OFF project, restart the MCP server so it is running the tree through 7a4fa5c.",
+      "1. CP4-a: flextools_health(verbose=True) -> verdict open_shared, sharing_enabled true, holder_pid == the REAL FieldWorks PID (cross-check tasklist).",
+      "2. CP4-b: read-only run_module listing 5 entries succeeds with no 'Close FieldWorks' text.",
+      "3. CP4-c: write run_module setting a gloss -> not refused, report shows the change, AND the new gloss is visible in the FLEx UI after F5 WITHOUT restarting FLEx. THE SINGLE MOST LOAD-BEARING OBSERVATION IN THE FEATURE. If legs 1-2 pass but leg 3 fails, STOP before item 5 and return to the crew -- that is the #96 commit-log staleness shape and CP4's 'writes are expected to succeed' wording must be re-ruled before CP5 is built on it.",
+      "4. CP3: on the sharing-OFF project with FLEx open, a read-only run must return the ENABLE-SHARING RECIPE, not the generic lock hint; then enable sharing, reopen FLEx, re-run -> proceeds with no prompting.",
+      "5-7. OPEN Q1 writing systems / Q2 possibility-list items / Q3 reversal indexes: for each, write with FLEx open, check the UI, THEN close and reopen FLEx and check again. Before-vs-after-restart is the whole finding: visible-then-gone == silently_lost == the class CP5 must gate.",
+      "8. Wrap-up: append verbatim output to evidence/live-cp4.md, restore the backup if items 5-7 damaged anything, hand back to the crew."
     ],
-    "on_a_DIFFERENT_project_sharing_OFF_FLEx_OPEN": [
-      "8. CP3: read-only run_module must return the enable-sharing recipe, NOT the generic lock hint. Then enable sharing (Project Properties -> Sharing tab), reopen FLEx, re-run -> proceeds with no further prompting."
-    ]
+    "session_2_later": "CP5-a only, ~10 minutes, ONLY after the CP5 gate code lands: CustomFieldOperations.CreateField refused with requires_exclusive_access -> close FLEx -> identical call succeeds -> reopen FLEx and confirm the field exists."
   },
   "dispatch_infrastructure_bug": "subagent_type 'lex-qc' DOES NOT RESOLVE (confirmed AGAIN in cycles 5 and 6 -- the main session had to substitute both times). The Agent registry rejects it even though ~/.claude/agents/lex-qc.md exists with valid frontmatter; probable cause is the same-named skill and ~/.claude/commands/lex-qc.md shadowing the agent registration. STANDING RULE: lex-lead MUST NOT emit subagent_type 'lex-qc'. Dispatch subagent_type 'general-purpose' instructed to read ~/.claude/agents/lex-qc.md and adopt that rubric verbatim. The same substitution applies to any other lex-* type that fails to resolve.",
-  "p1_open": {
-    "P1-A_enrichment_untested": "execution.py:2049-2076 validate_only enrichment is UNCOVERED and its seam is half-mocked: all seven check_project_locked monkeypatch sites (test_issue49:412,525; test_issue55:178; test_issue96:73; test_nested_uow_gate:157; test_issue103:183; test_shared_mode_write_gate:147) stub the lock check but NOT probe_project_access, so :2064 probes the live host and verdict/blocking are host-dependent. QC verified nothing breaks today (no golden fixture governs project_lock; :551 asserts only `locked`). FIX: patch the probe in _stub_validate_only_env; add open_shared + open_exclusive cases. RULED FIX-NOW.",
-    "P1-B_missed_sibling_project_discovery": "project_discovery.py:371-375 -- the unknown-holder else-branch of sweep_stale_locks declares 'Stale lock detected' + 'Close FieldWorks' from BARE LOCK EXISTENCE. This is the exact inversion of probe_project_access:341-350's documented fallback (unknown holder -> open_exclusive, erring safe). Net today: the branch that KNOWS the holder is dead says 'no action needed'; the branch that knows NOTHING says 'stale'. Test-locked at tests/test_shared_mode_access.py:440-453. NOTE: that test's docstring claims tests/test_startup_lock_sweep.py also asserts the wording -- lex-lead re-grepped and it DOES NOT (zero hits for 'Stale lock detected' in that file). Do not trust the comment. RULED FIX-NOW."
-  },
   "fail_open_ruling": {
     "finding": "probe_project_access:351-359 -- get_projects_directory() returning None yields verdict='free', sharing_enabled=None, so a host without FieldWorks/registry/env reports blocking:false WITHOUT EVER PROBING (cycle6-qc.md P2-3).",
     "scope": "NOT CP3, NOT CP4, NOT a regression. NEW ISSUE (needs the user's authorization to file).",
     "rationale": "(1) Pre-existing since issue #33: check_project_locked (project_discovery.py:262-274) has returned None -> 'not locked' -> proceed on dir_result None since long before the CP series; ad1d50c did not introduce it. (2) NO data-loss path: if the projects directory cannot be resolved, the subprocess cannot resolve the project either, so the write fails at LCM open time and lands in CP3's post-hoc _diagnose_project_open_error. LCM remains the backstop; the gate is vacuous, not bypassed. (3) The real fix -- a 6th verdict 'unknown' / blocking:null -- widens an enum consumed by build_access_remedy, build_lock_diagnosis, the CP4 gate, diagnostic_health, ProjectLockedDetail and 30+ tests. Folding an enum widening into the tail of a hardening cycle is precisely the unbounded drift that has already cost two cycles.",
-    "recommended_shape_when_filed": "Additive `probed: bool = True` on ProjectAccess, set False in the dir-unresolvable branch; a real verdict='unknown' only if a consumer actually needs to branch on it. Recorded here so it is not relitigated from scratch.",
-    "interim_patch_ruled_IN_for_cycle_7": "ad1d50c NEWLY PUBLISHES `blocking` in the validate_only payload. We own not shipping a brand-new field that asserts false confidently. Cycle 7 must emit blocking:null (and omit the verdict) when the probe did not actually probe. Scope is the reporting sites + the ProjectAccess flag ONLY -- the CP4 gate's dispatch is NOT to be touched."
-  }
+    "recommended_shape_when_filed": "STILL NEEDS THE USER'S AUTHORIZATION TO FILE. Three parts: (1) keep the landed additive `probed: bool = True` on ProjectAccess as the seam; (2) add a real verdict='unknown' with blocking:null ONLY if a consumer actually needs to branch on it -- it widens an enum consumed by build_access_remedy, build_lock_diagnosis, the CP4 gate, diagnostic_health, ProjectLockedDetail and 30+ tests, which is why it was never folded into a hardening cycle; (3) make every reporting site emit `blocking` UNCONDITIONALLY alongside `locked`, plus a `note` stating that `locked` is bare lock-file existence (this absorbs the cycle-7 P2 residual). Recorded so it is not relitigated.",
+    "interim_patch_ruled_IN_for_cycle_7": "ad1d50c NEWLY PUBLISHES `blocking` in the validate_only payload. We own not shipping a brand-new field that asserts false confidently. Cycle 7 must emit blocking:null (and omit the verdict) when the probe did not actually probe. Scope is the reporting sites + the ProjectAccess flag ONLY -- the CP4 gate's dispatch is NOT to be touched.",
+    "interim_patch_status": "LANDED [7a4fa5c]. ProjectAccess.probed: bool = True exists, False only in the dir-unresolvable branch; the validate_only site emits blocking=None and omits verdict when probed is False. Verdict enum and CP4 gate dispatch untouched, as ruled."
+  },
+  "p1_closed_cycle7": {
+    "P1-A_enrichment_untested": "CLOSED [7a4fa5c] -- probe_project_access stubbed in _stub_validate_only_env + _stub_agreement_env; TestValidateOnlyProjectLockEnrichment covers free/open_shared/open_exclusive/unprobed. The seam is no longer host-dependent.",
+    "P1-B_missed_sibling_project_discovery": "CLOSED [7a4fa5c] -- unknown-holder branch now mirrors build_access_remedy's unknown-holder text verbatim ('could not be identified... Treating it as exclusively held'), drops 'Stale' and the FieldWorks attribution; the test that pinned the old wording was renamed and now asserts the corrected text plus a negative assertion on 'Stale lock detected'.",
+    "P2_project_discovery_344_354": "CLOSED [7a4fa5c] -- live-holder branch branches on _is_fieldworks_process_name and is_project_sharing_enabled; held_by_other wording delegated to build_access_remedy so it cannot drift from CP3/CP4.",
+    "P2_execution_2035_2047": "CLOSED WITH RESIDUAL [7a4fa5c] -- `blocking` is now published in the probed path and null when unprobed. `locked` remains bare existence, and `blocking` is still omitted when project_name is falsy or the probe raises (safe-direction: a consumer over-blocks). The inventory's verdict=\"unknown\" + `note` half was correctly NOT done -- it is the deferred enum widening. Folded into the fail-open issue, item (3).",
+    "P3_check_project_locked_rename": "DEFERRED, NO ISSUE FILED, and that is sufficient -- the memory is durable three ways: a row in reviews/lock-site-inventory.md, the corrected contract in the function's own docstring, and SPEC.md Section 8. A micro-issue for a zero-behaviour-change rename inside an already-open #93 would be noise. Schedule it as a standalone mechanical commit in the CP6 cleanup pass (~9 call sites across src/ and tests/)."
+  },
+  "push_pr_ruling": {
+    "ruling": "PUSH AND OPEN A PR NOW -- do NOT wait on the live gate. NOT YET AUTHORIZED: the user has not authorized a push or a PR in this session, so the main session must ASK before doing any of it.",
+    "why_not_wait": "None of the six commits' correctness depends on the live observation. The live gate blocks CP3/CP4 SIGN-OFF, which is issue-tracked prose, not code state. Holding seven green commits as unpushed local work on `main` for days is the largest loss-of-work risk in the current tree, and it is a strictly worse risk than an open PR that says 'live sign-off pending'.",
+    "recommended_mechanics": "The commits sit on `main`, which bypasses the repo's PR-per-change convention (PRs #114/#116/#117). Recommended: (1) branch `fix/shared-mode-lock-diagnosis-93` at the current tip; (2) reset local `main` back to origin/main (433f3a0); (3) push the branch and open a PR referencing #93 but NOT closing it (CP5 and CP6 remain). The PR body should state plainly that CP3/CP4 code is green and unit-proven while their live sign-off is pending the session-1 checklist.",
+    "do_not": "Do not force-push, do not push directly to main, and do not let any loop do this unattended -- it needs the user's explicit yes."
+  },
+  "environment_note_cycle7": "The installed `flexicon` resolves to the SIBLING SOURCE REPO at D:\\Github\\_Projects\\_LEX\\flexicon\\flexicon (editable/source install, branch main at 7e0fdf2, PAST the 4.5.2 release), NOT a site-packages wheel. CLAUDE.md states flexicon is PyPI-only and 'no longer a cloned sibling repo' -- that is NOT what this machine runs. Consequence: any claim of the form 'verified against flexicon 4.5.2' on this machine is really 'verified against main@7e0fdf2'. Re-check before trusting the index migration (accd5a1) or any live evidence file's version line, and state the resolved path explicitly in future live evidence."
 }

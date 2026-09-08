@@ -986,3 +986,71 @@ project -- let it, because the flag is read once when the cache opens
 (LcmCache.cs:219)", which overstates a requirement. Recommend softening that
 sentence to note the reopen matters for FLEx's own cache, not for the server's
 ability to attach.
+
+### RETRACTION -- the "manage layouts" reading of item 7 was wrong
+
+Recorded immediately above is the claim that the peer-created `seh` reversal
+index was "present in manage layouts (3 entries), absent from the main Reversal
+Index view (2 entries), and labelled English rather than Sena", scored as a
+persistent FLEx UI inconsistency.
+
+**That claim is withdrawn.** The user clarified:
+
+> "Ok, so clarification. I only ever saw 2 reversals (language), but 2 english
+> reversal layouts (still there) and one portuguese"
+
+Two things follow:
+
+1. The `English / English / Portuguese` list in **manage layouts** is a list of
+   reversal-index **layouts** (view configurations), not of reversal indexes.
+   It still shows the same three entries **after** the `seh` index was deleted
+   (cleanup op `op-100237428-017`), at which point only two indexes exist. A
+   3-entry layout list against a 2-index project proves the layout entries do
+   **not** correspond one-to-one with indexes, so that list was never evidence
+   about the `seh` index at all.
+2. The main Reversal Index view showed **two** reversals, by language, for the
+   entire session -- before, during, and after the test.
+
+**Corrected finding, which is cleaner than the retracted one:** the
+peer-created reversal index on a vernacular writing system was **never visible
+anywhere in the FLEx UI**. It existed in the data (three indexes read back,
+`ws='seh'`, GUID `bde3f661-c058-40cd-bf15-4000e4364bda`) and survived a full
+FLEx restart, but FLEx never surfaced it. It was not "half-rendered" or
+"mislabelled"; it was simply absent.
+
+This **strengthens** rather than weakens the recommendation that
+`ReversalIndexes.Create` should refuse a non-analysis writing system: the
+object it creates is unreachable by any user through the application, while
+still occupying the WS slot that would block a later legitimate
+`Create` for that WS.
+
+**Unaffected by this retraction** (all three rest on data diffs or on the
+main-view observation, not on the layout list):
+
+- `SetName` with the **default** wsHandle is applied, reads back correctly
+  in-session, and is **silently reset by FLEx on reopen** -- the Class B
+  `silently_lost` finding. Established by diffing pre- and post-restart reads.
+- `SetName` with an **explicit** wsHandle survives the restart.
+- The FLEx main reversal view labels indexes by **writing system language**,
+  not by the index `Name` field. Confirmed twice: the `en`-WS name was set
+  explicitly to `CP4LIVE-EN-2026-09-08` and the view still read "English"; and
+  the user describes the list as "2 reversals (language)".
+- `Create` on an occupied WS is correctly refused (`FP_ParameterError`).
+- `Create` performs no analysis-vs-vernacular validation.
+
+**Left open for confirmation:** whether the layout list read
+`English / English / Portuguese` *before* any write in this session. The user's
+"(still there)" indicates the count never changed, which would make it
+pre-existing `Sena 3` configuration and wholly unrelated. If instead it went
+2 -> 3 during the session, that is a separate finding -- an orphaned layout
+left behind by the deleted index -- and should be chased then.
+
+**Process note for the crew.** This retraction is exactly the failure mode the
+live-session checklist exists to prevent, and it nearly went into the record as
+a confirmed finding. The error was interpreting an unfamiliar UI list as
+evidence for a specific object without first establishing what that list
+enumerates, and without a before-reading to diff against. The data-side
+findings in this section were all diffed pre/post and none of them needed
+correcting; only the UI-side inference did. Future items should capture a
+before-state for every UI surface that will be cited, not just for the
+database.

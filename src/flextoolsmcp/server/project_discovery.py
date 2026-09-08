@@ -345,12 +345,30 @@ def sweep_stale_locks() -> list:
             alive = _pid_is_alive(holder.pid)
             holder_desc = f"held by {holder.process_name or 'unknown process'} (PID {holder.pid})"
             status_desc = "still running" if alive else "no longer running (stale)"
-            msg = (
-                f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
-                f"process {status_desc}. "
-                "Close FieldWorks (or delete the .lock file only if no FW process is running) "
-                "to allow write operations on this project."
-            )
+            if alive:
+                msg = (
+                    f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                    f"process {status_desc}. "
+                    "Close FieldWorks (or delete the .lock file only if no FW process is running) "
+                    "to allow write operations on this project."
+                )
+            else:
+                # Issue #93 sweep follow-up (see specs/shared-mode-access/
+                # reviews/cycle5-qc.md P1-2): the holder is confirmed dead,
+                # so this is a stale lock, not a live collision -- telling
+                # the operator to "close FieldWorks" is the exact CP3/CP4
+                # wording drift build_lock_diagnosis() exists to prevent
+                # (there is nothing running to close). LCM treats a stale
+                # lock as acquirable, so no action is required; only
+                # mention manual deletion as a last resort.
+                msg = (
+                    f"Lock detected: {lock_path} ({age_str} old), {holder_desc}, "
+                    f"process {status_desc}. This is a stale lock: LCM treats it "
+                    "as acquirable, so the next write attempt should succeed "
+                    "without any action. Delete the .lock file manually only if "
+                    "writes keep failing and you are certain no FieldWorks "
+                    "process is running."
+                )
         else:
             msg = (
                 f"Stale lock detected: {lock_path} ({age_str} old). "

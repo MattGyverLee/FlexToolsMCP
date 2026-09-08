@@ -2046,6 +2046,36 @@ async def _handle_validate_only(
     if _lock_path is not None:
         project_lock["lock_file"] = str(_lock_path)
 
+    # Issue #93 sweep follow-up (see specs/shared-mode-access/reviews/
+    # cycle5-qc.md P1-2): `locked` above is bare .fwdata.lock existence,
+    # the exact false positive CP3 exists to remove (a stale lock, or a
+    # live open_shared holder, both leave a lock file on disk without
+    # actually blocking a write). Additively enrich with the CP2 access
+    # probe so callers can distinguish "a lock file exists" from "a write
+    # would actually be refused", without changing what `locked` itself
+    # means. Same defensive try/except + debug-log pattern as the CP3 fix
+    # above: this is a read-only preflight report, never allowed to crash
+    # on a probe failure.
+    try:
+        try:
+            from ..project_access import probe_project_access
+        except (ImportError, ValueError):
+            from server.project_access import probe_project_access
+        _access = probe_project_access(project_name) if project_name else None
+        if _access is not None:
+            project_lock["verdict"] = _access.verdict
+            project_lock["sharing_enabled"] = _access.sharing_enabled
+            project_lock["blocking"] = _access.verdict in (
+                "open_exclusive",
+                "held_by_other",
+            )
+    except Exception as exc:
+        _lock_logger = get_operations_logger()
+        if _lock_logger is not None:
+            _lock_logger.debug(
+                f"validate_only project_lock probe unavailable: {exc!r}"
+            )
+
     all_passed = all(c.get("passed", False) for c in checks)
     status = "validated" if all_passed else "validation_failed"
     fault_gates = [c["gate"] for c in checks if not c.get("passed", False)]

@@ -1,5 +1,19 @@
 # Live FieldWorks session checklist -- #93 (one sitting)
 
+> **STATUS: session 1 COMPLETE, run 2026-09-08 against `Sena 3`.**
+> All of items 0-8 are done. Results, verbatim, in
+> [`live-cp4.md`](live-cp4.md) under `# Session 2026-09-08`.
+> **CP3 and CP4 both PASS.** Q1 -> Class A (peer WS change **crashes**
+> FieldWorks), Q2 -> Class A safe, Q3 -> drops out of the CP5 table.
+> Follow-up work is queued in
+> [`live-session-followups.md`](live-session-followups.md).
+> Only "Session 2" below is still outstanding.
+>
+> Note the checklist was deliberately **reordered** on the day: `Sena 3` was
+> found sharing-OFF and already open, i.e. sitting in the item 4 trigger state,
+> so item 4 part 1 was banked first and the one project was then run through
+> both roles. Rationale recorded in `live-cp4.md` section 0.
+
 **Authorized by:** the user only. The crew does not run any of this.
 **Produced:** 2026-09-07, lex-lead cycle 7 close.
 **Covers:** every live-gated item outstanding for CP3 and CP4, plus the three
@@ -153,12 +167,67 @@ not cover at all.
 
 ---
 
-## Session 2 (later, ~10 minutes, only after CP5 code lands)
+## Session 2 (later, ~20 minutes; item 1 only after CP5 code lands)
 
-**CP5-a** -- with FLEx open on the sharing-ON project, call
+### 1. CP5-a -- the original acceptance test (needs CP5 code)
+
+With FLEx open on the sharing-ON project, call
 `CustomFieldOperations.CreateField`.
 **PASS:** refused with `requires_exclusive_access` (not a silent no-op, not a
 generic lock error). Then close FLEx, re-submit the **identical** call ->
 succeeds. Reopen FLEx and confirm the new custom field is present in the UI.
 This is the acceptance test for the whole CP5 gate and cannot be run before the
 gate exists.
+
+*Note from session 1:* `Sena 3` already carries custom fields (`Plural` and
+`Singular` on LexEntry, `Parsing Note` on LexSense), so pick an unused name.
+
+### 2. Derived-field confirmation -- no CP5 code needed
+
+Session 1 established that a reversal index's `Name`, written via the **default**
+writing system, is reverted by FLEx on project open, while an explicit-WS write
+survives. The leading explanation is that FLEx maintains that field as
+**derived** from the writing system (the user's point: naming the English index
+"English" is circular). Item 6 supported this -- an ordinary semantic-domain
+default-WS write survived the same restart -- but the decisive test has not run.
+
+**Test:** with FLEx **fully closed**, run the default-WS
+`ReversalIndexes.SetName`, then open FLEx and re-read.
+**Interpretation:** still reverted with no peer involved at any point ->
+derived-field explanation proven, shared mode conclusively irrelevant to Q3.
+Survives -> the revert really is peer-specific and Q3 returns to the CP5 table.
+
+### 3. Empty-index visibility -- no CP5 code needed
+
+The peer-created reversal index on vernacular `seh` never appeared anywhere in
+the FLEx UI. All three indexes held **0 entries** throughout, so emptiness is
+ruled out as the *sole* cause (`en` and `pt` were equally empty and both
+displayed) -- but a conjunctive rule like "display if analysis WS **or** has
+entries" is untested.
+
+**Test:** recreate a reversal index on a vernacular WS, add a reversal
+**entry** to it, and check the main Reversal Index view.
+**Then delete it again** -- and note finding (l): `WritingSystems.Delete` left
+residue on disk, so verify the reversal delete is complete too.
+
+### 4. Layout-list baseline -- no CP5 code needed, do it before touching anything
+
+Session 1 had to retract a finding because the reversal **layout** list
+(`English, English, Portuguese`) was cited as evidence about a specific index
+without a before-reading. It still showed three entries after the `seh` index
+was deleted, which suggests it is pre-existing `Sena 3` configuration.
+
+**Test:** record what that layout list contains on a clean `Sena 3`, before any
+write. If it was already 3 entries -> unrelated, close it out. If it went
+2 -> 3 during session 1 -> the delete left an orphaned layout behind, which is a
+new finding worth chasing.
+
+---
+
+**Pre-flight for session 2.** `Sena 3` was left with `projectSharing="true"`; it
+began session 1 with sharing OFF. Turn sharing off again if you need to
+reproduce item 4 part 1 (the CP3 checkpoint), and remember that tests 2 and 4
+above want a *clean* starting state.
+
+**Capture a before-state for every UI surface you intend to cite**, not just for
+the database. That is the one process lesson session 1 paid for.

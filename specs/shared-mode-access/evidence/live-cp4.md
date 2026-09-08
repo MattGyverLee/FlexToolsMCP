@@ -612,3 +612,148 @@ Also relevant: `WritingSystemOperations` additionally exposes `SetFontName`,
 `SetFontSize`, `SetRightToLeft`, `SetDefaultAnalysis`, `SetDefaultVernacular`
 and `Delete`, so the "modify" half of Q1 has several distinct surfaces, not
 just create.
+
+## Incidental flexicon API findings from this session (NOT #93 issues)
+
+These surfaced while preparing checklist items 5-7 against `Sena 3`. They are
+recorded here because they were found executing an official checklist, and
+because two of them changed how items 6 and 7 had to be written. They belong
+in the flexicon tracker, not the #93 spec.
+
+### (f) `SemanticDomainOperations.GetAll(recursive=False)` returns a heterogeneous, interleaved list
+
+op `op-094328688-012` and `op-094614821-014`, `Sena 3`:
+
+```
+recursive=True   len=1792  histogram={'ICmSemanticDomain': 1792}   non-list elements=1792
+recursive=False  len=18                                            non-list elements=9
+```
+
+`recursive=False` element-by-element:
+
+```
+[0]  ICmSemanticDomain num='1'
+[1]  LIST len=14  inner=['ICmSemanticDomain', 'list', 'ICmSemanticDomain']
+[2]  ICmSemanticDomain num='2'
+[3]  LIST len=12  inner=['ICmSemanticDomain', 'list', 'ICmSemanticDomain']
+...  (alternating, 9 domains + 9 lists = 18)
+[16] ICmSemanticDomain num='9'
+[17] LIST len=14  inner=['ICmSemanticDomain', 'list', 'ICmSemanticDomain']
+```
+
+**The defect is isolated to `recursive=False`.** `recursive=True` is flat and
+homogeneous (1792/1792 `ICmSemanticDomain`), which proves the flat contract is
+both intended and achievable. What `recursive=False` returns is the recursion's
+own intermediate structure -- each node followed by its children list, nested
+the same way at every level.
+
+Practical impact: the natural loop crashes on the **second** element --
+
+```python
+for d in project.SemanticDomains.GetAll(recursive=False):
+    project.SemanticDomains.GetNumber(d)
+# AttributeError: 'list' object has no attribute 'Abbreviation'
+#   at SemanticDomainOperations.py:518, number = best_analysis_text(domain.Abbreviation)
+```
+
+That is exactly how it was hit (op `op-094214370-009`). A caller sampling only
+`items[0]` sees a correct `ICmSemanticDomain` and concludes the shape is fine,
+which is how it initially escaped notice here.
+
+Expected: `recursive=False` returns the 9 top-level domains, flat.
+
+### (g) `GetName` / `GetAbbreviation` / `FindByName` are unusable on shipped semantic domains in a project whose default analysis WS lacks names
+
+op `op-094614821-014`, domain `'1'`:
+
+```
+Find('1')                                  -> ICmSemanticDomain
+  GetNumber                                = '1'
+  GetName default                          = ''
+  GetAbbrev default                        = ''
+  GetName(en)                              = 'Universe, creation'
+  GetName(pt)                              = ''
+  GetName(seh)                             = ''
+  raw Name.BestAnalysisAlternative.Text    = 'Universe, creation'
+  raw Name.AnalysisDefaultWritingSystem.Text = None
+```
+
+`Sena 3` has analysis WSs `en` and `pt`; its default analysis WS is `pt` (its
+sense glosses are Portuguese -- `'gaguez'`). The shipped SemDom catalog carries
+names in `en` only. `GetName` resolves through the analysis-**default** WS and
+returns `''`, while `BestAnalysisAlternative` resolves correctly.
+
+Whether the default should fall back to `BestAnalysisAlternative` is arguably a
+design call. The **consequence** is not:
+
+- `FindByName` cannot locate **any** shipped semantic domain in this project.
+  `FindByName("Universe, creation")` returns `None` (op `op-094251845-011`)
+  even though that is exactly the domain's English name.
+- The MCP's own curated recipe (returned by
+  `flextools_search_by_capability`, id `add-semantic-domain-to-sense`,
+  `verified_against: {flexicon: "4.2.1", verified_by: "eval-corpus"}`) is
+  therefore broken on this project:
+
+  ```python
+  domain = project.SemanticDomain.FindByName("Move")
+  ```
+
+  It would return `None` and the recipe would report "not found".
+
+- That same recipe writes `project.SemanticDomain` (singular). The documented
+  access path is `project.SemanticDomains` (plural). Worth confirming whether
+  both are bound or the recipe has a second error.
+
+Item 6 was consequently written to identify domains via `Find(number)` rather
+than by name.
+
+### (h) `ReversalIndexOperations.Create` does not validate that the writing system is an analysis WS
+
+op `op-094443435-013`, `Sena 3`, with FLEx open:
+
+```
+Create(pt)  -> FP_ParameterError: Reversal index already exists for writing system pt
+Create(seh) -> OK, name='CP4LIVE-new-seh'
+```
+
+`seh` is a **vernacular** writing system (`GetVernacular()` -> `seh`,
+`seh-fonipa-x-etic`; `GetAnalysis()` -> `en`, `pt`). The method's own docstring
+reads "Create a new reversal index for an **analysis** writing system."
+
+So the duplicate-WS guard exists and works, but the analysis-vs-vernacular
+guard does not exist at all. Whether the resulting index is usable in FLEx's
+reversal view is being checked as part of item 7's UI observation.
+
+### (i) `report.Info` output is discarded when an exception escapes
+
+op `op-094214370-009` emitted roughly a dozen `report.Info` lines successfully
+before crashing in the semantic-domain section, and the response came back with
+`"messages": []` and `"summary": {}`. All progress output was lost, leaving only
+the traceback.
+
+This makes iterative probing of an unfamiliar API considerably harder than it
+needs to be -- the diagnostic value of "how far did it get, and what did it
+print" is exactly what is wanted at that moment. Every subsequent probe in this
+session had to be written with defensive `try`/`except` around each step purely
+to preserve output.
+
+Suggested: flush accumulated messages alongside the error rather than dropping
+them.
+
+### (j) Read-only runs let index-derived casting guesses through, as documented
+
+Recorded as a **confirmation**, not a defect. op `op-094614821-014` warnings:
+
+```
+[casting] 2 polymorphic property access issue(s) were detected but did NOT block
+this READ-ONLY run (index-derived guess, not a known casting pattern or attribute
+typo). A wrong guess raises a TypeError at runtime -- it cannot corrupt data.
+Set write_enabled=True and these WILL be rejected.
+  line 32: Name -- Cast dom to the concrete interface it actually is. 36 interfaces
+           declare 'Name' -- too many to guess.
+  line 36: AnalysisDefaultWritingSystem -- Cast Name to IMultiAccessorBase
+```
+
+The graduated behaviour (warn on read, reject on write) worked exactly as
+documented, and the raw-access probe that produced these warnings still ran and
+returned the values that diagnosed finding (g).

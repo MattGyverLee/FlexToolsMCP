@@ -224,10 +224,70 @@ new finding worth chasing.
 
 ---
 
-**Pre-flight for session 2.** `Sena 3` was left with `projectSharing="true"`; it
-began session 1 with sharing OFF. Turn sharing off again if you need to
-reproduce item 4 part 1 (the CP3 checkpoint), and remember that tests 2 and 4
-above want a *clean* starting state.
+## Preconditions (added 2026-09-08, post-session-1)
 
-**Capture a before-state for every UI surface you intend to cite**, not just for
-the database. That is the one process lesson session 1 paid for.
+State as of right now, verified live (not reported): `Sena 3` has
+`projectSharing="true"` (sharing ON) and FieldWorks is OPEN holding it. This
+is the current as-found state -- do not write "Sena 3 is sharing OFF"
+anywhere; that was true earlier on 2026-09-08 and is now stale.
+
+Per-test preconditions, since the four tests below do not all need the same
+machine state:
+
+1. **Test 1 (CP5-a) -- BLOCKED, and not by scheduling.** The precondition
+   that matters first is that **the CP5 gate code must exist**.
+   `specs/shared-mode-access/.crew-handoff.json` -> `checkpoints_remaining.CP5`
+   reads "SCOPED + SPEC AMENDED, NOT IMPLEMENTED". `CustomFieldOperations.CreateField`
+   cannot be refused with `requires_exclusive_access` by code that has not
+   been written -- leg 1 of this test would assert against a gate that does
+   not exist and cannot pass. A human at a live FLEx install is also
+   required, but that is secondary: do not schedule this test as though the
+   only thing missing is a person at the keyboard.
+   - Once CP5 lands: `Sena 3` already has custom fields (`Plural`, `Singular`
+     on `LexEntry`; `Parsing Note` on `LexSense`), so pick an unused field
+     name.
+   - Sharing state needed: ON, FieldWorks open (matches current as-found
+     state -- no flip needed for this test).
+   - **Proposed companion/replacement test, not yet approved:** SPEC.md
+     Section 3's Class B mechanism (custom fields being silently swallowed)
+     is derived entirely from liblcm source
+     (`SharedXMLBackendProvider.cs:478/:408`, `BackendProvider.cs:506-515`,
+     `CommitLogRecord.cs:17-49`) and has never been empirically observed --
+     yet CP5 is being built on it. An empirical confirmation of that
+     mechanism (peer creates a custom field with FLEx open, FLEx is fully
+     closed and reopened, field is absent with no error at any point) would
+     be more load-bearing than CP5-a and does not require CP5 code to exist.
+     This is a proposal for the crew/user to rule on, not a run instruction
+     -- it is user-gated like every other live test in this file and has not
+     been authorized.
+2. **Test 2 (derived-field confirmation) -- needs FLEx FULLY CLOSED.**
+   Sharing state is irrelevant while FLEx is closed (no peer is involved at
+   any point, which is the entire point of this test), but FLEx must
+   actually be closed, not just minimized -- the test's interpretive value
+   depends on no live holder existing during the write.
+3. **Test 3 (empty-index visibility) -- needs FLEx OPEN.** Sharing state:
+   ON (matches current as-found state). Needs a *clean* reversal-index
+   baseline: confirm `Sena 3` currently holds exactly the two indexes
+   (`English`/`en`, `Portuguese`/`pt`) recorded at the end of session 1
+   before adding the vernacular-WS test index.
+4. **Test 4 (layout-list baseline) -- needs FLEx OPEN, and needs to run
+   FIRST among 3-4**, before any reversal-index write, since it is reading a
+   baseline that a test-3 write would otherwise disturb.
+5. **A sharing-OFF re-test of the CP3 item-4-part-1 criterion** (if anyone
+   wants to re-verify CP3 rather than rely on the 2026-09-08 sign-off) is
+   NOT one of the four Session 2 tests above, but if run: `Sena 3` must be
+   flipped **OFF** first (it is currently ON, the opposite of session 1's
+   starting state) and then restored back to **ON** afterwards, since ON is
+   what the user left it at and where it currently sits.
+
+**A human must be physically at a live FLEx install** for tests 1 (once
+CP5 exists) and 3; test 2 needs a human only to close/reopen FLEx, not to
+observe a UI (it is read back through the MCP).
+
+**Process lesson carried forward from session 1:** capture a BEFORE-state
+for every UI surface you intend to cite, not just for the database. One
+session-1 finding had to be retracted (`196a9c7`) precisely because a UI
+list was cited as evidence without first establishing what it enumerates
+or capturing a before-reading of it -- see `live-cp4.md` "RETRACTION"
+(`:1012`) and its process note. Test 4 above exists specifically to apply
+this lesson to the reversal-layout list before it is touched again.

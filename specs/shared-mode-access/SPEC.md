@@ -96,18 +96,32 @@ Execution constraints (also settled):
 
 The user asked for the full list, not just custom fields. Each entry is
 backed by source, and each is a reason to ask the user to close FLEx
-briefly -- but "exclusive-only" is not one failure mode. It is two, and
-conflating them understates the danger:
+briefly -- but "exclusive-only" is not one failure mode. It was scoped as
+two; live evidence from the 2026-09-08 session (see `evidence/live-cp4.md`
+"# Session 2026-09-08") forced a third, added below:
 
 - **Class A -- LCM refuses outright.** Data migration and project rename
   are safe *by construction*: the caller gets an exception, nothing is
   written, nothing is lost.
 - **Class B -- LCM permits the write and silently swallows it.** Custom
-  fields (and, provisionally, writing systems) get **no exception, no
-  retry, and no second chance** -- the schema change is simply absent
-  after the next restart. **Class B is the only class that requires a
-  gate.** Class A needs no alarm; LCM already tells the user. Nothing else
-  will ever catch a Class B loss, which is why CP5 exists at all.
+  fields get **no exception, no retry, and no second chance** -- the
+  schema change is simply absent after the next restart. **Class B is the
+  only class that requires a gate.** Class A needs no alarm; LCM already
+  tells the user. Nothing else will ever catch a Class B loss, which is
+  why CP5 exists at all.
+- **Class C -- LCM permits the write and it crashes the FLEx holder.**
+  Added 2026-09-08 (3c below). Neither `refused` nor `silently_lost`: the
+  write reaches disk on both legs and then brings the live FLEx master
+  down. Needs a gate at least as strongly as Class B, for a different
+  reason.
+
+**Scoping note, added 2026-09-08.** "Safe by construction" in the Class A
+bullet above describes the `refused` mechanism ONLY -- LCM raises before
+anything is written. It does not extend to an operation that writes
+successfully and is safe for some other, empirically-verified reason (3a-ii
+below, possibility lists) or unsafe in a way that is neither refusal nor
+silent loss (3c below, writing systems). "Class A" is not a synonym for "no
+CP5 gate needed" -- check the mechanism, not just the outcome.
 
 **The Class B mechanism (custom fields), re-derived from liblcm source, not
 taken on trust:** `PerformCommit` is the only path that writes
@@ -136,27 +150,70 @@ blind to a pythonnet peer, so we cannot rely on FLEx to stop us instead.)
 |---|---|---|---|
 | **Project rename** | LCM refuses outright when peers are attached. | `SharedXMLBackendProvider.cs:637-641` (`OtherApplicationsConnectedCount > 0`) | `refused` |
 
+### 3a-ii. Also safe, no CP5 gate -- succeeds and persists (`failure_class: safe`)
+
+Different mechanism from 3a: nothing refuses the write. Verified safe by
+live restart evidence, not by inference. Added 2026-09-08, resolving
+`live_session_checklist` OPEN Q2.
+
+| Operation | Why it needs no gate | Evidence | failure_class |
+|---|---|---|---|
+| **Possibility-list item add/rename** (semantic domains, POS, morph types) | A peer write (add or rename) is applied, visible in the FLEx UI immediately, and durable across a full FLEx close/reopen -- the restart discriminator that separates this from Class B. | `evidence/live-cp4.md` Item 6: write `:1149-1165`, human observation `:1172-1189`, restart discriminator `:1191-1209` | `safe` |
+
+The naive `Create`/`SetName` call writes the name into the analysis-default
+writing system only, so a domain created or renamed with the obvious call
+can look unnamed/unchanged to an English-reading user. Real defect, but a
+flexicon one, not a shared-mode one (finding (g), flexicon tracker).
+
 ### 3b. Class B -- LCM permits it and silently swallows it (`failure_class: silently_lost`)
 
 | Operation | Why a non-master peer cannot do it | Evidence | failure_class |
 |---|---|---|---|
 | **Custom field create/delete/update** | See the Class B mechanism above: `<AdditionalFields>` is written only by the master, `HaveAnyModifiedCustomProperties` self-updates the peer's own bookkeeping so there is no second chance, and `CommitLogRecord` has no custom-field schema field to ride along on. | `SharedXMLBackendProvider.cs:478,408`; `BackendProvider.cs:506-515`; `CommitLogRecord.cs:17-49`; precedent `XWorksViewBase.cs:715` | `silently_lost` |
-| **Writing system add/modify** | `.ldml` under `WritingSystemStore\` and `.plsx`/`.ulsx` bypass the commit log entirely -- no mutex, no reconciliation. Pure last-writer-wins clobber between peers; no exception is ever raised. Mechanism inferred, not live-tested (Medium confidence -- see `live_session_checklist` OPEN Q1 in `.crew-handoff.json`). | `LcmServiceLocatorFactory.cs:223`, `XMLBackendProvider.cs:165` | `silently_lost` |
 
-### 3c. Unclassified -- pending live test
+Writing systems were provisionally listed in this class before live
+evidence existed. **Moved to 3c below** -- live-tested 2026-09-08; the
+actual outcome is worse than `silently_lost`, and is a different class,
+not a relabeling within this one. The Class B mechanism itself (the
+liblcm-source derivation above, for custom fields) remains untested live;
+CP5 is being built on inference for that row too -- see the note under
+Session 2 preconditions in `evidence/live-session-checklist.md`.
 
-These rows are absent from every prior revision of this table. Silence
-reads as "vetted" to a future maintainer, and that is exactly the
-assumption CP5 exists to distrust. Neither row is gated by T5.1; CP5 ships
-a custom-fields-only core (see the T5.1 scoping note in Section 6) and
-these are added by row, later, once a live FLEx peer test resolves them.
+### 3c. Class C -- LCM permits it and it crashes the FLEx holder (`failure_class: crashes_holder`, NEW 2026-09-08)
 
-| Operation | Status | Notes |
-|---|---|---|
-| **Possibility lists** (semantic domains, POS, morph types) | unclassified -- pending live test | `live_session_checklist` OPEN Q2 (`.crew-handoff.json`): does a peer-written possibility-list item survive a FLEx restart? |
-| **Reversal index create/regenerate** | unclassified -- pending live test | `live_session_checklist` OPEN Q3 (`.crew-handoff.json`): uncovered anywhere in this SPEC before now. |
+Neither prior class fits this outcome: the write is not `refused` (both
+legs reached disk, verified independently of the LCM read-back) and it is
+not `silently_lost` (nothing was lost -- it landed and stayed landed). The
+failure is that a live, non-master write to this data corrupts the FLEx
+**master's running state**, not the data. Refusing the operation is not a
+defensive nicety here; it is the only response that keeps FLEx usable.
 
-### 3d. Unreachable from this MCP (not gated)
+| Operation | Why a non-master peer cannot do it | Evidence | failure_class |
+|---|---|---|---|
+| **Writing system add/modify** | A peer `WritingSystemOperations.Create`/`SetFontSize` write reaches disk on both legs (`.ldml` + `SharedSettings/LexiconSettings.plsx`) with no refusal, then crashes the live FLEx holder on its next idle/activate cycle: `NullReferenceException` in `WritingSystemListHandler.AddWritingSystemList`, `Src/xWorks/TextListeners.cs:286`, reached from the toolbar's WS-combo population. Confirmed live (resolves `live_session_checklist` OPEN Q1). The current advisory-note response (a `shared_mode.note` string in a JSON field the user never reads) is inadequate; this row **MUST BE REFUSED** with `requires_exclusive_access`. | `evidence/live-cp4.md` Item 5: write `:1310-1323`, both-legs-on-disk check `:1325-1345`, crash stack + FLEx log timeline `:1347-1382` | `crashes_holder` |
+
+`WritingSystemOperations.Delete` is also an incomplete mitigation: finding
+(l) (`evidence/live-cp4.md:1463-1499`) shows it clears the LCM model but
+leaves the `.ldml` file and the `.plsx` entry on disk, risking FLEx
+re-ingesting (and re-crashing on) the same writing system on its next
+open. Flagged for the flexicon tracker; not fixed by the CP5 gate.
+
+### 3d. Retired questions (formerly "3c. Unclassified -- pending live test")
+
+Empty as of 2026-09-08. All three OPEN questions this subsection existed to
+hold are resolved: Q1 -> 3c above (`crashes_holder`), Q2 -> 3a-ii above
+(`safe`), Q3 -> **removed from this table entirely**. Q3 (reversal index
+create/regenerate) is not a shared-mode failure: it splits into two
+ordinary flexicon bugs -- `ReversalIndexes.Create` accepting a
+non-analysis writing system (finding (h)) and `SetName` targeting a
+FLEx-derived field that regenerates itself on open regardless of who wrote
+it (see `evidence/live-cp4.md` "REFRAMING" `:1080-1137`, and the
+"RETRACTION" at `:1012-1079` for the withdrawn manage-layouts reading).
+Neither belongs in a shared-mode exclusive-access table. Kept empty rather
+than deleted, so a future maintainer does not read the disappearance as an
+oversight.
+
+### 3e. Unreachable from this MCP (not gated)
 
 These are Class-A-shaped (LCM or FLEx itself refuses or blocks them) but
 have **no callable surface from this MCP at all** -- there is nothing for
@@ -301,6 +358,13 @@ off. Close that gap.
 sharing-off, FLEx-open project returning the enable-sharing remedy instead of
 the generic lock error (verified in CP3's slice of Verification step 5).
 
+**SIGNED OFF 2026-09-08.** Code was already CODE ACCEPTED unconditionally
+(`.crew-handoff.json`); the live sign-off gap is now closed too, both parts
+PASS: `evidence/live-cp4.md` "## Item 4 part 1" (`:214`, sharing-off project
+with a real FieldWorks holder returns the enable-sharing recipe, not the
+generic lock hint) and "## Item 4 part 2" (`:263`, the identical call
+proceeds with no prompting once sharing is enabled).
+
 ### CP4 -- Writes allowed in shared mode
 
 Replace the blanket block at `execution.py:3787-3814` with probe-driven
@@ -329,6 +393,15 @@ is the regression this plan exists to undo.
 project succeeding and visibly appearing in the FLEx UI (Verification step
 5).
 
+**SIGNED OFF 2026-09-08.** All three checklist items PASS, live, under a
+real FLEx master: `evidence/live-cp4.md` Item 1 (`:300`, probe sees the
+genuine FieldWorks holder), Item 2 (`:332`, read-only run with FLEx open),
+Item 3 (`:352`, the load-bearing write -- all three legs, including the
+human UI observation at `:399`, "confirmed CP4LIVE-2026-09-08"). This
+closes both gaps that file's section 5/6 listed as owed: the `open_shared`
+path exercised under a real FLEx master, and the probe tested against a
+genuine FieldWorks holder rather than a leftover python process.
+
 ### CP5 -- The "close FLEx briefly" gate
 
 **New error code `requires_exclusive_access`** -- the one place we ask the
@@ -348,9 +421,16 @@ operation.
   existing wrapper table.
   **Scoping note:** CP5 ships a **custom-fields-only core**. `T5.1`'s table
   in this checkpoint carries only the Class B custom-field row (wrapper +
-  raw names above); writing systems, possibility lists, and reversal
-  indexes (Section 3b/3c) are added later **by row**, without touching the
-  gate's architecture -- CP5 is not blocked on those open live experiments.
+  raw names above). **Updated 2026-09-08:** the three open live experiments
+  this note originally deferred are now resolved (Section 3, updated in the
+  same pass) -- possibility lists are `safe`/3a-ii (no row needed) and
+  reversal indexes were removed from the table entirely (not a shared-mode
+  issue). Writing systems are **not** resolved the same way: they are now
+  Class C / `crashes_holder` (3c), and MUST be refused, which is a stronger
+  claim than the "add later by row, whenever convenient" framing this note
+  originally implied. Whether writing systems join this custom-fields-only
+  core now or ship as an immediate fast-follow row is a scope call for
+  lex-lead, not decided by this edit.
 - **T5.2** `detect_exclusive_only_operations(code, tree)` -- follow the
   existing shape of `detect_cud_operations` / `certify_script_readonly`;
   reuse the same AST walk and `find_protected_ranges` conventions.

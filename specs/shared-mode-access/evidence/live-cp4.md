@@ -116,6 +116,17 @@ practice, the fix is to route `held_by_other` + `sharing_enabled is True`
 to the same proceed path as `open_shared`, and the evidence that this is
 safe is Experiment A above.
 
+**RESOLVED 2026-09-08, partially.** The specific gap this section names --
+the probe never having been exercised against a genuine FieldWorks holder,
+only python holders -- is closed. See `# Session 2026-09-08` below, Item 1
+(`:300`): `verdict: "open_shared"`, `sharing_enabled: true`,
+`holder_process: "FieldWorks"`, PID cross-checked against `tasklist` and
+the `.fwdata.lock` contents. **Not resolved by this session:** the
+narrower policy question above -- whether a `held_by_other` verdict on a
+**python** holder with `sharing_enabled: true` should proceed like
+`open_shared` instead of being refused -- was not re-tested; Experiment A
+above (a python peer, not a FieldWorks master) remains its only evidence.
+
 ## 5b. Re-run after deployment (PASS)
 
 After the editable install of this branch into
@@ -136,6 +147,17 @@ the MCP suite is 990 passed / 2 skipped on the same interpreter.
   definition a human observation.
 
 Per CLAUDE.md this is a `needs_human` item, not a pass to be assumed.
+
+**RESOLVED 2026-09-08.** Both bullets above are closed by
+`# Session 2026-09-08` below:
+- the `open_shared` path was exercised live under a real FLEx master
+  (Item 1, `:300`; Item 2, `:332`; Item 3, `:352`, all three legs PASS);
+- the human UI observation was made (Item 3 leg 3, `:399`: the user
+  confirmed the new gloss visible in the running FLEx instance without a
+  restart, and confirmed it again on the restore write).
+
+CP4 is SIGNED OFF on this evidence -- see `SPEC.md` Section 6, CP4
+checkpoint.
 
 ## Reproducing
 

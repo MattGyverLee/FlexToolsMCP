@@ -92,19 +92,86 @@ Execution constraints (also settled):
 
 ---
 
-## 3. The exclusive-only operation table
+## 3. The exclusive-only operation tables
 
 The user asked for the full list, not just custom fields. Each entry is
-backed by source, and each is a reason to ask the user to close FLEx briefly.
+backed by source, and each is a reason to ask the user to close FLEx
+briefly -- but "exclusive-only" is not one failure mode. It is two, and
+conflating them understates the danger:
 
-| Operation | Why a non-master peer cannot do it | Evidence |
+- **Class A -- LCM refuses outright.** Data migration and project rename
+  are safe *by construction*: the caller gets an exception, nothing is
+  written, nothing is lost.
+- **Class B -- LCM permits the write and silently swallows it.** Custom
+  fields (and, provisionally, writing systems) get **no exception, no
+  retry, and no second chance** -- the schema change is simply absent
+  after the next restart. **Class B is the only class that requires a
+  gate.** Class A needs no alarm; LCM already tells the user. Nothing else
+  will ever catch a Class B loss, which is why CP5 exists at all.
+
+**The Class B mechanism (custom fields), re-derived from liblcm source, not
+taken on trust:** `PerformCommit` is the only path that writes
+`<AdditionalFields>` to the XML file, and it is gated
+`if (metadata.Master == m_peerID)` (`SharedXMLBackendProvider.cs:478`, also
+`:408`). A non-master peer's `HaveAnyModifiedCustomProperties`
+(`BackendProvider.cs:506-515`) clears and rebuilds `m_extantCustomFields`
+from the live MDC on every commit, so the peer's own bookkeeping believes
+the field was recorded -- then the declaration is discarded. The next
+commit sees no diff and never retries. `CommitLogRecord`
+(`CommitLogRecord.cs:17-49`) has no field for custom-field schema at all,
+so it cannot even ride along to the master. Net effect: no exception, no
+error, no second chance. The field simply does not exist after restart.
+
+**Precedent: FieldWorks gates this identically in its own UI.**
+`XWorksViewBase.cs:715` refuses to open the Custom Fields dialog when
+`SharedBackendServices.AreMultipleApplicationsConnected(cache)` is true.
+CP5 is not inventing a restriction -- it is matching one FLEx already
+enforces on itself. (FLEx's `ProjectsInUseLocally` guard, `FieldWorks.cs
+:813,1988`, enumerates only .NET-Remoting clients and is structurally
+blind to a pythonnet peer, so we cannot rely on FLEx to stop us instead.)
+
+### 3a. Class A -- LCM refuses outright (`failure_class: refused`)
+
+| Operation | Why a non-master peer cannot do it | Evidence | failure_class |
+|---|---|---|---|
+| **Project rename** | LCM refuses outright when peers are attached. | `SharedXMLBackendProvider.cs:637-641` (`OtherApplicationsConnectedCount > 0`) | `refused` |
+
+### 3b. Class B -- LCM permits it and silently swallows it (`failure_class: silently_lost`)
+
+| Operation | Why a non-master peer cannot do it | Evidence | failure_class |
+|---|---|---|---|
+| **Custom field create/delete/update** | See the Class B mechanism above: `<AdditionalFields>` is written only by the master, `HaveAnyModifiedCustomProperties` self-updates the peer's own bookkeeping so there is no second chance, and `CommitLogRecord` has no custom-field schema field to ride along on. | `SharedXMLBackendProvider.cs:478,408`; `BackendProvider.cs:506-515`; `CommitLogRecord.cs:17-49`; precedent `XWorksViewBase.cs:715` | `silently_lost` |
+| **Writing system add/modify** | `.ldml` under `WritingSystemStore\` and `.plsx`/`.ulsx` bypass the commit log entirely -- no mutex, no reconciliation. Pure last-writer-wins clobber between peers; no exception is ever raised. Mechanism inferred, not live-tested (Medium confidence -- see `live_session_checklist` OPEN Q1 in `.crew-handoff.json`). | `LcmServiceLocatorFactory.cs:223`, `XMLBackendProvider.cs:165` | `silently_lost` |
+
+### 3c. Unclassified -- pending live test
+
+These rows are absent from every prior revision of this table. Silence
+reads as "vetted" to a future maintainer, and that is exactly the
+assumption CP5 exists to distrust. Neither row is gated by T5.1; CP5 ships
+a custom-fields-only core (see the T5.1 scoping note in Section 6) and
+these are added by row, later, once a live FLEx peer test resolves them.
+
+| Operation | Status | Notes |
 |---|---|---|
-| **Custom field create/delete/update** | `<AdditionalFields>` schema is written only by the master (`SharedXMLBackendProvider.cs:479`) and is **not** a member of `CommitLogRecord`. A peer publishes `<Custom name=...>` data referencing a declaration that never persists -> corrupt on next FLEx open. Worse, `HaveAnyModifiedCustomProperties` clears `m_extantCustomFields`, so the *next* commit reports "no change" and the declaration is lost for good. | `CommitLogRecord.cs:16-49`, `BackendProvider.cs:506`, `XMLBackendProvider.cs:551`; FLEx itself refuses at `XWorksViewBase.cs:715` |
-| **Writing system add/modify** | `.ldml` under `WritingSystemStore\` and `.plsx`/`.ulsx` bypass the commit log entirely -- no mutex, no reconciliation. Pure last-writer-wins clobber between peers. | `LcmServiceLocatorFactory.cs:223`, `XMLBackendProvider.cs:165` |
-| **Project rename** | LCM refuses outright when peers are attached. | `SharedXMLBackendProvider.cs:637` |
-| **Data migration** | Non-master peers throw `LcmDataMigrationForbiddenException`; flexlibs also sets `DisableDataMigration = True` unconditionally. | `SharedXMLBackendProvider.cs:108-111`, `FLExLCM.py:92` |
-| **Send/Receive** | FLEx blocks S/R while other apps are connected. | `FLExBridgeListener.cs:314` |
-| **Project backup / restore / delete** | FLEx's own guard (`ProjectsInUseLocally`) enumerates .NET-Remoting clients only and is **blind to a pythonnet peer** -- nobody protects this, so we must. | `FieldWorks.cs:813, 1988` |
+| **Possibility lists** (semantic domains, POS, morph types) | unclassified -- pending live test | `live_session_checklist` OPEN Q2 (`.crew-handoff.json`): does a peer-written possibility-list item survive a FLEx restart? |
+| **Reversal index create/regenerate** | unclassified -- pending live test | `live_session_checklist` OPEN Q3 (`.crew-handoff.json`): uncovered anywhere in this SPEC before now. |
+
+### 3d. Unreachable from this MCP (not gated)
+
+These are Class-A-shaped (LCM or FLEx itself refuses or blocks them) but
+have **no callable surface from this MCP at all** -- there is nothing for
+T5.1/T5.2 to detect, so they are documented here for completeness and
+explicitly **not** added to `EXCLUSIVE_ONLY_OPERATIONS`.
+
+- **Data migration** -- flexlibs sets `DisableDataMigration = True`
+  unconditionally (`FLExLCM.py:92`); non-master peers additionally throw
+  `LcmDataMigrationForbiddenException` (`SharedXMLBackendProvider.cs
+  :108-111`).
+- **Send/Receive** -- FLEx blocks S/R while other applications are
+  connected (`FLExBridgeListener.cs:314`); this MCP has no S/R tool.
+- **Project backup / restore / delete** -- this MCP's own pre-write backup
+  is a plain file copy, not a call into FLEx's restore/delete machinery;
+  there is no tool surface that invokes FLEx's backup/restore/delete APIs.
 
 ---
 
@@ -269,11 +336,21 @@ user to close FLEx, and only when they actually requested a blocked
 operation.
 
 - **T5.1** Add `EXCLUSIVE_ONLY_OPERATIONS` to `validators.py` -- a table keyed
-  by call signature, each entry carrying `reason` + `evidence` from the
-  Section 3 table. Cover wrapper calls (`CustomFieldOperations.CreateField` /
-  `DeleteField` / `UpdateField`; writing-system mutators) and raw LCM
+  by call signature, each entry carrying `reason` + `evidence` +
+  `failure_class` from the Section 3b table. Cover the wrapper calls
+  (`CustomFieldOperations.CreateField` / `DeleteField` / `SetFieldName` --
+  **not** `UpdateField`, which does not exist in flexicon 4.5.2;
+  `SetFieldName` is the schema-mutating analogue) and the raw LCM names
   (`AddCustomField`, `UpdateCustomField`, `RenameDatabase`,
-  `FieldDescription`).
+  `FieldDescription`). The raw names have **zero occurrences in `src/`** --
+  they are reachable only via user-submitted code -- so T5.2 must detect
+  them by AST walk on the literal name, not by matching against any
+  existing wrapper table.
+  **Scoping note:** CP5 ships a **custom-fields-only core**. `T5.1`'s table
+  in this checkpoint carries only the Class B custom-field row (wrapper +
+  raw names above); writing systems, possibility lists, and reversal
+  indexes (Section 3b/3c) are added later **by row**, without touching the
+  gate's architecture -- CP5 is not blocked on those open live experiments.
 - **T5.2** `detect_exclusive_only_operations(code, tree)` -- follow the
   existing shape of `detect_cud_operations` / `certify_script_readonly`;
   reuse the same AST walk and `find_protected_ranges` conventions.
@@ -281,13 +358,46 @@ operation.
   when the probe reports a live peer **and** the script contains an
   exclusive-only op. Payload names the operation, the reason, and the resume
   recipe: close FLEx, re-submit this exact call, reopen FLEx after.
+  Three rulings from lex-lead govern the implementation (verified against
+  the tree at commit `520dba4`/`ad1d50c`; re-verify line numbers again
+  before landing code, they drift):
+  - **Insertion seam:** after the CP4 `project_locked` refusal ends
+    (`execution.py:4269-4303`) and before the `open_shared` advisory begins
+    (`:4305`), i.e. immediately before the pre-write backup block (`:4346`).
+  - **Precedence:** CP5 keys on `_access.verdict == "open_shared"` / a live
+    FLEx peer (the existing `_live_fw_peer` at `execution.py:4186`) --
+    **never** on `_access is not None`. CP3's enable-sharing remedy must
+    win over CP5 for an exclusively-held project (`open_exclusive` /
+    `held_by_other` are already refused earlier by the CP4 block; CP5 does
+    not re-adjudicate them).
+  - **Detect first, probe second:** if `detect_exclusive_only_operations()`
+    matches an exclusive-only op, the gate must force the access probe
+    regardless of `needs_lock` -- a script that certifies read-only while
+    calling `CreateField` is mis-certified, and that must not be a way to
+    bypass the gate.
 - **T5.4** Add an `_ASSISTANCE_HINTS_BY_ERROR_CODE` entry (`session.py:35`) so
   a retry loop on this code gets a real hint, not the generic fallback.
 - **T5.5** Contract chores per `CONTRIBUTING.md:66-92`: detail model with
-  `extra="forbid"` + `AnyDetail` union entry (`response_models.py:311`),
-  `GOLDEN_FIXTURES` entry + `python tests/make_golden.py --regen`,
-  `docs/TOOL-CONTRACT.md` row, and bump the "16 codes" wording there and in
-  `tests/test_response_contract.py`.
+  `extra="forbid"` + `AnyDetail` union entry (`response_models.py`, next to
+  `ProjectLockedDetail` at `:278-302`), `GOLDEN_FIXTURES` entry +
+  `python tests/make_golden.py --regen`, `docs/TOOL-CONTRACT.md` row.
+  **Re-grepped and verified against the current tree** (do not copy the
+  original "16 codes" wording, and do not trust `response_models.py:361` --
+  that line does not carry the count): the code count is **18** today, in
+  `docs/TOOL-CONTRACT.md:69` ("one of the 18 codes below"),
+  `tests/test_response_contract.py:9` (module docstring) and `:234` (class
+  docstring "Each of the 18 codes"), with `ALL_ERROR_CODES` enumerated at
+  `tests/test_response_contract.py:200-230`, and echoed in
+  `response_models.py:10` ("18 per-code detail models"). Bump all four to
+  **19**.
+- **T5.6** Align the generic post-hoc fallback hint at `execution.py
+  :1207-1216` ("Close FieldWorks and retry...") so it does not collide with
+  CP5's message on an `open_shared` project: `build_lock_diagnosis()`
+  (`project_access.py:276-320`) returns `None` for `open_shared` (and for
+  `free`), so a post-hoc LCM failure surfacing on an otherwise-`open_shared`
+  project currently falls through to this generic hint, which tells the
+  user to close FieldWorks even though the whole point of shared mode is
+  that they don't have to. Make the two messages agree.
 
 **Checkpoint:** CP5 lands with `tests/test_issue<N>_exclusive_access_gate.py`
 passing (Verification step 3) and the live custom-field refusal/resume cycle
@@ -381,3 +491,17 @@ filing separately.
   later, either to add the missing envelope fields to `run_module`'s
   return path or to carve out an explicit exception in
   `docs/TOOL-CONTRACT.md` for that one response shape.
+- **P2-4, cycle-6 QC, declined to action:** the "an unreadable PID" branch
+  in `build_lock_diagnosis()` (`project_access.py:308`) is untested -- none
+  of `probe_project_access()`'s `ProjectAccess(...)` construction sites
+  (`project_access.py:357,370,395`) pass a `holder` whose `pid` is `None`
+  while `verdict == "stale_lock"`, so the branch is dead in practice today
+  and unverified if it ever becomes live. Left for a future cycle.
+- **P2-8, cycle-6 QC, declined to action:** CP3's post-hoc diagnosis
+  (`execution.py:1251-1262`) spreads the four probe facts (`verdict`,
+  `sharing_enabled`, `holder_pid`, `holder_process`) flat into the
+  response, while CP4's write-gate advisory namespaces the same four facts
+  under `shared_mode` (`execution.py:4306-4310,4326-4330`). This is a
+  drift hazard for a future maintainer reconciling the two payload shapes,
+  but lex-lead ruled against changing either shape mid-feature. Left for a
+  future cycle.

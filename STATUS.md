@@ -765,3 +765,48 @@ conceptually tracked by #115), and the two in-place `test_issue100_access_path.p
 full-suite failures are a working-tree artifact of the untracked v4.5.2 index
 sitting beside the committed v4.4.1 index -- a clean worktree at `HEAD` gives
 1135 passed / 0 failed.
+
+## shared-mode-access (#93) - spurt 4 in progress
+
+STATUS.md's prior tail covered the swahili-audit / MCP-issue campaign only;
+this section tracks the shared-mode-access spurt that followed PR #114, per
+`.crew-handoff.json` (authoritative for this feature -- `.spec-context.json`
+is unreliable here and should be ignored).
+
+**Checkpoint state:**
+- CP2: DONE (`39d1caf`).
+- CP3: CODE ACCEPTED, unconditional -- the P1-1 atomicity fix landed across
+  `6677fd8` + `520dba4` and QC confirmed it atomic. Sign-off is blocked ONLY
+  on a live FieldWorks observation (a sharing-off project, FLEx open, must
+  return the enable-sharing recipe rather than the generic lock hint); no
+  code work remains.
+- CP4: code done; the live `open_shared` gate observation (write with FLEx
+  actually running, change visible in the FLEx UI) is the outstanding half.
+- CP5: scoped (`cycle5-cp5-scope.md`) and the SPEC amended this cycle
+  (Section 3 split, T5.1/T5.3/T5.5 drift fixed, new T5.6) -- not yet
+  implemented.
+- CP6: partial -- CHANGELOG entries (T6.5) done; `docs/SHARED-MODE.md` and
+  T6.1-T6.4/T6.6/T6.7 outstanding.
+
+**Unpushed / unopened:** three local commits (`6677fd8`, `520dba4`,
+`ad1d50c`) sit on `main`, unpushed, and there is no open PR for CP3.
+
+**Two P1s open**, both attaching to the sweep work rather than CP3's core
+T3.1-T3.5 (see `.crew-handoff.json` `p1_open`): P1-A (`validate_only`
+enrichment's monkeypatch seam doesn't stub `probe_project_access`, so
+verdict/blocking are host-dependent in tests) and P1-B (`project_discovery.py`'s
+unknown-holder branch inverts the documented fail-safe direction versus
+`probe_project_access`). Both are being fixed this cycle.
+
+**Process note:** the judgement-based lock-site sweep method was retired by
+lex-lead ruling after three consecutive sweeps each declared completeness and
+each was falsified by the next reviewer (a missed site every time). A
+mechanical enumeration artifact (`reviews/lock-site-inventory.md`, one row
+per lock-reading site with verbatim grep commands and raw hit counts) now
+gates that work instead of prose claims.
+
+**Remaining human gate:** the `live_session_checklist` in
+`.crew-handoff.json` is the single remaining gate that cannot be automated --
+one FieldWorks session covering CP3's sharing-off recipe check, CP4's
+open-shared write-and-refresh observation, and (once CP5 lands) the
+exclusive-access refusal/retry cycle.

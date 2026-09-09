@@ -1,0 +1,72 @@
+#
+#   Variant convert
+#    - A FlexTools Module -
+#
+#   Convert all variant links to complex form links
+#
+#   API Target: flexicon
+#   Platforms: Python .NET and IronPython
+#
+
+from flextoolslib import *
+from flexicon import FLExProject, LexEntryOperations, VariantOperations
+from SIL.LCModel import ILexEntry
+
+#----------------------------------------------------------------
+# Documentation that the user sees:
+
+docs = {FTM_Name        : "variant to complex",
+        FTM_Version     : 1,
+        FTM_ModifiesDB  : False,
+        FTM_Synopsis    : "Replace all variant links with complex form links",
+        FTM_Description :
+"""
+Replace all variant links with complex form links.
+""" }
+
+#----------------------------------------------------------------
+# The main processing function
+
+def Main(project, report, modifyAllowed):
+    """
+    Main entry point for the FlexTools module.
+
+    Args:
+        project: FLExProject instance providing access to the FieldWorks database
+        report: Reporter object for logging (report.Info, report.Warning, report.Error)
+        modifyAllowed: Boolean indicating if database modifications are permitted
+    """
+
+    lex = LexEntryOperations(project)
+    variants = VariantOperations(project)
+
+    report.Info("Starting variant to complex forms update...")
+
+
+    for entry in project.LexiconAllEntries():
+        headword = project.LexiconGetHeadword(entry)
+        
+        variant_infos = []
+        refs = list(variants.GetAll(entry))
+       
+        for ref in refs:
+            components = list(variants.GetComponentLexemes(ref))
+            for c in components:
+                if modifyAllowed:
+                    project.LexEntry.AddComplexFormComponent(entry, ILexEntry(c))
+                    report.Info(f"{headword}: complex form added")
+                    variants.Delete(ref)
+                    report.Info(f"{headword}: variant link deleted")
+                else:
+                    report.Info(f"{headword}: complex form would be added")
+                    report.Info(f"{headword}: variant link would be deleted")
+    report.Info("Done.")
+
+
+#----------------------------------------------------------------
+
+FlexToolsModule = FlexToolsModuleClass(Main, docs)
+
+#----------------------------------------------------------------
+if __name__ == '__main__':
+    print(FlexToolsModule.Help())

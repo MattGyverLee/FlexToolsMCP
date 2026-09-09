@@ -1,0 +1,65 @@
+#
+#   doubleref
+#    - A FlexTools Module -
+#
+#   List entries that are registered as both a variant and a complex form
+#   of the same target entry (a redundant / double relationship).
+#
+#   API Target: flexicon
+#   Platforms: Python .NET and IronPython
+
+from flextoolslib import *
+from flexicon import FLExProject, LexEntryOperations, VariantOperations
+from SIL.LCModel import ILexEntry
+
+#----------------------------------------------------------------
+# Documentation that the user sees:
+
+docs = {FTM_Name        : "doubleref",
+        FTM_Version     : 1,
+        FTM_ModifiesDB  : False,
+        FTM_Synopsis    : "List entries that are both a variant and a complex form of the same entry",
+        FTM_Description :
+"""
+Finds and listsentries that have a "variant of" relationship AND a "complex form"
+relationship pointing at the same target entry, and lists them. 
+""" }
+
+#----------------------------------------------------------------
+# The main processing function
+
+def Main(project, report, modifyAllowed):
+    """
+    Main entry point for the FlexTools module.
+
+    Args:
+        project: FLExProject instance providing access to the FieldWorks database
+        report: Reporter object for logging (report.Info, report.Warning, report.Error)
+        modifyAllowed: Boolean indicating if database modifications are permitted
+    """
+    lex = LexEntryOperations(project)
+    variants = VariantOperations(project)
+
+    report.Info("Scanning for entries that are both a variant and a complex form of the same entry...")
+    
+    for entry in project.LexEntry.GetAll():
+        headword = project.LexEntry.GetHeadword(ILexEntry(entry))
+        varrefs = list(variants.GetAll(entry))
+        variant_targets = [ILexEntry(comp) for v in varrefs for comp in v.ComponentLexemesRS]
+        complex_targets = list(project.LexEntry.GetComplexFormComponents(entry))
+ 
+        double_targets = [t for t in variant_targets if t in complex_targets]
+        if double_targets:
+               double_headwords = [project.LexEntry.GetHeadword(t) for t in double_targets]
+               report.Info(f"Entry '{headword}' is both a variant and a complex form of: {double_headwords}")
+
+    report.Info("Done.")
+
+
+#----------------------------------------------------------------
+
+FlexToolsModule = FlexToolsModuleClass(Main, docs)
+
+#----------------------------------------------------------------
+if __name__ == '__main__':
+    print(FlexToolsModule.Help())

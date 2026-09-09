@@ -1,0 +1,9 @@
+from flexicon import VariantOperations
+
+def Main(project, report, modifyAllowed):
+    variants = VariantOperations(project)
+    for entry in project.LexiconAllEntries():
+        headword = project.LexiconGetHeadword(entry)
+        refs = list(variants.GetAll(entry))
+        if refs:
+            report.Info(f"{headword}: has {len(refs)} variant link(s)")

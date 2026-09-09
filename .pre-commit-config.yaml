@@ -8,6 +8,12 @@ repos:
       - id: check-yaml
       # - id: end-of-file-fixer  # Disabled: causing file thrash with JSON indexes
       - id: trailing-whitespace
+        # Byte-exact log evidence: the parity corpus reproduces the sha256 and
+        # byte count recorded in user-logs, and two of those modules contain
+        # trailing whitespace that the hash includes. Trimming them silently
+        # invalidates the evidence -- verify with
+        # specs/vanilla-flextools-parity/evidence/corpus/regenerate.py --check
+        exclude: ^specs/.*/evidence/corpus/.*\.py\.txt$
 
   # Ruff - fast Python linter (syntax errors, undefined names, etc.)
   - repo: https://github.com/astral-sh/ruff-pre-commit

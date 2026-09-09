@@ -1,0 +1,9 @@
+from flexicon import VariantOperations
+
+variants = VariantOperations(project)
+for entry in project.LexiconAllEntries():
+    refs = list(variants.GetAll(entry))
+    for ref in refs:
+        components = list(variants.GetComponentLexemes(ref))
+        for c in components:
+            report.Info(f"entry={project.LexiconGetHeadword(entry)} type(c)={type(c)} ClassName={getattr(c, 'ClassName', '<no ClassName attr>')} has_Hvo={hasattr(c,'Hvo')}")

@@ -1,0 +1,40 @@
+from flextoolslib import *
+from flexicon import FLExProject, LexEntryOperations, VariantOperations
+from SIL.LCModel import ILexEntry
+
+docs = {FTM_Name        : "variant to complex",
+        FTM_Version     : 1,
+        FTM_ModifiesDB  : True,
+        FTM_Synopsis    : "Replace all variant links with complex form links",
+        FTM_Description :
+"""
+Replace all variant links with complex form links.
+""" }
+
+def Main(project, report, modifyAllowed):
+    lex = LexEntryOperations(project)
+    variants = VariantOperations(project)
+
+    report.Info("Starting variant to complex forms update...")
+    report.Info(f"modifyAllowed variable {modifyAllowed}")
+
+    for entry in project.LexiconAllEntries():
+        headword = project.LexiconGetHeadword(entry)
+
+        variant_infos = []
+        refs = list(variants.GetAll(entry))
+
+        for ref in refs:
+            components = list(variants.GetComponentLexemes(ref))
+            for c in components:
+                if modifyAllowed:
+                    lex.AddComplexFormComponent(entry, ILexEntry(c))
+                    report.Info(f"{headword}: complex form added")
+                    variants.Delete(ref)
+                    report.Info(f"{headword}: variant link deleted")
+                else:
+                    report.Info(f"{headword}: complex form would be added")
+                    report.Info(f"{headword}: variant link would be deleted")
+    report.Info("Done.")
+
+FlexToolsModule = FlexToolsModuleClass(Main, docs)

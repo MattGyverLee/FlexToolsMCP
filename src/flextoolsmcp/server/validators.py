@@ -2132,12 +2132,52 @@ def detect_undefined_variables(code: str, tree: ast.AST | None = None) -> dict:
         defined_names = set()
         used_names = set()
 
+        def _bind_target(target: ast.AST) -> None:
+            """Recursively mark every name bound by `target` as defined.
+
+            Issue #121 sibling: a binding target isn't always a bare
+            `ast.Name` -- tuple/list unpacking (`for K, V2 in ...`) and
+            starred targets (`a, *rest = ...`) are also binding forms. This
+            single recursive helper is shared by every visitor below so
+            adding a new binding *statement* (for/with/comprehension/...)
+            never needs to re-derive the Name/Tuple/List/Starred ladder.
+            """
+            if isinstance(target, ast.Name):
+                defined_names.add(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for elt in target.elts:
+                    _bind_target(elt)
+            elif isinstance(target, ast.Starred):
+                _bind_target(target.value)
+            # Other target shapes (Attribute, Subscript) bind an attribute/item
+            # on an already-existing object, not a new name -- nothing to add.
+
+        def _bind_args(args: ast.arguments) -> None:
+            """Mark every name bound by a function/lambda parameter list."""
+            for arg in (
+                list(getattr(args, "posonlyargs", []) or [])
+                + list(args.args)
+                + list(args.kwonlyargs)
+            ):
+                defined_names.add(arg.arg)
+            if args.vararg:
+                defined_names.add(args.vararg.arg)
+            if args.kwarg:
+                defined_names.add(args.kwarg.arg)
+
         class NameCollector(ast.NodeVisitor):
             def visit_FunctionDef(self, node):
                 defined_names.add(node.name)
-                # Add function parameters
-                for arg in node.args.args:
-                    defined_names.add(arg.arg)
+                _bind_args(node.args)
+                self.generic_visit(node)
+
+            def visit_AsyncFunctionDef(self, node):
+                defined_names.add(node.name)
+                _bind_args(node.args)
+                self.generic_visit(node)
+
+            def visit_Lambda(self, node):
+                _bind_args(node.args)
                 self.generic_visit(node)
 
             def visit_ClassDef(self, node):
@@ -2145,11 +2185,76 @@ def detect_undefined_variables(code: str, tree: ast.AST | None = None) -> dict:
                 self.generic_visit(node)
 
             def visit_Assign(self, node):
-                # Track assignments (x = value)
+                # Track assignments (x = value), including tuple/list/starred
+                # unpacking targets (a, b = ... / a, *rest = ...).
                 for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        defined_names.add(target.id)
+                    _bind_target(target)
                 self.generic_visit(node)
+
+            def visit_AnnAssign(self, node):
+                # x: int = value (and bare annotations x: int, which don't
+                # actually bind at runtime -- but treating them as bound is
+                # the safe direction for a "reject" gate: it only reduces
+                # false positives).
+                _bind_target(node.target)
+                self.generic_visit(node)
+
+            def visit_AugAssign(self, node):
+                # x += 1 -- also a Load of x, but visit_Name already records
+                # that; here we just make sure the target counts as defined.
+                _bind_target(node.target)
+                self.generic_visit(node)
+
+            def visit_NamedExpr(self, node):
+                # Walrus: (N := 5)
+                _bind_target(node.target)
+                self.generic_visit(node)
+
+            def visit_For(self, node):
+                _bind_target(node.target)
+                self.generic_visit(node)
+
+            def visit_AsyncFor(self, node):
+                _bind_target(node.target)
+                self.generic_visit(node)
+
+            def visit_With(self, node):
+                for item in node.items:
+                    if item.optional_vars is not None:
+                        _bind_target(item.optional_vars)
+                self.generic_visit(node)
+
+            def visit_AsyncWith(self, node):
+                for item in node.items:
+                    if item.optional_vars is not None:
+                        _bind_target(item.optional_vars)
+                self.generic_visit(node)
+
+            def visit_ExceptHandler(self, node):
+                # except SomeError as e:
+                if node.name:
+                    defined_names.add(node.name)
+                self.generic_visit(node)
+
+            def visit_Global(self, node):
+                for name in node.names:
+                    defined_names.add(name)
+                self.generic_visit(node)
+
+            def visit_Nonlocal(self, node):
+                for name in node.names:
+                    defined_names.add(name)
+                self.generic_visit(node)
+
+            def _visit_comprehension_generators(self, node):
+                for gen in node.generators:
+                    _bind_target(gen.target)
+                self.generic_visit(node)
+
+            visit_ListComp = _visit_comprehension_generators
+            visit_SetComp = _visit_comprehension_generators
+            visit_DictComp = _visit_comprehension_generators
+            visit_GeneratorExp = _visit_comprehension_generators
 
             def visit_ImportFrom(self, node):
                 # Track imports
@@ -2962,6 +3067,29 @@ def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
     return mutations
 
 
+def _is_project_receiver(node: ast.AST) -> bool:
+    """True if `node` is the `project` object itself: bare `project` or
+    `self.project`.
+
+    Issue #121 sibling bug: the write-gate detectors below (`_is_modify_enabled`,
+    `_is_write_enabled_check`) used to accept ANY receiver with an attribute
+    named `modifyEnabled`/`writeEnabled` (e.g. `cfg.writeEnabled`), which let an
+    unrelated local object's attribute certify a real mutation as protected.
+    Both now route their receiver check through this helper so only the actual
+    project object's flag counts as a guard.
+    """
+    if isinstance(node, ast.Name) and node.id == "project":
+        return True
+    if (
+        isinstance(node, ast.Attribute)
+        and node.attr == "project"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    ):
+        return True
+    return False
+
+
 def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]:
     """Find line ranges protected by modifyAllowed or modifyEnabled/writeEnabled guards.
 
@@ -3017,27 +3145,41 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             self.generic_visit(node)
 
         def _is_modify_enabled(self, node):
-            """Check if expression is 'project.modifyEnabled' or similar."""
+            """Check if expression is 'project.modifyEnabled' or 'self.project.modifyEnabled'.
+
+            Issue #121 sibling: the receiver must actually be the project --
+            an unrelated object with a same-named attribute (e.g.
+            `cfg.modifyEnabled`) must NOT count as a guard. See
+            `_is_project_receiver`.
+            """
             if isinstance(node, ast.Attribute):
-                if node.attr == 'modifyEnabled':
+                if node.attr == 'modifyEnabled' and _is_project_receiver(node.value):
                     return True
             return False
 
         def _is_write_enabled_check(self, node):
-            """Check if condition checks 'modifyAllowed', 'writeEnabled', etc."""
+            """Check if condition checks 'modifyAllowed', 'project.writeEnabled', etc.
+
+            Issue #121 sibling: `project.writeEnabled` / `self.project.writeEnabled`
+            require the attribute's receiver to actually be the project (see
+            `_is_project_receiver`) -- an unrelated object's `.writeEnabled`
+            attribute (e.g. `cfg.writeEnabled`) must not be accepted as a guard.
+            The bare-name `modifyAllowed` form (FLExTools' standard parameter)
+            is unaffected -- it has no receiver to check.
+            """
             # Pattern: modifyAllowed (name - FLExTools standard parameter)
             if isinstance(node, ast.Name):
                 return node.id == 'modifyAllowed'
 
-            # Pattern: project.writeEnabled (attribute)
+            # Pattern: project.writeEnabled / self.project.writeEnabled (attribute)
             if isinstance(node, ast.Attribute):
-                return node.attr == 'writeEnabled'
+                return node.attr == 'writeEnabled' and _is_project_receiver(node.value)
 
             # Pattern: project.writeEnabled == True (compare)
             if isinstance(node, ast.Compare):
                 # Check left side
                 if isinstance(node.left, ast.Attribute):
-                    if node.left.attr == 'writeEnabled':
+                    if node.left.attr == 'writeEnabled' and _is_project_receiver(node.left.value):
                         return True
                 if isinstance(node.left, ast.Name):
                     if node.left.id == 'modifyAllowed':
@@ -3045,7 +3187,7 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
                 # Check comparators
                 for comp in node.comparators:
                     if isinstance(comp, ast.Attribute):
-                        if comp.attr == 'writeEnabled':
+                        if comp.attr == 'writeEnabled' and _is_project_receiver(comp.value):
                             return True
                     if isinstance(comp, ast.Name):
                         if comp.id == 'modifyAllowed':

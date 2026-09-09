@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "flextoolsmcp": {
-      "command": "uvx",
-      "args": ["flextoolsmcp"]
-    }
-  }
-}

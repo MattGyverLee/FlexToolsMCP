@@ -7,8 +7,50 @@
       "manifest_hash": "sha256:05502a3fd1eb40921640244e962507a6923373ffa8e5c3c446a7c251fbde8e9b",
       "enabled": true,
       "priority": 10,
-      "registered_commands": {},
-      "registered_skills": [],
+      "registered_commands": {
+        "claude": [
+          "speckit-companion-after-implement",
+          "speckit-companion-after-plan",
+          "speckit-companion-after-specify",
+          "speckit-companion-after-tasks",
+          "speckit-companion-auto",
+          "speckit-companion-classify",
+          "speckit-companion-doctor",
+          "speckit-companion-implement",
+          "speckit-companion-living-adopt",
+          "speckit-companion-living-coverage",
+          "speckit-companion-living-drift",
+          "speckit-companion-living-move",
+          "speckit-companion-living-sync",
+          "speckit-companion-mark-complete",
+          "speckit-companion-plan",
+          "speckit-companion-resume",
+          "speckit-companion-specify",
+          "speckit-companion-status",
+          "speckit-companion-tasks"
+        ]
+      },
+      "registered_skills": [
+        "speckit-companion-after-implement",
+        "speckit-companion-after-plan",
+        "speckit-companion-after-specify",
+        "speckit-companion-after-tasks",
+        "speckit-companion-auto",
+        "speckit-companion-classify",
+        "speckit-companion-doctor",
+        "speckit-companion-implement",
+        "speckit-companion-living-adopt",
+        "speckit-companion-living-coverage",
+        "speckit-companion-living-drift",
+        "speckit-companion-living-move",
+        "speckit-companion-living-sync",
+        "speckit-companion-mark-complete",
+        "speckit-companion-plan",
+        "speckit-companion-resume",
+        "speckit-companion-specify",
+        "speckit-companion-status",
+        "speckit-companion-tasks"
+      ],
       "installed_at": "2026-09-08T00:42:09.463960+00:00"
     }
   }

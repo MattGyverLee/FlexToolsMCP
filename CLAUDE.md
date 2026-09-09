@@ -345,3 +345,8 @@ Users won't see an error—the code will "work" but with incorrect behavior/sign
 - Call Python with `python` instead of `python3`.
 - **Don't omit the flexicon imports** - this causes silent failures with wrong library versions.
 - Don't assume FLExTools will inject the right library - be explicit.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

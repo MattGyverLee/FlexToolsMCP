@@ -20,6 +20,7 @@ import argparse
 import importlib
 import sys
 from pathlib import Path
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 # The sibling module's filename has a hyphen, so it can't be a normal import.
 sys.path.insert(0, str(Path(__file__).resolve().parent))

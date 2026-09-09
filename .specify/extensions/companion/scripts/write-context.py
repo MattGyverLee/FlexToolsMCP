@@ -121,6 +121,7 @@ from living_spec_fold import (  # noqa: E402,F401
     apply_deltas,
     fold_living_spec,
 )
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 
 def update_context(

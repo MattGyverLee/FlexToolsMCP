@@ -31,6 +31,7 @@ from spec_context import (  # noqa: E402
     read_ctx,
     resolve_feature_dir,
 )
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 CHECKS = ("record", "triage", "bleed", "drift", "completion", "template", "trace", "chat")
 

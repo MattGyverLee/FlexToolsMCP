@@ -42,6 +42,7 @@ import json
 import os
 import re
 import sys
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

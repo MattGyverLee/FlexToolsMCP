@@ -21,6 +21,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 # The sibling modules' filenames have hyphens, so import them dynamically.
 sys.path.insert(0, str(Path(__file__).resolve().parent))

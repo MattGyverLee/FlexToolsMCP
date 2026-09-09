@@ -38,6 +38,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import companion_config as cc  # noqa: E402
+import _console  # noqa: F401  (ASCII-safe stdout/stderr on non-UTF-8 consoles)
 
 CONFIG_REL = cc.LIVING_SPECS_REL
 LEGACY_CONFIG_REL = cc.LEGACY_CONFIG_REL

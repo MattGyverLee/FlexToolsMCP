@@ -60,12 +60,34 @@ def _handler(exc):
 codecs.register_error(ERROR_NAME, _handler)
 
 
+def _is_utf8(stream) -> bool:
+    enc = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+    return enc in ("utf8", "utf8sig")
+
+
 def install():
-    """Attach the handler to stdout/stderr. Best-effort and never raises."""
+    """Make stdout/stderr ASCII-safe. Best-effort and never raises.
+
+    On a UTF-8 console nothing is changed: the glyphs render correctly, so they
+    are left alone. On any other console the stream is downgraded to ASCII with
+    the transliterating handler attached. That second step matters beyond the
+    crash: a Windows console reports cp1252 while the terminal renders UTF-8, so
+    an em dash encodes to byte 0x97 without error and still arrives as a
+    replacement character. Encodable is not the same as legible, and only ASCII
+    is reliably both.
+
+    JSON payloads are unaffected -- `json.dumps` defaults to `ensure_ascii=True`,
+    so machine-read output is already pure ASCII before it reaches the stream.
+    """
     for name in ("stdout", "stderr"):
         stream = getattr(sys, name, None)
+        if stream is None:
+            continue
         try:
-            stream.reconfigure(errors=ERROR_NAME)
+            if _is_utf8(stream):
+                stream.reconfigure(errors=ERROR_NAME)
+            else:
+                stream.reconfigure(encoding="ascii", errors=ERROR_NAME)
         except Exception:
             pass  # non-reconfigurable stream (pytest capture, pipe wrapper)
 

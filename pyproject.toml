@@ -124,8 +124,6 @@ flextoolsmcp = ["index/archive/**", "index/**/archive/**"]
 [tool.ruff]
 extend-exclude = [
     ".claude",
-    "CleanUpGlosses.py",
-    "test_casting_detection.py",
     "src/flextoolsmcp/templates",
 ]
 

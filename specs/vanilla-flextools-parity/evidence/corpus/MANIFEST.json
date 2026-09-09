@@ -1,0 +1,107 @@
+[
+  {
+    "fingerprint": "0c64798c1c25",
+    "sha256": "0c64798c1c25ad6258d42419be7462f8e116dd59c284dfc17fe287d93a6fba76",
+    "bytes": 445,
+    "origins": [
+      "154828 op#6"
+    ],
+    "file": "0c64798c1c25.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "0ce1eadb7869",
+    "sha256": "0ce1eadb7869c6769f7ff73c8aff4aea9523d033182eafd620ef9d194726ce06",
+    "bytes": 1484,
+    "origins": [
+      "154828 op#1",
+      "154828 op#2",
+      "154828 op#3"
+    ],
+    "file": "0ce1eadb7869.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "527d148f3617",
+    "sha256": "527d148f3617ed0847fc98b162da17cecc626aae311be60fb25de0ea75d305a1",
+    "bytes": 2355,
+    "origins": [
+      "145439 op#1",
+      "145439 op#2",
+      "145439 op#3"
+    ],
+    "file": "527d148f3617.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "70e77d29b9d3",
+    "sha256": "70e77d29b9d36b8f9aba102270465500d3f61439fd4be029e7d6b47a50747edf",
+    "bytes": 356,
+    "origins": [
+      "145439 op#4"
+    ],
+    "file": "70e77d29b9d3.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "7a16bca3a156",
+    "sha256": "7a16bca3a1569e35d13d014a64fe2ed74fabaf474278936dd53f54f3fc98f055",
+    "bytes": 515,
+    "origins": [
+      "154828 op#5"
+    ],
+    "file": "7a16bca3a156.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "98abf566dc9c",
+    "sha256": "98abf566dc9c0ef57080f6bb152be4648448ec75307a77f4bac53a9abfde6473",
+    "bytes": 3410,
+    "origins": [
+      "112101 op#3",
+      "112101 op#4"
+    ],
+    "file": "98abf566dc9c.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "b6257c1de3e1",
+    "sha256": "b6257c1de3e14113111832fc190facc02ee912a22ef721efd726dc52ff8b4728",
+    "bytes": 3366,
+    "origins": [
+      "112101 op#2"
+    ],
+    "file": "b6257c1de3e1.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "b9f01db03221",
+    "sha256": "b9f01db03221db9e887a080ae83a6b5b0c136e09cc197d4f252d1782c3e1af20",
+    "bytes": 2452,
+    "origins": [
+      "112101 op#1"
+    ],
+    "file": "b9f01db03221.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "e7040da6ad7b",
+    "sha256": "e7040da6ad7bc81bff7e9a59920ea8e37b16d71f0a34148ed5832c61dfd587d9",
+    "bytes": 1439,
+    "origins": [
+      "154828 op#4"
+    ],
+    "file": "e7040da6ad7b.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  },
+  {
+    "fingerprint": "eadf9869c01b",
+    "sha256": "eadf9869c01b06db2ce0c9f88c03555be0f520f2a0b82bc5397a9b250e9be3fa",
+    "bytes": 1475,
+    "origins": [
+      "154828 op#7"
+    ],
+    "file": "eadf9869c01b.py.txt",
+    "expected_parity_verdict_pre_fix": "mcp_only_success"
+  }
+]

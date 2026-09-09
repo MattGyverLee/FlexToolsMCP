@@ -1,0 +1,2 @@
+# Byte-exact evidence: no EOL translation, no filters, no reformatting.
+*.py.txt -text -diff

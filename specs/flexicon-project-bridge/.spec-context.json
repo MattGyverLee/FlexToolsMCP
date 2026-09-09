@@ -1,0 +1,18 @@
+{
+  "workflow": "companion",
+  "specName": "flexicon-project-bridge",
+  "branch": "flexicon-project-bridge",
+  "selectedAt": "2026-09-09T21:32:03.855Z",
+  "currentStep": "specify",
+  "status": "specified",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "derive",
+      "at": "2026-09-09T21:43:37.069Z"
+    }
+  ],
+  "telemetryInstanceId": "d07a002e-c855-441c-9cf8-32943604e499"
+}

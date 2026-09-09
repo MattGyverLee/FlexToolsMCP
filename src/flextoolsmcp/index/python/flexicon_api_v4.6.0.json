@@ -1894,7 +1894,7 @@
             },
             {
               "default": null,
-              "description": "GUID to assign to the new agent, as a ``System.Guid`` or string. Use this when REPRODUCING an agent from another project so it keeps its original identity -- useful with the ``flexlibs2/sync/`` engine for preserving which agent evaluated an analysis across a transfer or merge. None (the default) mints a fresh GUID. Note that the 3 bootstrap agents (``kguidAgentDefUser``, ``kguidAgentXAmpleParser``, ``kguidAgentComputer``) already exist in every project, so passing one of their GUIDs will hit the duplicate-GUID fallback below.",
+              "description": "GUID to assign to the new agent, as a ``System.Guid`` or string. Use this when REPRODUCING an agent from another project so it keeps its original identity -- useful with the ``flexicon/sync/`` engine for preserving which agent evaluated an analysis across a transfer or merge. None (the default) mints a fresh GUID. Note that the 3 bootstrap agents (``kguidAgentDefUser``, ``kguidAgentXAmpleParser``, ``kguidAgentComputer``) already exist in every project, so passing one of their GUIDs will hit the duplicate-GUID fallback below.",
               "name": "guid",
               "type": "optional"
             }
@@ -2092,6 +2092,7 @@
         },
         {
           "description": "Iterate over all agents in the project's AnalyzingAgentsOC.\n\nOverrides the PossibilityItemOperations.GetAll inherited\ndefault, which assumes the list-object has PossibilitiesOS.\nLangProject.AnalyzingAgentsOC is a plain LcmOwningCollection\nof ICmAgent, not a CmPossibilityList, so PossibilitiesOS\ndoesn't exist on it -- AttributeError every call. Iterate the\ncollection directly.\n",
+          "element_type": "ICmAgent",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -2872,6 +2873,7 @@
         },
         {
           "description": "Get the phonological environments for this allomorph.\n",
+          "element_source_property": "PhoneEnvRC",
           "example": "            for env in wrapped.environment:\n                print(f\"Environment: {env.Name}\")\n\n            if not wrapped.environment:\n                print(\"This allomorph appears in all contexts\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -3919,6 +3921,8 @@
         },
         {
           "description": "Get the phonological environments for an allomorph.\n",
+          "element_source_property": "PhoneEnvRC",
+          "element_type": "IPhEnvironment",
           "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n            ...     for env in envs:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         name = ITsString(env.Name.get_String(wsHandle)).Text\n            ...         print(f\"Environment: {name}\")\n            Environment: After voiceless consonant\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -4921,6 +4925,7 @@
         },
         {
           "description": "Get all reply annotations (threaded discussion) for this annotation.\n",
+          "element_source_property": "RepliesOS",
           "example": "            if wrapped.replies:\n                for reply in wrapped.replies:\n                    reply_wrapper = Annotation(reply)\n                    print(f\"Reply: {reply_wrapper.content}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -5843,6 +5848,7 @@
         },
         {
           "description": "Get all annotation definitions in the project.\n",
+          "element_type": "ICmAnnotationDefn",
           "example": "            >>> for anno_def in project.AnnotationDef.GetAll():\n            ...     name = project.AnnotationDef.GetName(anno_def)\n            ...     anno_type = project.AnnotationDef.GetAnnotationType(anno_def)\n            ...     user_create = project.AnnotationDef.GetUserCanCreate(anno_def)\n            ...     print(f\"{name} ({anno_type}): user_create={user_create}\")\n            To Do (katGeneralNote): user_create=True\n            Question (katGeneralNote): user_create=True\n            Resolved (katGeneralNote): user_create=False\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -7317,6 +7323,9 @@
         },
         {
           "description": "Get all anthropology items in the project.\n",
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmAnthroItem",
+          "element_type_hint": "ICmAnthroItem",
           "example": "            >>> for item in project.Anthropology.GetAll():\n            ...     print(project.Anthropology.GetName(item))     # Includes subitems\n\n            >>> # Top-level only\n            >>> for item in project.Anthropology.GetAll(recursive=False):\n            ...     print(project.Anthropology.GetName(item))\n\n        See Also:\n            Find, FindByCode, GetSubitems",
           "is_classmethod": false,
           "is_mutating": false,
@@ -7769,6 +7778,8 @@
         },
         {
           "description": "Get all researchers (people) linked to an anthropology item.\n",
+          "element_source_property": "ResearchersRC",
+          "element_type": "ICmPerson",
           "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> for person in researchers:\n            ...     name = person.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Researcher: {name}\")\n            Researcher: John Smith\n            Researcher: Jane Doe\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -7816,6 +7827,9 @@
         },
         {
           "description": "Get the subitems of an anthropology item.\n",
+          "element_cast_applied": true,
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> marriage = project.Anthropology.Find(\"Marriage Customs\")\n            >>> for sub in project.Anthropology.GetSubitems(marriage):\n            ...     print(project.Anthropology.GetName(sub))      # All descendants\n\n            >>> # Direct children only\n            >>> for sub in project.Anthropology.GetSubitems(marriage, recursive=False):\n            ...     print(project.Anthropology.GetName(sub))\n\n        See Also:\n            CreateSubitem, GetParent, GetAll",
           "is_classmethod": false,
           "is_mutating": false,
@@ -7857,6 +7871,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If item_or_hvo is None.",
             "FP_ParameterError: If the item is invalid."
@@ -7902,6 +7917,7 @@
         },
         {
           "description": "Get the count of texts linked to an anthropology item.\n",
+          "element_source_property": "TextsRC",
           "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> count = project.Anthropology.GetTextCount(item)\n            >>> print(f\"Item has {count} linked text(s)\")\n            Item has 3 linked text(s)\n\n            >>> # Find items with linked texts\n            >>> for item in project.Anthropology.GetAll():\n            ...     count = project.Anthropology.GetTextCount(item)\n            ...     if count > 0:\n            ...         name = project.Anthropology.GetName(item)\n            ...         print(f\"{name}: {count} text(s)\")\n            Marriage Customs: 3 text(s)\n            Kinship: 5 text(s)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -7949,6 +7965,7 @@
         },
         {
           "description": "Get all texts linked to an anthropology item.\n",
+          "element_source_property": "TextsRC",
           "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> texts = project.Anthropology.GetTexts(item)\n            >>> print(f\"Found {len(texts)} texts\")\n            Found 3 texts\n            >>>\n            >>> for text in texts:\n            ...     name = text.Name.BestAnalysisAlternative.Text\n            ...     print(f\"  - {name}\")\n              - Wedding Story 1\n              - Wedding Story 2\n              - Marriage Interview\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -9864,6 +9881,7 @@
         },
         {
           "description": "Get all consistency check types in the project.\n\nReturns all check types that are available for validation and\nconsistency checking.\n",
+          "element_type": "ICmPossibility",
           "example": "            >>> for check_type in project.Checks.GetAllCheckTypes():\n            ...     name = project.Checks.GetName(check_type)\n            ...     desc = project.Checks.GetDescription(check_type)\n            ...     enabled = project.Checks.IsEnabled(check_type)\n            ...     print(f\"{name}: {desc} ({'Enabled' if enabled else 'Disabled'})\")\n            Missing Gloss: Check for senses without glosses (Enabled)\n            Duplicate Entries: Find potential duplicate lexical entries (Disabled)\n            Incomplete Paradigm: Verify paradigm completeness (Enabled)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -9888,6 +9906,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "EnumerableWrapper[ICmPossibility]",
           "returns": "EnumerableWrapper[ICmPossibility]: Each check type object ",
@@ -11723,6 +11742,9 @@
         },
         {
           "description": "Iterate every IConstChartTag in ``row.CellsOS`` (other\ncell-part subtypes are filtered out).\n",
+          "element_cast_applied": true,
+          "element_source_property": "CellsOS",
+          "element_type": "IConstituentChartCellPart",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -11754,6 +11776,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list[IConstChartTag]",
           "returns": "list[IConstChartTag]: Tags in CellsOS order.",
@@ -12075,6 +12098,7 @@
         },
         {
           "description": "Find a clause marker in a row by its index position.\n",
+          "element_source_property": "ClauseMarkersOS",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> marker = project.ConstChartClauseMarkers.Find(row, 0)\n            >>> if marker:\n            ...     wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n            ...     print(f\"Marker references word group {wg.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -12123,6 +12147,8 @@
         },
         {
           "description": "Get all clause markers in a chart row.\n",
+          "element_source_property": "ClauseMarkersOS",
+          "element_type": "IConstChartClauseMarker",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> markers = project.ConstChartClauseMarkers.GetAll(row)\n            >>> for marker in markers:\n            ...     wg = project.ConstChartClauseMarkers.GetWordGroup(marker)\n            ...     print(f\"Marker for word group {wg.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -12165,6 +12191,8 @@
         },
         {
           "description": "Get the dependent clauses associated with a clause marker.\n\nDependent clauses show the hierarchical structure of clausal relationships\nin the discourse.\n",
+          "element_source_property": "DependentClausesRS",
+          "element_type": "IConstChartRow",
           "example": "            >>> marker = project.ConstChartClauseMarkers.Find(row, 0)\n            >>> dependents = project.ConstChartClauseMarkers.GetDependentClauses(marker)\n            >>> print(f\"Marker has {len(dependents)} dependent clauses\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -12448,6 +12476,7 @@
         },
         {
           "description": "Iterate every marker in the project, hierarchy included.\n\nReturns markers in depth-first order: a top-level marker is\nyielded before its sub-markers, then its sub-markers'\nsub-markers, and so on.\n",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -12472,6 +12501,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list[ICmPossibility]",
           "returns": "list[ICmPossibility]: All markers, or an empty list when the marker list is not yet initialised.",
@@ -12821,6 +12851,8 @@
         },
         {
           "description": "Get all moved text markers in a constituent chart.\n",
+          "element_source_property": "CellsOS",
+          "element_type": "IConstChartMovedTextMarker",
           "example": "            >>> chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\n            >>> markers = project.ConstChartMovedText.GetAll(chart)\n            >>> preposed_count = sum(1 for m in markers\n            ...     if project.ConstChartMovedText.IsPreposed(m))\n            >>> print(f\"Found {preposed_count} preposed markers\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13242,6 +13274,7 @@
         },
         {
           "description": "Get all constituent charts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IDsConstChart objects in the\nproject database, allowing iteration over all discourse analysis charts.\n",
+          "element_type": "IDsConstChart",
           "example": "            >>> for chart in project.ConstCharts.GetAll():\n            ...     name = project.ConstCharts.GetName(chart)\n            ...     row_count = chart.RowsOS.Count\n            ...     print(f\"{name} ({row_count} rows)\")\n            Genesis 1 Analysis (45 rows)\n            Mark 1 Analysis (32 rows)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13319,6 +13352,8 @@
         },
         {
           "description": "Get all rows in a constituent chart.\n",
+          "element_source_property": "RowsOS",
+          "element_type": "IConstChartRow",
           "example": "            >>> chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\n            >>> rows = project.ConstCharts.GetRows(chart)\n            >>> for row in rows:\n            ...     label = project.ConstChartRows.GetLabel(row)\n            ...     print(f\"Row: {label}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13664,6 +13699,8 @@
         },
         {
           "description": "Find a row in a chart by its index position.\n",
+          "element_source_property": "RowsOS",
+          "element_type": "IConstChartRow",
           "example": "            >>> chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\n            >>> row = project.ConstChartRows.Find(chart, 0)  # First row\n            >>> if row:\n            ...     label = project.ConstChartRows.GetLabel(row)\n            ...     print(f\"First row: {label}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13712,6 +13749,8 @@
         },
         {
           "description": "Get all rows in a constituent chart.\n",
+          "element_source_property": "RowsOS",
+          "element_type": "IConstChartRow",
           "example": "            >>> chart = project.ConstCharts.Find(\"Genesis 1 Analysis\")\n            >>> rows = project.ConstChartRows.GetAll(chart)\n            >>> for i, row in enumerate(rows):\n            ...     label = project.ConstChartRows.GetLabel(row)\n            ...     print(f\"Row {i}: {label}\")\n            Row 0: Verse 1\n            Row 1: Verse 2\n            Row 2: Verse 3\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13854,6 +13893,9 @@
         },
         {
           "description": "Get all word groups in a chart row.\n",
+          "element_cast_applied": true,
+          "element_source_property": "CellsOS",
+          "element_type": "IConstituentChartCellPart",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> word_groups = project.ConstChartRows.GetWordGroups(row)\n            >>> for wg in word_groups:\n            ...     # Process word group\n            ...     pass\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -13885,6 +13927,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None"
           ],
@@ -14229,6 +14272,8 @@
         },
         {
           "description": "Find a word group in a row by its index position.\n",
+          "element_source_property": "CellsOS",
+          "element_type": "IConstituentChartCellPart",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> wg = project.ConstChartWordGroups.Find(row, 0)  # First word group\n            >>> if wg:\n            ...     begin = project.ConstChartWordGroups.GetBeginSegment(wg)\n            ...     print(f\"Word group starts at segment {begin.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -14266,6 +14311,7 @@
               "type": "int"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None"
           ],
@@ -14277,6 +14323,9 @@
         },
         {
           "description": "Get all word groups in a chart row.\n",
+          "element_cast_applied": true,
+          "element_source_property": "CellsOS",
+          "element_type": "IConstituentChartCellPart",
           "example": "            >>> row = project.ConstChartRows.Find(chart, 0)\n            >>> word_groups = project.ConstChartWordGroups.GetAll(row)\n            >>> for i, wg in enumerate(word_groups):\n            ...     print(f\"Word group {i}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -14308,6 +14357,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None"
           ],
@@ -17125,6 +17175,7 @@
         },
         {
           "description": "Get all research notebook records in the project.\n\nReturns all top-level notebook records. Use GetSubRecords() to navigate\nthe hierarchical structure of records and their sub-records.\n",
+          "element_type": "IRnGenericRec",
           "example": "            >>> for record in project.DataNotebook.GetAll():\n            ...     title = project.DataNotebook.GetTitle(record)\n            ...     date = project.DataNotebook.GetDateCreated(record)\n            ...     status = project.DataNotebook.GetStatus(record)\n            ...     print(f\"{title} - {date} - {status}\")\n            Interview with Speaker A - 2024-01-15 - Reviewed\n            Field Observation Notes - 2024-01-20 - Draft\n            Elicitation Session 3 - 2024-02-01 - Approved\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17158,6 +17209,9 @@
         },
         {
           "description": "Get all available notebook record types in the project.\n\nReturns all record type possibilities that can be assigned to notebook\nrecords. These types are used to categorize different kinds of research\nactivities and observations.\n",
+          "element_cast_applied": true,
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> # List all record types\n            >>> for rec_type in project.DataNotebook.GetAllRecordTypes():\n            ...     name = ITsString(\n            ...         rec_type.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Type: {name}\")\n            Type: Interview\n            Type: Observation\n            Type: Elicitation Session\n            Type: Literature Notes\n            Type: Methodology\n\n            >>> # Find specific type\n            >>> types = project.DataNotebook.GetAllRecordTypes()\n            >>> interview = next((t for t in types if \"Interview\" in str(t.Name)), None)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17182,6 +17236,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of ICmPossibility objects representing record types. ",
@@ -17191,6 +17246,9 @@
         },
         {
           "description": "Get all available status values for notebook records.\n\nReturns all status possibilities that can be assigned to notebook\nrecords for tracking workflow and review stages.\n",
+          "element_cast_applied": true,
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> # List all statuses\n            >>> for status in project.DataNotebook.GetAllStatuses():\n            ...     name = ITsString(\n            ...         status.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Status: {name}\")\n            Status: Draft\n            Status: In Review\n            Status: Reviewed\n            Status: Approved\n            Status: Published\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17215,6 +17273,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of ICmPossibility objects representing status values. ",
@@ -17499,6 +17558,8 @@
         },
         {
           "description": "Get all locations associated with a notebook record.\n\nLocations are places (ICmLocation objects) where the documented\nevent or data collection occurred.\n",
+          "element_source_property": "LocationsRC",
+          "element_type": "ICmLocation",
           "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> locations = project.DataNotebook.GetLocations(record)\n            >>> print(f\"Locations ({len(locations)}):\")\n            >>> for location in locations:\n            ...     name = project.Location.GetName(location)\n            ...     coords = project.Location.GetCoordinates(location)\n            ...     print(f\"  - {name}: {coords}\")\n            Locations (2):\n              - Barasana Village: (-1.2345, -70.6789)\n              - Papurí River Area: (1.1234, -70.5678)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17546,6 +17607,8 @@
         },
         {
           "description": "Get all media files attached to a notebook record.\n\nRetrieves all ICmFile objects (audio, video, images) that are attached\nto this notebook record.\n",
+          "element_source_property": "MediaFilesOS",
+          "element_type": "ICmMedia",
           "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> media_files = project.DataNotebook.GetMediaFiles(record)\n            >>> print(f\"Media files ({len(media_files)}):\")\n            >>> for media in media_files:\n            ...     path = project.Media.GetInternalPath(media)\n            ...     print(f\"  - {path}\")\n            Media files (2):\n              - audio/interview1.wav\n              - images/notes_photo.jpg\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17775,6 +17838,8 @@
         },
         {
           "description": "Get all bibliographic sources associated with a notebook record.\n\nSources are references or publications (typically ICmPossibility objects\nfrom the project's bibliography) that are cited or related to the\nnotebook record.\n",
+          "element_source_property": "SourcesRC",
+          "element_type": "ICmPerson",
           "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> sources = project.DataNotebook.GetSources(record)\n            >>> print(f\"Sources ({len(sources)}):\")\n            >>> for source in sources:\n            ...     # Display source information\n            ...     print(f\"  - {source}\")\n            Sources (2):\n              - Smith 2020\n              - Johnson & Garcia 2018\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17866,6 +17931,8 @@
         },
         {
           "description": "Get all direct sub-records of a notebook record.\n\nNotebook records support hierarchical organization where records can\ncontain sub-records. This method returns only direct children, not\nall descendants.\n",
+          "element_source_property": "SubRecordsOS",
+          "element_type": "IRnGenericRec",
           "example": "            >>> # Get and display sub-records\n            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> subs = project.DataNotebook.GetSubRecords(record)\n            >>> print(f\"Found {len(subs)} sub-records:\")\n            >>> for sub in subs:\n            ...     title = project.DataNotebook.GetTitle(sub)\n            ...     print(f\"  - {title}\")\n            Found 3 sub-records:\n              - Kinship Terms Section\n              - Color Terms Section\n              - Grammar Notes\n\n            >>> # Recursive display of hierarchy\n            >>> def show_hierarchy(rec, indent=0):\n            ...     title = project.DataNotebook.GetTitle(rec)\n            ...     print(\"  \" * indent + title)\n            ...     for sub in project.DataNotebook.GetSubRecords(rec):\n            ...         show_hierarchy(sub, indent + 1)\n            >>> show_hierarchy(record)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -17946,6 +18013,7 @@
         },
         {
           "description": "Get all texts linked to a notebook record.\n\nRetrieves all IText objects that are linked to this notebook record.\nTexts might be recordings, transcriptions, or other textual data that\nthe notebook record references or documents.\n",
+          "element_source_property": "TextsRC",
           "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> texts = project.DataNotebook.GetTexts(record)\n            >>> print(f\"Linked texts ({len(texts)}):\")\n            >>> for text in texts:\n            ...     title = project.Texts.GetTitle(text)\n            ...     print(f\"  - {title}\")\n            Linked texts (2):\n              - Interview Recording 1\n              - Interview Transcription 1\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -19236,6 +19304,9 @@
         },
         {
           "description": "Get all cells in a chart row.\n\nRetrieves the cells (word groups, markers, etc.) that make up a row in\nthe chart. Cells represent individual units of analysis within the row.\n",
+          "element_cast_applied": true,
+          "element_source_property": "CellsOS",
+          "element_type": "IConstituentChartCellPart",
           "example": "            >>> discourse_ops = DiscourseOperations(project)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> charts = list(discourse_ops.GetAllCharts(text))\n            >>> if charts:\n            ...     rows = discourse_ops.GetRows(charts[0])\n            ...     for row in rows:\n            ...         cells = discourse_ops.GetCells(row)\n            ...         print(f\"Row has {len(cells)} cells\")\n            Row has 3 cells\n            Row has 2 cells\n            Row has 4 cells\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -19271,6 +19342,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If row_or_hvo is None.",
             "FP_ParameterError: If the row does not exist or is invalid."
@@ -19472,6 +19544,8 @@
         },
         {
           "description": "Get the number of rows in a chart.\n\nThis is more efficient than calling len(GetRows()) when you only need\nthe count.\n",
+          "element_source_property": "RowsOS",
+          "element_type": "IConstChartRow",
           "example": "            >>> discourse_ops = DiscourseOperations(project)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> charts = list(discourse_ops.GetAllCharts(text))\n            >>> if charts:\n            ...     count = discourse_ops.GetRowCount(charts[0])\n            ...     print(f\"Chart has {count} rows\")\n            Chart has 5 rows\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -19519,6 +19593,8 @@
         },
         {
           "description": "Get all rows in a chart.\n\nRetrieves the ordered list of rows (typically representing clauses or\ndiscourse units) from the chart.\n",
+          "element_source_property": "RowsOS",
+          "element_type": "IConstChartRow",
           "example": "            >>> discourse_ops = DiscourseOperations(project)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> charts = list(discourse_ops.GetAllCharts(text))\n            >>> if charts:\n            ...     rows = discourse_ops.GetRows(charts[0])\n            ...     print(f\"Chart has {len(rows)} rows\")\n            ...     for i, row in enumerate(rows, 1):\n            ...         print(f\"Row {i}\")\n            Chart has 5 rows\n            Row 1\n            Row 2\n            Row 3\n            Row 4\n            Row 5\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -20139,6 +20215,7 @@
         },
         {
           "description": "Get all phonological environments in the project.\n",
+          "element_type": "IPhEnvironment",
           "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> for env in envOps.GetAll():\n            ...     name = envOps.GetName(env)\n            ...     notation = envOps.GetStringRepresentation(env)\n            ...     print(f\"{name}: {notation}\")\n            Word Initial: #_\n            Word Final: _#\n            Between Vowels: V_V\n            Before Consonant: _C\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -20847,6 +20924,7 @@
         },
         {
           "description": "Get all etymologies for a lexical entry, or all etymologies in the entire project.\n",
+          "element_type": "ILexEtymology",
           "example": "            >>> etymOps = EtymologyOperations(project)\n            >>> # Get etymologies for specific entry\n            >>> entry = project.LexEntry.Find(\"telephone\")\n            >>> for etym in etymOps.GetAll(entry):\n            ...     source = etymOps.GetSource(etym)\n            ...     form = etymOps.GetForm(etym)\n            ...     gloss = etymOps.GetGloss(etym)\n            ...     print(f\"Etymology: {source} '{form}' ({gloss})\")\n            Etymology: Greek 'tele' (far)\n            Etymology: Greek 'phone' (sound)\n\n            >>> # Get ALL etymologies in entire project\n            >>> for etym in etymOps.GetAll():\n            ...     source = etymOps.GetSource(etym)\n            ...     print(f\"Etymology source: {source}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -22162,6 +22240,7 @@
         },
         {
           "description": "Get example sentences for a sense or all examples in the project.\n",
+          "element_type": "ILexExampleSentence",
           "example": "            >>> exampleOps = ExampleOperations(project)\n            >>>\n            >>> # Get examples for a specific sense\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> for example in exampleOps.GetAll(sense):\n            ...     text = exampleOps.GetExample(example)\n            ...     print(f\"Example: {text}\")\n            >>>\n            >>> # Get ALL examples in entire project\n            >>> for example in exampleOps.GetAll():\n            ...     text = exampleOps.GetExample(example)\n            ...     print(f\"Example: {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -22202,6 +22281,8 @@
         },
         {
           "description": "Get the publications this example should not be published in.\n",
+          "element_source_property": "DoNotPublishInRC",
+          "element_type": "ICmPossibility",
           "example": "            >>> sense = list(project.Senses.GetAll())[0]\n            >>> examples = project.Examples.GetAll(sense)\n            >>> if examples:\n            ...     pubs = project.Examples.GetDoNotPublishIn(examples[0])\n            ...     print(pubs)",
           "is_classmethod": false,
           "is_mutating": false,
@@ -22233,6 +22314,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of publication names ",
@@ -22376,6 +22458,8 @@
         },
         {
           "description": "Get the count of media files associated with an example sentence.\n",
+          "element_source_property": "MediaFilesOS",
+          "element_type": "ICmMedia",
           "example": "            >>> exampleOps = ExampleOperations(project)\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> examples = list(exampleOps.GetAll(sense))\n            >>> if examples:\n            ...     count = exampleOps.GetMediaCount(examples[0])\n            ...     print(f\"This example has {count} media files\")\n            This example has 2 media files\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -22418,6 +22502,8 @@
         },
         {
           "description": "Get all media files associated with an example sentence.\n",
+          "element_source_property": "MediaFilesOS",
+          "element_type": "ICmMedia",
           "example": "            >>> exampleOps = ExampleOperations(project)\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> examples = list(exampleOps.GetAll(sense))\n            >>> if examples:\n            ...     media = exampleOps.GetMediaFiles(examples[0])\n            ...     print(f\"Media count: {len(media)}\")\n            Media count: 2\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -22630,6 +22716,8 @@
         },
         {
           "description": "Get all translation objects for an example sentence.\n",
+          "element_source_property": "TranslationsOC",
+          "element_type": "ICmTranslation",
           "example": "            >>> exampleOps = ExampleOperations(project)\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> examples = list(exampleOps.GetAll(sense))\n            >>> if examples:\n            ...     translations = exampleOps.GetTranslations(examples[0])\n            ...     for trans in translations:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         text = ITsString(trans.Translation.get_String(wsHandle)).Text\n            ...         print(f\"Translation: {text}\")\n            Translation: The dog ran quickly.\n            Translation: El perro corrió rápidamente.\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -24807,6 +24895,8 @@
         },
         {
           "description": "Get the complex form type of an entry reference.\n",
+          "element_source_property": "ComplexEntryTypesRS",
+          "element_type": "ILexEntryType",
           "example": "            >>> for ref in entry.EntryRefsOS:\n            ...     cf_type = project.LexiconGetComplexFormType(ref)\n            ...     if cf_type:\n            ...         print(cf_type.Name.BestAnalysisAlternative.Text)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -24830,6 +24920,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "ILexEntryType or None",
           "returns": "ILexEntryType or None: The complex form type ",
@@ -26010,6 +26101,8 @@
         },
         {
           "description": "Looks up the value (a string) in the `CmPossibilityList` for the\ngiven field.\nReturns the `CmPossibility` object, or `None` if it can't be found.",
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -26039,6 +26132,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "",
           "returns": "",
@@ -26048,6 +26142,8 @@
         },
         {
           "description": "Returns the `PossibilitiesOS` for the given list field. This\nis a list of `CmPossibility` objects.\nRaises an exception if the field is not a list (single/Atomic\nor multiple/Collection)\n",
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -26072,6 +26168,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "",
           "returns": "",
@@ -31167,6 +31264,7 @@
         },
         {
           "description": "Get all grammatical categories in the project.\n",
+          "element_type": "ICmPossibility",
           "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> for cat in gramCatOps.GetAll():\n            ...     print(gramCatOps.GetName(cat))   # Includes subcategories\n\n            >>> # Top-level only\n            >>> for cat in gramCatOps.GetAll(recursive=False):\n            ...     print(gramCatOps.GetName(cat))\n\n        See Also:\n            GetSubcategories, Create",
           "is_classmethod": false,
           "is_mutating": false,
@@ -31198,6 +31296,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "EnumerableWrapper[ICmPossibility]",
           "returns": "EnumerableWrapper[ICmPossibility]: Each grammatical category. ",
@@ -31296,6 +31395,9 @@
         },
         {
           "description": "Get the subcategories of a grammatical category.\n",
+          "element_cast_applied": true,
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> person = gramCatOps.Find(\"person\")\n            >>> for subcat in gramCatOps.GetSubcategories(person):\n            ...     print(gramCatOps.GetName(subcat))     # All descendants\n\n            >>> # Direct children only\n            >>> for subcat in gramCatOps.GetSubcategories(person, recursive=False):\n            ...     print(gramCatOps.GetName(subcat))\n\n        See Also:\n            GetAll, GetParent, Create",
           "is_classmethod": false,
           "is_mutating": false,
@@ -31333,6 +31435,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If cat_or_hvo is None."
           ],
@@ -32431,6 +32534,8 @@
         },
         {
           "description": "Get all possible values for a feature.\n",
+          "element_source_property": "ValuesOC",
+          "element_type": "IFsSymFeatVal",
           "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> person = inflOps.FeatureCreate(\"person\", \"complex\")\n            >>> # After adding values 1st, 2nd, 3rd...\n            >>> values = inflOps.FeatureGetValues(person)\n            >>> print(f\"Person has {len(values)} values\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -32617,6 +32722,7 @@
         },
         {
           "description": "Get all feature constraints in the feature system (READ-ONLY).\n",
+          "element_source_property": "FeatureConstraintsOC",
           "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get the feature system\n            >>> feature_system = project.lp.MsFeatureSystemOA\n            >>> if feature_system:\n            ...     constraints = inflOps.GetFeatureConstraints(feature_system)\n            ...     print(f\"Feature system has {len(constraints)} constraints\")\n            ...     for constraint in constraints:\n            ...         print(f\"  - Constraint HVO: {constraint.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -32659,6 +32765,8 @@
         },
         {
           "description": "Get all features in the feature system (READ-ONLY).\n",
+          "element_source_property": "FeaturesOC",
+          "element_type": "IFsFeatDefn",
           "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get the feature system\n            >>> feature_system = project.lp.MsFeatureSystemOA\n            >>> if feature_system:\n            ...     features = inflOps.GetFeatures(feature_system)\n            ...     print(f\"Feature system has {len(features)} features\")\n            ...     for feature in features:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         name = ITsString(feature.Name.get_String(wsHandle)).Text\n            ...         print(f\"  - {name}\")\n            Feature system has 3 features\n              - person\n              - number\n              - tense\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -32690,6 +32798,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If feature_system_or_hvo is None."
           ],
@@ -32738,6 +32847,8 @@
         },
         {
           "description": "Get the feature types collection from a feature system (READ-ONLY).\n\nThis is a getter-only method that returns the collection of feature types\ndefined in the morphosyntactic feature system. Feature types categorize\nfeatures into groups (e.g., inflectional features, agreement features).\n",
+          "element_source_property": "TypesOC",
+          "element_type": "IFsFeatStrucType",
           "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get types from default feature system\n            >>> types = inflOps.GetTypes(None)\n            >>> for ftype in types:\n            ...     print(f\"Feature type: {ftype}\")\n\n            >>> # Get types from specific feature system\n            >>> fs = project.lp.MsFeatureSystemOA\n            >>> types = inflOps.GetTypes(fs)\n            >>> print(f\"Found {len(types)} feature types\")\n\n            >>> # Iterate and display type names\n            >>> for ftype in types:\n            ...     ws = project.project.DefaultAnalWs\n            ...     name = ITsString(ftype.Name.get_String(ws)).Text\n            ...     print(f\"Type: {name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34051,6 +34162,7 @@
         },
         {
           "description": "Get all lexical entries in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ILexEntry objects in the\nproject database, allowing iteration over the complete lexicon.\n",
+          "element_type": "ILexEntry",
           "example": "            >>> for entry in project.LexEntry.GetAll():\n            ...     headword = project.LexEntry.GetHeadword(entry)\n            ...     senses = project.LexEntry.GetSenseCount(entry)\n            ...     print(f\"{headword} ({senses} senses)\")\n            run (3 senses)\n            walk (2 senses)\n            house (4 senses)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34133,6 +34245,8 @@
         },
         {
           "description": "Get all senses owned by this entry, including subsenses recursively.\n\nReturns all senses in a flattened list, recursively including all\nsubsenses at any depth.\n",
+          "element_source_property": "SensesOS",
+          "element_type": "ILexSense",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> all_senses = project.LexEntry.GetAllSenses(entry)\n            >>> print(f\"Total senses (including subsenses): {len(all_senses)}\")\n            >>> for sense in all_senses:\n            ...     gloss = project.Senses.GetGloss(sense)\n            ...     depth = len(list(sense.PathToRoot)) - 2  # Approximate depth\n            ...     indent = \"  \" * depth\n            ...     print(f\"{indent}{gloss}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34407,6 +34521,9 @@
         },
         {
           "description": "Get all components of a complex form.\n",
+          "element_cast_applied": true,
+          "element_source_property": "ComponentLexemesRS",
+          "element_type": "ICmObject",
           "example": "            >>> idiom = project.LexEntry.Find(\"kick the bucket\")\n            >>> components = project.LexEntry.GetComplexFormComponents(idiom)\n            >>> for comp in components:\n            ...     # Branch on ClassName, not isinstance: ComponentLexemesRS\n            ...     # is declared over ICmObject and mixes entries and\n            ...     # senses, and ClassName is the one discriminator that is\n            ...     # readable on either (issue #270).\n            ...     if comp.ClassName == \"LexEntry\":\n            ...         print(project.LexEntry.GetHeadword(comp))\n            ...     elif comp.ClassName == \"LexSense\":\n            ...         print(project.Senses.GetGloss(comp))\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34438,6 +34555,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of ILexEntry or ILexSense objects (components) ",
@@ -34559,6 +34677,8 @@
         },
         {
           "description": "Get the publications this entry should not be published in.\n",
+          "element_source_property": "DoNotPublishInRC",
+          "element_type": "ICmPossibility",
           "example": "            >>> entry = project.LexEntry.Find(\"obscure\")\n            >>> pubs = project.LexEntry.GetDoNotPublishIn(entry)\n            >>> print(pubs)\n            ['Main Dictionary', 'Student Edition']",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34590,6 +34710,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of publication names ",
@@ -34599,6 +34720,8 @@
         },
         {
           "description": "Get the publications where this entry should not be shown as main entry.\n",
+          "element_source_property": "DoNotShowMainEntryInRC",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -34630,6 +34753,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list",
           "returns": "list: List of publication names",
@@ -35197,6 +35321,8 @@
         },
         {
           "description": "Get the count of senses for a lexical entry.\n",
+          "element_source_property": "SensesOS",
+          "element_type": "ILexSense",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> count = project.LexEntry.GetSenseCount(entry)\n            >>> print(f\"Entry has {count} senses\")\n            Entry has 3 senses\n\n            >>> # Check if entry has senses\n            >>> if project.LexEntry.GetSenseCount(entry) == 0:\n            ...     print(\"Entry has no senses - add one!\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -35239,6 +35365,8 @@
         },
         {
           "description": "Get all senses of a lexical entry.\n",
+          "element_source_property": "SensesOS",
+          "element_type": "ILexSense",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> senses = project.LexEntry.GetSenses(entry)\n            >>> for sense in senses:\n            ...     gloss = project.LexiconGetSenseGloss(sense)\n            ...     print(f\"Sense: {gloss}\")\n            Sense: to move rapidly on foot\n            Sense: to operate or function\n            Sense: a point scored in baseball\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -35453,7 +35581,7 @@
           "usage_hint": "retrieval"
         },
         {
-          "description": "Merge one entry into another (IRREVERSIBLE operation).\n\nThis method delegates to the underlying LibLCM C# implementation, which handles\nall the complex merge logic. Optionally, it can then deduplicate senses,\npronunciations, and allomorphs that result from the merge.\n\nLibLCM Handles:\n- Lexeme form differences (creates alternate forms if needed)\n- Homograph renumbering\n- Circular reference prevention (complex forms, variants)\n- LexEntryRef component replacement (FWR-3535)\n- Back-reference updating\n- Per-writing-system MultiString merging\n- **Alternate form deduplication** (identical form + morph type)\n- **MSA deduplication** (equivalent grammatical analyses)\n\nFlexLibs2 Adds (Optional):\n- Sense deduplication (identical gloss + definition)\n- Pronunciation deduplication (identical form per WS)\n- Allomorph deduplication (identical form + morph type)\n",
+          "description": "Merge one entry into another (IRREVERSIBLE operation).\n\nThis method delegates to the underlying LibLCM C# implementation, which handles\nall the complex merge logic. Optionally, it can then deduplicate senses,\npronunciations, and allomorphs that result from the merge.\n\nLibLCM Handles:\n- Lexeme form differences (creates alternate forms if needed)\n- Homograph renumbering\n- Circular reference prevention (complex forms, variants)\n- LexEntryRef component replacement (FWR-3535)\n- Back-reference updating\n- Per-writing-system MultiString merging\n- **Alternate form deduplication** (identical form + morph type)\n- **MSA deduplication** (equivalent grammatical analyses)\n\nFlexicon Adds (Optional):\n- Sense deduplication (identical gloss + definition)\n- Pronunciation deduplication (identical form per WS)\n- Allomorph deduplication (identical form + morph type)\n",
           "example": "            >>> # Merge duplicate entry into main entry with auto-deduplication\n            >>> main = project.LexEntry.Find(\"run\")\n            >>> duplicate = project.LexEntry.Find(\"run\")\n            >>> project.LexEntry.MergeObject(main, duplicate)\n            >>> # 'duplicate' is deleted, all data merged into 'main'\n            >>> # Senses, pronunciations, allomorphs are auto-deduplicated\n            >>> # Alternate forms and MSAs are already deduplicated by LibLCM\n\n            >>> # Merge with deduplication disabled\n            >>> entry1 = project.LexEntry.Find(\"color\")\n            >>> entry2 = project.LexEntry.Find(\"colour\")\n            >>> project.LexEntry.MergeObject(entry1, entry2, auto_deduplicate=False)\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -36823,6 +36951,7 @@
         },
         {
           "description": "Get all lexical references for a sense or entry, or all references in the entire project.\n\nThis returns all LexReference objects that include the specified\nsense or entry as one of their targets.\n",
+          "element_type": "ILexReference",
           "example": "            >>> # Get references for specific sense\n            >>> entry = project.LexEntry.Find(\"run\")\n            >>> if entry:\n            ...     senses = list(project.Senses.GetAll(entry))\n            ...     if senses:\n            ...         for ref in project.LexReferences.GetAll(senses[0]):\n            ...             ref_type = project.LexReferences.GetType(ref)\n            ...             type_name = project.LexReferences.GetTypeName(ref_type)\n            ...             targets = project.LexReferences.GetTargets(ref)\n            ...             print(f\"{type_name}: {len(targets)} targets\")\n            Synonym: 3 targets\n            Hypernym: 2 targets\n\n            >>> # Get ALL lexical references in entire project\n            >>> for ref in project.LexReferences.GetAll():\n            ...     ref_type = project.LexReferences.GetType(ref)\n            ...     type_name = project.LexReferences.GetTypeName(ref_type)\n            ...     print(f\"Reference type: {type_name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -36863,6 +36992,7 @@
         },
         {
           "description": "Get all lexical relation types in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all ILexRefType objects that define the\ntypes of lexical relations available in the project, such as\nSynonym, Antonym, Part-Whole, etc.\n",
+          "element_type": "ILexRefType",
           "example": "            >>> for ref_type in project.LexReferences.GetAllTypes():\n            ...     name = project.LexReferences.GetTypeName(ref_type)\n            ...     mapping = project.LexReferences.GetMappingType(ref_type)\n            ...     count = len(list(ref_type.MembersOC))\n            ...     print(f\"{name} ({mapping}): {count} references\")\n            Synonym (Symmetric): 15 references\n            Antonym (Symmetric): 8 references\n            Part-Whole (Tree): 22 references\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -37105,6 +37235,9 @@
         },
         {
           "description": "Get all target senses or entries in a lexical reference.\n",
+          "element_cast_applied": true,
+          "element_source_property": "TargetsRS",
+          "element_type": "ICmObject",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> if entry:\n            ...     sense = list(project.Senses.GetAll(entry))[0]\n            ...     for ref in project.LexReferences.GetAll(sense):\n            ...         targets = project.LexReferences.GetTargets(ref)\n            ...         for target in targets:\n            ...             if target.ClassName == \"LexSense\":\n            ...                 gloss = project.Senses.GetGloss(target)\n            ...                 print(f\"  -> {gloss}\")\n            ...             elif target.ClassName == \"LexEntry\":\n            ...                 headword = project.LexEntry.GetHeadword(target)\n            ...                 print(f\"  -> {headword}\")\n              -> jog\n              -> sprint\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -37136,6 +37269,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If lex_ref_or_hvo is None"
           ],
@@ -38270,6 +38404,7 @@
         },
         {
           "description": "Get senses for an entry or all senses in the project.\n",
+          "element_type": "ILexSense",
           "example": "            >>> # Every sense in the project, subsenses included\n            >>> for sense in project.Senses.GetAll():\n            ...     print(project.Senses.GetGloss(sense))\n\n            >>> # Top-level senses only, scoped to one entry\n            >>> entry = project.LexEntry.Find(\"run\")\n            >>> for sense in project.Senses.GetAll(entry, recursive=False):\n            ...     print(project.Senses.GetGloss(sense))\n\n        See Also:\n            Create, GetSubsenses, GetOwningEntry",
           "is_classmethod": false,
           "is_mutating": false,
@@ -38398,6 +38533,8 @@
         },
         {
           "description": "Get the anthropology codes of a sense.",
+          "element_source_property": "AnthroCodesRC",
+          "element_type": "ICmAnthroItem",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -38739,6 +38876,8 @@
         },
         {
           "description": "Get the domain types of a sense.",
+          "element_source_property": "DomainTypesRC",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -38763,6 +38902,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "",
           "returns": "",
@@ -38810,6 +38950,8 @@
         },
         {
           "description": "Get the count of example sentences for a sense.\n",
+          "element_source_property": "ExamplesOS",
+          "element_type": "ILexExampleSentence",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     count = project.Senses.GetExampleCount(senses[0])\n            ...     print(f\"This sense has {count} examples\")\n            This sense has 3 examples\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -38852,6 +38994,8 @@
         },
         {
           "description": "Get all example sentences for a sense.\n",
+          "element_source_property": "ExamplesOS",
+          "element_type": "ILexExampleSentence",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     examples = project.Senses.GetExamples(senses[0])\n            ...     for ex in examples:\n            ...         ws = project.project.DefaultVernWs\n            ...         text = ITsString(ex.Example.get_String(ws)).Text\n            ...         print(f\"Example: {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39363,6 +39507,8 @@
         },
         {
           "description": "Get the count of pictures for a sense.\n",
+          "element_source_property": "PicturesOS",
+          "element_type": "ICmPicture",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     count = project.Senses.GetPictureCount(senses[0])\n            ...     print(f\"This sense has {count} pictures\")\n            This sense has 1 pictures\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39405,6 +39551,8 @@
         },
         {
           "description": "Get all pictures associated with a sense.\n",
+          "element_source_property": "PicturesOS",
+          "element_type": "ICmPicture",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     pictures = project.Senses.GetPictures(senses[0])\n            ...     for pic in pictures:\n            ...         caption = ITsString(pic.Caption.BestAnalysisAlternative).Text\n            ...         print(f\"Picture: {caption}\")\n            Picture: A person running\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39608,6 +39756,8 @@
         },
         {
           "description": "Returns semantic domains (categories, topics, subject fields) for a sense.",
+          "element_source_property": "SemanticDomainsRC",
+          "element_type": "ICmSemanticDomain",
           "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     domains = project.Senses.GetSemanticDomains(senses[0])\n            ...     for domain in domains:\n            ...         ws = project.project.DefaultAnalWs\n            ...         name = ITsString(domain.Name.get_String(ws)).Text\n            ...         print(f\"Domain: {name}\")\n            Domain: 7.2.1 Walk\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39881,6 +40031,8 @@
         },
         {
           "description": "Get the subsenses (child senses) of a sense.\n",
+          "element_source_property": "SensesOS",
+          "element_type": "ILexSense",
           "example": "            >>> sense = project.Senses.GetAll(entry, recursive=False)[0]\n            >>> for sub in project.Senses.GetSubsenses(sense):\n            ...     print(project.Senses.GetGloss(sub))     # All descendants\n\n            >>> # Direct children only\n            >>> for sub in project.Senses.GetSubsenses(sense, recursive=False):\n            ...     print(project.Senses.GetGloss(sub))\n\n        See Also:\n            CreateSubsense, GetParentSense",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39966,6 +40118,8 @@
         },
         {
           "description": "Get the usage types of a sense.",
+          "element_source_property": "UsageTypesRC",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -39990,6 +40144,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "",
           "returns": "",
@@ -42062,6 +42217,9 @@
         },
         {
           "description": "Get all locations in the project.\n",
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmLocation",
+          "element_type_hint": "ICmLocation",
           "example": "            >>> for location in project.Location.GetAll():\n            ...     print(project.Location.GetName(location))   # Includes sublocations\n\n            >>> # Top-level only\n            >>> for location in project.Location.GetAll(recursive=False):\n            ...     print(project.Location.GetName(location))\n\n        See Also:\n            Find, Create, GetSublocations",
           "is_classmethod": false,
           "is_mutating": false,
@@ -42521,6 +42679,8 @@
         },
         {
           "description": "Get the sublocations of a location.\n",
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> region = project.Location.Find(\"Vaupés Department\")\n            >>> for subloc in project.Location.GetSublocations(region):\n            ...     print(project.Location.GetName(subloc))   # All descendants\n\n            >>> # Direct children only\n            >>> for subloc in project.Location.GetSublocations(region, recursive=False):\n            ...     print(project.Location.GetName(subloc))\n\n        See Also:\n            GetRegion, CreateSublocation, SetRegion",
           "is_classmethod": false,
           "is_mutating": false,
@@ -42562,6 +42722,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If location_or_hvo is None.",
             "FP_ParameterError: If location doesn't exist."
@@ -44150,6 +44311,7 @@
         },
         {
           "description": "Retrieve all media files in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmFile objects in the\nproject database, allowing iteration over the complete media inventory.\n",
+          "element_type": "ICmFile",
           "example": "            >>> for media in project.Media.GetAll():\n            ...     path = project.Media.GetInternalPath(media)\n            ...     label = project.Media.GetLabel(media, \"en\")\n            ...     print(f\"{label}: {path}\")\n            Recording1: audio/recording1.wav\n            Video1: videos/intro.mp4\n            Photo1: images/photo1.jpg\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -44183,6 +44345,7 @@
         },
         {
           "description": "Get all media files of a specific type.\n",
+          "element_type": "ICmFile",
           "example": "            >>> # Get all audio files\n            >>> for media in project.Media.GetAllByType(MediaType.AUDIO):\n            ...     path = project.Media.GetInternalPath(media)\n            ...     print(f\"Audio: {path}\")\n            Audio: audio1.wav\n            Audio: audio2.mp3\n\n            >>> # Count videos\n            >>> video_count = sum(1 for _ in project.Media.GetAllByType(MediaType.VIDEO))\n            >>> print(f\"Total videos: {video_count}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -45500,6 +45663,7 @@
         },
         {
           "description": "Get all ad hoc co-occurrence prohibitions from MoMorphData.\n\nThese have a different property interface from compound rules and\naffix templates (no Name/Description). Use rule.ClassName to\ndetermine the subtype: MoAdhocProhibGr, MoAdhocProhibMorph,\nor MoAdhocProhibAllomorph.\n",
+          "element_type": "IMoAdhocProhib",
           "example": "            >>> for prohib in ruleOps.GetAllAdhocCoProhibitions():\n            ...     print(prohib.ClassName)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -45524,6 +45688,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "EnumerableWrapper[IMoAdhocProhib]",
           "returns": "EnumerableWrapper[IMoAdhocProhib]: Each co-occurrence prohibition. ",
@@ -47216,6 +47381,7 @@
         },
         {
           "description": "Get all natural classes in the phonological inventory.\n",
+          "element_type": "IPhNaturalClass",
           "example": "            >>> for nc in project.NaturalClasses.GetAll():\n            ...     name = project.NaturalClasses.GetName(nc)\n            ...     abbr = project.NaturalClasses.GetAbbreviation(nc)\n            ...     phonemes = project.NaturalClasses.GetPhonemes(nc)\n            ...     print(f\"{name} ({abbr}): {len(phonemes)} phonemes\")\n            Voiceless Stops (VLS): 3 phonemes\n            Voiced Stops (VCD): 3 phonemes\n            Nasals (N): 3 phonemes\n            Vowels (V): 5 phonemes\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -47240,6 +47406,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "EnumerableWrapper[IPhNaturalClass]",
           "returns": "EnumerableWrapper[IPhNaturalClass]: Each natural class in the project. ",
@@ -47344,6 +47511,8 @@
         },
         {
           "description": "Get all phonemes in a natural class.\n",
+          "element_source_property": "SegmentsRC",
+          "element_type": "IPhPhoneme",
           "example": "            >>> # Get members of voiceless stops\n            >>> for nc in project.NaturalClasses.GetAll():\n            ...     name = project.NaturalClasses.GetName(nc)\n            ...     if name == \"Voiceless Stops\":\n            ...         phonemes = project.NaturalClasses.GetPhonemes(nc)\n            ...         for phoneme in phonemes:\n            ...             print(project.Phonemes.GetRepresentation(phoneme))\n            /p/\n            /t/\n            /k/\n\n            >>> # Print all natural classes with their members\n            >>> for nc in project.NaturalClasses.GetAll():\n            ...     name = project.NaturalClasses.GetName(nc)\n            ...     phonemes = project.NaturalClasses.GetPhonemes(nc)\n            ...     count = len(phonemes)\n            ...     print(f\"{name}: {count} phonemes\")\n            Voiceless Stops: 3 phonemes\n            Voiced Stops: 3 phonemes\n            Nasals: 3 phonemes\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -47974,6 +48143,7 @@
         },
         {
           "description": "Get all notes attached to an object.\n",
+          "element_type": "ICmBaseAnnotation",
           "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> for note in project.Note.GetAll(entry):\n            ...     content = project.Note.GetContent(note)\n            ...     print(f\"Note: {content}\")",
           "is_classmethod": false,
           "is_mutating": false,
@@ -48005,6 +48175,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If owner_object is None."
           ],
@@ -48818,6 +48989,7 @@
         },
         {
           "description": "Get all elements in an overlay.\n",
+          "element_source_property": "InstancesOS",
           "example": "            >>> overlay = project.Overlay.Find(\"Participants\")\n            >>> elements = project.Overlay.GetElements(overlay)\n            >>> print(f\"Overlay has {len(elements)} elements\")\n            Overlay has 5 elements\n\n        See Also:\n            AddElement, RemoveElement",
           "is_classmethod": false,
           "is_mutating": false,
@@ -48860,6 +49032,8 @@
         },
         {
           "description": "Get the possibility items associated with an overlay.\n",
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> overlay = project.Overlay.Find(\"Participants\")\n            >>> items = project.Overlay.GetPossItems(overlay)\n            >>> print(f\"Overlay has {len(items)} associated items\")\n\n        See Also:\n            GetElements, GetChart",
           "is_classmethod": false,
           "is_mutating": false,
@@ -48891,6 +49065,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If overlay_or_hvo is None."
           ],
@@ -49670,6 +49845,8 @@
         },
         {
           "description": "Get all affix slots associated with a part of speech.\n",
+          "element_source_property": "AffixSlotsOC",
+          "element_type": "IMoInflAffixSlot",
           "example": "            >>> posOps = POSOperations(project)\n            >>> verb = posOps.Find(\"Verb\")\n            >>> slots = posOps.GetAffixSlots(verb)\n            >>> for slot in slots:\n            ...     print(slot.Name)\n            Tense\n            Aspect\n            Mood\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -49712,6 +49889,7 @@
         },
         {
           "description": "Get all parts of speech in the project.\n\nCan be called two ways:\nPOSOperations.GetAll(project)         # Class-level, no instantiation\nPOSOperations(project).GetAll()       # Instance-level, traditional\n",
+          "element_type": "IPartOfSpeech",
           "example": "            >>> posOps = POSOperations(project)\n            >>> for pos in posOps.GetAll():\n            ...     print(posOps.GetName(pos))      # Includes Proper Noun, Common Noun, etc.\n\n            >>> # Top-level only\n            >>> for pos in posOps.GetAll(recursive=False):\n            ...     print(posOps.GetName(pos))\n\n        See Also:\n            GetSubcategories, Find",
           "is_classmethod": false,
           "is_mutating": false,
@@ -49844,6 +50022,8 @@
         },
         {
           "description": "Get all inflection classes associated with a part of speech.\n",
+          "element_source_property": "InflectionClassesOC",
+          "element_type": "IMoInflClass",
           "example": "            >>> posOps = POSOperations(project)\n            >>> verb = posOps.Find(\"Verb\")\n            >>> classes = posOps.GetInflectionClasses(verb)\n            >>> for infl_class in classes:\n            ...     print(infl_class.Name)\n            Regular Verb\n            Irregular Verb\n            Modal Verb\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -49936,6 +50116,8 @@
         },
         {
           "description": "Get the subcategories of a part of speech.\n",
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Find(\"Noun\")\n            >>> for subcat in posOps.GetSubcategories(noun):\n            ...     print(posOps.GetName(subcat))       # All descendants\n\n            >>> # Direct children only\n            >>> for subcat in posOps.GetSubcategories(noun, recursive=False):\n            ...     print(posOps.GetName(subcat))\n\n        See Also:\n            GetAll, Find",
           "is_classmethod": false,
           "is_mutating": false,
@@ -49973,6 +50155,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If pos_or_hvo is None."
           ],
@@ -50481,6 +50664,7 @@
         },
         {
           "description": "Get all paragraphs in a text.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily\nmaterialized) over all paragraph objects in the text's paragraph\ncollection, in order.\n",
+          "element_type": "IStTxtPara",
           "example": "            >>> # Iterate over all paragraphs\n            >>> text = project.Texts.Find(\"Genesis\")\n            >>> for para in project.Paragraphs.GetAll(text):\n            ...     text = project.Paragraphs.GetText(para)\n            ...     print(f\"Paragraph: {text[:50]}...\")\n\n            >>> # Get as list\n            >>> all_paras = list(project.Paragraphs.GetAll(text))\n            >>> print(f\"Total paragraphs: {len(all_paras)}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -50516,6 +50700,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
@@ -50528,6 +50713,8 @@
         },
         {
           "description": "Get the number of segments in a paragraph.\n\nThis is more efficient than calling len(GetSegments()) when you only\nneed the count.\n",
+          "element_source_property": "SegmentsOS",
+          "element_type": "ISegment",
           "example": "            >>> para = list(project.Paragraphs.GetAll(text))[0]\n            >>> count = project.Paragraphs.GetSegmentCount(para)\n            >>> print(f\"Paragraph has {count} segments\")\n            Paragraph has 3 segments\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -50575,6 +50762,8 @@
         },
         {
           "description": "Get all segments in a paragraph.\n\nSegments are the individual units (typically sentences) within a paragraph\nthat can have their own analyses and translations.\n",
+          "element_source_property": "SegmentsOS",
+          "element_type": "ISegment",
           "example": "            >>> para = list(project.Paragraphs.GetAll(text))[0]\n            >>> segments = project.Paragraphs.GetSegments(para)\n            >>> print(f\"Paragraph has {len(segments)} segments\")\n            Paragraph has 3 segments\n            >>>\n            >>> # Iterate over segments\n            >>> for seg in segments:\n            ...     print(seg.BaselineText.Text)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -51475,6 +51664,7 @@
         },
         {
           "description": "Get all people in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all ICmPerson objects in the\nproject database, allowing iteration over all registered people.\n",
+          "element_type": "ICmPerson",
           "example": "            >>> for person in project.Person.GetAll():\n            ...     name = project.Person.GetName(person)\n            ...     email = project.Person.GetEmail(person)\n            ...     print(f\"{name}: {email}\")\n            John Smith: john.smith@example.com\n            Maria Garcia: maria.garcia@example.com\n            Ahmed Hassan: ahmed.hassan@example.com\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -51810,6 +52000,7 @@
         },
         {
           "description": "Get the languages known by a person.\n",
+          "element_source_property": "LanguagesRC",
           "example": "            >>> person = project.Person.Find(\"John Smith\")\n            >>> languages = project.Person.GetLanguages(person)\n            >>> for lang in languages:\n            ...     name = ITsString(lang.Name.BestAnalysisAlternative).Text\n            ...     print(f\"Language: {name}\")\n            Language: English\n            Language: Spanish\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -52002,6 +52193,8 @@
         },
         {
           "description": "Get the positions/roles associated with a person.\n",
+          "element_source_property": "PositionsRC",
+          "element_type": "ICmPossibility",
           "example": "            >>> person = project.Person.Find(\"John Smith\")\n            >>> positions = project.Person.GetPositions(person)\n            >>> for pos in positions:\n            ...     name = ITsString(pos.Name.BestAnalysisAlternative).Text\n            ...     print(f\"Position: {name}\")\n            Position: Consultant\n            Position: Native Speaker\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -52033,6 +52226,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If person_or_hvo is None"
           ],
@@ -52044,6 +52238,8 @@
         },
         {
           "description": "Get the places of residence for a person.\n",
+          "element_source_property": "PlacesOfResidenceRC",
+          "element_type": "ICmLocation",
           "example": "            >>> person = project.Person.Find(\"John Smith\")\n            >>> residences = project.Person.GetResidences(person)\n            >>> for loc in residences:\n            ...     name = ITsString(loc.Name.BestAnalysisAlternative).Text\n            ...     print(f\"Residence: {name}\")\n            Residence: New York, USA\n            Residence: London, UK\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -52916,6 +53112,7 @@
         },
         {
           "description": "Get all phonological features in the project.\n",
+          "element_type": "IFsClosedFeature",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -53831,6 +54028,7 @@
         },
         {
           "description": "Get all phonemes in the project.\n",
+          "element_type": "IPhPhoneme",
           "example": "            >>> phonemeOps = PhonemeOperations(project)\n            >>> for phoneme in phonemeOps.GetAll():\n            ...     representation = phonemeOps.GetRepresentation(phoneme)\n            ...     description = phonemeOps.GetDescription(phoneme)\n            ...     print(f\"{representation}: {description}\")\n            /p/: voiceless bilabial stop\n            /b/: voiced bilabial stop\n            /t/: voiceless alveolar stop\n            /d/: voiced alveolar stop\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -53914,6 +54112,8 @@
         },
         {
           "description": "Get all codes (allophonic representations) for a phoneme.\n",
+          "element_source_property": "CodesOS",
+          "element_type": "IPhCode",
           "example": "            >>> # Get allophones of /t/\n            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     for code in codes:\n            ...         ws = project.project.DefaultVernWs\n            ...         repr = ITsString(code.Representation.get_String(ws)).Text\n            ...         print(repr)\n            [t]   # plain voiceless alveolar stop\n            [tʰ]  # aspirated (word-initial)\n            [ɾ]   # flap (intervocalic)\n\n            >>> # Get vowel allophones\n            >>> phoneme = project.Phonemes.Find(\"/i/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     print(f\"Phoneme /i/ has {len(codes)} allophonic codes\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -55728,6 +55928,7 @@
         },
         {
           "description": "Get the output specifications for this rule.\n\nOnly available on PhRegularRule. Returns empty list for other types.\n",
+          "element_source_property": "RightHandSidesOS",
           "example": "            if wrapped.has_output_specs:\n                for rhs in wrapped.output_specs:\n                    print(f\"Output spec: {rhs}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -56453,6 +56654,8 @@
         },
         {
           "description": "Get all feature constraints in the project.\n",
+          "element_source_property": "FeatConstraintsOS",
+          "element_type": "IPhFeatureConstraint",
           "example": "            >>> for c in project.PhonRules.GetConstraints():\n            ...     feat = c.FeatureRA\n            ...     print(feat.Name.BestAnalysisAlternative.Text)\n\n        See Also:\n            MakeConstraint, DeleteConstraint",
           "is_classmethod": false,
           "is_mutating": false,
@@ -57471,6 +57674,9 @@
         },
         {
           "description": "Get all items in the list.\n",
+          "element_cast_applied": true,
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -57495,6 +57701,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list[ICmPossibility]",
           "returns": "list[ICmPossibility]: All items in the list. ",
@@ -58531,6 +58738,9 @@
         },
         {
           "description": "Get items from a possibility list.\n",
+          "element_cast_applied": true,
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> genre_list = project.PossibilityLists.FindList(\"Text Genres\")\n            >>> for item in project.PossibilityLists.GetItems(genre_list):\n            ...     print(project.PossibilityLists.GetItemName(item))    # All items at any depth\n\n            >>> # Top-level only\n            >>> top = project.PossibilityLists.GetItems(genre_list, recursive=False)\n\n        See Also:\n            GetSubitems, CreateItem, FindItem",
           "is_classmethod": false,
           "is_mutating": false,
@@ -58568,6 +58778,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If list_or_hvo is None."
           ],
@@ -58749,6 +58960,9 @@
         },
         {
           "description": "Get the subitems of a possibility item.\n",
+          "element_cast_applied": true,
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> pos_list = project.PossibilityLists.FindList(\"Parts of Speech\")\n            >>> noun = project.PossibilityLists.FindItem(pos_list, \"Noun\")\n            >>> for sub in project.PossibilityLists.GetSubitems(noun):\n            ...     print(project.PossibilityLists.GetItemName(sub))   # All descendants\n\n            >>> # Direct children only\n            >>> for sub in project.PossibilityLists.GetSubitems(noun, recursive=False):\n            ...     print(project.PossibilityLists.GetItemName(sub))\n\n        See Also:\n            GetParentItem, GetItems, CreateItem",
           "is_classmethod": false,
           "is_mutating": false,
@@ -58786,6 +59000,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If item_or_hvo is None."
           ],
@@ -60967,6 +61182,7 @@
         },
         {
           "description": "Get all pronunciations for a lexical entry, or all pronunciations in the entire project.\n",
+          "element_type": "ILexPronunciation",
           "example": "            >>> # Get pronunciations for specific entry\n            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> for pron in project.Pronunciations.GetAll(entry):\n            ...     ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n            ...     print(f\"IPA: {ipa}\")\n            IPA: rʌn\n            IPA: ɹʌn\n\n            >>> # Get ALL pronunciations in entire project\n            >>> for pron in project.Pronunciations.GetAll():\n            ...     ipa = project.Pronunciations.GetForm(pron, \"en-fonipa\")\n            ...     print(f\"IPA: {ipa}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -61132,6 +61348,8 @@
         },
         {
           "description": "Get the count of media files associated with a pronunciation.\n",
+          "element_source_property": "MediaFilesOS",
+          "element_type": "ICmMedia",
           "example": "            >>> pron = list(project.Pronunciations.GetAll(entry))[0]\n            >>> count = project.Pronunciations.GetMediaCount(pron)\n            >>> print(f\"This pronunciation has {count} audio files\")\n            This pronunciation has 2 audio files\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -61174,6 +61392,8 @@
         },
         {
           "description": "Get all media files (typically audio) associated with a pronunciation.\n",
+          "element_source_property": "MediaFilesOS",
+          "element_type": "ICmMedia",
           "example": "            >>> pron = list(project.Pronunciations.GetAll(entry))[0]\n            >>> media = project.Pronunciations.GetMediaFiles(pron)\n            >>> for m in media:\n            ...     print(f\"Media: {m}\")\n            Media: audio_recording.wav\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -61676,6 +61896,9 @@
         },
         {
           "description": "Get all publications in the project.\n",
+          "element_cast_applied": true,
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> for pub in project.Publications.GetAll():\n            ...     print(project.Publications.GetName(pub))   # Includes variants at any depth\n\n            >>> # Top-level only\n            >>> for pub in project.Publications.GetAll(recursive=False):\n            ...     print(project.Publications.GetName(pub))\n\n        See Also:\n            Find, GetSubPublications",
           "is_classmethod": false,
           "is_mutating": false,
@@ -61707,6 +61930,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [],
           "return_type": "list[ICmPossibility]",
           "returns": "list[ICmPossibility]: All publications. ",
@@ -61788,6 +62012,9 @@
         },
         {
           "description": "Get the publication divisions (e.g., main entries, minor entries).\n",
+          "element_cast_applied": true,
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> divisions = project.Publications.GetDivisions(pub)\n            >>> for div in divisions:\n            ...     name = ITsString(div.Name.BestAnalysisAlternative).Text\n            ...     print(f\"Division: {name}\")\n            Division: Main Entries\n            Division: Minor Entries\n            Division: Back Matter\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -61819,6 +62046,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If publication_or_hvo is None."
           ],
@@ -62125,6 +62353,9 @@
         },
         {
           "description": "Get the sub-publications of a publication.\n",
+          "element_cast_applied": true,
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> for sub in project.Publications.GetSubPublications(pub):\n            ...     print(project.Publications.GetName(sub))   # All descendants\n\n            >>> # Direct children only\n            >>> for sub in project.Publications.GetSubPublications(pub, recursive=False):\n            ...     print(project.Publications.GetName(sub))\n\n        See Also:\n            GetParent, GetDivisions",
           "is_classmethod": false,
           "is_mutating": false,
@@ -62162,6 +62393,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If publication_or_hvo is None."
           ],
@@ -62814,6 +63046,7 @@
         },
         {
           "description": "Get all reversal entries in a reversal index.\n",
+          "element_type": "IReversalIndexEntry",
           "example": "            >>> idx = project.ReversalIndexes.Find(\"English\")\n            >>> for entry in project.ReversalEntries.GetAll(idx):\n            ...     form = project.ReversalEntries.GetForm(entry)\n            ...     sense_count = len(list(project.ReversalEntries.GetSenses(entry)))\n            ...     print(f\"{form}: {sense_count} senses\")\n            run: 3 senses\n            walk: 2 senses\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -62906,6 +63139,8 @@
         },
         {
           "description": "Get all lexical senses linked to this reversal entry.\n",
+          "element_source_property": "SensesRS",
+          "element_type": "ILexSense",
           "example": "            >>> entry = project.ReversalEntries.Find(idx, \"run\")\n            >>> senses = project.ReversalEntries.GetSenses(entry)\n            >>> for sense in senses:\n            ...     gloss = project.Senses.GetGloss(sense)\n            ...     print(f\"Linked sense: {gloss}\")\n            Linked sense: to move rapidly\n            Linked sense: to flow\n            Linked sense: to operate\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -62948,6 +63183,8 @@
         },
         {
           "description": "Get all subentries of a reversal entry.\n",
+          "element_source_property": "SubentriesOS",
+          "element_type": "IReversalIndexEntry",
           "example": "            >>> entry = project.ReversalEntries.Find(idx, \"run\")\n            >>> subentries = project.ReversalEntries.GetSubentries(entry)\n            >>> for sub in subentries:\n            ...     form = project.ReversalEntries.GetForm(sub)\n            ...     print(f\"Subentry: {form}\")\n            Subentry: run away\n            Subentry: run out\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -63403,6 +63640,7 @@
         },
         {
           "description": "Get all reversal indexes in the project.\n",
+          "element_type": "IReversalIndex",
           "example": "            >>> for idx in project.ReversalIndexes.GetAll():\n            ...     name = project.ReversalIndexes.GetName(idx)\n            ...     ws = project.ReversalIndexes.GetWritingSystem(idx)\n            ...     entry_count = len(list(project.ReversalIndexes.GetEntries(idx)))\n            ...     print(f\"{name} ({ws}): {entry_count} entries\")\n            English (en): 250 entries\n            French (fr): 120 entries\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -63999,6 +64237,8 @@
         },
         {
           "description": "Get the annotations container for a Scripture book.\n",
+          "element_source_property": "FootnotesOS",
+          "element_type": "IScrFootnote",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> annotations = project.ScrAnnotations.GetForBook(genesis)\n            >>> if annotations:\n            ...     notes = project.ScrAnnotations.GetNotes(annotations)\n            ...     print(f\"Book has {len(notes)} notes\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -64038,6 +64278,8 @@
         },
         {
           "description": "Get all notes in a Scripture book annotations container.\n",
+          "element_source_property": "NotesOS",
+          "element_type": "IScrScriptureNote",
           "example": "            >>> annotations = project.ScrAnnotations.GetForBook(genesis)\n            >>> if annotations:\n            ...     notes = project.ScrAnnotations.GetNotes(annotations)\n            ...     for note in notes:\n            ...         text = project.ScrNotes.GetText(note)\n            ...         print(f\"Note: {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -64329,6 +64571,8 @@
         },
         {
           "description": "Get all Scripture books in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrBook objects in the\nproject, allowing iteration over all Scripture books.\n",
+          "element_source_property": "ScriptureBooksOS",
+          "element_type": "IScrBook",
           "example": "            >>> for book in project.ScrBooks.GetAll():\n            ...     title = project.ScrBooks.GetTitle(book)\n            ...     num = project.ScrBooks.GetCanonicalNum(book)\n            ...     print(f\"{num}: {title}\")\n            1: Genesis\n            2: Exodus\n            40: Matthew\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -64401,6 +64645,8 @@
         },
         {
           "description": "Get all sections in a Scripture book.\n",
+          "element_source_property": "SectionsOS",
+          "element_type": "IScrSection",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> sections = project.ScrBooks.GetSections(genesis)\n            >>> for section in sections:\n            ...     heading = project.ScrSections.GetHeading(section)\n            ...     print(f\"Section: {heading}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -64753,6 +64999,8 @@
         },
         {
           "description": "Get all Scripture drafts in the project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IScrDraft objects in the\nproject, allowing iteration over all saved Scripture versions.\n",
+          "element_source_property": "ArchivedDraftsOC",
+          "element_type": "IScrDraft",
           "example": "            >>> for draft in project.ScrDrafts.GetAll():\n            ...     desc = project.ScrDrafts.GetDescription(draft)\n            ...     print(f\"Draft: {desc}\")\n            Draft: First Draft - January 2025\n            Draft: Consultant Check - February 2025\n            Draft: Final Version - March 2025\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -64786,6 +65034,8 @@
         },
         {
           "description": "Get all books in a Scripture draft.\n",
+          "element_source_property": "BooksOS",
+          "element_type": "IScrBook",
           "example": "            >>> draft = project.ScrDrafts.Find(\"First Draft\")\n            >>> books = project.ScrDrafts.GetBooks(draft)\n            >>> for book in books:\n            ...     title = project.ScrBooks.GetTitle(book)\n            ...     print(f\"Book: {title}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65101,6 +65351,8 @@
         },
         {
           "description": "Find a Scripture note by index within a book.\n",
+          "element_source_property": "NotesOS",
+          "element_type": "IScrScriptureNote",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> # Get first note\n            >>> note = project.ScrNotes.Find(genesis, 0)\n            >>> if note:\n            ...     text = project.ScrNotes.GetText(note)\n            ...     print(f\"Note: {text}\")\n\n            >>> # Get third note\n            >>> note3 = project.ScrNotes.Find(genesis, 2)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65149,6 +65401,8 @@
         },
         {
           "description": "Get all Scripture notes in a book.\n",
+          "element_source_property": "NotesOS",
+          "element_type": "IScrScriptureNote",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> notes = project.ScrNotes.GetAll(genesis)\n            >>> for i, note in enumerate(notes):\n            ...     text = project.ScrNotes.GetText(note)\n            ...     resolved = project.ScrNotes.IsResolved(note)\n            ...     status = \"Resolved\" if resolved else \"Open\"\n            ...     print(f\"{i+1}. [{status}] {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65593,6 +65847,8 @@
         },
         {
           "description": "Find a Scripture section by index within a book.\n",
+          "element_source_property": "SectionsOS",
+          "element_type": "IScrSection",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> # Get first section\n            >>> section = project.ScrSections.Find(genesis, 0)\n            >>> if section:\n            ...     heading = project.ScrSections.GetHeading(section)\n            ...     print(f\"Section: {heading}\")\n\n            >>> # Get third section\n            >>> section3 = project.ScrSections.Find(genesis, 2)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65641,6 +65897,8 @@
         },
         {
           "description": "Get all Scripture sections in a book.\n",
+          "element_source_property": "SectionsOS",
+          "element_type": "IScrSection",
           "example": "            >>> genesis = project.ScrBooks.Find(1)\n            >>> sections = project.ScrSections.GetAll(genesis)\n            >>> for i, section in enumerate(sections):\n            ...     heading = project.ScrSections.GetHeading(section)\n            ...     print(f\"{i+1}. {heading}\")\n            1. The Creation\n            2. The Fall\n            3. Cain and Abel\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65683,6 +65941,8 @@
         },
         {
           "description": "Get all content paragraphs in a Scripture section.\n",
+          "element_source_property": "ParagraphsOS",
+          "element_type": "IStPara",
           "example": "            >>> section = project.ScrSections.Find(genesis, 0)\n            >>> paras = project.ScrSections.GetContent(section)\n            >>> for para in paras:\n            ...     text = project.ScrTxtParas.GetText(para)\n            ...     print(f\"Paragraph: {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -65714,6 +65974,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If section_or_hvo is None"
           ],
@@ -66059,6 +66320,8 @@
         },
         {
           "description": "Find a Scripture paragraph by index within a section.\n",
+          "element_source_property": "ParagraphsOS",
+          "element_type": "IStPara",
           "example": "            >>> section = project.ScrSections.Find(genesis, 0)\n            >>> # Get first paragraph\n            >>> para = project.ScrTxtParas.Find(section, 0)\n            >>> if para:\n            ...     text = project.ScrTxtParas.GetText(para)\n            ...     print(f\"Paragraph: {text}\")\n\n            >>> # Get third paragraph\n            >>> para3 = project.ScrTxtParas.Find(section, 2)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -66096,6 +66359,7 @@
               "type": "int"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If section_or_hvo or index is None"
           ],
@@ -66107,6 +66371,8 @@
         },
         {
           "description": "Get all Scripture paragraphs in a section.\n",
+          "element_source_property": "ParagraphsOS",
+          "element_type": "IStPara",
           "example": "            >>> section = project.ScrSections.Find(genesis, 0)\n            >>> paras = project.ScrTxtParas.GetAll(section)\n            >>> for i, para in enumerate(paras):\n            ...     text = project.ScrTxtParas.GetText(para)\n            ...     print(f\"{i+1}. {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -66138,6 +66404,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If section_or_hvo is None"
           ],
@@ -66704,6 +66971,7 @@
         },
         {
           "description": "Get all segments in a paragraph.\n",
+          "element_type": "ISegment",
           "example": "            >>> para = project.Object(para_hvo)\n            >>> for segment in project.Segments.GetAll(para):\n            ...     text = project.Segments.GetBaselineText(segment)\n            ...     print(text)\n            In the beginning God created the heavens and the earth.\n            Now the earth was formless and empty.\n\n        See Also:\n            GetBaselineText, GetFreeTranslation, GetAnalyses",
           "is_classmethod": false,
           "is_mutating": false,
@@ -67352,6 +67620,8 @@
         },
         {
           "description": "Re-derive segment offsets and wordform analyses for a paragraph by\nreassigning para.Contents to itself; FreeTranslation, LiteralTranslation,\nand Notes on surviving segments are preserved.\n\nImplementation: assigns para.Contents back to itself. That single setter\nassignment fires ContentsSideEffects -> AnalysisAdjuster, which is an\noffset reconciler -- it rebuilds AnalysesRS (wordform analyses) but does\nNOT touch FreeTranslation, LiteralTranslation, or NotesOS on surviving\nsegments (those are independently-owned LCM objects with no dependency\non Contents). When the assignment is a self-assignment (the only path\nthrough this method), segment objects survive with identical offsets,\nso their translations are never cleared. No regex, no manual\nSegmentsOS.Clear(), no factory.Create() calls are needed or used.\n",
+          "element_source_property": "SegmentsOS",
+          "element_type": "ISegment",
           "example": "            >>> para = project.Object(para_hvo)\n            >>> segs = project.Segments.ReparseParagraph(para)\n            >>> print(f\"Rebuilt {segs.Count} segments\")\n            Rebuilt 3 segments\n\n        See Also:\n            SplitSegment, MergeSegments, AppendSentence\n\n        Warning:\n            This destroys all existing wordform analyses (AnalysesRS) on the\n            paragraph. FreeTranslation, LiteralTranslation, and Notes are NOT\n            cleared. Use SplitSegment or MergeSegments for non-destructive\n            structural edits.",
           "is_classmethod": false,
           "is_mutating": true,
@@ -68283,6 +68553,9 @@
         },
         {
           "description": "Get all semantic domains in the project.\n",
+          "element_source_property": "PossibilitiesOS",
+          "element_type": "ICmSemanticDomain",
+          "element_type_hint": "ICmSemanticDomain",
           "example": "            >>> for domain in project.SemanticDomains.GetAll():\n            ...     print(project.SemanticDomains.GetNumber(domain),\n            ...           project.SemanticDomains.GetName(domain))\n            1 - Universe, creation\n            1.1 - Sky\n            1.1.1 - Sun\n            ...\n\n            >>> # Top-level only\n            >>> for domain in project.SemanticDomains.GetAll(recursive=False):\n            ...     print(project.SemanticDomains.GetName(domain))\n\n        See Also:\n            Find, FindByName, GetSubdomains",
           "is_classmethod": false,
           "is_mutating": false,
@@ -68729,6 +69002,8 @@
         },
         {
           "description": "Get the subdomains of a semantic domain.\n",
+          "element_source_property": "SubPossibilitiesOS",
+          "element_type": "ICmPossibility",
           "example": "            >>> top = project.SemanticDomains.Find(\"1\")\n            >>> for sub in project.SemanticDomains.GetSubdomains(top):\n            ...     print(project.SemanticDomains.GetNumber(sub))   # All descendants\n\n            >>> # Direct children only\n            >>> for sub in project.SemanticDomains.GetSubdomains(top, recursive=False):\n            ...     print(project.SemanticDomains.GetNumber(sub))\n\n        See Also:\n            GetParent, GetAll, GetDepth",
           "is_classmethod": false,
           "is_mutating": false,
@@ -68766,6 +69041,7 @@
               "type": "bool"
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If domain_or_hvo is None."
           ],
@@ -69578,6 +69854,7 @@
         },
         {
           "description": "Yield every stratum in ``MorphologicalDataOA.StrataOS``.\n",
+          "element_type": "IMoStratum",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -70264,6 +70541,7 @@
         },
         {
           "description": "Get all texts in the project.\n\nReturns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) that yields IText objects. This is a wrapper around\nthe existing TextsGetAll method but returns the raw IText objects instead\nof (name, content) tuples.\n",
+          "element_type": "IText",
           "example": "            >>> # Iterate over all texts\n            >>> for text in project.Texts.GetAll():\n            ...     name = text.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Text: {name}\")\n\n            >>> # Get as list\n            >>> all_texts = list(project.Texts.GetAll())\n            >>> print(f\"Total texts: {len(all_texts)}\")\n\n        See Also:\n            Create, Delete, Exists, project.TextsGetAll()",
           "is_classmethod": false,
           "is_mutating": false,
@@ -70429,6 +70707,7 @@
         },
         {
           "description": "Get media files associated with a text.\n\nRetrieves all media files (audio, video, etc.) that are linked to the\ntext. In FLEx, media files are stored in a CmMediaContainer object\nreferenced by the text's MediaFilesOA property.\n",
+          "element_source_property": "MediaFilesOC",
           "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>> media = project.Texts.GetMediaFiles(text)\n            >>> for m in media:\n            ...     if m.MediaFileRA:\n            ...         path = m.MediaFileRA.AbsoluteInternalPath\n            ...         print(f\"Media file: {path}\")\n\n        See Also:\n            AddMediaFile",
           "is_classmethod": false,
           "is_mutating": false,
@@ -70531,6 +70810,8 @@
         },
         {
           "description": "Get the number of paragraphs in a text.\n\nCounts the paragraphs in the text's contents. This is more efficient\nthan getting all paragraphs and checking the length if you only need\nthe count.\n",
+          "element_source_property": "ParagraphsOS",
+          "element_type": "IStPara",
           "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>> count = project.Texts.GetParagraphCount(text)\n            >>> print(f\"Text has {count} paragraphs\")\n\n        See Also:\n            GetParagraphs, GetContents",
           "is_classmethod": false,
           "is_mutating": false,
@@ -70566,6 +70847,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
@@ -70578,6 +70860,8 @@
         },
         {
           "description": "Get all paragraphs in a text.\n\nRetrieves a list of all paragraph objects (IStTxtPara) from the text's\ncontents. If the text has no contents, returns an empty list.\n",
+          "element_source_property": "ParagraphsOS",
+          "element_type": "IStPara",
           "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>> paras = project.Texts.GetParagraphs(text)\n            >>> for i, para in enumerate(paras, 1):\n            ...     content = para.Contents.Text\n            ...     print(f\"Paragraph {i}: {content}\")\n\n        See Also:\n            GetContents, GetParagraphCount",
           "is_classmethod": false,
           "is_mutating": false,
@@ -70613,6 +70897,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
@@ -71876,6 +72161,7 @@
         },
         {
           "description": "Get all variant references for a lexical entry, or all variants in the entire project.\n\nThis returns the entry references that define this entry as a variant\nof other entries, or other entries as variants of this one.\n",
+          "element_type": "ILexEntryRef",
           "example": "            >>> # Get variant references for specific entry\n            >>> entry = project.LexEntry.Find(\"colour\")\n            >>> for variant_ref in project.Variants.GetAll(entry):\n            ...     vtype = project.Variants.GetType(variant_ref)\n            ...     type_name = project.Variants.GetTypeName(vtype)\n            ...     print(f\"Variant type: {type_name}\")\n            Variant type: Spelling Variant\n\n            >>> # Get ALL variant references in entire project\n            >>> for variant_ref in project.Variants.GetAll():\n            ...     form = project.Variants.GetForm(variant_ref)\n            ...     print(f\"Variant form: {form}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -71916,6 +72202,7 @@
         },
         {
           "description": "Get all variant entry types defined in the project.\n\nVariant types define the nature of the relationship between entries,\nsuch as spelling variants, dialectal variants, irregularly inflected\nforms, etc.\n",
+          "element_type": "ILexEntryType",
           "example": "            >>> for vtype in project.Variants.GetAllTypes():\n            ...     name = project.Variants.GetTypeName(vtype)\n            ...     desc = project.Variants.GetTypeDescription(vtype)\n            ...     print(f\"{name}: {desc}\")\n            Spelling Variant: A variant spelling of the same word\n            Dialectal Variant: A form used in a particular dialect\n            Irregularly Inflected Form: An irregular inflection of a lexeme\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -71940,6 +72227,7 @@
             }
           },
           "parameters": [],
+          "polymorphic": true,
           "raises": [],
           "return_type": "EnumerableWrapper[ILexEntryType]",
           "returns": "EnumerableWrapper[ILexEntryType]: Each variant type defined in the project. ",
@@ -71949,6 +72237,9 @@
         },
         {
           "description": "Get the component lexemes of a variant.\n\nComponent lexemes are the base entries that make up an irregularly\ninflected form. For example, \"went\" has \"go\" as a component.\n",
+          "element_cast_applied": true,
+          "element_source_property": "ComponentLexemesRS",
+          "element_type": "ICmObject",
           "example": "            >>> # \"went\" is irregular past tense of \"go\"\n            >>> went_entry = project.LexEntry.Find(\"went\")\n            >>> for variant in project.Variants.GetAll(went_entry):\n            ...     components = project.Variants.GetComponentLexemes(variant)\n            ...     for comp in components:\n            ...         headword = project.LexEntry.GetHeadword(comp)\n            ...         print(f\"Component: {headword}\")\n            Component: go\n\n            >>> # \"worse\" might have components \"bad\" or \"ill\"\n            >>> worse_entry = project.LexEntry.Find(\"worse\")\n            >>> for variant in project.Variants.GetAll(worse_entry):\n            ...     for comp in project.Variants.GetComponentLexemes(variant):\n            ...         print(project.LexEntry.GetHeadword(comp))\n            bad\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -71980,6 +72271,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If variant_or_hvo is None."
           ],
@@ -72117,6 +72409,8 @@
         },
         {
           "description": "Get the variant type of a variant reference.\n",
+          "element_source_property": "VariantEntryTypesRS",
+          "element_type": "ILexEntryType",
           "example": "            >>> entry = project.LexEntry.Find(\"colour\")\n            >>> for variant in project.Variants.GetAll(entry):\n            ...     vtype = project.Variants.GetType(variant)\n            ...     if vtype:\n            ...         name = project.Variants.GetTypeName(vtype)\n            ...         print(f\"Variant type: {name}\")\n            Variant type: Spelling Variant\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -72145,6 +72439,7 @@
               "type": ""
             }
           ],
+          "polymorphic": true,
           "raises": [
             "FP_NullParameterError: If variant_or_hvo is None."
           ],
@@ -72931,6 +73226,8 @@
         },
         {
           "description": "Retrieve all analyses for a wordform.\n\nThis method returns all IWfiAnalysis objects associated with a given\nwordform, representing different possible linguistic interpretations.\n",
+          "element_source_property": "AnalysesOC",
+          "element_type": "IWfiAnalysis",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.WfiAnalyses.GetAll(wf)\n            >>> print(f\"Found {len(analyses)} analyses\")\n            Found 2 analyses\n            >>> for analysis in analyses:\n            ...     if project.WfiAnalyses.IsHumanApproved(analysis):\n            ...         print(\"This is the approved analysis\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73116,6 +73413,8 @@
         },
         {
           "description": "Get all agent evaluations for an analysis.\n\nRetrieves all ICmAgentEvaluation objects from the analysis's\nEvaluationsRC (Reference Collection). This is a read-only property\nthat returns evaluations created by both human linguists and automated\nagents (e.g., morphological parser).\n",
+          "element_source_property": "EvaluationsRC",
+          "element_type": "ICmAgentEvaluation",
           "example": "            >>> analysis = analyses[0]\n            >>> evaluations = project.WfiAnalyses.GetEvaluations(analysis)\n            >>> for evaluation in evaluations:\n            ...     if hasattr(evaluation, 'Agent') and evaluation.Agent:\n            ...         agent_name = evaluation.Agent.Name.BestAnalysisAlternative.Text\n            ...         is_accepted = evaluation.Accepted if hasattr(evaluation, 'Accepted') else None\n            ...         print(f\"Agent: {agent_name}, Accepted: {is_accepted}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73163,6 +73462,8 @@
         },
         {
           "description": "Get the count of glosses for an analysis.\n",
+          "element_source_property": "MeaningsOC",
+          "element_type": "IWfiGloss",
           "example": "            >>> analysis = analyses[0]\n            >>> count = project.WfiAnalyses.GetGlossCount(analysis)\n            >>> print(f\"Analysis has {count} gloss(es)\")\n            Analysis has 1 gloss(es)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73210,6 +73511,8 @@
         },
         {
           "description": "Get all glosses for an analysis.\n\nRetrieves all IWfiGloss objects associated with this analysis,\nrepresenting the meanings/translations of the analysis.\n",
+          "element_source_property": "MeaningsOC",
+          "element_type": "IWfiGloss",
           "example": "            >>> analysis = analyses[0]\n            >>> glosses = project.WfiAnalyses.GetGlosses(analysis)\n            >>> for gloss in glosses:\n            ...     # Access gloss properties\n            ...     print(f\"Gloss HVO: {gloss.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73342,6 +73645,8 @@
         },
         {
           "description": "Get the count of morpheme bundles for an analysis.\n",
+          "element_source_property": "MorphBundlesOS",
+          "element_type": "IWfiMorphBundle",
           "example": "            >>> analysis = analyses[0]\n            >>> count = project.WfiAnalyses.GetMorphBundleCount(analysis)\n            >>> print(f\"Analysis has {count} morpheme(s)\")\n            Analysis has 2 morpheme(s)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73389,6 +73694,8 @@
         },
         {
           "description": "Get all morpheme bundles for an analysis.\n\nRetrieves all IWfiMorphBundle objects representing the morphological\nbreakdown of the wordform in this analysis.\n",
+          "element_source_property": "MorphBundlesOS",
+          "element_type": "IWfiMorphBundle",
           "example": "            >>> analysis = analyses[0]\n            >>> bundles = project.WfiAnalyses.GetMorphBundles(analysis)\n            >>> for bundle in bundles:\n            ...     # Access bundle properties\n            ...     print(f\"Morph bundle HVO: {bundle.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73436,6 +73743,8 @@
         },
         {
           "description": "Get morpheme bundles for any segment analysis token (owner-resolving).\n\nUnlike :meth:`GetMorphBundles` (which requires a concrete\n``IWfiAnalysis``), this accepts the polymorphic ``IAnalysis`` tokens\nthat ``SegmentOperations.GetAnalyses`` returns and resolves the owning\n``IWfiAnalysis`` automatically. This is the traversal helper interlinear\nloops kept hand-rolling (issue #212).\n",
+          "element_source_property": "MorphBundlesOS",
+          "element_type": "IWfiMorphBundle",
           "example": "            >>> for tok in project.Segments.GetAnalyses(segment):\n            ...     for mb in project.WfiAnalyses.GetMorphemeBundles(tok):\n            ...         ...  # no manual IWfiGloss -> Owner -> WfiAnalysis chase\n\n        See Also:\n            GetMorphBundles, GetCategoryAbbrev, SegmentOperations.GetGloss",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73559,6 +73868,8 @@
         },
         {
           "description": "Check if an analysis is computer/parser-approved.\n\nDetermines whether the parser has approved this analysis\n(as opposed to human approval).\n",
+          "element_source_property": "EvaluationsRC",
+          "element_type": "ICmAgentEvaluation",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> for analysis in project.WfiAnalyses.GetAll(wf):\n            ...     if project.WfiAnalyses.IsComputerApproved(analysis):\n            ...         print(\"Parser-generated analysis\")\n            ...     else:\n            ...         print(\"Needs parsing or manual creation\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -73603,6 +73914,8 @@
         },
         {
           "description": "Check if an analysis is human-approved.\n\nDetermines whether a human linguist has explicitly approved this\nanalysis (as opposed to parser/computer approval).\n",
+          "element_source_property": "EvaluationsRC",
+          "element_type": "ICmAgentEvaluation",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> for analysis in project.WfiAnalyses.GetAll(wf):\n            ...     if project.WfiAnalyses.IsHumanApproved(analysis):\n            ...         print(\"Found human-approved analysis\")\n            ...         glosses = project.WfiAnalyses.GetGlosses(analysis)\n            ...         print(f\"Glosses: {glosses}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -74306,6 +74619,7 @@
         },
         {
           "description": "Retrieve all glosses for a wordform analysis.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able,\nlazily materialized) over all IWfiGloss objects associated with the\nspecified analysis, allowing iteration over all meaning glosses.\n",
+          "element_type": "IWfiGloss",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.Wordforms.GetAnalyses(wf)\n            >>> if analyses:\n            ...     for gloss in project.WfiGlosses.GetAll(analyses[0]):\n            ...         form = project.WfiGlosses.GetForm(gloss)\n            ...         print(form)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -74449,6 +74763,8 @@
         },
         {
           "description": "Get the count of glosses for a wordform analysis.\n",
+          "element_source_property": "MeaningsOC",
+          "element_type": "IWfiGloss",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.Wordforms.GetAnalyses(wf)\n            >>> if analyses:\n            ...     count = project.WfiGlosses.GetCount(analyses[0])\n            ...     print(f\"This analysis has {count} glosses\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -74997,6 +75313,7 @@
         },
         {
           "description": "Get all morph bundles for a wordform analysis.\n",
+          "element_type": "IWfiMorphBundle",
           "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> analysis = analyses[0]\n            >>> for bundle in morphBundleOps.GetAll(analysis):\n            ...     form = morphBundleOps.GetForm(bundle)\n            ...     gloss = morphBundleOps.GetGloss(bundle)\n            ...     print(f\"{form} - {gloss}\")\n            run - run\n            -ing - PROG\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -76337,6 +76654,7 @@
         },
         {
           "description": "Retrieve all wordforms in the FLEx project.\n\nThis method returns an EnumerableWrapper (subscriptable, len()-able, lazily materialized) over all IWfiWordform objects in the\nproject database, allowing iteration over the complete wordform inventory.\n",
+          "element_type": "IWfiWordform",
           "example": "            >>> for wordform in project.Wordforms.GetAll():\n            ...     form = project.Wordforms.GetForm(wordform)\n            ...     print(form)\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -76370,6 +76688,7 @@
         },
         {
           "description": "Retrieve all wordforms that are not approved (not CORRECT status).\n",
+          "element_type": "IWfiWordform",
           "example": "            >>> # Get all unapproved wordforms\n            >>> for wf in project.Wordforms.GetAllUnapproved():\n            ...     form = project.Wordforms.GetForm(wf)\n            ...     status = project.Wordforms.GetSpellingStatus(wf)\n            ...     print(f\"{form}: status={status}\")\n            >>>\n            >>> # Count unapproved wordforms\n            >>> unapproved_count = sum(1 for _ in project.Wordforms.GetAllUnapproved())\n            >>> print(f\"Total unapproved: {unapproved_count}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -76403,6 +76722,7 @@
         },
         {
           "description": "Retrieve all wordforms with a specific spelling status.\n",
+          "element_type": "IWfiWordform",
           "example": "            >>> # Get all correctly spelled wordforms\n            >>> correct_wfs = list(project.Wordforms.GetAllWithStatus(SpellingStatusStates.CORRECT))\n            >>> print(f\"Found {len(correct_wfs)} approved wordforms\")\n            >>>\n            >>> # Get all misspellings\n            >>> for wf in project.Wordforms.GetAllWithStatus(SpellingStatusStates.INCORRECT):\n            ...     form = project.Wordforms.GetForm(wf)\n            ...     print(f\"Misspelling: {form}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -76445,6 +76765,8 @@
         },
         {
           "description": "Get all analyses associated with a wordform.\n",
+          "element_source_property": "AnalysesOC",
+          "element_type": "IWfiAnalysis",
           "example": "            >>> wf = project.Wordforms.Find(\"running\")\n            >>> analyses = project.Wordforms.GetAnalyses(wf)\n            >>> for analysis in analyses:\n            ...     # Process each analysis\n            ...     print(f\"Analysis HVO: {analysis.Hvo}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
@@ -77156,6 +77478,7 @@
         },
         {
           "description": "Get all active writing systems in the project.\n\nReturns all writing systems that are currently active (both vernacular\nand analysis) in the project.\n",
+          "element_type": "IWritingSystemDefinition",
           "example": "            >>> for ws in project.WritingSystems.GetAll():\n            ...     name = project.WritingSystems.GetDisplayName(ws)\n            ...     tag = project.WritingSystems.GetLanguageTag(ws)\n            ...     font = project.WritingSystems.GetFontName(ws)\n            ...     print(f\"{name} ({tag}): {font}\")\n            English (en): Calibri\n            French (fr): Arial\n            Vernacular (qaa-x-kal): Charis SIL\n",
           "is_classmethod": false,
           "is_mutating": false,

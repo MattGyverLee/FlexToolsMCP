@@ -1,0 +1,26 @@
+intent: "A polymorphic loop var (GetComplexFormComponents) passed to a type-specific Operations method must be rejected (issue #121 Rule B)"
+api_mode: flexicon
+write_enabled: false
+skip: true
+skip_reason: >
+  Issue #121's Rule B fires off the (optional) `element_type`/`polymorphic`
+  keys on a flexicon method record -- e.g. LexEntryOperations.
+  GetComplexFormComponents's element_type="ICmObject", polymorphic=True.
+  preflight_runner.py's `_FakeAPIIndex` is a small hand-built index (a
+  handful of Operations classes/methods with no element_type/polymorphic
+  annotations at all -- see that file's own module docstring, "Scope /
+  simplifications"), so this entry cannot exercise the rule without either
+  annotating the fake index (out of scope for a corpus-only change) or
+  depending on the real generated flexicon index (not guaranteed present in
+  a bare CI checkout). Covered instead by
+  tests/test_issue121_casting_dataflow.py::TestRuleBArgumentPosition,
+  which builds its own minimal fake api_index WITH the element_type/
+  polymorphic annotations.
+code: |
+  for c in project.LexEntry.GetComplexFormComponents(entry):
+      project.LexEntry.GetHeadword(c)
+expect:
+  outcome: preflight_reject
+  error_code: casting_issues_detected
+  auto_fixes: 0
+issue: 121

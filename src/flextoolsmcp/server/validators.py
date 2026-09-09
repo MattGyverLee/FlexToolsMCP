@@ -1110,6 +1110,108 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     return mapping
 
 
+def _resolve_receiver_ops_class(
+    receiver: ast.AST,
+    accessor_to_ops: Dict[str, str],
+    operations_aliases: Dict[str, str],
+) -> Optional[str]:
+    """Resolve an Operations class name for a call receiver AST node.
+
+    Handles the three shapes flexicon call sites use:
+      project.<Accessor>              -> via accessor_to_ops (index-derived)
+      <OpsClass>(project)              -> inline construction, read off the call
+      alias (x = <OpsClass>(project))  -> via operations_aliases
+
+    Issue #121: shared by `detect_casting_needs`' loop-target dataflow (both
+    the for-loop iter binding and the Rule B argument-position check). This
+    mirrors -- but deliberately does not replace -- the private
+    `_resolve_ops_class` closure inside `detect_hvo_literal_args` (issue
+    #103), which predates this helper; left untouched there to avoid
+    regression risk on that gate's own test suite.
+    """
+    if (
+        isinstance(receiver, ast.Attribute)
+        and isinstance(receiver.value, ast.Name)
+        and receiver.value.id == "project"
+    ):
+        return accessor_to_ops.get(receiver.attr)
+    if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
+        if receiver.func.id.endswith("Operations"):
+            return receiver.func.id
+    if isinstance(receiver, ast.Name) and receiver.id in operations_aliases:
+        return operations_aliases[receiver.id]
+    return None
+
+
+def _method_element_type(
+    api_index: Optional[Any], operations_class: str, method_name: str
+) -> Optional[Tuple[str, bool]]:
+    """(element_type, polymorphic) for `operations_class.method_name`'s
+    return value, per the (optional, issue #121) `element_type`/
+    `polymorphic` keys on flexicon method records. Returns None when
+    unresolved OR when the index hasn't been annotated with these keys yet
+    -- callers must treat None as "no information", not "not polymorphic",
+    so degrading gracefully against an un-annotated index is automatic.
+
+    Mirrors `_method_param_names`'s lookup shape (issue #103); kept as a
+    separate function because callers want a different miss value (None,
+    not []) and a 2-tuple instead of a bare list.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    entity = (flexicon.get("entities") or {}).get(operations_class, {})
+    for m in entity.get("methods", []) or []:
+        if m.get("name") == method_name:
+            element_type = m.get("element_type")
+            if not element_type:
+                return None
+            return element_type, bool(m.get("polymorphic", False))
+    return None
+
+
+def _first_reassignment_line(
+    body: List[ast.stmt], var_name: str, after_line: int
+) -> Optional[int]:
+    """Earliest line (strictly after `after_line`) where `var_name` is
+    reassigned anywhere within `body` (including nested if/for/with/try
+    blocks -- NOT crossing into a nested function/class def), or None if
+    there's no such reassignment.
+
+    Issue #121 remediation (defect 2): `detect_casting_needs`'s loop-target
+    dataflow used to blanket-bind a for-loop target's polymorphic
+    element_type for EVERY line from the `for` to the loop's end, with no
+    invalidation on reassignment -- so `c = ILexEntry(c)` inside the loop
+    body did not stop later lines from still being treated as polymorphic.
+    Used to cap the bound line RANGE at the reassignment, not to prove
+    what the variable becomes (Rule A/B's own cast-machinery consultation
+    handles that); deliberately conservative (over-narrowing the range is
+    the safe-for-false-positives direction here) -- a reassignment
+    anywhere in the body, even inside a single `if` branch, drops the
+    binding for every line after it, rather than trying to prove which
+    branch actually executes.
+    """
+    best: Optional[int] = None
+    for stmt in body:
+        for node in ast.walk(stmt):
+            targets: List[ast.AST] = []
+            if isinstance(node, ast.Assign):
+                targets = list(node.targets)
+            elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
+                targets = [node.target]
+            else:
+                continue
+            for t in targets:
+                if (
+                    isinstance(t, ast.Name)
+                    and t.id == var_name
+                    and node.lineno > after_line
+                ):
+                    if best is None or node.lineno < best:
+                        best = node.lineno
+    return best
+
+
 def detect_candidate_entities(
     code_tree: Optional[ast.AST], api_index: Optional[Any] = None, limit: int = 3
 ) -> List[str]:
@@ -3592,6 +3694,7 @@ def _pick_cast_interface(
     available_on: List[str],
     casting_index: Optional[Dict] = None,
     receiver_name: Optional[str] = None,
+    polymorphic_receiver: bool = False,
 ) -> Optional[str]:
     """Pick the most-specific interface to cast to for `property_name`.
 
@@ -3602,13 +3705,43 @@ def _pick_cast_interface(
          I-prefixed entry, use it.
       4. If multiple candidates remain AND we have a `receiver_name` matching
          a known linguist-convention variable, prefer the matching interface
-         when it's in the candidate set.
+         when it's in the candidate set -- UNLESS `polymorphic_receiver` is
+         True (issue #121 remediation, defect 4): once the loop-target
+         dataflow in `detect_casting_needs` has CONFIRMED (not guessed) that
+         the receiver is heterogeneous, a variable-SPELLING-based guess must
+         not override that proof. Renaming a proven-polymorphic loop var
+         from `sense` to `comp` must never change the answer -- if it does,
+         the "answer" was never real. So this tie-break is skipped entirely
+         when `polymorphic_receiver` is True.
       5. Otherwise return None. The Dennis cascade-failure pattern shows a
          confidently-wrong rewrite (alphabetical tie-break) is worse than
          no rewrite -- downstream this routes to the existing fallback hint
          ("call flextools_resolve_property to resolve manually").
       6. Drop entries with parenthetical qualifiers like "ILexSense (raw LCM)"
          -- those are descriptive, not importable.
+
+    Issue #121 remediation (defect 3): an earlier version of this function
+    had a step 7 here that preferred LCM's "IXOrY"-named interfaces
+    (ISenseOrEntry, ...) for a confirmed-polymorphic receiver, reasoning
+    that such interfaces are implemented by every branch of the
+    heterogeneous collection. That premise was FALSE and falsifiable
+    against the LibLCM index itself: across all entities, exactly ONE lists
+    `ISenseOrEntry` in `interfaces` -- the dedicated wrapper struct
+    `SenseOrEntry` -- and neither `LexEntry` nor `LexSense` (nor
+    `ILexEntry`/`ILexSense`) implement or extend it. A pythonnet interface
+    cast is a real CLR QueryInterface; `ISenseOrEntry(c)` would throw for
+    EVERY element of a real GetComplexFormComponents() result, which is
+    worse than returning None. The tier was a type conclusion drawn from
+    interface SPELLING (the "IXOrY" naming convention) -- exactly the bug
+    class issue #121 exists to fix -- and has been removed rather than
+    "fixed to validate", because validating it against the interfaces LCM
+    actually implements would structurally never pass for this family (they
+    are implemented ONLY by dedicated wrapper structs, never by the
+    concrete domain classes a polymorphic collection actually yields).
+    `detect_casting_needs`'s Rule A now teaches a ClassName-branch remedy
+    (the one pattern the domain review confirmed is actually correct, and
+    matches flexicon's own docstring for this method) instead of ever
+    proposing a single cast for a confirmed-polymorphic receiver.
     """
     cleaned: List[str] = []
     for entry in available_on or ():
@@ -3629,9 +3762,11 @@ def _pick_cast_interface(
         if len(defined_on) == 1:
             return defined_on[0]
 
-    # Multiple candidates. Try the receiver-name tie-break before giving up.
+    # Multiple candidates. Try the receiver-name tie-break before giving up
+    # -- but NEVER when the receiver is confirmed polymorphic (issue #121
+    # defect 4): a spelling-based guess must not override PROVEN dataflow.
     candidates = defined_on if defined_on else cleaned
-    if receiver_name and candidates:
+    if receiver_name and candidates and not polymorphic_receiver:
         preferred = _RECEIVER_NAME_TO_INTERFACE.get(receiver_name)
         if preferred is None:
             # Issue #30: normalize _obj/_typed/_cast suffix and retry
@@ -3718,9 +3853,20 @@ def _find_receiver_name(
     """Find the receiver variable name for `obj.property_name` on `line_num`.
 
     Used by `_pick_cast_interface` to disambiguate properties defined on
-    multiple interfaces (Issue #21 follow-up). Only returns the name when
-    the receiver is a bare ast.Name -- chained or call-rooted receivers
-    don't get a tie-break (they also wouldn't get a rewrite emitted).
+    multiple interfaces (Issue #21 follow-up), and by `detect_casting_needs`
+    pass 1's issue #121 dataflow lookup. Only returns the name when the
+    receiver is a bare ast.Name -- chained or call-rooted receivers don't
+    get a tie-break (they also wouldn't get a rewrite emitted).
+
+    `property_name` is matched as a PREFIX (`node.attr == property_name or
+    node.attr.startswith(property_name)`), not exact equality: callers pass
+    KNOWN_CASTING_PATTERNS keys, which are family names for the real
+    attribute (e.g. "LexemeForm" for the real "LexemeFormOA") -- the exact
+    same prefix semantics `_alias_satisfies` already documents and relies
+    on. Without this, `entry.LexemeFormOA` would never resolve a receiver
+    at all (the AST attr is "LexemeFormOA", not "LexemeForm"), silently
+    losing both the receiver-name tie-break AND the issue #121 dataflow
+    lookup for every pattern whose key is a prefix, not the full name.
     """
     if tree is None:
         return None
@@ -3729,7 +3875,7 @@ def _find_receiver_name(
             continue
         if getattr(node, "lineno", None) != line_num:
             continue
-        if node.attr != property_name:
+        if not (node.attr == property_name or node.attr.startswith(property_name)):
             continue
         receiver = node.value
         if isinstance(receiver, ast.Name):
@@ -3921,6 +4067,7 @@ def detect_casting_needs(
     code: str,
     casting_index: Optional[Dict] = None,
     tree: ast.AST | None = None,
+    api_index: Optional[Any] = None,
 ) -> dict:
     """Detect property access patterns that likely need casting for all 3 API flavors.
 
@@ -3935,12 +4082,30 @@ def detect_casting_needs(
     property's `defined_on`. This brings the preflight validator in line with
     `certify_script_readonly`, which already honored these aliases.
 
+    Issue #121: when `api_index` is provided, for-loop (and simple
+    comprehension) targets that iterate a flexicon Operations method's
+    return value are bound to that method's `element_type`/`polymorphic`
+    metadata (both OPTIONAL on a method record; omitted entirely when
+    unknown, so this degrades to today's behavior against an
+    un-annotated index). This enables two additional checks: Rule A, a
+    polymorphically-bound receiver accessing a property NOT defined on its
+    element type; and Rule B, a polymorphically-bound value passed as an
+    ARGUMENT to an operation that expects one specific concrete interface
+    (the shape Rule A can't catch, since the value is never the receiver of
+    an attribute access there). `api_index=None` (the default) leaves this
+    entire code path inert -- behavior is byte-for-byte identical to before
+    issue #121.
+
     Args:
         code: Python code to analyze
         casting_index: Optional pre-built casting index with property metadata
         tree: Optional pre-parsed AST. If None, we attempt ast.parse(code) and
             fall through to regex-only behavior on SyntaxError. This matches the
             tree-or-reparse pattern used in `certify_script_readonly`.
+        api_index: Optional APIIndex (or API-index-shaped object exposing a
+            `.flexicon` dict) used ONLY for the issue #121 loop-target
+            dataflow described above. Every other code path in this
+            function is unaffected by this parameter.
 
     Returns:
         {
@@ -3993,6 +4158,15 @@ def detect_casting_needs(
     # every consumer below checks set membership/intersection rather than
     # picking one arbitrarily.
     line_var_cast_types: Dict[Tuple[int, str], Set[str]] = {}
+    # Issue #121 (e.2): line_num -> {mid-chain property names whose very
+    # next hop is a multistring VALUE accessor (Text, Best*Alternative)} --
+    # see the full rationale at the walk that populates this, below.
+    multistring_headed_segments: Dict[int, set] = {}
+    # Issue #121 (b/f): (line_num, var_name) -> (element_type_interface,
+    # is_polymorphic) for for-loop/comprehension targets bound to a
+    # flexicon Operations method's or LCM property's polymorphic return
+    # value -- see the full rationale at the walk that populates this, below.
+    loop_element_types: Dict[Tuple[int, str], Tuple[str, bool]] = {}
     if tree is None:
         try:
             tree = ast.parse(code)
@@ -4070,18 +4244,219 @@ def detect_casting_needs(
                 fid = root.func.id
                 if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
                     typed_root = True
+            elif isinstance(root, ast.Name) and root.id == "project":
+                # Issue #121 (e.1): project.Cache.* chains. `project.Cache`
+                # returns the raw LCM cache object -- a deliberate escape
+                # hatch out of the flexicon wrapper layer -- and everything
+                # chained after it is real C# property navigation on a
+                # statically-known root, NOT a loose variable the regex
+                # below should ever treat as `obj_var`. Without this, the
+                # regex's non-overlapping matching consumes "project.Cache."
+                # first (obj_var="project", already skipped elsewhere), then
+                # restarts on the NEXT word pair and mistakes a mid-chain
+                # PROPERTY name (e.g. "LangProject" in
+                # "...LangProject.LexDbOA...") for a variable needing a cast
+                # it can never need. Structural fix (unwind the actual
+                # attribute chain) instead of another regex exemption.
+                chain_attrs: List[str] = []
+                cursor: ast.AST = inner
+                while isinstance(cursor, ast.Attribute):
+                    chain_attrs.append(cursor.attr)
+                    cursor = cursor.value
+                chain_attrs.reverse()
+                if chain_attrs and chain_attrs[0] == "Cache":
+                    typed_root = True
             if typed_root:
                 typed_chain_segments.setdefault(inner.lineno, set()).add(inner.attr)
+
+        # Issue #121 (e.2): a chain whose TAIL is a multistring VALUE
+        # accessor (Text, Best*Alternative) proves its own mid-chain HEAD
+        # property returns an IMultiString/IMultiUnicode container --
+        # regardless of whether the chain's ROOT is statically typed. E.g.
+        # `poss.Name.BestAnalysisAlternative.Text`: `Name` is flagged today
+        # even though the very next hop, `.BestAnalysisAlternative`, is only
+        # ever a member of an IMultiString-family value, which proves `Name`
+        # already returned one. Deliberately does NOT apply to properties in
+        # `_CASTING_CONDITIONAL_SAFE` (e.g. "Form") -- those are known to be
+        # ambiguously-typed across their declaring interfaces (sometimes
+        # NOT multistring), which is exactly why
+        # `test_untyped_root_chain_still_flags_first_segment` requires
+        # `obj.Form.BestVernacularAlternative` to still flag `Form` for an
+        # untyped root: chain-tail evidence alone isn't trustworthy for a
+        # property already known to be conditionally typed. This is a
+        # narrower, chain-tail-driven sibling of the root-typed
+        # `typed_chain_segments` bypass above -- kept as its own dict so a
+        # future edit can't accidentally conflate "root is typed" with
+        # "tail proves container type".
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Attribute):
+                continue
+            if not _is_multistring_value_member(node.attr):
+                continue
+            inner = node.value
+            if not isinstance(inner, ast.Attribute):
+                continue
+            if inner.attr in _CASTING_CONDITIONAL_SAFE:
+                continue
+            multistring_headed_segments.setdefault(inner.lineno, set()).add(inner.attr)
+
+        # Issue #121 (b): bind for-loop (and simple comprehension) targets
+        # that iterate a flexicon Operations method's return value, or a
+        # known LCM polymorphic-collection property, to the element type the
+        # method/property actually yields -- when the (optional) index
+        # carries that information. This is dataflow in the OPPOSITE
+        # direction from `line_var_cast_types` above: a cast alias means
+        # "this var IS this interface, so access defined on it is safe"; a
+        # polymorphic element_type means "this var is only WEAKLY typed as
+        # this interface, so access NOT defined on it is unsafe, and passing
+        # it to an operation that expects a MORE SPECIFIC interface is
+        # unsafe too." Kept in its own dict (never merged into
+        # line_var_cast_types) so the two senses can never be silently
+        # conflated by a future edit.
+        def _bind_loop_target(
+            target: ast.AST,
+            start_line: int,
+            end_line: int,
+            elem_type: str,
+            poly: bool,
+            body: Optional[List[ast.stmt]] = None,
+        ) -> None:
+            if not isinstance(target, ast.Name):
+                # Tuple targets (`for a, b in ...`) are a known limitation:
+                # we'd need to know WHICH element of the tuple corresponds
+                # to the polymorphic value, which the method record doesn't
+                # currently encode. Skip rather than guess.
+                return
+            # Issue #121 remediation (defect 2): cap the bound range at the
+            # first reassignment of this name within the loop body -- see
+            # `_first_reassignment_line`'s docstring for the full rationale.
+            # `body=None` (comprehensions -- no assignment statements are
+            # possible inside a comprehension expression) leaves end_line
+            # untouched.
+            if body:
+                _reassign_line = _first_reassignment_line(body, target.id, start_line)
+                if _reassign_line is not None:
+                    end_line = min(end_line, _reassign_line - 1)
+            for _ln in range(start_line, end_line + 1):
+                loop_element_types[(_ln, target.id)] = (elem_type, poly)
+
+        if api_index is not None:
+            _accessor_to_ops = _accessor_to_ops_map(api_index)
+
+            def _bind_from_call(
+                target: ast.AST,
+                call_node: ast.AST,
+                start: int,
+                end: int,
+                body: Optional[List[ast.stmt]] = None,
+            ) -> None:
+                if not isinstance(call_node, ast.Call) or not isinstance(call_node.func, ast.Attribute):
+                    return
+                ops_class = _resolve_receiver_ops_class(
+                    call_node.func.value, _accessor_to_ops, operations_aliases
+                )
+                if not ops_class:
+                    return
+                found = _method_element_type(api_index, ops_class, call_node.func.attr)
+                if found is None:
+                    return
+                elem_type, poly = found
+                _bind_loop_target(target, start, end, elem_type, poly, body=body)
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.For) and node.body:
+                    end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
+                    _bind_from_call(node.target, node.iter, node.lineno, end_line, body=node.body)
+                elif isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+                    # Cheap comprehension cover: only the FIRST `for` clause
+                    # of the comprehension is bound (the common case);
+                    # nested/chained `for`s in one comprehension are a known
+                    # limitation left unhandled rather than special-cased.
+                    end_line = node.end_lineno or node.lineno
+                    if node.generators:
+                        gen = node.generators[0]
+                        _bind_from_call(gen.target, gen.iter, node.lineno, end_line)
+
+        # Issue #121 (f): this data was previously read and discarded
+        # (`casting_index.get("polymorphic_collections", {})` with no use of
+        # the result). Wire it into the SAME loop-target dataflow above --
+        # `for x in obj.SomePolyCollection:` binds `x` to the collection's
+        # `base_type`, polymorphic=True, exactly like the flexicon-method
+        # case. This is a genuinely different source (LCM property chains,
+        # not flexicon Operations methods) so it's kept as its own small
+        # walk rather than folded into `_bind_from_call` above.
+        if casting_index and isinstance(casting_index, dict):
+            _poly_collections = casting_index.get("polymorphic_collections") or {}
+            if _poly_collections:
+                for node in ast.walk(tree):
+                    if not (isinstance(node, ast.For) and isinstance(node.iter, ast.Attribute)):
+                        continue
+                    _info = _poly_collections.get(node.iter.attr)
+                    if not _info:
+                        continue
+                    _base_type = _info.get("base_type")
+                    if not _base_type or not node.body:
+                        continue
+                    _end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
+                    _bind_loop_target(node.target, node.lineno, _end_line, _base_type, True, body=node.body)
+
+    def _receiver_ifaces_for(ln: int, var: str) -> Set[str]:
+        """Interfaces PROVEN safe for `var` at line `ln`: the existing
+        branch-aware cast_alias set, UNIONED with a non-polymorphic
+        loop-target binding (issue #121 negative control) when one exists.
+        A NON-polymorphic `element_type` (e.g. `for e in project.LexEntry.
+        GetAll(): ...` where GetAll's element_type is exactly "ILexEntry",
+        not a base/weak type) is exactly as good a safety proof as an
+        explicit `e = ILexEntry(x)` cast -- so it feeds the SAME
+        suppression checks `line_var_cast_types` already drives. A
+        polymorphic binding is deliberately NEVER unioned in here -- that's
+        the opposite sense (unsafe-until-proven), handled separately by
+        Rule A / Rule B above.
+
+        Issue #121 remediation round 2 (defect: pass-1 false positive):
+        hoisted out of the pass-2-only `if casting_index:` block so
+        KNOWN_CASTING_PATTERNS (pass 1, below) can consult it too -- pass 1
+        stamps `severity: "error"`, which hard-blocks even read-only runs,
+        so a dataflow-provable receiver being invisible to it was a bigger
+        false-positive cost than the identical gap in pass 2. Defined
+        unconditionally (not gated on `casting_index`): both dicts it reads
+        are always initialized to `{}` even when there's no casting_index
+        or no tree, so this is a safe no-op call in that case.
+        """
+        ifaces = set(line_var_cast_types.get((ln, var)) or set())
+        _lb = loop_element_types.get((ln, var))
+        if _lb and not _lb[1]:
+            ifaces.add(_lb[0])
+        return ifaces
 
     # Known polymorphic patterns that ALWAYS need casting across all flavors
     # These are based on C# data model structure, not wrapper-specific
     # Maps pattern → (helper_name, helper_function_to_use)
+    #
+    # Issue #121 remediation round 2 (pattern-sweep finding #7): every
+    # trailing property-name literal below now ends with the negative
+    # lookahead `(?![A-Za-z0-9_])` so it only matches a WHOLE identifier,
+    # never a prefix of a longer one -- unanchored `\.LexemeForm` matched
+    # inside the perfectly valid `.LexemeFormOA`, tripping a rule that was
+    # written about a DIFFERENT member. A trailing `\b` is not a reliable
+    # substitute here: `\b` only fires at a \w/\W transition, and depending
+    # on the exact characters involved that transition may or may not sit
+    # where intended -- the negative lookahead is unambiguous regardless of
+    # what precedes/follows. Every receiver-literal pattern (`entry`,
+    # `sense`) also gets a LEADING `\b` guard, since those are matching a
+    # bare variable-name literal, not a dotted attribute chain --
+    # unanchored `entry\s*\.\s*HeadWord` matched inside `myentry.HeadWord`
+    # (a variable that merely ENDS in "entry"), misattributing a completely
+    # different variable's access to the "entry" convention.
     KNOWN_CASTING_PATTERNS = {
         "HeadWord": {
             "helper": "get_headword",  # ← Which helper to inject if needed
             "missing_on": ["ICmObject"],
             "available_on": ["ILexEntry"],
-            "pattern_sources": [r"\.Owner\s*\.\s*HeadWord", r"entry\s*\.\s*HeadWord"],
+            "pattern_sources": [
+                r"\.Owner\s*\.\s*HeadWord(?![A-Za-z0-9_])",
+                r"\bentry\s*\.\s*HeadWord(?![A-Za-z0-9_])",
+            ],
             "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nheadword = entry.HeadWord.Text",
             "flexicon_helper": "Use cast_to_concrete(obj) -- from flexicon import cast_to_concrete"
         },
@@ -4089,7 +4464,10 @@ def detect_casting_needs(
             "helper": "get_lexeme_form",  # ← Which helper to inject if needed
             "missing_on": ["ICmObject"],
             "available_on": ["ILexEntry"],
-            "pattern_sources": [r"\.LexemeForm", r"entry\s*\.\s*LexemeForm"],
+            "pattern_sources": [
+                r"\.LexemeForm(?![A-Za-z0-9_])",
+                r"\bentry\s*\.\s*LexemeForm(?![A-Za-z0-9_])",
+            ],
             "fix": "from SIL.LCModel import ILexEntry\nentry = ILexEntry(obj)\nform = entry.LexemeForm",
             "flexicon_helper": "Use cast_to_concrete(obj) to get ILexEntry"
         },
@@ -4097,7 +4475,10 @@ def detect_casting_needs(
             "helper": "safe_get_property",  # ← Use safe access helper for this
             "missing_on": ["ILexSense (flexicon wrapped)"],
             "available_on": ["ILexSense (raw LCM)"],
-            "pattern_sources": [r"sense\s*\.\s*ReversalEntriesRC", r"\.ReversalEntriesRC"],
+            "pattern_sources": [
+                r"\bsense\s*\.\s*ReversalEntriesRC(?![A-Za-z0-9_])",
+                r"\.ReversalEntriesRC(?![A-Za-z0-9_])",
+            ],
             "fix": "# Access collection on raw sense object, not flexicon-wrapped\nreversals = list(sense.ReversalEntriesRC)",
             "flexicon_helper": "Unwrap flexicon object first, or use ReversalOperations"
         },
@@ -4133,6 +4514,24 @@ def detect_casting_needs(
                         property_name,
                         pattern_info["available_on"],
                         alias_attr_accesses,
+                    ):
+                        break
+                    # Issue #121 remediation round 2: consult the SAME
+                    # loop-target dataflow the pass-2 loop already uses via
+                    # `_receiver_ifaces_for` (a CONFIRMED, non-polymorphic
+                    # element_type binding, e.g. `for entry in project.
+                    # LexEntry.GetAll(): entry.LexemeFormOA...`). This
+                    # matters MORE here than in pass 2: this pattern-hit
+                    # branch stamps severity="error", which hard-blocks
+                    # read-only runs too, whereas pass 2's is only a
+                    # "warning". Skip ONLY when the receiver's PROVEN
+                    # interface set intersects this pattern's available_on
+                    # -- never on the mere absence of information (an
+                    # unresolved/unknown receiver still flags, same as
+                    # before).
+                    if _receiver_pre and (
+                        _receiver_ifaces_for(line_num, _receiver_pre)
+                        & _extract_interface_names(pattern_info["available_on"])
                     ):
                         break
                     # Issue #21: inline the structured rewrite so the LLM can
@@ -4173,7 +4572,12 @@ def detect_casting_needs(
     # If casting_index is provided, do advanced lookup for other properties
     if casting_index and isinstance(casting_index, dict):
         casting_props = casting_index.get("properties", {})
-        casting_index.get("polymorphic_collections", {})
+        # Issue #121 (f): `polymorphic_collections` used to be read here and
+        # discarded (`casting_index.get("polymorphic_collections", {})` with
+        # the result unused). It's now consumed above, in the loop-target
+        # dataflow section, to bind `for x in obj.SomePolyCollection:`
+        # targets to their `base_type` -- the read here was genuinely dead
+        # and has been removed rather than kept as a no-op.
 
         # Look for property access that might need casting
         # Pattern: obj.PropertyName or obj.PropertyName()
@@ -4221,6 +4625,19 @@ def detect_casting_needs(
                 if obj_var in typed_chain_segments.get(line_num, ()):
                     continue
 
+                # Issue #121 (e.2): prop_name (NOT obj_var -- this is the
+                # property actually being flagged, e.g. "Name" in
+                # `poss.Name.BestAnalysisAlternative.Text`) is proven to
+                # return an IMultiString/IMultiUnicode container because the
+                # VERY NEXT hop in the same chain is a multistring VALUE
+                # accessor, regardless of whether the chain's root is
+                # statically typed. See the walk that builds
+                # `multistring_headed_segments` for the full rationale,
+                # including why this does NOT apply to
+                # `_CASTING_CONDITIONAL_SAFE` members like "Form".
+                if prop_name in multistring_headed_segments.get(line_num, ()):
+                    continue
+
                 # Issue #40 (domain ruling): conditional members -- safe ONLY
                 # when an explicit cast_alias proves the receiver's type. The
                 # detector has no flow-based type inference; receiver type is
@@ -4237,7 +4654,7 @@ def detect_casting_needs(
                     # suppress if ANY candidate satisfies (intersection),
                     # matching the lead's "flag only if none of the
                     # candidates satisfy" ruling.
-                    receiver_ifaces = line_var_cast_types.get((line_num, obj_var)) or set()
+                    receiver_ifaces = _receiver_ifaces_for(line_num, obj_var)
                     if receiver_ifaces & safe_ifaces:
                         continue
 
@@ -4257,7 +4674,7 @@ def detect_casting_needs(
                     # whole-function cast_aliases dict. P1-1/P2-1: value may
                     # be a candidate-union fallback set -- suppress if it
                     # intersects defined_on at all.
-                    _receiver_ifaces_here = line_var_cast_types.get((line_num, obj_var)) or set()
+                    _receiver_ifaces_here = _receiver_ifaces_for(line_num, obj_var)
                     if _receiver_ifaces_here & _extract_interface_names(defined_on):
                         continue
                     if requires_cast and prop_name not in [i["property"] for i in issues]:
@@ -4265,11 +4682,22 @@ def detect_casting_needs(
                         # casting index and emit a structured rewrite.
                         # Issue #21 follow-up: use obj_var as the receiver
                         # tie-break signal (regex already captured it).
+                        # Issue #121 Rule A: if obj_var is a loop target
+                        # bound (via dataflow above) to a CONFIRMED
+                        # polymorphic element_type, tell _pick_cast_interface
+                        # so it skips its spelling-based receiver-name
+                        # tie-break for this lookup (defect 4 remediation --
+                        # proven dataflow must beat variable spelling). No
+                        # single cast is ever proposed for a confirmed-
+                        # polymorphic receiver; see the fix_msg branch below.
+                        _loop_binding = loop_element_types.get((line_num, obj_var))
+                        _is_poly_receiver = bool(_loop_binding and _loop_binding[1])
                         cast_iface = _pick_cast_interface(
                             prop_name,
                             casting_info.get("defined_on", []),
                             casting_index,
                             receiver_name=obj_var,
+                            polymorphic_receiver=_is_poly_receiver,
                         )
                         rewrite = _build_cast_rewrite(
                             tree, line_num, prop_name, cast_iface or ""
@@ -4287,6 +4715,31 @@ def detect_casting_needs(
                         # rather than asserting a single definite target.
                         if cast_iface:
                             fix_msg = f"Cast {obj_var} to {cast_iface}"
+                        elif _is_poly_receiver:
+                            # Issue #121 (defect 3 remediation): a confirmed-
+                            # polymorphic receiver never gets a single-cast
+                            # suggestion -- the domain review confirmed the
+                            # only correct remedy is the SAME ClassName-
+                            # branch dispatch Rule B teaches (and which
+                            # matches flexicon's own docstring for
+                            # GetComplexFormComponents). A single cast
+                            # (whether to a concrete interface or to an
+                            # "IXOrY" union interface -- see the removed
+                            # tier's writeup on _pick_cast_interface) throws
+                            # for at least one real branch of the collection.
+                            fix_msg = (
+                                f"{obj_var} came from a polymorphic "
+                                f"collection -- its concrete type varies per "
+                                f"element, so no single cast is safe here "
+                                f"(a blind cast would InvalidCastException "
+                                f"on at least one branch). Dispatch on "
+                                f"{obj_var}.ClassName instead, per "
+                                f"flexicon's own GetComplexFormComponents "
+                                f"docstring convention, e.g.: "
+                                f"if {obj_var}.ClassName == \"LexEntry\": "
+                                f"... elif {obj_var}.ClassName == "
+                                f"\"LexSense\": ..."
+                            )
                         else:
                             # Swahili audit CP-D P1-2/P1-3 (cycle 9): the old
                             # message truncated to a 4-item alphabetical head
@@ -4359,6 +4812,133 @@ def detect_casting_needs(
                             "imports_needed": imports_needed,
                             "cast_interface": cast_iface,
                         })
+
+    # Issue #121 Rule B (the headline case): a polymorphically-bound loop
+    # variable passed as an ARGUMENT to project.<Accessor>.<Method>(...) (or
+    # an Operations-alias/inline-construction receiver of the same shape),
+    # where <Accessor>'s Operations class implies ONE specific concrete
+    # interface. Rule A (mid-chain attribute access, handled via
+    # `loop_element_types` + `_pick_cast_interface` above) can't catch this
+    # shape: `c` is never the RECEIVER of an attribute access in
+    #     for c in project.LexEntry.GetComplexFormComponents(entry):
+    #         project.LexEntry.GetHeadword(c)
+    # -- it's an ARGUMENT -- so this needs its own pass over Call nodes.
+    # Requires api_index (to resolve accessor -> Operations class) and at
+    # least one polymorphic loop binding; both gates make this a no-op
+    # against code/indexes that don't exercise the issue #121 dataflow.
+    if tree is not None and loop_element_types and api_index is not None:
+        _rule_b_accessor_to_ops = _accessor_to_ops_map(api_index)
+        _class_name_map = (casting_index or {}).get("class_name_mapping") or {}
+        _rule_b_code_lines = code.split('\n')
+        _rule_b_seen: Set[Tuple[int, str, str]] = set()
+        for _node in ast.walk(tree):
+            if not isinstance(_node, ast.Call) or not isinstance(_node.func, ast.Attribute):
+                continue
+            _ops_class = _resolve_receiver_ops_class(
+                _node.func.value, _rule_b_accessor_to_ops, operations_aliases
+            )
+            if not _ops_class or not _ops_class.endswith("Operations"):
+                continue
+            _base_name = _ops_class[: -len("Operations")]
+            # Issue #121 instruction: validate the derived interface
+            # actually EXISTS before acting on it -- if we can't validate
+            # it, skip the rule rather than guessing. `class_name_mapping`
+            # (bare LCM class name -> interface) is the casting index's own
+            # authoritative source for this, so a miss here means "we don't
+            # know", not "assume ILexEntry".
+            _expected_iface = _class_name_map.get(_base_name)
+            if not _expected_iface:
+                continue
+            _method_name = _node.func.attr
+            _call_args = list(_node.args) + [kw.value for kw in _node.keywords]
+            for _arg in _call_args:
+                if not isinstance(_arg, ast.Name):
+                    continue  # inline cast (ILexEntry(c)) satisfies this
+                _binding = loop_element_types.get((_node.lineno, _arg.id))
+                if not _binding:
+                    continue
+                _element_type, _poly = _binding
+                if not _poly:
+                    continue  # negative control: known-concrete element_type, safe
+                # Issue #121 remediation (defect 1): only flag when
+                # element_type is genuinely WIDER than what the call
+                # expects. An element_type that's already EXACTLY the
+                # expected interface carries zero cast risk. This is a
+                # defence-in-depth guard independent of whatever the index
+                # itself says about `polymorphic` -- a stale/overbroad
+                # index annotation (the contributing cause on the index
+                # side) must not turn textbook-correct code
+                # (`for s in project.LexEntry.GetSenses(entry):
+                #     project.Senses.GetGloss(s)` where GetSenses.
+                # element_type == "ILexSense" == class_name_mapping
+                # ["LexSense"]) into a hard rejection.
+                if _element_type == _expected_iface:
+                    continue
+                # Issue #121 remediation (defect 2): consult the SAME
+                # branch-aware cast machinery Rule A uses (via
+                # _resolve_cast_type_at / _build_cast_candidate_set, the
+                # primitives behind line_var_cast_types /
+                # _receiver_ifaces_for) before flagging. An intervening
+                # `c = ILexEntry(c)` proves the ACTUAL type of `c` AT THIS
+                # CALL SITE, which must override the coarser, line-RANGE-
+                # bound loop dataflow below -- otherwise the exact remedy
+                # this rule's own fix message teaches gets flagged by the
+                # rule itself.
+                if cast_aliases and _arg.id in cast_aliases:
+                    _resolved_cast = _resolve_cast_type_at(_arg, _parents, _arg.id)
+                    if _resolved_cast is not None:
+                        continue
+                    if _build_cast_candidate_set(_arg, _parents, tree).get(_arg.id):
+                        continue
+                _dedupe_key = (_node.lineno, _arg.id, _method_name)
+                if _dedupe_key in _rule_b_seen:
+                    continue
+                _rule_b_seen.add(_dedupe_key)
+                _src_line = (
+                    _rule_b_code_lines[_node.lineno - 1]
+                    if 0 <= _node.lineno - 1 < len(_rule_b_code_lines)
+                    else ""
+                )
+                _fix_msg = (
+                    f"'{_arg.id}' came from a polymorphic collection (element "
+                    f"type is only known as {_element_type}, not necessarily "
+                    f"{_expected_iface}) -- passing it directly to "
+                    f"{_ops_class}.{_method_name}(...) risks an "
+                    f"InvalidCastException at runtime for any element that "
+                    f"ISN'T {_expected_iface}. A blind cast "
+                    f"({_expected_iface}({_arg.id})) is also wrong for a "
+                    f"genuinely mixed collection. Branch on {_arg.id}.ClassName "
+                    f"instead, per flexicon's own GetComplexFormComponents "
+                    f"docstring convention, e.g.: "
+                    f"if {_arg.id}.ClassName == \"LexEntry\": "
+                    f"project.LexEntry.GetHeadword({_arg.id}) "
+                    f"elif {_arg.id}.ClassName == \"LexSense\": "
+                    f"project.Senses.GetGloss({_arg.id})"
+                )
+                issues.append({
+                    "property": _method_name,
+                    "line": _node.lineno,
+                    "pattern": _src_line.strip()[:80],
+                    "found_at": _src_line.strip()[:120],
+                    "missing_on": [_element_type],
+                    "available_on": [_expected_iface],
+                    "fix": _fix_msg,
+                    "flexicon_helper": (
+                        f"Dispatch on {_arg.id}.ClassName before calling "
+                        f"{_ops_class}.{_method_name}(...) -- do not cast blindly."
+                    ),
+                    # Issue #121 (d): this is a real, currently-silent
+                    # runtime crash (InvalidCastException), not a low-
+                    # confidence guess -- the polymorphism is CONFIRMED by
+                    # index dataflow, not inferred. Treated the same as the
+                    # other known-pattern hits above ("error"), which also
+                    # hard-blocks read-only runs; see the design-decision
+                    # writeup for the tradeoff against a "warning" choice.
+                    "severity": "error",
+                    "rewrite": None,  # no single-site rewrite -- needs a ClassName branch, not a cast
+                    "imports_needed": [],
+                    "cast_interface": None,
+                })
 
     # Determine injection tier based on what was found
     # Tier 1 (none): No casting issues detected → Don't inject helpers

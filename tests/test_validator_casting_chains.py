@@ -68,7 +68,22 @@ class TestCastAliasAwareness(unittest.TestCase):
         self.assertNotIn("LexemeFormOA", flagged)
 
     def test_no_cast_still_flags(self):
-        """Bare `lf.LexemeFormOA` access (no cast in sight) must still flag."""
+        """Bare `lf.LexemeFormOA` access (no cast in sight) must still flag.
+
+        Issue #121 remediation round 2 (pattern-sweep finding #7): the
+        KNOWN_CASTING_PATTERNS "LexemeForm" entry's pattern (a raw-string
+        regex matching a literal dot followed by "LexemeForm") used to
+        match .LexemeFormOA too (an unanchored substring match) -- that was
+        itself the bug: "LexemeForm" and
+        "LexemeFormOA" are different identifiers, and the pattern was
+        written about "LexemeForm" specifically. Now that the pattern is
+        anchored (`(?![A-Za-z0-9_])`), `.LexemeFormOA` no longer matches
+        pass 1 at all -- but the safety guarantee this test exists for
+        (bare, uncast access is still flagged) is intact: it now flows
+        through pass 2's index-driven loop instead, under the property's
+        OWN real name, "LexemeFormOA", at "warning" severity rather than
+        pass 1's "error".
+        """
         code = (
             "def f(lf):\n"
             "    x = lf.LexemeFormOA\n"
@@ -76,10 +91,8 @@ class TestCastAliasAwareness(unittest.TestCase):
         )
         result = detect_casting_needs(code, FAKE_CASTING_INDEX)
         flagged = self._properties_flagged(result)
-        # KNOWN_CASTING_PATTERNS has a LexemeForm entry with pattern r"\.LexemeForm"
-        # which matches .LexemeFormOA too. That flag must still fire.
         self.assertIn(
-            "LexemeForm", flagged,
+            "LexemeFormOA", flagged,
             f"Bare lf.LexemeFormOA must still be flagged; got: {result['casting_issues']}"
         )
 
@@ -89,6 +102,14 @@ class TestCastAliasAwareness(unittest.TestCase):
         IMoForm doesn't define LexemeFormOA -- `f = IMoForm(x); f.LexemeFormOA`
         must still get caught so the user can fix the cast target. This is
         the safety guarantee that proves we're not blindly trusting any cast.
+
+        Issue #121 remediation round 2: as in test_no_cast_still_flags
+        above, this now flows through pass 2 (property "LexemeFormOA")
+        rather than pass 1's "LexemeForm" family pattern, since that
+        pattern is no longer an unanchored substring match. The safety
+        guarantee itself -- a WRONG cast interface never suppresses the
+        flag -- is proven the same way it always was, via pass 2's own
+        `_receiver_ifaces_for` / defined_on intersection check.
         """
         code = (
             "from SIL.LCModel import IMoForm\n"
@@ -99,11 +120,8 @@ class TestCastAliasAwareness(unittest.TestCase):
         )
         result = detect_casting_needs(code, FAKE_CASTING_INDEX)
         flagged = self._properties_flagged(result)
-        # The KNOWN_CASTING_PATTERNS "LexemeForm" check uses available_on =
-        # ["ILexEntry"] -- IMoForm is NOT a substring of that, so the flag
-        # must still fire.
         self.assertIn(
-            "LexemeForm", flagged,
+            "LexemeFormOA", flagged,
             f"IMoForm(x).LexemeFormOA must still flag (wrong interface cast); "
             f"got: {result['casting_issues']}"
         )
@@ -289,6 +307,106 @@ class TestTypedChainSegmentBypass(unittest.TestCase):
         )
         flagged = self._flagged(detect_casting_needs(code, self.INDEX))
         self.assertIn("Form", flagged)
+
+    # -- Issue #121 (e): two additional false-positive fixes -------------
+
+    def test_project_cache_chain_mid_property_not_flagged(self):
+        """`project.Cache.LangProject.LexDbOA.*` -- `LangProject` is a
+        mid-chain PROPERTY name off the raw LCM cache object (a genuine,
+        statically-typed C# chain), not a loose variable. Before the fix,
+        the regex's non-overlapping matching consumed "project.Cache."
+        first (obj_var="project", already skipped), then mistook
+        "LangProject" for obj_var on the NEXT pair and flagged "LexDbOA"
+        for a cast it can never need. Structural fix: extend the
+        typed-chain-segment bypass to project.Cache.* roots.
+        """
+        index = {
+            "properties": {
+                **self.INDEX["properties"],
+                "LexDbOA": {
+                    "defined_on": ["ILangProject"],
+                    "requires_cast_from": ["ICmObject"],
+                },
+            },
+            "polymorphic_collections": {},
+        }
+        code = "types = project.Cache.LangProject.LexDbOA.ComplexEntryTypesOA\n"
+        flagged = self._flagged(detect_casting_needs(code, index))
+        self.assertNotIn(
+            "LexDbOA", flagged,
+            "project.Cache.LangProject.LexDbOA must not flag LexDbOA -- "
+            "LangProject is a mid-chain property off project.Cache, not a "
+            "variable needing a cast."
+        )
+
+    def test_non_cache_project_chain_still_flags(self):
+        """Negative control: the project.Cache.* bypass must be scoped to
+        an actual `project.Cache` root, not every `project.X.Y.Z` chain --
+        `project.SomeOtherAccessor.LangProject.LexDbOA` must still flag.
+        """
+        index = {
+            "properties": {
+                **self.INDEX["properties"],
+                "LexDbOA": {
+                    "defined_on": ["ILangProject"],
+                    "requires_cast_from": ["ICmObject"],
+                },
+            },
+            "polymorphic_collections": {},
+        }
+        code = "types = project.SomeOtherAccessor.LangProject.LexDbOA.ComplexEntryTypesOA\n"
+        flagged = self._flagged(detect_casting_needs(code, index))
+        self.assertIn(
+            "LexDbOA", flagged,
+            "the project.Cache.* bypass must not over-fire on an unrelated "
+            "project.X.Y.Z chain."
+        )
+
+    def test_multistring_headed_chain_does_not_flag_head_property(self):
+        """`poss.Name.BestAnalysisAlternative.Text` -- Name's OWN next hop
+        is a multistring VALUE accessor, which proves Name already
+        returned an IMultiString/IMultiUnicode container, regardless of
+        the untyped root `poss`. Before the fix, `_is_multistring_value_
+        member` only exempted the chain TAIL (BestAnalysisAlternative /
+        Text), not the property that heads it.
+        """
+        index = {
+            "properties": {
+                **self.INDEX["properties"],
+                "Name": {
+                    "defined_on": ["ICmPossibility", "ICmMajorObject"],
+                    "requires_cast_from": ["ICmObject"],
+                },
+            },
+            "polymorphic_collections": {},
+        }
+        code = "n = poss.Name.BestAnalysisAlternative.Text\n"
+        flagged = self._flagged(detect_casting_needs(code, index))
+        self.assertNotIn(
+            "Name", flagged,
+            "Name must not flag when its own next hop is a multistring "
+            "value accessor -- that proves it already returned an "
+            "IMultiString container."
+        )
+
+    def test_conditional_safe_property_not_exempted_by_multistring_tail(self):
+        """Negative control (companion to
+        test_untyped_root_chain_still_flags_first_segment, kept local so
+        the #121 e.2 exemption's boundary is visible right next to the fix
+        it's guarding): "Form" is in `_CASTING_CONDITIONAL_SAFE` --
+        ambiguously typed across its declaring interfaces, sometimes NOT
+        multistring -- so chain-tail evidence alone must NOT exempt it even
+        when immediately followed by a multistring value accessor. It
+        still needs typed-root proof (a cast alias or inline `I*()` call).
+        """
+        code = "x = obj.Form.BestVernacularAlternative.Text\n"
+        flagged = self._flagged(detect_casting_needs(code, self.INDEX))
+        self.assertIn(
+            "Form", flagged,
+            "Form must still flag for an untyped root even when chained "
+            "into a multistring value accessor -- it's conditionally-safe, "
+            "not unconditionally-safe like Name."
+        )
 
 
 if __name__ == "__main__":

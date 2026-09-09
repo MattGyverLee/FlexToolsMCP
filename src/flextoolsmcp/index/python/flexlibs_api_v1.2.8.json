@@ -183,6 +183,8 @@
         {
           "category": "general",
           "description": "Returns a nested or flat list of all semantic domains defined\nin this project. The list is ordered.\n\nReturn items are `ICmSemanticDomain` objects.",
+          "element_source_property": "PossibilitiesOS",
+          "element_type_hint": "ICmSemanticDomain",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -474,6 +476,7 @@
         {
           "category": "general",
           "description": "Returns a list of the names of the publications defined in the\nproject.",
+          "element_source_property": "PossibilitiesOS",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -1342,6 +1345,7 @@
         {
           "category": "lexicon",
           "description": "Returns a list of semantic omain objects belonging to the sense.\n`ToString()` and `Hvo` are available.\n\nMethods available for SemanticDomainsRC::\n\nCount\nAdd(Hvo)\nContains(Hvo)\nRemove(Hvo)\nRemoveAll()",
+          "element_source_property": "SemanticDomainsRC",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -1701,6 +1705,7 @@
         {
           "category": "general",
           "description": "Looks up the value (a string) in the `CmPossibilityList` for the\ngiven field.\nReturns the `CmPossibility` object, or `None` if it can't be found.",
+          "element_source_property": "PossibilitiesOS",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -1740,6 +1745,7 @@
         {
           "category": "general",
           "description": "Returns the `PossibilitiesOS` for the given list field. This\nis a list of `CmPossibility` objects.\nRaises an exception if the field is not a list (single/Atomic\nor multiple/Collection)\n",
+          "element_source_property": "PossibilitiesOS",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -2010,6 +2016,7 @@
         {
           "category": "reversal",
           "description": "Returns an iterator for the reversal entries for `languageTag` (eg 'en'). Returns `None` if there is no reversal index for\nthat writing system.",
+          "element_source_property": "EntriesOC",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,

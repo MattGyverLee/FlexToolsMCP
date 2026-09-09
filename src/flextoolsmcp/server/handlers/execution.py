@@ -1745,6 +1745,33 @@ def _log_validate_only_close(
     )
 
 
+def _detect_casting_needs_compat(
+    code: str,
+    casting_index: Optional[Dict[str, Any]],
+    code_tree: Optional[ast.AST],
+    api_idx: Any,
+) -> Dict[str, Any]:
+    """Issue #121: call `detect_casting_needs` with its new optional
+    `api_index` param, but ONLY when there's actually an index to give it.
+
+    Several existing tests monkeypatch `execution_mod.detect_casting_needs`
+    with hand-written 3-positional-arg stubs `(code, casting_index, tree)`
+    that don't accept a 4th argument at all -- see
+    tests/test_issue40_casting_severity.py, tests/test_issue49_validate_only.py,
+    tests/test_diagnostic_report_reconstruction.py. Every one of those tests
+    also stubs `get_api_index()` to return None, so `api_idx` is None at
+    every one of their call sites. Omitting the `api_index` keyword entirely
+    when `api_idx` is None keeps those stubs' arity satisfied without
+    touching six test files, while still passing it through in the real
+    (non-test) path where callers actually hold an APIIndex -- functionally
+    identical either way, since `detect_casting_needs`'s own default for
+    that parameter is also None.
+    """
+    if api_idx is not None:
+        return detect_casting_needs(code, casting_index, code_tree, api_index=api_idx)
+    return detect_casting_needs(code, casting_index, code_tree)
+
+
 def _has_error_severity_casting_issue(issues: List[Dict[str, Any]]) -> bool:
     """Issue #40 B-1 / #49 B-5: True if ANY casting issue is 'error' severity.
 
@@ -1786,7 +1813,7 @@ def _compute_casting_decision(
       - has_error_severity: bool -- the shared predicate's verdict, so
         callers never re-derive it (and can't drift) either.
     """
-    casting_check = detect_casting_needs(code, casting_index, code_tree)
+    casting_check = _detect_casting_needs_compat(code, casting_index, code_tree, api_idx)
     typo_check = detect_interface_attribute_typos(code_tree, api_idx)
     if typo_check["has_typos"]:
         # Issue #39: a pure attribute typo (e.g. ILexDb.EntriesOC) doesn't
@@ -2639,8 +2666,11 @@ def _validate_patched_code(
     except SyntaxError:
         return False
 
-    # Re-run casting check on patched code
-    patched_casting = detect_casting_needs(patched_code, casting_index, patched_tree)
+    # Re-run casting check on patched code. Issue #121: give it api_idx too
+    # (via the compat wrapper) so an auto-fix that still leaves a Rule
+    # A/B-detectable polymorphic-dataflow issue behind is caught here,
+    # instead of only by the caller's OWN post-fix re-check.
+    patched_casting = _detect_casting_needs_compat(patched_code, casting_index, patched_tree, api_idx)
     if patched_casting.get("has_casting_issues"):
         return False
 
@@ -3097,7 +3127,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                         # Replace code + tree with patched version and continue preflight
                         code = _patched
                         code_tree = ast.parse(code)
-                        casting_check = detect_casting_needs(code, casting_index, code_tree)
+                        # Issue #121: api_idx via the compat wrapper -- this
+                        # direct re-run bypasses _compute_casting_decision
+                        # entirely (see its own docstring), so typo-merge and
+                        # has_error_severity are NOT recomputed here; that
+                        # was already true before this change and is out of
+                        # scope for issue #121 to fix.
+                        casting_check = _detect_casting_needs_compat(code, casting_index, code_tree, api_idx)
                         # CP2 fix: re-derive `issues` from the post-fix casting_check so
                         # the still-has-issues branch below (signature, enrichment,
                         # how_to_fix, error_response) reflects only the RESIDUAL issues,

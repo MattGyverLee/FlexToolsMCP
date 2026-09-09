@@ -251,7 +251,14 @@ def _stub_guarded_index_only_mutation_env(monkeypatch, tmp_path):
         execution_mod, "detect_cud_operations",
         lambda code: {"is_cud": False, "operations": []},
     )
-    monkeypatch.setattr(execution_mod, "detect_casting_needs", lambda code, ci, tree: {"has_casting_issues": False, "casting_issues": []})
+    # Issue #121: this stub's get_api_index (above) returns a real
+    # _FakeIndex, not None, so _detect_casting_needs_compat's `api_index is
+    # not None` check DOES pass the new keyword through here -- accept and
+    # ignore it (api_index=None default) so the stub's arity survives.
+    monkeypatch.setattr(
+        execution_mod, "detect_casting_needs",
+        lambda code, ci, tree, api_index=None: {"has_casting_issues": False, "casting_issues": []},
+    )
 
 
 class TestRung3ConfirmationEnforcement:

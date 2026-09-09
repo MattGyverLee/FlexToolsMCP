@@ -480,6 +480,21 @@ def run_postprocess_casting_index() -> bool:
     return run_command(cmd, "Building casting index (pythonnet interface casting)")
 
 
+def run_postprocess_element_types() -> bool:
+    """Annotate Flexicon methods with element_type/polymorphic (issue #121).
+
+    Runs after the casting index build: it consumes both the LibLCM index
+    (for property target_type) and the casting index (for the
+    interface_hierarchy secondary polymorphism signal), on top of the
+    element_source_property the Flexicon scan just wrote per method.
+    """
+    cmd = [
+        sys.executable,
+        _pkg_script("build_element_types.py")
+    ]
+    return run_command(cmd, "Annotating element types (collection casting hints)")
+
+
 def run_archive_old_versions() -> bool:
     """Archive old versions of API files."""
     cmd = [
@@ -588,6 +603,11 @@ def main():
 
         # Build casting index
         if not run_postprocess_casting_index():
+            success = False
+
+        # Annotate element types (issue #121) -- needs the casting index
+        # just built above, so it runs last in this chain.
+        if not run_postprocess_element_types():
             success = False
 
     # Archive old versions - runs after ANY successful refresh (full or

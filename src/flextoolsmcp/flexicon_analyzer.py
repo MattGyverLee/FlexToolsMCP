@@ -1271,7 +1271,409 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
         "lcm_mapping": lcm_calls
     }
 
+    # Issue #121: only set when the return value traces back to exactly one
+    # LCM collection property -- omitted (not None) otherwise, so the
+    # LibLCM cross-annotation post-process step (build_element_types.py)
+    # and every downstream consumer degrade via `.get(...)`, same
+    # convention as `access_path` (issue #100).
+    element_source_property = _resolve_element_source_property(node)
+    if element_source_property:
+        method_info["element_source_property"] = element_source_property
+        # Defect 3 (remediation round): a method that pipes its resolved
+        # collection through `_GetTypedElements`/`cast_all` before
+        # returning has ALREADY resolved its elements to concrete LCM
+        # interfaces -- the caller receives concrete objects, not the raw
+        # pythonnet base type build_element_types.py records as
+        # `element_type`. Only set when true (same omission convention).
+        if _element_source_uses_cast_helper(node, element_source_property):
+            method_info["element_cast_applied"] = True
+        # Defect 3 refinement: several domain-list `GetAll` methods
+        # (AnthropologyOperations, LocationOperations,
+        # SemanticDomainOperations, ...) access a shared, genuinely
+        # polymorphic collection property (e.g. `PossibilitiesOS` ->
+        # `ICmPossibility`) but explicitly narrow it via a literal
+        # concrete-type argument to a helper call (`project.
+        # UnpackNestedPossibilityList(possList.PossibilitiesOS,
+        # ICmAnthroItem, recursive)`). That literal argument is a more
+        # precise, reliably-detected element type than the property's own
+        # abstract target_type -- only set when every contributing return
+        # statement agrees (same conservative convention as the fields
+        # above).
+        element_type_hint = _resolve_element_type_hint(node, element_source_property)
+        if element_type_hint:
+            method_info["element_type_hint"] = element_type_hint
+
     return method_info
+
+
+# ---- Element-source-property resolution (issue #121) --------------------------
+#
+# Flexicon methods that return `list` frequently wrap a single LibLCM
+# collection property (`entry.SensesOS`, `chart.RowsOS`, ...). The runtime
+# element type of that collection -- e.g. `ICmObject` for a property declared
+# over a base interface -- is exactly what determines whether pythonnet
+# casting is needed before the caller can use subtype-only members (issue
+# #121; see also flexicon's own #270 `_GetTypedElements`/`cast_to_concrete`
+# fixes for the same underlying hazard). Nothing in the index recorded which
+# collection property actually feeds a method's return value, so the LCM
+# cross-annotation step (build_element_types.py) had nothing to key off.
+#
+# This resolves it from the AST: walk each `return` statement in the method
+# body and trace the returned expression back to a single LCM collection
+# attribute access (name ending in RS/OS/OC/RC). Handles:
+#   - direct attribute access:      return x.SomethingRS
+#   - list()/tuple()-wrapped:       return list(x.SomethingRS)
+#   - comprehension/generator:      return [f(e) for e in x.SomethingRS]
+#   - call-argument (helper wrap):  return self._GetTypedElements(x.SomethingRS)
+#   - one level of local tracing:   result = []
+#                                    for e in x.SomethingRS:
+#                                        result.append(f(e))
+#                                    return result
+#
+# Deliberately does NOT fall back to the crude "any RS/OS/OC/RC attribute
+# accessed anywhere in the method body" bag (that's `properties_accessed`,
+# already in `lcm_mapping`) -- measured against the real corpus, that bag
+# is ambiguous or simply wrong for methods that traverse an unrelated
+# intermediate collection before reaching the one that actually feeds the
+# return value (e.g. LexEntryOperations.GetComplexFormComponents loops over
+# `EntryRefsOS` to find the ref, but returns elements of
+# `ComponentLexemesRS`). Only the return-value's own expression tree (plus
+# one level of local-variable tracing) is considered.
+#
+# When the returned value cannot be traced to exactly one collection
+# attribute (deeper indirection, multiple distinct candidates across return
+# statements, or no collection at all), nothing is recorded.
+
+_COLLECTION_ATTR_SUFFIXES = ("RS", "OS", "OC", "RC")
+
+
+def _is_collection_attr(attr_name: str) -> bool:
+    """True if an attribute name looks like an LCM collection property
+    (ReferenceSequence/OwningSequence/OwningCollection/ReferenceCollection).
+
+    Deliberately excludes OA/RA (atomic single-object references, see
+    LCM_PROPERTY_SUFFIXES) -- those can't be the source of a *list*-returning
+    method.
+    """
+    return any(
+        attr_name.endswith(suffix) and len(attr_name) > len(suffix)
+        for suffix in _COLLECTION_ATTR_SUFFIXES
+    )
+
+
+def _find_collection_attrs_in_expr(expr, _depth: int = 0) -> set:
+    """Recursively search an expression's own structure (NOT the whole
+    function) for LCM collection attribute accesses that could feed it.
+
+    Bounded to the expression shapes flexicon's idioms actually use (direct
+    access, list()/tuple() wrapping, call arguments, comprehensions,
+    conditional expressions). Does not descend into lambda bodies or nested
+    function defs -- those would need their own resolution pass.
+    """
+    found: set = set()
+    if expr is None or _depth > 8:
+        return found
+
+    if isinstance(expr, ast.Attribute):
+        if _is_collection_attr(expr.attr):
+            found.add(expr.attr)
+        else:
+            # Chained access (e.g. x.Foo.ComponentLexemesRS) -- the outer
+            # attribute isn't itself a collection, but a nested one might be.
+            found |= _find_collection_attrs_in_expr(expr.value, _depth + 1)
+    elif isinstance(expr, ast.Call):
+        # Skip expr.func itself (e.g. `self._GetTypedElements`, `list`,
+        # `sorted`) -- only its arguments can carry the source collection.
+        for arg in expr.args:
+            found |= _find_collection_attrs_in_expr(arg, _depth + 1)
+        for kw in expr.keywords:
+            found |= _find_collection_attrs_in_expr(kw.value, _depth + 1)
+    elif isinstance(expr, (ast.ListComp, ast.GeneratorExp, ast.SetComp, ast.DictComp)):
+        for gen in expr.generators:
+            found |= _find_collection_attrs_in_expr(gen.iter, _depth + 1)
+    elif isinstance(expr, (ast.List, ast.Tuple, ast.Set)):
+        for elt in expr.elts:
+            found |= _find_collection_attrs_in_expr(elt, _depth + 1)
+    elif isinstance(expr, ast.Subscript):
+        found |= _find_collection_attrs_in_expr(expr.value, _depth + 1)
+    elif isinstance(expr, ast.IfExp):
+        found |= _find_collection_attrs_in_expr(expr.body, _depth + 1)
+        found |= _find_collection_attrs_in_expr(expr.orelse, _depth + 1)
+    elif isinstance(expr, ast.BoolOp):
+        for value in expr.values:
+            found |= _find_collection_attrs_in_expr(value, _depth + 1)
+
+    return found
+
+
+def _walk_flat_statements(stmts):
+    """Yield statements in a body, descending into control-flow blocks
+    (if/for/while/try) but never into nested function/class/lambda defs.
+
+    Used to scan a single method's own statements without leaking into
+    helper closures defined inside it.
+    """
+    for stmt in stmts:
+        yield stmt
+        for field in ("body", "orelse", "finalbody"):
+            block = getattr(stmt, field, None)
+            if isinstance(block, list):
+                yield from _walk_flat_statements(block)
+        for handler in getattr(stmt, "handlers", None) or []:
+            yield from _walk_flat_statements(handler.body)
+
+
+def _walk_flat_statements_no_loops(stmts):
+    """Like `_walk_flat_statements`, but also refuses to descend into
+    nested `for`/`while` loops (only `if`/`try` guards are followed).
+
+    Used by `_find_append_source_for_var` so a `var.append(...)` buried
+    inside an unrelated *inner* loop is not misattributed to the *outer*
+    loop's collection (see LexReferenceOperations.GetComponentEntries,
+    which loops `for ref in complex_type.MembersOC:` and only appends after
+    filtering through a second, unrelated `for i, target in
+    enumerate(targets):` inner loop -- naively descending into that inner
+    loop would misattribute `MembersOC` as the source of the returned
+    entries, which is wrong: they come from `TargetsRS` via `targets`, a
+    level of indirection this resolver deliberately doesn't chase).
+    """
+    for stmt in stmts:
+        yield stmt
+        if isinstance(stmt, (ast.For, ast.While)):
+            continue
+        for field in ("body", "orelse", "finalbody"):
+            block = getattr(stmt, field, None)
+            if isinstance(block, list):
+                yield from _walk_flat_statements_no_loops(block)
+        for handler in getattr(stmt, "handlers", None) or []:
+            yield from _walk_flat_statements_no_loops(handler.body)
+
+
+def _find_append_source_for_var(func_node, var_name: str) -> set:
+    """One level of local tracing for a bare `return var_name`.
+
+    Looks for a `for e in <collection>:` loop whose iterable is directly a
+    collection attribute access, and whose body -- descending through
+    `if`/`try` guards but NOT into further nested `for`/`while` loops --
+    appends into `var_name` (`var_name.append(...)`).
+    """
+    found: set = set()
+    for stmt in _walk_flat_statements(func_node.body):
+        if not isinstance(stmt, ast.For):
+            continue
+        iter_attrs = _find_collection_attrs_in_expr(stmt.iter)
+        if not iter_attrs:
+            continue
+        for inner in _walk_flat_statements_no_loops(stmt.body):
+            if (isinstance(inner, ast.Expr)
+                    and isinstance(inner.value, ast.Call)
+                    and isinstance(inner.value.func, ast.Attribute)
+                    and inner.value.func.attr == "append"
+                    and isinstance(inner.value.func.value, ast.Name)
+                    and inner.value.func.value.id == var_name):
+                found |= iter_attrs
+    return found
+
+
+def _resolve_element_source_property(func_node) -> Optional[str]:
+    """Resolve the single LCM collection property whose elements feed this
+    method's return value, or None if it can't be resolved unambiguously.
+
+    See the module comment above for the supported shapes. Deliberately
+    conservative: any ambiguity (multiple distinct candidate properties
+    across return statements, or an unresolvable indirection) yields None
+    rather than guessing.
+    """
+    candidates: set = set()
+
+    for stmt in _walk_flat_statements(func_node.body):
+        if not isinstance(stmt, ast.Return) or stmt.value is None:
+            continue
+
+        direct = _find_collection_attrs_in_expr(stmt.value)
+        if direct:
+            candidates |= direct
+        elif isinstance(stmt.value, ast.Name):
+            candidates |= _find_append_source_for_var(func_node, stmt.value.id)
+
+    if len(candidates) == 1:
+        return next(iter(candidates))
+    return None
+
+
+# ---- Cast-helper detection (issue #121 defect 3) ------------------------------
+#
+# `_GetTypedElements` (BaseOperations.py) and the module-level `cast_all` it
+# delegates to (lcm_casting.py) resolve every element of a collection to its
+# concrete LCM interface before the method returns -- see their docstrings.
+# A method that routes its resolved `element_source_property` through one of
+# these has therefore ALREADY cast its elements: the caller receives
+# concrete objects, not the raw (possibly abstract) pythonnet type
+# build_element_types.py's LCM `target_type` lookup records as
+# `element_type`. This doesn't mean the result can never be a mix of sibling
+# concrete types (see build_element_types.py's module docstring for why
+# LexEntryOperations.GetComplexFormComponents stays flagged even though it
+# also uses this helper) -- only that no FURTHER pythonnet cast is needed by
+# the caller. Recorded as `element_cast_applied` so a downstream consumer
+# can tell the two hazards apart.
+
+_CAST_HELPER_CALL_NAMES = ("_GetTypedElements", "cast_all")
+
+
+def _expr_calls_cast_helper(expr, _depth: int = 0) -> bool:
+    """True if `expr`'s own structure (same bounded shapes as
+    `_find_collection_attrs_in_expr`) contains a call to one of flexicon's
+    known element-casting helpers.
+    """
+    if expr is None or _depth > 8:
+        return False
+
+    if isinstance(expr, ast.Call):
+        func = expr.func
+        name = None
+        if isinstance(func, ast.Name):
+            name = func.id
+        elif isinstance(func, ast.Attribute):
+            name = func.attr
+        if name in _CAST_HELPER_CALL_NAMES:
+            return True
+        if any(_expr_calls_cast_helper(arg, _depth + 1) for arg in expr.args):
+            return True
+        if any(_expr_calls_cast_helper(kw.value, _depth + 1) for kw in expr.keywords):
+            return True
+    elif isinstance(expr, ast.DictComp):
+        if _expr_calls_cast_helper(expr.key, _depth + 1):
+            return True
+        if _expr_calls_cast_helper(expr.value, _depth + 1):
+            return True
+        if any(_expr_calls_cast_helper(gen.iter, _depth + 1) for gen in expr.generators):
+            return True
+    elif isinstance(expr, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
+        if _expr_calls_cast_helper(expr.elt, _depth + 1):
+            return True
+        if any(_expr_calls_cast_helper(gen.iter, _depth + 1) for gen in expr.generators):
+            return True
+    elif isinstance(expr, (ast.List, ast.Tuple, ast.Set)):
+        if any(_expr_calls_cast_helper(elt, _depth + 1) for elt in expr.elts):
+            return True
+    elif isinstance(expr, ast.IfExp):
+        if (_expr_calls_cast_helper(expr.body, _depth + 1)
+                or _expr_calls_cast_helper(expr.orelse, _depth + 1)):
+            return True
+
+    return False
+
+
+def _element_source_uses_cast_helper(func_node, source_property: str) -> bool:
+    """True if EVERY return statement whose value directly resolved
+    `source_property` (per `_resolve_element_source_property`) routes that
+    value through a known cast helper.
+
+    Only considers the direct-return-value contributions (not the
+    append-loop tracing path) -- the cast-helper idiom in the real corpus
+    only ever appears wrapping a direct return value. Requiring ALL
+    contributing branches to be cast-wrapped (not just one) keeps this
+    conservative: a method that casts on one branch but not another has
+    NOT uniformly resolved its elements, so it must not be marked
+    `element_cast_applied`.
+    """
+    contributing = []
+    for stmt in _walk_flat_statements(func_node.body):
+        if not isinstance(stmt, ast.Return) or stmt.value is None:
+            continue
+        if source_property in _find_collection_attrs_in_expr(stmt.value):
+            contributing.append(stmt.value)
+
+    if not contributing:
+        return False
+    return all(_expr_calls_cast_helper(value) for value in contributing)
+
+
+# ---- Explicit element-type-hint detection (issue #121 remediation, defect 3) --
+#
+# `UnpackNestedPossibilityList(possList.PossibilitiesOS, ICmAnthroItem,
+# recursive)` (FLExProject.py) and its callers (AnthropologyOperations,
+# LocationOperations, SemanticDomainOperations `GetAll`, ...) pass the target
+# concrete LCM interface as a LITERAL argument alongside the collection being
+# unpacked. `PossibilitiesOS` itself is declared over the abstract
+# `ICmPossibility` (shared by every domain list in FieldWorks -- genuinely
+# polymorphic in general, since it backs dozens of unrelated lists), but each
+# of these call sites hardcodes the ONE concrete subtype that specific
+# domain list always holds. That literal argument is a more precise, 100%
+# AST-reliable element type than the property's own declared target_type --
+# unlike `_GetTypedElements`/`cast_all` (see `_element_source_uses_cast_helper`
+# above), which resolves elements to *whatever* concrete type they happen to
+# be at runtime without ever naming it in the source.
+
+_LCM_INTERFACE_NAME_PATTERN = re.compile(r'^I[A-Z]\w*$')
+
+
+def _find_explicit_element_type_hint(expr, target_attr: str, _depth: int = 0) -> Optional[str]:
+    """Look for a call in `expr`'s own structure that both (a) receives
+    `target_attr`'s collection as one argument and (b) receives a bare,
+    LCM-interface-shaped name as ANOTHER argument in the SAME call.
+
+    Bounded to the same expression shapes as `_find_collection_attrs_in_expr`.
+    Only extracts the candidate name from the AST -- build_element_types.py
+    cross-validates it against the LCM index (a real, interface-typed
+    entity) before trusting it, the same separation of concerns as
+    `element_source_property`/`target_type`.
+    """
+    if expr is None or _depth > 8:
+        return None
+
+    if isinstance(expr, ast.Call):
+        args = expr.args
+        if any(target_attr in _find_collection_attrs_in_expr(arg) for arg in args):
+            for arg in args:
+                if isinstance(arg, ast.Name) and _LCM_INTERFACE_NAME_PATTERN.match(arg.id):
+                    return arg.id
+        for arg in args:
+            found = _find_explicit_element_type_hint(arg, target_attr, _depth + 1)
+            if found:
+                return found
+        for kw in expr.keywords:
+            found = _find_explicit_element_type_hint(kw.value, target_attr, _depth + 1)
+            if found:
+                return found
+    elif isinstance(expr, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
+        for gen in expr.generators:
+            found = _find_explicit_element_type_hint(gen.iter, target_attr, _depth + 1)
+            if found:
+                return found
+    elif isinstance(expr, (ast.List, ast.Tuple, ast.Set)):
+        for elt in expr.elts:
+            found = _find_explicit_element_type_hint(elt, target_attr, _depth + 1)
+            if found:
+                return found
+
+    return None
+
+
+def _resolve_element_type_hint(func_node, source_property: str) -> Optional[str]:
+    """Like `_element_source_uses_cast_helper`: scan every return
+    statement that directly resolved `source_property` and require ALL of
+    them to agree on the same explicit type-hint argument. Conservative:
+    a contributing branch with no hint, or branches that disagree, yields
+    None rather than guessing.
+    """
+    hints = set()
+    saw_contributing = False
+    for stmt in _walk_flat_statements(func_node.body):
+        if not isinstance(stmt, ast.Return) or stmt.value is None:
+            continue
+        if source_property not in _find_collection_attrs_in_expr(stmt.value):
+            continue
+        saw_contributing = True
+        hint = _find_explicit_element_type_hint(stmt.value, source_property)
+        if hint:
+            hints.add(hint)
+        else:
+            return None
+
+    if saw_contributing and len(hints) == 1:
+        return next(iter(hints))
+    return None
 
 
 # ---- Facade access-path detection (issue #100) --------------------------------

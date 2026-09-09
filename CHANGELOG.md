@@ -2,6 +2,98 @@
 
 ## [Unreleased]
 
+### Fixed: casting preflight now has dataflow (#121)
+
+`detect_casting_needs` was two regex passes over raw source lines with no type
+inference -- the receiver's type was known only when a syntactic cast alias
+(`x = ILexEntry(y)`) happened to be visible. The gate was inverted in practice:
+it passed the code that actually crashes and flagged code that was safe.
+
+**The false negative it now catches.** This passed with 0 issues and then
+failed at runtime with `'ICmObject' object has no attribute 'HeadWord'` -- the
+most common runtime failure in production logs (4 of 10 sessions,
+2026-09-02 -> 2026-09-08):
+
+```python
+for c in project.LexEntry.GetComplexFormComponents(entry):
+    project.LexEntry.GetHeadword(c)
+```
+
+Three independent reasons it slipped through: `c` is never the *receiver* of an
+attribute access, both real receivers are `project` (hard-skipped), and
+`GetHeadword` is not a casting-index property so no known-pattern regex could
+match. The root cause was that the index had **no field in which the answer
+could be recorded** -- flexicon method records had no `element_type` and no
+`polymorphic`.
+
+**The false positives it stops.** `types =
+project.Cache.LangProject.LexDbOA.ComplexEntryTypesOA` flagged `LexDbOA`,
+because the index-pass regex bound the mid-chain *property* name `LangProject`
+as if it were a variable. `n = poss.Name.BestAnalysisAlternative.Text` flagged
+`Name`, because the multistring exemption covered the chain's tail but not the
+property that heads it. Both are fixed structurally (by unwinding the real AST
+chain) rather than with another regex exemption.
+
+#### Index: `element_type` and `polymorphic` on method records
+
+`flexicon_analyzer.py` now AST-resolves each method's *element source property*
+-- the LCM collection the returned elements actually come from -- by walking
+return statements through `list()`/`tuple()` wrapping, call arguments,
+comprehension iterables, and one level of local-variable tracing. A new
+`build_element_types.py` post-process (wired into `refresh.py`) resolves that
+against the LibLCM index's `target_type` and emits `element_type` plus
+`polymorphic` (only when true); both keys are **omitted** when unresolvable, so
+every consumer degrades to prior behavior via `.get()`.
+
+Coverage: **142** methods carry `element_type` -- 112 via element-source
+resolution, 30 via a `EnumerableWrapper[IX]` / `list[IX]` return-type fallback
+that reaches high-traffic methods like `LexEntryOperations.GetAll`. Of those,
+**46** are polymorphic and **96** are not.
+
+Deriving from LCM `target_type` rather than docstring prose is deliberate:
+`ILexEntryRef.ComponentLexemesRS.target_type` is `ICmObject`, while the
+docstring promises "List of ILexEntry or ILexSense objects". The prose
+describes the conceptual type; `target_type` is what the object arrives as at
+the pythonnet boundary, which is what determines whether a cast is needed.
+
+#### Validator: loop-target binding, two new rules
+
+`detect_casting_needs` takes an optional `api_index` (passed by keyword, so
+existing 3-argument test stubs keep working) and binds `for` targets iterating
+a flexicon Operations method to that method's element type. The binding is kept
+in its own map, never merged into `line_var_cast_types` -- a cast alias means
+"this var IS this interface, so access is safe", whereas a polymorphic
+`element_type` means the opposite, "this var is only weakly typed". It is capped
+at the first reassignment of the name, so narrowing via a cast releases it.
+
+- **Rule A** flags a property access on a polymorphically-bound variable.
+- **Rule B** flags such a variable passed to an operation that expects a more
+  specific interface -- the headline case. It fires only when the element type
+  is genuinely wider than the expected interface and no intervening cast
+  applies.
+
+Rule B's premise was verified against flexicon source: `__ResolveObject`'s
+object-input branch is unguarded, so passing a `LexSense` to
+`project.LexEntry.GetHeadword` really does reach `entry.HeadWord` and fail --
+unlike the HVO path, which raises a friendly `FP_ParameterError`.
+
+#### No cast is offered where no cast is legal
+
+For a genuinely mixed collection there is no single valid cast, so Rule A now
+teaches the `ClassName`-branch dispatch flexicon's own docstring teaches, and
+leaves `cast_interface`/`rewrite` as `None`. It still resolves a concrete cast
+when exactly one interface declares the property -- which is the ambiguity
+collapse #121 asked for. An interface-spelling heuristic that had preferred
+LCM's `IXOrY` names (`ISenseOrEntry`) was removed: across the whole LibLCM
+index exactly one entity implements `ISenseOrEntry` -- the wrapper struct
+`SenseOrEntry` -- and neither `LexEntry` nor `LexSense` does, so
+`ISenseOrEntry(c)` would throw for every element. Relatedly, the
+variable-name tie-break (`sense` -> `ILexSense`) no longer applies to a
+receiver already proven heterogeneous; proven dataflow beats spelling.
+
+Also removed the dead `casting_index.get("polymorphic_collections", {})` read,
+whose result was discarded; the data is still consumed by the discovery path.
+
 ## [2.11.0] - 2026-09-08
 
 Index-refresh release: the bundled Flexicon API index is regenerated against

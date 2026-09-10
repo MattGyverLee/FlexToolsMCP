@@ -14,7 +14,7 @@ Provides checks for code structure, safety, and correctness:
 import re
 import ast
 import textwrap
-from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard
+from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
     from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
@@ -998,8 +998,8 @@ def detect_interface_attribute_typos(
     if code_tree is None or api_index is None:
         return result
 
-    assigns, _ = _collect_assign_call_nodes(code_tree)
-    _, cast_aliases = _resolve_alias_maps(assigns)
+    assigns, _, bindings = _collect_assign_call_nodes(code_tree)
+    _, cast_aliases = _resolve_alias_maps(assigns + bindings)
     # Issue #97 Bug 2: cast_aliases above is a single whole-function dict, so
     # mutually exclusive if/elif/else branches that cast the SAME variable
     # name to different interfaces collapse onto whichever branch assigned
@@ -1188,8 +1188,25 @@ _FACADE_INJECTED_NAMES = frozenset({"project"})
 _READONLY_METHOD_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains", "List")
 
 
-def _iter_assign_pairs(node: ast.Assign) -> Iterator[Tuple[ast.AST, ast.AST]]:
-    """Yield (target, value) pairs for one Assign, unpacking same-arity tuples.
+# Cycle 2 / Finding B: the sibling binding forms that bind a name to a value
+# just as surely as `ast.Assign` does, but that Steps below used to walk past
+# entirely because `_collect_assign_call_nodes` only ever collected Assign
+# nodes:
+#     fx: FLExProject = FLExProject.FromOpenProject(project)   (AnnAssign)
+#     if (fx := FLExProject.FromOpenProject(project)):         (NamedExpr)
+#     for ops in (...):                                        (For)
+#     with ... as fx:                                          (withitem)
+# `_BindingNode` is consumed ONLY by `_resolve_facade_names` / `_resolve_alias_maps`
+# (via the widened `_iter_assign_pairs` below) -- `_find_cast_alias_property_writes`
+# and `_iter_assign_pairs`'s own tuple-unpacking special case both still assume
+# `.targets`, so `_collect_assign_call_nodes` keeps returning a SEPARATE,
+# unchanged `List[ast.Assign]` for those; see its docstring.
+_BindingNode = Union[ast.Assign, ast.AnnAssign, ast.NamedExpr, ast.For, ast.withitem]
+
+
+def _iter_assign_pairs(node: _BindingNode) -> Iterator[Tuple[ast.AST, ast.AST]]:
+    """Yield (target, value) pairs for one binding node, unpacking same-arity
+    Assign tuples.
 
     `lex, lists = fx.LexEntry, fx.PossibilityLists` yields two pairs, so each
     name binds to its OWN right-hand side instead of the whole tuple -- issue
@@ -1198,17 +1215,63 @@ def _iter_assign_pairs(node: ast.Assign) -> Iterator[Tuple[ast.AST, ast.AST]]:
     Mismatched arity, starred targets and non-tuple right-hand sides fall back
     to yielding the whole RHS once per target (`a = b = expr`), which every
     caller already treats as unresolvable unless the RHS is a shape it knows.
+
+    Cycle 2 / Finding B widens this beyond plain `ast.Assign` to the sibling
+    binding forms flexicon scripts also use to reach a facade or an Operations
+    instance:
+
+      - `ast.AnnAssign`  (`fx: FLExProject = ...`)  -- `.value` is None for a
+        bare annotation (`fx: FLExProject` with no `=`); skipped, since
+        nothing was actually bound at runtime.
+      - `ast.NamedExpr`  (`if (fx := FLExProject.FromOpenProject(project)):`)
+      - `ast.For`        (`for ops in (...):`) -- DELIBERATELY treats the loop
+        TARGET as bound to the whole ITERABLE expression, which is semantically
+        wrong for the common case (`for entry in fx.LexEntry.GetAll():` does
+        NOT bind `entry` to a `LexEntryOperations` instance, it binds it to one
+        element of whatever GetAll() returns). Over-typing here is the safe
+        direction per issue #8 ("false positives are safer than false
+        negatives"): worst case a loop variable gets treated as an operations
+        alias it isn't, costing a spurious mutation warning -- never a missed
+        one. This is a completely separate signal from the per-element
+        `loop_element_types` dataflow `detect_casting_needs` already builds
+        for for-loop/comprehension targets (issue #121, near line 4880): that
+        dataflow types the loop ELEMENT from indexed `element_type`/
+        `polymorphic` method metadata and is keyed by `(line, name)`; this one
+        types the loop NAME itself from the RHS shape and feeds a
+        whole-function `operations_aliases`/`cast_aliases`/facade-name dict.
+        They write to disjoint dicts and are consumed by disjoint call sites,
+        so there is no key collision -- only, in principle, two independent
+        opinions about the same name, which is unavoidable given issue #8's
+        stated preference.
+      - `ast.withitem`   (`with ... as fx:`) -- `.optional_vars` is None for a
+        bare `with expr:`; skipped.
     """
-    for target in node.targets:
-        if (
-            isinstance(target, ast.Tuple)
-            and isinstance(node.value, ast.Tuple)
-            and len(target.elts) == len(node.value.elts)
-            and not any(isinstance(elt, ast.Starred) for elt in target.elts)
-        ):
-            yield from zip(target.elts, node.value.elts, strict=True)
-        else:
-            yield target, node.value
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            if (
+                isinstance(target, ast.Tuple)
+                and isinstance(node.value, ast.Tuple)
+                and len(target.elts) == len(node.value.elts)
+                and not any(isinstance(elt, ast.Starred) for elt in target.elts)
+            ):
+                yield from zip(target.elts, node.value.elts, strict=True)
+            else:
+                yield target, node.value
+        return
+    if isinstance(node, ast.AnnAssign):
+        if node.value is not None:
+            yield node.target, node.value
+        return
+    if isinstance(node, ast.NamedExpr):
+        yield node.target, node.value
+        return
+    if isinstance(node, ast.For):
+        yield node.target, node.iter
+        return
+    if isinstance(node, ast.withitem):
+        if node.optional_vars is not None:
+            yield node.optional_vars, node.context_expr
+        return
 
 
 def _facade_method_return_type(
@@ -1258,7 +1321,7 @@ def _is_facade_producing_call(node: ast.Call, api_index: Optional[Any]) -> bool:
 
 
 def _resolve_facade_names(
-    assigns: List[ast.Assign], api_index: Optional[Any] = None
+    assigns: List[_BindingNode], api_index: Optional[Any] = None
 ) -> Set[str]:
     """Names bound to a flexicon FLExProject facade, plus injected `project`.
 
@@ -2590,22 +2653,36 @@ def format_cud_warning(cud_info: dict, write_enabled: bool, confirmed: bool = Fa
 
 def _collect_assign_call_nodes(
     tree: ast.AST,
-) -> Tuple[List[ast.Assign], List[ast.Call]]:
-    """One ast.walk pass producing both Assign and Call lists for the
-    alias/mutation helpers below to consume. Replaces the four separate
-    walks the helpers used to do."""
+) -> Tuple[List[ast.Assign], List[ast.Call], List[_BindingNode]]:
+    """One ast.walk pass producing Assign, Call, and sibling-binding lists for
+    the alias/mutation helpers below to consume. Replaces the four separate
+    walks the helpers used to do.
+
+    The returned `assigns` list is `ast.Assign` nodes ONLY -- unchanged from
+    before Cycle 2 / Finding B -- because `_find_cast_alias_property_writes`
+    and `_iter_assign_pairs`'s own tuple-unpacking special case both iterate
+    `.targets` directly and would raise `AttributeError` on an `ast.AnnAssign`/
+    `ast.NamedExpr`/`ast.For`/`ast.withitem` node (none of which has a
+    `.targets` attribute). The third return value, `bindings`, carries exactly
+    those sibling forms (never `ast.Assign`, to avoid double-processing when a
+    caller concatenates `assigns + bindings` for `_resolve_facade_names`/
+    `_resolve_alias_maps`, the only two consumers that should ever see them).
+    """
     assigns: List[ast.Assign] = []
     calls: List[ast.Call] = []
+    bindings: List[_BindingNode] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             assigns.append(node)
         elif isinstance(node, ast.Call):
             calls.append(node)
-    return assigns, calls
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr, ast.For, ast.withitem)):
+            bindings.append(node)
+    return assigns, calls, bindings
 
 
 def _resolve_alias_maps(
-    assigns: List[ast.Assign],
+    assigns: List[_BindingNode],
     facade_names: Optional[Set[str]] = None,
     accessor_to_ops: Optional[Dict[str, str]] = None,
 ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -2756,6 +2833,39 @@ def _indexed_mutating_method_names(api_index: Optional[Any]) -> Set[str]:
             if method.get("is_mutating") and method.get("name"):
                 names.add(method["name"])
     return names
+
+
+def _indexed_operations_class_names(api_index: Optional[Any]) -> Set[str]:
+    """Every indexed entity name that ends in "Operations" (64 in the shipped
+    flexicon_api_v4.7.0.json).
+
+    Cycle 2 / Finding A: Step 2b's fallback for Step 1's static
+    `LexSenseOperations.Method(...)` receiver form -- `_resolve_receiver_ops_class`
+    does not itself cover a bare class-name-as-receiver, only facade accessors,
+    inline construction, and local aliases. The fallback membership-tests
+    against THIS set rather than doing a bare `receiver.id.endswith("Operations")`
+    suffix test: a suffix-only check grants authoritatively-classified status
+    (`continue`, meaning "Step 2 already handled this") to any name that merely
+    LOOKS like an Operations class -- a local variable
+    (`myOperations = get_agent_ops()`), or a class the index has never heard of
+    (`ZzzOperations`) -- with no index lookup at all. That directly contradicts
+    the design principle documented in the closing paragraph of
+    `_indexed_mutating_method_names` above ("Deliberately index-derived rather
+    than a verb-prefix guess"): the index is the same authority Step 2 consults, so nothing
+    is treated as authoritatively classified here that the index does not
+    itself know about. Deliberately does NOT reuse the `entities` local built
+    in `certify_script_readonly` -- that name is rebound to `{}` in the
+    `else` branch when `api_index.flexicon` is falsy, so a stale reference
+    would silently go empty at the wrong times.
+    """
+    if api_index is None:
+        return set()
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    return {
+        name
+        for name in (flexicon.get("entities") or {}).keys()
+        if name.endswith("Operations")
+    }
 
 
 def _find_cast_alias_property_writes(
@@ -3163,14 +3273,15 @@ def detect_hvo_literal_args(
             return {"has_hvo_literal_risk": False, "findings": []}
 
     accessor_to_ops = _accessor_to_ops_map(api_index)
-    assigns, calls = _collect_assign_call_nodes(tree)
+    assigns, calls, bindings = _collect_assign_call_nodes(tree)
     # Issue #130: `fx = FLExProject.FromOpenProject(project)` is flexicon's
     # documented portable shape, so the hvo gate has to type `fx` the same way
     # it types the injected `project` or it stops seeing hvo literals the
-    # moment a module adopts that shape.
-    facade_names = _resolve_facade_names(assigns, api_index)
+    # moment a module adopts that shape. Cycle 2 / Finding B: `bindings`
+    # widens this to the AnnAssign/NamedExpr/For/withitem sibling forms too.
+    facade_names = _resolve_facade_names(assigns + bindings, api_index)
     operations_aliases, _casts = _resolve_alias_maps(
-        assigns, facade_names, accessor_to_ops
+        assigns + bindings, facade_names, accessor_to_ops
     )
 
     findings: List[Dict[str, Any]] = []
@@ -3577,11 +3688,16 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     facade_names: Set[str] = set(_FACADE_INJECTED_NAMES)
     ast_assigns: List[ast.Assign] = []
     ast_calls: List[ast.Call] = []
+    ast_bindings: List[_BindingNode] = []
     if tree is not None:
-        ast_assigns, ast_calls = _collect_assign_call_nodes(tree)
-        facade_names = _resolve_facade_names(ast_assigns, api_index)
+        ast_assigns, ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
+        # Cycle 2 / Finding B: `ast_assigns + ast_bindings` widens facade/alias
+        # resolution to AnnAssign/NamedExpr/For/withitem binding forms.
+        # `_find_cast_alias_property_writes` below (Step 4b) deliberately still
+        # gets the unwidened `ast_assigns` -- see `_collect_assign_call_nodes`.
+        facade_names = _resolve_facade_names(ast_assigns + ast_bindings, api_index)
         operations_aliases, cast_aliases = _resolve_alias_maps(
-            ast_assigns, facade_names, accessor_to_ops
+            ast_assigns + ast_bindings, facade_names, accessor_to_ops
         )
         existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
         for triple in _find_receiver_resolved_operations_calls(
@@ -3733,19 +3849,45 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # suspected mutations keeps an incomplete index a REPORTING problem rather
     # than a safety one; they are protection-checked like any other mutation,
     # so a properly guarded script still passes the unprotected_writes gate.
+    #
+    # Cycle 2 / Finding A: this used to suppress on a LINE-KEYED set
+    # (`(method, lineno)` pairs drawn from Steps 1/1c's regex matches, which
+    # scan un-stripped `code` text and so can be seeded by a comment or string
+    # literal), and it self-added its own key -- so two distinct unresolved
+    # calls of the same method on one line collapsed into a single finding,
+    # and ANY same-name/same-line regex hit (real or decoy) silently
+    # suppressed a real unresolved-receiver mutation. Inverted: decide per
+    # `ast.Call` NODE via the same resolver Step 1b already uses, so a call
+    # is only ever skipped here because IT ITSELF was authoritatively
+    # classified -- never because of what shares its line.
     if ast_calls and api_index and api_index.flexicon:
-        _resolved_pairs = {(m, ln) for _c, m, ln in operations_calls_with_lines}
         _indexed_mutating = _indexed_mutating_method_names(api_index)
+        _known_ops_classes = _indexed_operations_class_names(api_index)
         for _node in ast_calls:
             if not isinstance(_node.func, ast.Attribute):
                 continue
             _method_name = _node.func.attr
             if _method_name not in _indexed_mutating:
                 continue
-            if (_method_name, _node.lineno) in _resolved_pairs:
-                continue
-            _resolved_pairs.add((_method_name, _node.lineno))
-            _receiver_src = _describe_receiver(_node.func.value)
+            _recv = _node.func.value
+            _cls = _resolve_receiver_ops_class(
+                _recv, accessor_to_ops, operations_aliases, facade_names
+            )
+            if (
+                _cls is None
+                and isinstance(_recv, ast.Name)
+                and _recv.id in _known_ops_classes
+            ):
+                # Step 1's static `LexSenseOperations.Method(...)` form:
+                # `_resolve_receiver_ops_class` does not cover a bare
+                # class-name receiver, only facade accessors / inline
+                # construction / aliases. Tightened per the QC addendum: the
+                # class name must be a KNOWN INDEXED Operations class, not
+                # merely name-shaped -- see `_indexed_operations_class_names`.
+                _cls = _recv.id
+            if _cls is not None:
+                continue  # Step 2 already classified this node authoritatively
+            _receiver_src = _describe_receiver(_recv)
             if _is_line_protected(_node.lineno, protected_ranges):
                 protected_calls.append({
                     "class": _receiver_src,
@@ -3753,6 +3895,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                     "is_mutating": True,
                     "source": "unresolved_receiver",
                     "line": _node.lineno,
+                    "col": _node.col_offset,
                     "protected": True,
                 })
             else:
@@ -3764,6 +3907,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                         "elsewhere in the index"
                     ),
                     "line": _node.lineno,
+                    "col": _node.col_offset,
                 })
                 mutating_calls.append({
                     "class": _receiver_src,
@@ -3771,6 +3915,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                     "is_mutating": True,
                     "source": "unresolved_receiver",
                     "line": _node.lineno,
+                    "col": _node.col_offset,
                     "protected": False,
                 })
                 confidence_sources["unknown"] += 1
@@ -4676,15 +4821,16 @@ def detect_casting_needs(
         except SyntaxError:
             tree = None
     if tree is not None:
-        ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
+        ast_assigns, _ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Issue #130: type every FLExProject-valued variable, not just the
         # injected `project`, so a module written in flexicon's documented
         # `fx = FLExProject.FromOpenProject(project)` shape still resolves its
         # accessors here (both `_resolve_receiver_ops_class` call sites below
-        # take the resulting set).
-        facade_names = _resolve_facade_names(ast_assigns, api_index)
+        # take the resulting set). Cycle 2 / Finding B: `ast_bindings` widens
+        # this further to AnnAssign/NamedExpr/For/withitem binding forms.
+        facade_names = _resolve_facade_names(ast_assigns + ast_bindings, api_index)
         operations_aliases, cast_aliases = _resolve_alias_maps(
-            ast_assigns, facade_names, _accessor_to_ops_map(api_index)
+            ast_assigns + ast_bindings, facade_names, _accessor_to_ops_map(api_index)
         )
         # Issue #49 B-6: hoisted out of `if cast_aliases:` so the binding is
         # structural, not a correlation between this guard and the SECOND

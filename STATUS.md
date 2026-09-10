@@ -1015,3 +1015,117 @@ issue writes need the user.
 (as-found; the *user* set it -- leave it). No lock file on disk. `Sena 3`
 UNMUTATED this cycle -- the user declined the wider live mutating group, so no
 restore is needed.
+
+---
+
+## Write-gate bypass batch (branch `flexicon-project-bridge-mcp`) -- spurt closed on a human gate (cycles 1-2, 2026-09-10)
+
+**Not a `flexicon-project-bridge` task.** That feature's own tasks T001-T025 are
+all checked off in `specs/flexicon-project-bridge/tasks.md`; this batch is the
+two write-gate **defects** cycle-1 QC and verification surfaced while reviewing
+it. It is tracked only in `specs/flexicon-project-bridge/reviews/`, and it is
+**UNCOMMITTED**: `src/flextoolsmcp/server/validators.py` (+183/-38) plus new
+`tests/test_cycle2_step2b_finding_a_b.py`, on top of `def958a`.
+
+**Both findings are implemented as ratified.**
+
+- **Finding A -- Step 2b line-keyed self-suppression (`certify_script_readonly`,
+  now :3841-3908).** The `_resolved_pairs` line-key set is *structurally gone*;
+  each `ast.Call` is now decided on its own via `_resolve_receiver_ops_class`,
+  so a call is skipped only because IT was authoritatively classified, never
+  because of what shares its line. The old bug: any same-name/same-line regex
+  hit -- including a **comment or string decoy** -- silently suppressed a real
+  unresolved-receiver mutation. Cycle-1 QC chose Option 1 ("invert the
+  question") over node-identity and composite-key; the addendum's **tightened**
+  fallback (`_recv.id in _known_ops_classes`, backed by the new
+  `_indexed_operations_class_names` at :2838) was adopted, so the three
+  pre-existing naming-convention holes (`myOperations`, `ZzzOperations`, a
+  `fooOperations` parameter) close too rather than being preserved.
+- **Finding B -- binding-form blindness.** New `_BindingNode` union (:1204) and
+  a **third** return list `bindings` from `_collect_assign_call_nodes` (:2654).
+  The structural constraint held: `assigns` stays `List[ast.Assign]`, so Step 4b's
+  `_find_cast_alias_property_writes(ast_assigns, ...)` (:3943) still receives
+  bare `ast.Assign` only -- verified, it is the lone call site. All four
+  facade/alias call sites now pass `assigns + bindings` (:1002, :3281, :3699,
+  :4830). This closes the 2x2 cell where `annotated`/`walrus`/`with-as` bindings
+  **without a usable index** were certified read-only at *high* confidence.
+
+**Evidence, produced independently of the programmer** (orchestrator harnesses in
+the session scratchpad: `verify_real_code.py`, `verify_no_overblock.py`,
+`head_baseline.py`), run against the PATCHED module and the shipped
+`flexicon_api_v4.7.0.json`, not a prototype:
+
+- Suite **1336 passed / 8 skipped / 36 subtests** (baseline 1312 + 24 new), re-run
+  independently and matching the programmer's numbers exactly.
+- **All 12 attack vectors BLOCKED end-to-end through `certify_script_readonly`**
+  (`certified=False`, `confidence=low`, `unknown_calls>=1`): same-line `;`,
+  reversed order, comprehension, ternary, one-line `for`, trailing-comment decoy,
+  string-literal decoy, bogus-ops comment decoy, plus J/K/L. The two-unresolved-
+  calls-on-one-line case now yields **two** rows -- direct proof the self-
+  suppression is gone.
+- All five Finding-B binding forms blocked, including the index-less cell.
+- **No over-block:** four legitimate resolvable shapes classify authoritatively
+  (`unknown_calls=0`, `confidence=high`); ten read-only scripts across
+  index/no-index (plain, facade, annotated, walrus, with-as) still certify True;
+  a *guarded* case-K variant yields `unprotected=0`, so the tightening stays
+  protection-checked.
+- Fresh IDE diagnostics on `validators.py`: **empty**. The four
+  `_parents is possibly unbound` pyright warnings near :5405/:5468 are
+  **pre-existing** (9 occurrences in both HEAD and the working tree, untouched).
+
+**Verification gate: PASS, and lex-verification is NOT applicable to this change
+class.** These are pure static-analysis edits -- no live FLEx database, no LCM
+write, nothing to `-restore`. The right evidence standard is suite parity +
+end-to-end probes through the public entrypoint + no-over-block controls + a
+pristine-worktree baseline, and all four exist above, produced by a party other
+than the author. Re-dispatching lex-verification here would burn a cycle to
+re-run the same suite.
+
+**Contract question closed so QC need not re-litigate it:** the added
+`"col": col_offset` key is contract-safe. `docs/TOOL-CONTRACT.md:102` lists
+`mutating_calls` as an opaque `(list)`, and `UnprotectedWritesDetail`
+(`src/flextoolsmcp/server/response_models.py:178`) types it
+`Optional[List[Any]]` -- the `extra="forbid"` on that model constrains detail
+*fields*, not row keys. The programmer's ~40-hit consumer audit found no exact-
+key-set or full-dict assertion.
+
+**One residual FALSE POSITIVE, confirmed PRE-EXISTING, not a regression.** A
+script whose only mention of a mutating call sits in a **comment or docstring**
+returns `is_certified_readonly=False` with `mutating_calls=1` when an index is
+loaded (with `api_index=None` it correctly certifies True). Reproduced
+identically in a pristine worktree at `def958a`. This is the out-of-scope
+stripping defect Explore documented
+(`reviews/cycle1-explore-strip-scope.md`) and the archivist has now drafted
+(`reviews/cycle2-archivist-strip-issue.md`) -- so the follow-up is empirically
+real, not theoretical. Its meta-finding matters: **do not "just call
+`_strip_comments` more"** -- that helper eats real code on `t = "a#b"` and can
+make `ast.parse` raise, which `certify_script_readonly` swallows at :3550
+(`tree = None`), silently disabling Steps 1b/2b/4b. Converge on AST-ification or
+a `tokenize`-based stripper.
+
+### Next pickup -- the pre-commit QC gate
+
+1. **lex-qc on the diff itself** (the only gate still genuinely open): the new
+   `_BindingNode` union and the third return value threaded through four call
+   sites; the documented `For` over-typing (issue #8) and its claimed disjointness
+   from `detect_casting_needs`' `loop_element_types`; and the quality/coverage of
+   the 24 new tests in `tests/test_cycle2_step2b_finding_a_b.py`. Skip
+   verification and domain -- see above.
+2. Optionally lex-simplify on the same diff: a Union alias + a 3rd tuple element
+   is added structural surface, and `_collect_assign_call_nodes` now has three
+   consumers with two different expectations.
+
+**Two items need the user, and they are the only reason this batch is not
+closed:**
+
+- **Authorize the disposition of the uncommitted diff.** The user has NOT
+  sanctioned a commit for this batch and asked to see it first. The Ralph
+  standing prompt would otherwise auto-commit it -- hence this spurt stops on
+  `needs_human` rather than `in_progress`.
+- **Authorize filing the drafted stripping issue.** The draft is ready in
+  `reviews/cycle2-archivist-strip-issue.md`; dedup found no match (nearest, #126
+  and #131, are both open false-*negative* write-gate bugs, opposite direction).
+  Only the user opens issues.
+
+**Machine state at close:** no FLEx involvement at any point in this batch --
+static analysis only. Nothing to restore.

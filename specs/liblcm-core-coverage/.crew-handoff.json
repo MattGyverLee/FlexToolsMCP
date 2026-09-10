@@ -1,0 +1,13 @@
+{
+  "feature": "liblcm-core-coverage",
+  "status": "feature_complete",
+  "last_cycle": 2,
+  "spurts_completed": 1,
+  "tasks_done": [
+    "#135 recover SIL.LCModel.Core types dropped by ReflectionTypeLoadException (d50689f)",
+    "#136 recover parameterized .NET accessors dropped by the prefix filter (98c0fa4)"
+  ],
+  "next_checkpoint": "none -- feature closed",
+  "next_entry": "Nothing in this feature. Two user-gated spinoffs recorded in STATUS.md: (A) flexicon index 4.7.0 -> 4.8.0 supersede, (B) optional pyright-hygiene cleanup in liblcm_extractor.py + test_issue136.",
+  "updated": "2026-09-10"
+}

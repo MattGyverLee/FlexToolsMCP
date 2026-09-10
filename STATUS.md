@@ -1129,3 +1129,66 @@ closed:**
 
 **Machine state at close:** no FLEx involvement at any point in this batch --
 static analysis only. Nothing to restore.
+
+## liblcm-core-coverage (#135 / #136) -- FEATURE COMPLETE (cycles 1-2, 2026-09-10)
+
+Both issues landed and pushed to `origin main`:
+`d50689f` (#135, ReflectionTypeLoadException type recovery) and
+`98c0fa4` (#136, parameterized-accessor recovery). All gates green.
+
+**147 members recovered across 26 types** -- an exact match to lex-qc's cycle-1
+prediction, which is the strongest signal here: the fix landed the size the
+analysis said it would, so nothing extra crept in. Verification confirmed the
+change is **purely additive** (147 methods added, 0 removed); the raw `git diff`'s
+1086 minus-lines are pure JSON key-order churn inside untouched entities, not
+losses. Zero `get_Item`/`set_Item` duplicates across all 12 named entities.
+ITsString gained exactly the 8 expected members. Field discipline is clean across
+all 147 entries (not just the 8): zero `is_property`, and `index_param_type`
+present iff `indexed==true`.
+
+Signatures were checked against **live .NET reflection on the installed
+FieldWorks 9 DLL**, not against source -- ground truth. That caught that the
+cycle-2 prompt's `get_Properties(int ich)` was a typo in my own briefing: the real
+parameter is `irun` (`ich` belongs to `get_PropertiesAt`/`get_RunAt`). The index
+and the DLL agree; only the prompt was wrong. Server serves `get_Properties` in
+the default summary view. Suite: **1394 passed / 8 skipped / 0 failed**.
+
+Crew reports are committed under `specs/liblcm-core-coverage/reviews/`
+(5 files, cycles 1-2), per the tracked-reviews convention.
+
+### Two spinoffs, both deliberately left OUT of this feature (need the user)
+
+**A. flexicon index 4.7.0 -> 4.8.0 supersede.** My cycle-2 briefing told the
+programmer to restore the deleted `*_flexicon-v4.7.0.json` files because
+`pip show pyflexicon` said 4.7.0. That instruction was wrong and the cycle-2
+`refresh` correctly re-deleted them. Root cause: `flexicon.__file__` resolves to
+`D:\Github\_Projects\_LEX\flexicon\flexicon` -- an **editable install of the
+sibling repo**, whose tree is tagged `v4.8.0` ("chore(release): cut 4.8.0").
+pip's recorded metadata is simply stale because the editable install was never
+re-run after the bump. So **v4.8.0 is the real released version and the v4.8.0
+index files are the correct ones.**
+
+Not committed, on purpose: this is an unrelated index version bump and must not
+ride along inside a liblcm bugfix spurt. It also carries a genuine policy choice
+that is the user's, not the crew's -- v4.7.0 has never been superseded before, so
+there is no precedent to follow: **delete v4.7.0** (clean, but a PyPI user still
+on 4.7.0 eats a first-run lazy refresh) vs. **keep both** (additive, larger repo,
+serves both audiences). Recommend also re-running `pip install -e` on the
+flexicon checkout so the metadata stops lying to future tooling -- that stale
+metadata is what misled this spurt in the first place.
+
+**B. Pyright hygiene (optional, non-blocking).** `#136` added two new instances
+(`liblcm_extractor.py:790,809`, "Public/Instance/DeclaredOnly is not a known
+attribute of None") of a pythonnet-unavailable idiom that already exists
+pre-change at `:332`, `:402`, `:922`. Consistent with the file, not a regression;
+a real fix is one typed helper/assert across all five sites. Plus three trivial
+unused-variable warnings in `tests/test_issue136_indexed_accessor_recovery.py`
+(`_pythonnet_available` L105, `non_public` L97/L100). Nothing fails. Worth one
+small issue only if the user wants pyright clean.
+
+**Also still dirty, and NOT ours:** `reports/upstream-flexicon-docstring-findings.*`
+(217 -> 139 findings) is uncommitted fallout from the earlier `5330f25` scanner
+change, left over from the previous campaign. Untouched by this spurt.
+
+**Machine state at close:** no FLEx writes at any point -- static analysis and
+read-only reflection only. Nothing to restore.

@@ -65,14 +65,21 @@ Both must exit clean before opening a PR.
 
 ### Code that lives inside text
 
-pyright only sees `src/`. It cannot check a `python` fence in CLAUDE.md, a
-`code` string in `curated_recipes`, or a docstring example in the bundled
-index -- yet those are the surfaces the MCP teaches from, so a stale name
-there is re-injected into every script Claude generates.
+pyright only sees `src/` as code. It cannot check a `python` fence in
+CLAUDE.md, a `code` string in `curated_recipes`, or an API name quoted in one
+of our own comments -- yet those are the surfaces the MCP teaches from, so a
+stale name there is re-injected into every script Claude generates.
+
+Scope is this repo's own text: markdown, templates, recipe and worked-example
+code, and our own docstring examples, comments and prose. The API's own
+docstrings are gated upstream by flexicon's
+`tests/test_docstring_example_ratchet.py`, against the library itself rather
+than a generated index -- checking them here as well would be the weaker of
+two duplicate checks, so it happens only on demand (`--upstream`).
 
 ```
-python scripts/check_doc_snippets.py            # gate the repo's own surfaces
-python scripts/check_doc_snippets.py --upstream # + pyflexicon docstrings
+python scripts/check_doc_snippets.py            # gate this repo's own text
+python scripts/check_doc_snippets.py --upstream # + cross-check pyflexicon
 ```
 
 It runs as a pre-commit hook and as `tests/test_doc_snippets.py`, so a
@@ -85,6 +92,12 @@ resolves every finding to a flexicon source path and line:
 ```
 python scripts/check_doc_snippets.py --worklist reports/upstream-flexicon-docstring-findings.md
 ```
+
+In comments and docstring prose only a two-segment claim
+(`project.Senses.GetGloss`) or a flexicon import is judged -- a bare
+`project.<X>` mention is not a claim, since our validators discuss wrong
+names for a living. Metavariables (`X`, `XOperations`) are skipped, and a
+line carrying `doc-check: ignore` opts out.
 
 If a fence deliberately shows something other than current flexicon API, say
 so in its info string rather than leaving the gate to guess:

@@ -62,12 +62,24 @@ def test_repo_owned_snippets_have_no_api_findings():
 
 def test_every_surface_is_actually_being_scanned(api):
     """Guards against a silent collector break emptying a whole surface."""
-    snippets = checker.collect_snippets(api, include_upstream=True)
+    snippets = checker.collect_snippets(api)
     counts = {}
     for snippet in snippets:
         counts[snippet.surface] = counts.get(snippet.surface, 0) + 1
-    for surface in ("md", "template", "recipe", "worked", "docstring"):
+    for surface in ("md", "template", "recipe", "worked", "pycode"):
         assert counts.get(surface, 0) > 0, "surface %r collected nothing" % surface
+
+
+def test_upstream_docstrings_are_not_scanned_by_default(api):
+    """flexicon gates its own docstrings at source, against the library
+    rather than a generated index. Checking the same text twice here would
+    be the weaker of two duplicate checks."""
+    default = checker.collect_snippets(api)
+    assert not [s for s in default if s.surface == "docstring"]
+    on_demand = checker.collect_snippets(api, include_upstream=True)
+    assert [s for s in on_demand if s.surface == "docstring"], (
+        "the cross-check path must still be able to reach upstream examples"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +186,55 @@ def test_worklist_resolves_findings_to_flexicon_source_locations(api, tmp_path):
     assert located, "no finding resolved to a flexicon source file and line"
     # internal receivers are their own repair, not an accessor rename
     assert any(r["kind"] == "internal-leak" for r in rows)
+
+
+def test_deprecated_alias_accessors_are_valid(api):
+    """flexicon installs 46 singular/plural aliases onto FLExProject at
+    import time (issue #200). They are absent from the index property list
+    but they are real: `project.Sense.GetGloss(s)` runs. Calling them typos
+    is the same false-failure class as the pre-commit degradation."""
+    if not api.aliases:
+        pytest.skip("alias table unavailable: flexicon not importable")
+    assert not _check("project.Sense.GetGloss(sense)\n", api)
+
+
+def test_member_checking_continues_through_an_alias(api):
+    if not api.aliases:
+        pytest.skip("alias table unavailable: flexicon not importable")
+    assert "unknown-method" in _kinds(_check("project.Sense.GetGlosss(s)\n", api))
+
+
+def test_prose_claims_in_our_own_comments_are_checked(api):
+    """A comment naming a method that does not exist is rot like any other."""
+    findings = checker.prose_findings(api)
+    assert isinstance(findings, list)  # runs clean today; shape is the contract
+
+
+def test_prose_ignores_bare_accessor_mentions(api, tmp_path, monkeypatch):
+    """`project.LexSense` appears throughout validators.py on purpose -- it is
+    the alias they exist to reject. Only two-segment claims are judged."""
+    module = tmp_path / "sample.py"
+    module.write_text(
+        "# project.LexSense is not a real accessor\n"
+        "# from flexicon import XOperations means any Operations class\n"
+        "# project.Senses.GetGlosss(s) is a genuine typo\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(checker, "_pycode_files",
+                        lambda: [(str(module), "sample.py")])
+    findings = checker.prose_findings(api)
+    kinds = [f["kind"] for f in findings]
+    assert kinds == ["unknown-method"], findings
+    assert "GetGlosss" in findings[0]["detail"]
+
+
+def test_prose_opt_out_marker_is_honoured(api, tmp_path, monkeypatch):
+    module = tmp_path / "sample.py"
+    module.write_text(
+        "# project.Senses.GetGlosss(s)  # doc-check: ignore\n", encoding="utf-8")
+    monkeypatch.setattr(checker, "_pycode_files",
+                        lambda: [(str(module), "sample.py")])
+    assert not checker.prose_findings(api)
 
 
 def test_refuses_to_run_with_a_narrowed_ground_truth(monkeypatch):

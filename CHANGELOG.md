@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### Doc-snippet gate: scope split with flexicon, and our own comments added
+
+flexicon now gates its own docstring examples at source
+(`tests/test_docstring_example_ratchet.py`, static AST over the library
+itself). Scanning the same text here against a generated index is the weaker
+of two duplicate checks, so the upstream surface is no longer scanned by
+default -- `--upstream` / `--worklist` keep it available for cross-checking
+and for regenerating the worklist.
+
+In its place the gate now covers what this repo writes and previously did
+not: our own `>>>` docstring examples, and API claims in our comments and
+docstring prose. Prose is judged narrowly -- only a two-segment
+`project.<Accessor>.<Member>` reference or a flexicon import, with
+metavariables (`X`, `XOperations`) and `doc-check: ignore` lines skipped.
+A bare `project.<X>` mention is not a claim: `validators.py` alone discusses
+29 wrong accessor names on purpose, and flagging those would bury real
+findings under intentional counter-examples.
+
+Also fixed a false-failure class the wider scan exposed: flexicon installs 46
+deprecated singular/plural accessor aliases onto FLExProject at import time
+(`_op_aliases.OP_NAMESPACE_ALIASES`, issue #200), and 17 of them were absent
+from the accessor universe this checker derives. `project.Sense.GetGloss(s)`
+runs -- with a DeprecationWarning -- so calling it a typo is wrong. The
+checker now reads the alias table and resolves members through it.
+
 ### New: a gate for the code that lives inside text
 
 `scripts/check_doc_snippets.py` checks every code claim the MCP teaches from

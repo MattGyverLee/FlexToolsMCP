@@ -30,12 +30,34 @@ for everything, so live introspection can confirm that a name EXISTS but
 never that a call passes the right arguments. Existence: live or index.
 Arity: index only.
 
-Scope -- guidance surfaces, not the historical record
------------------------------------------------------
-Markdown scanned: repo-root ``*.md``, ``docs/*.md`` (not ``docs/archive/``),
-and ``src/flextoolsmcp/templates/*.md``. ``specs/`` and ``tests/*.md`` are
-campaign records of what was true at the time -- rewriting them to match
-today's API would falsify the record, so they are out of scope.
+Scope -- this repo's own text
+-----------------------------
+By default this checks only what THIS repo writes:
+
+  md        repo-root ``*.md``, ``docs/*.md`` (not ``docs/archive/``),
+            ``src/flextoolsmcp/templates/*.md``
+  template  ``src/flextoolsmcp/templates/*.py``
+  recipe    ``CURATED_RECIPES`` code strings
+  worked    ``WORKED_EXAMPLES`` code strings and their ``see_also`` names
+  pycode    our own ``>>>`` docstring examples, plus API claims in our
+            comments and docstring prose
+
+``specs/`` and ``tests/*.md`` are campaign records of what was true at the
+time -- rewriting them to match today's API would falsify the record.
+
+The API's OWN docstrings (the ``example`` fields in the index) are NOT
+scanned by default: that is upstream text, and flexicon now gates it at
+source in ``tests/test_docstring_example_ratchet.py``, where the authority
+is the library itself rather than a generated index. Scanning it here too
+would be checking the same text twice against a weaker authority. It stays
+available for cross-checking and for generating the upstream worklist
+(``--upstream`` / ``--worklist``).
+
+Prose is judged narrowly. A bare ``project.<X>`` mention in a comment is not
+a claim -- this repo's validators discuss wrong names for a living -- so only
+a two-segment ``project.<Accessor>.<Member>`` reference or a flexicon import
+counts, metavariables (``X``, ``XOperations``) are skipped, and a line
+carrying ``doc-check: ignore`` opts out entirely.
 
 Checks
 ------
@@ -65,14 +87,14 @@ flexlibs-stable snippet and wrong in a flexicon one.
 
 Blocking vs reporting
 ---------------------
-Repo-owned surfaces (md, template, recipe, worked) are BLOCKING: we can fix
-them. Docstring examples come from upstream pyflexicon, so they are reported,
-not blocking -- use ``--upstream`` to see them and file them at
-MattGyverLee/flexicon. ``--strict`` makes them blocking too.
+Everything this repo owns is BLOCKING: we can fix it. Upstream docstring
+examples are only scanned when asked for, and are reported rather than
+blocking even then -- they are fixed at MattGyverLee/flexicon and arrive
+here at the next ``refresh``. ``--strict`` makes them blocking too.
 
 Usage:
-    python scripts/check_doc_snippets.py            # gate the repo surfaces
-    python scripts/check_doc_snippets.py --upstream # + upstream docstrings
+    python scripts/check_doc_snippets.py            # gate this repo's text
+    python scripts/check_doc_snippets.py --upstream # + cross-check upstream
     python scripts/check_doc_snippets.py --json     # machine-readable
 
 Exit codes:
@@ -96,8 +118,32 @@ SRC_DIR = os.path.join(REPO_ROOT, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-BLOCKING_SURFACES = ("md", "template", "recipe", "worked")
+BLOCKING_SURFACES = ("md", "template", "recipe", "worked", "pycode")
 UPSTREAM_SURFACES = ("docstring",)
+
+# Python we own and therefore check: our own docstrings and comments quote
+# flexicon API constantly. templates/ is excluded because it is already its
+# own surface, and tests/ because its fixtures are deliberately-wrong code.
+PYCODE_GLOBS = ("src/flextoolsmcp/**/*.py", "scripts/*.py")
+PYCODE_EXCLUDE = ("templates", "__pycache__")
+
+# In prose we only judge a two-segment claim (`project.Senses.GetGloss`) or a
+# flexicon import. A bare `project.<X>` mention is not a claim: this repo's
+# own validators discuss wrong names for a living (`project.LexSense` is the
+# alias they exist to reject), and flagging those would bury real findings in
+# intentional counter-examples.
+PROSE_MEMBER_RE = re.compile(r"\bproject\.([A-Za-z_]\w*)\.([A-Za-z_]\w*)")
+PROSE_IMPORT_RE = re.compile(r"\bfrom\s+flexicon\s+import\s+([A-Za-z_]\w*)")
+PROSE_OPT_OUT = "doc-check: ignore"
+
+# Metavariables, not names. A repo whose job is explaining API-shape rules
+# writes `from flexicon import XOperations` constantly, meaning "any
+# Operations class". Reporting those as bad imports is noise, and asking
+# every such line to carry an opt-out marker would be worse.
+METAVARIABLES = frozenset({
+    "X", "Y", "Z", "N", "XOperations", "YOperations", "ZOperations",
+    "SomeOperations", "MyOperations",
+})
 
 
 class DegradedCheck(Exception):
@@ -186,6 +232,24 @@ class Api:
             self.symbols |= {n for n in dir(live) if not n.startswith("_")}
         except Exception:
             pass
+
+        # Deprecated singular/plural accessor aliases, installed onto
+        # FLExProject at import time and therefore absent from the index's
+        # property list. They are real accessors: `project.Sense.GetGloss(s)`
+        # runs (with a DeprecationWarning). Judging them as typos would be
+        # wrong in the same direction as the pre-commit degradation.
+        self.aliases = {}
+        if self.live is not None:
+            try:
+                from flexicon.code._op_aliases import OP_NAMESPACE_ALIASES
+                self.aliases = dict(OP_NAMESPACE_ALIASES)
+            except Exception:
+                self.aliases = {}
+        self.accessors |= set(self.aliases)
+
+    def resolve_accessor(self, name):
+        """The Operations class behind an accessor, following aliases."""
+        return self.accessor_ops.get(self.aliases.get(name, name))
 
     def members(self, ops_class):
         """Members of an Operations class, base classes resolved transitively.
@@ -357,6 +421,87 @@ def served_code_snippets():
     return out
 
 
+def _pycode_files():
+    for pattern in PYCODE_GLOBS:
+        for path in sorted(glob.glob(os.path.join(REPO_ROOT, pattern), recursive=True)):
+            rel = os.path.relpath(path, REPO_ROOT).replace("\\", "/")
+            if any(part in PYCODE_EXCLUDE for part in rel.split("/")):
+                continue
+            yield path, rel
+
+
+def pycode_snippets():
+    """`>>>` examples in this repo's own docstrings.
+
+    We quote flexicon API in our own docstrings as much as in the markdown,
+    and a doctest block there is a full claim -- so it gets the full AST
+    check, same as a fence.
+    """
+    out = []
+    for path, rel in _pycode_files():
+        try:
+            with open(path, encoding="utf-8") as fh:
+                tree = ast.parse(fh.read())
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                     ast.AsyncFunctionDef)):
+                continue
+            doc = ast.get_docstring(node) or ""
+            if ">>>" not in doc:
+                continue
+            line = getattr(node, "lineno", 1)
+            out.append(Snippet("pycode", "%s:%d" % (rel, line), _doctest_to_code(doc)))
+    return out
+
+
+def prose_findings(api):
+    """API claims in this repo's comments and docstring prose.
+
+    Narrow on purpose. A bare `project.<X>` mention is not a claim -- our
+    validators discuss wrong accessor names for a living -- so only a
+    two-segment `project.<Accessor>.<Member>` reference or a flexicon import
+    is judged. A line carrying `doc-check: ignore` opts out, which is what an
+    intentional counter-example should use.
+    """
+    findings = []
+    for path, rel in _pycode_files():
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if PROSE_OPT_OUT in line:
+                continue
+            for match in PROSE_MEMBER_RE.finditer(line):
+                accessor, member = match.group(1), match.group(2)
+                ops_class = api.resolve_accessor(accessor)
+                if ops_class is None or ops_class not in api.entities:
+                    continue  # unknown accessor in prose: not a claim we judge
+                members = api.members(ops_class)
+                if not members or member in members:
+                    continue
+                findings.append({
+                    "surface": "pycode", "where": rel, "line": lineno,
+                    "kind": "unknown-method",
+                    "detail": "project.%s.%s does not exist on %s"
+                              % (accessor, member, ops_class),
+                })
+            for match in PROSE_IMPORT_RE.finditer(line):
+                symbol = match.group(1)
+                if symbol in METAVARIABLES:
+                    continue
+                if api.module_symbol_exists("flexicon", symbol) is False:
+                    findings.append({
+                        "surface": "pycode", "where": rel, "line": lineno,
+                        "kind": "bad-import",
+                        "detail": "from flexicon import %s" % symbol,
+                    })
+    return findings
+
+
 def cross_reference_findings(api):
     """`see_also` entries name API members in prose form ("Class.Method").
 
@@ -505,7 +650,7 @@ def check_snippet(snippet, api):
                 and isinstance(node.value.value, ast.Name)
                 and node.value.value.id == "project"):
             accessor, member = node.value.attr, node.attr
-            ops_class = api.accessor_ops.get(accessor)
+            ops_class = api.resolve_accessor(accessor)
             if ops_class is None or ops_class not in api.entities:
                 continue
             members = api.members(ops_class)
@@ -530,19 +675,21 @@ def check_snippet(snippet, api):
     return findings
 
 
-def collect_snippets(api, include_upstream=True):
-    snippets = markdown_snippets() + template_snippets() + served_code_snippets()
+def collect_snippets(api, include_upstream=False):
+    snippets = (markdown_snippets() + template_snippets()
+                + served_code_snippets() + pycode_snippets())
     if include_upstream:
         snippets += docstring_snippets(api)
     return snippets
 
 
-def run(include_upstream=True):
+def run(include_upstream=False):
     api = Api(find_index())
     snippets = collect_snippets(api, include_upstream=include_upstream)
     findings = []
     for snippet in snippets:
         findings.extend(check_snippet(snippet, api))
+    findings.extend(prose_findings(api))
     findings.extend(cross_reference_findings(api))
     return api, snippets, findings
 
@@ -704,7 +851,7 @@ def write_worklist(api, findings, path):
             suggestion = ("example is written from inside the class; rewrite it "
                           "against the public FLExProject surface")
         elif kind == "unknown-method":
-            ops = api.accessor_ops.get(detail.split(".")[1]) if detail.count(".") > 1 else None
+            ops = api.resolve_accessor(detail.split(".")[1]) if detail.count(".") > 1 else None
             if ops:
                 bad = detail.split(".")[2].split(" ")[0]
                 near = _nearest(bad, api.members(ops))
@@ -802,8 +949,9 @@ def main(argv=None):
                              "worklist (plus a .json sibling) and exit")
     args = parser.parse_args(argv)
 
+    want_upstream = bool(args.upstream or args.strict or args.worklist)
     try:
-        api, snippets, findings = run(include_upstream=True)
+        api, snippets, findings = run(include_upstream=want_upstream)
     except SystemExit:
         raise
     except DegradedCheck as exc:

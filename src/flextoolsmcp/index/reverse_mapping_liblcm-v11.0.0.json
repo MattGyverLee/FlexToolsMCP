@@ -274,8 +274,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
-        "IDsConstChart",
-        "ITsString"
+        "IDsConstChart"
       ]
     },
     "ConstChartWordGroupOperations": {
@@ -1171,7 +1170,7 @@
     },
     "WritingSystemOperations": {
       "category": "system",
-      "method_count": 23,
+      "method_count": 25,
       "methods": {},
       "wraps_interfaces": [
         "IMultiString",
@@ -5071,10 +5070,6 @@
         },
         {
           "class": "ConstChartOperations",
-          "methods": []
-        },
-        {
-          "class": "ConstChartRowOperations",
           "methods": []
         },
         {

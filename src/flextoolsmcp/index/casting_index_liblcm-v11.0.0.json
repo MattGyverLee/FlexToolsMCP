@@ -2,6 +2,7 @@
   "_description": "Maps properties to interfaces, identifying pythonnet casting requirements",
   "_schema": "casting-index/1.0",
   "class_name_mapping": {
+    "ActionHandler": "IActionHandler",
     "ActionHandlerExtensions": "IActionHandlerExtensions",
     "Analysis": "IAnalysis",
     "AnalysisReference": "IAnalysisReference",
@@ -9,8 +10,10 @@
     "BackupInfo": "IBackupInfo",
     "BackupSettings": "IBackupSettings",
     "Bag": "IBag",
+    "BidiCharacterFactory": "IBidiCharacterFactory",
     "BulkPropChanged": "IBulkPropChanged",
     "CharacterStyleInfo": "ICharacterStyleInfo",
+    "CheckWord": "ICheckWord",
     "ChkRef": "IChkRef",
     "ChkRefFactory": "IChkRefFactory",
     "ChkRefRepository": "IChkRefRepository",
@@ -125,6 +128,7 @@
     "CmTranslation": "ICmTranslation",
     "CmTranslationFactory": "ICmTranslationFactory",
     "CmTranslationRepository": "ICmTranslationRepository",
+    "ComDisposable": "IComDisposable",
     "ConstChartClauseMarker": "IConstChartClauseMarker",
     "ConstChartClauseMarkerFactory": "IConstChartClauseMarkerFactory",
     "ConstChartClauseMarkerRepository": "IConstChartClauseMarkerRepository",
@@ -150,6 +154,8 @@
     "DataReader": "IDataReader",
     "DataSetup": "IDataSetup",
     "DataStorer": "IDataStorer",
+    "DebugReport": "IDebugReport",
+    "DebugReportSink": "IDebugReportSink",
     "DomainObjectDTORepository": "IDomainObjectDTORepository",
     "DsChart": "IDsChart",
     "DsChartRepository": "IDsChartRepository",
@@ -214,8 +220,10 @@
     "FsSymFeatVal": "IFsSymFeatVal",
     "FsSymFeatValFactory": "IFsSymFeatValFactory",
     "FsSymFeatValRepository": "IFsSymFeatValRepository",
+    "FwMetaDataCache": "IFwMetaDataCache",
     "FwMetaDataCacheManaged": "IFwMetaDataCacheManaged",
     "FwMetaDataCacheManagedInternal": "IFwMetaDataCacheManagedInternal",
+    "GetSpellChecker": "IGetSpellChecker",
     "KeyTerm": "IKeyTerm",
     "LangProject": "ILangProject",
     "LangProjectFactory": "ILangProjectFactory",
@@ -278,6 +286,8 @@
     "LexSense": "ILexSense",
     "LexSenseFactory": "ILexSenseFactory",
     "LexSenseRepository": "ILexSenseRepository",
+    "LgWritingSystem": "ILgWritingSystem",
+    "LgWritingSystemFactory": "ILgWritingSystemFactory",
     "MoAdhocProhib": "IMoAdhocProhib",
     "MoAdhocProhibGr": "IMoAdhocProhibGr",
     "MoAdhocProhibGrFactory": "IMoAdhocProhibGrFactory",
@@ -406,6 +416,8 @@
     "MultiString": "IMultiString",
     "MultiStringAccessor": "IMultiStringAccessor",
     "MultiUnicode": "IMultiUnicode",
+    "MultilingScrBooks": "IMultilingScrBooks",
+    "NormalizationCharacterFactory": "INormalizationCharacterFactory",
     "Note": "INote",
     "NoteFactory": "INoteFactory",
     "NoteRepository": "INoteRepository",
@@ -492,6 +504,8 @@
     "Progress": "IProgress",
     "ProjectIdentifier": "IProjectIdentifier",
     "PropertyChangeNotifier": "IPropertyChangeNotifier",
+    "PuaCharacter": "IPuaCharacter",
+    "PuaCharacterFactory": "IPuaCharacterFactory",
     "PubDivision": "IPubDivision",
     "PubDivisionFactory": "IPubDivisionFactory",
     "PubDivisionRepository": "IPubDivisionRepository",
@@ -571,6 +585,7 @@
     "ScrMarkerMapping": "IScrMarkerMapping",
     "ScrMarkerMappingFactory": "IScrMarkerMappingFactory",
     "ScrMarkerMappingRepository": "IScrMarkerMappingRepository",
+    "ScrProjMetaDataProvider": "IScrProjMetaDataProvider",
     "ScrRefSystem": "IScrRefSystem",
     "ScrRefSystemFactory": "IScrRefSystemFactory",
     "ScrRefSystemRepository": "IScrRefSystemRepository",
@@ -591,9 +606,12 @@
     "SegmentRepository": "ISegmentRepository",
     "SenseOrEntry": "ISenseOrEntry",
     "ServiceLocatorInternal": "IServiceLocatorInternal",
+    "SilDataAccess": "ISilDataAccess",
     "SilDataAccessHelperInternal": "ISilDataAccessHelperInternal",
     "SilDataAccessManaged": "ISilDataAccessManaged",
+    "SimpleInit": "ISimpleInit",
     "SortSpec": "ISortSpec",
+    "SpellEngine": "ISpellEngine",
     "StFootnote": "IStFootnote",
     "StFootnoteFactory": "IStFootnoteFactory",
     "StFootnoteRepository": "IStFootnoteRepository",
@@ -613,6 +631,7 @@
     "StTxtParaRepository": "IStTxtParaRepository",
     "StoresDataAccess": "IStoresDataAccess",
     "StoresLcmCache": "IStoresLcmCache",
+    "StructuredTextDataAccess": "IStructuredTextDataAccess",
     "Style": "IStyle",
     "StyleProp": "IStyleProp",
     "Stylesheet": "IStylesheet",
@@ -624,7 +643,17 @@
     "TextTagRepository": "ITextTagRepository",
     "ThreadedProgress": "IThreadedProgress",
     "TransactionLogger": "ITransactionLogger",
+    "TsIncStrBldr": "ITsIncStrBldr",
+    "TsMultiString": "ITsMultiString",
+    "TsPropsBldr": "ITsPropsBldr",
+    "TsPropsFactory": "ITsPropsFactory",
+    "TsStrBldr": "ITsStrBldr",
+    "TsStrFactory": "ITsStrFactory",
+    "TsString": "ITsString",
+    "TsTextProps": "ITsTextProps",
     "TssValue": "ITssValue",
+    "UcdCharacter": "IUcdCharacter",
+    "UndoAction": "IUndoAction",
     "UndoStackManager": "IUndoStackManager",
     "UnitOfWorkService": "IUnitOfWorkService",
     "UserAppFeatAct": "IUserAppFeatAct",
@@ -635,9 +664,12 @@
     "UserConfigAcctRepository": "IUserConfigAcctRepository",
     "VariantComponentLexeme": "IVariantComponentLexeme",
     "Vector": "IVector",
+    "VerseReference": "IVerseReference",
     "VirtualOrdering": "IVirtualOrdering",
     "VirtualOrderingFactory": "IVirtualOrderingFactory",
     "VirtualOrderingRepository": "IVirtualOrderingRepository",
+    "VwNotifyChange": "IVwNotifyChange",
+    "VwStylesheet": "IVwStylesheet",
     "WfiAnalysis": "IWfiAnalysis",
     "WfiAnalysisFactory": "IWfiAnalysisFactory",
     "WfiAnalysisRepository": "IWfiAnalysisRepository",
@@ -661,7 +693,8 @@
     "WordformLookupListFactory": "IWordformLookupListFactory",
     "WordformLookupListRepository": "IWordformLookupListRepository",
     "WorkerThreadReadHandler": "IWorkerThreadReadHandler",
-    "WritingSystemContainer": "IWritingSystemContainer"
+    "WritingSystemContainer": "IWritingSystemContainer",
+    "WritingSystemManager": "IWritingSystemManager"
   },
   "interface_hierarchy": {
     "ICmAnnotation": {
@@ -2168,6 +2201,7 @@
     },
     "ChapterVerseSepr": {
       "defined_on": [
+        "IScrProjMetaDataProvider",
         "IScripture"
       ],
       "pythonnet_warning": true,
@@ -4297,6 +4331,16 @@
         "IScrImportSource"
       ]
     },
+    "FileName": {
+      "defined_on": [
+        "IScrImportFileInfo",
+        "IUcdCharacter"
+      ],
+      "pythonnet_warning": true,
+      "requires_cast_from": [
+        "IPuaCharacter"
+      ]
+    },
     "FilePathsInTsStringsOA": {
       "defined_on": [
         "ILangProject"
@@ -6113,10 +6157,12 @@
     },
     "IsVernacular": {
       "defined_on": [
-        "ICmPossibilityList"
+        "ICmPossibilityList",
+        "ISpellEngine"
       ],
       "pythonnet_warning": true,
       "requires_cast_from": [
+        "ICheckWord",
         "ICmMajorObject",
         "ICmObject",
         "ICmObjectOrId"
@@ -6399,7 +6445,9 @@
     },
     "Length": {
       "defined_on": [
-        "ISegment"
+        "ISegment",
+        "ITsStrBldr",
+        "ITsString"
       ],
       "pythonnet_warning": true,
       "requires_cast_from": [
@@ -7145,7 +7193,8 @@
     },
     "MetaDataCache": {
       "defined_on": [
-        "ILcmServiceLocator"
+        "ILcmServiceLocator",
+        "ISilDataAccess"
       ],
       "pythonnet_warning": true,
       "requires_cast_from": [
@@ -8764,6 +8813,15 @@
         "ICmObject",
         "ICmObjectOrId",
         "IVariantComponentLexeme"
+      ]
+    },
+    "Property": {
+      "defined_on": [
+        "IUcdCharacter"
+      ],
+      "pythonnet_warning": true,
+      "requires_cast_from": [
+        "IPuaCharacter"
       ]
     },
     "Protected": {
@@ -11534,7 +11592,9 @@
     },
     "Versification": {
       "defined_on": [
-        "IScripture"
+        "IScrProjMetaDataProvider",
+        "IScripture",
+        "IVerseReference"
       ],
       "pythonnet_warning": true,
       "requires_cast_from": [
@@ -11675,7 +11735,9 @@
     },
     "WritingSystemFactory": {
       "defined_on": [
-        "ILcmServiceLocator"
+        "ILcmServiceLocator",
+        "ILgWritingSystem",
+        "ISilDataAccess"
       ],
       "pythonnet_warning": true,
       "requires_cast_from": [
@@ -12431,6 +12493,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "Bidi": {
+      "available_on": [
+        "IPuaCharacter",
+        "IUcdCharacter"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "BindingEdge": {
       "available_on": [
         "IPublication"
@@ -12464,6 +12533,12 @@
     "BookIdRA": {
       "available_on": [
         "IScrBook"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "BookLabels": {
+      "available_on": [
+        "IMultilingScrBooks"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -12537,6 +12612,12 @@
     "Bridge": {
       "available_on": [
         "IScripture"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "CStyles": {
+      "available_on": [
+        "IVwStylesheet"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -12628,6 +12709,7 @@
     },
     "ChapterVerseSepr": {
       "available_on": [
+        "IScrProjMetaDataProvider",
         "IScripture"
       ],
       "note": "Property is available on these concrete types and their descendants"
@@ -12698,6 +12780,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "ClassCount": {
+      "available_on": [
+        "IFwMetaDataCache",
+        "IFwMetaDataCacheManaged"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "ClassId": {
       "available_on": [
         "ICmFilter"
@@ -12720,6 +12809,13 @@
     "CmObjectIdFactory": {
       "available_on": [
         "ILcmServiceLocator"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "CodePoint": {
+      "available_on": [
+        "IPuaCharacter",
+        "IUcdCharacter"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -13090,6 +13186,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "CurrentDepth": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "CurrentModelVersion": {
       "available_on": [
         "IDomainObjectDTORepository"
@@ -13122,9 +13225,17 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "Data": {
+      "available_on": [
+        "IPuaCharacter",
+        "IUcdCharacter"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "DataAccess": {
       "available_on": [
-        "IStoresDataAccess"
+        "IStoresDataAccess",
+        "IVwStylesheet"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -13170,6 +13281,20 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "Decomposition": {
+      "available_on": [
+        "IPuaCharacter",
+        "IUcdCharacter"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "DecompositionType": {
+      "available_on": [
+        "IPuaCharacter",
+        "IUcdCharacter"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "DefaultAffixRA": {
       "available_on": [
         "IMoStemName"
@@ -13198,6 +13323,18 @@
     "DefaultFeaturesOA": {
       "available_on": [
         "IPartOfSpeech"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "DefaultFontFeatures": {
+      "available_on": [
+        "ILgWritingSystem"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "DefaultFontName": {
+      "available_on": [
+        "ILgWritingSystem"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -13939,6 +14076,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "FieldCount": {
+      "available_on": [
+        "IFwMetaDataCache",
+        "IFwMetaDataCacheManaged"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "FieldId": {
       "available_on": [
         "ICmFilter"
@@ -13971,7 +14115,8 @@
     },
     "FileName": {
       "available_on": [
-        "IScrImportFileInfo"
+        "IScrImportFileInfo",
+        "IUcdCharacter"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -14428,6 +14573,7 @@
     },
     "Handle": {
       "available_on": [
+        "ILgWritingSystem",
         "IProjectIdentifier"
       ],
       "note": "Property is available on these concrete types and their descendants"
@@ -14703,6 +14849,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "IcuLocale": {
+      "available_on": [
+        "ILgWritingSystem"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "IdText": {
       "available_on": [
         "IScrBook"
@@ -14896,6 +15048,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "InitializationData": {
+      "available_on": [
+        "ISimpleInit"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "InputOA": {
       "available_on": [
         "IMoReferralRule"
@@ -14933,6 +15091,13 @@
     "InstanceOfSignature": {
       "available_on": [
         "ICmAnnotationDefn"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "IntPropCount": {
+      "available_on": [
+        "ITsPropsBldr",
+        "ITsTextProps"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -15059,6 +15224,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "IsDataChange": {
+      "available_on": [
+        "ILcmPropertyChanged",
+        "IUndoAction"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "IsDefaultDiscourseTemplate": {
       "available_on": [
         "IChkTerm",
@@ -15105,6 +15277,12 @@
     "IsFootnoteStyle": {
       "available_on": [
         "IStStyle"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "IsGraphiteEnabled": {
+      "available_on": [
+        "ILgWritingSystem"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -15232,6 +15410,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "IsRedoable": {
+      "available_on": [
+        "ILcmPropertyChanged",
+        "IUndoAction"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "IsResearcher": {
       "available_on": [
         "ICmPerson"
@@ -15296,6 +15481,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "IsUndoOrRedoInProgress": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "IsUndoTaskActive": {
       "available_on": [
         "IActionHandlerExtensions"
@@ -15318,7 +15510,8 @@
     },
     "IsVernacular": {
       "available_on": [
-        "ICmPossibilityList"
+        "ICmPossibilityList",
+        "ISpellEngine"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -15394,6 +15587,12 @@
         "IConstChartRow",
         "IScrTxtPara",
         "IStTxtPara"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "LanguageName": {
+      "available_on": [
+        "ILgWritingSystem"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -15510,7 +15709,9 @@
     },
     "Length": {
       "available_on": [
-        "ISegment"
+        "ISegment",
+        "ITsStrBldr",
+        "ITsString"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -16044,7 +16245,9 @@
     },
     "MetaDataCache": {
       "available_on": [
-        "ILcmServiceLocator"
+        "ILcmServiceLocator",
+        "ISilDataAccess",
+        "ISilDataAccessManaged"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -16243,6 +16446,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "NormalFontStyle": {
+      "available_on": [
+        "IVwStylesheet"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "NotFoundTss": {
       "available_on": [
         "IMultiAccessorBase",
@@ -16326,6 +16535,12 @@
     "NumberOfSensesForEntry": {
       "available_on": [
         "ILexEntry"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "NumberOfWs": {
+      "available_on": [
+        "ILgWritingSystemFactory"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -16628,6 +16843,20 @@
     "ParaContainingOrcRA": {
       "available_on": [
         "IScrFootnote"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "ParaContentsFlid": {
+      "available_on": [
+        "ISilDataAccessManaged",
+        "IStructuredTextDataAccess"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "ParaPropertiesFlid": {
+      "available_on": [
+        "ISilDataAccessManaged",
+        "IStructuredTextDataAccess"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -17028,6 +17257,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "ProcessDeuteroCanonical": {
+      "available_on": [
+        "IMultilingScrBooks"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "ProcliticSlotsRS": {
       "available_on": [
         "IMoInflAffixTemplate"
@@ -17087,6 +17322,12 @@
     "PronunciationsOS": {
       "available_on": [
         "ILexEntry"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "Property": {
+      "available_on": [
+        "IUcdCharacter"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -17210,6 +17451,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "RedoableSequenceCount": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "Ref": {
       "available_on": [
         "IChkRef"
@@ -17263,6 +17511,12 @@
         "ILexExampleSentence",
         "IParaFragment",
         "ISegment"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "ReferenceFormat": {
+      "available_on": [
+        "IMultilingScrBooks"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -17354,6 +17608,12 @@
     "ReqRuleFeatsRC": {
       "available_on": [
         "IPhSegRuleRHS"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "RequestedEncodings": {
+      "available_on": [
+        "IMultilingScrBooks"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -17628,6 +17888,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "RightToLeftScript": {
+      "available_on": [
+        "ILgWritingSystem"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "RoleRA": {
       "available_on": [
         "IRnRoledPartic"
@@ -17686,6 +17952,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "RunCount": {
+      "available_on": [
+        "ITsStrBldr",
+        "ITsString"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "RunDate": {
       "available_on": [
         "IScrCheckRun"
@@ -17725,6 +17998,12 @@
     "ScriptureAnnotationDfns": {
       "available_on": [
         "ILangProject"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "ScriptureBooksLim": {
+      "available_on": [
+        "IMultilingScrBooks"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -18019,6 +18298,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "SpellCheckingId": {
+      "available_on": [
+        "ILgWritingSystem"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "SpellingStatus": {
       "available_on": [
         "IWfiWordform"
@@ -18148,6 +18433,13 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "StrPropCount": {
+      "available_on": [
+        "ITsPropsBldr",
+        "ITsTextProps"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "StrataOS": {
       "available_on": [
         "IMoMorphData"
@@ -18171,6 +18463,16 @@
         "IMoInflAffixTemplate",
         "IMoStemMsa",
         "IMoStratumApp"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "StringCount": {
+      "available_on": [
+        "IMultiAccessorBase",
+        "IMultiString",
+        "IMultiStringAccessor",
+        "IMultiUnicode",
+        "ITsMultiString"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -18329,6 +18631,20 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "SuppressNotification": {
+      "available_on": [
+        "ILcmPropertyChanged",
+        "IUndoAction"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "SuppressSelections": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "SurfaceFormRA": {
       "available_on": [
         "IChkRendering"
@@ -18415,6 +18731,14 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "Text": {
+      "available_on": [
+        "ITsIncStrBldr",
+        "ITsStrBldr",
+        "ITsString"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "TextAnnotated": {
       "available_on": [
         "ICmBaseAnnotation",
@@ -18460,6 +18784,13 @@
       "available_on": [
         "IScrTxtPara",
         "IStTxtPara"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "TextParagraphsFlid": {
+      "available_on": [
+        "ISilDataAccessManaged",
+        "IStructuredTextDataAccess"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -18571,6 +18902,13 @@
     "Tone": {
       "available_on": [
         "ILexPronunciation"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "TopMarkHandle": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -18714,6 +19052,20 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "UndoableActionCount": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "UndoableSequenceCount": {
+      "available_on": [
+        "ActionHandler",
+        "IActionHandler"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "UnitOfWorkService": {
       "available_on": [
         "IServiceLocatorInternal"
@@ -18768,6 +19120,12 @@
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
+    "UseNfcContext": {
+      "available_on": [
+        "ILgWritingSystem"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
     "UseScriptDigits": {
       "available_on": [
         "IScripture"
@@ -18811,6 +19169,12 @@
       "available_on": [
         "IStStyle",
         "IUserConfigAcct"
+      ],
+      "note": "Property is available on these concrete types and their descendants"
+    },
+    "UserWs": {
+      "available_on": [
+        "ILgWritingSystemFactory"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -18981,7 +19345,9 @@
     },
     "Versification": {
       "available_on": [
-        "IScripture"
+        "IScrProjMetaDataProvider",
+        "IScripture",
+        "IVerseReference"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },
@@ -19068,7 +19434,10 @@
     },
     "WritingSystemFactory": {
       "available_on": [
-        "ILcmServiceLocator"
+        "ILcmServiceLocator",
+        "ILgWritingSystem",
+        "ISilDataAccess",
+        "ISilDataAccessManaged"
       ],
       "note": "Property is available on these concrete types and their descendants"
     },

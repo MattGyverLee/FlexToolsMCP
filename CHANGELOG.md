@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Recovered SIL.LCModel.Core types that a `ReflectionTypeLoadException` was
+  silently dropping from the LibLCM index during extraction (#135).
+
 ### Doc-snippet gate: scope split with flexicon, and our own comments added
 
 flexicon now gates its own docstring examples at source

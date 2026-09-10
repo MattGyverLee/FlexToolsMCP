@@ -161,6 +161,7 @@ REQUIRED_ASSEMBLIES = [
 # ---- Optional Assemblies (help resolve dependencies) -------------------------
 OPTIONAL_ASSEMBLIES = [
     "SIL.LCModel.Utils.dll",
+    "SIL.LCModel.Tools.dll",
     "SIL.WritingSystems.dll",
     "icu.net.dll",
     "Newtonsoft.Json.dll",
@@ -176,8 +177,50 @@ TARGET_NAMESPACES = [
     "SIL.LCModel.Application"
 ]
 
+# Namespaces that sit under a target prefix but are not FieldWorks API.
+# SIL.LCModel.Tools.dll bundles Malcolm Crowe's CSTools LALR parser generator
+# (Nfa, Dfa, Lexer, Parser, Regex, Class_1..Class_12, ...). The DLL is preloaded
+# only so SIL.LCModel.Core.dll can bind; its own types are build machinery and
+# would otherwise pollute search_by_capability under category "system".
+EXCLUDED_NAMESPACES = [
+    "SIL.LCModel.Tools"
+]
+
+# Namespaces where only a few hand-written types are real API. Everything else in
+# them is generated machinery. SIL.LCModel.Core.Phonology is CSTools output for the
+# phonological-environment grammar -- Class_1..Class_12, Environment_1..3,
+# LeftContext/RightContext/OptionalSegment/TermSequence/Term/Segment variants,
+# yyPhonEnvParser, yytokens -- around 56 generated types wrapping two useful ones.
+NAMESPACE_TYPE_ALLOWLIST = {
+    "SIL.LCModel.Core.Phonology": {"PhonEnvRecognizer", "SyntaxErrType"},
+}
+
 # Pre-compile regex for namespace matching (eliminates O(m) list iteration per type)
 _TARGET_NS_PATTERN = re.compile(r"^(" + "|".join(re.escape(ns) for ns in TARGET_NAMESPACES) + ")")
+
+# Anchored at a namespace boundary so "SIL.LCModel.ToolsSomething" is not excluded
+_EXCLUDED_NS_PATTERN = re.compile(
+    r"^(" + "|".join(re.escape(ns) for ns in EXCLUDED_NAMESPACES) + r")(\.|$)"
+)
+
+
+def _is_target_type(t) -> bool:
+    """True if a reflected .NET type belongs in the index.
+
+    Keeps types in the target namespaces, dropping excluded namespaces and
+    compiler-generated or internal names (those starting with '<' or '_').
+    """
+    if t is None:
+        return False
+    ns = t.Namespace or ""
+    if not _TARGET_NS_PATTERN.match(ns):
+        return False
+    if _EXCLUDED_NS_PATTERN.match(ns):
+        return False
+    allowed = NAMESPACE_TYPE_ALLOWLIST.get(ns)
+    if allowed is not None and t.Name not in allowed:
+        return False
+    return bool(t.Name) and t.Name[0] not in "<_"
 
 # ---- Known MultiString Property Names ----------------------------------------
 MULTISTRING_PROPERTY_NAMES = {
@@ -753,16 +796,34 @@ def reflect_types(assemblies) -> List:
         try:
             assembly_types = assembly.GetTypes()
             for t in assembly_types:
-                ns = t.Namespace or ""
-
-                # Check if namespace matches our targets (using pre-compiled regex)
-                if _TARGET_NS_PATTERN.match(ns):
-                    # Skip compiler-generated and internal types
-                    if t.Name[0] not in "<_":
-                        types.append(t)
+                if _is_target_type(t):
+                    types.append(t)
 
         except Exception as e:
-            log.warning(f"Error reflecting types from assembly: {e}")
+            try:
+                asm_name = assembly.GetName().Name
+            except Exception:
+                asm_name = "<unknown>"
+            log.warning(f"Error reflecting types from assembly {asm_name}: {e}")
+
+            # A ReflectionTypeLoadException still exposes every type that DID
+            # load in e.Types (with a None entry for each one that did not), so
+            # recover those instead of discarding the whole assembly. Without
+            # this, a single unresolvable dependency silently dropped all of
+            # SIL.LCModel.Core -- ITsString, ITsTextProps, ITsStrBldr,
+            # ITsStrFactory, FwTextPropType and TsStringUtils among them -- and
+            # left callers with no discoverable API for TsString work at all.
+            recovered = 0
+            try:
+                for t in (getattr(e, 'Types', None) or []):
+                    if _is_target_type(t):
+                        types.append(t)
+                        recovered += 1
+            except Exception as recover_error:
+                log.debug(f"  Could not recover partial types: {recover_error}")
+
+            if recovered:
+                log.info(f"  Recovered {recovered} types from {asm_name} despite load errors")
 
             # Try to get LoaderExceptions details
             try:

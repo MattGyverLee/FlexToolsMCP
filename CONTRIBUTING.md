@@ -63,6 +63,31 @@ python scripts/verify_python.py
 
 Both must exit clean before opening a PR.
 
+### Code that lives inside text
+
+pyright only sees `src/`. It cannot check a `python` fence in CLAUDE.md, a
+`code` string in `curated_recipes`, or a docstring example in the bundled
+index -- yet those are the surfaces the MCP teaches from, so a stale name
+there is re-injected into every script Claude generates.
+
+```
+python scripts/check_doc_snippets.py            # gate the repo's own surfaces
+python scripts/check_doc_snippets.py --upstream # + pyflexicon docstrings
+```
+
+It runs as a pre-commit hook and as `tests/test_doc_snippets.py`, so a
+`refresh.py` bump to a new flexicon version turns CI red if the prose did not
+follow. Upstream docstring findings are reported, never blocking -- file
+those at MattGyverLee/flexicon.
+
+If a fence deliberately shows something other than current flexicon API, say
+so in its info string rather than leaving the gate to guess:
+
+````
+```python doc-check=ignore
+```python flavor=flexlibs_stable
+````
+
 ## PR Rules
 
 Every PR must satisfy the following before it will be merged:

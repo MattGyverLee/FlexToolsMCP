@@ -42,7 +42,7 @@ collection.Insert(index, item)        # Flagged
 
 Code blocks that make mutations safe:
 
-```python
+```python doc-check=ignore
 # With modifyEnabled context manager
 with project.modifyEnabled:
     project._cache.CreateObject(...)  # SAFE
@@ -87,7 +87,7 @@ project._cache.CreateObject(...)  # Unprotected!
 
 ### Example 2: Protected Call (Passes Certification)
 
-```python
+```python doc-check=ignore
 # Script: safe_script.py
 entry = project.LexEntry.Find("run")
 
@@ -110,7 +110,7 @@ with project.modifyEnabled:
 
 ### Example 3: Mixed (Fails Due to Unprotected)
 
-```python
+```python doc-check=ignore
 # Script: mixed_script.py
 with project.modifyEnabled:
     project._cache.CreateObject(...)  # Protected
@@ -199,7 +199,7 @@ For each detected mutation:
 
 ### Safe: Conditional Batch Operations
 
-```python
+```python doc-check=ignore
 # OK: Protected by writeEnabled check
 if project.writeEnabled:
     for entry in project.LexEntry.GetAll():
@@ -208,7 +208,7 @@ if project.writeEnabled:
 
 ### Safe: Scoped Modifications
 
-```python
+```python doc-check=ignore
 # OK: Protected by modifyEnabled block
 with project.modifyEnabled:
     entry = project.LexEntry.Find("run")

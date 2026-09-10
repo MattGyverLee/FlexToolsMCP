@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+### New: a gate for the code that lives inside text
+
+`scripts/check_doc_snippets.py` checks every code claim the MCP teaches from
+against the bundled flexicon index: `python` fences in repo-root and `docs/`
+markdown, `templates/`, `CURATED_RECIPES` and `WORKED_EXAMPLES` code strings,
+their `see_also` references, and the index's own docstring examples. pyright
+covers `src/` and none of that, which is why refactor rot survives there:
+names in prose stay plausible forever.
+
+Checks are `syntax`, `bad-import`, `unknown-accessor`, `unknown-method`,
+`arity`, and `refusing-method` -- the last for members that still exist but
+always raise `NotImplementedError`, a class of rot no existence check can
+see. Base classes are resolved transitively (without that, every
+`BaseOperations` `Move*`/`Sort` call reads as a phantom failure), and each
+snippet's flavor comes from its own imports, overridable with a
+` ```python flavor=flexlibs_stable ` / ` ```python doc-check=ignore ` fence
+info string.
+
+The check refuses (exit 2) rather than reports (exit 1) when it cannot see
+its full ground truth -- no `flextoolsmcp` import, no served-code surfaces.
+pre-commit's isolated venv produced exactly that: a narrowed accessor
+universe that flagged 13 valid names (`project.Text`, `project.Example`, ...)
+as typos. The hook now runs with `language: system`, and a gate that fails on
+valid code cannot quietly become one people learn to bypass.
+
+Wired as a pre-commit hook and `tests/test_doc_snippets.py`, so the real
+trigger -- `refresh.py` moving to a new flexicon while the prose stays put --
+turns CI red. Upstream pyflexicon docstring findings are reported
+(`--upstream`), never blocking.
+
+Fixed what it found:
+
+- CLAUDE.md and `docs/FLEXTOOLS-STYLE-GUIDE.md` taught
+  `from flexicon import ReversalOperations`, a symbol that does not exist
+  (`ReversalIndexOperations` / `ReversalIndexEntryOperations` are real). The
+  template that imported it was fixed long ago; the prose teaching it was
+  not, so every generated script inherited the dead import.
+- The `phonological-rule-with-context` worked example called
+  `PhonRules.AddInputSegment` / `AddOutputSegment` (never existed) and
+  `SetLeftContext` / `SetRightContext` (exist, always refuse since flexicon
+  issue #142). Rewritten on `WireRule` with `Seg`/`NC`; its `see_also` list
+  pointed at the same four dead names.
+- Three markdown fences did not parse as Python at all.
+
 ### Index refreshed to flexicon 4.7.0
 
 `python -m flextoolsmcp.refresh` against the installed flexicon 4.7.0. The

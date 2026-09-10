@@ -39,3 +39,21 @@ repos:
         language: python
         always_run: true
         pass_filenames: false
+
+      # Check the code that lives inside TEXT -- markdown fences, templates,
+      # recipe/worked-example code strings, see_also references. pyright only
+      # sees src/; a stale API name in CLAUDE.md is invisible to it and gets
+      # re-injected into every script Claude generates. Upstream pyflexicon
+      # docstring findings are reported by the script but never block.
+      - id: check-doc-snippets
+        name: Check code embedded in docs against the flexicon index
+        entry: python scripts/check_doc_snippets.py
+        # `system`, not `python`: the check needs the project environment
+        # (flextoolsmcp + installed pyflexicon) to know the real accessor and
+        # symbol universe. In pre-commit's isolated venv it would see a
+        # narrowed index and fail on names that are perfectly valid -- it now
+        # refuses (exit 2) rather than lie, but `system` is what lets it
+        # actually run.
+        language: system
+        always_run: true
+        pass_filenames: false

@@ -138,7 +138,7 @@ Simplify complex LibLCM code by using flexicon wrappers
 ## Best Practices by Flavor
 
 ### FlexLibs (Stable)
-```python
+```python flavor=flexlibs_stable
 # Check for empty multistrings explicitly
 form = project.LexiconGetEntryForm(entry)
 if form == "***":

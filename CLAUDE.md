@@ -281,7 +281,7 @@ from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
-    ReversalOperations,
+    ReversalIndexOperations,
     # Add other operations as needed
 )
 

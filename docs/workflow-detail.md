@@ -285,7 +285,9 @@ Every method name in the finished module traces back to an audit trail of lookup
 
 **Output**
 ```python
-report.Info(msg)   report.Warning(msg)   report.Error(msg)
+report.Info(msg)
+report.Warning(msg)
+report.Error(msg)
 report.Blank()
 ```
 

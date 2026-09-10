@@ -143,7 +143,7 @@ def Main(project, report, modify):
 
 ### FlexLibs → Flexicon (Easy ✓)
 
-```python
+```python flavor=flexlibs_stable
 # Before (FlexLibs)
 entry = project.LexAllEntries()[0]
 form = project.LexiconGetEntryForm(entry)

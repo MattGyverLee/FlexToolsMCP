@@ -112,7 +112,7 @@ from flexicon import (
     FLExProject,
     LexEntryOperations,
     LexSenseOperations,
-    ReversalOperations,
+    ReversalIndexOperations,
     # ... others as needed
 )
 
@@ -423,14 +423,14 @@ The MCP can analyze generated scripts for **critical bugs**:
 ### What to Check For
 
 ```python
-# UNPROTECTED - Write without permission check
-❌ project.LexEntry.SetLexemeForm(entry, value)
-❌ entry.LexemeForm = new_value
-❌ project.Senses.SetGloss(sense, gloss)
+# UNPROTECTED - write without a permission check (all three are rejected)
+project.LexEntry.SetLexemeForm(entry, value)
+entry.LexemeForm = new_value
+project.Senses.SetGloss(sense, gloss)
 
-# PROTECTED - Properly guarded
-✓ if modifyAllowed:
-✓     project.LexEntry.SetLexemeForm(entry, value)
+# PROTECTED - properly guarded
+if modifyAllowed:
+    project.LexEntry.SetLexemeForm(entry, value)
 ```
 
 ### Common Unprotected Write Patterns

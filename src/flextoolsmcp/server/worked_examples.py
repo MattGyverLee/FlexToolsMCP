@@ -144,7 +144,7 @@ def Main(project, report, modifyAllowed):
             "context", "voicing", "assimilation",
         ],
         "library": "flexicon",
-        "code": '''from flexicon import FLExProject
+        "code": '''from flexicon import FLExProject, Seg, NC
 
 def Main(project, report, modifyAllowed):
     # Look up the phonemes and natural class we'll wire into the rule.
@@ -162,22 +162,27 @@ def Main(project, report, modifyAllowed):
             "Voicing Assimilation",
             "Voiceless stops become voiced between vowels",
         )
-        # 2. Set input (what the rule rewrites) and output (what it becomes)
-        project.PhonRules.AddInputSegment(rule, phoneme_t)
-        project.PhonRules.AddOutputSegment(rule, phoneme_d)
-        # 3. Set the environment: V_V
-        project.PhonRules.SetLeftContext(rule, vowels)
-        project.PhonRules.SetRightContext(rule, vowels)
+        # 2. Wire the whole rule in SPE notation: input, output, environment.
+        #    WireRule is the ONLY composer that writes the runnable ownership
+        #    path (rhs.LeftContextOA / rhs.RightContextOA). The older
+        #    Set{Left,Right}Context methods now refuse with
+        #    NotImplementedError -- they wrote to IPhSimpleContext, which
+        #    produced rules FLEx could never apply (flexicon issue #142).
+        project.PhonRules.WireRule(
+            rule,
+            input_pattern=[Seg(phoneme_t)],
+            output_change=[Seg(phoneme_d)],
+            left_context=[NC(vowels)],
+            right_context=[NC(vowels)],
+        )
         report.Info("Created rule: /t/ -> /d/ / V_V")
     else:
         report.Info("(Would create rule: /t/ -> /d/ / V_V)")
 ''',
         "see_also": [
             "PhonologicalRuleOperations.Create",
-            "PhonologicalRuleOperations.AddInputSegment",
-            "PhonologicalRuleOperations.AddOutputSegment",
-            "PhonologicalRuleOperations.SetLeftContext",
-            "PhonologicalRuleOperations.SetRightContext",
+            "PhonologicalRuleOperations.WireRule",
+            "PhonologicalRuleOperations.MakeConstraint",
             "NaturalClassOperations.Find",
         ],
     },

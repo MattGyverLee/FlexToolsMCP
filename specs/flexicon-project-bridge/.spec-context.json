@@ -3,8 +3,8 @@
   "specName": "flexicon-project-bridge",
   "branch": "flexicon-project-bridge",
   "selectedAt": "2026-09-09T21:32:03.855Z",
-  "currentStep": "specify",
-  "status": "specified",
+  "currentStep": "implement",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -12,7 +12,722 @@
       "kind": "start",
       "by": "derive",
       "at": "2026-09-09T21:43:37.069Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "derive",
+      "at": "2026-09-09T21:50:37.269Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-09T21:53:01.850Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T21:57:23.247Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T21:58:36.152Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-09T22:06:52.432Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-09T23:38:50.312Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:41:41.769Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:42:39.292Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-09T23:46:03.736Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:46:21.998Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:48:32.648Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:49:56.960Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:51:02.520Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:52:14.240Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:52:15.204Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-09T23:52:56.105Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:04:33.139Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:15:11.869Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:27:10.594Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:27:11.167Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:27:11.790Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T00:58:32.126Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:18:23.304Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:20:29.988Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:21:43.978Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:22:48.744Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:23:30.906Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:24:13.007Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:29:58.990Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:29:59.253Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:29:59.545Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:41:48.756Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:41:49.009Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-10T01:42:52.962Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-10T01:42:53.278Z"
     }
   ],
-  "telemetryInstanceId": "d07a002e-c855-441c-9cf8-32943604e499"
+  "telemetryInstanceId": "d07a002e-c855-441c-9cf8-32943604e499",
+  "approach": "Add a FromOpenProject(donor) classmethod to flexicon.FLExProject that builds a view over a cache the host already opened: validate the donor, allocate with cls.__new__(cls), borrow project/lp/lexDB/writeEnabled, force _undoable=False, and mark the instance with _attached_donor. Guard CloseProject (no-op), SaveChanges and the disposing paths (FP_RuntimeError naming FromOpenProject), and make the UndoableOperation refusal attached-view aware. All source lands in the flexicon repo; FlexToolsMCP only runs the cross-repo regression gate.",
+  "decisions": [
+    {
+      "decision": "Construct the attached view with cls.__new__(cls) and assign exactly project, lp, lexDB, writeEnabled",
+      "why": "flexicon.FLExProject has no __init__ (all state is born in OpenProject) and every facade property lazily builds its operations object from self, so five assignments give a complete facade over a borrowed cache",
+      "rejected": "Adding a shared __init__ for both OpenProject and the bridge, which would break the documented no-argument FLExProject() construction; and copying the donor __dict__ wholesale, which drags flexlibs-private state onto a flexicon instance"
+    },
+    {
+      "decision": "Force _undoable=False on the view AND rewrite the UndoableOperation refusal message for attached views",
+      "why": "flexlibs opens a session-long BeginNonUndoableTask envelope when write-enabled (flexlibs/code/FLExProject.py:262), so Phase 1 Transaction is the only correct mode; but undoable now defaults to True since flexicon 4.4.0, so the existing refusal text blames an OpenProject argument nobody passed",
+      "rejected": "Honouring the donors mode (flexlibs has no _undoable at all), and leaving the existing message unchanged (an inaccurate error in the first path a migrating module hits)"
+    },
+    {
+      "decision": "Check _attached_donor BEFORE the existing issue-243 depth guard in SaveChanges",
+      "why": "A write-enabled flexlibs donor holds CurrentDepth at 1 all session, so SaveChanges already fails today but with a transaction-depth message that says nothing about the donor; a read-only donor would instead hit FP_ReadOnlyError. Both are the wrong story.",
+      "rejected": "Relying on the existing depth guard alone"
+    },
+    {
+      "decision": "Idempotence returns the donor object itself (identity), not a copy or wrapper",
+      "why": "Under the MCP the donor is already a flexicon FLExProject that owns its project; returning it unchanged preserves that ownership, its Phase 2 mode, and its cached operations objects",
+      "rejected": "Always building a fresh view, which would silently downgrade an MCP session to Phase 1 and leave two objects believing they own one cache"
+    },
+    {
+      "decision": "Validate the donor at the seam and raise FP_ParameterError naming every missing attribute plus type(donor).__module__",
+      "why": "Replaces an AttributeError fifty frames deep inside an operation; __module__ is the only honest discriminator because both classes are named FLExProject",
+      "rejected": "hasattr duck typing with no error (the current silent-failure behaviour) and inventing a new exception type"
+    },
+    {
+      "decision": "CP2 unit tests use a fake donor with no requires_live_project marker; CP3 live verification gates CP1 from shipping",
+      "why": "The bridge opens nothing, so the only registered pytest marker would be a lie; but a fake cannot observe T3.2 (whether a Phase 1 write inside the host envelope reaches disk), and shipping a seam whose writes may silently not persist repeats the original incident",
+      "rejected": "Shipping on unit tests alone and letting field use decide"
+    },
+    {
+      "decision": "The attached-view SaveChanges refusal must not repeat the existing \"use CloseProject() instead\" advice",
+      "why": "R3 makes CloseProject() a silent no-op on a view, so the standing advice attached to the issue-243 depth guard would produce a run that reports success and writes nothing -- the exact green-run-that-is-not-green failure this feature exists to end",
+      "rejected": "Inheriting the existing wording, and making CloseProject() raise on a view (SPEC 3b forbids it)"
+    },
+    {
+      "decision": "Keep the read-only check AHEAD of the attached-view branch in UndoableOperation.__enter__, rejecting QC P0 as stated; pin the behaviour with a named test instead",
+      "why": "Contract section 4 \"never branch on writeEnabled\" is Invariant A about how a guard DETECTS a view, not an ordering rule. A read-only view cannot write by any route, so FP_ReadOnlyError is true and actionable; the attached-view message points at Transaction(), which also fails read-only - a wrong answer shaped like a helpful one. SaveChanges is the opposite case (a write-enabled view must still refuse) which is why the orders differ.",
+      "rejected": "Reordering to put the attached-view check first, which would emit misleading Transaction() advice to a caller who cannot write at all"
+    },
+    {
+      "decision": "Widen the 6000-char source-window assertion in test_transaction_honesty.py to 9000 rather than compressing the SaveChanges docstring to fit it",
+      "why": "The docstring had been squeezed to telegraphic stubs with 44 chars of headroom; the repo precedent (documented in that test twice, 1000->2500->6000) is that the window assumption is the thing that is wrong, not the prose. The assertion tests that both methods resolve the same accessor, not a docstring length budget.",
+      "rejected": "Leaving the compressed stubs, which would have shipped cryptic docs and left any future docstring edit breaking an unrelated test"
+    },
+    {
+      "decision": "T3.2 gate PASSES - ship CP1 with _undoable=False alone, no MainCacheAccessor flush added to contract section 2.2",
+      "why": "A Transaction() write through an attached view, with no module-side save, reached the .fwdata on both a scratch copy and Sena 3, verified by FlexTools own read-back in a fresh process, by grep over the raw file, and by the MCP stack",
+      "rejected": "Adding an explicit flush step to contract 2.2 and returning the feature to plan - the branch T016 mandates if the value had not persisted"
+    },
+    {
+      "decision": "T025 also converted Main()'s example body from project.* to fx.*",
+      "why": "The task said to add the fx = FromOpenProject(project) line but did not mention the accessor calls; leaving them would define fx and never use it, teaching readers the line is decorative",
+      "rejected": "Adding fx and leaving project.LexEntry throughout - literal to the task text but self-contradicting as a template. The CRITICAL REQUIREMENT preamble was left untouched as instructed, and the template has no Shape B examples to preserve."
+    },
+    {
+      "decision": "Added a stamped _TESTED_AGAINST constant plus an advisory version warning to the flexicon template; narrowed the T4.2c ratchet from no-version-comparison to no-version-comparison-that-gates",
+      "why": "User asked for the tested-against version to be tracked so the module warns when running on something older. Contract 8.2 bans a version FLOOR (one that gates), not an advisory note; a wrong advisory costs a spurious warning, never a working module. Stamping at generation time avoids the hand-maintained rot already found in the REQUIRES: Flexicon version 2.0+ line.",
+      "rejected": "A hard minimum version - would refuse a working editable install today, since its metadata reads 4.1.1 while the source is 4.6.0. Also rejected: recording the version without comparing, which leaves silent drift undetected."
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "Resumed and finished the plan step: verified every line reference in plan.md/research.md/data-model.md/contracts against the live flexicon and flexlibs trees, fixed the case-broken ./SPEC.md link left by the lowercase rename, and added R7 after finding that the SaveChanges guards standing advice is a trap on an attached view.",
+      "key_finding": "The existing SaveChanges docstring tells callers to use CloseProject() instead when CurrentDepth > 0 -- but R3 makes CloseProject() a silent no-op on an attached view, so following that advice yields a green run that writes nothing. The attached-view refusal must replace the advice, not just the diagnosis; T2.2b now asserts the message does NOT contain CloseProject."
+    },
+    "tasks": {
+      "summary": "22 tasks in 7 phases: Setup, Foundational (discriminator + fake donor), US1 the FromOpenProject seam, US2 lifecycle refusals, US3 the live persistence gate that blocks CP1 from shipping, US4 docs, Polish; source lands in the flexicon repo, only the cross-repo gate is here."
+    },
+    "implement": {
+      "summary": "FromOpenProject bridge: live persistence gate passed on two projects, docs and CHANGELOG updated, and a capability-probe pre-flight added to the flexicon template"
+    }
+  },
+  "coverage": {
+    "FR-001": {
+      "title": "FromOpenProject(donor) builds a full flexicon facade over a cache the host already opened, never opening or closing a project",
+      "tasks": [
+        "T003",
+        "T004",
+        "T005",
+        "T006"
+      ]
+    },
+    "FR-002": {
+      "title": "Idempotence: FromOpenProject on a flexicon instance returns that same object by identity, unchanged",
+      "tasks": [
+        "T004",
+        "T005"
+      ]
+    },
+    "FR-003": {
+      "title": "The view borrows exactly project, lp, lexDB and writeEnabled, and forces _undoable=False unconditionally",
+      "tasks": [
+        "T004",
+        "T005"
+      ]
+    },
+    "FR-004": {
+      "title": "A donor missing required attributes raises FP_ParameterError naming every absent attribute plus type(donor).__module__",
+      "tasks": [
+        "T004",
+        "T007"
+      ]
+    },
+    "FR-005": {
+      "title": "CloseProject() on an attached view is a no-op that never reaches EndNonUndoableTask, usm.Save(), Dispose() or del self.project, and never raises",
+      "tasks": [
+        "T002",
+        "T003",
+        "T008",
+        "T009"
+      ]
+    },
+    "FR-006": {
+      "title": "SaveChanges() on an attached view raises FP_RuntimeError naming FromOpenProject, before the issue-243 depth guard, and does not advise CloseProject()",
+      "tasks": [
+        "T008",
+        "T011",
+        "T012"
+      ]
+    },
+    "FR-007": {
+      "title": "UndoableOperation() on an attached view raises FP_TransactionError with attached-view wording, not 'opened with undoable=False'",
+      "tasks": [
+        "T008",
+        "T010"
+      ]
+    },
+    "FR-008": {
+      "title": "The type stub declares FromOpenProject beside the OpenProject stub; no new export is added to flexicon/__init__.py",
+      "tasks": [
+        "T004",
+        "T006"
+      ]
+    },
+    "FR-009": {
+      "title": "SHIP GATE (SPEC T3.2): a write made through an attached view survives close-and-reopen under real FlexTools; a red result blocks CP1",
+      "tasks": [
+        "T014",
+        "T015",
+        "T016"
+      ]
+    },
+    "FR-010": {
+      "title": "SPEC T3.1: a 3d-shape module under the MCP produces results identical to calling project.LexEntry directly",
+      "tasks": [
+        "T013"
+      ]
+    },
+    "FR-011": {
+      "title": "No regression: the full flexicon suite stays green and the FlexToolsMCP suite passes against the new pyflexicon",
+      "tasks": [
+        "T020",
+        "T021",
+        "T022"
+      ]
+    },
+    "FR-012": {
+      "title": "Docs teach the portable module shape and the Phase 1 / attached-view transaction rules",
+      "tasks": [
+        "T017",
+        "T018",
+        "T019"
+      ]
+    },
+    "FR-T3.1": {
+      "tests": [
+        "evidence/t3_1_from_open_project_mcp_parity_2026-09-09.txt"
+      ]
+    },
+    "FR-T3.2": {
+      "tests": [
+        "evidence/t3_2_persistence_gate_scratch_2026-09-09.txt",
+        "evidence/t3_2_persistence_gate_sena3_2026-09-09.txt"
+      ]
+    },
+    "FR-CP2": {
+      "tests": [
+        "tests/test_from_open_project.py"
+      ]
+    },
+    "FR-CP4": {
+      "tests": [
+        "tests/test_template_flexicon_preflight.py"
+      ]
+    }
+  },
+  "currentTask": "T022",
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Created branch flexicon-project-bridge in the flexicon repo from a clean main tree",
+      "files": [
+        "(flexicon repo",
+        "git only)"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Added module-level _IsAttachedView() discriminator plus the two ASCII attached-view refusal constants, placed above the class so undoable_operation.py can lazy-import them",
+      "files": [
+        "flexicon/code/FLExProject.py"
+      ]
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "Created the CP2 test module with _FakeCache/_FakeDonor doubles and Dispose/EndNonUndoableTask/depth spies; no requires_live_project marker, no sys.modules SIL stub",
+      "files": [
+        "tests/test_from_open_project.py"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Wrote the US1 attach/undoable/idempotence/validation/export tests (24 cases) - RED as intended: 15 failed, 7 errors, 1 structural pass",
+      "files": [
+        "tests/test_from_open_project.py"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "Added the FromOpenProject classmethod: isinstance short-circuit first, then validation, then cls.__new__(cls) and the six assignments; derives lp/lexDB past a None, never mutates the donor",
+      "files": [
+        "flexicon/code/FLExProject.py"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "Declared FromOpenProject (classmethod, donor typed Any since flexlibs must not be a required import) and the _attached_donor attribute in the type stub; left the stub's pre-existing undoable omission alone",
+      "files": [
+        "flexicon/code/FLExProject.pyi"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Added _ValidateDonor: collects every missing attribute (project None-counts-as-absent, writeEnabled presence-only) and raises FP_ParameterError naming them plus type(donor).__module__; US1 now 23/23 green",
+      "files": [
+        "flexicon/code/FLExProject.py"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "Added 15 US2 lifecycle tests: 8 RED refusal tests (exact-type pinned, asserted against the shipped constants, 3 donor shapes incl. depth-1) + 7 GREEN owned-path regression and ASCII locks",
+      "files": [
+        "tests/test_from_open_project.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "Added the attached-view branch to _FLExUndoableOperation.__enter__ via the existing lazy import; owned-project message byte-identical, 65 -k undoable tests green",
+      "files": [
+        "flexicon/code/undoable_operation.py"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "CloseProject attached-view no-op inserted at top of body; verified against pre-image as 12 lines added, 0 owned-path lines changed",
+      "files": [
+        "flexicon/code/FLExProject.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "SaveChanges attached-view guard raising exact FP_RuntimeError, placed before both the writeEnabled check and the issue-243 depth guard; depth guard left intact as backstop",
+      "files": [
+        "flexicon/code/FLExProject.py"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Scoped the CloseProject advice to owned projects and documented the attached-view refusal in full prose; widened the brittle 6000-char source-window test to 9000 rather than compressing the docstring to fit it",
+      "files": [
+        "flexicon/code/FLExProject.py",
+        "tests/test_transaction_honesty.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "T3.1 PASS: 3d shape, control, and live attach branch all produced digest 8a88d78d... over 1462 Sena 3 entries; guards held live; evidence recorded",
+      "files": [
+        "evidence/t3_1_from_open_project_mcp_parity_2026-09-09.txt (flexicon repo)"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "T3.2 gate PASS on the scratch project: SetGloss through an attached view inside Transaction() survived the FlexTools host save and a fresh-process reopen; confirmed in raw .fwdata (+13 bytes, sentinel present, old value gone) and via the MCP stack",
+      "files": [
+        "evidence/t3_2_persistence_gate_scratch_2026-09-09.txt (flexicon repo); D:/Apps/FlexTools/FlexTools/Modules/BridgeGate/*.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "T3.2 gate PASS reproduced on Sena 3 (same +13-byte delta on disk); Sena 3 then restored and verified byte-for-byte identical to its pre-run backup",
+      "files": [
+        "evidence\\t3_2_persistence_gate_sena3_2026-09-09.txt (flexicon repo); D;C:\\Program Files (x86)\\Git\\Apps\\FlexTools\\FlexTools\\Modules\\BridgeGate\\T32_Gate_C_Restore.py"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Gate decision recorded: T3.2 PASS on two projects, CP1 clear to ship, no flush step needed in contract 2.2; US4 and US5 unblocked",
+      "files": [
+        "specs/flexicon-project-bridge/gate-decision-t3.2.md"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Documented attached views as Phase 1 unconditionally: new Special Case section with the Transaction/UndoableOperation/SaveChanges/CloseProject table, the deliberate ordering asymmetry, the SaveChanges note, and a FromOpenProject API-reference entry",
+      "files": [
+        "docs/TRANSACTION_GUIDE.md (flexicon repo)"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Documented the portable module shape (SPEC 3d) and why the bare flexicon import was never enough - importing a class cannot change the instance Main() is handed; plus the view refusal table, the navigate-dont-resolve-GUID note, and the capability-probe guidance",
+      "files": [
+        "docs/MIGRATION_GUIDE.md (flexicon repo)"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "Added the [Unreleased] entries: FromOpenProject under Added (with the dead-import correction and live evidence refs), the lifecycle-refusal table, and a new Changed subsection for the reworded UndoableOperation message and rescoped SaveChanges docstring",
+      "files": [
+        "CHANGELOG.md (flexicon repo)"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Wrote the CP4 pre-flight tests per contract 8.4: T4.1a wiring, T4.2a not-installed, T4.2b too-old plus the two version-source paths, T4.2c no-version-floor ratchet, T4.3a ASCII, T4.4a silent-on-success, T4.4b fail-open (probe and report)",
+      "files": [
+        "tests/test_template_flexicon_preflight.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Added the pre-flight block: guarded flexicon import capturing the ImportError, _flexicon_installed_version() with two guarded sources falling back to unknown, and _flexicon_preflight() as a capability probe that never raises and is silent on success",
+      "files": [
+        "src/flextoolsmcp/templates/2-flexicon-template.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "Made 'if not _flexicon_preflight(report): return' the first statement of Main(), followed by fx = FLExProject.FromOpenProject(project), and switched the example body from project.* to fx.* so the shape it teaches is actually used",
+      "files": [
+        "src/flextoolsmcp/templates/2-flexicon-template.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Full flexicon suite run (2463 passed, 9 failed, 23 skipped). All 9 failures reproduce identically on a clean main worktree at d186cb27 - pre-existing, not regressions. SPEC 5.3 satisfied: no OpenProject/CloseProject test changed behaviour",
+      "files": [
+        "D:/Github/_Projects/_LEX/flexicon (test run)"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Cross-repo gate: FlexToolsMCP suite green against the branch pyflexicon - 1254 passed, 8 skipped, 17 subtests (up from 1242 before US5, the 12 new being the CP4 pre-flight tests)",
+      "files": [
+        "D:/Github/_Projects/_LEX/FlexToolsMCP (test run)"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Validated all five Success Criteria as met and re-checked every Constitution Check row - all PASS, including the previously AT RISK write-path row now cleared by T016",
+      "files": [
+        "specs/flexicon-project-bridge/validation-t022.md"
+      ]
+    }
+  },
+  "concerns": [
+    {
+      "note": "INCIDENT (resolved): a verification prompt written by the main session specified bare `python -m pytest -q` as the offline gate. flexicon pyproject.toml registers the requires_live_project marker but sets NO addopts to deselect it, so bare pytest OPENED Sena 3 write-enabled and ran 7 TestLexEntryDuplicate tests against it; all 7 failed, and their Delete() cleanup sits after the assertion with no try/finally, so stray objects were left behind. Sena 3 was restored from tests/fixtures with user authorization: 56140853 -> 55921232 bytes (-219621), residue markers 0. LESSON: never run bare pytest in the flexicon repo - always `-m \"not requires_live_project\"`. The marker is registered but NOT enforced by default.",
+      "step": "implement"
+    },
+    {
+      "note": "T014/T015 (the T3.2 persistence gate) cannot proceed unattended: they need a human to open real FlexTools on the project, and SPEC 5.2 wants a scratch project first, but only Sena 3 and Sena_InterlinearTraining exist on this machine. Paused for authorization + a scratch project.",
+      "step": "implement"
+    },
+    {
+      "note": "The MCP API index (flexicon_api_v4.6.0.json) is generated from released 4.6.0 and so does not list FromOpenProject; a python -m flextoolsmcp.refresh is owed once the branch releases, or discovery-gated callers will not see the new seam.",
+      "step": "implement"
+    },
+    {
+      "note": "US4 docs note for T017/T018: the portable module shape should navigate to a sense via LexEntry.GetAllSenses rather than resolving a bare GUID with project.Object(), which returns an uncast ICmObject. Found while staging T014.",
+      "step": "implement"
+    }
+  ],
+  "verified": [
+    {
+      "what": "Offline gate, correctly filtered, clean branch point vs branch",
+      "command": "python -m pytest -m \"not requires_live_project\" -q",
+      "result": "clean branch point 1748 passed / 710 deselected; with changes 1786 passed / 710 deselected (+38 = the new file exactly), 0 failures, 0 regressions",
+      "warnings": [
+        "bare pytest -q is unsafe in this repo and caused a live Sena 3 write - see the recorded concern"
+      ]
+    },
+    {
+      "what": "issue-243 byte-identity of the owned-project path in CloseProject/SaveChanges",
+      "command": "git diff -U0 + independent AST pre-image comparison by the main session",
+      "result": "PASS - category (c) empty: CloseProject 12 lines added / 0 changed; SaveChanges additions plus one intentional docstring edit. No pre-existing executable owned-path line modified.",
+      "warnings": []
+    },
+    {
+      "what": "CP3/T3.1 read parity under the MCP: SPEC 3d shape vs control vs live attach branch over Sena 3 (1462 entries)",
+      "command": "flextools_run_module x3 (op-195549979-001, op-195604396-002, op-195635927-003), read-only",
+      "result": "PASS - all three fingerprints hashed to 8a88d78da1b61d357bd33dcfe579fc52be53d801a2ad53790b5a61862879c961",
+      "warnings": [
+        "UndoableOperation on a read-only attached view raised FP_ReadOnlyError, not FP_TransactionError - deliberate guard ordering documented at undoable_operation.py:86-107 and pinned by test_read_only_attached_view_reports_read_only_not_attached_view; dismissed",
+        "flexicon_api_v4.6.0.json predates the branch so get_object_api does not list FromOpenProject - index-only staleness, runtime has the method"
+      ]
+    },
+    {
+      "what": "CP2 bridge unit suite, covering the write-enabled attached-view UndoableOperation refusal that the read-only live probe could not reach",
+      "command": "python -m pytest tests/test_from_open_project.py -q (flexicon repo, branch flexicon-project-bridge)",
+      "result": "39 passed in 1.23s"
+    },
+    {
+      "what": "Pre-gate regression health check on both repos (informational - T020/T021 remain unchecked, they belong to Polish after the T016 gate)",
+      "command": "python -m pytest -q in flexicon (branch flexicon-project-bridge) and in FlexToolsMCP",
+      "result": "FlexToolsMCP 1242 passed / 8 skipped. flexicon 2464 passed / 1 failed / 30 skipped / 2 xfailed.",
+      "warnings": [
+        "The single flexicon failure, tests/operations/test_natural_classes.py::TestNaturalClassSync::test_apply_raises_on_type_mismatch_segments_target, was reproduced on a clean main worktree at d186cb27 - pre-existing, not a regression from this branch; dismissed"
+      ]
+    },
+    {
+      "what": "Attach branch exercised against a GENUINE flexlibs donor (not a stand-in), read-only, via the FlexTools headless runner on the new scratch project",
+      "command": "python FlexTools/scripts/TestAModule.py FlexTools/Modules/BridgeGate/T32_Gate_A_Write.py \"Sena3 Bridge Scratch\"",
+      "result": "donor module=flexlibs.code.FLExProject, view is donor=False (attach branch), view attached=True, _undoable=False, gloss read OK through the borrowed facade; write correctly skipped at modifyAllowed=False",
+      "warnings": [
+        "First draft of the gate module used fx.Object(sense_guid), which returns an uncast ICmObject and failed with \"ICmObject object has no attribute Gloss\"; fixed by navigating from the owning entry. Defect was in the gate module, not in flexicon."
+      ]
+    },
+    {
+      "what": "{\"what\": \"Provenance of the flexicon loaded by the FlexTools interpreter during the T014/T015 gate runs (user challenged whether FlexTools had the modified flexicon)\", \"command\": \"py -c \\\"import flexicon; ...\\\" plus inspection of FlexToolsCommands.vbs PYTHON setting\", \"result\": \"FlexTools uses py -> C:\\Python313\\python.exe; its flexicon resolves to D:\\Github\\_Projects\\_LEX\\flexicon (editable) on branch flexicon-project-bridge HEAD d186cb2, FromOpenProject present, _attached_donor in source. Decisive dynamic proof: the gate runs printed view-is-donor=False and view-attached=True, which pre-bridge code cannot produce - it would AttributeError on the first line of Main.\", \"warnings\": [\"importlib.metadata reports pyflexicon 4.1.1 while flexicon.version reports 4.6.0 on the same interpreter - stale editable-install metadata; recorded as field evidence for T024\"]}"
+    },
+    {
+      "what": "CP4 pre-flight behaviour in the interpreter FlexTools actually uses (user flagged that FlexTools runs system python while this session runs conda)",
+      "command": "py scratchpad/preflight_crosscheck.py  and  python3 scratchpad/preflight_crosscheck.py",
+      "result": "ALL OK in both: system Python 3.13.12 and conda 3.12.7. Happy path silent+True, absent path False with pip install pyflexicon, pre-bridge path False with pip install -U pyflexicon, exploding probe fails open True. All messages ASCII.",
+      "warnings": [
+        "The two interpreters report DIFFERENT importlib.metadata versions for pyflexicon (4.1.1 system vs 4.6.0 conda) while both load the same 4.6.0 source - direct proof that a version floor would answer differently per environment and the hasattr probe would not"
+      ]
+    }
+  ],
+  "last_action": "all 25 tasks done - T3.2 gate PASSED, CP1 clear to ship; flexicon suite matches main, FlexToolsMCP suite green (1254)"
 }

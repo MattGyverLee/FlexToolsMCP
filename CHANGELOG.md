@@ -2,6 +2,189 @@
 
 ## [Unreleased]
 
+### Index refreshed to flexicon 4.7.0
+
+`python -m flextoolsmcp.refresh` against the installed flexicon 4.7.0. The
+bundled flexicon-mode index, LCM bridge and common-patterns files move to
+`v4.7.0`; the `v4.6.0` files leave the repo (they are kept locally under the
+gitignored `index/**/archive/`, still resolvable for a project pinned to the
+older flexicon). LibLCM stays at `v11.0.0`, with its `python_wrappers`
+back-annotations and `reverse_mapping_liblcm-v11.0.0.json` updated by the same
+pass.
+
+Reviewed diff -- 118 entities unchanged, none added or removed, 1537 -> 1529
+methods, description coverage 100%, example coverage 76.3% (was 76.4%).
+Exactly three entities changed:
+
+- `FLExProject` **+`FromOpenProject`** -- the attached-view bridge constructor
+  landing in the index for the first time. Its `return_type` is `""` (no
+  return annotation upstream), which is what issue #130 turned on.
+- `POSOperations` **+`GetParent`**.
+- `GramCatOperations` **-10 methods** (`ApplySyncableProperties`, `CompareTo`,
+  `Delete`, `Duplicate`, `GetAll`, `GetName`, `GetParent`,
+  `GetSyncableProperties`, `SetName`, `GetSubcategories`), leaving `Create`
+  and `__init__`. Not an API removal: 4.7.0 made `GramCatOperations` a
+  deprecated alias subclassing `POSOperations`, and the AST extractor records
+  only an entity's own definitions, never inherited ones. The methods are all
+  still callable, via the base class.
+
+No `is_mutating` flag flipped anywhere, so no write-gate classification
+changed. The `GramCatOperations` shrink does mean calls like
+`GramCatOperations(project).Delete(cat)` now resolve as
+`source: "unknown"` (method not in that entity) rather than `source: "index"`.
+They are still blocked -- an unknown non-read-only-prefixed method on a known
+Operations class already fails closed -- but at lower confidence. Flattening
+inherited methods into the index is the real fix and is not attempted here.
+
+### Fixed: the write gates were blind to the facade shape they teach (#130)
+
+An **unguarded** mutation reached through `FLExProject.FromOpenProject(project)`
+passed **every** write gate. `unprotected_writes` reported `passed`,
+`writeability.is_mutating_script` was `false`, and
+`would_require.write_enabled` was `false` -- so a write with no
+`if modifyAllowed:` guard, no confirmation prompt and no mutation plan was
+treated as a read-only script:
+
+```python
+fx = FLExProject.FromOpenProject(project)
+entry = fx.LexEntry.Find("nsanga-nsanga")
+fx.LexEntry.SetLexemeForm(entry, "PROBE-SHOULD-BE-BLOCKED")   # 11 gates green
+```
+
+That is the shape flexicon 4.7.0 documents as *the* portable module shape, and
+the shape `flextools_get_module_template(flavor='flexicon')` itself generates.
+The blind spot landed squarely on the pattern users are told to adopt.
+
+**Why an index refresh did not help.** The resolver typed a call receiver by
+comparing its name to the literal `"project"`. `fx` is not `project`, so `fx`
+was untyped, `fx.LexEntry` was untyped, and the mutating call on it was never
+looked up in the API index at all -- it was not misfiled, it was unseen, in
+every bucket. Nor could the index rescue it: `FromOpenProject` carries no
+return annotation upstream, so its recorded `return_type` is `""`. Return-type
+coverage on `FLExProject` is thin generally (28 of 107 methods).
+
+**Two fixes, because either alone leaves a gap.**
+
+- The receiver test is now a membership test over every variable known to hold
+  a `FLExProject`, not a comparison to one name. Facade-valued variables are
+  tracked through direct construction, the `FromOpenProject` bridge (typed off
+  an *empty or absent* `return_type` -- deliberately, since that is the actual
+  state of the index), rebind chains, accessor aliases (`lex = fx.LexEntry`)
+  and tuple unpacking (`lex, lists = fx.LexEntry, fx.PossibilityLists`). All
+  six shapes from the issue's scope table now resolve through the index and
+  report the real class and method. Future bridge constructors are typed even
+  when the index has never heard of them.
+- An **unresolvable** receiver reaching a method name the index declares
+  mutating is now reported as a suspected mutation instead of being silently
+  certified read-only, with `confidence` degraded to `low` and
+  `source: "unresolved_receiver"` on the row. This is what keeps a stale or
+  incomplete index a *reporting* problem rather than a safety one: the next
+  un-annotated seam nobody anticipated fails closed. The set of mutating names
+  is read from the index, not guessed from verb prefixes, so read-only calls on
+  untyped receivers stay silent.
+
+Guarded facade writes are unaffected: they still pass `unprotected_writes`
+while still requiring `write_enabled`, the project lock and confirmation, per
+the #93 split between "is this a mutation" and "was it guarded".
+
+The same receiver generalization was applied to the two other gates that
+resolved receivers by name -- the hvo-literal gate (`detect_hvo_literal_args`)
+and the casting gate (`detect_casting_needs`) -- which had gone equally blind
+the moment a module adopted the documented shape.
+
+Upstream item 1 from the issue is **not** included here and remains worth
+doing: annotating `def FromOpenProject(cls, donor) -> "FLExProject":` in
+flexicon improves `return_type` coverage broadly. The fix above does not depend
+on it, and covers the annotated case too.
+
+### Added: the flexicon template pre-flights its environment
+
+Generated flexicon modules now check the environment they land in before doing
+anything, because `FLExProject.FromOpenProject()` makes
+`from flexicon import FLExProject` load-bearing for the first time. The module
+therefore depends on whatever Python the user's FlexTools install happens to
+use -- which is frequently **not** the one on their `PATH`. Two failures become
+possible, and neither reads as an environment problem:
+
+- `pyflexicon` absent -> `ImportError` at load, before `Main()` runs; FlexTools
+  shows a traceback naming a package, with no remedy.
+- `pyflexicon` present but pre-bridge -> imports cleanly, then dies on the first
+  line of `Main()` with `AttributeError: type object 'FLExProject' has no
+  attribute 'FromOpenProject'`.
+
+Both now produce a plain `[ERROR]` block naming the fix and saying explicitly
+that the module is fine and the environment is not. The import is guarded, so
+the module still loads and can report rather than dying first. Silent on a
+current install -- not even a `report.Info`.
+
+A **third** case gets its own message, and it is the one where the module *is*
+what needs editing: a name in the `from flexicon import (...)` list that
+flexicon does not export. `except ImportError` cannot tell "no such package"
+from "no such name in the package", so a single `try` around both imports sent
+that case down the not-installed path -- telling the user flexicon "is not
+installed", to run `pip install pyflexicon` for a package they already have,
+and that "the module itself is fine". All three were wrong. The two imports are
+now guarded separately, and the bad-name branch points at the import list,
+names the offending symbol, and says the environment is not the problem. This
+is the trap the template's own comment documents (reversal work has no
+top-level `ReversalOperations`), so it is a likely path rather than a
+hypothetical one; the new tests drive the real import machinery with a real bad
+name, which the original set did not -- it only ever substituted a
+fully-blocked `import flexicon`.
+
+The staleness check is `hasattr(FLExProject, "FromOpenProject")`, a **capability
+probe, never a version floor**. Field evidence for why, from one machine: the
+FlexTools interpreter reports `pyflexicon` 4.1.1 via `importlib.metadata` while
+`flexicon.version` reports 4.6.0, from the same editable install. A floor
+compared against the wrong one of those refuses a working environment.
+
+Separately, generated modules now record the flexicon version they were written
+against (`_TESTED_AGAINST`, stamped by `flextools_get_module_template()` at
+generation time) and emit a `report.Warning` if they later run somewhere older.
+That is advisory only: it runs after the capability gate has passed and cannot
+stop the module, so a wrong comparison costs a spurious note rather than a dead
+module. Equal, newer, or unparseable versions produce no output.
+
+The template's `REQUIRES: - Flexicon version 2.0+` line was corrected. It was
+prose, unenforced, and false -- exactly the hand-maintained-version rot that
+argues for stamping the constant rather than writing it by hand.
+
+Two smaller review items on the same code:
+
+- The advisory comparison padded no version tuples, so `(4, 7)` sorted below
+  `(4, 7, 0)` and a flexicon reporting `"4.7"` was told it was behind `"4.7.0"`
+  -- the same release, reported as older than itself. Both tuples are now
+  padded to a common length. Pinned in both directions, since a fix that
+  swapped the operands would pass a one-sided test.
+- `if not _flexicon_preflight(report): return` is now two lines. It is the
+  first statement of every generated module and users copy and edit it, so it
+  should look like the rest of the file.
+
+**The pre-flight test file now really does run in a bare checkout**, which its
+own docstring had claimed since CP4 landed. It did not: exec'ing the template
+ran the real `import flexicon`, and on a machine with pyflexicon installed but
+no FieldWorks that raises a bare `Exception("64bit FieldWorks 9 not found")`.
+Not an `ImportError`, so the template's guard does not catch it and it came
+back out of the exec -- every test in the file failed on the Windows CI runner,
+for a reason with nothing to do with the pre-flight. The exec now runs against
+a stub `flexicon` installed in `sys.modules`, used unconditionally so a pass on
+a dev machine means what it means on the runner. The import machinery itself
+still really runs, which is what the bad-name test above needs. A new drift
+check ties the stub to the template's import list in both directions, and skips
+the half of itself that needs the real package.
+
+That bare `Exception` at import is worth noting for its own sake: it is the
+failure class the pre-flight exists to prevent, arriving in a form the
+pre-flight does not catch. Widening the guard past `ImportError` is a separate
+change and is not made here.
+
+Also fixed the CI lint step, red for the same hidden reason -- it runs after
+the test step, so nothing had reached it. `ruff check .` was failing on a dead
+`import json` in `build_element_types.py` (removed) and on eight findings in
+the vendored `.specify` spec-kit companion scripts (now excluded, the same
+treatment `.claude` already gets: not part of the shipped package, and not
+ours to restyle). Both predate this branch and are red on `main` too.
+
 ### Fixed: casting preflight now has dataflow (#121)
 
 `detect_casting_needs` was two regex passes over raw source lines with no type

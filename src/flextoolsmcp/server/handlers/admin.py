@@ -319,6 +319,48 @@ def _get_flavor_guidance(flavor: str) -> dict:
     return FLAVOR_GUIDANCE.get(flavor, FLAVOR_GUIDANCE["flexicon"])
 
 
+_TESTED_AGAINST_LINE = '_TESTED_AGAINST = "unknown"'
+
+
+def _stamp_tested_against(content: str) -> str:
+    """Record the flexicon version this module is being generated against.
+
+    The template ships with ``_TESTED_AGAINST = "unknown"``; this replaces it
+    with the version actually installed here. The emitted module then carries
+    a note about which version it was written against, and warns (never
+    refuses) if it later runs somewhere older.
+
+    Best-effort and non-fatal by design: if the line is absent (another
+    flavor), or the version cannot be detected, the content is returned
+    unchanged and the module simply skips its version note. A generated module
+    must never fail to generate over a diagnostic nicety.
+    """
+    if _TESTED_AGAINST_LINE not in content:
+        return content
+
+    try:
+        from ..versioning import detect_installed_library_version
+
+        version = detect_installed_library_version(
+            "Flexicon", import_path="flexicon", package_name="pyflexicon"
+        )
+    except Exception:
+        version = None
+
+    if not version:
+        return content
+
+    # Keep the stamp a plain literal: the template parses it with str.isdigit()
+    # and skips the comparison on anything it cannot read.
+    safe = str(version).strip().replace('"', "").replace("\\", "")
+    if not safe:
+        return content
+
+    return content.replace(
+        _TESTED_AGAINST_LINE, '_TESTED_AGAINST = "%s"' % safe, 1
+    )
+
+
 def _get_template(flavor: str) -> str | None:
     """Load and cache template file content (O(1) lookup after first call).
 
@@ -720,6 +762,12 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
 
     # Use cached template (O(1) lookup after first request)
     template_content = _get_template(flavor)
+
+    # Stamp the generated module with the flexicon version it is being written
+    # against, so a later bug report starts from that fact. The cache keeps the
+    # raw file; only the emitted copy is stamped.
+    if template_content is not None:
+        template_content = _stamp_tested_against(template_content)
 
     if template_content is None:
         templates_dir = get_bundled_templates_dir()

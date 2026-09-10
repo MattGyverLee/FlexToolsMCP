@@ -11,7 +11,10 @@ CRITICAL REQUIREMENT:
     your code will silently use the wrong (stable) version, causing subtle bugs.
 
 REQUIRES:
-    - Flexicon version 2.0+
+    - flexicon (pip install pyflexicon), new enough to have
+      FLExProject.FromOpenProject(). The pre-flight below checks for the
+      capability itself rather than for a version number, and reports what to
+      do if it is absent.
     - FieldWorks version [X.Y.Z]+
     - Python 3.7+ (IronPython via FLExTools)
 
@@ -26,18 +29,279 @@ DATE:
 # CRITICAL: Explicitly import from flexicon (not flexlibs)
 # ============================================================================
 # This prevents FLExTools's default flexlibs (stable version) from being used
-from flexicon import (
-    FLExProject,
-    LexEntryOperations,
-    LexSenseOperations,
-    LexReferenceOperations,
-    WritingSystemOperations,
-    # Add other operations as needed based on your implementation.
-    # Import only names flexicon actually exports -- a wrong name here is an
-    # ImportError that kills the module before Main() runs. Reversal work, for
-    # example, has no top-level "ReversalOperations": reach it through the
-    # accessors project.ReversalIndexes / project.ReversalEntries instead.
-)
+#
+# The import is guarded so that a missing pyflexicon becomes a readable message
+# from _flexicon_preflight() below, instead of an ImportError traceback thrown
+# before Main() is ever reached. FlexTools shows that traceback with no remedy
+# and no hint that the module itself is fine.
+#
+# The two imports are guarded SEPARATELY on purpose. `except ImportError`
+# cannot tell "no such package" from "no such name in the package", so a single
+# try block around both made a wrong operations name below report as "flexicon
+# is not installed" -- sending the user to `pip install` for a package they
+# already have, while insisting the module needed no editing when the import
+# list was the only thing that did.
+_FLEXICON_IMPORT_ERROR = None
+_FLEXICON_SYMBOL_ERROR = None
+
+try:
+    import flexicon as _flexicon
+except ImportError as _import_error:
+    _flexicon = None
+    _FLEXICON_IMPORT_ERROR = str(_import_error)
+
+FLExProject = None
+if _flexicon is not None:
+    try:
+        from flexicon import (
+            FLExProject,
+            LexEntryOperations,
+            LexSenseOperations,
+            LexReferenceOperations,
+            WritingSystemOperations,
+            # Add other operations as needed based on your implementation.
+            # Import only names flexicon actually exports -- a wrong name here is
+            # an ImportError that stops the module before Main() runs (the
+            # pre-flight below will tell you which name, and that this list is
+            # what to fix). Reversal work, for example, has no top-level
+            # "ReversalOperations": reach it through the accessors
+            # project.ReversalIndexes / project.ReversalEntries instead.
+        )
+    except ImportError as _symbol_error:
+        _FLEXICON_SYMBOL_ERROR = str(_symbol_error)
+
+
+# ============================================================================
+# ENVIRONMENT PRE-FLIGHT
+# ============================================================================
+# Two things can be wrong with the Python environment your FlexTools install
+# uses, and neither one reads as an environment problem on its own:
+#
+#   1. pyflexicon is not installed at all -> ImportError at load time.
+#   2. pyflexicon is installed but predates FLExProject.FromOpenProject()
+#      -> the module imports cleanly and then dies on the first line of Main()
+#         with "type object 'FLExProject' has no attribute 'FromOpenProject'".
+#
+# A third case is the module's fault rather than the environment's: a name in
+# the import list above that flexicon does not export. It gets its own message,
+# because the remedy is the opposite one -- edit this file, do not touch the
+# environment.
+#
+# In both cases the module is correct and the environment is not, which is
+# exactly what a user cannot tell from the raw traceback. The pre-flight says so
+# and names the fix.
+#
+# There is also a third, milder case: a flexicon that HAS the bridge but is
+# older than the one this module was written against. That is not an error and
+# must never stop the module -- it is a note worth having in a bug report.
+
+# The flexicon version present when this module was generated. Stamped by
+# flextools_get_module_template(); stays "unknown" if the template file is
+# copied by hand, in which case the version note below is skipped entirely
+# rather than guessed at.
+_TESTED_AGAINST = "unknown"
+
+
+def _flexicon_installed_version():
+    """
+    Best-effort flexicon version string, for the diagnostic message only.
+
+    Never raises, and never gates anything -- see _flexicon_preflight() for why
+    the gate is a capability probe rather than a version floor. Returns the
+    string "unknown" when it cannot tell.
+    """
+    try:
+        found = getattr(_flexicon, "version", None)
+        if found:
+            return str(found)
+    except Exception:
+        pass
+
+    try:
+        import importlib.metadata as _metadata
+
+        found = _metadata.version("pyflexicon")
+        if found:
+            return str(found)
+    except Exception:
+        pass
+
+    return "unknown"
+
+
+def _version_parts(text):
+    """
+    Turn "4.10.2" into (4, 10, 2) for ordering. Never raises.
+
+    Returns None when the string is not a plain dotted number -- "unknown", a
+    dev suffix, a git hash. None means "do not compare", which is the safe
+    answer: a comparison we cannot trust must produce no note at all rather
+    than a wrong one.
+    """
+    try:
+        pieces = str(text).strip().split(".")
+        if not pieces:
+            return None
+        out = []
+        for piece in pieces:
+            if not piece.isdigit():
+                return None
+            out.append(int(piece))
+        return tuple(out)
+    except Exception:
+        return None
+
+
+def _flexicon_is_behind(found, tested):
+    """
+    True only when both strings parse AND found is genuinely the older one.
+
+    Never raises, and answers False whenever there is any doubt. This informs a
+    WARNING only -- it must never decide whether the module runs. See
+    _flexicon_preflight() for why the gate is hasattr and nothing else.
+    """
+    left = _version_parts(found)
+    right = _version_parts(tested)
+    if left is None or right is None:
+        return False
+    # Pad to a common length before comparing. Without this, tuple ordering
+    # makes "4.7" rank below "4.7.0" -- the same release, reported as behind.
+    width = max(len(left), len(right))
+    left = left + (0,) * (width - len(left))
+    right = right + (0,) * (width - len(right))
+    return left < right
+
+
+def _report_preflight_error(report, lines):
+    """Emit the diagnostic, tolerating a report object that itself misbehaves."""
+    for line in lines:
+        try:
+            report.Error(line)
+        except Exception:
+            pass
+
+
+def _report_preflight_warning(report, lines):
+    """As above, for the non-fatal version note."""
+    for line in lines:
+        try:
+            report.Warning(line)
+        except Exception:
+            pass
+
+
+def _flexicon_preflight(report):
+    """
+    Return True when flexicon is usable; otherwise report the problem and
+    return False.
+
+    Guarantees:
+      * Never raises. A probe that itself throws is treated as "cannot
+        determine" and returns True -- the pre-flight must never be the reason
+        a working module stops running.
+      * Silent when flexicon is current. No report call of any kind.
+      * ASCII only, matching the [ERROR] prefix style used elsewhere here.
+
+    The staleness GATE is hasattr(FLExProject, "FromOpenProject") -- a
+    CAPABILITY probe, deliberately not a version comparison. A hardcoded
+    version floor is a second source of truth that goes wrong the first release
+    nobody remembers to raise, and the two version strings available can
+    already disagree with each other on the same machine (an editable install
+    reports one number in flexicon.version and another in package metadata).
+    hasattr asks the only question that matters: is the bridge there.
+
+    There IS a version comparison further down, and it is deliberately not a
+    gate. It can only add a WARNING and can never change the return value:
+    older-but-capable is a supported configuration, so the comparison being
+    wrong costs a spurious note, never a working module. That is the whole
+    reason a floor is refused here while a note is welcome.
+    """
+    try:
+        if _flexicon is None:
+            _report_preflight_error(report, [
+                "[ERROR] This module needs flexicon, which is not installed in",
+                "[ERROR] the Python environment FlexTools is using.",
+                "[ERROR]",
+                "[ERROR]   import failed with: %s" % (_FLEXICON_IMPORT_ERROR,),
+                "[ERROR]",
+                "[ERROR] To fix it, run this in the Python that FlexTools uses",
+                "[ERROR] (which is not necessarily the one on your PATH):",
+                "[ERROR]",
+                "[ERROR]     pip install pyflexicon",
+                "[ERROR]",
+                "[ERROR] The module itself is fine -- nothing here needs editing.",
+            ])
+            return False
+
+        if _FLEXICON_SYMBOL_ERROR is not None or FLExProject is None:
+            # flexicon imported fine; one of the names in the import list at the
+            # top of this file does not exist. This is the one pre-flight case
+            # where the module IS what needs editing, so it must not borrow the
+            # not-installed wording above.
+            _report_preflight_error(report, [
+                "[ERROR] flexicon is installed and working, but this module asks",
+                "[ERROR] it for a name it does not export, so the module could",
+                "[ERROR] not finish loading.",
+                "[ERROR]",
+                "[ERROR]   import failed with: %s" % (_FLEXICON_SYMBOL_ERROR,),
+                "[ERROR]   flexicon version found: %s"
+                % (_flexicon_installed_version(),),
+                "[ERROR]",
+                "[ERROR] Fix the `from flexicon import (...)` list near the top",
+                "[ERROR] of this file -- remove or correct that name. Not every",
+                "[ERROR] operations class has a top-level export: reversal work,",
+                "[ERROR] for example, has no \"ReversalOperations\" -- reach it",
+                "[ERROR] through project.ReversalIndexes / project.ReversalEntries.",
+                "[ERROR]",
+                "[ERROR] Nothing is wrong with your Python environment.",
+            ])
+            return False
+
+        if not hasattr(FLExProject, "FromOpenProject"):
+            _report_preflight_error(report, [
+                "[ERROR] The flexicon installed for FlexTools is too old for",
+                "[ERROR] this module: it has no FLExProject.FromOpenProject(),",
+                "[ERROR] which is how the module attaches to the project",
+                "[ERROR] FlexTools already opened.",
+                "[ERROR]",
+                "[ERROR]   version found: %s" % (_flexicon_installed_version(),),
+                "[ERROR]",
+                "[ERROR] To fix it, run this in the Python that FlexTools uses",
+                "[ERROR] (which is not necessarily the one on your PATH):",
+                "[ERROR]",
+                "[ERROR]     pip install -U pyflexicon",
+                "[ERROR]",
+                "[ERROR] The module itself is fine -- nothing here needs editing.",
+            ])
+            return False
+
+        # Past this point flexicon is usable and the module WILL run. What
+        # follows is a note, not a gate: an older-but-capable flexicon is
+        # supported, and the only thing worth saying is which versions are in
+        # play, so that a later bug report starts with that fact rather than
+        # discovering it.
+        found = _flexicon_installed_version()
+        if _flexicon_is_behind(found, _TESTED_AGAINST):
+            _report_preflight_warning(report, [
+                "[WARN] This module was generated against flexicon %s, and"
+                % (_TESTED_AGAINST,),
+                "[WARN] this environment has %s. Running anyway -- older is"
+                % (found,),
+                "[WARN] usually fine.",
+                "[WARN]",
+                "[WARN] If the module misbehaves, mention both versions in any",
+                "[WARN] bug report, or bring the environment up to date with:",
+                "[WARN]",
+                "[WARN]     pip install -U pyflexicon",
+            ])
+
+    except Exception:
+        # Fail open. If the probe cannot answer, let the module run and fail on
+        # its own terms if it is going to; a broken diagnostic must not become
+        # a broken module.
+        return True
+
+    return True
 
 
 # ============================================================================
@@ -61,6 +325,23 @@ def Main(project, report, modifyAllowed):
     Returns:
         None (output via report parameter)
     """
+    if not _flexicon_preflight(report):
+        return
+
+    # Attach a flexicon facade to the project the host already opened. This is
+    # the portable shape: under FlexTools `project` is a shallow flexlibs
+    # FLExProject and this attaches the deep flexicon API to its live cache;
+    # under the FlexToolsMCP runner `project` is already a flexicon
+    # FLExProject and the call returns it unchanged. Same source, both hosts.
+    #
+    # Use `fx` from here on, wherever you would have written `project`.
+    #
+    # An attached view is a view over a cache it does not own, so: use
+    # Transaction() (UndoableOperation() is refused), and do NOT call
+    # SaveChanges() or CloseProject() -- the host owns the save. Just return
+    # when you are done.
+    fx = FLExProject.FromOpenProject(project)
+
     try:
         # ================================================================
         # Your implementation goes here
@@ -73,14 +354,14 @@ def Main(project, report, modifyAllowed):
         # index/slice, or re-iterate freely. Only wrap in list(...) if you
         # specifically need a plain list (e.g. to hand off to code that
         # requires one).
-        entries = project.LexEntry.GetAll()
+        entries = fx.LexEntry.GetAll()
         report.Info(f"Found {len(entries)} lexical entries")
 
         # Example: Process each entry
         for i, entry in enumerate(entries):
             try:
                 # Get entry form (headword)
-                form = project.LexEntry.GetLexemeForm(entry)
+                form = fx.LexEntry.GetLexemeForm(entry)
 
                 # Get all senses for this entry (incl. subsenses, recursively).
                 # NOTE two easy mistakes here (issue #84):
@@ -92,13 +373,13 @@ def Main(project, report, modifyAllowed):
                 #     takes an entry, project.Senses.GetAllSenses takes a
                 #     SENSE (that sense plus its subsenses). Going from an
                 #     entry, you want the LexEntry one.
-                senses = project.LexEntry.GetAllSenses(entry)
+                senses = fx.LexEntry.GetAllSenses(entry)
                 report.Info(f"  [{i+1}] {form} ({len(senses)} senses)")
 
                 # BuildGoToURL creates clickable links in FLExTools output
                 # Users can click to jump directly to entry in FieldWorks GUI
                 try:
-                    entry_url = project.BuildGotoURL(entry)
+                    entry_url = fx.BuildGotoURL(entry)
                     report.Info(f"      Goto entry: {entry_url}")
                 except Exception:
                     # BuildGoToURL might not be available, continue anyway
@@ -106,15 +387,15 @@ def Main(project, report, modifyAllowed):
 
                 # Process each sense
                 for sense in senses:
-                    gloss = project.Senses.GetGloss(sense)
-                    definition = project.Senses.GetDefinition(sense)
+                    gloss = fx.Senses.GetGloss(sense)
+                    definition = fx.Senses.GetDefinition(sense)
 
                     if gloss:
                         report.Info(f"      - {gloss}")
 
                     # BuildGoToURL also works for senses
                     try:
-                        sense_url = project.BuildGotoURL(sense)
+                        sense_url = fx.BuildGotoURL(sense)
                         report.Info(f"        Goto sense: {sense_url}")
                     except Exception:
                         pass

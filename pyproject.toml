@@ -125,6 +125,11 @@ flextoolsmcp = ["index/archive/**", "index/**/archive/**"]
 extend-exclude = [
     ".claude",
     "src/flextoolsmcp/templates",
+    # Vendored spec-kit companion tooling -- same reason as .claude above: not
+    # part of the shipped package, and not ours to restyle. It was failing the
+    # CI `ruff check .` step, which nothing noticed because the test step ahead
+    # of it failed first.
+    ".specify",
 ]
 
 # Lint-widening step 1 (issue #67): full F (pyflakes) + E4/E7 on top of the

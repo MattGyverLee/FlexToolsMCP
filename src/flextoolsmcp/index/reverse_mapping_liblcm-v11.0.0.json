@@ -402,7 +402,7 @@
     },
     "FLExProject": {
       "category": "general",
-      "method_count": 106,
+      "method_count": 107,
       "methods": {},
       "wraps_interfaces": [
         "ICmObjectRepository",
@@ -461,14 +461,9 @@
     },
     "GramCatOperations": {
       "category": "grammar",
-      "method_count": 12,
+      "method_count": 2,
       "methods": {},
-      "wraps_interfaces": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString"
-      ]
+      "wraps_interfaces": []
     },
     "HeadlessLcmUI": {
       "category": "general",
@@ -732,7 +727,7 @@
     },
     "POSOperations": {
       "category": "grammar",
-      "method_count": 21,
+      "method_count": 22,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntryRepository",
@@ -1841,10 +1836,6 @@
           "methods": []
         },
         {
-          "class": "GramCatOperations",
-          "methods": []
-        },
-        {
           "class": "NoteOperations",
           "methods": []
         },
@@ -1879,10 +1870,6 @@
         },
         {
           "class": "ConstChartMarkerOperations",
-          "methods": []
-        },
-        {
-          "class": "GramCatOperations",
           "methods": []
         },
         {
@@ -2755,16 +2742,10 @@
       "flexlibs_stable": null
     },
     "IFsFeatStrucTypeFactory": {
-      "flexlibs_2": [
-        {
-          "class": "GramCatOperations",
-          "methods": []
-        },
-        {
-          "class": "InflectionFeatureOperations",
-          "methods": []
-        }
-      ],
+      "flexlibs_2": {
+        "class": "InflectionFeatureOperations",
+        "methods": []
+      },
       "flexlibs_stable": null
     },
     "IFsSymFeatVal": {
@@ -5134,10 +5115,6 @@
         },
         {
           "class": "FilterTypes",
-          "methods": []
-        },
-        {
-          "class": "GramCatOperations",
           "methods": []
         },
         {

@@ -149,6 +149,11 @@ Before tagging any release, verify:
 - [ ] `python scripts/validate_integrity.py all` exits clean.
 - [ ] If indexes changed: review the index diff and confirm it reflects
       the intended API surface changes.
+- [ ] The `pyflexicon` floor covers the bundled index version. The shipped
+      index is regenerated against whatever flexicon the dev machine has, so
+      the floor in `pyproject.toml` (and its `requirements.txt` mirror) can
+      silently fall behind it -- an install at the floor then gets an index
+      for a flexicon it does not have, and pays a first-run lazy refresh.
 - [ ] **Tier-2 live evals run and headline numbers pasted into CHANGELOG**
       (see [Eval harness](#eval-harness) below). Manual, pre-release only --
       never CI-required. Report medians over 2 runs; note as N/A only if

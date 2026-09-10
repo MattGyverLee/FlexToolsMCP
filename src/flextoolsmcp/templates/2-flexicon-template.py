@@ -164,6 +164,11 @@ def _flexicon_is_behind(found, tested):
     right = _version_parts(tested)
     if left is None or right is None:
         return False
+    # Pad to a common length before comparing. Without this, tuple ordering
+    # makes "4.7" rank below "4.7.0" -- the same release, reported as behind.
+    width = max(len(left), len(right))
+    left = left + (0,) * (width - len(left))
+    right = right + (0,) * (width - len(right))
     return left < right
 
 
@@ -320,7 +325,8 @@ def Main(project, report, modifyAllowed):
     Returns:
         None (output via report parameter)
     """
-    if not _flexicon_preflight(report): return
+    if not _flexicon_preflight(report):
+        return
 
     # Attach a flexicon facade to the project the host already opened. This is
     # the portable shape: under FlexTools `project` is a shallow flexlibs

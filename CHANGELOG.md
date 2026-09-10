@@ -149,6 +149,42 @@ The template's `REQUIRES: - Flexicon version 2.0+` line was corrected. It was
 prose, unenforced, and false -- exactly the hand-maintained-version rot that
 argues for stamping the constant rather than writing it by hand.
 
+Two smaller review items on the same code:
+
+- The advisory comparison padded no version tuples, so `(4, 7)` sorted below
+  `(4, 7, 0)` and a flexicon reporting `"4.7"` was told it was behind `"4.7.0"`
+  -- the same release, reported as older than itself. Both tuples are now
+  padded to a common length. Pinned in both directions, since a fix that
+  swapped the operands would pass a one-sided test.
+- `if not _flexicon_preflight(report): return` is now two lines. It is the
+  first statement of every generated module and users copy and edit it, so it
+  should look like the rest of the file.
+
+**The pre-flight test file now really does run in a bare checkout**, which its
+own docstring had claimed since CP4 landed. It did not: exec'ing the template
+ran the real `import flexicon`, and on a machine with pyflexicon installed but
+no FieldWorks that raises a bare `Exception("64bit FieldWorks 9 not found")`.
+Not an `ImportError`, so the template's guard does not catch it and it came
+back out of the exec -- every test in the file failed on the Windows CI runner,
+for a reason with nothing to do with the pre-flight. The exec now runs against
+a stub `flexicon` installed in `sys.modules`, used unconditionally so a pass on
+a dev machine means what it means on the runner. The import machinery itself
+still really runs, which is what the bad-name test above needs. A new drift
+check ties the stub to the template's import list in both directions, and skips
+the half of itself that needs the real package.
+
+That bare `Exception` at import is worth noting for its own sake: it is the
+failure class the pre-flight exists to prevent, arriving in a form the
+pre-flight does not catch. Widening the guard past `ImportError` is a separate
+change and is not made here.
+
+Also fixed the CI lint step, red for the same hidden reason -- it runs after
+the test step, so nothing had reached it. `ruff check .` was failing on a dead
+`import json` in `build_element_types.py` (removed) and on eight findings in
+the vendored `.specify` spec-kit companion scripts (now excluded, the same
+treatment `.claude` already gets: not part of the shipped package, and not
+ours to restyle). Both predate this branch and are red on `main` too.
+
 ### Fixed: casting preflight now has dataflow (#121)
 
 `detect_casting_needs` was two regex passes over raw source lines with no type

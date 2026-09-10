@@ -23,16 +23,35 @@ HOW IT TESTS
     No FieldWorks, and flexicon is never uninstalled. The template is loaded as
     SOURCE and exec'd into a throwaway namespace; because the helper reads its
     module globals, swapping ``ns["_flexicon"]`` / ``ns["FLExProject"]`` is
-    enough to stand in either failure. That keeps the whole file runnable in a
-    bare CI checkout.
+    enough to stand in either failure.
 
-    Deliberately NO ``requires_live_project`` marker -- the pre-flight opens
-    nothing, and that is the only marker pyproject.toml registers.
+    The exec runs against a STUB ``flexicon`` installed in ``sys.modules`` for
+    its duration, not the real package -- which is what actually keeps the file
+    runnable in a bare checkout. It has to be a stub, because "flexicon is
+    importable here" is not true even on a machine that has pyflexicon
+    installed: without FieldWorks, ``import flexicon`` raises a bare
+    ``Exception("64bit FieldWorks 9 not found")``. That is not an ImportError,
+    so the template's guard does not catch it and it came straight back out of
+    the exec -- every test in this file failed on the Windows CI runner for a
+    reason that had nothing to do with the pre-flight.
+
+    The stub is used unconditionally rather than only as a fallback, so a pass
+    on a dev machine means the same thing as a pass on the runner.
+    ``test_the_stub_matches_what_the_template_actually_imports`` keeps the stub
+    from drifting away from the real package, and skips where flexicon cannot
+    be imported.
+
+    Deliberately NO marker -- neither ``requires_live_project`` (the pre-flight
+    opens nothing) nor ``requires_flex`` (nothing here needs FieldWorks any
+    more, which is the point of the stub).
 """
 
 import json
 import re
+import sys
+import types
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -62,17 +81,68 @@ def _template_path():
     return Path(get_bundled_templates_dir()) / "2-flexicon-template.py"
 
 
-def _load_namespace():
-    """exec the template into a fresh namespace and hand it back.
+#: Every name the template's ``from flexicon import (...)`` list asks for.
+#: Kept in one place because both the stub and the drift check need it.
+TEMPLATE_IMPORTS = (
+    "FLExProject",
+    "LexEntryOperations",
+    "LexSenseOperations",
+    "LexReferenceOperations",
+    "WritingSystemOperations",
+)
 
-    The real ``from flexicon import ...`` runs here, which is fine: flexicon is
-    a dev dependency of this repo. Individual tests then overwrite the names
-    they need in order to stand in an environment we do not have.
+
+def _flexicon_stub(version="4.7.0", names=TEMPLATE_IMPORTS):
+    """A module object that satisfies the template's import list.
+
+    Deliberately NOT a package: with no ``__path__``, a name the stub does not
+    carry produces the real ImportError CPython would raise for a bad name in
+    a ``from flexicon import (...)`` list, which is what the bad-symbol tests
+    need. Nothing here is called -- the pre-flight only ever probes
+    ``hasattr(FLExProject, "FromOpenProject")``.
     """
-    src = _template_source()
-    ns: "dict[str, Any]" = {"__name__": "_flexicon_template_under_test"}
-    exec(compile(src, "2-flexicon-template.py", "exec"), ns)
+    mod = types.ModuleType("flexicon")
+    mod.__file__ = "<flexicon stub for tests>"
+    mod.version = version
+    for name in names:
+        setattr(mod, name, type(str(name), (), {}))
+    # The default exec should land in a *working* environment, so the bridge
+    # has to be present; tests that want it missing swap FLExProject after.
+    if "FLExProject" in names:
+        mod.FLExProject = _CurrentFLExProject
+    return mod
+
+
+@contextmanager
+def _stubbed_flexicon(**kwargs):
+    """Install the stub as ``flexicon`` for the duration of the block."""
+    saved = sys.modules.get("flexicon")
+    sys.modules["flexicon"] = _flexicon_stub(**kwargs)
+    try:
+        yield sys.modules["flexicon"]
+    finally:
+        if saved is None:
+            del sys.modules["flexicon"]
+        else:
+            sys.modules["flexicon"] = saved
+
+
+def _exec_template(src, module_name="_flexicon_template_under_test"):
+    """exec template source against the stub and hand back its namespace."""
+    ns: "dict[str, Any]" = {"__name__": module_name}
+    with _stubbed_flexicon():
+        exec(compile(src, "2-flexicon-template.py", "exec"), ns)
     return ns
+
+
+def _load_namespace():
+    """exec the emitted template into a fresh namespace and hand it back.
+
+    The import machinery really runs; only the package behind it is a stub (see
+    HOW IT TESTS). Individual tests then overwrite the module globals they need
+    in order to stand in an environment we do not have.
+    """
+    return _exec_template(_template_source())
 
 
 class _FakeReport:
@@ -169,10 +239,65 @@ class TestPreflightIsWiredIn(unittest.TestCase):
             "environment is reported before any project work is attempted. "
             "Found instead: %r" % first,
         )
-        self.assertIn(
-            "return", first,
-            "The pre-flight call must short-circuit Main(), i.e. "
-            "'if not _flexicon_preflight(report): return'. Found: %r" % first,
+        # The guard must short-circuit Main(). Two spellings are acceptable:
+        # the compound `if not _flexicon_preflight(report): return`, or the
+        # conventional two-line form -- which is what the template uses, since
+        # users copy and edit it.
+        if "return" not in first:
+            self.assertTrue(
+                first.startswith("if "),
+                "A pre-flight call whose own line does not return must be a "
+                "conditional, or nothing stops Main(). Found: %r" % first,
+            )
+            self.assertLess(
+                idx + 1, len(lines),
+                "The pre-flight guard is the last line of Main(); it has no "
+                "body, so a bad environment would fall straight through.",
+            )
+            self.assertEqual(
+                "return", lines[idx + 1].strip(),
+                "The body of the pre-flight guard must be a bare `return` and "
+                "nothing else -- any project work under it runs in the "
+                "environment the pre-flight just rejected. Found: %r"
+                % lines[idx + 1].strip(),
+            )
+
+    def test_the_stub_matches_what_the_template_actually_imports(self):
+        """Keeps the sys.modules stub honest (see HOW IT TESTS).
+
+        A stub can drift two ways, and both are silent. If the template's
+        import list grows a name the stub lacks, every exec here quietly
+        becomes a bad-symbol test. If flexicon stops exporting one of them,
+        the stub hides a break that would hit every generated module.
+        """
+        src = _template_source()
+        self.assertIn("from flexicon import (", src)
+        block = src.split("from flexicon import (", 1)[1].split(")", 1)[0]
+        imported = tuple(re.findall(r"^\s*([A-Za-z_]\w*)\s*,", block, re.M))
+
+        self.assertEqual(
+            set(TEMPLATE_IMPORTS), set(imported),
+            "The template imports %r but the stub provides %r. Add the new "
+            "name to TEMPLATE_IMPORTS, or the stubbed exec starts testing an "
+            "ImportError path by accident."
+            % (sorted(imported), sorted(TEMPLATE_IMPORTS)),
+        )
+
+        try:
+            import flexicon
+        except Exception as e:  # noqa: BLE001 - see the docstring
+            self.skipTest(
+                "flexicon is not importable here (%r), which is the situation "
+                "the stub exists for. The half of this test that needs the "
+                "real package cannot run." % e
+            )
+
+        missing = [n for n in imported if not hasattr(flexicon, n)]
+        self.assertEqual(
+            [], missing,
+            "flexicon %s does not export %r, so the emitted template cannot "
+            "load at all -- and the stub would go on saying it can."
+            % (getattr(flexicon, "version", "?"), missing),
         )
 
     def test_t4_1a_template_uses_the_bridge_after_the_preflight(self):
@@ -242,8 +367,7 @@ class TestPreflightFailurePaths(unittest.TestCase):
             src, bad_src, "Could not inject a bad name into the import list."
         )
 
-        ns: "dict[str, Any]" = {"__name__": "_flexicon_bad_symbol_under_test"}
-        exec(compile(bad_src, "2-flexicon-template.py", "exec"), ns)
+        ns = _exec_template(bad_src, "_flexicon_bad_symbol_under_test")
 
         self.assertIsNotNone(
             ns.get("_flexicon"),
@@ -299,8 +423,7 @@ class TestPreflightFailurePaths(unittest.TestCase):
             "        WritingSystemOperations,\n        ReversalOperations,\n",
             1,
         )
-        ns: "dict[str, Any]" = {"__name__": "_flexicon_bad_symbol_ascii"}
-        exec(compile(bad_src, "2-flexicon-template.py", "exec"), ns)
+        ns = _exec_template(bad_src, "_flexicon_bad_symbol_ascii")
 
         report = _FakeReport()
         ns["_flexicon_preflight"](report)
@@ -362,6 +485,15 @@ class TestPreflightFailurePaths(unittest.TestCase):
         """
         import importlib.metadata
 
+        try:
+            expected = importlib.metadata.version("pyflexicon")
+        except importlib.metadata.PackageNotFoundError:
+            self.skipTest(
+                "pyflexicon has no installed distribution here, so source 2 "
+                "has nothing to return and this test would assert on the "
+                "'unknown' floor instead of the fallback."
+            )
+
         ns = _load_namespace()
 
         class _HostileAttribute:
@@ -377,7 +509,6 @@ class TestPreflightFailurePaths(unittest.TestCase):
         result = ns["_flexicon_preflight"](report)
 
         self.assertFalse(result)
-        expected = importlib.metadata.version("pyflexicon")
         self.assertIn(
             expected, report.text,
             "With the module attribute unreadable, the version must come from "
@@ -510,7 +641,7 @@ class TestPreflightFailurePaths(unittest.TestCase):
         )
 
     def test_same_or_newer_than_tested_is_silent(self):
-        for version in ["4.7.0", "4.7.1", "4.8.0", "5.0.0", "4.10.0"]:
+        for version in ["4.7.0", "4.7.1", "4.8.0", "5.0.0", "4.10.0", "4.7"]:
             with self.subTest(installed=version):
                 ns = _load_namespace()
                 ns["_flexicon"] = _FakeFlexiconModule(version)
@@ -526,7 +657,10 @@ class TestPreflightFailurePaths(unittest.TestCase):
                     [], report.calls,
                     "flexicon %s is not behind 4.7.0, so there is nothing to "
                     "say. (4.10.0 is in this list on purpose: a string "
-                    "comparison would wrongly rank it below 4.7.0.) Got: %r"
+                    "comparison would wrongly rank it below 4.7.0. So is "
+                    "'4.7': unpadded tuple ordering ranks (4, 7) below "
+                    "(4, 7, 0), reporting the same release as behind "
+                    "itself.) Got: %r"
                     % (version, report.calls),
                 )
 
@@ -560,6 +694,43 @@ class TestPreflightFailurePaths(unittest.TestCase):
                     "so the pre-flight must stay quiet rather than guess. "
                     "Got: %r" % (installed, tested, report.calls),
                 )
+
+    def test_a_shorter_version_string_is_not_behind_a_longer_equal_one(self):
+        """PR #129 review, minor: pad before comparing.
+
+        Both directions, because tuple ordering is only wrong in one of them
+        and a fix that reverses the operands would pass a one-sided test.
+        """
+        for installed, tested in [("4.7", "4.7.0"), ("4.7.0", "4.7"),
+                                  ("4", "4.0.0"), ("5", "4.9.9")]:
+            with self.subTest(installed=installed, tested=tested):
+                ns = _load_namespace()
+                ns["_flexicon"] = _FakeFlexiconModule(installed)
+                ns["FLExProject"] = _CurrentFLExProject
+                ns["_FLEXICON_IMPORT_ERROR"] = None
+                ns["_TESTED_AGAINST"] = tested
+
+                report = _FakeReport()
+                self.assertTrue(ns["_flexicon_preflight"](report))
+                self.assertEqual(
+                    [], report.calls,
+                    "installed=%r is not older than tested=%r once the "
+                    "version tuples are padded to a common length. Got: %r"
+                    % (installed, tested, report.calls),
+                )
+
+    def test_padding_does_not_silence_a_genuinely_older_short_version(self):
+        """The padding must not cost the note it exists to keep honest."""
+        ns = _load_namespace()
+        ns["_flexicon"] = _FakeFlexiconModule("4.6")
+        ns["FLExProject"] = _CurrentFLExProject
+        ns["_FLEXICON_IMPORT_ERROR"] = None
+        ns["_TESTED_AGAINST"] = "4.7.0"
+
+        report = _FakeReport()
+        self.assertTrue(ns["_flexicon_preflight"](report))
+        self.assertIn("4.6", report.text)
+        self.assertIn("4.7.0", report.text)
 
     def test_unstamped_template_never_warns(self):
         """A hand-copied template file keeps _TESTED_AGAINST = 'unknown'."""

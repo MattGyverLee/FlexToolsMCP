@@ -88,7 +88,6 @@ Usage:
     python src/build_element_types.py
 """
 
-import json
 import re
 from collections import defaultdict
 from pathlib import Path

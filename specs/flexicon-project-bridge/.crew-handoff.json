@@ -24,7 +24,7 @@
     "qc_of_new_code": "PASS -- lex-qc APPROVE. Two nits: the stale docstring line anchor (:2745-2748 -> now referenced by quoted phrase, cannot go stale) is FIXED; the missing Step-2-fallthrough test case is left as-is, non-blocking per QC."
   },
   "next_checkpoint": "none for this batch -- all gates green and committed",
-  "next_entry": "Nothing pending for this batch. The drafted comment/string-stripping issue (specs/flexicon-project-bridge/reviews/cycle2-archivist-strip-issue.md) was filed with user authorization. Note issue #131 is NOT closed by this batch: it is a reporting-layer defect (handlers/execution.py:4538 projects only cert['mutating_calls'] and drops protected_calls), orthogonal to these detection-layer fixes.",
+  "next_entry": "Nothing pending for this batch. The drafted comment/string-stripping issue (specs/flexicon-project-bridge/reviews/cycle2-archivist-strip-issue.md) was filed with user authorization as #133 (line anchors updated to post-commit values and pinned to 23ff2c8). Note issue #131 is NOT closed by this batch: it is a reporting-layer defect (handlers/execution.py:4538 projects only cert['mutating_calls'] and drops protected_calls), orthogonal to these detection-layer fixes.",
   "known_preexisting_not_regressions": [
     "comment/docstring-only mention of a mutating call -> is_certified_readonly=False, mutating_calls=1 when an index is loaded (correct when api_index=None). Identical at def958a. Drafted as the follow-up issue.",
     "four `_parents is possibly unbound` pyright warnings near validators.py:5405/:5468 -- 9 occurrences in both HEAD and working tree, untouched by this diff",
@@ -35,5 +35,6 @@
     "Do not add `closes #131` to this batch: #131 is a reporting-layer bug, still live."
   ],
   "updated": "2026-09-10",
-  "completion_scope": "This BATCH (write-gate-bypass-fixes) only. The feature flexicon-project-bridge itself is unchanged in scope -- do not read this as the whole feature being finished."
+  "completion_scope": "This BATCH (write-gate-bypass-fixes) only. The feature flexicon-project-bridge itself is unchanged in scope -- do not read this as the whole feature being finished.",
+  "follow_up_issue": "#133 -- un-stripped comment/string scanning false positives (Steps 1/1c seeding, import detectors, casting-needs severity)"
 }

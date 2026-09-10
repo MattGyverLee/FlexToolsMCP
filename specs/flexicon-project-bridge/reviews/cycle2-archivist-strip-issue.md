@@ -125,3 +125,14 @@ remain live regardless of the Step 2b fix.
   read-only).
 ```
 
+
+---
+
+## Filed
+
+Filed as #133 on MattGyverLee/FlexToolsMCP with user authorization.
+Line anchors were refreshed to post-commit values and pinned to 23ff2c8 before
+filing, since the write-gate fix shifted every line number in this draft
+(Step 1 :3557 -> :3668, Step 1c :3617 -> :3733, import detectors :1987/:2042 ->
+:2033/:2087, inline strippers :5004/:5100 -> :5150/:5246, the tree = None
+swallow :3550 -> :3662).

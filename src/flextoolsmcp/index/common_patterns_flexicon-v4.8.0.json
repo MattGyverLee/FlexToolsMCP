@@ -574,7 +574,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nenvs = list(project.Environments.GetAll())\nif allomorphs and envs:\n    allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = list(project.Environments.GetAll())[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
         "description": "Add a phonological environment to an allomorph.",
         "method": "AddPhoneEnv",
         "object_type": "IMoForm",
@@ -592,7 +592,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nmorphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
+        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType=\"prefix\")\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
         "description": "Create a new allomorph for a lexical entry.",
         "method": "Create",
         "object_type": "IMoForm",
@@ -749,7 +749,7 @@
       },
       {
         "class": "TextOperations",
-        "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\nnarrative_genre = project.lp.GenreListOA.PossibilitiesOS[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
+        "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\ngenre_list = project.PossibilityLists.FindList(\"Text Genres\")\nnarrative_genre = project.PossibilityLists.GetItems(genre_list)[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
         "description": "Create a new text in the project.",
         "method": "Create",
         "object_type": "IText",
@@ -866,7 +866,7 @@
       },
       {
         "class": "TextOperations",
-        "code": "text = list(project.Texts.GetAll())[0]\n\n# Set genre to first available genre\nif project.lp.GenreListOA.PossibilitiesOS.Count > 0:\n    narrative = project.lp.GenreListOA.PossibilitiesOS[0]\n    project.Texts.SetGenre(text, narrative)\n\n# Clear genre\nproject.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
+        "code": "text = list(project.Texts.GetAll())[0]\n\n# Set genre to first available genre\ngenre_list = project.PossibilityLists.FindList(\"Text Genres\")\nitems = project.PossibilityLists.GetItems(genre_list) if genre_list else []\nif items:\n    project.Texts.SetGenre(text, items[0])\n\n# Clear genre\nproject.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
         "description": "Set the genre of a text.",
         "method": "SetGenre",
         "object_type": "IText",
@@ -1070,7 +1070,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nenvs = list(project.Environments.GetAll())\nif allomorphs and envs:\n    allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = list(project.Environments.GetAll())[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
         "description": "Add a phonological environment to an allomorph.",
         "method": "AddPhoneEnv",
         "object_type": "IMoForm",
@@ -1079,7 +1079,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nmorphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
+        "code": "# Create allomorph with inherited morph type (default)\nentry = project.LexEntry.Create(\"run\")\nallomorph = project.Allomorphs.Create(entry, \"running\")\nprint(project.Allomorphs.GetForm(allomorph))\n            running\n\n# Create with explicit morph type\nallomorph = project.Allomorphs.Create(entry, \"ran\", morphType=\"prefix\")\n\n# Create with specific writing system\nallomorph = project.Allomorphs.Create(entry, \"rʌn\",\n                                       wsHandle=project.WSHandle('en-fonipa'))",
         "description": "Create a new allomorph for a lexical entry.",
         "method": "Create",
         "object_type": "IMoForm",
@@ -1142,7 +1142,7 @@
       },
       {
         "class": "AnthropologyOperations",
-        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\n\n# Get or create a person\n# (assuming people are in project.lp.PeopleOA)\nperson = project.lp.PeopleOA.PossibilitiesOS[0]\n\n# Link person to item\nproject.Anthropology.AddResearcher(item, person)\n\n# Verify link\nresearchers = project.Anthropology.GetResearchers(item)\nprint(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 1 researcher(s)",
+        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\n\n# Get or create a person\nperson = project.Person.Find(\"John Smith\")\n\n# Link person to item\nproject.Anthropology.AddResearcher(item, person)\n\n# Verify link\nresearchers = project.Anthropology.GetResearchers(item)\nprint(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 1 researcher(s)",
         "description": "Link a researcher (person) to an anthropology item.",
         "method": "AddResearcher",
         "object_type": "general",
@@ -1313,8 +1313,8 @@
       },
       {
         "class": "DataNotebookOperations",
-        "code": "# Add single source\nrecord = project.DataNotebook.Find(\"Interview 1\")\nsource = project.Bibliography.Find(\"Smith 2020\")\nif source:\n    project.DataNotebook.AddSource(record, source)\n\n# Add multiple sources\nsources = [\"Smith 2020\", \"Johnson & Garcia 2018\"]\nfor name in sources:\n    src = project.Bibliography.Find(name)\n    if src:\n        project.DataNotebook.AddSource(record, src)\n\n# Create and add new source\nnew_source = project.Bibliography.Create(\"Doe 2024\")\nproject.DataNotebook.AddSource(record, new_source)",
-        "description": "Add a bibliographic source/reference to a notebook record.",
+        "code": "# Add single source (Sources are ICmPerson records -- the\n# people who supplied/reported the data, not bibliographic\n# citations)\nrecord = project.DataNotebook.Find(\"Interview 1\")\nsource = project.Person.Find(\"Smith\")\nif source:\n    project.DataNotebook.AddSource(record, source)\n\n# Add multiple sources\nnames = [\"Smith\", \"Garcia\"]\nfor name in names:\n    src = project.Person.Find(name)\n    if src:\n        project.DataNotebook.AddSource(record, src)",
+        "description": "Add a source (person) to a notebook record.",
         "method": "AddSource",
         "object_type": "general",
         "operation": "create",
@@ -1369,7 +1369,7 @@
       },
       {
         "class": "AnthropologyOperations",
-        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\nperson = project.lp.PeopleOA.PossibilitiesOS[0]\n\n# Remove person link\nproject.Anthropology.RemoveResearcher(item, person)\n\n# Verify removal\nresearchers = project.Anthropology.GetResearchers(item)\nprint(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 0 researcher(s)",
+        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\nperson = project.Person.Find(\"John Smith\")\n\n# Remove person link\nproject.Anthropology.RemoveResearcher(item, person)\n\n# Verify removal\nresearchers = project.Anthropology.GetResearchers(item)\nprint(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 0 researcher(s)",
         "description": "Remove a researcher link from an anthropology item.",
         "method": "RemoveResearcher",
         "object_type": "general",
@@ -1504,8 +1504,8 @@
       },
       {
         "class": "DataNotebookOperations",
-        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nsource = project.Bibliography.Find(\"Old Reference\")\nproject.DataNotebook.RemoveSource(record, source)",
-        "description": "Remove a bibliographic source/reference from a notebook record.",
+        "code": "record = project.DataNotebook.Find(\"Interview 1\")\nsource = project.Person.Find(\"Smith\")\nproject.DataNotebook.RemoveSource(record, source)",
+        "description": "Remove a source (person) from a notebook record.",
         "method": "RemoveSource",
         "object_type": "general",
         "operation": "delete",
@@ -1594,7 +1594,7 @@
       },
       {
         "class": "InflectionFeatureOperations",
-        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete a test feature\nfor feature in inflOps.FeatureGetAll():\n    ws = project.project.DefaultAnalWs\n    name = ITsString(feature.Name.get_String(ws)).Text\n    if name == \"test_feature\":\n        inflOps.FeatureDelete(feature)\n        break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
+        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete a test feature\nfor feature in inflOps.FeatureGetAll():\n    ws = project.GetDefaultAnalysisWSHandle()\n    name = ITsString(feature.Name.get_String(ws)).Text\n    if name == \"test_feature\":\n        inflOps.FeatureDelete(feature)\n        break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
         "description": "Delete a feature definition.",
         "method": "FeatureDelete",
         "object_type": "general",
@@ -2277,7 +2277,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    morphType = allomorphOps.GetMorphType(allomorphs[0])\n    # Get type name\n    wsHandle = project.project.DefaultAnalWs\n    type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n    print(type_name)\n            stem",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    morphType = allomorphOps.GetMorphType(allomorphs[0])\n    # Get type name\n    wsHandle = project.GetDefaultAnalysisWSHandle()\n    type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n    print(type_name)\n            stem",
         "description": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
         "method": "GetMorphType",
         "object_type": "IMoForm",
@@ -2286,7 +2286,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n    for env in envs:\n        wsHandle = project.project.DefaultAnalWs\n        name = ITsString(env.Name.get_String(wsHandle)).Text\n        print(f\"Environment: {name}\")\n            Environment: After voiceless consonant",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n    for env in envs:\n        wsHandle = project.GetDefaultAnalysisWSHandle()\n        name = ITsString(env.Name.get_String(wsHandle)).Text\n        print(f\"Environment: {name}\")\n            Environment: After voiceless consonant",
         "description": "Get the phonological environments for an allomorph.",
         "method": "GetPhoneEnv",
         "object_type": "IMoForm",
@@ -2439,7 +2439,7 @@
       },
       {
         "class": "AnthropologyOperations",
-        "code": "# Get a category from the categories list\ncategories = project.lp.AnthroListOA\nif categories and categories.PossibilitiesOS.Count > 0:\n    category = categories.PossibilitiesOS[0]\n    items = project.Anthropology.FindByCategory(category)\n    for item in items:\n        name = project.Anthropology.GetName(item)\n        print(f\"Item: {name}\")",
+        "code": "# Get a category from the categories list\nanthro_list = project.PossibilityLists.FindList(\"Anthropology Categories\")\nif anthro_list:\n    category = project.PossibilityLists.GetItems(anthro_list)[0]\n    items = project.Anthropology.FindByCategory(category)\n    for item in items:\n        name = project.Anthropology.GetName(item)\n        print(f\"Item: {name}\")",
         "description": "Find all anthropology items in a specific category.",
         "method": "FindByCategory",
         "object_type": "general",
@@ -2614,7 +2614,7 @@
       },
       {
         "class": "AllomorphOperations",
-        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    # Get a different morph type\n    morphTypes = project.lp.MorphTypesOA.PossibilitiesOS\n    prefix_type = [mt for mt in morphTypes\n                   if \"prefix\" in str(mt).lower()][0]\n    allomorphOps.SetMorphType(allomorphs[0], prefix_type)",
+        "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    # Get a different morph type\n    morphTypes = project.LexEntry.GetAvailableMorphTypes()\n    prefix_type = next(mt for name, mt, is_stem in morphTypes\n                       if not is_stem and \"prefix\" in name.lower())\n    allomorphOps.SetMorphType(allomorphs[0], prefix_type)",
         "description": "Sets the morpheme type (stem, root, prefix, suffix, infix, affix).",
         "method": "SetMorphType",
         "object_type": "IMoForm",
@@ -2677,7 +2677,7 @@
       },
       {
         "class": "AnthropologyOperations",
-        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\n\n# Set category from a possibility list\n# (assuming categories are defined in a list)\ncategory = project.lp.AnthroListOA.PossibilitiesOS[0]\nproject.Anthropology.SetCategory(item, category)\n\n# Clear category\nproject.Anthropology.SetCategory(item, None)",
+        "code": "item = project.Anthropology.Find(\"Marriage Customs\")\n\n# Set category from a possibility list\nanthro_list = project.PossibilityLists.FindList(\"Anthropology Categories\")\ncategory = project.PossibilityLists.GetItems(anthro_list)[0]\nproject.Anthropology.SetCategory(item, category)\n\n# Clear category\nproject.Anthropology.SetCategory(item, None)",
         "description": "Set the category of an anthropology item.",
         "method": "SetCategory",
         "object_type": "general",
@@ -3386,7 +3386,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1166,
+    "total_patterns": 1168,
     "unique_patterns": 115
   }
 }

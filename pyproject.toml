@@ -51,7 +51,7 @@ dependencies = [
     # and installs actually resolved 4.4.1. The <5 cap also holds back
     # Flexicon's planned v5.0.0 removal of the deprecated `flexlibs2` alias,
     # which server/validators.py still accepts as an import root.
-    "pyflexicon>=4.6.0,<5",
+    "pyflexicon>=4.8.0,<5",
     # The shallow/stable FieldWorks wrapper (cdfarrow/flexlibs). Small, and its
     # only dependency (pythonnet) is already required, so we ship it too: this
     # guarantees an exact-version flexlibs index out of the box (matching the

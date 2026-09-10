@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-09-10
+
+### flexicon 4.8.0 is the new minimum
+
+The `pyflexicon` floor moves `>=4.6.0` -> `>=4.8.0` (the `<5` cap is
+unchanged), in `pyproject.toml` and its `requirements.txt` mirror. 4.8.0 is
+the current release on PyPI, so the floor is satisfiable today.
+
+This restores the invariant the floor exists to hold: **the floor must cover
+the version the bundled index was built against.** 2.11.0 shipped a v4.7.0
+index against a >=4.6.0 floor, so an install landing at the floor got an
+index documenting methods its flexicon did not have, and paid a first-run
+lazy refresh to correct it. Raising the floor with the index keeps the two
+in step.
+
+Because no supported install can now resolve 4.7.0, the `*_flexicon-v4.7.0`
+index files leave the repo rather than being kept alongside the new ones --
+there is no audience left for them. They remain locally under the gitignored
+`index/**/archive/` for diffing.
+
+### Index refreshed to flexicon 4.8.0
+
+`python -m flextoolsmcp.refresh` against flexicon 4.8.0. The bundled
+flexicon-mode index, LCM bridge and common-patterns files move to `v4.8.0`.
+LibLCM stays at `v11.0.0` and flexlibs at `v1.2.8`; both regenerated
+byte-identical, so this release changes no LibLCM or stable-flexlibs content.
+
+Reviewed diff -- a small, purely additive release. 118 entities unchanged,
+none added or removed; 1529 -> 1531 methods; description coverage 100%,
+example coverage 76.3% (unchanged). No signature changed and no
+`is_mutating` flag flipped anywhere, so no write-gate classification moved.
+
+Exactly one entity changed:
+
+- `WritingSystemOperations` **+`Ensure`**, **+`ExistsInStore`** -- upstream's
+  writing-system `Exists`/`Create`/`Ensure` work (flexicon #250). `Ensure`
+  is idempotent creation (indexed `is_mutating=True`, so it is correctly
+  behind the write gate); `ExistsInStore` is the read that distinguishes "in
+  the project's LDML store at all" from `Exists`'s "active in the project"
+  (`is_mutating=False`).
+
+`reports/upstream-flexicon-docstring-findings.{md,json}` regenerated against
+the 4.8.0 index: still 139 findings across 50 example blocks in 8 files, so
+4.8.0 neither fixed nor added any upstream docstring rot. The report had been
+left pointing at the now-deleted v4.7.0 index.
+
 - Recovered SIL.LCModel.Core types that a `ReflectionTypeLoadException` was
   silently dropping from the LibLCM index during extraction (#135).
 - Recovered 147 parameterized `get_`/`set_` accessors across 26 types (e.g.

@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.7.0"
+    "version": "4.8.0"
   },
   "categories": {
     "discourse": {
@@ -3385,7 +3385,7 @@
           "source": "docstring"
         },
         {
-          "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs and project.lp.PhonologicalDataOA:\n    envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n    if envs.Count > 0:\n        allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
+          "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nenvs = list(project.Environments.GetAll())\nif allomorphs and envs:\n    allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n# Define that \"-es\" appears after sibilants\n# (assuming you have created the environment)\nsibilant_env = list(project.Environments.GetAll())[0]\nallomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)",
           "description": "Add a phonological environment to an allomorph.",
           "operation": "create",
           "source": "docstring"
@@ -3413,7 +3413,7 @@
       "methods": [
         {
           "description": "Add a phonological environment to an allomorph.\n",
-          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs and project.lp.PhonologicalDataOA:\n            ...     envs = project.lp.PhonologicalDataOA.EnvironmentsOS\n            ...     if envs.Count > 0:\n            ...         allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n            >>> # Define that \"-es\" appears after sibilants\n            >>> # (assuming you have created the environment)\n            >>> sibilant_env = project.lp.PhonologicalDataOA.EnvironmentsOS[0]\n            >>> allomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> envs = list(project.Environments.GetAll())\n            >>> if allomorphs and envs:\n            ...     allomorphOps.AddPhoneEnv(allomorphs[0], envs[0])\n\n            >>> # Define that \"-es\" appears after sibilants\n            >>> # (assuming you have created the environment)\n            >>> sibilant_env = list(project.Environments.GetAll())[0]\n            >>> allomorphOps.AddPhoneEnv(allomorphs[0], sibilant_env)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -3570,7 +3570,7 @@
         },
         {
           "description": "Create a new allomorph for a lexical entry.\n",
-          "example": "            >>> # Create allomorph with inherited morph type (default)\n            >>> entry = project.LexEntry.Create(\"run\")\n            >>> allomorph = project.Allomorphs.Create(entry, \"running\")\n            >>> print(project.Allomorphs.GetForm(allomorph))\n            running\n\n            >>> # Create with explicit morph type\n            >>> morphType = project.lexDB.MorphTypesOA.PossibilitiesOS[0]\n            >>> allomorph = project.Allomorphs.Create(entry, \"ran\", morphType)\n\n            >>> # Create with specific writing system\n            >>> allomorph = project.Allomorphs.Create(entry, \"rʌn\",\n            ...                                        wsHandle=project.WSHandle('en-fonipa'))\n",
+          "example": "            >>> # Create allomorph with inherited morph type (default)\n            >>> entry = project.LexEntry.Create(\"run\")\n            >>> allomorph = project.Allomorphs.Create(entry, \"running\")\n            >>> print(project.Allomorphs.GetForm(allomorph))\n            running\n\n            >>> # Create with explicit morph type\n            >>> allomorph = project.Allomorphs.Create(entry, \"ran\", morphType=\"prefix\")\n\n            >>> # Create with specific writing system\n            >>> allomorph = project.Allomorphs.Create(entry, \"rʌn\",\n            ...                                        wsHandle=project.WSHandle('en-fonipa'))\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -3886,7 +3886,7 @@
         },
         {
           "description": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
-          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     morphType = allomorphOps.GetMorphType(allomorphs[0])\n            ...     # Get type name\n            ...     wsHandle = project.project.DefaultAnalWs\n            ...     type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n            ...     print(type_name)\n            stem\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     morphType = allomorphOps.GetMorphType(allomorphs[0])\n            ...     # Get type name\n            ...     wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...     type_name = ITsString(morphType.Name.get_String(wsHandle)).Text\n            ...     print(type_name)\n            stem\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -3927,7 +3927,7 @@
           "description": "Get the phonological environments for an allomorph.\n",
           "element_source_property": "PhoneEnvRC",
           "element_type": "IPhEnvironment",
-          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n            ...     for env in envs:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         name = ITsString(env.Name.get_String(wsHandle)).Text\n            ...         print(f\"Environment: {name}\")\n            Environment: After voiceless consonant\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n            ...     for env in envs:\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         name = ITsString(env.Name.get_String(wsHandle)).Text\n            ...         print(f\"Environment: {name}\")\n            Environment: After voiceless consonant\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -4183,7 +4183,7 @@
         },
         {
           "description": "Sets the morpheme type (stem, root, prefix, suffix, infix, affix).",
-          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     # Get a different morph type\n            ...     morphTypes = project.lp.MorphTypesOA.PossibilitiesOS\n            ...     prefix_type = [mt for mt in morphTypes\n            ...                    if \"prefix\" in str(mt).lower()][0]\n            ...     allomorphOps.SetMorphType(allomorphs[0], prefix_type)\n",
+          "example": "            >>> allomorphOps = AllomorphOperations(project)\n            >>> entry = project.LexiconAllEntries()[0]\n            >>> allomorphs = list(allomorphOps.GetAll(entry))\n            >>> if allomorphs:\n            ...     # Get a different morph type\n            ...     morphTypes = project.LexEntry.GetAvailableMorphTypes()\n            ...     prefix_type = next(mt for name, mt, is_stem in morphTypes\n            ...                        if not is_stem and \"prefix\" in name.lower())\n            ...     allomorphOps.SetMorphType(allomorphs[0], prefix_type)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -6704,7 +6704,7 @@
       "methods": [
         {
           "description": "Link a researcher (person) to an anthropology item.\n\nCreates a link between the item and a person object, typically used\nto track which researchers are responsible for documenting particular\ncultural items.\n",
-          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>>\n            >>> # Get or create a person\n            >>> # (assuming people are in project.lp.PeopleOA)\n            >>> person = project.lp.PeopleOA.PossibilitiesOS[0]\n            >>>\n            >>> # Link person to item\n            >>> project.Anthropology.AddResearcher(item, person)\n            >>>\n            >>> # Verify link\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> print(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 1 researcher(s)\n",
+          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>>\n            >>> # Get or create a person\n            >>> person = project.Person.Find(\"John Smith\")\n            >>>\n            >>> # Link person to item\n            >>> project.Anthropology.AddResearcher(item, person)\n            >>>\n            >>> # Verify link\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> print(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 1 researcher(s)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -7194,7 +7194,7 @@
         },
         {
           "description": "Find all anthropology items in a specific category.\n\nSearches for items that have been assigned to a particular category\npossibility.\n",
-          "example": "            >>> # Get a category from the categories list\n            >>> categories = project.lp.AnthroListOA\n            >>> if categories and categories.PossibilitiesOS.Count > 0:\n            ...     category = categories.PossibilitiesOS[0]\n            ...     items = project.Anthropology.FindByCategory(category)\n            ...     for item in items:\n            ...         name = project.Anthropology.GetName(item)\n            ...         print(f\"Item: {name}\")\n",
+          "example": "            >>> # Get a category from the categories list\n            >>> anthro_list = project.PossibilityLists.FindList(\"Anthropology Categories\")\n            >>> if anthro_list:\n            ...     category = project.PossibilityLists.GetItems(anthro_list)[0]\n            ...     items = project.Anthropology.FindByCategory(category)\n            ...     for item in items:\n            ...         name = project.Anthropology.GetName(item)\n            ...         print(f\"Item: {name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -8158,7 +8158,7 @@
         },
         {
           "description": "Remove a researcher link from an anthropology item.\n\nRemoves the link between the item and the person. The person object\nitself is not deleted, only the link.\n",
-          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> person = project.lp.PeopleOA.PossibilitiesOS[0]\n            >>>\n            >>> # Remove person link\n            >>> project.Anthropology.RemoveResearcher(item, person)\n            >>>\n            >>> # Verify removal\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> print(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 0 researcher(s)\n",
+          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>> person = project.Person.Find(\"John Smith\")\n            >>>\n            >>> # Remove person link\n            >>> project.Anthropology.RemoveResearcher(item, person)\n            >>>\n            >>> # Verify removal\n            >>> researchers = project.Anthropology.GetResearchers(item)\n            >>> print(f\"Item has {len(researchers)} researcher(s)\")\n            Item has 0 researcher(s)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -8382,7 +8382,7 @@
         },
         {
           "description": "Set the category of an anthropology item.\n",
-          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>>\n            >>> # Set category from a possibility list\n            >>> # (assuming categories are defined in a list)\n            >>> category = project.lp.AnthroListOA.PossibilitiesOS[0]\n            >>> project.Anthropology.SetCategory(item, category)\n            >>>\n            >>> # Clear category\n            >>> project.Anthropology.SetCategory(item, None)\n",
+          "example": "            >>> item = project.Anthropology.Find(\"Marriage Customs\")\n            >>>\n            >>> # Set category from a possibility list\n            >>> anthro_list = project.PossibilityLists.FindList(\"Anthropology Categories\")\n            >>> category = project.PossibilityLists.GetItems(anthro_list)[0]\n            >>> project.Anthropology.SetCategory(item, category)\n            >>>\n            >>> # Clear category\n            >>> project.Anthropology.SetCategory(item, None)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -9066,7 +9066,7 @@
         },
         {
           "description": "Sort items in an owning sequence using a custom key function.\n\nThis method reorders all items in the sequence according to a\nsorting criterion. The sort is stable and uses Python's built-in\nsort algorithm.\n",
-          "example": "            >>> # Sort allomorphs by form length\n            >>> project.Allomorphs.Sort(entry,\n            ...     key_func=lambda a: len(project.Allomorphs.GetForm(a)))\n            3\n\n            >>> # Sort senses alphabetically by gloss\n            >>> project.Senses.Sort(entry,\n            ...     key_func=lambda s: project.Senses.GetGloss(s))\n            5\n\n            >>> # Sort in reverse order (most complex first)\n            >>> def complexity(allo):\n            ...     env = project.Allomorphs.GetEnvironment(allo)\n            ...     return len(str(env)) if env else 0\n            >>> project.Allomorphs.Sort(entry,\n            ...     key_func=complexity,\n            ...     reverse=True)\n            3\n\n            >>> # Sort examples by length (shortest first)\n            >>> project.Examples.Sort(sense,\n            ...     key_func=lambda ex: len(project.Examples.GetText(ex)))\n            4\n",
+          "example": "            >>> # Sort allomorphs by form length\n            >>> project.Allomorphs.Sort(entry,\n            ...     key_func=lambda a: len(project.Allomorphs.GetForm(a)))\n            3\n\n            >>> # Sort senses alphabetically by gloss\n            >>> project.Senses.Sort(entry,\n            ...     key_func=lambda s: project.Senses.GetGloss(s))\n            5\n\n            >>> # Sort in reverse order (most complex first)\n            >>> def complexity(allo):\n            ...     envs = project.Allomorphs.GetPhoneEnv(allo)\n            ...     if not envs:\n            ...         return 0\n            ...     ws = project.GetDefaultAnalysisWSHandle()\n            ...     name = ITsString(envs[0].Name.get_String(ws)).Text\n            ...     return len(name) if name else 0\n            >>> project.Allomorphs.Sort(entry,\n            ...     key_func=complexity,\n            ...     reverse=True)\n            3\n\n            >>> # Sort examples by length (shortest first)\n            >>> project.Examples.Sort(sense,\n            ...     key_func=lambda ex: len(project.Examples.GetExample(ex)))\n            4\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -10196,7 +10196,7 @@
         },
         {
           "description": "Get all issues found for a specific object.\n\nReturns detailed information about issues found for the given\nobject during the most recent check execution.\n",
-          "example": "            >>> check = project.Checks.FindCheckType(\"Missing Gloss\")\n            >>> project.Checks.RunCheck(check)\n            >>>\n            >>> # Get issues for a specific entry\n            >>> entry = list(project.LexiconGetAllEntries())[0]\n            >>> issues = project.Checks.GetIssuesForObject(check, entry)\n            >>> for issue in issues:\n            ...     print(f\"- {issue}\")\n            - Sense 1 is missing gloss in English\n            - Sense 2 is missing gloss in English\n",
+          "example": "            >>> check = project.Checks.FindCheckType(\"Missing Gloss\")\n            >>> project.Checks.RunCheck(check)\n            >>>\n            >>> # Get issues for a specific entry\n            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> issues = project.Checks.GetIssuesForObject(check, entry)\n            >>> for issue in issues:\n            ...     print(f\"- {issue}\")\n            - Sense 1 is missing gloss in English\n            - Sense 2 is missing gloss in English\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -10472,7 +10472,7 @@
         },
         {
           "description": "Run a consistency check on project data.\n\nExecutes the specified check and stores the results. The actual\nvalidation logic is determined by the check type.\n",
-          "example": "            >>> # Run check on all data\n            >>> check = project.Checks.FindCheckType(\"Missing Gloss\")\n            >>> project.Checks.EnableCheck(check)\n            >>> results = project.Checks.RunCheck(check)\n            >>> print(f\"Errors: {len(results['errors'])}\")\n            Errors: 15\n            >>> print(f\"Warnings: {len(results['warnings'])}\")\n            Warnings: 3\n\n            >>> # Run check on specific entries\n            >>> entries = list(project.LexiconGetAllEntries())[:10]\n            >>> results = project.Checks.RunCheck(check, entries)\n",
+          "example": "            >>> # Run check on all data\n            >>> check = project.Checks.FindCheckType(\"Missing Gloss\")\n            >>> project.Checks.EnableCheck(check)\n            >>> results = project.Checks.RunCheck(check)\n            >>> print(f\"Errors: {len(results['errors'])}\")\n            Errors: 15\n            >>> print(f\"Warnings: {len(results['warnings'])}\")\n            Warnings: 3\n\n            >>> # Run check on specific entries\n            >>> entries = list(project.LexiconAllEntries())[:10]\n            >>> results = project.Checks.RunCheck(check, entries)\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -13607,9 +13607,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IConstChartWordGroup",
-        "IDsConstChart",
-        "ITsString",
-        "TsStringUtils"
+        "IDsConstChart"
       ],
       "methods": [
         {
@@ -13843,7 +13841,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Currently ignored. ``IConstChartRow.Label`` is a bare ITsString, not an IMultiString, so there is no per-WS slot to select (issue #290). Retained only for backward-compatible call signatures; see the API note below.",
               "name": "ws",
               "type": ""
             }
@@ -13893,7 +13891,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Currently ignored. ``IConstChartRow.Notes`` is a bare ITsString, not an IMultiString, so there is no per-WS slot to select (issue #290). Retained only for backward-compatible call signatures; see the API note below.",
               "name": "ws",
               "type": ""
             }
@@ -14051,7 +14049,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Optional writing system handle used to tag the stored ITsString run. Defaults to analysis WS.",
               "name": "ws",
               "type": ""
             }
@@ -14106,7 +14104,7 @@
             },
             {
               "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
+              "description": "Optional writing system handle used to tag the stored ITsString run. Defaults to analysis WS.",
               "name": "ws",
               "type": ""
             }
@@ -16540,8 +16538,8 @@
           "usage_hint": "creation"
         },
         {
-          "description": "Add a bibliographic source/reference to a notebook record.\n\nAssociates a source or bibliographic reference with the notebook record,\nindicating which publications or materials are relevant to the documented\ndata.\n",
-          "example": "            >>> # Add single source\n            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> source = project.Bibliography.Find(\"Smith 2020\")\n            >>> if source:\n            ...     project.DataNotebook.AddSource(record, source)\n\n            >>> # Add multiple sources\n            >>> sources = [\"Smith 2020\", \"Johnson & Garcia 2018\"]\n            >>> for name in sources:\n            ...     src = project.Bibliography.Find(name)\n            ...     if src:\n            ...         project.DataNotebook.AddSource(record, src)\n\n            >>> # Create and add new source\n            >>> new_source = project.Bibliography.Create(\"Doe 2024\")\n            >>> project.DataNotebook.AddSource(record, new_source)\n",
+          "description": "Add a source (person) to a notebook record.\n\nAssociates a source with the notebook record. Sources are ICmPerson\nrecords (the LCM field is SourcesRC, sig=\"CmPerson\") -- the people who\nsupplied or reported the documented data, not bibliographic citations.\n",
+          "example": "            >>> # Add single source (Sources are ICmPerson records -- the\n            >>> # people who supplied/reported the data, not bibliographic\n            >>> # citations)\n            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> source = project.Person.Find(\"Smith\")\n            >>> if source:\n            ...     project.DataNotebook.AddSource(record, source)\n\n            >>> # Add multiple sources\n            >>> names = [\"Smith\", \"Garcia\"]\n            >>> for name in names:\n            ...     src = project.Person.Find(name)\n            ...     if src:\n            ...         project.DataNotebook.AddSource(record, src)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -16577,7 +16575,7 @@
             },
             {
               "default": null,
-              "description": "The source/reference object to add.",
+              "description": "The ICmPerson object to add as a source.",
               "name": "source",
               "type": ""
             }
@@ -16590,7 +16588,7 @@
           "return_type": "",
           "returns": "",
           "signature": "AddSource(record_or_hvo, source)",
-          "summary": "Add a bibliographic source/reference to a notebook record.",
+          "summary": "Add a source (person) to a notebook record.",
           "usage_hint": "creation"
         },
         {
@@ -17232,7 +17230,7 @@
           "element_cast_applied": true,
           "element_source_property": "PossibilitiesOS",
           "element_type": "ICmPossibility",
-          "example": "            >>> # List all record types\n            >>> for rec_type in project.DataNotebook.GetAllRecordTypes():\n            ...     name = ITsString(\n            ...         rec_type.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Type: {name}\")\n            Type: Interview\n            Type: Observation\n            Type: Elicitation Session\n            Type: Literature Notes\n            Type: Methodology\n\n            >>> # Find specific type\n            >>> types = project.DataNotebook.GetAllRecordTypes()\n            >>> interview = next((t for t in types if \"Interview\" in str(t.Name)), None)\n",
+          "example": "            >>> # List all record types\n            >>> for rec_type in project.DataNotebook.GetAllRecordTypes():\n            ...     name = rec_type.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Type: {name}\")\n            Type: Interview\n            Type: Observation\n            Type: Elicitation Session\n            Type: Literature Notes\n            Type: Methodology\n\n            >>> # Find specific type\n            >>> types = project.DataNotebook.GetAllRecordTypes()\n            >>> interview = next((t for t in types if \"Interview\" in str(t.Name)), None)\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -17269,7 +17267,7 @@
           "element_cast_applied": true,
           "element_source_property": "PossibilitiesOS",
           "element_type": "ICmPossibility",
-          "example": "            >>> # List all statuses\n            >>> for status in project.DataNotebook.GetAllStatuses():\n            ...     name = ITsString(\n            ...         status.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Status: {name}\")\n            Status: Draft\n            Status: In Review\n            Status: Reviewed\n            Status: Approved\n            Status: Published\n",
+          "example": "            >>> # List all statuses\n            >>> for status in project.DataNotebook.GetAllStatuses():\n            ...     name = status.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Status: {name}\")\n            Status: Draft\n            Status: In Review\n            Status: Reviewed\n            Status: Approved\n            Status: Published\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -17303,7 +17301,7 @@
         },
         {
           "description": "Get the confidence level of a notebook record.\n\nConfidence indicates how certain or reliable the information in the\nrecord is considered to be.\n",
-          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> confidence = project.DataNotebook.GetConfidence(record)\n            >>> if confidence:\n            ...     conf_name = ITsString(\n            ...         confidence.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Confidence: {conf_name}\")\n            ... else:\n            ...     print(\"No confidence level set\")\n            Confidence: High\n",
+          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> confidence = project.DataNotebook.GetConfidence(record)\n            >>> if confidence:\n            ...     conf_name = confidence.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Confidence: {conf_name}\")\n            ... else:\n            ...     print(\"No confidence level set\")\n            Confidence: High\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -17767,7 +17765,7 @@
         },
         {
           "description": "Get the type/category of a notebook record.\n\nRecord types categorize notebook records (e.g., \"Interview\", \"Observation\",\n\"Elicitation Session\", \"Literature Notes\"). Types are defined as\npossibilities in the project's notebook record type list.\n",
-          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> rec_type = project.DataNotebook.GetRecordType(record)\n            >>> if rec_type:\n            ...     type_name = ITsString(\n            ...         rec_type.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Type: {type_name}\")\n            ... else:\n            ...     print(\"No type set\")\n            Type: Interview\n",
+          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> rec_type = project.DataNotebook.GetRecordType(record)\n            >>> if rec_type:\n            ...     type_name = rec_type.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Type: {type_name}\")\n            ... else:\n            ...     print(\"No type set\")\n            Type: Interview\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -17907,7 +17905,7 @@
         },
         {
           "description": "Get the status of a notebook record.\n\nStatus indicates the review state or workflow stage of the record\n(e.g., \"Draft\", \"Reviewed\", \"Approved\", \"Published\").\n",
-          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> status = project.DataNotebook.GetStatus(record)\n            >>> if status:\n            ...     status_name = ITsString(\n            ...         status.Name.get_String(project.project.DefaultAnalWs)\n            ...     ).Text\n            ...     print(f\"Status: {status_name}\")\n            ... else:\n            ...     print(\"No status set\")\n            Status: Reviewed\n",
+          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> status = project.DataNotebook.GetStatus(record)\n            >>> if status:\n            ...     status_name = status.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Status: {status_name}\")\n            ... else:\n            ...     print(\"No status set\")\n            Status: Reviewed\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -18403,8 +18401,8 @@
           "usage_hint": "deletion"
         },
         {
-          "description": "Remove a bibliographic source/reference from a notebook record.\n\nRemoves the association between a source and a notebook record. The\nsource object itself is not deleted.\n",
-          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> source = project.Bibliography.Find(\"Old Reference\")\n            >>> project.DataNotebook.RemoveSource(record, source)\n",
+          "description": "Remove a source (person) from a notebook record.\n\nRemoves the association between a source and a notebook record (see\nAddSource -- sources are ICmPerson records). The source object itself\nis not deleted.\n",
+          "example": "            >>> record = project.DataNotebook.Find(\"Interview 1\")\n            >>> source = project.Person.Find(\"Smith\")\n            >>> project.DataNotebook.RemoveSource(record, source)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -18440,7 +18438,7 @@
             },
             {
               "default": null,
-              "description": "The source/reference object to remove.",
+              "description": "The ICmPerson object to remove as a source.",
               "name": "source",
               "type": ""
             }
@@ -18453,7 +18451,7 @@
           "return_type": "",
           "returns": "",
           "signature": "RemoveSource(record_or_hvo, source)",
-          "summary": "Remove a bibliographic source/reference from a notebook record.",
+          "summary": "Remove a source (person) from a notebook record.",
           "usage_hint": "deletion"
         },
         {
@@ -22751,7 +22749,7 @@
           "description": "Get all translation objects for an example sentence.\n",
           "element_source_property": "TranslationsOC",
           "element_type": "ICmTranslation",
-          "example": "            >>> exampleOps = ExampleOperations(project)\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> examples = list(exampleOps.GetAll(sense))\n            >>> if examples:\n            ...     translations = exampleOps.GetTranslations(examples[0])\n            ...     for trans in translations:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         text = ITsString(trans.Translation.get_String(wsHandle)).Text\n            ...         print(f\"Translation: {text}\")\n            Translation: The dog ran quickly.\n            Translation: El perro corrió rápidamente.\n",
+          "example": "            >>> exampleOps = ExampleOperations(project)\n            >>> entry = project.LexiconAllEntries().__next__()\n            >>> sense = entry.SensesOS[0]\n            >>> examples = list(exampleOps.GetAll(sense))\n            >>> if examples:\n            ...     translations = exampleOps.GetTranslations(examples[0])\n            ...     for trans in translations:\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         text = ITsString(trans.Translation.get_String(wsHandle)).Text\n            ...         print(f\"Translation: {text}\")\n            Translation: The dog ran quickly.\n            Translation: El perro corrió rápidamente.\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -25000,7 +24998,20 @@
           "name": "LexiconGetComplexFormType",
           "output_behavior": {
             "empty": null,
-            "failure": [],
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If entry_ref does not resolve to an object"
+              },
+              {
+                "exception": "A",
+                "when": "base-typed (e.g. ICmObject, HVO-resolved) entry_ref is"
+              },
+              {
+                "exception": "BaseOperations",
+                "when": ".py:1568-1576 for why the uncast hasattr check"
+              }
+            ],
             "notes": [],
             "success": {
               "description": "ILexEntryType or None: The complex form type",
@@ -25016,7 +25027,14 @@
             }
           ],
           "polymorphic": true,
-          "raises": [],
+          "raises": [
+            "FP_ParameterError: If entry_ref does not resolve to an object",
+            "with a ComplexEntryTypesRS field (i.e. is not a LexEntryRef).",
+            "A base-typed (e.g. ICmObject, HVO-resolved) entry_ref is",
+            "cast to its concrete type first; see",
+            "BaseOperations.py:1568-1576 for why the uncast hasattr check",
+            "is otherwise always False regardless of the concrete object."
+          ],
           "return_type": "ILexEntryType or None",
           "returns": "ILexEntryType or None: The complex form type ",
           "signature": "LexiconGetComplexFormType(entry_ref)",
@@ -25863,7 +25881,12 @@
           "name": "LexiconSetComplexFormType",
           "output_behavior": {
             "empty": null,
-            "failure": [],
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If entry_ref does not resolve to an object"
+              }
+            ],
             "notes": [],
             "success": {}
           },
@@ -25881,7 +25904,14 @@
               "type": ""
             }
           ],
-          "raises": [],
+          "raises": [
+            "FP_ParameterError: If entry_ref does not resolve to an object",
+            "with a ComplexEntryTypesRS field (i.e. is not a LexEntryRef).",
+            "pythonnet only surfaces the static type's attributes, so a",
+            "base-typed (e.g. ICmObject, HVO-resolved) entry_ref must be",
+            "cast to its concrete type before the check is meaningful --",
+            "see BaseOperations.py:1568-1576."
+          ],
           "return_type": "",
           "returns": "",
           "signature": "LexiconSetComplexFormType(entry_ref, complex_form_type)",
@@ -27237,7 +27267,7 @@
         },
         {
           "description": "Access to wordform analysis operations (Work Stream 3).\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get wordform and create analysis\n            >>> wf = project.Wordforms.FindOrCreate(\"hlauka\")\n            >>> analysis = project.WfiAnalyses.Create(wf)\n            >>> # Set category (part of speech)\n            >>> verb = project.POS.Find(\"verb\")\n            >>> if verb:\n            ...     project.WfiAnalyses.SetCategory(analysis, verb)\n            >>> # Mark as human-approved\n            >>> project.WfiAnalyses.Approve(analysis)\n            >>> # Get morph bundles\n            >>> bundles = project.WfiAnalyses.GetMorphBundles(analysis)",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get wordform and create analysis\n            >>> wf = project.Wordforms.FindOrCreate(\"hlauka\")\n            >>> analysis = project.WfiAnalyses.Create(wf)\n            >>> # Set category (part of speech)\n            >>> verb = project.POS.Find(\"verb\")\n            >>> if verb:\n            ...     project.WfiAnalyses.SetCategory(analysis, verb)\n            >>> # Mark as human-approved\n            >>> project.WfiAnalyses.ApproveAnalysis(analysis)\n            >>> # Get morph bundles\n            >>> bundles = project.WfiAnalyses.GetMorphBundles(analysis)",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -27273,7 +27303,7 @@
         },
         {
           "description": "Access to paragraph operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> para = list(text.ContentsOA.ParagraphsOS)[0]\n            >>> # Get translations\n            >>> trans = project.Paragraphs.GetTranslations(para)\n            >>> # Set translation\n            >>> project.Paragraphs.SetTranslation(para, \"In the beginning...\", \"en\")\n            >>> # Add note\n            >>> note = project.Paragraphs.AddNote(para, \"Check translation\")\n            >>> # Get style\n            >>> style = project.Paragraphs.GetStyleName(para)",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> para = list(text.ContentsOA.ParagraphsOS)[0]\n            >>> # Get text content\n            >>> text_content = project.Paragraphs.GetText(para)\n            >>> # Set text content\n            >>> project.Paragraphs.SetText(para, \"In the beginning...\")\n            >>> # Get segments\n            >>> segments = project.Paragraphs.GetSegments(para)\n            >>> print(f\"{len(segments)} segments\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -27287,6 +27317,11 @@
             "properties_accessed": [],
             "repositories_used": [],
             "transformations": [
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              },
               {
                 "description": "Converts to list",
                 "pattern": "list",
@@ -27488,7 +27523,7 @@
         },
         {
           "description": "Access to allomorph operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all allomorphs for an entry\n            >>> entry = project.LexiconGetFirstEntry()\n            >>> for allo in project.Allomorphs.GetAll(entry):\n            ...     form = project.Allomorphs.GetForm(allo)\n            ...     print(f\"Allomorph: {form}\")\n            >>> # Create a new allomorph\n            >>> allo = project.Allomorphs.Create(entry, \"-ed\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all allomorphs for an entry\n            >>> entry = project.LexiconGetEntry(0)\n            >>> for allo in project.Allomorphs.GetAll(entry):\n            ...     form = project.Allomorphs.GetForm(allo)\n            ...     print(f\"Allomorph: {form}\")\n            >>> # Create a new allomorph\n            >>> allo = project.Allomorphs.Create(entry, \"-ed\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -27572,7 +27607,7 @@
         },
         {
           "description": "Access to inflection feature operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all inflection classes\n            >>> for ic in project.InflectionFeatures.GetAllClasses():\n            ...     name = project.InflectionFeatures.GetClassName(ic)\n            ...     print(f\"Inflection class: {name}\")\n            >>> # Get all features\n            >>> for feat in project.InflectionFeatures.GetAllFeatures():\n            ...     name = project.InflectionFeatures.GetFeatureName(feat)\n            ...     print(f\"Feature: {name}\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all inflection classes\n            >>> for ic in project.InflectionFeatures.InflectionClassGetAll():\n            ...     name = project.InflectionFeatures.InflectionClassGetName(ic)\n            ...     print(f\"Inflection class: {name}\")\n            >>> # Get all features\n            >>> for feat in project.InflectionFeatures.FeatureGetAll():\n            ...     name = feat.Name.BestAnalysisAlternative.Text\n            ...     print(f\"Feature: {name}\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28421,7 +28456,7 @@
         },
         {
           "description": "Access to wordform gloss operations (Work Stream 3).\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get analysis and create gloss\n            >>> analysis = project.WfiAnalyses.Create(wordform)\n            >>> gloss = project.WfiGlosses.Create(analysis, \"run\", project.WSHandle('en'))\n            >>> # Mark as human-approved\n            >>> project.WfiGlosses.Approve(gloss)\n            >>> # Get all glosses\n            >>> for g in project.WfiGlosses.GetAll(analysis):\n            ...         form = project.WfiGlosses.GetForm(g, \"en\")\n            ...         print(f\"Gloss: {form}\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get analysis and create gloss\n            >>> analysis = project.WfiAnalyses.Create(wordform)\n            >>> gloss = project.WfiGlosses.Create(analysis, \"run\", project.WSHandle('en'))\n            >>> # Mark the analysis as human-approved (glosses have no\n            >>> # approval concept of their own -- it lives on the analysis)\n            >>> project.WfiAnalyses.ApproveAnalysis(analysis)\n            >>> # Get all glosses\n            >>> for g in project.WfiGlosses.GetAll(analysis):\n            ...         form = project.WfiGlosses.GetForm(g, \"en\")\n            ...         print(f\"Gloss: {form}\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28468,7 +28503,7 @@
         },
         {
           "description": "Access to wordform morpheme bundle operations (Work Stream 3).\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create morpheme bundles for morphological breakdown\n            >>> analysis = project.WfiAnalyses.Create(wordform)\n            >>> stem = project.WfiMorphBundles.Create(analysis, \"hlauk-\")\n            >>> suffix = project.WfiMorphBundles.Create(analysis, \"-a\")\n            >>> # Link to lexical entries\n            >>> stem_entry = project.LexEntry.Find(\"hlauk\")\n            >>> if stem_entry and stem_entry.SensesOS.Count > 0:\n            ...     project.WfiMorphBundles.SetSense(stem, stem_entry.SensesOS[0])\n            >>> # Set morpheme type\n            >>> project.WfiMorphBundles.SetMorphemeType(stem, \"stem\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create morpheme bundles for morphological breakdown\n            >>> analysis = project.WfiAnalyses.Create(wordform)\n            >>> stem = project.WfiMorphBundles.Create(analysis, \"hlauk-\")\n            >>> suffix = project.WfiMorphBundles.Create(analysis, \"-a\")\n            >>> # Link to lexical entries\n            >>> stem_entry = project.LexEntry.Find(\"hlauk\")\n            >>> if stem_entry and stem_entry.SensesOS.Count > 0:\n            ...     project.WfiMorphBundles.SetSense(stem, stem_entry.SensesOS[0])\n            >>> # Morph type lives on the allomorph, not the bundle --\n            >>> # WfiMorphBundles.SetMorphType is a retired stub that always\n            >>> # raises. Link the bundle to the entry's already-typed\n            >>> # allomorph instead.\n            >>> stem_allomorphs = list(project.Allomorphs.GetAll(stem_entry)) if stem_entry else []\n            >>> if stem_allomorphs:\n            ...     project.WfiMorphBundles.SetMorph(stem, stem_allomorphs[0])",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28481,7 +28516,17 @@
             "param_usage": {},
             "properties_accessed": [],
             "repositories_used": [],
-            "transformations": [],
+            "transformations": [
+              {
+                "description": "Conditional logic for handling special cases",
+                "type": "conditional"
+              },
+              {
+                "description": "Converts to list",
+                "pattern": "list",
+                "type": "type_conversion"
+              }
+            ],
             "utilities_used": []
           },
           "name": "WfiMorphBundles",
@@ -28504,7 +28549,7 @@
         },
         {
           "description": "Access to media file operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all media files\n            >>> for media in project.Media.GetAll():\n            ...     filename = project.Media.GetFilename(media)\n            ...     mtype = project.Media.GetMediaType(media)\n            ...     print(f\"{filename} ({mtype})\")\n            >>> # Add a media file\n            >>> media = project.Media.Create(\"/path/to/audio.wav\", \"My Recording\")\n            >>> # Copy file to project\n            >>> project.Media.CopyToProject(media)\n            >>> # Find orphaned media\n            >>> orphans = project.Media.GetOrphanedMedia()\n            >>> print(f\"Found {len(orphans)} orphaned files\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all media files\n            >>> for media in project.Media.GetAll():\n            ...     path = project.Media.GetInternalPath(media)\n            ...     mtype = project.Media.GetMediaType(media)\n            ...     print(f\"{path} ({mtype})\")\n            >>> # Add a media file\n            >>> media = project.Media.Create(\"/path/to/audio.wav\", \"My Recording\")\n            >>> # Copy file to project\n            >>> project.Media.CopyToProject(media)\n            >>> # Find orphaned media\n            >>> orphans = project.Media.GetOrphanedMedia()\n            >>> print(f\"Found {len(orphans)} orphaned files\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28588,7 +28633,7 @@
         },
         {
           "description": "Access to filter and query operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create a filter for incomplete entries\n            >>> filter_def = {\n            ...     \"name\": \"Incomplete Entries\",\n            ...     \"type\": \"LexEntry\",\n            ...     \"conditions\": [\n            ...         {\"field\": \"SensesOS\", \"operator\": \"isEmpty\"}\n            ...     ]\n            ... }\n            >>> filter_obj = project.Filters.Create(filter_def)\n            >>> # Apply the filter\n            >>> results = project.Filters.ApplyFilter(filter_obj)\n            >>> print(f\"Found {len(results)} incomplete entries\")\n            >>> # Export filter\n            >>> json_str = project.Filters.ExportFilter(filter_obj)",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create a filter for verbs (\"LexEntry\" is FilterTypes.LEXENTRY)\n            >>> filter_obj = project.Filters.Create(\n            ...     \"Verbs\", \"LexEntry\", {\"pos\": \"verb\"}\n            ... )\n            >>> # Apply the filter to a collection of entries\n            >>> entries = list(project.LexEntry.GetAll())\n            >>> results = project.Filters.ApplyFilter(filter_obj, entries)\n            >>> print(f\"Found {len(results)} verbs\")\n            >>> # Export filter to a file\n            >>> project.Filters.ExportFilter(filter_obj, \"/path/to/verbs.json\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28605,6 +28650,11 @@
               {
                 "description": "Converts to int",
                 "pattern": "int",
+                "type": "type_conversion"
+              },
+              {
+                "description": "Converts to list",
+                "pattern": "list",
                 "type": "type_conversion"
               }
             ],
@@ -28630,7 +28680,7 @@
         },
         {
           "description": "Access to discourse chart operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get a text\n            >>> text = list(project.TextCatalog())[0]\n            >>> # Create a discourse chart\n            >>> chart = project.Discourse.CreateChart(text, \"Constituent Chart\", \"en\")\n            >>> # Add rows\n            >>> row1 = project.Discourse.AddRow(chart, 0)\n            >>> # Get all charts\n            >>> for c in project.Discourse.GetAllCharts():\n            ...     name = project.Discourse.GetChartName(c, \"en\")\n            ...     rows = project.Discourse.GetRows(c)\n            ...     print(f\"Chart: {name} ({len(rows)} rows)\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get a text\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> # Create a discourse chart\n            >>> chart = project.Discourse.CreateChart(text, \"Constituent Chart\")\n            >>> # Add rows\n            >>> row1 = project.Discourse.AddRow(chart)\n            >>> # Get all charts\n            >>> for c in project.Discourse.GetAllCharts(text):\n            ...     name = project.Discourse.GetChartName(c, \"en\")\n            ...     rows = project.Discourse.GetRows(c)\n            ...     print(f\"Chart: {name} ({len(rows)} rows)\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28881,7 +28931,7 @@
         },
         {
           "description": "Access to agent operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create human agent\n            >>> person = project.Person.Create(\"John Smith\", \"en\")\n            >>> agent = project.Agents.CreateHumanAgent(\"John Smith\", person)\n            >>> # Create parser agent\n            >>> parser = project.Agents.CreateParserAgent(\"MyParser\", \"1.0.0\")\n            >>> # Query agents\n            >>> for a in project.Agents.GetAll():\n            ...     name = project.Agents.GetName(a)\n            ...     if project.Agents.IsHuman(a):\n            ...         print(f\"Human: {name}\")\n            ...     else:\n            ...         version = project.Agents.GetVersion(a)\n            ...         print(f\"Parser: {name} v{version}\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Create human agent\n            >>> person = project.Person.Create(\"John Smith\", \"en\")\n            >>> agent = project.Agents.Create(\"John Smith\")\n            >>> project.Agents.SetHuman(agent, person)\n            >>> # Create parser agent (an agent is a \"parser\" simply by not\n            >>> # calling SetHuman on it)\n            >>> parser = project.Agents.Create(\"MyParser\")\n            >>> project.Agents.SetVersion(parser, \"1.0.0\")\n            >>> # Query agents\n            >>> for a in project.Agents.GetAll():\n            ...     name = project.Agents.GetName(a)\n            ...     if project.Agents.IsHuman(a):\n            ...         print(f\"Human: {name}\")\n            ...     else:\n            ...         version = project.Agents.GetVersion(a)\n            ...         print(f\"Parser: {name} v{version}\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -28965,7 +29015,7 @@
         },
         {
           "description": "Access to discourse overlay operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get a chart\n            >>> text = list(project.TextCatalog())[0]\n            >>> chart = project.Discourse.CreateChart(text, \"Chart\", \"en\")\n            >>> # Create overlay\n            >>> overlay = project.Overlays.Create(chart, \"Temporal\", \"en\")\n            >>> project.Overlays.SetVisible(overlay, True)\n            >>> # Get visible overlays\n            >>> for o in project.Overlays.GetVisibleOverlays(chart):\n            ...     name = project.Overlays.GetName(o)\n            ...     print(f\"Overlay: {name}\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get a chart\n            >>> text = list(project.Texts.GetAll())[0]\n            >>> chart = project.Discourse.CreateChart(text, \"Chart\")\n            >>> # NOTE: OverlayOperations.Create() is currently broken -- it\n            >>> # inherits PossibilityItemOperations.Create(), but\n            >>> # OverlayOperations._get_list_object() always returns None\n            >>> # (overlays are chart-scoped, no project-wide list), so this\n            >>> # call always raises FP_ParameterError. See flexicon issue #309.\n            >>> # overlay = project.Overlays.Create(\"Temporal\")\n            >>> # project.Overlays.SetVisible(overlay, True)\n            >>> # for o in project.Overlays.GetVisibleOverlays(chart):\n            >>> #     name = project.Overlays.GetName(o)\n            >>> #     print(f\"Overlay: {name}\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -29012,7 +29062,7 @@
         },
         {
           "description": "Access to translation type operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get predefined types\n            >>> free = project.TranslationTypes.GetFreeTranslationType()\n            >>> literal = project.TranslationTypes.GetLiteralTranslationType()\n            >>> # Create custom type\n            >>> gloss = project.TranslationTypes.Create(\"Interlinear Gloss\", \"IG\", \"en\")\n            >>> # Get all types\n            >>> for t in project.TranslationTypes.GetAll():\n            ...     name = project.TranslationTypes.GetName(t)\n            ...     abbr = project.TranslationTypes.GetAbbreviation(t)\n            ...     print(f\"{name} ({abbr})\")",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get predefined types\n            >>> free = project.TranslationTypes.GetFreeTranslationType()\n            >>> literal = project.TranslationTypes.GetLiteralTranslationType()\n            >>> # Create custom type\n            >>> gloss = project.TranslationTypes.Create(\"Interlinear Gloss\", \"en\")\n            >>> project.TranslationTypes.SetAbbreviation(gloss, \"IG\", \"en\")\n            >>> # Get all types\n            >>> for t in project.TranslationTypes.GetAll():\n            ...     name = project.TranslationTypes.GetName(t)\n            ...     abbr = project.TranslationTypes.GetAbbreviation(t)\n            ...     print(f\"{name} ({abbr})\")",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -32091,7 +32141,7 @@
         },
         {
           "description": "Delete a feature definition.\n",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Find and delete a test feature\n            >>> for feature in inflOps.FeatureGetAll():\n            ...     ws = project.project.DefaultAnalWs\n            ...     name = ITsString(feature.Name.get_String(ws)).Text\n            ...     if name == \"test_feature\":\n            ...         inflOps.FeatureDelete(feature)\n            ...         break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Find and delete a test feature\n            >>> for feature in inflOps.FeatureGetAll():\n            ...     ws = project.GetDefaultAnalysisWSHandle()\n            ...     name = ITsString(feature.Name.get_String(ws)).Text\n            ...     if name == \"test_feature\":\n            ...         inflOps.FeatureDelete(feature)\n            ...         break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -32390,7 +32440,7 @@
           "description": "Get all features in the feature system (READ-ONLY).\n",
           "element_source_property": "FeaturesOC",
           "element_type": "IFsFeatDefn",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get the feature system\n            >>> feature_system = project.lp.MsFeatureSystemOA\n            >>> if feature_system:\n            ...     features = inflOps.GetFeatures(feature_system)\n            ...     print(f\"Feature system has {len(features)} features\")\n            ...     for feature in features:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         name = ITsString(feature.Name.get_String(wsHandle)).Text\n            ...         print(f\"  - {name}\")\n            Feature system has 3 features\n              - person\n              - number\n              - tense\n",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get the feature system\n            >>> feature_system = project.lp.MsFeatureSystemOA\n            >>> if feature_system:\n            ...     features = inflOps.GetFeatures(feature_system)\n            ...     print(f\"Feature system has {len(features)} features\")\n            ...     for feature in features:\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         name = ITsString(feature.Name.get_String(wsHandle)).Text\n            ...         print(f\"  - {name}\")\n            Feature system has 3 features\n              - person\n              - number\n              - tense\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -32472,7 +32522,7 @@
           "description": "Get the feature types collection from a feature system (READ-ONLY).\n\nThis is a getter-only method that returns the collection of feature types\ndefined in the morphosyntactic feature system. Feature types categorize\nfeatures into groups (e.g., inflectional features, agreement features).\n",
           "element_source_property": "TypesOC",
           "element_type": "IFsFeatStrucType",
-          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get types from default feature system\n            >>> types = inflOps.GetTypes(None)\n            >>> for ftype in types:\n            ...     print(f\"Feature type: {ftype}\")\n\n            >>> # Get types from specific feature system\n            >>> fs = project.lp.MsFeatureSystemOA\n            >>> types = inflOps.GetTypes(fs)\n            >>> print(f\"Found {len(types)} feature types\")\n\n            >>> # Iterate and display type names\n            >>> for ftype in types:\n            ...     ws = project.project.DefaultAnalWs\n            ...     name = ITsString(ftype.Name.get_String(ws)).Text\n            ...     print(f\"Type: {name}\")\n",
+          "example": "            >>> inflOps = InflectionFeatureOperations(project)\n            >>> # Get types from default feature system\n            >>> types = inflOps.GetTypes(None)\n            >>> for ftype in types:\n            ...     print(f\"Feature type: {ftype}\")\n\n            >>> # Get types from specific feature system\n            >>> fs = project.lp.MsFeatureSystemOA\n            >>> types = inflOps.GetTypes(fs)\n            >>> print(f\"Found {len(types)} feature types\")\n\n            >>> # Iterate and display type names\n            >>> for ftype in types:\n            ...     ws = project.GetDefaultAnalysisWSHandle()\n            ...     name = ITsString(ftype.Name.get_String(ws)).Text\n            ...     print(f\"Type: {name}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -35877,7 +35927,7 @@
         },
         {
           "description": "Sets the morpheme type (stem, root, prefix, suffix, infix, affix).",
-          "example": "            >>> entry = project.LexEntry.Find(\"-ing\")\n            >>> project.LexEntry.SetMorphType(entry, \"suffix\")\n            >>> mt = project.LexEntry.GetMorphType(entry)\n            >>> print(ITsString(mt.Name.BestAnalysisAlternative).Text)\n            suffix\n\n            >>> # Set using morph type object\n            >>> morph_types = project.lp.MorphTypesOA.PossibilitiesOS\n            >>> stem_type = morph_types[0]  # assuming first is stem\n            >>> project.LexEntry.SetMorphType(entry, stem_type)\n",
+          "example": "            >>> entry = project.LexEntry.Find(\"-ing\")\n            >>> project.LexEntry.SetMorphType(entry, \"suffix\")\n            >>> mt = project.LexEntry.GetMorphType(entry)\n            >>> print(ITsString(mt.Name.BestAnalysisAlternative).Text)\n            suffix\n\n            >>> # Set using morph type object\n            >>> morph_types = project.LexEntry.GetAvailableMorphTypes()\n            >>> stem_name, stem_type, is_stem = next(mt for mt in morph_types if mt[2])\n            >>> project.LexEntry.SetMorphType(entry, stem_type)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -38629,7 +38679,7 @@
           "description": "Get all example sentences for a sense.\n",
           "element_source_property": "ExamplesOS",
           "element_type": "ILexExampleSentence",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     examples = project.Senses.GetExamples(senses[0])\n            ...     for ex in examples:\n            ...         ws = project.project.DefaultVernWs\n            ...         text = ITsString(ex.Example.get_String(ws)).Text\n            ...         print(f\"Example: {text}\")\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     examples = project.Senses.GetExamples(senses[0])\n            ...     for ex in examples:\n            ...         ws = project.GetDefaultVernacularWSHandle()\n            ...         text = ITsString(ex.Example.get_String(ws)).Text\n            ...         print(f\"Example: {text}\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -39391,7 +39441,7 @@
           "description": "Returns semantic domains (categories, topics, subject fields) for a sense.",
           "element_source_property": "SemanticDomainsRC",
           "element_type": "ICmSemanticDomain",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     domains = project.Senses.GetSemanticDomains(senses[0])\n            ...     for domain in domains:\n            ...         ws = project.project.DefaultAnalWs\n            ...         name = ITsString(domain.Name.get_String(ws)).Text\n            ...         print(f\"Domain: {name}\")\n            Domain: 7.2.1 Walk\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     domains = project.Senses.GetSemanticDomains(senses[0])\n            ...     for domain in domains:\n            ...         ws = project.GetDefaultAnalysisWSHandle()\n            ...         name = ITsString(domain.Name.get_String(ws)).Text\n            ...         print(f\"Domain: {name}\")\n            Domain: 7.2.1 Walk\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -39515,7 +39565,7 @@
         },
         {
           "description": "Get the sense type (e.g., literal, figurative, idiom).\n",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     sense_type = project.Senses.GetSenseType(senses[0])\n            ...     if sense_type:\n            ...         ws = project.project.DefaultAnalWs\n            ...         name = ITsString(sense_type.Name.get_String(ws)).Text\n            ...         print(f\"Type: {name}\")\n            Type: Figurative\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     sense_type = project.Senses.GetSenseType(senses[0])\n            ...     if sense_type:\n            ...         ws = project.GetDefaultAnalysisWSHandle()\n            ...         name = ITsString(sense_type.Name.get_String(ws)).Text\n            ...         print(f\"Type: {name}\")\n            Type: Figurative\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -39625,7 +39675,7 @@
         },
         {
           "description": "Get the status of a sense (e.g., approved, tentative).\n",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     status = project.Senses.GetStatus(senses[0])\n            ...     if status:\n            ...         ws = project.project.DefaultAnalWs\n            ...         name = ITsString(status.Name.get_String(ws)).Text\n            ...         print(f\"Status: {name}\")\n            Status: Approved\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> senses = list(project.Senses.GetAll(entry))\n            >>> if senses:\n            ...     status = project.Senses.GetStatus(senses[0])\n            ...     if status:\n            ...         ws = project.GetDefaultAnalysisWSHandle()\n            ...         name = ITsString(status.Name.get_String(ws)).Text\n            ...         print(f\"Status: {name}\")\n            Status: Approved\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -45849,7 +45899,7 @@
         },
         {
           "description": "Set the stratum of a morphological rule or template.\n",
-          "example": "            >>> morph_data = project.lp.MorphologicalDataOA\n            >>> if morph_data and morph_data.StrataOS.Count > 0:\n            ...     ruleOps.SetStratum(rule, morph_data.StrataOS[0])\n\n            >>> # Clear stratum assignment\n            >>> ruleOps.SetStratum(rule, None)\n\n        See Also:\n            GetStratum",
+          "example": "            >>> strata = list(project.Strata.GetAll())\n            >>> if strata:\n            ...     ruleOps.SetStratum(rule, strata[0])\n\n            >>> # Clear stratum assignment\n            >>> ruleOps.SetStratum(rule, None)\n\n        See Also:\n            GetStratum",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -48059,7 +48109,7 @@
         },
         {
           "description": "Get the note type/category.\n",
-          "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> notes = list(project.Note.GetAll(entry))\n            >>> if notes:\n            ...     note_type = project.Note.GetNoteType(notes[0])\n            ...     if note_type:\n            ...         # Get the name of the note type\n            ...         ws = project.project.DefaultAnalWs\n            ...         type_name = ITsString(note_type.Name.get_String(ws)).Text\n            ...         print(f\"Note type: {type_name}\")\n            Note type: To Do\n",
+          "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> notes = list(project.Note.GetAll(entry))\n            >>> if notes:\n            ...     note_type = project.Note.GetNoteType(notes[0])\n            ...     if note_type:\n            ...         # Get the name of the note type\n            ...         type_name = note_type.Name.BestAnalysisAlternative.Text\n            ...         print(f\"Note type: {type_name}\")\n            Note type: To Do\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -50810,7 +50860,7 @@
       "methods": [
         {
           "description": "Add a language to a person's known languages.\n",
-          "example": "            >>> person = project.Person.Find(\"John Smith\")\n            >>> # Get language from project's languages list\n            >>> languages_list = project.lp.LanguagesOA\n            >>> if languages_list:\n            ...     spanish = languages_list.PossibilitiesOS[0]\n            ...     project.Person.AddLanguage(person, spanish)\n",
+          "example": "            >>> person = project.Person.Find(\"John Smith\")\n            >>> # Get language from project's languages list (LanguagesOA\n            >>> # lives on LexDb, not LangProject)\n            >>> languages_list = project.lexDB.LanguagesOA\n            >>> if languages_list:\n            ...     spanish = languages_list.PossibilitiesOS[0]\n            ...     project.Person.AddLanguage(person, spanish)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -53837,7 +53887,7 @@
           "description": "Get all codes (allophonic representations) for a phoneme.\n",
           "element_source_property": "CodesOS",
           "element_type": "IPhCode",
-          "example": "            >>> # Get allophones of /t/\n            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     for code in codes:\n            ...         ws = project.project.DefaultVernWs\n            ...         repr = ITsString(code.Representation.get_String(ws)).Text\n            ...         print(repr)\n            [t]   # plain voiceless alveolar stop\n            [tʰ]  # aspirated (word-initial)\n            [ɾ]   # flap (intervocalic)\n\n            >>> # Get vowel allophones\n            >>> phoneme = project.Phonemes.Find(\"/i/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     print(f\"Phoneme /i/ has {len(codes)} allophonic codes\")\n",
+          "example": "            >>> # Get allophones of /t/\n            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     for code in codes:\n            ...         ws = project.GetDefaultVernacularWSHandle()\n            ...         repr = ITsString(code.Representation.get_String(ws)).Text\n            ...         print(repr)\n            [t]   # plain voiceless alveolar stop\n            [tʰ]  # aspirated (word-initial)\n            [ɾ]   # flap (intervocalic)\n\n            >>> # Get vowel allophones\n            >>> phoneme = project.Phonemes.Find(\"/i/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     print(f\"Phoneme /i/ has {len(codes)} allophonic codes\")\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -54202,7 +54252,7 @@
         },
         {
           "description": "Remove a code from a phoneme.\n",
-          "example": "            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     # Remove the flap allophone\n            ...     for code in codes:\n            ...         ws = project.project.DefaultVernWs\n            ...         repr = ITsString(code.Representation.get_String(ws)).Text\n            ...         if repr == \"[ɾ]\":\n            ...             project.Phonemes.RemoveCode(phoneme, code)\n            ...             break\n\n            >>> # Remove by HVO\n            >>> phoneme = project.Phonemes.Find(\"/p/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     if codes:\n            ...         project.Phonemes.RemoveCode(phoneme, codes[0].Hvo)\n",
+          "example": "            >>> phoneme = project.Phonemes.Find(\"/t/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     # Remove the flap allophone\n            ...     for code in codes:\n            ...         ws = project.GetDefaultVernacularWSHandle()\n            ...         repr = ITsString(code.Representation.get_String(ws)).Text\n            ...         if repr == \"[ɾ]\":\n            ...             project.Phonemes.RemoveCode(phoneme, code)\n            ...             break\n\n            >>> # Remove by HVO\n            >>> phoneme = project.Phonemes.Find(\"/p/\")\n            >>> if phoneme:\n            ...     codes = project.Phonemes.GetCodes(phoneme)\n            ...     if codes:\n            ...         project.Phonemes.RemoveCode(phoneme, codes[0].Hvo)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -56948,7 +56998,7 @@
         },
         {
           "description": "Set the stratum of a phonological rule.\n",
-          "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = list(phonRuleOps.GetAll())[0]\n            >>> # Get first stratum\n            >>> morph_data = project.lp.MorphologicalDataOA\n            >>> if morph_data and morph_data.StrataOS.Count > 0:\n            ...     stratum = morph_data.StrataOS[0]\n            ...     phonRuleOps.SetStratum(rule, stratum)\n\n        See Also:\n            GetStratum",
+          "example": "            >>> phonRuleOps = PhonologicalRuleOperations(project)\n            >>> rule = list(phonRuleOps.GetAll())[0]\n            >>> # Get first stratum\n            >>> strata = list(project.Strata.GetAll())\n            >>> if strata:\n            ...     phonRuleOps.SetStratum(rule, strata[0])\n\n        See Also:\n            GetStratum",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -61878,7 +61928,7 @@
         },
         {
           "description": "Check if publication uses landscape orientation.\n",
-          "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> is_landscape = project.Publications.GetIsLandscape(pub)\n            >>> if is_landscape:\n            ...     print(\"Landscape orientation\")\n            ... else:\n            ...     print(\"Portrait orientation\")\n            Portrait orientation\n\n            >>> # Check orientation and page dimensions\n            >>> width = project.Publications.GetPageWidth(pub)\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> is_landscape = project.Publications.GetIsLandscape(pub)\n            >>> orientation = \"Landscape\" if is_landscape else \"Portrait\"\n            >>> print(f\"{orientation}: {width}\" x {height}\"\")\n            Portrait: 8.5\" x 11.0\"\n",
+          "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> is_landscape = project.Publications.GetIsLandscape(pub)\n            >>> if is_landscape:\n            ...     print(\"Landscape orientation\")\n            ... else:\n            ...     print(\"Portrait orientation\")\n            Portrait orientation\n\n            >>> # Check orientation and page dimensions\n            >>> width = project.Publications.GetPageWidth(pub)\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> is_landscape = project.Publications.GetIsLandscape(pub)\n            >>> orientation = \"Landscape\" if is_landscape else \"Portrait\"\n            >>> print(f'{orientation}: {width}\" x {height}\"')\n            Portrait: 8.5\" x 11.0\"\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -61917,7 +61967,7 @@
         },
         {
           "description": "Get the page height for a publication.\n",
-          "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> if height:\n            ...     print(f\"Page height: {height} inches\")\n            Page height: 11.0 inches\n\n            >>> # Get both dimensions\n            >>> width = project.Publications.GetPageWidth(pub)\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> if width and height:\n            ...     print(f\"Page size: {width}\" x {height}\"\")\n",
+          "example": "            >>> pub = project.Publications.Find(\"Main Dictionary\")\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> if height:\n            ...     print(f\"Page height: {height} inches\")\n            Page height: 11.0 inches\n\n            >>> # Get both dimensions\n            >>> width = project.Publications.GetPageWidth(pub)\n            >>> height = project.Publications.GetPageHeight(pub)\n            >>> if width and height:\n            ...     print(f'Page size: {width}\" x {height}\"')\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -69827,7 +69877,7 @@
           "source": "docstring"
         },
         {
-          "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\nnarrative_genre = project.lp.GenreListOA.PossibilitiesOS[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
+          "code": "# Create a simple text\ntext = project.Texts.Create(\"Genesis\")\nprint(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n# Create a text with genre\ngenre_list = project.PossibilityLists.FindList(\"Text Genres\")\nnarrative_genre = project.PossibilityLists.GetItems(genre_list)[0]\ntext = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
           "description": "Create a new text in the project.",
           "operation": "create",
           "source": "docstring"
@@ -69984,7 +70034,7 @@
         },
         {
           "description": "Create a new text in the project.\n\nCreates a new IText object with the specified name and optional genre.\nThe text will have an empty StText contents object created automatically.\n",
-          "example": "            >>> # Create a simple text\n            >>> text = project.Texts.Create(\"Genesis\")\n            >>> print(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n            >>> # Create a text with genre\n            >>> narrative_genre = project.lp.GenreListOA.PossibilitiesOS[0]\n            >>> text = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
+          "example": "            >>> # Create a simple text\n            >>> text = project.Texts.Create(\"Genesis\")\n            >>> print(text.Name.BestAnalysisAlternative.Text)\n            Genesis\n\n            >>> # Create a text with genre\n            >>> genre_list = project.PossibilityLists.FindList(\"Text Genres\")\n            >>> narrative_genre = project.PossibilityLists.GetItems(genre_list)[0]\n            >>> text = project.Texts.Create(\"Story 1\", genre=narrative_genre)\n\n        See Also:\n            Delete, Exists, GetAll",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -70736,7 +70786,7 @@
         },
         {
           "description": "Set the genre of a text.\n\nClears any existing genres and sets the specified genre. If genre is None,\nall genres are cleared.\n",
-          "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>>\n            >>> # Set genre to first available genre\n            >>> if project.lp.GenreListOA.PossibilitiesOS.Count > 0:\n            ...     narrative = project.lp.GenreListOA.PossibilitiesOS[0]\n            ...     project.Texts.SetGenre(text, narrative)\n            >>>\n            >>> # Clear genre\n            >>> project.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
+          "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>>\n            >>> # Set genre to first available genre\n            >>> genre_list = project.PossibilityLists.FindList(\"Text Genres\")\n            >>> items = project.PossibilityLists.GetItems(genre_list) if genre_list else []\n            >>> if items:\n            ...     project.Texts.SetGenre(text, items[0])\n            >>>\n            >>> # Clear genre\n            >>> project.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -70772,7 +70822,7 @@
             },
             {
               "default": null,
-              "description": "The genre to assign. Must be a valid ICmPossibility from the project's genre list (typically found in project.lp.GenreListOA.PossibilitiesOS). If None, clears all genres.",
+              "description": "The genre to assign. Must be a valid ICmPossibility from the project's \"Text Genres\" possibility list (see project.PossibilityLists.FindList). If None, clears all genres.",
               "name": "genre",
               "type": "ICmPossibility or None"
             }
@@ -75261,7 +75311,7 @@
         },
         {
           "description": "Get the inflection type of a bundle.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     inflType = morphBundleOps.GetInflType(bundles[0])\n            ...     if inflType:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         type_name = ITsString(inflType.Name.get_String(wsHandle)).Text\n            ...         print(f\"Inflection type: {type_name}\")\n            Inflection type: past tense\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     inflType = morphBundleOps.GetInflType(bundles[0])\n            ...     if inflType:\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         type_name = ITsString(inflType.Name.get_String(wsHandle)).Text\n            ...         print(f\"Inflection type: {type_name}\")\n            Inflection type: past tense\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -75277,8 +75327,8 @@
             ],
             "notes": [],
             "success": {
-              "description": "ICmPossibility or None: The inflection type object, or None if not set.",
-              "type": "ICmPossibility or None"
+              "description": "LexEntryInflType or None: The inflection type object, or None if not set.",
+              "type": "LexEntryInflType or None"
             }
           },
           "parameters": [
@@ -75292,15 +75342,15 @@
           "raises": [
             "FP_NullParameterError: If bundle_or_hvo is None."
           ],
-          "return_type": "ICmPossibility or None",
-          "returns": "ICmPossibility or None: The inflection type object, or None if not set. ",
+          "return_type": "LexEntryInflType or None",
+          "returns": "LexEntryInflType or None: The inflection type object, or None if not set. ",
           "signature": "GetInflType(bundle_or_hvo)",
           "summary": "Get the inflection type of a bundle.",
           "usage_hint": "retrieval"
         },
         {
           "description": "Get the inflection class of a bundle.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     inflClass = morphBundleOps.GetInflectionClass(bundles[0])\n            ...     if inflClass:\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         class_name = ITsString(inflClass.Name.get_String(wsHandle)).Text\n            ...         print(f\"Inflection class: {class_name}\")\n            Inflection class: strong verb\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     inflClass = morphBundleOps.GetInflectionClass(bundles[0])\n            ...     if inflClass:\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         class_name = ITsString(inflClass.Name.get_String(wsHandle)).Text\n            ...         print(f\"Inflection class: {class_name}\")\n            Inflection class: strong verb\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -75495,7 +75545,7 @@
         },
         {
           "description": "Get the linked lexical sense for a morph bundle.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     sense = morphBundleOps.GetSense(bundles[0])\n            ...     if sense:\n            ...         # Get sense gloss\n            ...         wsHandle = project.project.DefaultAnalWs\n            ...         sense_gloss = ITsString(sense.Gloss.get_String(wsHandle)).Text\n            ...         print(f\"Linked to sense: {sense_gloss}\")\n            Linked to sense: run\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     sense = morphBundleOps.GetSense(bundles[0])\n            ...     if sense:\n            ...         # Get sense gloss\n            ...         wsHandle = project.GetDefaultAnalysisWSHandle()\n            ...         sense_gloss = ITsString(sense.Gloss.get_String(wsHandle)).Text\n            ...         print(f\"Linked to sense: {sense_gloss}\")\n            Linked to sense: run\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -75534,7 +75584,7 @@
         },
         {
           "description": "Get all syncable properties of a morpheme bundle.\n",
-          "example": "            >>> props = project.MorphBundles.GetSyncableProperties(bundle)\n            >>> print(props['Form'])\n            {'en': 'run'}\n            >>> print(props['SenseRA'])\n            'abc123...'  # GUID of linked sense\n",
+          "example": "            >>> props = project.WfiMorphBundles.GetSyncableProperties(bundle)\n            >>> print(props['Form'])\n            {'en': 'run'}\n            >>> print(props['SenseRA'])\n            'abc123...'  # GUID of linked sense\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -75731,7 +75781,7 @@
         },
         {
           "description": "Set the inflection type of a bundle.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Get an inflection type from the list\n            ...     if project.lp.MorphologicalDataOA:\n            ...         inflTypes = project.lp.MorphologicalDataOA.InflectionTypesOA\n            ...         if inflTypes and inflTypes.PossibilitiesOS.Count > 0:\n            ...             past_tense = inflTypes.PossibilitiesOS[0]\n            ...             morphBundleOps.SetInflType(bundles[0], past_tense)\n\n            >>> # Clear inflection type\n            >>> morphBundleOps.SetInflType(bundles[0], None)\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Get an inflection type (LexEntryInflType lives in\n            ...     # LexDb.VariantEntryTypesOA, accessed via VariantOperations)\n            ...     infl_types = [t for t in project.Variants.GetAllTypes()\n            ...                   if t.ClassName == \"LexEntryInflType\"]\n            ...     if infl_types:\n            ...         morphBundleOps.SetInflType(bundles[0], infl_types[0])\n\n            >>> # Clear inflection type\n            >>> morphBundleOps.SetInflType(bundles[0], None)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -75763,7 +75813,7 @@
             },
             {
               "default": null,
-              "description": "The ICmPossibility inflection type object or HVO, or None to unset.",
+              "description": "The LexEntryInflType object or HVO (from LexDb.VariantEntryTypesOA), or None to unset.",
               "name": "infl_type_or_hvo",
               "type": ""
             }
@@ -75780,7 +75830,7 @@
         },
         {
           "description": "Set the inflection class of a bundle.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Get an inflection class\n            ...     if project.lp.MorphologicalDataOA:\n            ...         inflClasses = project.lp.MorphologicalDataOA.InflectionClassesOC\n            ...         if inflClasses.Count > 0:\n            ...             inflClass = inflClasses[0]\n            ...             morphBundleOps.SetInflectionClass(bundles[0], inflClass)\n\n            >>> # Clear inflection class\n            >>> morphBundleOps.SetInflectionClass(bundles[0], None)\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Get an inflection class (owned per-POS, via project.POS)\n            ...     verb = project.POS.Find(\"Verb\")\n            ...     classes = list(project.POS.GetInflectionClasses(verb)) if verb else []\n            ...     if classes:\n            ...         morphBundleOps.SetInflectionClass(bundles[0], classes[0])\n\n            >>> # Clear inflection class\n            >>> morphBundleOps.SetInflectionClass(bundles[0], None)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -75979,7 +76029,7 @@
         },
         {
           "description": "Link a morph bundle to a lexical sense.\n",
-          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Link to a lexical sense\n            ...     senses = list(project.LexiconAllSenses())\n            ...     if senses:\n            ...         morphBundleOps.SetSense(bundles[0], senses[0])\n\n            >>> # Unlink from sense\n            >>> morphBundleOps.SetSense(bundles[0], None)\n",
+          "example": "            >>> morphBundleOps = WfiMorphBundleOperations(project)\n            >>> bundles = list(morphBundleOps.GetAll(analysis))\n            >>> if bundles:\n            ...     # Link to a lexical sense\n            ...     entries = list(project.LexiconAllEntries())\n            ...     senses = project.LexEntry.GetAllSenses(entries[0]) if entries else []\n            ...     if senses:\n            ...         morphBundleOps.SetSense(bundles[0], senses[0])\n\n            >>> # Unlink from sense\n            >>> morphBundleOps.SetSense(bundles[0], None)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -77038,7 +77088,7 @@
           "usage_hint": null
         },
         {
-          "description": "Create a new writing system in the project.\n",
+          "description": "Create (or activate) a writing system in the project.\n",
           "example": "            >>> # Create a vernacular writing system\n            >>> ws = project.WritingSystems.Create(\"qaa-x-kal\", \"Kalaba\")\n            >>> print(project.WritingSystems.GetDisplayName(ws))\n            Kalaba\n\n            >>> # Create an analysis writing system\n            >>> ws = project.WritingSystems.Create(\"es\", \"Spanish\", is_vernacular=False)\n            >>> project.WritingSystems.SetFontName(ws, \"Arial\")\n            >>> project.WritingSystems.SetFontSize(ws, 12)\n\n            >>> # Create IPA writing system\n            >>> ws = project.WritingSystems.Create(\"qaa-x-kal-fonipa\", \"Kalaba IPA\")\n            >>> project.WritingSystems.SetFontName(ws, \"Charis SIL\")\n",
           "is_classmethod": false,
           "is_mutating": true,
@@ -77058,14 +77108,14 @@
               },
               {
                 "exception": "FP",
-                "when": "_ParameterError: If language_tag is empty or already exists"
+                "when": "_ParameterError: If language_tag is empty, or already active"
               }
             ],
             "notes": [
               "Creates new object - requires write access"
             ],
             "success": {
-              "description": "IWritingSystemDefinition: The newly created writing system",
+              "description": "IWritingSystemDefinition: The newly created or newly activated writing system",
               "type": "IWritingSystemDefinition"
             }
           },
@@ -77078,7 +77128,7 @@
             },
             {
               "default": null,
-              "description": "Display name for the writing system",
+              "description": "Display name for the writing system. Only used when a brand-new LDML is created -- ignored when ``language_tag`` is already present in the project's LDML store (see Notes).",
               "name": "name",
               "type": "str"
             },
@@ -77092,17 +77142,18 @@
           "raises": [
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_NullParameterError: If language_tag or name is None",
-            "FP_ParameterError: If language_tag is empty or already exists"
+            "FP_ParameterError: If language_tag is empty, or already active",
+            "(vernacular or analysis) -- see ``Exists()``"
           ],
           "return_type": "IWritingSystemDefinition",
-          "returns": "IWritingSystemDefinition: The newly created writing system ",
+          "returns": "IWritingSystemDefinition: The newly created or newly activated writing system ",
           "signature": "Create(language_tag, name, is_vernacular=True)",
-          "summary": "Create a new writing system in the project.",
+          "summary": "Create (or activate) a writing system in the project.",
           "usage_hint": "creation"
         },
         {
           "description": "Remove a writing system from the project.\n",
-          "example": "            >>> # Delete by language tag\n            >>> if project.WritingSystems.Exists(\"qaa-x-old\"):\n            ...     project.WritingSystems.Delete(\"qaa-x-old\")\n\n            >>> # Delete by handle\n            >>> ws = list(project.WritingSystems.GetVernacular())[2]\n            ...     handle = ws.Handle\n            ...     project.WritingSystems.Delete(handle)\n",
+          "example": "            >>> # Delete by language tag\n            >>> if project.WritingSystems.Exists(\"qaa-x-old\"):\n            ...     project.WritingSystems.Delete(\"qaa-x-old\")\n\n            >>> # Delete by handle\n            >>> ws = list(project.WritingSystems.GetVernacular())[2]\n            >>> handle = ws.Handle\n            >>> project.WritingSystems.Delete(handle)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -77205,6 +77256,67 @@
           "usage_hint": null
         },
         {
+          "description": "Idempotently ensure a writing system is active, creating it only if\nit does not exist anywhere in the project yet.\n\nResolves the ``Exists()``/``Create()`` deadlock at the heart of\nissue #250 (Defects 1-3): a caller previously had no single-call way\nto ask \"make this writing system usable\" without first arbitrating\nbetween two collections that disagree (``Exists()``'s active-only\nanswer vs. ``Create()``'s own now-fixed store-presence check).\n``Ensure()`` collapses that into one idempotent call.\n",
+          "example": "            >>> # Replaces the old, incorrect Exists()-then-Create() dance:\n            >>> #   if not tgt_ops.Exists(tag):       # False positive risk\n            >>> #       tgt_ops.Create(tag, name)      # would then raise\n            >>> ws, created = project.WritingSystems.Ensure(\"etu-fonipa\", \"Ejagham IPA\")\n            >>> created\n            False   # was present in the store but inactive; now activated\n",
+          "is_classmethod": false,
+          "is_mutating": true,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Ensure",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ReadOnlyError: If project is not opened with write enabled"
+              },
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If language_tag or name is None"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If language_tag is empty"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "tuple[IWritingSystemDefinition, bool]: ``(ws, created)``. ``created`` is True only when a genuinely new writing system was created (the tag did not exist anywhere in the project's LDML store before this call). It is False both when the tag was already active (a true no-op) and when it was present in the store but inactive and has now been activated -- both leave the store's writing-system count unchanged, which is the operationally relevant distinction for an idempotent pre-pass such as a cross-project sync guard. See Notes for how to observe the finer three-way distinction the issue also asks for.",
+              "type": "tuple[IWritingSystemDefinition, bool]"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Language tag (e.g., \"en\", \"fr\", \"qaa-x-kal\")",
+              "name": "language_tag",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Display name, used ONLY when a genuinely new writing system is created. Ignored when the tag is already active or already present in the store (its existing DisplayLabel is left untouched).",
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "default": true,
+              "description": "True to ensure/activate as a vernacular writing system, False for analysis. Defaults to True. If the tag is already active in the OTHER category, it is ADDED to the requested category as well rather than moved -- FLEx allows a writing system to be both vernacular and analysis simultaneously, and ``Ensure()`` never demotes an existing activation.",
+              "name": "is_vernacular",
+              "type": "bool"
+            }
+          ],
+          "raises": [
+            "FP_ReadOnlyError: If project is not opened with write enabled",
+            "FP_NullParameterError: If language_tag or name is None",
+            "FP_ParameterError: If language_tag is empty"
+          ],
+          "return_type": "tuple[IWritingSystemDefinition, bool]",
+          "returns": "tuple[IWritingSystemDefinition, bool]: ``(ws, created)``. ``created`` is True only when a genuinely new writing system was created (the tag did not exist anywhere in the project's LDML store before this call). It is False both when the tag was already active (a true no-op) and when it was present in the store but inactive and has now been activated -- both leave the store's writing-system count unchanged, which is the operationally relevant distinction for an idempotent pre-pass such as a cross-project sync guard. See Notes for how to observe the finer three-way distinction the issue also asks for. ",
+          "signature": "Ensure(language_tag, name, is_vernacular=True)",
+          "summary": "Idempotently ensure a writing system is active, creating it only if\nit does not exist anywhere in the project yet.",
+          "usage_hint": null
+        },
+        {
           "description": "Check if a writing system with the given language tag exists and is active.\n",
           "example": "            >>> if project.WritingSystems.Exists(\"en\"):\n            ...     print(\"English writing system is active\")\n            English writing system is active\n\n            >>> if not project.WritingSystems.Exists(\"ar\"):\n            ...     print(\"Arabic writing system not found\")\n            Arabic writing system not found\n",
           "is_classmethod": false,
@@ -77222,7 +77334,7 @@
             ],
             "notes": [],
             "success": {
-              "description": "bool: True if writing system exists and is active, False otherwise",
+              "description": "bool: True if writing system exists and is active (vernacular or analysis), False otherwise",
               "type": "bool"
             }
           },
@@ -77238,9 +77350,48 @@
             "FP_NullParameterError: If language_tag is None"
           ],
           "return_type": "bool",
-          "returns": "bool: True if writing system exists and is active, False otherwise ",
+          "returns": "bool: True if writing system exists and is active (vernacular or analysis), False otherwise ",
           "signature": "Exists(language_tag)",
           "summary": "Check if a writing system with the given language tag exists and is active.",
+          "usage_hint": "validation"
+        },
+        {
+          "description": "Check if a writing system with the given language tag exists ANYWHERE\nin the project's LDML store, whether or not it is currently active.\n\nThis is the whole-store counterpart to ``Exists()`` (issue #250\nDefect 1): a project can hold an inactive LDML for a writing system\nthat was configured and later deactivated, or inherited from a\ntemplate. That writing system is \"present\" in the sense this method\nchecks, but it is not usable for reading or writing lexical data\nuntil it is active -- see ``Ensure()``.\n",
+          "example": "            >>> # A writing system deactivated via the FLEx UI still has an\n            >>> # LDML file on disk -- ExistsInStore() sees it, Exists() does not.\n            >>> project.WritingSystems.Exists(\"fr\")\n            False\n            >>> project.WritingSystems.ExistsInStore(\"fr\")\n            True\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ExistsInStore",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If language_tag is None"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "bool: True if a writing system with this tag exists anywhere in the store (active or not), False otherwise",
+              "type": "bool"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Language tag to check (e.g., \"en\", \"qaa-x-kal\")",
+              "name": "language_tag",
+              "type": "str"
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If language_tag is None"
+          ],
+          "return_type": "bool",
+          "returns": "bool: True if a writing system with this tag exists anywhere in the store (active or not), False otherwise ",
+          "signature": "ExistsInStore(language_tag)",
+          "summary": "Check if a writing system with the given language tag exists ANYWHERE\nin the project's LDML store, whether or not it is currently active.",
           "usage_hint": "validation"
         },
         {
@@ -77309,7 +77460,7 @@
         },
         {
           "description": "Extract the best analysis or vernacular string from a MultiString or\nMultiUnicode object.\n\nThis method intelligently selects the most appropriate string alternative\nfrom a multi-writing-system text object, preferring analysis writing\nsystems first, then falling back to vernacular writing systems.\n",
-          "example": "            >>> # Get the best string from a lexeme form\n            >>> entry = project.LexEntries.GetEntry(\"test\")\n            >>> best_text = project.WritingSystems.GetBestString(entry.LexemeFormOA.Form)\n            >>> print(best_text)\n            test\n\n            >>> # Get best gloss from a sense\n            >>> sense = entry.SensesOS[0]\n            >>> best_gloss = project.WritingSystems.GetBestString(sense.Gloss)\n            >>> print(best_gloss)\n            a sample word\n",
+          "example": "            >>> # Get the best string from a lexeme form\n            >>> entry = project.LexEntry.Find(\"test\")\n            >>> best_text = project.WritingSystems.GetBestString(entry.LexemeFormOA.Form)\n            >>> print(best_text)\n            test\n\n            >>> # Get best gloss from a sense\n            >>> sense = entry.SensesOS[0]\n            >>> best_gloss = project.WritingSystems.GetBestString(sense.Gloss)\n            >>> print(best_gloss)\n            a sample word\n",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": false,
@@ -78619,13 +78770,13 @@
     ],
     "mapping_types": {
       "composite": 104,
-      "convenience": 212,
-      "direct": 600,
-      "pure_python": 613
+      "convenience": 210,
+      "direct": 599,
+      "pure_python": 618
     },
-    "methods_with_return_type": 963,
+    "methods_with_return_type": 965,
     "total_classes": 118,
-    "total_methods": 1529,
+    "total_methods": 1531,
     "total_properties": 155
   }
 }

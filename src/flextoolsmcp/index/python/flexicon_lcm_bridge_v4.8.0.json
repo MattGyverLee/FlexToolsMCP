@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.7.0"
+    "version": "4.8.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -2245,6 +2245,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -2305,6 +2310,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
           {
             "description": "Converts to int",
             "pattern": "int",
@@ -2660,11 +2670,6 @@
         ],
         "repositories_used": [],
         "transformations": [
-          {
-            "description": "Converts to str",
-            "pattern": "str",
-            "type": "type_conversion"
-          },
           {
             "description": "Converts to list",
             "pattern": "list",
@@ -7136,12 +7141,17 @@
             "type": "hvo_resolution"
           },
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
           },
           {
-            "description": "Converts to str",
-            "pattern": "str",
+            "description": "Converts to ITsString",
+            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -11247,8 +11257,7 @@
         "mapping_type": "composite",
         "methods_called": [
           ".Add()",
-          ".Create()",
-          ".set_String()"
+          ".Create()"
         ],
         "param_usage": {
           "chart_or_hvo": [
@@ -11256,10 +11265,10 @@
             "arg[0] of __ResolveChart()"
           ],
           "label": [
-            "arg[0] of MakeString()"
+            "arg[0] of _MakeTsString()"
           ],
           "notes": [
-            "arg[0] of MakeString()"
+            "arg[0] of _MakeTsString()"
           ]
         },
         "properties_accessed": [
@@ -11288,32 +11297,25 @@
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "composite",
       "method": "Create",
       "methods_called": [
         ".Add()",
-        ".Create()",
-        ".set_String()"
+        ".Create()"
       ],
       "properties_accessed": [
         "RowsOS (OwningSequence)"
       ],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "ConstChartRowOperations.Delete": {
       "class": "ConstChartRowOperations",
@@ -11340,9 +11342,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "direct",
       "method": "Delete",
@@ -11388,9 +11388,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "direct",
       "method": "Find",
@@ -11437,9 +11435,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "direct",
       "method": "GetAll",
@@ -11456,17 +11452,12 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "row_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __ResolveObject()"
-          ],
-          "ws": [
-            "arg[0] of __WSHandle()"
           ]
         },
         "properties_accessed": [],
@@ -11478,23 +11469,8 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
-            "description": "Returns empty string instead of None",
-            "pattern": "or ''",
-            "type": "null_coalesce"
-          },
-          {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -11504,15 +11480,11 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetLabel",
-      "methods_called": [
-        ".get_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -11523,17 +11495,12 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "row_or_hvo": [
             "arg[0] of _ValidateParam()",
             "arg[0] of __ResolveObject()"
-          ],
-          "ws": [
-            "arg[0] of __WSHandle()"
           ]
         },
         "properties_accessed": [],
@@ -11545,23 +11512,8 @@
             "type": "default_value"
           },
           {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
-            "description": "Returns empty string instead of None",
-            "pattern": "or ''",
-            "type": "null_coalesce"
-          },
-          {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -11571,15 +11523,11 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetNotes",
-      "methods_called": [
-        ".get_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
@@ -11610,9 +11558,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "direct",
       "method": "GetWordGroups",
@@ -11661,9 +11607,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "convenience",
       "method": "MoveTo",
@@ -11684,10 +11628,8 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "row_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -11695,7 +11637,7 @@
           ],
           "text": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of _MakeTsString()"
           ],
           "ws": [
             "arg[0] of __WSHandle()"
@@ -11720,28 +11662,20 @@
             "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "SetLabel",
-      "methods_called": [
-        ".set_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "ConstChartRowOperations.SetNotes": {
       "class": "ConstChartRowOperations",
@@ -11749,10 +11683,8 @@
       "inline": {
         "calls_ensure_write_enabled": true,
         "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
+        "mapping_type": "pure_python",
+        "methods_called": [],
         "param_usage": {
           "row_or_hvo": [
             "arg[0] of _ValidateParam()",
@@ -11760,7 +11692,7 @@
           ],
           "text": [
             "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
+            "arg[0] of _MakeTsString()"
           ],
           "ws": [
             "arg[0] of __WSHandle()"
@@ -11780,28 +11712,20 @@
             "type": "ws_default"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
       "lcm_deps": [
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
-      "mapping_type": "convenience",
+      "mapping_type": "pure_python",
       "method": "SetNotes",
-      "methods_called": [
-        ".set_String()"
-      ],
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
+      "utilities_used": []
     },
     "ConstChartRowOperations.__init__": {
       "class": "ConstChartRowOperations",
@@ -11825,9 +11749,7 @@
         "IConstChartRow",
         "IConstChartRowFactory",
         "IDsConstChart",
-        "IConstChartWordGroup",
-        "ITsString",
-        "TsStringUtils"
+        "IConstChartWordGroup"
       ],
       "mapping_type": "pure_python",
       "method": "__init__",
@@ -14986,11 +14908,6 @@
             "description": "Converts to str",
             "pattern": "str",
             "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -15036,11 +14953,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -15092,11 +15004,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -15617,11 +15524,6 @@
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
-            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -15771,11 +15673,6 @@
           {
             "description": "Converts to int",
             "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -20501,7 +20398,9 @@
           ],
           "item": [
             "arg[0] of ApplySyncableProperties()",
-            "arg[0] of Create()"
+            "arg[0] of Create()",
+            "arg[0] of getattr()",
+            "arg[0] of type()"
           ],
           "ws_map": [
             "ws_map= of ApplySyncableProperties()"
@@ -21498,6 +21397,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
           {
             "description": "Converts to int",
             "pattern": "int",
@@ -26091,6 +25995,7 @@
         "methods_called": [],
         "param_usage": {
           "entry_ref": [
+            "arg[0] of cast_to_concrete()",
             "arg[0] of hasattr()"
           ]
         },
@@ -28397,6 +28302,7 @@
             "arg[0] of Add()"
           ],
           "entry_ref": [
+            "arg[0] of cast_to_concrete()",
             "arg[0] of hasattr()"
           ]
         },
@@ -33155,6 +33061,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to ITsString",
             "pattern": "ITsString",
             "type": "type_conversion"
@@ -33609,6 +33520,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -33737,6 +33653,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
           {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
@@ -42055,6 +41976,11 @@
             "type": "hvo_resolution"
           },
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -43248,6 +43174,11 @@
             "type": "hvo_resolution"
           },
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -43441,6 +43372,11 @@
             "type": "hvo_resolution"
           },
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
           },
@@ -43626,6 +43562,11 @@
             "description": "Resolves HVO (integer) to object if needed",
             "pattern": "GetSense",
             "type": "hvo_resolution"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
           },
           {
             "description": "Conditional logic for handling special cases",
@@ -50922,6 +50863,11 @@
           {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
           }
         ],
         "utilities_used": []
@@ -53080,11 +53026,6 @@
           {
             "description": "Converts to list",
             "pattern": "list",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
             "type": "type_conversion"
           }
         ],
@@ -59878,6 +59819,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Converts to int",
             "pattern": "int",
             "type": "type_conversion"
@@ -60438,6 +60384,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
           {
             "description": "Converts to ITsString",
             "pattern": "ITsString",
@@ -82038,6 +81989,11 @@
         "repositories_used": [],
         "transformations": [
           {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
+          {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
           },
@@ -82098,6 +82054,11 @@
         ],
         "repositories_used": [],
         "transformations": [
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
+          },
           {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
@@ -82402,6 +82363,11 @@
             "description": "Resolves HVO (integer) to object if needed",
             "pattern": "GetSense",
             "type": "hvo_resolution"
+          },
+          {
+            "description": "Applies default writing system if not specified",
+            "pattern": "WSHandle",
+            "type": "ws_default"
           },
           {
             "description": "Conditional logic for handling special cases",
@@ -84105,6 +84071,7 @@
           "language_tag": [
             "arg[0] of _ValidateParam()",
             "arg[0] of Exists()",
+            "arg[0] of _GetWSByTag()",
             "arg[0] of Create()"
           ],
           "name": [
@@ -84232,6 +84199,58 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "WritingSystemOperations.Ensure": {
+      "class": "WritingSystemOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": true,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [
+          ".Create()"
+        ],
+        "param_usage": {
+          "language_tag": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of _GetWSByTag()",
+            "arg[1] of info()",
+            "arg[0] of Create()"
+          ],
+          "name": [
+            "arg[0] of _ValidateParam()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "True",
+            "param": "is_vernacular",
+            "type": "default_value"
+          },
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "SpecialWritingSystemCodes",
+        "ITsString",
+        "TsStringUtils",
+        "IMultiUnicode",
+        "IMultiString"
+      ],
+      "mapping_type": "direct",
+      "method": "Ensure",
+      "methods_called": [
+        ".Create()"
+      ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "WritingSystemOperations.Exists": {
       "class": "WritingSystemOperations",
       "factories_used": [],
@@ -84266,6 +84285,39 @@
       ],
       "mapping_type": "pure_python",
       "method": "Exists",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "WritingSystemOperations.ExistsInStore": {
+      "class": "WritingSystemOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "language_tag": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of _GetWSByTag()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "SpecialWritingSystemCodes",
+        "ITsString",
+        "TsStringUtils",
+        "IMultiUnicode",
+        "IMultiString"
+      ],
+      "mapping_type": "pure_python",
+      "method": "ExistsInStore",
       "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],

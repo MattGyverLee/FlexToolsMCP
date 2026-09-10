@@ -1158,6 +1158,14 @@ Crew reports are committed under `specs/liblcm-core-coverage/reviews/`
 
 ### Two spinoffs, both deliberately left OUT of this feature (need the user)
 
+> **Spinoff A: RESOLVED in release 2.12.0 (2026-09-10).** The user chose
+> **delete v4.7.0** and made 4.8.0 the new `pyflexicon` floor, which settles the
+> policy question below: with the floor at `>=4.8.0` no supported install can
+> resolve 4.7.0, so keeping its index files serves no audience. The stale pip
+> metadata was also fixed (`pip install -e . --no-deps` re-run on the flexicon
+> checkout; `pip show pyflexicon` now reports 4.8.0). See the 2.12.0 CHANGELOG
+> entry for the reviewed index diff.
+
 **A. flexicon index 4.7.0 -> 4.8.0 supersede.** My cycle-2 briefing told the
 programmer to restore the deleted `*_flexicon-v4.7.0.json` files because
 `pip show pyflexicon` said 4.7.0. That instruction was wrong and the cycle-2

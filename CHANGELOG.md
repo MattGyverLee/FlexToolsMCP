@@ -4,6 +4,17 @@
 
 - Recovered SIL.LCModel.Core types that a `ReflectionTypeLoadException` was
   silently dropping from the LibLCM index during extraction (#135).
+- Recovered 147 parameterized `get_`/`set_` accessors across 26 types (e.g.
+  `ITsString.get_Properties(int irun)`, the generic FLID accessors on
+  `ISilDataAccess`/`DomainDataByFlid`) that `extract_method`'s blanket
+  `get_`/`set_`/`add_`/`remove_` prefix filter used to drop unconditionally.
+  Retention is gated on arity (getter arity >= 1, setter arity >= 2) and on
+  not already being backed by a real `PropertyInfo` (identity check against
+  `GetGetMethod`/`GetSetMethod`, with a base-name fallback) -- the latter is
+  what keeps the 24 `get_Item`/`set_Item` indexer duplicates on `IStText`,
+  `LcmList`, `SmallDictionary`, etc. out of the index. Recovered entries land
+  in `methods` (not `properties`) with a new `indexed` flag and, only when
+  `indexed` is true, an `index_param_type` field (#136).
 
 ### Doc-snippet gate: scope split with flexicon, and our own comments added
 

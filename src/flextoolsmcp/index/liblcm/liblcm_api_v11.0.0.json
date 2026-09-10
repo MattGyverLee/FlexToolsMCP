@@ -31193,6 +31193,34 @@
           ],
           "return_type": "Void",
           "signature": "WriteLdml(XmlWriter writer)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsWordForming",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsWordForming",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ch",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsWordForming(Int32 ch)"
         }
       ],
       "name": "CoreWritingSystemDefinition",
@@ -36832,6 +36860,833 @@
           ],
           "return_type": "Void",
           "signature": "VecProp(Int32 hvo, Int32 tag, Int32 chvoMax, Int32& _chvo, ArrayPtr _rghvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Binary",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Binary",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "rgb",
+              "type": "Byte[]&"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_Binary(Int32 hvo, Int32 tag, Byte[]& rgb)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_BooleanProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_BooleanProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_BooleanProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_DateTime",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_DateTime",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "DateTime"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "DateTime",
+          "signature": "get_DateTime(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GenDateProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GenDateProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "GenDate"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "GenDate",
+          "signature": "get_GenDateProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GuidProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GuidProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Guid"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Guid",
+          "signature": "get_GuidProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Int64Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Int64Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_Int64Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IntProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IntProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_IntProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsDummyId",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsDummyId",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsDummyId(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsPropInCache",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsPropInCache",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cpt",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsPropInCache(Int32 hvo, Int32 tag, Int32 cpt, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidObject",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidObject",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidObject(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringAlt",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringAlt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_MultiStringAlt(Int32 hvo, Int32 tag, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsMultiString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsMultiString",
+          "signature": "get_MultiStringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjFromGuid",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjFromGuid",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "uid",
+              "type": "Guid"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjFromGuid(Guid uid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjectProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjectProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjectProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_StringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_StringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_StringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TimeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TimeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_TimeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnicodeProp",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_UnicodeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnknownProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnknownProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_UnknownProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecItem",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecItem",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "index",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecItem(Int32 hvo, Int32 tag, Int32 index)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSize",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSize",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSize(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSizeAssumeCached",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSizeAssumeCached",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSizeAssumeCached(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_WritingSystemsOfInterest",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_WritingSystemsOfInterest",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cwsMax",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "_ws",
+              "type": "ArrayPtr"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_WritingSystemsOfInterest(Int32 cwsMax, ArrayPtr _ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_UnicodeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "obj",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstr",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_UnicodeProp(Int32 obj, Int32 tag, String bstr)"
         }
       ],
       "name": "DomainDataByFlid",
@@ -38878,6 +39733,761 @@
           ],
           "return_type": "Int32[]",
           "signature": "VecProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_BooleanProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_BooleanProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_BooleanProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GenDateProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GenDateProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "GenDate"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "GenDate",
+          "signature": "get_GenDateProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GuidProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GuidProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Guid"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Guid",
+          "signature": "get_GuidProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Int64Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Int64Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_Int64Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IntProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IntProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_IntProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsDummyId",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsDummyId",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsDummyId(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsPropInCache",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsPropInCache",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cpt",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsPropInCache(Int32 hvo, Int32 tag, Int32 cpt, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidObject",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidObject",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidObject(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringAlt",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringAlt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_MultiStringAlt(Int32 hvo, Int32 tag, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsMultiString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsMultiString",
+          "signature": "get_MultiStringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjFromGuid",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjFromGuid",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "uid",
+              "type": "Guid"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjFromGuid(Guid uid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjectProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjectProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjectProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_StringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_StringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_StringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TimeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TimeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_TimeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnicodeProp",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_UnicodeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnknownProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnknownProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_UnknownProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecItem",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecItem",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "index",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecItem(Int32 hvo, Int32 tag, Int32 index)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSize",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSize",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSize(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSizeAssumeCached",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSizeAssumeCached",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSizeAssumeCached(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_WritingSystemsOfInterest",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_WritingSystemsOfInterest",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cwsMax",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "_ws",
+              "type": "ArrayPtr"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_WritingSystemsOfInterest(Int32 cwsMax, ArrayPtr _ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_UnicodeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "obj",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstr",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_UnicodeProp(Int32 obj, Int32 tag, String bstr)"
         }
       ],
       "name": "DomainDataByFlidDecoratorBase",
@@ -51831,6 +53441,33 @@
           "parameters": [],
           "return_type": "UndoResult",
           "signature": "Undo()"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TasksSinceMark",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TasksSinceMark",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "fUndo",
+              "type": "Boolean"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_TasksSinceMark(Boolean fUndo)"
         }
       ],
       "name": "IActionHandler",
@@ -78220,6 +79857,67 @@
           ],
           "return_type": "Void",
           "signature": "InitXml(String bstrPathname, Boolean fClearPrevCache)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidClass",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidClass",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luFlid",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luClid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidClass(Int32 luFlid, Int32 luClid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsVirtual",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsVirtual",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luFlid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsVirtual(Int32 luFlid)"
         }
       ],
       "name": "IFwMetaDataCache",
@@ -92023,6 +93721,34 @@
           ],
           "return_type": "Void",
           "signature": "InterpretChrp(LgCharRenderProps& _chrp)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsWordForming",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsWordForming",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ch",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsWordForming(Int32 ch)"
         }
       ],
       "name": "ILgWritingSystem",
@@ -92429,6 +94155,67 @@
           ],
           "return_type": "Int32",
           "signature": "GetWsFromStr(String bstr)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Engine",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Engine",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ILgWritingSystem"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstrId",
+              "type": "String"
+            }
+          ],
+          "return_type": "ILgWritingSystem",
+          "signature": "get_Engine(String bstrId)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_EngineOrNull",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_EngineOrNull",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ILgWritingSystem"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ILgWritingSystem",
+          "signature": "get_EngineOrNull(Int32 ws)"
         }
       ],
       "name": "ILgWritingSystemFactory",
@@ -102273,6 +104060,40 @@
           ],
           "return_type": "Boolean",
           "signature": "TryWs(Int32 ws, Int32& actualWs, ITsString& tssActual)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "val",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, String val)"
         }
       ],
       "name": "IMultiAccessorBase",
@@ -130530,6 +132351,728 @@
           ],
           "return_type": "Void",
           "signature": "VecProp(Int32 hvo, Int32 tag, Int32 chvoMax, Int32& _chvo, ArrayPtr _rghvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_BooleanProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_BooleanProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_BooleanProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GuidProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GuidProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Guid"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Guid",
+          "signature": "get_GuidProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Int64Prop",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Int64Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_Int64Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IntProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IntProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_IntProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsDummyId",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsDummyId",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsDummyId(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsPropInCache",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsPropInCache",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cpt",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsPropInCache(Int32 hvo, Int32 tag, Int32 cpt, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidObject",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidObject",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidObject(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringAlt",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringAlt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_MultiStringAlt(Int32 hvo, Int32 tag, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsMultiString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsMultiString",
+          "signature": "get_MultiStringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjFromGuid",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjFromGuid",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "uid",
+              "type": "Guid"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjFromGuid(Guid uid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjectProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjectProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjectProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Prop",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_StringProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_StringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_StringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TimeProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TimeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_TimeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnicodeProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnicodeProp",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "obj",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_UnicodeProp(Int32 obj, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnknownProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnknownProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_UnknownProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecItem",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecItem",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "index",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecItem(Int32 hvo, Int32 tag, Int32 index)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSize",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSize",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSize(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSizeAssumeCached",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSizeAssumeCached",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSizeAssumeCached(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_WritingSystemsOfInterest",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_WritingSystemsOfInterest",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cwsMax",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "_ws",
+              "type": "ArrayPtr"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_WritingSystemsOfInterest(Int32 cwsMax, ArrayPtr _ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_UnicodeProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_UnicodeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "obj",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstr",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_UnicodeProp(Int32 obj, Int32 tag, String bstr)"
         }
       ],
       "name": "ISilDataAccess",
@@ -130845,6 +133388,111 @@
           ],
           "return_type": "Int32[]",
           "signature": "VecProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Binary",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Binary",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "rgb",
+              "type": "Byte[]&"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_Binary(Int32 hvo, Int32 tag, Byte[]& rgb)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_DateTime",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_DateTime",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "DateTime"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "DateTime",
+          "signature": "get_DateTime(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GenDateProp",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GenDateProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "GenDate"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "GenDate",
+          "signature": "get_GenDateProp(Int32 hvo, Int32 tag)"
         }
       ],
       "name": "ISilDataAccessManaged",
@@ -135824,6 +138472,71 @@
           ],
           "return_type": "ITsString",
           "signature": "GetStringFromIndex(Int32 iws, Int32& _ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_String",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_String",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_String(Int32 ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "_tss",
+              "type": "ITsString"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, ITsString _tss)"
         }
       ],
       "name": "ITsMultiString",
@@ -136904,6 +139617,129 @@
           ],
           "return_type": "Void",
           "signature": "SetStrPropValue(Int32 ichMin, Int32 ichLim, Int32 tpt, String bstrVal)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the ITsTextProps for run number irun (a run index, not a character offset -- use get_RunAt(ich) to find which run contains a given character offset, or get_PropertiesAt(ich) to get properties directly from an offset). Call .GetIntPropValues(FwTextPropType.ktptWs) on the result to read the writing-system id for that run.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Properties",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_Properties(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_PropertiesAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_PropertiesAt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_PropertiesAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_RunAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunAt",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_RunAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the text of run number irun (a run index, not a character offset). Pair with get_Properties(irun) to read both the run's text and its properties (e.g. writing system) in one pass; use RunCount/get_MinOfRun(i)/get_LimOfRun(i) to iterate every run, or get_RunAt(ich) to find the run containing a given character offset.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunText",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_RunText(Int32 irun)"
         }
       ],
       "name": "ITsStrBldr",
@@ -137761,6 +140597,242 @@
           ],
           "return_type": "Void",
           "signature": "UnlockText(String _rgch)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsNormalizedForm",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsNormalizedForm",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "nm",
+              "type": "FwNormalizationMode"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsNormalizedForm(FwNormalizationMode nm)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_LimOfRun",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_LimOfRun",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_LimOfRun(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MinOfRun",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MinOfRun",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_MinOfRun(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NormalizedForm",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NormalizedForm",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "nm",
+              "type": "FwNormalizationMode"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_NormalizedForm(FwNormalizationMode nm)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the ITsTextProps for run number irun (a run index, not a character offset -- use get_RunAt(ich) to find which run contains a given character offset, or get_PropertiesAt(ich) to get properties directly from an offset). Call .GetIntPropValues(FwTextPropType.ktptWs) on the result to read the writing-system id for that run.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Properties",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_Properties(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_PropertiesAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_PropertiesAt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_PropertiesAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_RunAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunAt",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_RunAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the text of run number irun (a run index, not a character offset). Pair with get_Properties(irun) to read both the run's text and its properties (e.g. writing system) in one pass; use RunCount/get_MinOfRun(i)/get_LimOfRun(i) to iterate every run, or get_RunAt(ich) to find the run containing a given character offset.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunText",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_RunText(Int32 irun)"
         }
       ],
       "name": "ITsString",
@@ -141789,6 +144861,94 @@
           ],
           "return_type": "Void",
           "signature": "PutStyle(String bstrName, String bstrUsage, Int32 hvoStyle, Int32 hvoBasedOn, Int32 hvoNext, Int32 nType, Boolean fBuiltIn, Boolean fModified, ITsTextProps _ttp)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsStyleProtected",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsStyleProtected",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstrName",
+              "type": "String"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsStyleProtected(String bstrName)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NthStyle",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NthStyle",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ihvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_NthStyle(Int32 ihvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NthStyleName",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NthStyleName",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ihvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_NthStyleName(Int32 ihvo)"
         }
       ],
       "name": "IVwStylesheet",
@@ -155147,6 +158307,95 @@
           ],
           "return_type": "Void",
           "signature": "UpdateCustomField(Int32 flid, String fieldHelp, Int32 fieldWs, String userLabel)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_FieldSource",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": false,
+          "name": "get_FieldSource",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "FieldSource"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "flid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "FieldSource",
+          "signature": "get_FieldSource(Int32 flid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidClass",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidClass",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "flid",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "clid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidClass(Int32 flid, Int32 clid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsVirtual",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsVirtual",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "flid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsVirtual(Int32 flid)"
         }
       ],
       "name": "LcmMetaDataCache",
@@ -156724,6 +159973,67 @@
           ],
           "return_type": "Void",
           "signature": "UpdateCustomField(Int32 flid, String fieldHelp, Int32 fieldWs, String userLabel)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidClass",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidClass",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luFlid",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luClid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidClass(Int32 luFlid, Int32 luClid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsVirtual",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsVirtual",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "luFlid",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsVirtual(Int32 luFlid)"
         }
       ],
       "name": "LcmMetaDataCacheDecoratorBase",
@@ -159375,6 +162685,125 @@
           ],
           "return_type": "IStyle",
           "signature": "Style(String name)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsStyleProtected",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsStyleProtected",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "sName",
+              "type": "String"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsStyleProtected(String sName)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NthStyle",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NthStyle",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "iStyle",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_NthStyle(Int32 iStyle)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NthStyleName",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NthStyleName",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "iStyle",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_NthStyleName(Int32 iStyle)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NthStyleObject",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": false,
+          "name": "get_NthStyleObject",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "IStStyle"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "iStyle",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "IStStyle",
+          "signature": "get_NthStyleObject(Int32 iStyle)"
         }
       ],
       "name": "LcmStyleSheet",
@@ -196296,6 +199725,71 @@
           ],
           "return_type": "ITsString",
           "signature": "StringOrNull(Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_String",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_String",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_String(Int32 ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tss",
+              "type": "ITsString"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, ITsString tss)"
         }
       ],
       "name": "MultiAccessor",
@@ -196596,6 +200090,105 @@
           ],
           "return_type": "Boolean",
           "signature": "TryWs(Int32 ws, Int32& actualWs, ITsString& tssResult)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_String",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_String",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_String(Int32 ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": true,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tss",
+              "type": "ITsString"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, ITsString tss)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "val",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, String val)"
         }
       ],
       "name": "MultiAccessorBase",
@@ -197077,6 +200670,40 @@
           ],
           "return_type": "ITsString",
           "signature": "GetAlternativeTSS(SpecialWritingSystemCodes code)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tss",
+              "type": "ITsString"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, ITsString tss)"
         }
       ],
       "name": "MultiUnicodeAccessor",
@@ -241863,6 +245490,833 @@
           ],
           "return_type": "Int32[]",
           "signature": "VecProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Binary",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Binary",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "rgb",
+              "type": "Byte[]&"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_Binary(Int32 hvo, Int32 tag, Byte[]& rgb)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_BooleanProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_BooleanProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_BooleanProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_DateTime",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_DateTime",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "DateTime"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "DateTime",
+          "signature": "get_DateTime(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GenDateProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GenDateProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "GenDate"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "GenDate",
+          "signature": "get_GenDateProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_GuidProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_GuidProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Guid"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Guid",
+          "signature": "get_GuidProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Int64Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Int64Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_Int64Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IntProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IntProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_IntProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsDummyId",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsDummyId",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsDummyId(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsPropInCache",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsPropInCache",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cpt",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsPropInCache(Int32 hvo, Int32 tag, Int32 cpt, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsValidObject",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsValidObject",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsValidObject(Int32 hvo)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringAlt",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringAlt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_MultiStringAlt(Int32 hvo, Int32 tag, Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MultiStringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MultiStringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsMultiString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsMultiString",
+          "signature": "get_MultiStringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjFromGuid",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjFromGuid",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "uid",
+              "type": "Guid"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjFromGuid(Guid uid)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_ObjectProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_ObjectProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_ObjectProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Prop",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Prop",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_Prop(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_StringProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_StringProp",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_StringProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TimeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TimeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int64"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int64",
+          "signature": "get_TimeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnicodeProp",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_UnicodeProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_UnknownProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_UnknownProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Object"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Object",
+          "signature": "get_UnknownProp(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecItem",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecItem",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "index",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecItem(Int32 hvo, Int32 tag, Int32 index)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSize",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSize",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSize(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_VecSizeAssumeCached",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_VecSizeAssumeCached",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "hvo",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_VecSizeAssumeCached(Int32 hvo, Int32 tag)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_WritingSystemsOfInterest",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_WritingSystemsOfInterest",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "cwsMax",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "_ws",
+              "type": "ArrayPtr"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_WritingSystemsOfInterest(Int32 cwsMax, ArrayPtr _ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_UnicodeProp",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_UnicodeProp",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "obj",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tag",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstr",
+              "type": "String"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_UnicodeProp(Int32 obj, Int32 tag, String bstr)"
         }
       ],
       "name": "SilDataAccessManagedBase",
@@ -255115,6 +259569,129 @@
           ],
           "return_type": "String",
           "signature": "GetChars(Int32 ichMin, Int32 ichLim)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the ITsTextProps for run number irun (a run index, not a character offset -- use get_RunAt(ich) to find which run contains a given character offset, or get_PropertiesAt(ich) to get properties directly from an offset). Call .GetIntPropValues(FwTextPropType.ktptWs) on the result to read the writing-system id for that run.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Properties",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_Properties(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_PropertiesAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_PropertiesAt",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsTextProps"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsTextProps",
+          "signature": "get_PropertiesAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_RunAt",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunAt",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ich",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_RunAt(Int32 ich)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Returns the text of run number irun (a run index, not a character offset). Pair with get_Properties(irun) to read both the run's text and its properties (e.g. writing system) in one pass; use RunCount/get_MinOfRun(i)/get_LimOfRun(i) to iterate every run, or get_RunAt(ich) to find the run containing a given character offset.",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_RunText",
+          "output_behavior": {
+            "empty": {
+              "description": "May return '***' for empty multilingual fields",
+              "value": "\"***\" or null"
+            },
+            "failure": [],
+            "notes": [
+              "Check for '***' placeholder in multilingual text fields"
+            ],
+            "success": {
+              "type": "String"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "String",
+          "signature": "get_RunText(Int32 irun)"
         }
       ],
       "name": "TsStrBase",
@@ -256078,6 +260655,119 @@
           ],
           "return_type": "Void",
           "signature": "UnlockText(String rgch)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_IsNormalizedForm",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_IsNormalizedForm",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "nm",
+              "type": "FwNormalizationMode"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_IsNormalizedForm(FwNormalizationMode nm)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_LimOfRun",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_LimOfRun",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_LimOfRun(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_MinOfRun",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_MinOfRun",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Int32"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "irun",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "Int32",
+          "signature": "get_MinOfRun(Int32 irun)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_NormalizedForm",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_NormalizedForm",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "nm",
+              "type": "FwNormalizationMode"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_NormalizedForm(FwNormalizationMode nm)"
         }
       ],
       "name": "TsString",
@@ -257720,6 +262410,33 @@
           "parameters": [],
           "return_type": "UndoResult",
           "signature": "Undo()"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_TasksSinceMark",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_TasksSinceMark",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "Boolean"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "fUndo",
+              "type": "Boolean"
+            }
+          ],
+          "return_type": "Boolean",
+          "signature": "get_TasksSinceMark(Boolean fUndo)"
         }
       ],
       "name": "UndoStack",
@@ -262617,6 +267334,71 @@
           ],
           "return_type": "ITsString",
           "signature": "StringOrNull(Int32 ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_String",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_String",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ITsString"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ITsString",
+          "signature": "get_String(Int32 ws)"
+        },
+        {
+          "category": "modification",
+          "description": "Modifies data using set_String",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "set_String",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "No return value",
+              "type": "void"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            },
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "tss",
+              "type": "ITsString"
+            }
+          ],
+          "return_type": "Void",
+          "signature": "set_String(Int32 ws, ITsString tss)"
         }
       ],
       "name": "VirtualStringAccessor",
@@ -269263,6 +274045,67 @@
           ],
           "return_type": "Boolean",
           "signature": "TryGet(String identifier, CoreWritingSystemDefinition& ws)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_Engine",
+          "indexed": false,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_Engine",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ILgWritingSystem"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "bstrIdentifier",
+              "type": "String"
+            }
+          ],
+          "return_type": "ILgWritingSystem",
+          "signature": "get_Engine(String bstrIdentifier)"
+        },
+        {
+          "category": "retrieval",
+          "description": "Retrieves data using get_EngineOrNull",
+          "index_param_type": "Int32",
+          "indexed": true,
+          "is_abstract": false,
+          "is_static": false,
+          "is_virtual": true,
+          "name": "get_EngineOrNull",
+          "output_behavior": {
+            "empty": {
+              "description": "Null when object not found",
+              "value": "null"
+            },
+            "failure": [],
+            "notes": [],
+            "success": {
+              "type": "ILgWritingSystem"
+            }
+          },
+          "parameters": [
+            {
+              "has_default": false,
+              "is_optional": false,
+              "name": "ws",
+              "type": "Int32"
+            }
+          ],
+          "return_type": "ILgWritingSystem",
+          "signature": "get_EngineOrNull(Int32 ws)"
         }
       ],
       "name": "WritingSystemManager",
@@ -270309,7 +275152,7 @@
     "total_classes": 1243,
     "total_enums": 97,
     "total_interfaces": 694,
-    "total_methods": 3311,
+    "total_methods": 3458,
     "total_properties": 4368,
     "total_relationships": 911,
     "total_types": 2034

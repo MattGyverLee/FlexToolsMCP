@@ -505,19 +505,129 @@ def extract_property(pinfo) -> Optional[Dict[str, Any]]:
 
 # ---- Method Extraction -------------------------------------------------------
 
-def extract_method(minfo) -> Optional[Dict[str, Any]]:
-    """Extract method metadata in unified format."""
+# Issue #136: hand-written teaching text for the two ITsString accessors the
+# domain review called out by name. Every other recovered get_/set_ accessor
+# falls back to generate_method_description()'s generic template -- these two
+# are common enough (every run-iteration script touches them) to earn a
+# precise, worked description instead of "Retrieves data using get_Properties".
+#
+# NOTE: the domain review's cycle1-domain.md drafted these against an
+# assumed "character offset ich" parameter for both methods. Live reflection
+# (confirmed against src/SIL.LCModel.Core/Text/TsStrBase.cs's own doc
+# comments in the liblcm checkout) shows both actually take a *run index*
+# (parameter irun) -- "Gets the text properties for the specified run." /
+# "Gets the text for the specified run." -- which is a different parameter
+# than the sibling *At methods (get_RunAt(ich)/get_PropertiesAt(ich)) that
+# genuinely take a character offset. Shipping the drafted text verbatim
+# would tell script authors to pass a character offset into a run-index
+# parameter, silently returning the wrong run's data (or throwing once the
+# offset exceeds RunCount). Corrected below to match the real signature
+# while preserving the domain review's teaching intent (the
+# GetIntPropValues hint and the RunCount/get_MinOfRun/get_LimOfRun
+# iteration pattern).
+RECOVERED_ACCESSOR_DESCRIPTIONS = {
+    "get_Properties": (
+        "Returns the ITsTextProps for run number irun (a run index, not a "
+        "character offset -- use get_RunAt(ich) to find which run contains "
+        "a given character offset, or get_PropertiesAt(ich) to get "
+        "properties directly from an offset). Call "
+        ".GetIntPropValues(FwTextPropType.ktptWs) on the result to read the "
+        "writing-system id for that run."
+    ),
+    "get_RunText": (
+        "Returns the text of run number irun (a run index, not a character "
+        "offset). Pair with get_Properties(irun) to read both the run's "
+        "text and its properties (e.g. writing system) in one pass; use "
+        "RunCount/get_MinOfRun(i)/get_LimOfRun(i) to iterate every run, or "
+        "get_RunAt(ich) to find the run containing a given character offset."
+    ),
+}
+
+
+def _is_property_backing_accessor(minfo, accessor_name: str, type_properties: List[Any]) -> bool:
+    """Gate 2 for #136: True when `minfo` is the compiler-generated get_/set_
+    accessor for a PropertyInfo that GetProperties() already surfaced on this
+    type (e.g. the managed C# indexer backing IStText.Item, LcmList.Item,
+    SmallDictionary.Item, ...). Retaining those too would emit a second,
+    method-shaped duplicate of an entry `properties` already documents --
+    unlike ITsString's COM case, where GetProperties() never surfaces an
+    indexer at all.
+
+    Primary check is MethodInfo identity against
+    pinfo.GetGetMethod(True)/GetSetMethod(True) (the real reflection-level
+    fact: "is this method literally the getter/setter of that property").
+    A base-name string match against known property names is the fallback,
+    covering any reflection edge case where two MethodInfo instances that
+    describe the same underlying accessor fail an identity comparison.
+    """
+    base_name = accessor_name[4:] if accessor_name.startswith(("get_", "set_")) else accessor_name
+
+    property_names = set()
+    for pinfo in type_properties:
+        try:
+            property_names.add(clean_type_name(pinfo.Name))
+        except Exception:
+            pass
+
+        try:
+            getter = pinfo.GetGetMethod(True)
+            if getter is not None and minfo.Equals(getter):
+                return True
+        except Exception:
+            pass
+
+        try:
+            setter = pinfo.GetSetMethod(True)
+            if setter is not None and minfo.Equals(setter):
+                return True
+        except Exception:
+            pass
+
+    # Fallback: base-name string comparison against existing property names.
+    return base_name in property_names
+
+
+def extract_method(minfo, type_properties: Optional[List[Any]] = None) -> Optional[Dict[str, Any]]:
+    """Extract method metadata in unified format.
+
+    `type_properties` is the declaring type's `GetProperties()` result (as
+    reflected by the caller); it is only consulted for get_/set_-named
+    methods, to run gate 2 (backing-accessor de-duplication) below.
+    """
     if not PYTHONNET_AVAILABLE:
         return None
 
     try:
         name = clean_type_name(minfo.Name)
 
-        # Skip property accessors and common object methods
-        if name.startswith(("get_", "set_", "add_", "remove_")):
-            return None
         if name in ("Equals", "GetHashCode", "GetType", "ToString", "Finalize", "MemberwiseClone"):
             return None
+
+        # Event accessors carry no arity/indexing semantics -- #136 only
+        # concerns indexed property accessors -- so they stay unconditionally
+        # filtered, same as before this fix.
+        if name.startswith(("add_", "remove_")):
+            return None
+
+        is_getter = name.startswith("get_")
+        is_setter = name.startswith("set_")
+
+        if is_getter or is_setter:
+            arity = len(minfo.GetParameters())
+
+            # Gate 1 (arity): an ordinary zero-arg getter/single-arg setter is
+            # already surfaced via GetProperties() -> extract_property(), so
+            # only parameterized accessors (indexers, FLID accessors, etc.)
+            # are candidates for recovery here.
+            if is_getter and arity < 1:
+                return None
+            if is_setter and arity < 2:
+                return None
+
+            # Gate 2 (backing accessor): drop duplicates of a real indexer
+            # PropertyInfo already documented in `properties`.
+            if _is_property_backing_accessor(minfo, name, type_properties or []):
+                return None
 
         # Build parameter list
         params = []
@@ -562,18 +672,37 @@ def extract_method(minfo) -> Optional[Dict[str, Any]]:
             is_method=True
         )
 
-        return {
+        description = RECOVERED_ACCESSOR_DESCRIPTIONS.get(name) or generate_method_description(name, category)
+
+        result = {
             "name": name,
             "signature": signature,
             "return_type": return_type,
             "output_behavior": output_behavior,
             "parameters": params,
+        }
+
+        if is_getter or is_setter:
+            # Mechanical rule (domain review, #136): a single Int32 parameter
+            # means the accessor is indexed (e.g. get_Properties(int ich));
+            # an enum or any other single-parameter type (e.g.
+            # get_IsNormalizedForm(FwNormalizationMode)) is an ordinary
+            # parameterized accessor, not an index, so index_param_type is
+            # only emitted when indexed is true.
+            indexed = len(params) == 1 and params[0]["type"] == "Int32"
+            result["indexed"] = indexed
+            if indexed:
+                result["index_param_type"] = params[0]["type"]
+
+        result.update({
             "category": category,
-            "description": generate_method_description(name, category),
+            "description": description,
             "is_static": minfo.IsStatic,
             "is_virtual": minfo.IsVirtual,
             "is_abstract": minfo.IsAbstract
-        }
+        })
+
+        return result
     except Exception as e:
         log.debug(f"Error extracting method: {e}")
         return None
@@ -581,6 +710,14 @@ def extract_method(minfo) -> Optional[Dict[str, Any]]:
 
 def categorize_method(name: str) -> str:
     """Categorize method by naming pattern."""
+    # Recovered get_/set_ accessors (#136) use the lowercase compiler-emitted
+    # prefix, not the "Get"/"Set" PascalCase convention checked below --
+    # match them explicitly so e.g. get_Properties still lands in
+    # "retrieval" rather than falling through to the generic "operation".
+    if name.startswith("get_"):
+        return METHOD_CATEGORY_RETRIEVAL
+    if name.startswith("set_"):
+        return METHOD_CATEGORY_MODIFICATION
     if name.startswith(("Get", "Find", "Search", "Retrieve", "Load", "Fetch")):
         return METHOD_CATEGORY_RETRIEVAL
     elif name.startswith(("Set", "Update", "Modify", "Change", "Apply")):
@@ -701,9 +838,13 @@ def extract_type(t: Any, fetch_descriptions: bool = False) -> Optional[Dict[str,
         # Extract properties
         properties = []
         relationships = []
+        # Reflected once and reused below for gate 2 of #136's method
+        # recovery (identity/name check against backing get_/set_ accessors).
+        type_properties: List[Any] = []
 
         try:
-            for p in t.GetProperties(flags):
+            type_properties = list(t.GetProperties(flags))
+            for p in type_properties:
                 prop_info = extract_property(p)
                 if prop_info:
                     properties.append(prop_info)
@@ -724,7 +865,7 @@ def extract_type(t: Any, fetch_descriptions: bool = False) -> Optional[Dict[str,
 
         try:
             for m in t.GetMethods(flags):
-                method_info = extract_method(m)
+                method_info = extract_method(m, type_properties=type_properties)
                 if method_info:
                     methods.append(method_info)
         except Exception as e:

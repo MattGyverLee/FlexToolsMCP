@@ -77,8 +77,14 @@ python scripts/check_doc_snippets.py --upstream # + pyflexicon docstrings
 
 It runs as a pre-commit hook and as `tests/test_doc_snippets.py`, so a
 `refresh.py` bump to a new flexicon version turns CI red if the prose did not
-follow. Upstream docstring findings are reported, never blocking -- file
-those at MattGyverLee/flexicon.
+follow. Upstream docstring findings are reported, never blocking -- they are
+fixed at MattGyverLee/flexicon and arrive here at the next refresh. To hand
+that debt to someone (or to an agent), regenerate the worklist, which
+resolves every finding to a flexicon source path and line:
+
+```
+python scripts/check_doc_snippets.py --worklist reports/upstream-flexicon-docstring-findings.md
+```
 
 If a fence deliberately shows something other than current flexicon API, say
 so in its info string rather than leaving the gate to guess:

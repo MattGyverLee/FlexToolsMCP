@@ -20,6 +20,7 @@ This test is the reason the check runs at all in CI: the failure mode is not
 stayed behind", which no doc-file trigger would ever fire on.
 """
 
+import json
 import os
 import sys
 
@@ -146,6 +147,33 @@ def test_elided_calls_do_not_trip_arity(api):
 
 def test_documented_internals_are_not_api_claims(api):
     assert not _check("project._cache.CreateObject(x)\n", api)
+
+
+def test_worklist_resolves_findings_to_flexicon_source_locations(api, tmp_path):
+    """The report is only actionable if it says which file and line to open.
+
+    Findings are keyed by index entity ("FLExProject.Paragraphs"); whoever
+    fixes them works in the flexicon repo, so the worklist resolves each one
+    to a repo-relative path and the enclosing def's line number.
+    """
+    _api, _snippets, findings = checker.run(include_upstream=True)
+    md_path, json_path, count = checker.write_worklist(
+        api, findings, str(tmp_path / "worklist.md")
+    )
+    assert count > 0
+    assert os.path.exists(md_path) and os.path.exists(json_path)
+
+    with open(json_path, encoding="utf-8") as fh:
+        payload = json.load(fh)
+    rows = payload["findings"]
+    assert rows
+
+    located = [r for r in rows if r["file"].startswith("flexicon/") and r["def_line"]]
+    if checker._flexicon_source_root() is None:
+        pytest.skip("flexicon not installed: source locations cannot be resolved")
+    assert located, "no finding resolved to a flexicon source file and line"
+    # internal receivers are their own repair, not an accessor rename
+    assert any(r["kind"] == "internal-leak" for r in rows)
 
 
 def test_refuses_to_run_with_a_narrowed_ground_truth(monkeypatch):

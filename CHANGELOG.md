@@ -27,6 +27,12 @@ universe that flagged 13 valid names (`project.Text`, `project.Example`, ...)
 as typos. The hook now runs with `language: system`, and a gate that fails on
 valid code cannot quietly become one people learn to bypass.
 
+`--worklist PATH` writes the upstream findings as an actionable list --
+markdown plus a JSON sibling -- resolving each one from an index entity
+(`FLExProject.Paragraphs`) to the flexicon repo path and `def` line where the
+docstring actually lives, with a nearest-real-name suggestion where difflib
+finds one. Checked in at `reports/upstream-flexicon-docstring-findings.md`.
+
 Wired as a pre-commit hook and `tests/test_doc_snippets.py`, so the real
 trigger -- `refresh.py` moving to a new flexicon while the prose stays put --
 turns CI red. Upstream pyflexicon docstring findings are reported

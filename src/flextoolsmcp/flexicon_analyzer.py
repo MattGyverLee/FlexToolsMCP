@@ -378,7 +378,15 @@ def infer_output_behavior(method_name: str, return_type: str, returns_doc: str,
                 "value": '"***" or ""',
                 "description": "May return '***' for empty multilingual fields"
             }
-    elif rt_lower in ("none", "optional") or "optional[" in rt_lower:
+    elif rt_lower == "none":
+        # A void method returns no value at all, so there is no "empty"
+        # result for a caller to inspect. Distinct from Optional[X], which
+        # really does hand back None as a not-found sentinel. Lumping the
+        # two together used to advertise "None when not found" on void
+        # setters and deleters (issue #134: harmless at 4 occurrences, but
+        # the .pyi tier resolves 63 more `-> None` methods).
+        output["empty"] = None
+    elif rt_lower == "optional" or "optional[" in rt_lower:
         output["empty"] = {
             "value": "None",
             "description": "None when not found"
@@ -1168,7 +1176,89 @@ def _classify_mapping_type(lcm_data: Dict[str, Any]) -> str:
     return "convenience"
 
 
-def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None) -> Optional[Dict[str, Any]]:
+# ---- Return-Type Resolution (issue #134) -------------------------------------
+#
+# A function's return type can come from three places, in descending
+# authority:
+#
+#   1. an inline annotation on the def in the .py source  (`-> "FLExProject"`)
+#   2. the docstring's Google-style `Returns:` block       (`ILexEntry: ...`)
+#   3. that same def's annotation in a sibling .pyi stub
+#
+# The stub ranks BELOW the docstring, which is the reverse of what issue
+# #134 originally proposed. Measured against flexicon 4.7.0 (47 stubs,
+# 542 annotations), preferring the stub over the docstring would have
+# rewritten 133 concrete LCM interface names into type-erased
+# placeholders -- AgentOperations.Create from `ICmAgent` to `Any`,
+# AnthropologyOperations.GetAll from `list[ICmAnthroItem]` to `List[Any]`
+# -- because flexicon's stubs deliberately type LCM objects as `Any`
+# (a stub must not require SIL.LCModel to be importable). There was
+# nothing in the other direction: zero disagreements paired a concrete
+# stub against an erased docstring. Since the LCM cross-annotation step
+# and find_wrappers_for_lcm both key off exactly those interface names,
+# stub-first would be a data-loss change. Ranked last it is strictly
+# additive -- it only ever fills a return_type that would otherwise be "".
+
+
+def _return_type_from_annotation(returns_node) -> str:
+    """Render an AST return annotation as the index's return_type string.
+
+    Shared by the inline-annotation and .pyi-stub tiers so the two
+    normalize identically -- notably `-> "FLExProject"` (a string forward
+    reference) yields `FLExProject`, not `'FLExProject'` with the quotes
+    still attached.
+    """
+    if returns_node is None:
+        return ""
+    if isinstance(returns_node, ast.Name):
+        return returns_node.id
+    if isinstance(returns_node, ast.Constant):
+        # Forward reference (`-> "FLExProject"`) or `-> None`.
+        return str(returns_node.value)
+    if hasattr(ast, 'unparse'):
+        # Optional[X], List[X], Iterator[X], dotted paths, etc.
+        return ast.unparse(returns_node)
+    return "complex"
+
+
+def extract_stub_return_types(py_path: Path) -> Dict[Tuple[Optional[str], str], str]:
+    """Map {(class_name_or_None, func_name): return_type} from a sibling .pyi.
+
+    Module-level functions key off a None class name. Returns an empty dict
+    -- never raises -- when no stub sits beside py_path or the stub does not
+    parse, so the 64 of flexicon's 111 modules that ship no stub index
+    exactly as they did before.
+    """
+    stub_path = py_path.with_suffix('.pyi')
+    if not stub_path.exists():
+        return {}
+
+    try:
+        with open(stub_path, 'r', encoding='utf-8') as f:
+            tree = ast.parse(f.read())
+    except (OSError, SyntaxError, ValueError) as e:
+        print(f"[WARN] Ignoring unparsable stub {stub_path.name}: {e}")
+        return {}
+
+    found: Dict[Tuple[Optional[str], str], str] = {}
+
+    def walk(body, class_name: Optional[str]) -> None:
+        for node in body:
+            if isinstance(node, ast.ClassDef):
+                # Recurse so a nested class's methods key off the inner name.
+                walk(node.body, node.name)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                rendered = _return_type_from_annotation(node.returns)
+                if rendered:
+                    found[(class_name, node.name)] = rendered
+
+    walk(tree.body, None)
+    return found
+
+
+def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None,
+                   stub_returns: Optional[Dict[Tuple[Optional[str], str], str]] = None
+                   ) -> Optional[Dict[str, Any]]:
     """Analyze a method definition and extract its API information."""
     if node.name.startswith('_') and node.name != '__init__':
         return None  # Skip private methods except __init__
@@ -1202,23 +1292,22 @@ def analyze_method(node, class_name: str, lcm_imports: List[Dict] | None = None)
             elif decorator.id == "staticmethod":
                 is_staticmethod = True
 
-    # Extract return type: prefer type annotation, fallback to docstring
+    # Extract return type: inline annotation, then docstring, then .pyi stub.
+    # See _return_type_from_annotation above for why the stub ranks last.
     return_type = ""
     if hasattr(node, 'returns') and node.returns:
         # Python type hint: def foo() -> Type:
-        if isinstance(node.returns, ast.Name):
-            return_type = node.returns.id
-        elif isinstance(node.returns, ast.Constant):
-            return_type = str(node.returns.value)
-        elif isinstance(node.returns, ast.Subscript):
-            # Handle Optional[X], List[X], Iterator[X], etc.
-            return_type = ast.unparse(node.returns) if hasattr(ast, 'unparse') else "complex"
-        elif hasattr(ast, 'unparse'):
-            return_type = ast.unparse(node.returns)
+        return_type = _return_type_from_annotation(node.returns)
 
     # Fallback to docstring-extracted return type
     if not return_type and parsed_doc["return_type"]:
         return_type = parsed_doc["return_type"]
+
+    # Issue #134: last resort, the same def's annotation in a sibling .pyi.
+    # Only ever fills a return_type that is still "" here, so a stub can
+    # never overwrite a concrete LCM interface name from a docstring.
+    if not return_type and stub_returns:
+        return_type = stub_returns.get((class_name or None, node.name), "")
 
     # Generate fallback description if none from docstring
     summary = parsed_doc["summary"]
@@ -1772,7 +1861,9 @@ def _extract_facade_access_paths(flexicon_code_base: Path) -> Dict[str, str]:
 
 
 def analyze_class(node, module_path: str, lcm_imports: List[Dict],
-                   facade_access_paths: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+                   facade_access_paths: Optional[Dict[str, str]] = None,
+                   stub_returns: Optional[Dict[Tuple[Optional[str], str], str]] = None
+                   ) -> Dict[str, Any]:
     """Analyze a class definition and extract its API information."""
     docstring = extract_docstring(node)
     parsed_doc = parse_docstring(docstring)
@@ -1790,7 +1881,7 @@ def analyze_class(node, module_path: str, lcm_imports: List[Dict],
 
     for item in node.body:
         if isinstance(item, ast.FunctionDef):
-            method_info = analyze_method(item, node.name, lcm_imports)
+            method_info = analyze_method(item, node.name, lcm_imports, stub_returns)
             if method_info:
                 if method_info["is_property"]:
                     properties.append(method_info)
@@ -1866,6 +1957,10 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path,
 
         lcm_imports = extract_lcm_imports(tree)
 
+        # Issue #134: sibling <module>.pyi, parsed once and shared by every
+        # class and top-level function in this module.
+        stub_returns = extract_stub_return_types(file_path)
+
         file_info = {
             "file": str(rel_path),
             "module_path": module_path,
@@ -1877,7 +1972,8 @@ def _parse_and_analyze_file(file_path: Path, base_path: Path,
         # Find top-level classes
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
-                class_info = analyze_class(node, module_path, lcm_imports, facade_access_paths)
+                class_info = analyze_class(node, module_path, lcm_imports,
+                                           facade_access_paths, stub_returns)
                 file_info["classes"].append(class_info)
 
         return (file_info, tree)
@@ -2103,7 +2199,8 @@ def analyze_flexlibs_stable(flexlibs_path: str) -> Dict[str, Any]:
 
             for node in tree.body:
                 if isinstance(node, ast.FunctionDef) and not node.name.startswith('_'):
-                    func_info = analyze_method(node, "", lcm_imports)
+                    func_info = analyze_method(node, "", lcm_imports,
+                                               extract_stub_return_types(py_file))
                     if func_info:
                         func_info["source_file"] = py_file.name
                         func_info["category"] = get_category_from_method_name(node.name)

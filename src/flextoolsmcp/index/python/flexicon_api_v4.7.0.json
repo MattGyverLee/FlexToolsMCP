@@ -1934,7 +1934,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -1948,7 +1950,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If agent_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(agent_or_hvo)",
           "summary": "Delete an agent from AnalyzingAgentsOC.",
@@ -3663,7 +3665,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -3678,7 +3682,7 @@
             "FP_NullParameterError: If allomorph_or_hvo is None.",
             "FP_ParameterError: If the allomorph is in use or cannot be deleted."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(allomorph_or_hvo)",
           "summary": "Delete an allomorph.",
@@ -5634,7 +5638,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -5649,7 +5655,7 @@
             "FP_NullParameterError: If anno_def is None.",
             "FP_ParameterError: If trying to delete a system definition."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(anno_def)",
           "summary": "Delete an annotation definition.",
@@ -6494,7 +6500,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -6521,7 +6529,7 @@
             "FP_NullParameterError: If anno_def or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(anno_def, name, wsHandle=None)",
           "summary": "Set the name of an annotation definition.",
@@ -7024,7 +7032,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -7039,7 +7049,7 @@
             "FP_NullParameterError: If item_or_hvo is None.",
             "FP_ParameterError: If the item is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(item_or_hvo)",
           "summary": "Delete an anthropology item.",
@@ -8511,7 +8521,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -8538,7 +8550,7 @@
             "FP_NullParameterError: If item_or_hvo or name is None.",
             "FP_ParameterError: If the item is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(item_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of an anthropology item.",
@@ -9165,7 +9177,9 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -9176,7 +9190,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "__init__(project)",
           "summary": "Initialize BaseOperations with a FLExProject instance.",
@@ -10598,7 +10612,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -10626,7 +10642,7 @@
             "FP_ParameterError: If name is empty/whitespace-only (Q-242B),",
             "or if the check type does not exist or is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(check_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a check type.",
@@ -15378,7 +15394,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Any"
+            }
           },
           "parameters": [
             {
@@ -15402,7 +15420,7 @@
           "raises": [
             "NotImplementedError: Always raised - custom fields cannot be duplicated."
           ],
-          "return_type": "",
+          "return_type": "Any",
           "returns": "",
           "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for custom fields.",
@@ -16777,7 +16795,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -16792,7 +16812,7 @@
             "FP_NullParameterError: If record_or_hvo is None.",
             "FP_ParameterError: If the record doesn't exist."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(record_or_hvo)",
           "summary": "Delete a notebook record from the project.",
@@ -19232,7 +19252,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "EnumerableWrapper[IConstChart | IDsChart]: Each chart associated with the text.",
+              "type": "EnumerableWrapper[Any]"
+            }
           },
           "parameters": [
             {
@@ -19246,7 +19269,7 @@
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
-          "return_type": "",
+          "return_type": "EnumerableWrapper[Any]",
           "returns": "EnumerableWrapper[IConstChart | IDsChart]: Each chart associated with the text. ",
           "signature": "GetAllCharts(text_or_hvo)",
           "summary": "Get all charts (discourse and constituent) for a text.",
@@ -19867,7 +19890,9 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -19878,7 +19903,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "__init__(enumerable)",
           "summary": "Wrap an IEnumerable collection.",
@@ -20136,7 +20161,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -20151,7 +20178,7 @@
             "FP_NullParameterError: If env_or_hvo is None.",
             "FP_ParameterError: If the environment is in use and cannot be deleted."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(env_or_hvo)",
           "summary": "Delete a phonological environment.",
@@ -20489,7 +20516,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -20516,7 +20545,7 @@
             "FP_NullParameterError: If env_or_hvo or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(env_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a phonological environment.",
@@ -20846,7 +20875,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -20860,7 +20891,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If etymology_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(etymology_or_hvo)",
           "summary": "Delete an etymology from its owning entry.",
@@ -22162,7 +22193,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -22176,7 +22209,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If example_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(example_or_hvo)",
           "summary": "Delete an example sentence.",
@@ -23462,11 +23495,13 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "CloseProject()",
           "summary": "Save any pending changes and dispose of the LCM object.",
@@ -23489,7 +23524,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "FLExProject: A view over the donor's cache, or the donor itself when it is already a flexicon FLExProject.",
+              "type": "FLExProject"
+            }
           },
           "parameters": [
             {
@@ -23508,8 +23546,8 @@
             "``writeEnabled``. The message names every absent attribute",
             "and the donor's module."
           ],
-          "return_type": "",
-          "returns": "",
+          "return_type": "FLExProject",
+          "returns": "FLExProject: A view over the donor's cache, or the donor itself when it is already a flexicon FLExProject. ",
           "signature": "FromOpenProject(cls, donor)",
           "summary": "Attach a flexicon facade to a project someone else already opened.",
           "usage_hint": null
@@ -23894,7 +23932,10 @@
           "is_staticmethod": false,
           "name": "GetFieldID",
           "output_behavior": {
-            "empty": null,
+            "empty": {
+              "description": "None when not found",
+              "value": "None"
+            },
             "failure": [
               {
                 "exception": "FP_ParameterError",
@@ -23902,7 +23943,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Optional[int]"
+            }
           },
           "parameters": [
             {
@@ -23917,7 +23960,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "Optional[int]",
           "returns": "",
           "signature": "GetFieldID(className, fieldName)",
           "summary": "Return the `FieldID` ('flid') for the given field of an LCM class.",
@@ -26270,10 +26313,15 @@
           "is_staticmethod": false,
           "name": "Object",
           "output_behavior": {
-            "empty": null,
+            "empty": {
+              "description": "None when not found",
+              "value": "None"
+            },
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Optional[Any]"
+            }
           },
           "parameters": [
             {
@@ -26283,7 +26331,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "Optional[Any]",
           "returns": "",
           "signature": "Object(hvoOrGuid)",
           "summary": "Returns the `CmObject` for the given Hvo or guid (`str` or `System.",
@@ -26385,7 +26433,9 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -26410,7 +26460,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "OpenProject(projectName, writeEnabled=False, undoable=True, ui=None)",
           "summary": "Open a project.",
@@ -30161,7 +30211,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -30176,7 +30228,7 @@
             "FP_NullParameterError: If filter_obj is None",
             "FP_ParameterError: If filter doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(filter_obj)",
           "summary": "Delete a saved filter from the project.",
@@ -30953,7 +31005,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -30974,7 +31028,7 @@
             "FP_NullParameterError: If filter_obj or name is None",
             "FP_ParameterError: If name is empty or filter is invalid"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(filter_obj, name)",
           "summary": "Set the name of a filter.",
@@ -31081,7 +31135,9 @@
             "notes": [
               "Creates new object - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "NoReturn"
+            }
           },
           "parameters": [
             {
@@ -31101,7 +31157,7 @@
             "FP_ParameterError: Always, before any write. Nothing is",
             "created and no transaction is opened."
           ],
-          "return_type": "",
+          "return_type": "NoReturn",
           "returns": "",
           "signature": "Create(name, parent=None)",
           "summary": "Removed -- always raises.",
@@ -31119,7 +31175,9 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -31130,7 +31188,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "__init__(project)",
           "summary": "Initialize the deprecated alias and warn.",
@@ -33556,7 +33614,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -33571,7 +33631,7 @@
             "FP_NullParameterError: If entry_or_hvo is None",
             "FP_ParameterError: If entry doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(entry_or_hvo)",
           "summary": "Delete a lexical entry from the FLEx project.",
@@ -35574,7 +35634,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -35601,7 +35663,7 @@
             "FP_NullParameterError: If entry_or_hvo or text is None",
             "FP_ParameterError: If text is empty or entry has no lexeme form"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetHeadword(entry_or_hvo, text, wsHandle=None)",
           "summary": "Set the headword by setting the lexeme form.",
@@ -36398,7 +36460,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -36412,7 +36476,7 @@
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_NullParameterError: If lex_ref_or_hvo is None"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(lex_ref_or_hvo)",
           "summary": "Delete a lexical reference.",
@@ -37850,7 +37914,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -37864,7 +37930,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If sense_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(sense_or_hvo)",
           "summary": "Delete a sense from its owning entry.",
@@ -37946,7 +38012,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Optional[Any]"
+            }
           },
           "parameters": [
             {
@@ -37961,7 +38029,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "Optional[Any]",
           "returns": "",
           "signature": "Find(gloss, wsHandle=None)",
           "summary": "Find a sense by gloss text, returning the first match or None.",
@@ -40366,7 +40434,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -40392,7 +40462,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If sense_or_hvo or text is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetDefinition(sense_or_hvo, text, wsHandle=None)",
           "summary": "Sets the definition (meaning, explanation) for a sense.",
@@ -40541,7 +40611,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -40567,7 +40639,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If sense_or_hvo or text is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetGloss(sense_or_hvo, text, wsHandle=None)",
           "summary": "Sets the gloss (translation, meaning) for a sense in a specific writing system.",
@@ -41516,7 +41588,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -41530,7 +41604,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If location_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(location_or_hvo)",
           "summary": "Delete a location from the project.",
@@ -42596,7 +42670,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -42623,7 +42699,7 @@
             "FP_NullParameterError: If location_or_hvo or name is None.",
             "FP_ParameterError: If location doesn't exist."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(location_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a location.",
@@ -43005,7 +43081,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -43044,7 +43122,7 @@
             "(same bug class as the NaturalClassOperations/#222",
             "lineage)."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
           "summary": "Apply syncable properties (from GetSyncableProperties) onto an MSA.",
@@ -43075,7 +43153,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "The new MSA (same type as requested by target_kind), or ``msa`` unchanged if source_kind == target_kind.",
+              "type": "Any"
+            }
           },
           "parameters": [
             {
@@ -43097,7 +43178,7 @@
             "FP_ParameterError: If msa is not an affix MSA, or target_kind",
             "is not one of the recognised values."
           ],
-          "return_type": "",
+          "return_type": "Any",
           "returns": "The new MSA (same type as requested by target_kind), or ``msa`` unchanged if source_kind == target_kind. ",
           "signature": "ChangeAffixVariant(msa, target_kind: str)",
           "summary": "Convert an existing affix MSA to a different affix variant.",
@@ -43391,7 +43472,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -43414,7 +43497,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetDerivAffMsaPos(sense, from_pos=None, to_pos=None)",
           "summary": "Update the from-POS and/or to-POS on an existing IMoDerivAffMsa\nattached to a sense.",
@@ -43434,7 +43517,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -43451,7 +43536,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetStemMsaPos(sense, pos)",
           "summary": "Update the POS on an existing IMoStemMsa attached to a sense.",
@@ -43469,7 +43554,9 @@
             "empty": null,
             "failure": [],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -43479,7 +43566,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "__init__(project)",
           "summary": "Performs __init__ operation with project",
@@ -43724,7 +43811,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -43739,7 +43828,7 @@
             "FP_NullParameterError: If media_or_hvo is None",
             "FP_ParameterError: If media doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(media_or_hvo)",
           "summary": "Delete a media file reference from the FLEx project.",
@@ -45118,7 +45207,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -45132,7 +45223,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If rule_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(rule_or_hvo)",
           "summary": "Delete a morphological rule.",
@@ -45163,7 +45254,10 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "The newly created duplicate with a new GUID.",
+              "type": "Any"
+            }
           },
           "parameters": [
             {
@@ -45190,7 +45284,7 @@
             "FP_NullParameterError: If item_or_hvo is None.",
             "FP_ParameterError: If the rule type is not supported for duplication."
           ],
-          "return_type": "",
+          "return_type": "Any",
           "returns": "The newly created duplicate with a new GUID. ",
           "signature": "Duplicate(item_or_hvo, insert_after=True, deep=True)",
           "summary": "Duplicate a morphological rule or template, creating a copy with a new GUID.",
@@ -45216,11 +45310,14 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "description": "EnumerableWrapper[IMoCompoundRule | IMoInflAffixTemplate]: Each compound rule or affix template object.",
+              "type": "EnumerableWrapper[Any]"
+            }
           },
           "parameters": [],
           "raises": [],
-          "return_type": "",
+          "return_type": "EnumerableWrapper[Any]",
           "returns": "EnumerableWrapper[IMoCompoundRule | IMoInflAffixTemplate]: Each compound rule or affix template object. ",
           "signature": "GetAll()",
           "summary": "Get all compound rules and affix templates in the project.",
@@ -45715,7 +45812,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -45742,7 +45841,7 @@
             "FP_NullParameterError: If rule_or_hvo or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(rule_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a morphological rule or template.",
@@ -46734,7 +46833,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -46748,7 +46849,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If nc_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(nc_or_hvo)",
           "summary": "Delete a natural class.",
@@ -47336,7 +47437,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -47363,7 +47466,7 @@
             "FP_NullParameterError: If nc_or_hvo or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(nc_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a natural class.",
@@ -47630,7 +47733,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -47644,7 +47749,7 @@
             "FP_ReadOnlyError: If project is not opened with write enabled.",
             "FP_NullParameterError: If note is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(note)",
           "summary": "Delete a note.",
@@ -49200,7 +49305,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -49215,7 +49322,7 @@
             "FP_NullParameterError: If pos_or_hvo is None.",
             "FP_ParameterError: If the POS is in use and cannot be deleted."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(pos_or_hvo)",
           "summary": "Delete a part of speech.",
@@ -49887,7 +49994,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -49914,7 +50023,7 @@
             "FP_NullParameterError: If pos_or_hvo or abbr is None.",
             "FP_ParameterError: If abbr is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetAbbreviation(pos_or_hvo, abbr, wsHandle=None)",
           "summary": "Set the abbreviation of a part of speech.",
@@ -49947,7 +50056,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -49974,7 +50085,7 @@
             "FP_NullParameterError: If pos_or_hvo or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(pos_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a part of speech.",
@@ -50183,7 +50294,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -50198,7 +50311,7 @@
             "FP_NullParameterError: If paragraph_or_hvo is None.",
             "FP_ParameterError: If the paragraph does not exist or is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(paragraph_or_hvo)",
           "summary": "Delete a paragraph from its text.",
@@ -51046,7 +51159,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -51061,7 +51176,7 @@
             "FP_NullParameterError: If person_or_hvo is None",
             "FP_ParameterError: If person doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(person_or_hvo)",
           "summary": "Delete a person from the FLEx project.",
@@ -52217,7 +52332,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -52244,7 +52361,7 @@
             "FP_NullParameterError: If person_or_hvo or name is None",
             "FP_ParameterError: If name is empty"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(person_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a person.",
@@ -53400,7 +53517,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -53415,7 +53534,7 @@
             "FP_NullParameterError: If phoneme_or_hvo is None.",
             "FP_ParameterError: If the phoneme is in use and cannot be deleted."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(phoneme_or_hvo)",
           "summary": "Delete a phoneme.",
@@ -56017,7 +56136,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -56031,7 +56152,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If rule_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(rule_or_hvo)",
           "summary": "Delete a phonological rule.",
@@ -56738,7 +56859,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -56765,7 +56888,7 @@
             "FP_NullParameterError: If rule_or_hvo or name is None.",
             "FP_ParameterError: If name is empty."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(rule_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a phonological rule.",
@@ -59254,7 +59377,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Any"
+            }
           },
           "parameters": [
             {
@@ -59278,7 +59403,7 @@
           "raises": [
             "NotImplementedError: Always raised - project settings cannot be duplicated."
           ],
-          "return_type": "",
+          "return_type": "Any",
           "returns": "",
           "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for project settings.",
@@ -60708,7 +60833,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -60722,7 +60849,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If pronunciation_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(pronunciation_or_hvo)",
           "summary": "Delete a pronunciation.",
@@ -66339,7 +66466,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -66359,7 +66488,7 @@
             "FP_ReadOnlyError: If project is not opened with writeEnabled=True.",
             "FP_NullParameterError: If segment_or_hvo or analysis_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "AppendAnalysis(segment_or_hvo, analysis_or_hvo)",
           "summary": "Append an analysis token to the end of a segment's AnalysesRS.",
@@ -66507,7 +66636,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -66522,7 +66653,7 @@
             "FP_NullParameterError: If segment_or_hvo is None.",
             "FP_ParameterError: If segment has no owning paragraph."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(segment_or_hvo)",
           "summary": "Delete a segment from its paragraph.",
@@ -67034,7 +67165,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -67061,7 +67194,7 @@
             "FP_NullParameterError: If segment_or_hvo or analysis_or_hvo is None.",
             "FP_ParameterError: If index is out of range for AnalysesRS."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "InsertAnalysis(segment_or_hvo, index, analysis_or_hvo)",
           "summary": "Insert an analysis token at a given index in a segment's AnalysesRS.",
@@ -67195,7 +67328,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -67216,7 +67351,7 @@
             "FP_NullParameterError: If segment_or_hvo is None.",
             "FP_ParameterError: If index is out of range for AnalysesRS."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "RemoveAnalysis(segment_or_hvo, index)",
           "summary": "Remove the analysis token at a given index from a segment's AnalysesRS.",
@@ -67294,7 +67429,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -67323,7 +67460,7 @@
             "FP_ParameterError: If old_analysis_or_hvo is not found in",
             "AnalysesRS."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "ReplaceAnalysis(segment_or_hvo, old_analysis_or_hvo, new_analysis_or_hvo)",
           "summary": "Find an analysis token in a segment's AnalysesRS and replace it.",
@@ -67356,7 +67493,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -67383,7 +67522,7 @@
             "FP_NullParameterError: If segment_or_hvo or analysis_or_hvo is None.",
             "FP_ParameterError: If index is out of range for AnalysesRS."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetAnalysis(segment_or_hvo, index, analysis_or_hvo)",
           "summary": "Replace the analysis token at a given index in a segment's AnalysesRS.",
@@ -67906,7 +68045,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -67920,7 +68061,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If domain_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(domain_or_hvo)",
           "summary": "Delete a semantic domain.",
@@ -68827,7 +68968,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -68853,7 +68996,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If domain_or_hvo or name is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(domain_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a semantic domain.",
@@ -69932,7 +70075,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -69947,7 +70092,7 @@
             "FP_NullParameterError: If text_or_hvo is None.",
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(text_or_hvo)",
           "summary": "Delete a text from the project.",
@@ -70067,7 +70212,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Optional[Any]"
+            }
           },
           "parameters": [
             {
@@ -70082,7 +70229,7 @@
             }
           ],
           "raises": [],
-          "return_type": "",
+          "return_type": "Optional[Any]",
           "returns": "",
           "signature": "Find(title, wsHandle=None)",
           "summary": "Find a text by title, returning None when no match exists.",
@@ -70732,7 +70879,9 @@
             "notes": [
               "Modifies existing data - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -70763,7 +70912,7 @@
             "call retained per C7(b); not a deliberate type check).",
             "FP_ParameterError: If the text does not exist or is invalid."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "SetName(text_or_hvo, name, wsHandle=None)",
           "summary": "Set the name of a text.",
@@ -71645,7 +71794,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -71659,7 +71810,7 @@
             "FP_ReadOnlyError: If project is not opened with write enabled.",
             "FP_NullParameterError: If variant_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(variant_or_hvo)",
           "summary": "Delete a variant reference.",
@@ -72662,7 +72813,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -72677,7 +72830,7 @@
             "FP_NullParameterError: If analysis_or_hvo is None",
             "FP_ParameterError: If analysis doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(analysis_or_hvo)",
           "summary": "Delete an analysis from its owning wordform.",
@@ -74029,7 +74182,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -74044,7 +74199,7 @@
             "FP_NullParameterError: If gloss_or_hvo is None",
             "FP_ParameterError: If gloss doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(gloss_or_hvo)",
           "summary": "Delete a gloss from its owning analysis.",
@@ -74839,7 +74994,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -74853,7 +75010,7 @@
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
             "FP_NullParameterError: If bundle_or_hvo is None."
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(bundle_or_hvo)",
           "summary": "Delete a morph bundle from its analysis.",
@@ -76102,7 +76259,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -76116,7 +76275,7 @@
             "FP_ReadOnlyError: If project is not opened with write enabled",
             "FP_ParameterError: If wordform doesn't exist"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(wordform_or_hvo)",
           "summary": "Delete a wordform from the FLEx project.",
@@ -76972,7 +77131,9 @@
             "notes": [
               "Destructive operation - requires write access"
             ],
-            "success": {}
+            "success": {
+              "type": "None"
+            }
           },
           "parameters": [
             {
@@ -76988,7 +77149,7 @@
             "FP_WritingSystemError: If writing system not found",
             "FP_ParameterError: If trying to delete the default WS"
           ],
-          "return_type": "",
+          "return_type": "None",
           "returns": "",
           "signature": "Delete(ws_handle_or_tag)",
           "summary": "Remove a writing system from the project.",
@@ -77011,7 +77172,9 @@
               }
             ],
             "notes": [],
-            "success": {}
+            "success": {
+              "type": "Any"
+            }
           },
           "parameters": [
             {
@@ -77035,7 +77198,7 @@
           "raises": [
             "NotImplementedError: Always raised - writing systems cannot be duplicated."
           ],
-          "return_type": "",
+          "return_type": "Any",
           "returns": "",
           "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
           "summary": "Duplicate operation is not applicable for writing systems.",
@@ -77880,10 +78043,7 @@
           "is_staticmethod": false,
           "name": "__init__",
           "output_behavior": {
-            "empty": {
-              "description": "None when not found",
-              "value": "None"
-            },
+            "empty": null,
             "failure": [],
             "notes": [],
             "success": {
@@ -77942,10 +78102,7 @@
           "is_staticmethod": false,
           "name": "__init__",
           "output_behavior": {
-            "empty": {
-              "description": "None when not found",
-              "value": "None"
-            },
+            "empty": null,
             "failure": [],
             "notes": [],
             "success": {
@@ -78016,10 +78173,7 @@
           "is_staticmethod": false,
           "name": "__init__",
           "output_behavior": {
-            "empty": {
-              "description": "None when not found",
-              "value": "None"
-            },
+            "empty": null,
             "failure": [],
             "notes": [],
             "success": {
@@ -78101,10 +78255,7 @@
           "is_staticmethod": false,
           "name": "__init__",
           "output_behavior": {
-            "empty": {
-              "description": "None when not found",
-              "value": "None"
-            },
+            "empty": null,
             "failure": [],
             "notes": [],
             "success": {
@@ -78472,7 +78623,7 @@
       "direct": 600,
       "pure_python": 613
     },
-    "methods_with_return_type": 887,
+    "methods_with_return_type": 963,
     "total_classes": 118,
     "total_methods": 1529,
     "total_properties": 155

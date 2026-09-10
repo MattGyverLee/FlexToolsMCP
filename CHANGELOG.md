@@ -117,6 +117,21 @@ that the module is fine and the environment is not. The import is guarded, so
 the module still loads and can report rather than dying first. Silent on a
 current install -- not even a `report.Info`.
 
+A **third** case gets its own message, and it is the one where the module *is*
+what needs editing: a name in the `from flexicon import (...)` list that
+flexicon does not export. `except ImportError` cannot tell "no such package"
+from "no such name in the package", so a single `try` around both imports sent
+that case down the not-installed path -- telling the user flexicon "is not
+installed", to run `pip install pyflexicon` for a package they already have,
+and that "the module itself is fine". All three were wrong. The two imports are
+now guarded separately, and the bad-name branch points at the import list,
+names the offending symbol, and says the environment is not the problem. This
+is the trap the template's own comment documents (reversal work has no
+top-level `ReversalOperations`), so it is a likely path rather than a
+hypothetical one; the new tests drive the real import machinery with a real bad
+name, which the original set did not -- it only ever substituted a
+fully-blocked `import flexicon`.
+
 The staleness check is `hasattr(FLExProject, "FromOpenProject")`, a **capability
 probe, never a version floor**. Field evidence for why, from one machine: the
 FlexTools interpreter reports `pyflexicon` 4.1.1 via `importlib.metadata` while

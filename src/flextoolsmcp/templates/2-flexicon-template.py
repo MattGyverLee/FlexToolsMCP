@@ -34,25 +34,41 @@ DATE:
 # from _flexicon_preflight() below, instead of an ImportError traceback thrown
 # before Main() is ever reached. FlexTools shows that traceback with no remedy
 # and no hint that the module itself is fine.
+#
+# The two imports are guarded SEPARATELY on purpose. `except ImportError`
+# cannot tell "no such package" from "no such name in the package", so a single
+# try block around both made a wrong operations name below report as "flexicon
+# is not installed" -- sending the user to `pip install` for a package they
+# already have, while insisting the module needed no editing when the import
+# list was the only thing that did.
 _FLEXICON_IMPORT_ERROR = None
+_FLEXICON_SYMBOL_ERROR = None
+
 try:
     import flexicon as _flexicon
-    from flexicon import (
-        FLExProject,
-        LexEntryOperations,
-        LexSenseOperations,
-        LexReferenceOperations,
-        WritingSystemOperations,
-        # Add other operations as needed based on your implementation.
-        # Import only names flexicon actually exports -- a wrong name here is an
-        # ImportError that kills the module before Main() runs. Reversal work, for
-        # example, has no top-level "ReversalOperations": reach it through the
-        # accessors project.ReversalIndexes / project.ReversalEntries instead.
-    )
 except ImportError as _import_error:
     _flexicon = None
-    FLExProject = None
     _FLEXICON_IMPORT_ERROR = str(_import_error)
+
+FLExProject = None
+if _flexicon is not None:
+    try:
+        from flexicon import (
+            FLExProject,
+            LexEntryOperations,
+            LexSenseOperations,
+            LexReferenceOperations,
+            WritingSystemOperations,
+            # Add other operations as needed based on your implementation.
+            # Import only names flexicon actually exports -- a wrong name here is
+            # an ImportError that stops the module before Main() runs (the
+            # pre-flight below will tell you which name, and that this list is
+            # what to fix). Reversal work, for example, has no top-level
+            # "ReversalOperations": reach it through the accessors
+            # project.ReversalIndexes / project.ReversalEntries instead.
+        )
+    except ImportError as _symbol_error:
+        _FLEXICON_SYMBOL_ERROR = str(_symbol_error)
 
 
 # ============================================================================
@@ -65,6 +81,11 @@ except ImportError as _import_error:
 #   2. pyflexicon is installed but predates FLExProject.FromOpenProject()
 #      -> the module imports cleanly and then dies on the first line of Main()
 #         with "type object 'FLExProject' has no attribute 'FromOpenProject'".
+#
+# A third case is the module's fault rather than the environment's: a name in
+# the import list above that flexicon does not export. It gets its own message,
+# because the remedy is the opposite one -- edit this file, do not touch the
+# environment.
 #
 # In both cases the module is correct and the environment is not, which is
 # exactly what a user cannot tell from the raw traceback. The pre-flight says so
@@ -191,7 +212,7 @@ def _flexicon_preflight(report):
     reason a floor is refused here while a note is welcome.
     """
     try:
-        if _flexicon is None or FLExProject is None:
+        if _flexicon is None:
             _report_preflight_error(report, [
                 "[ERROR] This module needs flexicon, which is not installed in",
                 "[ERROR] the Python environment FlexTools is using.",
@@ -204,6 +225,30 @@ def _flexicon_preflight(report):
                 "[ERROR]     pip install pyflexicon",
                 "[ERROR]",
                 "[ERROR] The module itself is fine -- nothing here needs editing.",
+            ])
+            return False
+
+        if _FLEXICON_SYMBOL_ERROR is not None or FLExProject is None:
+            # flexicon imported fine; one of the names in the import list at the
+            # top of this file does not exist. This is the one pre-flight case
+            # where the module IS what needs editing, so it must not borrow the
+            # not-installed wording above.
+            _report_preflight_error(report, [
+                "[ERROR] flexicon is installed and working, but this module asks",
+                "[ERROR] it for a name it does not export, so the module could",
+                "[ERROR] not finish loading.",
+                "[ERROR]",
+                "[ERROR]   import failed with: %s" % (_FLEXICON_SYMBOL_ERROR,),
+                "[ERROR]   flexicon version found: %s"
+                % (_flexicon_installed_version(),),
+                "[ERROR]",
+                "[ERROR] Fix the `from flexicon import (...)` list near the top",
+                "[ERROR] of this file -- remove or correct that name. Not every",
+                "[ERROR] operations class has a top-level export: reversal work,",
+                "[ERROR] for example, has no \"ReversalOperations\" -- reach it",
+                "[ERROR] through project.ReversalIndexes / project.ReversalEntries.",
+                "[ERROR]",
+                "[ERROR] Nothing is wrong with your Python environment.",
             ])
             return False
 

@@ -218,6 +218,114 @@ class TestPreflightFailurePaths(unittest.TestCase):
             "tell a missing package from a broken one. Got:\n%s" % text,
         )
 
+    def test_a_bad_symbol_is_not_reported_as_a_missing_package(self):
+        """PR #129 review finding 2.
+
+        `except ImportError` cannot tell "no such package" from "no such name
+        in the package", so a single try block around both imports made a wrong
+        operations name take the not-installed branch. The user was then told
+        flexicon "is not installed", to run `pip install pyflexicon`, and that
+        "the module itself is fine" -- all three wrong, and the import list was
+        the only thing that did need editing.
+
+        This drives the REAL import machinery (an actual bad name, an actual
+        ImportError), which is what the original 17 tests did not: they
+        substituted a fully-blocked `import flexicon`, never a partial one.
+        """
+        src = _template_source()
+        bad_src = src.replace(
+            "        WritingSystemOperations,\n",
+            "        WritingSystemOperations,\n        ReversalOperations,\n",
+            1,
+        )
+        self.assertNotEqual(
+            src, bad_src, "Could not inject a bad name into the import list."
+        )
+
+        ns: "dict[str, Any]" = {"__name__": "_flexicon_bad_symbol_under_test"}
+        exec(compile(bad_src, "2-flexicon-template.py", "exec"), ns)
+
+        self.assertIsNotNone(
+            ns.get("_flexicon"),
+            "`import flexicon` itself succeeded, so _flexicon must NOT be "
+            "cleared -- clearing it is what drove the not-installed branch.",
+        )
+        self.assertIsNotNone(
+            ns.get("_FLEXICON_SYMBOL_ERROR"),
+            "The bad-name ImportError must be captured separately from the "
+            "missing-package one.",
+        )
+        self.assertIsNone(
+            ns.get("_FLEXICON_IMPORT_ERROR"),
+            "Nothing is wrong with the package, so the not-installed error "
+            "slot must stay empty.",
+        )
+
+        report = _FakeReport()
+        result = ns["_flexicon_preflight"](report)
+
+        self.assertFalse(
+            result,
+            "A module that cannot finish importing must still be stopped -- "
+            "just for the right reason.",
+        )
+        text = report.text
+        self.assertIn(
+            "cannot import name 'ReversalOperations'", text,
+            "The real ImportError must be quoted so the user knows WHICH name "
+            "to fix. Got:\n%s" % text,
+        )
+        self.assertIn(
+            "from flexicon import", text,
+            "The message must point at the import list, which is the thing to "
+            "edit. Got:\n%s" % text,
+        )
+        self.assertNotIn(
+            "pip install pyflexicon", text,
+            "flexicon IS installed here. Sending the user to pip is the "
+            "finding-2 misreport. Got:\n%s" % text,
+        )
+        self.assertNotIn(
+            "nothing here needs editing", text,
+            "This is the one pre-flight case where the module is exactly what "
+            "needs editing. Got:\n%s" % text,
+        )
+
+    def test_a_bad_symbol_message_is_ascii(self):
+        """The bad-symbol branch is held to the same ASCII rule as the rest."""
+        src = _template_source()
+        bad_src = src.replace(
+            "        WritingSystemOperations,\n",
+            "        WritingSystemOperations,\n        ReversalOperations,\n",
+            1,
+        )
+        ns: "dict[str, Any]" = {"__name__": "_flexicon_bad_symbol_ascii"}
+        exec(compile(bad_src, "2-flexicon-template.py", "exec"), ns)
+
+        report = _FakeReport()
+        ns["_flexicon_preflight"](report)
+        self.assertTrue(report.calls, "Expected the bad-symbol diagnostic.")
+        for _kind, msg, _ref in report.calls:
+            str(msg).encode("ascii")
+
+    def test_the_two_imports_stay_separately_guarded(self):
+        """Structural guard: re-merging the try blocks silently reintroduces
+        finding 2, and the namespace tests above could not tell, since they
+        assert on names the merged form still sets."""
+        src = _template_source()
+        head = src.split("def _flexicon_installed_version", 1)[0]
+
+        self.assertIn("try:\n    import flexicon as _flexicon\n", head)
+        package_try = head.index("try:\n    import flexicon as _flexicon\n")
+        symbol_import = head.index("from flexicon import (")
+        handler = head.index("except ImportError as _import_error:")
+        self.assertLess(
+            handler, symbol_import,
+            "The missing-package handler must close BEFORE the `from flexicon "
+            "import (...)` list, or a bad name lands in it again.",
+        )
+        self.assertLess(package_try, handler)
+
     def test_t4_2b_too_old_names_the_upgrade_command_and_the_version_found(self):
         ns = _load_namespace()
         ns["_flexicon"] = _FakeFlexiconModule(version="4.1.1")

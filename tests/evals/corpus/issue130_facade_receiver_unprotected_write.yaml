@@ -1,0 +1,24 @@
+intent: "An unguarded mutation reached through the FLExProject facade must still be caught (issue #130)"
+api_mode: flexicon
+write_enabled: false
+code: |
+  from flexicon import FLExProject
+  fx = FLExProject.FromOpenProject(project)
+  entry = fx.LexEntry.Find("nsanga-nsanga")
+  fx.LexEntry.SetLexemeForm(entry, "PROBE-SHOULD-BE-BLOCKED")
+expect:
+  outcome: preflight_reject
+  error_code: unprotected_writes
+  auto_fixes: 0
+notes: >
+  Regression for issue #130: the receiver resolver typed a call receiver by
+  comparing its name to the literal `project`, so the facade shape flexicon
+  4.7.0 documents as THE portable module shape
+  (`fx = FLExProject.FromOpenProject(project)`) left `fx` -- and therefore
+  `fx.LexEntry` -- untyped. The mutating call was never looked up in the API
+  index, so this exact snippet passed all 11 gates: unprotected_writes
+  reported `passed`, `is_mutating_script` was false, and
+  `would_require.write_enabled` was false. The resolver now membership-tests
+  the receiver against every variable bound to a FLExProject, so the write is
+  resolved to LexEntryOperations.SetLexemeForm and blocked.
+issue: 130

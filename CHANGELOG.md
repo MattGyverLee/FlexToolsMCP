@@ -2,6 +2,67 @@
 
 ## [Unreleased]
 
+### Fixed: the write gates were blind to the facade shape they teach (#130)
+
+An **unguarded** mutation reached through `FLExProject.FromOpenProject(project)`
+passed **every** write gate. `unprotected_writes` reported `passed`,
+`writeability.is_mutating_script` was `false`, and
+`would_require.write_enabled` was `false` -- so a write with no
+`if modifyAllowed:` guard, no confirmation prompt and no mutation plan was
+treated as a read-only script:
+
+```python
+fx = FLExProject.FromOpenProject(project)
+entry = fx.LexEntry.Find("nsanga-nsanga")
+fx.LexEntry.SetLexemeForm(entry, "PROBE-SHOULD-BE-BLOCKED")   # 11 gates green
+```
+
+That is the shape flexicon 4.7.0 documents as *the* portable module shape, and
+the shape `flextools_get_module_template(flavor='flexicon')` itself generates.
+The blind spot landed squarely on the pattern users are told to adopt.
+
+**Why an index refresh did not help.** The resolver typed a call receiver by
+comparing its name to the literal `"project"`. `fx` is not `project`, so `fx`
+was untyped, `fx.LexEntry` was untyped, and the mutating call on it was never
+looked up in the API index at all -- it was not misfiled, it was unseen, in
+every bucket. Nor could the index rescue it: `FromOpenProject` carries no
+return annotation upstream, so its recorded `return_type` is `""`. Return-type
+coverage on `FLExProject` is thin generally (28 of 107 methods).
+
+**Two fixes, because either alone leaves a gap.**
+
+- The receiver test is now a membership test over every variable known to hold
+  a `FLExProject`, not a comparison to one name. Facade-valued variables are
+  tracked through direct construction, the `FromOpenProject` bridge (typed off
+  an *empty or absent* `return_type` -- deliberately, since that is the actual
+  state of the index), rebind chains, accessor aliases (`lex = fx.LexEntry`)
+  and tuple unpacking (`lex, lists = fx.LexEntry, fx.PossibilityLists`). All
+  six shapes from the issue's scope table now resolve through the index and
+  report the real class and method. Future bridge constructors are typed even
+  when the index has never heard of them.
+- An **unresolvable** receiver reaching a method name the index declares
+  mutating is now reported as a suspected mutation instead of being silently
+  certified read-only, with `confidence` degraded to `low` and
+  `source: "unresolved_receiver"` on the row. This is what keeps a stale or
+  incomplete index a *reporting* problem rather than a safety one: the next
+  un-annotated seam nobody anticipated fails closed. The set of mutating names
+  is read from the index, not guessed from verb prefixes, so read-only calls on
+  untyped receivers stay silent.
+
+Guarded facade writes are unaffected: they still pass `unprotected_writes`
+while still requiring `write_enabled`, the project lock and confirmation, per
+the #93 split between "is this a mutation" and "was it guarded".
+
+The same receiver generalization was applied to the two other gates that
+resolved receivers by name -- the hvo-literal gate (`detect_hvo_literal_args`)
+and the casting gate (`detect_casting_needs`) -- which had gone equally blind
+the moment a module adopted the documented shape.
+
+Upstream item 1 from the issue is **not** included here and remains worth
+doing: annotating `def FromOpenProject(cls, donor) -> "FLExProject":` in
+flexicon improves `return_type` coverage broadly. The fix above does not depend
+on it, and covers the annotated case too.
+
 ### Added: the flexicon template pre-flights its environment
 
 Generated flexicon modules now check the environment they land in before doing

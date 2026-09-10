@@ -13,8 +13,8 @@ notes: >
   Regression for issue #8: aliasing an Operations object via a local
   variable (`posOps = POSOperations(project)`) used to be invisible to the
   line-based regex mutation detector, silently letting an unguarded write
-  through. certify_script_readonly()'s AST-based alias tracking
-  (_resolve_alias_maps / _find_aliased_operations_calls) now resolves the
-  alias back to POSOperations.Create and flags it as an unprotected
-  mutation.
+  through. certify_script_readonly()'s AST-based receiver resolution
+  (_resolve_alias_maps / _find_receiver_resolved_operations_calls) now
+  resolves the alias back to POSOperations.Create and flags it as an
+  unprotected mutation.
 issue: 8

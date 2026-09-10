@@ -104,13 +104,9 @@ _LIBLCM_MUTABLE_PATTERNS = [
     (re.compile(r'\.Clear\s*\('), 'Clear', 'Mutate'),
     (re.compile(r'\.MoveTo\s*\('), 'MoveTo', 'Reorder'),
     (re.compile(r'\.Insert\s*\('), 'Insert', 'Mutate'),
-    # Flexicon project-accessor mutations: project.<X>.Create/Delete/Set*(...)
-    # These are wrapper calls but they still mutate the DB and must be guarded.
-    # Without these, project.LexEntry.Create(...) was caught only by the
-    # line-blind raw_lcm_patterns path and could not be certified-as-protected.
-    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', re.IGNORECASE), 'project.*.Create', 'Create'),
-    (re.compile(r'project\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', re.IGNORECASE), 'project.*.Delete', 'Delete'),
-    (re.compile(r'project\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(', re.IGNORECASE), 'project.*.Set/Update', 'Update'),
+    # Flexicon facade-accessor mutations (project.<X>.Create/Delete/Set*(...)
+    # and the same shapes on an attached facade) are appended below, built from
+    # _FACADE_ACCESSOR_MUTABLE_TEMPLATES.
     # Raw LCM property setters / approval methods
     (re.compile(r'\.set_String\s*\('), 'set_String', 'Update'),
     (re.compile(r'\.CopyAlternatives\s*\('), 'CopyAlternatives', 'Update'),
@@ -127,6 +123,52 @@ _LIBLCM_MUTABLE_PATTERNS = [
         re.IGNORECASE
     ), 'property=', 'Update'),
 ]
+
+# Flexicon facade-accessor mutations: `<facade>.<X>.Create/Delete/Set*(...)`.
+# These are wrapper calls, but they still mutate the DB and must be guarded.
+# Without them, project.LexEntry.Create(...) was caught only by the line-blind
+# raw_lcm_patterns path and could not be certified-as-protected.
+#
+# Issue #130: the receiver is a TEMPLATE rather than the literal `project`, so
+# the same three line-aware patterns can be rebuilt for any variable bound to a
+# FLExProject. This is the index-INDEPENDENT half of the #130 fix. A missing API
+# index is only a warning at gate 2 ("will be loaded on first API discovery"),
+# so gate 4 can genuinely run with `api_index=None` -- and in that state the
+# index lookup cannot see `fx.LexEntry.SetLexemeForm(...)` at all. These
+# regexes are then the only thing still holding the write gate.
+_FACADE_ACCESSOR_MUTABLE_TEMPLATES = [
+    (r'{receiver}\s*\.\s*\w+\s*\.\s*Create\w*\s*\(', 'Create', 'Create'),
+    (r'{receiver}\s*\.\s*\w+\s*\.\s*Delete\w*\s*\(', 'Delete', 'Delete'),
+    (
+        r'{receiver}\s*\.\s*\w+\s*\.\s*(?:Set|Update|Modify|Change|Edit|Replace)\w*\s*\(',
+        'Set/Update',
+        'Update',
+    ),
+]
+
+
+def _facade_accessor_mutable_patterns(receiver_name: str) -> List[tuple]:
+    """Line-aware `<receiver>.<X>.<verb>(...)` patterns for one facade name.
+
+    The reported method label keeps the receiver's own spelling
+    (`project.*.Create`, `fx.*.Create`) so a row still points at the code the
+    user actually wrote. `re` memoizes compiled patterns, so rebuilding these
+    per call costs nothing measurable.
+    """
+    escaped = re.escape(receiver_name)
+    return [
+        (
+            re.compile(template.format(receiver=escaped), re.IGNORECASE),
+            f'{receiver_name}.*.{label}',
+            category,
+        )
+        for template, label, category in _FACADE_ACCESSOR_MUTABLE_TEMPLATES
+    ]
+
+
+# The injected `project` receiver is always in play, and keeps its historical
+# `project.*.Create` / `project.*.Delete` / `project.*.Set/Update` labels.
+_LIBLCM_MUTABLE_PATTERNS.extend(_facade_accessor_mutable_patterns("project"))
 
 
 # ============================================================
@@ -1110,17 +1152,161 @@ def _accessor_to_ops_map(api_index: Optional[Any]) -> Dict[str, str]:
     return mapping
 
 
+# Issue #130: variables that hold a flexicon FLExProject facade -------------
+#
+# `project` is the name the runner pre-injects, but flexicon 4.7.0 documents
+# the PORTABLE module shape as attaching a facade to the host's project:
+#
+#     fx = FLExProject.FromOpenProject(project)
+#     fx.LexEntry.SetLexemeForm(entry, "...")
+#
+# A receiver test spelled `receiver.value.id == "project"` sees none of that,
+# so `fx.LexEntry` never resolved to LexEntryOperations, the mutating call on
+# it was never looked up in the index, and `certify_script_readonly` reported
+# an UNGUARDED write as certified read-only -- every write gate passed. That
+# is issue #130, and it landed on exactly the shape users are told to adopt.
+#
+# `FromOpenProject` carries no return annotation upstream, so the generated
+# index records `return_type: ''` for it. Typing the assignment target off an
+# EMPTY (or entirely absent) return type is therefore deliberate, and it is
+# the safe direction: a wrongly-typed facade variable can only ever produce a
+# spurious mutation warning, whereas an untyped one silently disarms the gate.
+FACADE_ENTITY = "FLExProject"
+
+# Facade names that exist without any assignment: the runner injects
+# `project` into the module namespace before the script runs.
+_FACADE_INJECTED_NAMES = frozenset({"project"})
+
+# Method-name prefixes that are unambiguously read-only, in the spirit of
+# issue #32's index-miss heuristic. Used by `_is_facade_producing_call` to
+# avoid typing the result of a read-only FLExProject classmethod (e.g.
+# `FLExProject.GetProjectNames()`, which returns a list of names) as a facade
+# merely because its return type is unannotated. Deliberately a separate tuple
+# from the local one in `certify_script_readonly`: this one also covers `List`,
+# which matters for a classmethod name but would widen that gate's
+# unknown-method handling if folded into it.
+_READONLY_METHOD_PREFIXES = ("Get", "Find", "Is", "Has", "Count", "Contains", "List")
+
+
+def _iter_assign_pairs(node: ast.Assign) -> Iterator[Tuple[ast.AST, ast.AST]]:
+    """Yield (target, value) pairs for one Assign, unpacking same-arity tuples.
+
+    `lex, lists = fx.LexEntry, fx.PossibilityLists` yields two pairs, so each
+    name binds to its OWN right-hand side instead of the whole tuple -- issue
+    #130's scope table row 5, which went undetected for exactly this reason.
+
+    Mismatched arity, starred targets and non-tuple right-hand sides fall back
+    to yielding the whole RHS once per target (`a = b = expr`), which every
+    caller already treats as unresolvable unless the RHS is a shape it knows.
+    """
+    for target in node.targets:
+        if (
+            isinstance(target, ast.Tuple)
+            and isinstance(node.value, ast.Tuple)
+            and len(target.elts) == len(node.value.elts)
+            and not any(isinstance(elt, ast.Starred) for elt in target.elts)
+        ):
+            yield from zip(target.elts, node.value.elts, strict=True)
+        else:
+            yield target, node.value
+
+
+def _facade_method_return_type(
+    api_index: Optional[Any], method_name: str
+) -> Optional[str]:
+    """Indexed `return_type` for `FLExProject.<method_name>`.
+
+    Returns "" for a method the index knows but whose return type is
+    unannotated upstream (`FromOpenProject`), and None for a method the index
+    has never heard of (a newer bridge constructor read against a stale
+    index). `_is_facade_producing_call` deliberately treats both the same way.
+    """
+    if api_index is None:
+        return None
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    fp = (flexicon.get("entities") or {}).get(FACADE_ENTITY, {})
+    for method in fp.get("methods", []) or []:
+        if method.get("name") == method_name:
+            return method.get("return_type") or ""
+    return None
+
+
+def _is_facade_producing_call(node: ast.Call, api_index: Optional[Any]) -> bool:
+    """True when this call yields a flexicon FLExProject facade.
+
+    Recognized:
+      FLExProject()                      -- direct construction
+      FLExProject.FromOpenProject(...)   -- the documented bridge constructor
+      FLExProject.<any non-read-only>()  -- future bridge constructors, whose
+                                            return type is unannotated or not
+                                            yet in the index
+    """
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id == FACADE_ENTITY
+    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+        if func.value.id != FACADE_ENTITY:
+            return False
+        if func.attr.startswith(_READONLY_METHOD_PREFIXES):
+            return False
+        return _facade_method_return_type(api_index, func.attr) in (
+            None,
+            "",
+            FACADE_ENTITY,
+        )
+    return False
+
+
+def _resolve_facade_names(
+    assigns: List[ast.Assign], api_index: Optional[Any] = None
+) -> Set[str]:
+    """Names bound to a flexicon FLExProject facade, plus injected `project`.
+
+    Grows to a fixed point so a rebind chain resolves regardless of the order
+    `ast.walk` happened to hand us the assignments:
+
+        fx = FLExProject.FromOpenProject(project)
+        p  = fx                       # -> also a facade
+
+    Like `_resolve_alias_maps`, this deliberately never RETRACTS a name on
+    reassignment: over-typing costs a spurious mutation warning, under-typing
+    costs the write gate (issue #130).
+    """
+    facades: Set[str] = set(_FACADE_INJECTED_NAMES)
+    changed = True
+    while changed:
+        changed = False
+        for node in assigns:
+            for target, value in _iter_assign_pairs(node):
+                if not isinstance(target, ast.Name) or target.id in facades:
+                    continue
+                if isinstance(value, ast.Call) and _is_facade_producing_call(
+                    value, api_index
+                ):
+                    facades.add(target.id)
+                    changed = True
+                elif isinstance(value, ast.Name) and value.id in facades:
+                    facades.add(target.id)
+                    changed = True
+    return facades
+
+
 def _resolve_receiver_ops_class(
     receiver: ast.AST,
     accessor_to_ops: Dict[str, str],
     operations_aliases: Dict[str, str],
+    facade_names: Optional[Set[str]] = None,
 ) -> Optional[str]:
     """Resolve an Operations class name for a call receiver AST node.
 
-    Handles the three shapes flexicon call sites use:
-      project.<Accessor>              -> via accessor_to_ops (index-derived)
+    Handles the shapes flexicon call sites use:
+      <facade>.<Accessor>              -> via accessor_to_ops (index-derived)
       <OpsClass>(project)              -> inline construction, read off the call
       alias (x = <OpsClass>(project))  -> via operations_aliases
+
+    `<facade>` is any name in `facade_names`: `project` plus whatever
+    `_resolve_facade_names` bound to a FLExProject (issue #130). Passing None
+    keeps the pre-#130 behavior of recognizing only the injected `project`.
 
     Issue #121: shared by `detect_casting_needs`' loop-target dataflow (both
     the for-loop iter binding and the Rule B argument-position check). This
@@ -1129,10 +1315,11 @@ def _resolve_receiver_ops_class(
     #103), which predates this helper; left untouched there to avoid
     regression risk on that gate's own test suite.
     """
+    facades = _FACADE_INJECTED_NAMES if facade_names is None else facade_names
     if (
         isinstance(receiver, ast.Attribute)
         and isinstance(receiver.value, ast.Name)
-        and receiver.value.id == "project"
+        and receiver.value.id in facades
     ):
         return accessor_to_ops.get(receiver.attr)
     if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name):
@@ -2419,10 +2606,14 @@ def _collect_assign_call_nodes(
 
 def _resolve_alias_maps(
     assigns: List[ast.Assign],
+    facade_names: Optional[Set[str]] = None,
+    accessor_to_ops: Optional[Dict[str, str]] = None,
 ) -> Tuple[Dict[str, str], Dict[str, str]]:
     """Build (operations_aliases, cast_aliases) in a single pass over Assigns.
 
     Operations alias shape:   posOps = POSOperations(project)
+                              lex = fx.LexEntry           (facade accessor)
+                              lex, lists = fx.LexEntry, fx.PossibilityLists
                               b = a   (chained -- b inherits a's class)
     Cast alias shape:         s_typed = ILexSense(sense)
 
@@ -2431,62 +2622,140 @@ def _resolve_alias_maps(
     us touching a hardcoded list. Generic cast match ('I' + Uppercase) avoids
     false positives like 'IndexCounter' (lowercase second char).
 
+    The facade-accessor shapes need both `facade_names` (from
+    `_resolve_facade_names`) and `accessor_to_ops` (from
+    `_accessor_to_ops_map`); omit either and only the pre-#130 shapes are
+    recognized. They are what makes `lex = fx.LexEntry` followed by
+    `lex.SetLexemeForm(...)` reach the index's `is_mutating` lookup instead of
+    being certified read-only (issue #130, scope table rows 4 and 5).
+
     Note: deliberately does NOT clear aliases on reassignment to something
     unrelated. False positives are safer than false negatives (#8); the
     downstream API-index lookup still determines whether a method is
     actually mutating.
     """
+    facades = _FACADE_INJECTED_NAMES if facade_names is None else facade_names
+    accessors = accessor_to_ops or {}
     operations: Dict[str, str] = {}
     casts: Dict[str, str] = {}
     for node in assigns:
-        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
-            continue
-        target_name = node.targets[0].id
-        rhs = node.value
-        if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name):
-            func_id = rhs.func.id
-            if func_id.endswith("Operations") and len(rhs.args) == 1:
-                operations[target_name] = func_id
+        for target, rhs in _iter_assign_pairs(node):
+            if not isinstance(target, ast.Name):
+                continue
+            target_name = target.id
+            if isinstance(rhs, ast.Call) and isinstance(rhs.func, ast.Name):
+                func_id = rhs.func.id
+                if func_id.endswith("Operations") and len(rhs.args) == 1:
+                    operations[target_name] = func_id
+                elif (
+                    len(func_id) >= 2
+                    and func_id[0] == "I"
+                    and func_id[1].isupper()
+                    and len(rhs.args) >= 1
+                ):
+                    casts[target_name] = func_id
             elif (
-                len(func_id) >= 2
-                and func_id[0] == "I"
-                and func_id[1].isupper()
-                and len(rhs.args) >= 1
+                isinstance(rhs, ast.Attribute)
+                and isinstance(rhs.value, ast.Name)
+                and rhs.value.id in facades
             ):
-                casts[target_name] = func_id
-        elif isinstance(rhs, ast.Name):
-            # Chained rebind: propagate both alias kinds symmetrically so
-            #     a = ILexEntry(x)
-            #     b = a
-            # gives casts['b'] == 'ILexEntry'. Without this, detect_casting_needs
-            # (issue #15 fix) would still flag b.LexemeFormOA even though `a` is
-            # a known cast.
-            if rhs.id in operations:
-                operations[target_name] = operations[rhs.id]
-            elif rhs.id in casts:
-                casts[target_name] = casts[rhs.id]
+                # `lex = fx.LexEntry` / `lex = project.LexEntry`: bind the name
+                # to the Operations class the facade accessor returns, so a
+                # later `lex.SetLexemeForm(...)` resolves the same way an
+                # inline `fx.LexEntry.SetLexemeForm(...)` does.
+                ops_class = accessors.get(rhs.attr)
+                if ops_class:
+                    operations[target_name] = ops_class
+            elif isinstance(rhs, ast.Name):
+                # Chained rebind: propagate both alias kinds symmetrically so
+                #     a = ILexEntry(x)
+                #     b = a
+                # gives casts['b'] == 'ILexEntry'. Without this, detect_casting_needs
+                # (issue #15 fix) would still flag b.LexemeFormOA even though `a` is
+                # a known cast.
+                if rhs.id in operations:
+                    operations[target_name] = operations[rhs.id]
+                elif rhs.id in casts:
+                    casts[target_name] = casts[rhs.id]
     return operations, casts
 
 
-def _find_aliased_operations_calls(
-    calls: List[ast.Call], aliases: Dict[str, str]
+def _find_receiver_resolved_operations_calls(
+    calls: List[ast.Call],
+    accessor_to_ops: Dict[str, str],
+    operations_aliases: Dict[str, str],
+    facade_names: Optional[Set[str]] = None,
 ) -> List[Tuple[str, str, int]]:
-    """Find `alias.method(...)` calls where `alias` is an Operations instance.
+    """Find `<receiver>.method(...)` calls whose receiver types to an Operations class.
+
+    Every shape `_resolve_receiver_ops_class` knows is covered in one pass:
+
+        posOps.Create(...)                    alias of POSOperations(project)
+        lex.SetLexemeForm(...)                alias of fx.LexEntry (#130)
+        LexEntryOperations(project).Create()  inline construction
+        project.Senses.SetGloss(...)          injected facade accessor
+        fx.LexEntry.SetLexemeForm(...)        attached facade accessor (#130)
 
     Returns (class_name, method_name, line_num) triples to be merged with the
-    regex-detected operations calls.
+    regex-detected operations calls. Was alias-only before issue #130, which
+    is why the facade shapes reached no index lookup at all.
     """
     results: List[Tuple[str, str, int]] = []
     for node in calls:
         if not isinstance(node.func, ast.Attribute):
             continue
-        if not isinstance(node.func.value, ast.Name):
-            continue
-        alias_name = node.func.value.id
-        if alias_name not in aliases:
-            continue
-        results.append((aliases[alias_name], node.func.attr, node.lineno))
+        ops_class = _resolve_receiver_ops_class(
+            node.func.value, accessor_to_ops, operations_aliases, facade_names
+        )
+        if ops_class:
+            results.append((ops_class, node.func.attr, node.lineno))
     return results
+
+
+def _describe_receiver(node: ast.AST) -> str:
+    """Best-effort dotted source text for a call receiver, for user-facing rows.
+
+    `fx.LexEntry` -> "fx.LexEntry"; anything that isn't a plain Name/Attribute
+    chain degrades to a placeholder rather than failing, since this only ever
+    feeds a message.
+    """
+    parts: List[str] = []
+    current = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+    if isinstance(current, ast.Name):
+        parts.append(current.id)
+    elif isinstance(current, ast.Call):
+        parts.append("<call>")
+    else:
+        parts.append("<expr>")
+    return ".".join(reversed(parts))
+
+
+def _indexed_mutating_method_names(api_index: Optional[Any]) -> Set[str]:
+    """Every method name the flexicon index marks `is_mutating` on ANY entity.
+
+    Issue #130 suggestion 3 (fail closed): an unresolvable receiver reaching a
+    mutating method was silently treated as read-only, which turns a stale or
+    incomplete index from a reporting gap into a SAFETY hole -- the next
+    un-annotated bridge constructor would reopen exactly this bug. Names in
+    this set are enough to treat such a call as a SUSPECTED mutation, which
+    fails the unprotected_writes gate instead of certifying it away.
+
+    Deliberately index-derived rather than a verb-prefix guess: the index is
+    the same authority Step 2 consults, so nothing is flagged mutating here
+    that flexicon does not itself declare mutating somewhere.
+    """
+    if api_index is None:
+        return set()
+    flexicon = getattr(api_index, "flexicon", None) or {}
+    names: Set[str] = set()
+    for entity in (flexicon.get("entities") or {}).values():
+        for method in entity.get("methods", []) or []:
+            if method.get("is_mutating") and method.get("name"):
+                names.add(method["name"])
+    return names
 
 
 def _find_cast_alias_property_writes(
@@ -2895,7 +3164,14 @@ def detect_hvo_literal_args(
 
     accessor_to_ops = _accessor_to_ops_map(api_index)
     assigns, calls = _collect_assign_call_nodes(tree)
-    operations_aliases, _casts = _resolve_alias_maps(assigns)
+    # Issue #130: `fx = FLExProject.FromOpenProject(project)` is flexicon's
+    # documented portable shape, so the hvo gate has to type `fx` the same way
+    # it types the injected `project` or it stops seeing hvo literals the
+    # moment a module adopts that shape.
+    facade_names = _resolve_facade_names(assigns, api_index)
+    operations_aliases, _casts = _resolve_alias_maps(
+        assigns, facade_names, accessor_to_ops
+    )
 
     findings: List[Dict[str, Any]] = []
     seen: Set[Tuple[int, str]] = set()
@@ -2907,11 +3183,11 @@ def detect_hvo_literal_args(
             findings.append({"line": line, "detail": detail})
 
     def _resolve_ops_class(receiver: ast.AST) -> Optional[str]:
-        # project.<Accessor>
+        # <facade>.<Accessor> -- `project` or any name bound to a FLExProject
         if (
             isinstance(receiver, ast.Attribute)
             and isinstance(receiver.value, ast.Name)
-            and receiver.value.id == "project"
+            and receiver.value.id in facade_names
         ):
             return accessor_to_ops.get(receiver.attr)
         # <OpsClass>(project) inline construction
@@ -2929,17 +3205,17 @@ def detect_hvo_literal_args(
             continue
         method_name = func.attr
 
-        # project.Object(<int literal>) -- the round-trip helper itself.
+        # <facade>.Object(<int literal>) -- the round-trip helper itself.
         if (
             isinstance(func.value, ast.Name)
-            and func.value.id == "project"
+            and func.value.id in facade_names
             and method_name == "Object"
             and node.args
             and _is_int_literal(node.args[0])
         ):
             _record(
                 node.lineno,
-                f"project.Object({node.args[0].value}) -- hvo literal passed "
+                f"{func.value.id}.Object({node.args[0].value}) -- hvo literal passed "
                 "directly to the round-trip helper; pass the GUID string "
                 "instead (project.Object(guid_str)) -- hvos are not stable "
                 "across run_module calls, only GUIDs are.",
@@ -3037,7 +3313,9 @@ def _alias_satisfies(
     return False
 
 
-def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
+def find_liblcm_mutations(
+    code: str, facade_names: Optional[Set[str]] = None
+) -> List[Dict[str, Any]]:
     """Find raw LibLCM calls that mutate state.
 
     Detects patterns like:
@@ -3046,16 +3324,30 @@ def find_liblcm_mutations(code: str) -> List[Dict[str, Any]]:
     - _cache.BeginNonUndoableTask()
     - obj.Add(...), obj.Remove(...), obj.Clear(...)
     - obj.MoveTo(...), obj.Insert(...)
+    - project.<X>.Create/Delete/Set*(...) -- and, per `facade_names`, the same
+      shapes on any variable bound to a FLExProject (issue #130)
+
+    Args:
+        code: Python source to scan.
+        facade_names: names holding a FLExProject facade, from
+            `_resolve_facade_names`. `project` is always covered; passing the
+            rest is what keeps `fx.LexEntry.SetLexemeForm(...)` gated when the
+            API index is unavailable and the index lookup sees nothing.
 
     Returns list of mutations with their line numbers for protection context checking.
     """
     mutations = []
 
+    patterns = list(_LIBLCM_MUTABLE_PATTERNS)
+    for name in sorted(facade_names or ()):
+        if name not in _FACADE_INJECTED_NAMES:
+            patterns.extend(_facade_accessor_mutable_patterns(name))
+
     for line_num, line in enumerate(code.split('\n'), 1):
         # Skip comments once per line
         line_content = _strip_comments(line)
 
-        for pattern, method_name, category in _LIBLCM_MUTABLE_PATTERNS:
+        for pattern, method_name, category in patterns:
             if re.search(pattern, line_content):
                 mutations.append({
                     'method': method_name,
@@ -3268,24 +3560,36 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         line_num = code[:match.start()].count('\n') + 1
         operations_calls_with_lines.append((class_name, method_name, line_num))
 
-    # Step 1b: AST-based alias detection (#8). Catches:
+    # Step 1b: AST-based receiver resolution (#8, #130). Catches:
     #     posOps = POSOperations(project)
-    #     posOps.Create(...)             # <- invisible to the regex above
-    # Generic to any *Operations class so flexicon churn doesn't break it.
-    # One ast.walk pass feeds both alias kinds + the property-writes helper
-    # at Step 4b, instead of four separate walks.
+    #     posOps.Create(...)              # <- invisible to the regex above
+    #     fx = FLExProject.FromOpenProject(project)
+    #     fx.LexEntry.SetLexemeForm(...)  # <- invisible to Step 1c's regex,
+    #                                     #    which only matches `project.`
+    # Generic to any *Operations class so flexicon churn doesn't break it, and
+    # generic over the receiver NAME so flexicon's documented attached-facade
+    # idiom is typed as well as the injected `project` (issue #130).
+    # One ast.walk pass feeds the alias maps, the facade-name set, and the
+    # property-writes helper at Step 4b, instead of separate walks.
+    accessor_to_ops = _accessor_to_ops_map(api_index)
     operations_aliases: Dict[str, str] = {}
     cast_aliases: Dict[str, str] = {}
+    facade_names: Set[str] = set(_FACADE_INJECTED_NAMES)
     ast_assigns: List[ast.Assign] = []
+    ast_calls: List[ast.Call] = []
     if tree is not None:
         ast_assigns, ast_calls = _collect_assign_call_nodes(tree)
-        operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
-        if operations_aliases:
-            aliased_calls = _find_aliased_operations_calls(ast_calls, operations_aliases)
-            existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
-            for triple in aliased_calls:
-                if triple not in existing:
-                    operations_calls_with_lines.append(triple)
+        facade_names = _resolve_facade_names(ast_assigns, api_index)
+        operations_aliases, cast_aliases = _resolve_alias_maps(
+            ast_assigns, facade_names, accessor_to_ops
+        )
+        existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
+        for triple in _find_receiver_resolved_operations_calls(
+            ast_calls, accessor_to_ops, operations_aliases, facade_names
+        ):
+            if triple not in existing:
+                operations_calls_with_lines.append(triple)
+                existing.add(triple)
 
     # Step 1c: Generic project.<Accessor>.<Method>(...) calls (issue #93
     # findings (a)/(d), sharpened by the CreateField escalation). Step 1's
@@ -3419,6 +3723,58 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                 # Class not in index - fall through to regex
                 pass
 
+    # Step 2b: fail closed on an UNRESOLVABLE receiver that reaches a method
+    # name the index declares mutating (issue #130 suggestion 3). Steps 1-2
+    # can only classify a call whose receiver they could type; anything else
+    # used to fall through to "no mutation found" -- silently read-only. That
+    # is what let `fx.LexEntry.SetLexemeForm(...)` pass all 11 write gates
+    # before Step 1b learned the facade shape, and the same hole would reopen
+    # on the next receiver shape nobody anticipated. Reporting these as
+    # suspected mutations keeps an incomplete index a REPORTING problem rather
+    # than a safety one; they are protection-checked like any other mutation,
+    # so a properly guarded script still passes the unprotected_writes gate.
+    if ast_calls and api_index and api_index.flexicon:
+        _resolved_pairs = {(m, ln) for _c, m, ln in operations_calls_with_lines}
+        _indexed_mutating = _indexed_mutating_method_names(api_index)
+        for _node in ast_calls:
+            if not isinstance(_node.func, ast.Attribute):
+                continue
+            _method_name = _node.func.attr
+            if _method_name not in _indexed_mutating:
+                continue
+            if (_method_name, _node.lineno) in _resolved_pairs:
+                continue
+            _resolved_pairs.add((_method_name, _node.lineno))
+            _receiver_src = _describe_receiver(_node.func.value)
+            if _is_line_protected(_node.lineno, protected_ranges):
+                protected_calls.append({
+                    "class": _receiver_src,
+                    "method": _method_name,
+                    "is_mutating": True,
+                    "source": "unresolved_receiver",
+                    "line": _node.lineno,
+                    "protected": True,
+                })
+            else:
+                unknown_calls.append({
+                    "class": _receiver_src,
+                    "method": _method_name,
+                    "reason": (
+                        "receiver could not be typed; method name is mutating "
+                        "elsewhere in the index"
+                    ),
+                    "line": _node.lineno,
+                })
+                mutating_calls.append({
+                    "class": _receiver_src,
+                    "method": _method_name,
+                    "is_mutating": True,
+                    "source": "unresolved_receiver",
+                    "line": _node.lineno,
+                    "protected": False,
+                })
+                confidence_sources["unknown"] += 1
+
     # Step 3: Regex-based detection for patterns not in index.
     # detect_cud_operations() is line-blind, so we keep its output only as a
     # diagnostic signal (surfaced in the return dict for inspection) but do
@@ -3432,7 +3788,7 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
         confidence_sources["regex"] += 1
 
     # Step 4: Detect raw LibLCM mutations and check if they're protected
-    liblcm_mutations = find_liblcm_mutations(code)
+    liblcm_mutations = find_liblcm_mutations(code, facade_names)
 
     # Step 4b: AST-based cast-alias property writes (#8). Catches:
     #     s_typed = ILexSense(sense)
@@ -4288,6 +4644,11 @@ def detect_casting_needs(
     # so a method call captured by the property regex (segOps.IsLabel(seg)) is
     # recognized as a wrapper call, not a polymorphic property access.
     operations_aliases: Dict[str, str] = {}
+    # Issue #130: names bound to a flexicon FLExProject facade (`project` plus
+    # anything assigned from FLExProject.FromOpenProject(...) and friends).
+    # Bound unconditionally so the resolver call sites below don't depend on
+    # the `tree is not None` branch having run.
+    facade_names: Set[str] = set(_FACADE_INJECTED_NAMES)
     # Issue #97 Bug 2 / #40 item 3: (line_num, var_name) -> branch-aware cast
     # interface(s), feeding the regex-based advanced casting_index loop
     # below. A flat cast_aliases lookup there would suffer the exact same
@@ -4316,7 +4677,15 @@ def detect_casting_needs(
             tree = None
     if tree is not None:
         ast_assigns, _ast_calls = _collect_assign_call_nodes(tree)
-        operations_aliases, cast_aliases = _resolve_alias_maps(ast_assigns)
+        # Issue #130: type every FLExProject-valued variable, not just the
+        # injected `project`, so a module written in flexicon's documented
+        # `fx = FLExProject.FromOpenProject(project)` shape still resolves its
+        # accessors here (both `_resolve_receiver_ops_class` call sites below
+        # take the resulting set).
+        facade_names = _resolve_facade_names(ast_assigns, api_index)
+        operations_aliases, cast_aliases = _resolve_alias_maps(
+            ast_assigns, facade_names, _accessor_to_ops_map(api_index)
+        )
         # Issue #49 B-6: hoisted out of `if cast_aliases:` so the binding is
         # structural, not a correlation between this guard and the SECOND
         # walk loop's `root.id in cast_aliases` guard ~30 lines below. Safe
@@ -4495,7 +4864,10 @@ def detect_casting_needs(
                 if not isinstance(call_node, ast.Call) or not isinstance(call_node.func, ast.Attribute):
                     return
                 ops_class = _resolve_receiver_ops_class(
-                    call_node.func.value, _accessor_to_ops, operations_aliases
+                    call_node.func.value,
+                    _accessor_to_ops,
+                    operations_aliases,
+                    facade_names,
                 )
                 if not ops_class:
                     return
@@ -4977,7 +5349,10 @@ def detect_casting_needs(
             if not isinstance(_node, ast.Call) or not isinstance(_node.func, ast.Attribute):
                 continue
             _ops_class = _resolve_receiver_ops_class(
-                _node.func.value, _rule_b_accessor_to_ops, operations_aliases
+                _node.func.value,
+                _rule_b_accessor_to_ops,
+                operations_aliases,
+                facade_names,
             )
             if not _ops_class or not _ops_class.endswith("Operations"):
                 continue

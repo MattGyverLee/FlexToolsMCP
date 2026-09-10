@@ -223,6 +223,56 @@ meaningful import rather than the dead line our template has been emitting.
   the 3d shape, runs to completion under vanilla FlexTools -- delegated to
   `vanilla-flextools-parity`.
 
+### CP4 -- template pre-flight: flexicon missing or too old *(FlexToolsMCP repo)*
+
+*Added during the tasks step, 2026-09-09, at the user's request.* The 3d shape
+finally makes `from flexicon import FLExProject` load-bearing -- which means the
+module now depends on the Python environment the user's FlexTools install
+actually has. Two environment failures become possible, and neither produces a
+readable error on its own:
+
+- `pyflexicon` **not installed** -> `ImportError` at module import time, before
+  `Main()` runs. FlexTools shows a load traceback naming a package, with no
+  remedy and no indication the module itself is fine.
+- `pyflexicon` **installed but predating `FromOpenProject`** -> the module
+  imports cleanly and then dies on the first line of `Main()` with
+  `AttributeError: type object 'FLExProject' has no attribute
+  'FromOpenProject'`.
+
+Both are this feature's own failure class one layer out: the user cannot tell an
+environment problem from a bug in their module.
+
+- **T4.1** The flexicon template
+  (`src/flextoolsmcp/templates/2-flexicon-template.py`) gains a pre-flight
+  block -- a guarded `import flexicon`, a capability probe, and a
+  `_flexicon_preflight(report)` helper that `Main()` calls first and returns on
+  failure.
+- **T4.2** Probe by **capability, not version floor**:
+  `hasattr(FLExProject, "FromOpenProject")`. A `hasattr` probe cannot drift and
+  needs no constant to bump at each release, whereas a hardcoded floor is a
+  second source of truth that will be wrong the first time someone forgets to
+  raise it. The installed version is emitted as **diagnostic text only**, read
+  from `flexicon.version` (present today; `4.6.0`) with
+  `importlib.metadata.version("pyflexicon")` as fallback. Never parse or
+  compare version strings.
+- **T4.3** Messages are ASCII-only (`CLAUDE.md`), name the remedy
+  (`pip install pyflexicon` / `pip install -U pyflexicon`), report the version
+  found, and state plainly that the module is correct and the environment is
+  not.
+- **T4.4** The pre-flight must be **invisible under the MCP**: the runner's own
+  environment always has flexicon importable, and once CP1 ships
+  `FromOpenProject` is present, so the helper returns `True` and says nothing.
+  It must not raise, and must not fire on a bare snippet -- it lives in the
+  module template only, where a `report` object is guaranteed.
+
+**Boundary.** CP4 adds the pre-flight and nothing else. The template's
+"CRITICAL REQUIREMENT" preamble still claims that explicit flexicon imports
+prevent the wrong library version being used -- which SPEC section 1 disproves
+(importing the class does not change the instance you are given) -- and it still
+teaches Shape B (`LexEntryOperations(project)`). Both are
+`flexicon-guidance-correction`'s to fix, not this spec's. The pre-flight is
+correct and useful either way: it reports the environment, not the code shape.
+
 ---
 
 ## 5. Verification
@@ -233,6 +283,9 @@ meaningful import rather than the dead line our template has been emitting.
    `OpenProject`/`CloseProject` test changes behavior.
 4. **Cross-repo** -- the FlexToolsMCP suite still passes against the new
    `pyflexicon` before the MCP-side specs land.
+5. **Template pre-flight** -- CP4, in the FlexToolsMCP suite: no FieldWorks and
+   no flexicon uninstall required; the helper is exercised directly against a
+   fake `report` and a monkeypatched probe.
 
 ---
 

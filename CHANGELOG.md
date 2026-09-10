@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+### Added: the flexicon template pre-flights its environment
+
+Generated flexicon modules now check the environment they land in before doing
+anything, because `FLExProject.FromOpenProject()` makes
+`from flexicon import FLExProject` load-bearing for the first time. The module
+therefore depends on whatever Python the user's FlexTools install happens to
+use -- which is frequently **not** the one on their `PATH`. Two failures become
+possible, and neither reads as an environment problem:
+
+- `pyflexicon` absent -> `ImportError` at load, before `Main()` runs; FlexTools
+  shows a traceback naming a package, with no remedy.
+- `pyflexicon` present but pre-bridge -> imports cleanly, then dies on the first
+  line of `Main()` with `AttributeError: type object 'FLExProject' has no
+  attribute 'FromOpenProject'`.
+
+Both now produce a plain `[ERROR]` block naming the fix and saying explicitly
+that the module is fine and the environment is not. The import is guarded, so
+the module still loads and can report rather than dying first. Silent on a
+current install -- not even a `report.Info`.
+
+The staleness check is `hasattr(FLExProject, "FromOpenProject")`, a **capability
+probe, never a version floor**. Field evidence for why, from one machine: the
+FlexTools interpreter reports `pyflexicon` 4.1.1 via `importlib.metadata` while
+`flexicon.version` reports 4.6.0, from the same editable install. A floor
+compared against the wrong one of those refuses a working environment.
+
+Separately, generated modules now record the flexicon version they were written
+against (`_TESTED_AGAINST`, stamped by `flextools_get_module_template()` at
+generation time) and emit a `report.Warning` if they later run somewhere older.
+That is advisory only: it runs after the capability gate has passed and cannot
+stop the module, so a wrong comparison costs a spurious note rather than a dead
+module. Equal, newer, or unparseable versions produce no output.
+
+The template's `REQUIRES: - Flexicon version 2.0+` line was corrected. It was
+prose, unenforced, and false -- exactly the hand-maintained-version rot that
+argues for stamping the constant rather than writing it by hand.
+
 ### Fixed: casting preflight now has dataflow (#121)
 
 `detect_casting_needs` was two regex passes over raw source lines with no type

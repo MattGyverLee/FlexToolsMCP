@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.6.0"
+    "version": "4.7.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -22462,6 +22462,97 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "FLExProject.FromOpenProject": {
+      "class": "FLExProject",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "cls": [
+            "arg[1] of isinstance()",
+            "arg[0] of __new__()"
+          ],
+          "donor": [
+            "arg[0] of isinstance()",
+            "arg[0] of _ValidateDonor()",
+            "arg[0] of getattr()",
+            "arg[0] of type()"
+          ]
+        },
+        "properties_accessed": [
+          "LexDbOA (OwningAtomic)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "ICmObjectRepository",
+        "ILexEntryRepository",
+        "ILexEntry",
+        "LexEntryTags",
+        "ILexSense",
+        "LexSenseTags",
+        "IWfiWordformRepository",
+        "WfiWordformTags",
+        "WfiGlossTags",
+        "IWfiAnalysisRepository",
+        "IWfiAnalysis",
+        "WfiAnalysisTags",
+        "WfiMorphBundleTags",
+        "LexExampleSentenceTags",
+        "MoFormTags",
+        "ILexRefTypeRepository",
+        "ICmPossibilityRepository",
+        "ICmPossibilityList",
+        "ICmSemanticDomain",
+        "TextTags",
+        "ITextRepository",
+        "IStTxtPara",
+        "ISegmentRepository",
+        "IReversalIndex",
+        "IReversalIndexEntry",
+        "ReversalIndexEntryTags",
+        "IMoMorphType",
+        "SpecialWritingSystemCodes",
+        "LcmInvalidClassException",
+        "LcmInvalidFieldException",
+        "LcmFileLockedException",
+        "LcmDataMigrationForbiddenException",
+        "IUndoStackManager",
+        "CellarPropertyType",
+        "CellarPropertyTypeFilter",
+        "IFwMetaDataCacheManaged",
+        "ITsString",
+        "ITsStrBldr",
+        "TsStringUtils",
+        "WorkerThreadException",
+        "ReflectionHelper",
+        "XmlTranslatedLists",
+        "ILexEntryRefFactory",
+        "LexEntryRefTags",
+        "FwObjDataTypes",
+        "FwTextPropType",
+        "FwObjDataTypes",
+        "FwTextPropType"
+      ],
+      "mapping_type": "direct",
+      "method": "FromOpenProject",
+      "methods_called": [],
+      "properties_accessed": [
+        "LexDbOA (OwningAtomic)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
     "FLExProject.GetAllAnalysisWSs": {
       "class": "FLExProject",
       "factories_used": [],
@@ -32086,621 +32177,33 @@
       "repositories_used": [],
       "utilities_used": []
     },
-    "GramCatOperations.ApplySyncableProperties": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "pure_python",
-        "methods_called": [],
-        "param_usage": {
-          "fill_gaps": [
-            "fill_gaps= of ApplySyncableProperties()"
-          ],
-          "item": [
-            "arg[0] of ApplySyncableProperties()"
-          ],
-          "props": [
-            "arg[1] of ApplySyncableProperties()"
-          ],
-          "ws_map": [
-            "arg[2] of ApplySyncableProperties()"
-          ]
-        },
-        "properties_accessed": [],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "None",
-            "param": "ws_map",
-            "type": "default_value"
-          },
-          {
-            "default": "False",
-            "param": "fill_gaps",
-            "type": "default_value"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "pure_python",
-      "method": "ApplySyncableProperties",
-      "methods_called": [],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.CompareTo": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "pure_python",
-        "methods_called": [],
-        "param_usage": {
-          "item1": [
-            "arg[0] of GetSyncableProperties()"
-          ],
-          "item2": [
-            "arg[0] of GetSyncableProperties()"
-          ]
-        },
-        "properties_accessed": [],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "None",
-            "param": "ops1",
-            "type": "default_value"
-          },
-          {
-            "default": "None",
-            "param": "ops2",
-            "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "pure_python",
-      "method": "CompareTo",
-      "methods_called": [],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": []
-    },
     "GramCatOperations.Create": {
       "class": "GramCatOperations",
-      "factories_used": [
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory"
-      ],
+      "factories_used": [],
       "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ICmPossibilityFactory",
-          "IFsFeatStrucTypeFactory"
-        ],
-        "mapping_type": "composite",
-        "methods_called": [
-          ".Add()",
-          ".Create()",
-          ".set_String()"
-        ],
-        "param_usage": {
-          "name": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
-          ],
-          "parent": [
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "MsFeatureSystemOA (OwningAtomic)",
-          "SubPossibilitiesOS (OwningSequence)",
-          "TypesOC (OwningCollection)"
-        ],
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
             "default": "None",
             "param": "parent",
             "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
           }
         ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
+        "utilities_used": []
       },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "composite",
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
       "method": "Create",
-      "methods_called": [
-        ".Add()",
-        ".Create()",
-        ".set_String()"
-      ],
-      "properties_accessed": [
-        "MsFeatureSystemOA (OwningAtomic)",
-        "SubPossibilitiesOS (OwningSequence)",
-        "TypesOC (OwningCollection)"
-      ],
-      "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
-    },
-    "GramCatOperations.Delete": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".Remove()"
-        ],
-        "param_usage": {
-          "cat_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "MsFeatureSystemOA (OwningAtomic)",
-          "TypesOC (OwningCollection)"
-        ],
-        "repositories_used": [],
-        "transformations": [],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "convenience",
-      "method": "Delete",
-      "methods_called": [
-        ".Remove()"
-      ],
-      "properties_accessed": [
-        "MsFeatureSystemOA (OwningAtomic)",
-        "TypesOC (OwningCollection)"
-      ],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.Duplicate": {
-      "class": "GramCatOperations",
-      "factories_used": [
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory"
-      ],
-      "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [
-          "ICmPossibilityFactory",
-          "IFsFeatStrucTypeFactory"
-        ],
-        "mapping_type": "composite",
-        "methods_called": [
-          ".Add()",
-          ".CopyAlternatives()",
-          ".Create()",
-          ".Insert()"
-        ],
-        "param_usage": {
-          "item_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "MsFeatureSystemOA (OwningAtomic)",
-          "Owner",
-          "SubPossibilitiesOS (OwningSequence)",
-          "TypesOC (OwningCollection)"
-        ],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "True",
-            "param": "insert_after",
-            "type": "default_value"
-          },
-          {
-            "default": "False",
-            "param": "deep",
-            "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "composite",
-      "method": "Duplicate",
-      "methods_called": [
-        ".Add()",
-        ".CopyAlternatives()",
-        ".Create()",
-        ".Insert()"
-      ],
-      "properties_accessed": [
-        "MsFeatureSystemOA (OwningAtomic)",
-        "Owner",
-        "SubPossibilitiesOS (OwningSequence)",
-        "TypesOC (OwningCollection)"
-      ],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.GetAll": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [],
-        "param_usage": {},
-        "properties_accessed": [
-          "MsFeatureSystemOA (OwningAtomic)",
-          "SubPossibilitiesOS (OwningSequence)",
-          "TypesOC (OwningCollection)"
-        ],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "True",
-            "param": "recursive",
-            "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "convenience",
-      "method": "GetAll",
       "methods_called": [],
-      "properties_accessed": [
-        "MsFeatureSystemOA (OwningAtomic)",
-        "SubPossibilitiesOS (OwningSequence)",
-        "TypesOC (OwningCollection)"
-      ],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.GetName": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
-        "param_usage": {
-          "cat_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ],
-          "wsHandle": [
-            "arg[0] of __WSHandle()",
-            "arg[0] of get_String()"
-          ]
-        },
-        "properties_accessed": [],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "None",
-            "param": "wsHandle",
-            "type": "default_value"
-          },
-          {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          },
-          {
-            "description": "Returns empty string instead of None",
-            "pattern": "or ''",
-            "type": "null_coalesce"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "direct",
-      "method": "GetName",
-      "methods_called": [
-        ".get_String()"
-      ],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
-    },
-    "GramCatOperations.GetParent": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [],
-        "param_usage": {
-          "cat_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "Owner"
-        ],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Conditional logic for handling special cases",
-            "type": "conditional"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "direct",
-      "method": "GetParent",
-      "methods_called": [],
-      "properties_accessed": [
-        "Owner"
-      ],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.GetSubcategories": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [],
-        "param_usage": {
-          "cat_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [
-          "SubPossibilitiesOS (OwningSequence)"
-        ],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "True",
-            "param": "recursive",
-            "type": "default_value"
-          },
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "direct",
-      "method": "GetSubcategories",
-      "methods_called": [],
-      "properties_accessed": [
-        "SubPossibilitiesOS (OwningSequence)"
-      ],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.GetSyncableProperties": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": false,
-        "factories_used": [],
-        "mapping_type": "direct",
-        "methods_called": [
-          ".get_String()"
-        ],
-        "param_usage": {
-          "item": [
-            "arg[0] of __ResolveObject()"
-          ]
-        },
-        "properties_accessed": [],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "description": "Converts to int",
-            "pattern": "int",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to list",
-            "pattern": "list",
-            "type": "type_conversion"
-          },
-          {
-            "description": "Converts to ITsString",
-            "pattern": "ITsString",
-            "type": "type_conversion"
-          }
-        ],
-        "utilities_used": []
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "direct",
-      "method": "GetSyncableProperties",
-      "methods_called": [
-        ".get_String()"
-      ],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": []
-    },
-    "GramCatOperations.SetName": {
-      "class": "GramCatOperations",
-      "factories_used": [],
-      "inline": {
-        "calls_ensure_write_enabled": true,
-        "factories_used": [],
-        "mapping_type": "convenience",
-        "methods_called": [
-          ".set_String()"
-        ],
-        "param_usage": {
-          "cat_or_hvo": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of __ResolveObject()"
-          ],
-          "name": [
-            "arg[0] of _ValidateParam()",
-            "arg[0] of MakeString()"
-          ],
-          "wsHandle": [
-            "arg[0] of __WSHandle()",
-            "arg[1] of MakeString()",
-            "arg[0] of set_String()"
-          ]
-        },
-        "properties_accessed": [],
-        "repositories_used": [],
-        "transformations": [
-          {
-            "default": "None",
-            "param": "wsHandle",
-            "type": "default_value"
-          },
-          {
-            "description": "Applies default writing system if not specified",
-            "pattern": "WSHandle",
-            "type": "ws_default"
-          }
-        ],
-        "utilities_used": [
-          "TsStringUtils.MakeString"
-        ]
-      },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
-      "mapping_type": "convenience",
-      "method": "SetName",
-      "methods_called": [
-        ".set_String()"
-      ],
-      "properties_accessed": [],
-      "repositories_used": [],
-      "utilities_used": [
-        "TsStringUtils.MakeString"
-      ]
     },
     "GramCatOperations.__init__": {
       "class": "GramCatOperations",
@@ -32720,13 +32223,7 @@
         "transformations": [],
         "utilities_used": []
       },
-      "lcm_deps": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
+      "lcm_deps": [],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],
@@ -54287,7 +53784,7 @@
           ]
         },
         "properties_accessed": [
-          "SubPossibilitiesOS (OwningSequence)"
+          "PossItemsRC (ReferenceCollection)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -54317,7 +53814,7 @@
       "method": "GetPossItems",
       "methods_called": [],
       "properties_accessed": [
-        "SubPossibilitiesOS (OwningSequence)"
+        "PossItemsRC (ReferenceCollection)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -55421,6 +54918,49 @@
       "methods_called": [
         ".get_String()"
       ],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "POSOperations.GetParent": {
+      "class": "POSOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "pos_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __ResolveObject()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IPartOfSpeechFactory",
+        "IPartOfSpeech",
+        "ILexEntryRepository",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetParent",
+      "methods_called": [],
       "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []

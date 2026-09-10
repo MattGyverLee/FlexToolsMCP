@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+### Index refreshed to flexicon 4.7.0
+
+`python -m flextoolsmcp.refresh` against the installed flexicon 4.7.0. The
+bundled flexicon-mode index, LCM bridge and common-patterns files move to
+`v4.7.0`; the `v4.6.0` files leave the repo (they are kept locally under the
+gitignored `index/**/archive/`, still resolvable for a project pinned to the
+older flexicon). LibLCM stays at `v11.0.0`, with its `python_wrappers`
+back-annotations and `reverse_mapping_liblcm-v11.0.0.json` updated by the same
+pass.
+
+Reviewed diff -- 118 entities unchanged, none added or removed, 1537 -> 1529
+methods, description coverage 100%, example coverage 76.3% (was 76.4%).
+Exactly three entities changed:
+
+- `FLExProject` **+`FromOpenProject`** -- the attached-view bridge constructor
+  landing in the index for the first time. Its `return_type` is `""` (no
+  return annotation upstream), which is what issue #130 turned on.
+- `POSOperations` **+`GetParent`**.
+- `GramCatOperations` **-10 methods** (`ApplySyncableProperties`, `CompareTo`,
+  `Delete`, `Duplicate`, `GetAll`, `GetName`, `GetParent`,
+  `GetSyncableProperties`, `SetName`, `GetSubcategories`), leaving `Create`
+  and `__init__`. Not an API removal: 4.7.0 made `GramCatOperations` a
+  deprecated alias subclassing `POSOperations`, and the AST extractor records
+  only an entity's own definitions, never inherited ones. The methods are all
+  still callable, via the base class.
+
+No `is_mutating` flag flipped anywhere, so no write-gate classification
+changed. The `GramCatOperations` shrink does mean calls like
+`GramCatOperations(project).Delete(cat)` now resolve as
+`source: "unknown"` (method not in that entity) rather than `source: "index"`.
+They are still blocked -- an unknown non-read-only-prefixed method on a known
+Operations class already fails closed -- but at lower confidence. Flattening
+inherited methods into the index is the real fix and is not attempted here.
+
 ### Fixed: the write gates were blind to the facade shape they teach (#130)
 
 An **unguarded** mutation reached through `FLExProject.FromOpenProject(project)`

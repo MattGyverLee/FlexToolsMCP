@@ -61812,10 +61812,6 @@
             "methods": []
           },
           {
-            "class": "GramCatOperations",
-            "methods": []
-          },
-          {
             "class": "NoteOperations",
             "methods": []
           },
@@ -62018,10 +62014,6 @@
           },
           {
             "class": "ConstChartMarkerOperations",
-            "methods": []
-          },
-          {
-            "class": "GramCatOperations",
             "methods": []
           },
           {
@@ -72166,16 +72158,10 @@
       "namespace": "SIL.LCModel",
       "properties": [],
       "python_wrappers": {
-        "flexlibs_2": [
-          {
-            "class": "GramCatOperations",
-            "methods": []
-          },
-          {
-            "class": "InflectionFeatureOperations",
-            "methods": []
-          }
-        ],
+        "flexlibs_2": {
+          "class": "InflectionFeatureOperations",
+          "methods": []
+        },
         "flexlibs_stable": null
       },
       "relationships": [],

@@ -1593,10 +1593,10 @@
         "source": "docstring"
       },
       {
-        "class": "GramCatOperations",
-        "code": "gramCatOps = GramCatOperations(project)\nobsolete = gramCatOps.Create(\"obsolete_feature\")\n# Later, if not needed...\ngramCatOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a category that is in use may raise an error from FLEx\n            - Will also delete all subcategories recursively\n            - Deletion is permanent and cannot be undone\n            - Morphological rules or entries using this may be affected\n\n        See Also:\n            Create",
-        "description": "Delete a grammatical category.",
-        "method": "Delete",
+        "class": "InflectionFeatureOperations",
+        "code": "inflOps = InflectionFeatureOperations(project)\n# Find and delete a test feature\nfor feature in inflOps.FeatureGetAll():\n    ws = project.project.DefaultAnalWs\n    name = ITsString(feature.Name.get_String(ws)).Text\n    if name == \"test_feature\":\n        inflOps.FeatureDelete(feature)\n        break\n\n        Warning:\n            - Cannot delete if used in feature structures\n            - Cannot delete if referenced by entries or morphemes\n            - Check dependencies before deletion\n            - Deletion is permanent and cannot be undone\n\n        See Also:\n            FeatureCreate, FeatureGetAll",
+        "description": "Delete a feature definition.",
+        "method": "FeatureDelete",
         "object_type": "general",
         "operation": "delete",
         "source": "docstring"
@@ -2029,15 +2029,6 @@
         "source": "docstring"
       },
       {
-        "class": "GramCatOperations",
-        "code": "cat1 = project1_gramCatOps.Find(\"person\")\ncat2 = project2_gramCatOps.Find(\"person\")\nis_diff, diffs = project1_gramCatOps.CompareTo(\n    cat1, cat2,\n    ops1=project1_gramCatOps,\n    ops2=project2_gramCatOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
-        "description": "Compare two grammatical categories and return detailed differences.",
-        "method": "CompareTo",
-        "object_type": "general",
-        "operation": "iterate",
-        "source": "docstring"
-      },
-      {
         "class": "InflectionFeatureOperations",
         "code": "ic1 = project1_inflOps.InflectionClassFind(\"First Declension\")\nic2 = project2_inflOps.InflectionClassFind(\"First Declension\")\nis_diff, diffs = project1_inflOps.CompareTo(\n    ic1, ic2,\n    ops1=project1_inflOps,\n    ops2=project2_inflOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
         "description": "Compare two inflection classes and return detailed differences.",
@@ -2140,6 +2131,15 @@
         "class": "POSOperations",
         "code": "pos1 = project1_posOps.Find(\"Noun\")\npos2 = project2_posOps.Find(\"Noun\")\nis_diff, diffs = project1_posOps.CompareTo(\n    pos1, pos2,\n    ops1=project1_posOps,\n    ops2=project2_posOps\n)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} -> {val2}\")",
         "description": "Compare two parts of speech and return detailed differences.",
+        "method": "CompareTo",
+        "object_type": "general",
+        "operation": "iterate",
+        "source": "docstring"
+      },
+      {
+        "class": "ParagraphOperations",
+        "code": "is_diff, diffs = ops1.CompareTo(para1, para2, ops1, ops2)\nif is_diff:\n    for prop, (val1, val2) in diffs.items():\n        print(f\"{prop}: {val1} != {val2}\")",
+        "description": "Compare two paragraphs for differences.",
         "method": "CompareTo",
         "object_type": "general",
         "operation": "iterate",
@@ -3386,7 +3386,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1175,
+    "total_patterns": 1166,
     "unique_patterns": 115
   }
 }

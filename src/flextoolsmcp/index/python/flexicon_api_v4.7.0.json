@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.6.0"
+    "version": "4.7.0"
   },
   "categories": {
     "discourse": {
@@ -23338,7 +23338,7 @@
       ],
       "methods": [
         {
-          "description": "Discard every uncommitted change in the currently open unit of work.\n\nWraps liblcm's one real revert primitive, ``IActionHandler.Rollback(0)``\n(task A3, `specs/write-path-transactions/spec.md` section A3). It is\ncoarse -- it reverts the *whole* open unit of work, not a selected\nsubset -- but under ``undoable=False`` that unit is the entire session,\nwhich is exactly the granularity that mode's atomicity story needs and\nwhich was previously unreachable from flexicon.\n\nWhat it does NOT do: it cannot revert anything already written to\ndisk -- data that was on disk when the session opened, or anything a\nprior ``CloseProject()`` committed. \"Uncommitted\" here means \"still\nonly in this process's cache\".\n\nUnder ``undoable=False`` that window is unusually wide, and for two\nreasons worth knowing. The session envelope holds the FSM in\n``ProcessingDataChanges``, which blocks the auto-save timer outright\n(`UnitOfWorkService.cs:240`), so nothing is quietly committed behind\nyour back between operations. For the same reason ``SaveChanges()``\ncannot be used to commit mid-session either: it reaches\n``CheckReadyForCommit(\"Commit at wrong place.\")``\n(`UnitOfWorkService.cs:304`), which requires ``ReadyForBeginTask``.\nThe practical consequence is that in this mode essentially the whole\nsession is abortable, right up to ``CloseProject()``.\n\nMode-dependent behavior (read this before relying on it):\n\n* ``undoable=False`` (the legacy opt-out; you must ask for it\nexplicitly since 4.4.0): this is the intended mode. The\nsession-long ``BeginNonUndoableTask()`` opened at ``OpenProject()``\nis the open unit of work, so this rolls the session back to its\nstate at open (or at the last commit) and then **reopens the\nenvelope**, so the session stays usable and ``CloseProject()``'s\nmatching ``EndNonUndoableTask()`` still has a task to end. See the\nO2 catch below for why reopening is not optional.\n* ``undoable=True``: rollback is already automatic and per-operation\n(``UndoableOperation()`` / ``_TransactionCM`` roll back their own\nblock on exception), so there is no session-wide uncommitted state\nfor this method to abort. Between operations nothing is open and\nthis returns ``False``. Inside an open block it raises\n``FP_TransactionError`` rather than rolling back -- see below.\n\nThe O2 catch (`UndoStack.cs:705-724`, recorded in `spec.md` O2 and\n`reviews/cycle2-explore-liblcm-facts.md` F5c):\n\n1. ``Rollback(int nDepth)`` ignores ``nDepth`` entirely -- the\nparameter is documented \"[Not used.]\" -- so it always reverts the\nwhole open unit. There is no partial rollback.\n2. It requires ``CurrentProcessingState == ProcessingDataChanges`` and\notherwise throws ``InvalidOperationException(\"Rollback not\nsupported in the current state.\")``. ``CurrentDepth`` is exactly\nthat state expressed as 1-or-0 (`UndoStack.cs:731-734`), so the\n``CurrentDepth == 0`` check below is the precondition test, not a\nheuristic.\n3. On success it leaves the FSM in ``ReadyForBeginTask`` -- i.e. it\n**terminates** the open task rather than merely emptying it. In\n``undoable=False`` that would silently end the session envelope,\nand ``CloseProject()`` would then call ``EndNonUndoableTask()``\nagainst a state that has no task to end. This method therefore\nreopens ``BeginNonUndoableTask()`` immediately, making the abort\nnon-terminal in that mode.\n\nWhy ``undoable=True`` refuses instead of rolling back: in that mode\nan open unit of work is always owned by an ``UndoableUnitOfWorkHelper``\n(there is no session envelope). Rolling back underneath it would leave\nthat helper's ``Dispose()`` to call ``Rollback``/``EndUndoTask``\nagainst a FSM already back in ``ReadyForBeginTask``, raising a second\nexception from the ``with`` block's exit and masking whatever the\ncaller was actually handling. Refusing loudly is the honest option;\nthe correct tool inside a block is to let the exception propagate,\nwhich rolls that block back by design.\n",
+          "description": "Discard every uncommitted change in the currently open unit of work.\n\nWraps liblcm's one real revert primitive, ``IActionHandler.Rollback(0)``\n(task A3, `specs/write-path-transactions/spec.md` section A3). It is\ncoarse -- it reverts the *whole* open unit of work, not a selected\nsubset -- but under ``undoable=False`` that unit is the entire session,\nwhich is exactly the granularity that mode's atomicity story needs and\nwhich was previously unreachable from flexicon.\n\nWhat it does NOT do: it cannot revert anything already written to\ndisk -- data that was on disk when the session opened, or anything a\nprior ``CloseProject()`` committed. \"Uncommitted\" here means \"still\nonly in this process's cache\".\n\nUnder ``undoable=False`` that window is unusually wide, and for two\nreasons worth knowing. The session envelope holds the FSM in\n``ProcessingDataChanges``, which blocks the auto-save timer outright\n(`UnitOfWorkService.cs:240`), so nothing is quietly committed behind\nyour back between operations. For the same reason ``SaveChanges()``\ncannot be used to commit mid-session either: it reaches\n``CheckReadyForCommit(\"Commit at wrong place.\")``\n(`UnitOfWorkService.cs:304`), which requires ``ReadyForBeginTask``.\nThe practical consequence is that in this mode essentially the whole\nsession is abortable, right up to ``CloseProject()``.\n\nMode-dependent behavior (read this before relying on it):\n\n* ``undoable=False`` (the legacy opt-out; you must ask for it\nexplicitly since 4.4.0): this is the intended mode. The\nsession-long ``BeginNonUndoableTask()`` opened at ``OpenProject()``\nis the open unit of work, so this rolls the session back to its\nstate at open (or at the last commit) and then **reopens the\nenvelope**, so the session stays usable and ``CloseProject()``'s\nmatching ``EndNonUndoableTask()`` still has a task to end. See the\nO2 catch below for why reopening is not optional.\n* ``undoable=True``: rollback is already automatic and per-operation\n(``UndoableOperation()`` / ``_TransactionCM`` roll back their own\nblock on exception), so there is no session-wide uncommitted state\nfor this method to abort. Between operations nothing is open and\nthis returns ``False``. Inside an open block it raises\n``FP_TransactionError`` rather than rolling back -- see below.\n\nThe O2 catch (`UndoStack.cs:705-724`, recorded in `spec.md` O2 and\n`reviews/cycle2-explore-liblcm-facts.md` F5c):\n\n1. ``Rollback(int nDepth)`` ignores ``nDepth`` entirely -- the\nparameter is documented \"[Not used.]\" -- so it always reverts the\nwhole open unit. There is no partial rollback.\n2. It requires ``CurrentProcessingState == ProcessingDataChanges`` and\notherwise throws ``InvalidOperationException(\"Rollback not\nsupported in the current state.\")``. ``CurrentDepth`` is exactly\nthat state expressed as 1-or-0 (`UndoStack.cs:731-734`), so the\n``CurrentDepth == 0`` check below is the precondition test, not a\nheuristic.\n3. On success it leaves the FSM in ``ReadyForBeginTask`` -- i.e. it\n**terminates** the open task rather than merely emptying it. In\n``undoable=False`` that would silently end the session envelope,\nand ``CloseProject()`` would then call ``EndNonUndoableTask()``\nagainst a state that has no task to end. This method therefore\nreopens ``BeginNonUndoableTask()`` immediately, making the abort\nnon-terminal in that mode.\n\nWhy ``undoable=True`` refuses instead of rolling back: in that mode\nan open unit of work is always owned by an ``UndoableUnitOfWorkHelper``\n(there is no session envelope). Rolling back underneath it would leave\nthat helper's ``Dispose()`` to call ``Rollback``/``EndUndoTask``\nagainst a FSM already back in ``ReadyForBeginTask``, raising a second\nexception from the ``with`` block's exit and masking whatever the\ncaller was actually handling. Refusing loudly is the honest option;\nthe correct tool inside a block is to let the exception propagate,\nwhich rolls that block back by design.\n\nAttached views refuse outright. On a project attached with\n``FromOpenProject()`` the open unit of work is the HOST's -- a view\nis unconditionally ``_undoable = False``, so without a guard this\nmethod would take the ``undoable=False`` branch below and\n``Rollback(0)`` the host's session-long envelope, discarding\nunsaved edits the host made before the module was ever called and\nthen replacing that envelope with one this facade opened. Both are\nthe host's to own (Invariant B), so the call is refused before any\naction-handler access.\n",
           "example": "            # NOTE the explicit undoable=False. Under the 4.4.0 default this\n            # method has nothing session-wide to abort -- see the mode table\n            # above -- and each Create() rolls itself back instead.\n            project.OpenProject(\"MyProject\", writeEnabled=True, undoable=False)\n            try:\n                for word, gloss in messy_input:\n                    entry = project.LexEntry.Create(word, \"stem\")\n                    project.Senses.Create(entry, gloss, \"en\")\n            except Exception:\n                project.AbortSession()   # discard the whole partial import\n                raise\n            else:\n                # NOTE: not SaveChanges(). Under undoable=False the\n                # session-long envelope keeps CurrentDepth at 1 for the\n                # whole session (issue #243, spec.md C21), so\n                # SaveChanges() always raises FP_TransactionError here.\n                # CloseProject() ends that envelope first, then saves.\n                project.CloseProject()\n\n        See Also:\n            Undo() - reverse one committed ``UndoableOperation``\n                (``undoable=True`` only, in-process only).\n            UndoableOperation() - per-operation rollback, the finer-grained\n                and preferred mechanism once ``undoable=True`` is in use.",
           "is_classmethod": false,
           "is_mutating": false,
@@ -23348,6 +23348,10 @@
           "output_behavior": {
             "empty": null,
             "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If this is a view obtained from"
+              },
               {
                 "exception": "FP",
                 "when": "_ReadOnlyError: If the project is not write-enabled."
@@ -23369,6 +23373,12 @@
           },
           "parameters": [],
           "raises": [
+            "FP_RuntimeError: If this is a view obtained from",
+            "``FromOpenProject()``. Raised before the write-enabled",
+            "check, for the same reason as in ``SaveChanges()``: the",
+            "refusal is about who owns the unit of work, and a",
+            "read-only diagnosis would imply that a write-enabled host",
+            "would make the call succeed, which it must not.",
             "FP_ReadOnlyError: If the project is not write-enabled.",
             "FP_TransactionError: If ``undoable=True`` and a unit of work is",
             "open (see above), or if the underlying LCM ``Rollback(0)``",
@@ -23441,7 +23451,7 @@
           "usage_hint": null
         },
         {
-          "description": "Save any pending changes and dispose of the LCM object.\n\nGuard added for issue #243 (spec.md C1/C6/C7): the Phase 1\n``EndNonUndoableTask()`` mirror call below is guarded two ways so\nthat a raise there can never skip ``usm.Save()``, which would\notherwise discard the whole session's in-memory work with no\ndata written to disk:\n\n1. ``HasOpenSessionTask()`` is checked first. If no envelope is\nopen (e.g. a prior mid-session ``SaveChanges()`` call already\ncollapsed it -- spec.md C9), the ``End`` call is skipped\nentirely rather than assuming ``writeEnabled and not\n_undoable`` implies the envelope is still present. This is an\nanomaly by construction in Phase 1 (spec.md C14/C18), so it is\nlogged at ERROR (spec.md C23) rather than debug -- see the\nbranch below for exactly what is and is not asserted.\n2. Even when the check says an envelope IS open, the ``End``\ncall itself is wrapped in try/except so an unexpected raise\nthere (not just the already-prevented depth-0 case) still\ncannot prevent ``usm.Save()`` from running.\n\nEnd-then-Save order is unchanged (C7) -- this does not reorder\n``usm.Save()`` ahead of the ``End`` call; P-5 (spec.md section 2)\nproved that shape trades one guaranteed raise for another with\nno save occurring either way.\n\n``Dispose()``/``del self.project`` run in a ``finally`` (spec.md\nC15) so the live LCM handle is never leaked, including when the\nERROR branch below is taken or when ``usm.Save()`` itself raises.",
+          "description": "Save any pending changes and dispose of the LCM object.\n\nGuard added for issue #243 (spec.md C1/C6/C7): the Phase 1\n``EndNonUndoableTask()`` mirror call below is guarded two ways so\nthat a raise there can never skip ``usm.Save()``, which would\notherwise discard the whole session's in-memory work with no\ndata written to disk:\n\n1. ``HasOpenSessionTask()`` is checked first. If no envelope is\nopen (e.g. a prior mid-session ``SaveChanges()`` call already\ncollapsed it -- spec.md C9), the ``End`` call is skipped\nentirely rather than assuming ``writeEnabled and not\n_undoable`` implies the envelope is still present. This is an\nanomaly by construction in Phase 1 (spec.md C14/C18), so it is\nlogged at ERROR (spec.md C23) rather than debug -- see the\nbranch below for exactly what is and is not asserted.\n2. Even when the check says an envelope IS open, the ``End``\ncall itself is wrapped in try/except so an unexpected raise\nthere (not just the already-prevented depth-0 case) still\ncannot prevent ``usm.Save()`` from running.\n\nEnd-then-Save order is unchanged (C7) -- this does not reorder\n``usm.Save()`` ahead of the ``End`` call; P-5 (spec.md section 2)\nproved that shape trades one guaranteed raise for another with\nno save occurring either way.\n\n``Dispose()``/``del self.project`` run in a ``finally`` (spec.md\nC15) so the live LCM handle is never leaked, including when the\nERROR branch below is taken or when ``usm.Save()`` itself raises.\n\nAttached-view no-op: on a project attached with\n``FromOpenProject()``, this method does nothing and returns\n``None`` -- the host owns the cache, and a defensive close in an\notherwise-correct module must not fail (SPEC 3b).",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -23460,6 +23470,48 @@
           "returns": "",
           "signature": "CloseProject()",
           "summary": "Save any pending changes and dispose of the LCM object.",
+          "usage_hint": null
+        },
+        {
+          "description": "Attach a flexicon facade to a project someone else already opened.\n\n`donor` is whatever the host handed `Main()`: under real FLExTools a\n**flexlibs** ``FLExProject`` (flextoolslib/code/FTModules.py:75), under\nthe FLExTools MCP a **flexicon** one. Returns an object exposing the\nfull flexicon facade over the donor's cache.\n\n**Never opens a project, and never closes one.** Reopening a project\nthe host is holding raises ``FP_FileLockedError``, which is the trap\nany \"just make your own flexicon project\" advice walks into.\n\nThe portable module shape -- identical under both hosts::\n\nfrom flexicon import FLExProject\n\ndef Main(project, report, modifyAllowed):\nfx = FLExProject.FromOpenProject(project)\nlex, variants = fx.LexEntry, fx.Variants\n\nImporting the class is not enough on its own: it does not change the\ninstance ``Main()`` is handed. This classmethod is what makes that\nimport load-bearing.\n",
+          "example": "",
+          "is_classmethod": true,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "FromOpenProject",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: the donor is missing the cache or"
+              }
+            ],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "name": "cls",
+              "type": ""
+            },
+            {
+              "default": null,
+              "name": "donor",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: the donor is missing the cache or",
+            "``writeEnabled``. The message names every absent attribute",
+            "and the donor's module."
+          ],
+          "return_type": "",
+          "returns": "",
+          "signature": "FromOpenProject(cls, donor)",
+          "summary": "Attach a flexicon facade to a project someone else already opened.",
           "usage_hint": null
         },
         {
@@ -26506,6 +26558,10 @@
             "failure": [
               {
                 "exception": "FP",
+                "when": "_RuntimeError: If this is a view obtained from"
+              },
+              {
+                "exception": "FP",
                 "when": "_ReadOnlyError: If project is not write-enabled."
               },
               {
@@ -26518,6 +26574,11 @@
           },
           "parameters": [],
           "raises": [
+            "FP_RuntimeError: If this is a view obtained from",
+            "``FromOpenProject()``. Raised before the write-enabled and",
+            "depth checks below, so the caller hears that the host owns",
+            "the save rather than a read-only or transaction-depth",
+            "diagnosis that would misdescribe the situation.",
             "FP_ReadOnlyError: If project is not write-enabled.",
             "FP_TransactionError: If ``CurrentDepth > 0`` -- a unit of work",
             "is currently open, in either mode. ``usm.Save()`` is never",
@@ -27535,8 +27596,8 @@
           "usage_hint": null
         },
         {
-          "description": "Access to grammatical category operations.\n",
-          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=True)\n            >>> # Get all grammatical categories\n            >>> for gc in project.GramCat.GetAll():\n            ...     name = project.GramCat.GetName(gc)\n            ...     print(f\"Category: {name}\")\n            >>> # Create a new category\n            >>> gc = project.GramCat.Create(\"Transitive\")",
+          "description": "Deprecated discoverability alias for POS.\n",
+          "example": "            >>> # Reads behave identically -- both address\n            >>> # LangProject.PartsOfSpeechOA:\n            >>> project.GramCat.Find(\"Verb\")\n            >>> project.POS.Find(\"Verb\")\n            >>>\n            >>> # Browse the category inventory:\n            >>> for pos in project.POS.GetAll():\n            ...     print(project.POS.GetName(pos))\n            >>>\n            >>> # Writes must go through project.POS. Creating a category\n            >>> # needs an abbreviation (it is what interlinear renders);\n            >>> # nest with AddSubcategory:\n            >>> verb = project.POS.Create(\"Verb\", \"v\")\n            >>> project.POS.AddSubcategory(verb, \"Transitive Verb\", \"vt\")\n            >>>\n            >>> # The deprecated spelling refuses, with a pointer:\n            >>> # project.GramCat.Create(\"Transitive\")\n            >>> #   -> FP_ParameterError: GramCat.Create() has been\n            >>> #      removed (issue #276) ... use\n            >>> #      project.POS.Create(name, abbreviation)",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -27564,16 +27625,16 @@
             "failure": [],
             "notes": [],
             "success": {
-              "description": "GramCatOperations: Instance providing grammatical category management methods",
+              "description": "GramCatOperations: A distinct, lazily-cached deprecated subclass of ``POSOperations``. It **addresses the same list** as ``project.POS`` -- ``IPartOfSpeech`` in ``LangProject.PartsOfSpeechOA`` -- and inherits its behaviour, but it is *not* the same object: ``project.GramCat is project.POS`` is **False**.  At list level, a \"grammatical category\" *is* a part of speech. The full CRUD surface -- ``GetAll``, ``Find``, ``Create``, ``AddSubcategory``, ``GetSubcategories``, ``GetParent``, ``Delete`` -- lives on ``project.POS``. This alias is retained only so callers thinking in FLEx UI terminology (Grammar > Categories) can find the wrapper from either spelling; new code should spell it ``project.POS``.  Two things are deliberately *not* inherited transparently:  - Constructing the alias emits a :class:`DeprecationWarning`. The instance is cached, so the warning fires once per project, not once per attribute access. - ``project.GramCat.Create(...)`` **always raises** :class:`FP_ParameterError`, before any write. The old ``Create(name, parent=None)`` signature is kept precisely so that a legacy caller gets that explanatory error -- naming ``project.POS.Create(name, abbreviation)`` for a top-level category and ``project.POS.AddSubcategory(parent, name, abbreviation)`` for a subcategory -- instead of a bare ``TypeError`` about a missing ``abbreviation`` argument. That raising override is the migration signpost, which is why this property returns a ``GramCatOperations`` rather than ``self.POS`` (issue #276; see ``specs/276-gramcat-collection/spec.md`` section 4).  Removal is scheduled for the v5.0.0 boundary, alongside the other deprecated compatibility surfaces.  Three FLEx concepts wear confusingly similar names. They are different LCM classes, and only the first is a category (issue #276):  - ``project.GramCat`` / ``project.POS`` -- the **category inventory** (FLEx: Grammar > Categories). Create, browse, nest and delete categories here. - ``project.Senses.GetGrammaticalInfo(sense)`` -- the sense's **MSA** (``ILexSense.MorphoSyntaxAnalysisRA``), which is what FLEx labels \"Grammatical Info.\" That is a composite, not a kind of category: use ``project.Senses.GetPartOfSpeechObject(sense)`` for just the category behind it, and ``project.MSA.*`` to build one. - ``project.InflectionFeatures`` -- the feature side of that composite, including the feature-structure types in ``MsFeatureSystemOA.TypesOC`` via ``TypeFind`` / ``TypeCreate``. An ``IFsFeatStrucType`` is a structural template for feature structures; it is never a grammatical category.",
               "type": "GramCatOperations"
             }
           },
           "parameters": [],
           "raises": [],
           "return_type": "GramCatOperations",
-          "returns": "GramCatOperations: Instance providing grammatical category management methods ",
+          "returns": "GramCatOperations: A distinct, lazily-cached deprecated subclass of ``POSOperations``. It **addresses the same list** as ``project.POS`` -- ``IPartOfSpeech`` in ``LangProject.PartsOfSpeechOA`` -- and inherits its behaviour, but it is *not* the same object: ``project.GramCat is project.POS`` is **False**.  At list level, a \"grammatical category\" *is* a part of speech. The full CRUD surface -- ``GetAll``, ``Find``, ``Create``, ``AddSubcategory``, ``GetSubcategories``, ``GetParent``, ``Delete`` -- lives on ``project.POS``. This alias is retained only so callers thinking in FLEx UI terminology (Grammar > Categories) can find the wrapper from either spelling; new code should spell it ``project.POS``.  Two things are deliberately *not* inherited transparently:  - Constructing the alias emits a :class:`DeprecationWarning`. The instance is cached, so the warning fires once per project, not once per attribute access. - ``project.GramCat.Create(...)`` **always raises** :class:`FP_ParameterError`, before any write. The old ``Create(name, parent=None)`` signature is kept precisely so that a legacy caller gets that explanatory error -- naming ``project.POS.Create(name, abbreviation)`` for a top-level category and ``project.POS.AddSubcategory(parent, name, abbreviation)`` for a subcategory -- instead of a bare ``TypeError`` about a missing ``abbreviation`` argument. That raising override is the migration signpost, which is why this property returns a ``GramCatOperations`` rather than ``self.POS`` (issue #276; see ``specs/276-gramcat-collection/spec.md`` section 4).  Removal is scheduled for the v5.0.0 boundary, alongside the other deprecated compatibility surfaces.  Three FLEx concepts wear confusingly similar names. They are different LCM classes, and only the first is a category (issue #276):  - ``project.GramCat`` / ``project.POS`` -- the **category inventory** (FLEx: Grammar > Categories). Create, browse, nest and delete categories here. - ``project.Senses.GetGrammaticalInfo(sense)`` -- the sense's **MSA** (``ILexSense.MorphoSyntaxAnalysisRA``), which is what FLEx labels \"Grammatical Info.\" That is a composite, not a kind of category: use ``project.Senses.GetPartOfSpeechObject(sense)`` for just the category behind it, and ``project.MSA.*`` to build one. - ``project.InflectionFeatures`` -- the feature side of that composite, including the feature-structure types in ``MsFeatureSystemOA.TypesOC`` via ``TypeFind`` / ``TypeCreate``. An ``IFsFeatStrucType`` is a structural template for feature structures; it is never a grammatical category. ",
           "signature": "GramCat()",
-          "summary": "Access to grammatical category operations.",
+          "summary": "Deprecated discoverability alias for POS.",
           "usage_hint": null
         },
         {
@@ -27745,7 +27806,7 @@
         },
         {
           "description": "Access to morphosyntactic-analysis (MSA) creation operations.\n\nPairs with the reading wrapper in\nflexicon.code.Lexicon.morphosyntax_analysis and the iteration\nhelper in msa_collection. Handles the four concrete MSA types\n(stem, derivational affix, inflectional affix, unclassified\naffix) and auto-attaches the new MSA to the supplied sense via\nsense.MorphoSyntaxAnalysisRA.\n",
-          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> sense = entry.SensesOS[0]\n            >>> verb_pos = project.GramCat.Find(\"Verb\")\n            >>> # Stem MSA with POS = Verb\n            >>> project.MSA.CreateStem(sense, verb_pos)\n            >>> # Derivational affix that turns nouns into verbs\n            >>> n_pos = project.GramCat.Find(\"Noun\")\n            >>> v_pos = project.GramCat.Find(\"Verb\")\n            >>> project.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>> sense = entry.SensesOS[0]\n            >>> verb_pos = project.POS.Find(\"Verb\")\n            >>> # Stem MSA with POS = Verb\n            >>> project.MSA.CreateStem(sense, verb_pos)\n            >>> # Derivational affix that turns nouns into verbs\n            >>> n_pos = project.POS.Find(\"Noun\")\n            >>> v_pos = project.POS.Find(\"Verb\")\n            >>> project.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)",
           "is_classmethod": false,
           "is_mutating": false,
           "is_property": true,
@@ -30993,116 +31054,17 @@
     "GramCatOperations": {
       "access_path": "project.GramCat",
       "base_classes": [
-        "BaseOperations"
+        "POSOperations"
       ],
       "category": "grammar",
-      "description": "This class provides operations for managing Grammatical Categories in a\nFieldWorks project.\n\nGrammatical categories are used to classify and describe grammatical\nproperties such as person, number, gender, tense, aspect, mood, case,\nand other morphosyntactic features used in linguistic analysis.\n\nUsage::\n\nfrom flexicon import FLExProject, GramCatOperations\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\ngramCatOps = GramCatOperations(project)\n\n# Get all grammatical categories\nfor cat in gramCatOps.GetAll():\nprint(gramCatOps.GetName(cat))\n\n# Create a new category\nperson = gramCatOps.Create(\"person\")\n\n# Create subcategories\nfirst = gramCatOps.Create(\"1st person\", parent=person)\nsecond = gramCatOps.Create(\"2nd person\", parent=person)\nthird = gramCatOps.Create(\"3rd person\", parent=person)\n\n# Navigate hierarchy\nparent = gramCatOps.GetParent(first)\nsubcats = gramCatOps.GetSubcategories(person)\n\nproject.CloseProject()",
+      "description": "Deprecated alias of :class:`POSOperations` -- use ``project.POS``.\n\nInstantiating this class emits a :class:`DeprecationWarning`. Every\noperation is inherited from ``POSOperations`` and addresses\n``LangProject.PartsOfSpeechOA``; the only override is :meth:`Create`,\nwhich raises rather than repeating a write that was never correct.\n\n**The ruling (issue #276).** Three FLEx concepts wear confusingly\nsimilar names. They are different LCM classes, and only the first is a\ncategory:\n\n- ``project.POS`` (formerly ``project.GramCat``) -- the **category\ninventory** (FLEx: Grammar > Categories). Create, browse, nest and\ndelete categories here. A list-level \"grammatical category\" is a\nPart of Speech.\n- ``project.Senses.GetGrammaticalInfo(sense)`` -- the sense-level\ncomposite, the **MSA** (``ILexSense.MorphoSyntaxAnalysisRA``), which\nis what FLEx labels \"Grammatical Info.\" Use\n``project.Senses.GetPartOfSpeechObject(sense)`` for just the category\nbehind it, and ``project.MSA.*`` to build one.\n- ``project.InflectionFeatures`` -- the feature side of that composite,\nincluding the ``MsFeatureSystemOA.TypesOC`` entries this class used\nto walk, via ``TypeFind`` / ``TypeCreate``. An ``IFsFeatStrucType``\nis never a grammatical category.\n\nRemoval is scheduled for the v5.0.0 boundary, alongside the other\ndeprecated compatibility surfaces.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Preferred spelling. project.GramCat addresses this same list\n# (LangProject.PartsOfSpeechOA) but is a distinct deprecated\n# object: project.GramCat is project.POS is False, and its\n# Create() always raises. See FLExProject.GramCat.\nposOps = project.POS\n\nfor pos in posOps.GetAll():\nprint(posOps.GetName(pos), posOps.GetAbbreviation(pos))\n\nverb = posOps.Create(\"Verb\", \"v\")\ntransitive = posOps.AddSubcategory(verb, \"Transitive Verb\", \"vt\")\nassert posOps.GetParent(transitive) is not None\n\nproject.CloseProject()\n\nSee Also:\nPOSOperations, InflectionFeatureOperations.TypeCreate,\nLexSenseOperations.GetGrammaticalInfo",
       "example": "",
       "id": "GramCatOperations",
-      "lcm_dependencies": [
-        "ICmPossibility",
-        "ICmPossibilityFactory",
-        "IFsFeatStrucTypeFactory",
-        "ITsString",
-        "TsStringUtils"
-      ],
+      "lcm_dependencies": [],
       "methods": [
         {
-          "description": "Apply syncable properties (from GetSyncableProperties) onto an item.\n\nInherited from BaseOperations; declared on the concrete class so static\nAPI indexers see it. The base implementation handles every property\nshape this class's GetSyncableProperties emits.",
+          "description": "Removed -- always raises. Use ``project.POS.Create`` instead.\n\nThe old signature is retained so that an existing caller gets an\nexplanatory :class:`FP_ParameterError` rather than a bare\n``TypeError`` about a missing ``abbreviation`` argument.\n",
           "example": "",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "ApplySyncableProperties",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {}
-          },
-          "parameters": [
-            {
-              "default": null,
-              "name": "item",
-              "type": ""
-            },
-            {
-              "default": null,
-              "name": "props",
-              "type": ""
-            },
-            {
-              "default": null,
-              "name": "ws_map",
-              "type": ""
-            },
-            {
-              "default": false,
-              "name": "fill_gaps",
-              "type": ""
-            }
-          ],
-          "raises": [],
-          "return_type": "",
-          "returns": "",
-          "signature": "ApplySyncableProperties(item, props, ws_map=None, fill_gaps=False)",
-          "summary": "Apply syncable properties (from GetSyncableProperties) onto an item.",
-          "usage_hint": null
-        },
-        {
-          "description": "Compare two grammatical categories and return detailed differences.\n",
-          "example": "            >>> cat1 = project1_gramCatOps.Find(\"person\")\n            >>> cat2 = project2_gramCatOps.Find(\"person\")\n            >>> is_diff, diffs = project1_gramCatOps.CompareTo(\n            ...     cat1, cat2,\n            ...     ops1=project1_gramCatOps,\n            ...     ops2=project2_gramCatOps\n            ... )\n            >>> if is_diff:\n            ...     for prop, (val1, val2) in diffs.items():\n            ...         print(f\"{prop}: {val1} -> {val2}\")\n",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "CompareTo",
-          "output_behavior": {
-            "empty": null,
-            "failure": [],
-            "notes": [],
-            "success": {
-              "description": "tuple: (is_different, differences) where: - is_different (bool): True if items differ - differences (dict): Maps property names to (value1, value2) tuples",
-              "type": "tuple"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "First category to compare (from source project).",
-              "name": "item1",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Second category to compare (from target project).",
-              "name": "item2",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Optional GramCatOperations instance for item1's project. Defaults to self.",
-              "name": "ops1",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Optional GramCatOperations instance for item2's project. Defaults to self.",
-              "name": "ops2",
-              "type": ""
-            }
-          ],
-          "raises": [],
-          "return_type": "tuple",
-          "returns": "tuple: (is_different, differences) where: - is_different (bool): True if items differ - differences (dict): Maps property names to (value1, value2) tuples ",
-          "signature": "CompareTo(item1, item2, ops1=None, ops2=None)",
-          "summary": "Compare two grammatical categories and return detailed differences.",
-          "usage_hint": null
-        },
-        {
-          "description": "Create a new grammatical category.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> # Create top-level category\n            >>> person = gramCatOps.Create(\"person\")\n            >>> print(gramCatOps.GetName(person))\n            person\n\n            >>> # Create subcategories\n            >>> first = gramCatOps.Create(\"1st person\", parent=person)\n            >>> second = gramCatOps.Create(\"2nd person\", parent=person)\n            >>> third = gramCatOps.Create(\"3rd person\", parent=person)\n\n            >>> # Create nested hierarchy\n            >>> number = gramCatOps.Create(\"number\")\n            >>> singular = gramCatOps.Create(\"singular\", parent=number)\n            >>> plural = gramCatOps.Create(\"plural\", parent=number)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -31113,437 +31075,40 @@
             "failure": [
               {
                 "exception": "FP",
-                "when": "_ReadOnlyError: If the project is not opened with write enabled."
-              },
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If name is None."
-              },
-              {
-                "exception": "FP",
-                "when": "_ParameterError: If name is empty, or if a category with this"
+                "when": "_ParameterError: Always, before any write. Nothing is"
               }
             ],
             "notes": [
               "Creates new object - requires write access"
             ],
-            "success": {
-              "description": "ICmPossibility: The newly created grammatical category object.",
-              "type": "ICmPossibility"
-            }
+            "success": {}
           },
           "parameters": [
             {
               "default": null,
-              "description": "The name of the category (e.g., \"person\", \"1st person\").",
+              "description": "Accepted and ignored -- the former category name.",
               "name": "name",
-              "type": "str"
+              "type": ""
             },
             {
               "default": null,
-              "description": "Optional parent category for creating subcategories. Can be an ICmPossibility object or an HVO. Defaults to None (creates top-level category).",
+              "description": "Accepted and ignored -- the former parent category.",
               "name": "parent",
-              "type": "ICmPossibility or int, optional"
+              "type": ""
             }
           ],
           "raises": [
-            "FP_ReadOnlyError: If the project is not opened with write enabled.",
-            "FP_NullParameterError: If name is None.",
-            "FP_ParameterError: If name is empty, or if a category with this",
-            "name already exists."
+            "FP_ParameterError: Always, before any write. Nothing is",
+            "created and no transaction is opened."
           ],
-          "return_type": "ICmPossibility",
-          "returns": "ICmPossibility: The newly created grammatical category object. ",
+          "return_type": "",
+          "returns": "",
           "signature": "Create(name, parent=None)",
-          "summary": "Create a new grammatical category.",
+          "summary": "Removed -- always raises.",
           "usage_hint": "creation"
         },
         {
-          "description": "Delete a grammatical category.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> obsolete = gramCatOps.Create(\"obsolete_feature\")\n            >>> # Later, if not needed...\n            >>> gramCatOps.Delete(obsolete)\n\n        Warning:\n            - Deleting a category that is in use may raise an error from FLEx\n            - Will also delete all subcategories recursively\n            - Deletion is permanent and cannot be undone\n            - Morphological rules or entries using this may be affected\n\n        See Also:\n            Create",
-          "is_classmethod": false,
-          "is_mutating": true,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "Delete",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_ReadOnlyError: If the project is not opened with write enabled."
-              },
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If cat_or_hvo is None."
-              },
-              {
-                "exception": "FP",
-                "when": "_ParameterError: If the category is in use and cannot be deleted."
-              }
-            ],
-            "notes": [
-              "Destructive operation - requires write access"
-            ],
-            "success": {}
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO to delete.",
-              "name": "cat_or_hvo",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_ReadOnlyError: If the project is not opened with write enabled.",
-            "FP_NullParameterError: If cat_or_hvo is None.",
-            "FP_ParameterError: If the category is in use and cannot be deleted."
-          ],
-          "return_type": "",
-          "returns": "",
-          "signature": "Delete(cat_or_hvo)",
-          "summary": "Delete a grammatical category.",
-          "usage_hint": "deletion"
-        },
-        {
-          "description": "Duplicate a grammatical category, creating a new copy with a new GUID.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> person = gramCatOps.Create(\"person\")\n            >>> # Shallow copy (no subcategories)\n            >>> person_copy = gramCatOps.Duplicate(person)\n            >>> print(gramCatOps.GetName(person_copy))\n            person\n\n            >>> # Deep copy (includes all subcategories)\n            >>> number = gramCatOps.Create(\"number\")\n            >>> singular = gramCatOps.Create(\"singular\", parent=number)\n            >>> plural = gramCatOps.Create(\"plural\", parent=number)\n            >>> number_copy = gramCatOps.Duplicate(number, deep=True)\n            >>> orig_subs = gramCatOps.GetSubcategories(number)\n            >>> copy_subs = gramCatOps.GetSubcategories(number_copy)\n            >>> print(f\"Original has {len(orig_subs)} subcategories\")\n            >>> print(f\"Copy has {len(copy_subs)} subcategories\")\n",
-          "is_classmethod": false,
-          "is_mutating": true,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "Duplicate",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_ReadOnlyError: If the project is not opened with write enabled."
-              },
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If item_or_hvo is None."
-              }
-            ],
-            "notes": [],
-            "success": {
-              "description": "ICmPossibility: The newly created duplicate category with a new GUID.",
-              "type": "ICmPossibility"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO to duplicate.",
-              "name": "item_or_hvo",
-              "type": ""
-            },
-            {
-              "default": true,
-              "description": "For subcategories (SubPossibilitiesOS is ordered), controls whether the duplicate is inserted immediately after the source. Ignored for top-level",
-              "name": "insert_after",
-              "type": "bool"
-            },
-            {
-              "default": false,
-              "description": "If True, recursively duplicate all subcategories. If False (default), only duplicate the category itself.",
-              "name": "deep",
-              "type": "bool"
-            }
-          ],
-          "raises": [
-            "FP_ReadOnlyError: If the project is not opened with write enabled.",
-            "FP_NullParameterError: If item_or_hvo is None."
-          ],
-          "return_type": "ICmPossibility",
-          "returns": "ICmPossibility: The newly created duplicate category with a new GUID. ",
-          "signature": "Duplicate(item_or_hvo, insert_after=True, deep=False)",
-          "summary": "Duplicate a grammatical category, creating a new copy with a new GUID.",
-          "usage_hint": null
-        },
-        {
-          "description": "Get all grammatical categories in the project.\n",
-          "element_type": "ICmPossibility",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> for cat in gramCatOps.GetAll():\n            ...     print(gramCatOps.GetName(cat))   # Includes subcategories\n\n            >>> # Top-level only\n            >>> for cat in gramCatOps.GetAll(recursive=False):\n            ...     print(gramCatOps.GetName(cat))\n\n        See Also:\n            GetSubcategories, Create",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "GetAll",
-          "output_behavior": {
-            "empty": {
-              "description": "Empty list when no items",
-              "value": "[]"
-            },
-            "failure": [
-              {
-                "exception": "FP_ParameterError",
-                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
-              }
-            ],
-            "notes": [],
-            "success": {
-              "description": "EnumerableWrapper[ICmPossibility]: Each grammatical category.",
-              "type": "EnumerableWrapper[ICmPossibility]"
-            }
-          },
-          "parameters": [
-            {
-              "default": true,
-              "description": "If True (default), yields every category in the hierarchy (depth-first, parents before children). If False, yields only top-level categories and the caller must descend via GetSubcategories.",
-              "name": "recursive",
-              "type": "bool"
-            }
-          ],
-          "polymorphic": true,
-          "raises": [],
-          "return_type": "EnumerableWrapper[ICmPossibility]",
-          "returns": "EnumerableWrapper[ICmPossibility]: Each grammatical category. ",
-          "signature": "GetAll(recursive=True)",
-          "summary": "Get all grammatical categories in the project.",
-          "usage_hint": "retrieval"
-        },
-        {
-          "description": "Get the name of a grammatical category.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> person = gramCatOps.Create(\"person\")\n            >>> name = gramCatOps.GetName(person)\n            >>> print(name)\n            person\n\n            >>> # Get name in a specific writing system\n            >>> vern_name = gramCatOps.GetName(person, project.WSHandle('en'))\n\n            >>> # List all categories\n            >>> for cat in gramCatOps.GetAll():\n            ...     print(gramCatOps.GetName(cat))\n\n        See Also:\n            SetName, GetSubcategories",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "GetName",
-          "output_behavior": {
-            "empty": {
-              "description": "Empty string when field is not set",
-              "value": "\"\""
-            },
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If cat_or_hvo is None."
-              }
-            ],
-            "notes": [
-              "Flexicon handles '***' placeholder automatically, returns ''"
-            ],
-            "success": {
-              "description": "str: The category name, or empty string if not set.",
-              "type": "str"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO.",
-              "name": "cat_or_hvo",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
-              "name": "wsHandle",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_NullParameterError: If cat_or_hvo is None."
-          ],
-          "return_type": "str",
-          "returns": "str: The category name, or empty string if not set. ",
-          "signature": "GetName(cat_or_hvo, wsHandle=None)",
-          "summary": "Get the name of a grammatical category.",
-          "usage_hint": "retrieval"
-        },
-        {
-          "description": "Get the parent category of a grammatical category.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> person = gramCatOps.Create(\"person\")\n            >>> first = gramCatOps.Create(\"1st person\", parent=person)\n            >>>\n            >>> parent = gramCatOps.GetParent(first)\n            >>> print(gramCatOps.GetName(parent))\n            person\n            >>>\n            >>> # Top-level categories have no parent\n            >>> print(gramCatOps.GetParent(person))\n            None\n\n            >>> # Traverse up the hierarchy\n            >>> cat = first\n            >>> while cat:\n            ...     print(gramCatOps.GetName(cat))\n            ...     cat = gramCatOps.GetParent(cat)\n            1st person\n            person\n",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "GetParent",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If cat_or_hvo is None."
-              }
-            ],
-            "notes": [],
-            "success": {
-              "description": "ICmPossibility or None: Parent category, or None if top-level.",
-              "type": "ICmPossibility or None"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO.",
-              "name": "cat_or_hvo",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_NullParameterError: If cat_or_hvo is None."
-          ],
-          "return_type": "ICmPossibility or None",
-          "returns": "ICmPossibility or None: Parent category, or None if top-level. ",
-          "signature": "GetParent(cat_or_hvo)",
-          "summary": "Get the parent category of a grammatical category.",
-          "usage_hint": "retrieval"
-        },
-        {
-          "description": "Get the subcategories of a grammatical category.\n",
-          "element_cast_applied": true,
-          "element_source_property": "SubPossibilitiesOS",
-          "element_type": "ICmPossibility",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> person = gramCatOps.Find(\"person\")\n            >>> for subcat in gramCatOps.GetSubcategories(person):\n            ...     print(gramCatOps.GetName(subcat))     # All descendants\n\n            >>> # Direct children only\n            >>> for subcat in gramCatOps.GetSubcategories(person, recursive=False):\n            ...     print(gramCatOps.GetName(subcat))\n\n        See Also:\n            GetAll, GetParent, Create",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "GetSubcategories",
-          "output_behavior": {
-            "empty": {
-              "description": "Empty list/iterator when no items",
-              "value": "[]"
-            },
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If cat_or_hvo is None."
-              }
-            ],
-            "notes": [],
-            "success": {
-              "description": "list: List of ICmPossibility subcategory objects (empty list if none).",
-              "type": "list"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO.",
-              "name": "cat_or_hvo",
-              "type": ""
-            },
-            {
-              "default": true,
-              "description": "If True (default), returns every descendant (depth-first, parents before children). If False, returns only direct children.",
-              "name": "recursive",
-              "type": "bool"
-            }
-          ],
-          "polymorphic": true,
-          "raises": [
-            "FP_NullParameterError: If cat_or_hvo is None."
-          ],
-          "return_type": "list",
-          "returns": "list: List of ICmPossibility subcategory objects (empty list if none). ",
-          "signature": "GetSubcategories(cat_or_hvo, recursive=True)",
-          "summary": "Get the subcategories of a grammatical category.",
-          "usage_hint": "retrieval"
-        },
-        {
-          "description": "Get dictionary of syncable properties for cross-project synchronization.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> cat = list(gramCatOps.GetAll())[0]\n            >>> props = gramCatOps.GetSyncableProperties(cat)\n            >>> print(props.keys())\n            dict_keys(['Name', 'Abbreviation', 'Description'])\n",
-          "is_classmethod": false,
-          "is_mutating": false,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "GetSyncableProperties",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP_ParameterError",
-                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
-              }
-            ],
-            "notes": [],
-            "success": {
-              "description": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values.",
-              "type": "dict"
-            }
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility (grammatical category) object.",
-              "name": "item",
-              "type": ""
-            }
-          ],
-          "raises": [],
-          "return_type": "dict",
-          "returns": "dict: Dictionary mapping property names to their values. Keys are property names, values are the property values. ",
-          "signature": "GetSyncableProperties(item)",
-          "summary": "Get dictionary of syncable properties for cross-project synchronization.",
-          "usage_hint": "retrieval"
-        },
-        {
-          "description": "Set the name of a grammatical category.\n",
-          "example": "            >>> gramCatOps = GramCatOperations(project)\n            >>> cat = gramCatOps.Create(\"prson\")  # typo\n            >>> gramCatOps.SetName(cat, \"person\")  # fix it\n\n            >>> # Set name in vernacular WS\n            >>> gramCatOps.SetName(cat, \"persona\", project.WSHandle('es'))\n\n        See Also:\n            GetName",
-          "is_classmethod": false,
-          "is_mutating": true,
-          "is_property": false,
-          "is_staticmethod": false,
-          "name": "SetName",
-          "output_behavior": {
-            "empty": null,
-            "failure": [
-              {
-                "exception": "FP",
-                "when": "_ReadOnlyError: If the project is not opened with write enabled."
-              },
-              {
-                "exception": "FP",
-                "when": "_NullParameterError: If cat_or_hvo or name is None."
-              },
-              {
-                "exception": "FP",
-                "when": "_ParameterError: If name is empty."
-              }
-            ],
-            "notes": [
-              "Modifies existing data - requires write access"
-            ],
-            "success": {}
-          },
-          "parameters": [
-            {
-              "default": null,
-              "description": "The ICmPossibility object or HVO.",
-              "name": "cat_or_hvo",
-              "type": ""
-            },
-            {
-              "default": null,
-              "description": "The new name.",
-              "name": "name",
-              "type": "str"
-            },
-            {
-              "default": null,
-              "description": "Optional writing system handle. Defaults to analysis WS.",
-              "name": "wsHandle",
-              "type": ""
-            }
-          ],
-          "raises": [
-            "FP_ReadOnlyError: If the project is not opened with write enabled.",
-            "FP_NullParameterError: If cat_or_hvo or name is None.",
-            "FP_ParameterError: If name is empty."
-          ],
-          "return_type": "",
-          "returns": "",
-          "signature": "SetName(cat_or_hvo, name, wsHandle=None)",
-          "summary": "Set the name of a grammatical category.",
-          "usage_hint": "modification"
-        },
-        {
-          "description": "Initialize GramCatOperations with a FLExProject instance.\n",
+          "description": "Initialize the deprecated alias and warn.\n",
           "example": "",
           "is_classmethod": false,
           "is_mutating": false,
@@ -31568,7 +31133,7 @@
           "return_type": "",
           "returns": "",
           "signature": "__init__(project)",
-          "summary": "Initialize GramCatOperations with a FLExProject instance.",
+          "summary": "Initialize the deprecated alias and warn.",
           "usage_hint": null
         }
       ],
@@ -31576,7 +31141,7 @@
       "namespace": "flexicon.code.Grammar.GramCatOperations",
       "properties": [],
       "source_file": "Grammar/GramCatOperations",
-      "summary": "This class provides operations for managing Grammatical Categories in a\nFieldWorks project.",
+      "summary": "Deprecated alias of :class:`POSOperations` -- use ``project.",
       "tags": [
         "grammar",
         "operations"
@@ -43394,7 +42959,7 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "description": "Creation + attach operations for morphosyntactic analyses (MSAs).\n\nA LexSense's grammatical analysis lives in\n``sense.MorphoSyntaxAnalysisRA``, which is a reference to an MSA owned\nby ``sense.Entry.MorphoSyntaxAnalysesOC``. LCM offers four concrete\nMSA subtypes that share IMoMorphSynAnalysis as base; each subtype has\nits own factory whose 2-arg Create overload takes an owner (the sense's\nentry) and a SandboxGenericMSA descriptor.\n\nThis wrapper hides the ServiceLocator + SandboxGenericMSA dance and\nauto-attaches the new MSA to the sense, mirroring the read-side\ncoverage in MorphosyntaxAnalysis.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nentry = list(project.LexiconAllEntries())[0]\nsense = entry.SensesOS[0]\n\n# Stem MSA (most common case): assign POS to a lexical entry.\nverb_pos = project.GramCat.Find(\"Verb\")\nproject.MSA.CreateStem(sense, verb_pos)\n\n# Derivational affix: noun -> verb\nn_pos = project.GramCat.Find(\"Noun\")\nv_pos = project.GramCat.Find(\"Verb\")\nproject.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)\n\nSee Also:\nmorphosyntax_analysis.MorphosyntaxAnalysis (reading)\nmsa_collection.MSACollection (iteration)",
+      "description": "Creation + attach operations for morphosyntactic analyses (MSAs).\n\nA LexSense's grammatical analysis lives in\n``sense.MorphoSyntaxAnalysisRA``, which is a reference to an MSA owned\nby ``sense.Entry.MorphoSyntaxAnalysesOC``. LCM offers four concrete\nMSA subtypes that share IMoMorphSynAnalysis as base; each subtype has\nits own factory whose 2-arg Create overload takes an owner (the sense's\nentry) and a SandboxGenericMSA descriptor.\n\nThis wrapper hides the ServiceLocator + SandboxGenericMSA dance and\nauto-attaches the new MSA to the sense, mirroring the read-side\ncoverage in MorphosyntaxAnalysis.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nentry = list(project.LexiconAllEntries())[0]\nsense = entry.SensesOS[0]\n\n# Stem MSA (most common case): assign POS to a lexical entry.\nverb_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateStem(sense, verb_pos)\n\n# Derivational affix: noun -> verb\nn_pos = project.POS.Find(\"Noun\")\nv_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)\n\nSee Also:\nmorphosyntax_analysis.MorphosyntaxAnalysis (reading)\nmsa_collection.MSACollection (iteration)",
       "example": "",
       "id": "MSAOperations",
       "lcm_dependencies": [
@@ -49032,7 +48597,7 @@
         },
         {
           "description": "Get the possibility items associated with an overlay.\n",
-          "element_source_property": "SubPossibilitiesOS",
+          "element_source_property": "PossItemsRC",
           "element_type": "ICmPossibility",
           "example": "            >>> overlay = project.Overlay.Find(\"Participants\")\n            >>> items = project.Overlay.GetPossItems(overlay)\n            >>> print(f\"Overlay has {len(items)} associated items\")\n\n        See Also:\n            GetElements, GetChart",
           "is_classmethod": false,
@@ -50112,6 +49677,45 @@
           "returns": "str: The POS name, or empty string if not set. ",
           "signature": "GetName(pos_or_hvo, wsHandle=None)",
           "summary": "Get the name of a part of speech.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the parent category of a part of speech.\n",
+          "example": "            >>> posOps = POSOperations(project)\n            >>> noun = posOps.Find(\"Noun\")\n            >>> proper = posOps.AddSubcategory(noun, \"Proper Noun\", \"PN\")\n            >>> posOps.GetName(posOps.GetParent(proper))\n            'Noun'\n\n            >>> # Walk the hierarchy upward to the root\n            >>> cat = proper\n            >>> while cat is not None:\n            ...     print(posOps.GetName(cat))\n            ...     cat = posOps.GetParent(cat)\n            Proper Noun\n            Noun\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetParent",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If pos_or_hvo is None."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "IPartOfSpeech: The owning part of speech, or None if this POS is top-level (owned by the PartsOfSpeechOA possibility list rather than by another category).",
+              "type": "IPartOfSpeech"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IPartOfSpeech object or HVO.",
+              "name": "pos_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If pos_or_hvo is None."
+          ],
+          "return_type": "IPartOfSpeech",
+          "returns": "IPartOfSpeech: The owning part of speech, or None if this POS is top-level (owned by the PartsOfSpeechOA possibility list rather than by another category). ",
+          "signature": "GetParent(pos_or_hvo)",
+          "summary": "Get the parent category of a part of speech.",
           "usage_hint": "retrieval"
         },
         {
@@ -78863,14 +78467,14 @@
       "YesNoCancel"
     ],
     "mapping_types": {
-      "composite": 106,
-      "convenience": 215,
-      "direct": 603,
+      "composite": 104,
+      "convenience": 212,
+      "direct": 600,
       "pure_python": 613
     },
-    "methods_with_return_type": 894,
+    "methods_with_return_type": 887,
     "total_classes": 118,
-    "total_methods": 1537,
+    "total_methods": 1529,
     "total_properties": 155
   }
 }

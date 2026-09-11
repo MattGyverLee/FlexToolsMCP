@@ -38,8 +38,17 @@ Settings -> Environments with required reviewers to gate releases.)
 # 2. tag and push
 git commit -am "release: X.Y.Z"
 git tag vX.Y.Z
-git push && git push --tags
+git push && git push origin vX.Y.Z
 ```
+
+> **Push the one tag by name -- never `git push --tags`.** GitHub does not
+> create workflow runs for tags after the third when more than three are
+> pushed in a single push. `--tags` pushes every local tag the remote is
+> missing, so one stale unpushed tag lying around is enough to silently
+> swallow the release trigger: the tag lands on the remote, and no run ever
+> appears. This bit the 2.12.0 release. If it happens anyway, do not retag --
+> dispatch the existing tag instead:
+> `gh workflow run publish.yml --ref vX.Y.Z`.
 
 The tag push triggers the workflow: it builds the wheel + sdist, runs
 `twine check`, and publishes to PyPI. Watch it under the repo's **Actions** tab.
@@ -122,7 +131,7 @@ Then tag the release in git:
 ```bash
 git commit -am "release: X.Y.Z"
 git tag vX.Y.Z
-git push && git push --tags
+git push && git push origin vX.Y.Z   # by name; see the --tags warning above
 ```
 
 ## Notes

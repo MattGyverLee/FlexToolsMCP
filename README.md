@@ -46,12 +46,68 @@ FLExToolsMCP is published on PyPI. The indexed API documentation ships inside
 the package, so there is nothing to clone or build. The one prerequisite is
 FieldWorks/FLExTools, which means **Windows + .NET**.
 
-**One-line install (recommended)** — no repo, no manual dependency install:
+> **Where do I type these commands?** In a **Windows terminal** (PowerShell or
+> Command Prompt) — **not** into the Claude chat box. `claude` is the Claude Code
+> command-line program, so `claude mcp add ...` is a shell command like `git` or
+> `pip`. Pasting it into a chat with Claude installs nothing.
 
-```bash
-# Claude Code
+**Step 1 — install `uv`** (this is what provides the `uvx` command). In
+PowerShell:
+
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then **log off and back on, or reboot**, so Windows picks up the new PATH, and
+confirm it resolves in a fresh terminal:
+
+```powershell
+uvx --version        # must print a version before you continue
+```
+
+**Step 2 — pre-warm the cache** by running the server once from the terminal
+(press `Ctrl+C` once it starts up):
+
+```powershell
+uvx flextools-mcp
+```
+
+This downloads everything *outside* your AI tool. Letting a GUI assistant do
+that large first-run download inline is where the confusing load/connection
+errors come from.
+
+**Step 3 — register it with Claude Code**, again in PowerShell:
+
+```powershell
+# user-wide: available in every folder you open (recommended)
+claude mcp add flextoolsmcp -s user -- uvx flextools-mcp
+
+# or current directory only (this is the default scope, "local")
 claude mcp add flextoolsmcp -- uvx flextools-mcp
 ```
+
+**Installing user-wide** is the `-s user` flag. It records the server in
+`%USERPROFILE%\.claude.json`, so it works in every project folder you open
+Claude Code in. Without `-s user`, the default `local` scope registers it for
+the current directory only — which is why the tools can "disappear" when you
+open a different folder. Scopes are `local` (default), `user`, and `project`.
+
+**Step 4 — restart your editor / assistant.** `claude mcp add` succeeding is
+not the same as the server being loaded. VS Code, the Claude Code extension,
+Claude Desktop, Antigravity and Cursor read their MCP configuration at startup,
+so a server you just added is picked up only after a **full restart** — quit the
+application entirely (not just close the panel or start a new chat) and reopen
+it. In VS Code, reloading the window works too ("Developer: Reload Window").
+The same applies after *upgrading* the server.
+
+Verify it took:
+
+```powershell
+claude mcp list      # should show: flextoolsmcp: uvx flextools-mcp - Connected
+```
+
+If `claude mcp list` says Connected but your assistant still shows no
+`flextools_*` tools, you have not restarted it yet.
 
 `uvx` (from [uv](https://docs.astral.sh/uv/)) fetches the package and all of its
 dependencies — including [Flexicon](https://pypi.org/project/pyflexicon/), the
@@ -59,17 +115,8 @@ deep FieldWorks wrapper — into an isolated cache and runs the server. Every
 supported AI tool launches it the same way, via `uvx`. Nothing else to install.
 Upgrading FLExToolsMCP re-resolves to the latest compatible Flexicon.
 
-**Before wiring it into any tool, do these two things** (details in
-[SETUP.md](SETUP.md#prerequisites)):
-
-1. **Install `uv`, then log off and back on — or reboot.** The uv installer adds
-   `uvx` to your PATH, but on Windows that change doesn't reach already-running
-   terminals or GUI apps and often doesn't settle until a fresh login. Confirm
-   with `uvx --version` (it must print a version) before continuing.
-2. **Pre-warm the cache: run `uvx flextools-mcp` once in a terminal** (Ctrl+C to
-   stop once it's up). This downloads and caches everything *outside* your AI
-   tool. Letting a GUI assistant (e.g. Antigravity) do that first-run download
-   inline is where the weird load/connection errors come from.
+Full details, including other AI tools, are in
+[SETUP.md](SETUP.md#prerequisites).
 
 > **`claude mcp add` reports success even when `uvx` is missing** — the server
 > just fails to launch later. Always confirm `uvx --version` in a fresh shell
@@ -111,6 +158,37 @@ See [SETUP.md](SETUP.md#connecting-to-ai-assistants) for Claude Code, Antigravit
 **User data** lives under `~/.flextoolsmcp/` (logs, saved skeletons, cached
 models, and any runtime-refreshed indexes) — it persists across upgrades.
 
+### 3. Two Python environments (important)
+
+There are **two** Python interpreters in play, and Flexicon has to be installed
+in each one you actually use. They are not the same interpreter, and neither one
+upgrades the other:
+
+| Environment | Which interpreter | What runs there | Keep Flexicon current with |
+|---|---|---|---|
+| **MCP server** | whatever launches the server: the `uvx` cache, a conda env, a venv, `pip`'s Python | `flextools_run_module` — the MCP executes your code with its **own** interpreter | automatic; `pyflexicon` is a dependency of `flextools-mcp` |
+| **FLExTools GUI** | the Windows launcher `py`, i.e. your PATH Python (e.g. `C:\Python313`) | modules you save into `FlexTools\Modules\` and run from the FLExTools window | `py -m pip install -U pyflexicon` |
+
+The MCP always runs generated code with its own `sys.executable`, so
+`flextools_run_module` gets Flexicon for free. But the moment you **save a module
+and run it from the FLExTools GUI**, FLExTools launches it with `py` — a
+different interpreter that knows nothing about the MCP's environment. If Flexicon
+is missing or outdated there, the exact module that just passed under the MCP
+fails, or silently behaves differently, in the GUI.
+
+Two traps worth knowing:
+
+- **If your assistant runs the MCP from its own Python** (a conda install, a
+  venv, or a `python -m flextoolsmcp` config rather than `uvx`), that
+  environment needs `pyflexicon` at the version this release requires — it is
+  not shared with the `py` environment.
+- **FLExTools' `InstallOrUpdate.vbs` only upgrades `flextoolslib`.** It does
+  **not** touch `pyflexicon`, so the FLEx-side copy will quietly rot until you
+  upgrade it yourself.
+
+See [SETUP.md → Keeping both environments in sync](SETUP.md#keeping-both-environments-in-sync)
+for the exact check-and-upgrade commands.
+
 ### Developing from source
 ```bash
 git clone https://github.com/MattGyverLee/FlexToolsMCP.git
@@ -125,17 +203,28 @@ Working *on* the MCP means your workspace legitimately is the checkout, so set
 `FLEXTOOLSMCP_NO_WORKSPACE_CHECK=1` to suppress the `workspace_notice` described
 above.
 
-### 3. Updating to New Versions
+### 4. Updating to New Versions
 The server tells you when a newer release is out — it adds an `update_notice` to
 its responses that your assistant relays. Then upgrade with the command for your
 install: **`uvx flextools-mcp@latest`** (plain `uvx flextools-mcp` reuses a
 cache and won't reliably update), `uv tool upgrade flextools-mcp`, or
 `pip install -U flextools-mcp` (name the package — a blanket `pip install -U`
 can leave the MCP behind). Disable update checks with
-`FLEXTOOLSMCP_NO_UPDATE_CHECK=1`. See [SETUP.md](SETUP.md#updating) for details,
-including how to clear a stale `uvx` cache.
+`FLEXTOOLSMCP_NO_UPDATE_CHECK=1`.
 
-### 4. Start Using
+That upgrades the MCP **and** the Flexicon inside the MCP's own environment.
+Flexicon on the **FLExTools GUI** side is a separate upgrade:
+
+```powershell
+py -m pip install -U pyflexicon        # the FLEx-side interpreter
+py -m pip show pyflexicon              # confirm the version
+```
+
+Do both after every MCP upgrade, or the two environments drift apart. See
+[SETUP.md](SETUP.md#updating) for details, including how to clear a stale `uvx`
+cache and how to verify each environment separately.
+
+### 5. Start Using
 See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ## What's Included

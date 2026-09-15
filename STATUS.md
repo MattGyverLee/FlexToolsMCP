@@ -14,11 +14,30 @@ Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 
 In spec review (not implemented, no branch): **parser-check** -- let the MCP
 run FLEx's parser so it can verify its own grammar/lexicon edits.
-Spec: `specs/parser-check/SPEC.md` (drafted on a since-corrected architecture).
+Spec: `specs/parser-check/SPEC.md` (REWRITTEN 2026-09-15 against the corrected
+three-spine architecture; 719 lines, 18 sections).
 Crew reviews: `specs/parser-check/reviews/cycle{1,2}-*.md`.
 Machine state: `specs/parser-check/.crew-handoff.json`.
 
-**Spurt 1 (cycles 1-2) is COMPLETE and the feature is BLOCKED ON THE MAINTAINER.**
+**Spurt 1 (cycles 1-2) is COMPLETE. The three maintainer decisions have LANDED
+and the spec is rewritten. Next pickup is CP1.**
+
+Decisions recorded in SPEC.md section 2:
+- **S2 retired** -- LCM's `IStText.UniqueWordforms()` already does the interlinear
+  walk. Genre->text selection (6.1) and the sandbox word list (6.2) survive.
+- **S5 replaced** with a per-mode statement; mode 1 (filing) is APPROVED, fully
+  gated -- mandatory backup, deletion projection in the confirmation,
+  refuse-to-file on an unclean grammar load, no unattended batch.
+- **S9 placement = SPLIT** -- read-only `project.Parser` facade in flexicon;
+  filing plus the confirmation/backup ladder stays in the MCP.
+
+Two P0s carry into implementation: filing can permanently delete never-reviewed
+analyses (non-undoable), and the HC loader exposes no clean success signal, so a
+grammar can silently shrink on load. Both are specced in section 12.
+
+Still open for validation (not blockers): the refuse-to-file gate's baseline
+comparison (12.3), and `GenerateHCConfig.exe`'s behaviour against the copied
+project -- an unverified link, not a demonstrated leak.
 Two crew cycles re-grounded the spec against FieldWorks source. The architecture
 changed underneath it: the spec assumed one mechanism (export a HermitCrab config,
 run the standalone `hc` CLI); the real design is three spines --

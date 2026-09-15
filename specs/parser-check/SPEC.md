@@ -1,711 +1,719 @@
-# SPEC -- parser-check: let the MCP run HermitCrab and verify its own work
+# SPEC -- parser-check: let the MCP run FLEx's parser and verify its own work
 
 **Feature:** `parser-check`
 **Repo:** FlexToolsMCP
-**Status:** spec, not implemented
+**Status:** spec, not implemented -- rewritten after crew review spurt 1 (cycles 1-2)
 **Filed issues:** (none yet)
 **Source:** user-contributed `hcparse.ps1` (repo root), 2026-09-15
 **Author:** Claude Code, with matthew_lee@sil.org
-**Depends on:** nothing new; builds on `project_discovery`, `project_access`,
-`subprocess_helpers`, `op_telemetry`, and the `tool-responses/1.0` contract
+**Reviews:** [`reviews/`](reviews/) -- cycle1 and cycle2: programmer, domain, author, explore
+**Machine state:** [`.crew-handoff.json`](.crew-handoff.json)
+**Depends on:** `project_discovery`, `project_access`, `subprocess_helpers`,
+`op_telemetry`, `backup.py`, and the `tool-responses/1.0` contract
 
 ---
 
 ## 1. Context
 
 The MCP can already change a lexicon and a morphology: entries, allomorphs,
-environments, MSAs, phon rules, strata (`FLExProject` exposes `Allomorphs`,
-`MorphRules`, `PhonRules`, `PhonFeatures`, `Strata`, `NaturalClasses`,
-`Environments` -- `flexicon_api_v4.8.0.json`). What it cannot do is tell
-whether any of that was *linguistically* correct.
+environments, MSAs, phon rules, strata. What it cannot do is tell whether any of
+that was *linguistically* correct.
 
 `run_module` reporting `[OK] Operation completed successfully` means the Python
 ran and LCM accepted the write. It says nothing about whether the affix you just
 added actually lets `membaca` parse, or whether the environment you tightened
-just broke forty words that used to parse. Today the only way to find out is for
-the human to open FLEx, run the parser by hand, and eyeball it.
+just broke forty words that used to parse. Without a parser in the loop the user
+must leave the session, run the parser by hand in the FLEx GUI, and come back.
 
-A user has supplied `hcparse.ps1`, which closes that gap from the command line:
-it copies a FLEx project, runs FieldWorks' `GenerateHCConfig.exe` over the copy
-to produce a HermitCrab configuration, writes an HC command script, and runs the
-standalone HermitCrab tool (`hc.dll` under `dotnet`) against a word list.
+FLEx has three parser modes, and this feature serves all three:
 
-That is the missing verification primitive. This spec turns it into MCP tools so
-the loop becomes:
+| FLEx mode | What it does | Our spine |
+|---|---|---|
+| 1. Parse a text | Adds new analyses to the database | in-process **write** |
+| 2. Try a word | Cannot add analyses; hypothesis testing | in-process **read** |
+| 3. Run tests | 3a does not update analyses; 3b may | **sandbox** (3a) / spine 1 (3b) |
 
-```
-parse (baseline) -> run_module edits the grammar -> parse (current) -> diff
-                                                                        |
-                                            "3 words fixed, 0 broken"   |
-                                            "1 word broken: see trace" <-+
-```
+### 1.1 Two axes, three spines
 
-**The point of this feature is the arrow back.** A parse that only reports
-"42 of 60 parsed" is a number. A parse that reports "your change fixed
-`mengambil` and broke `menulis`, and here is the HermitCrab trace showing which
-rule blocked it" is verification.
+The design turns on two orthogonal questions that earlier drafts conflated:
+
+- **Does it file?** (non-filing vs. filing)
+- **Whose grammar?** (the live project's vs. an edited exported snapshot)
+
+|  | **Live project grammar** | **Edited exported grammar** |
+|---|---|---|
+| **Non-filing** | **DISCOVERY** -- G1/G2/G3, true answers, no side effects | **SANDBOX** -- speculative grammar edits |
+| **Filing** | **COMMIT** -- apply confident changes | *impossible* |
+
+The empty cell is not an oversight. `ParseMorph` holds live `IMoForm` /
+`IMoMorphSynAnalysis` references (`ParseResult.cs:154-177`), so results computed
+against an *edited* grammar have no valid live objects to point at. Filing from a
+sandbox parse is not merely hard to build -- it is semantically incoherent. This
+is the same fact that makes FLEx mode 3b unbuildable over the CLI, reached from
+the other direction.
+
+### 1.2 The confidence gradient
+
+The maintainer's operating principle, and the spine of the safety design:
+
+> "Tweaking an exported grammar to test a theory IS safer than changing the whole
+> database and having to change it back. I can see benefit to tests in an export,
+> and live changes for confident changes."
+
+Each rung's safety property is **structural**, not conventional:
+
+| Rung | Mechanism | Safety property | Evidence |
+|---|---|---|---|
+| **Rehearse** | Export config, run `hc` CLI on a copied project | No path back to the live DB *exists* | `hc` touches only `-i`, `-s`, `-o`; no `.fwdata`, registry or FieldWorks path anywhere in the tool source |
+| **Hypothesis-test** | `HCParser(cache)` -> `ParseWord` / `TraceWordXml` | Cannot reach a write type *at all* | `HCParser` never references `ParseFiler`; its full call graph loads no xCore/WinForms |
+| **Commit** | `ParseFiler.ProcessParse` | FLEx's own filer, FLEx's own agent, full write ladder | Identical chain to the FLEx menu path |
 
 ---
 
 ## 2. Settled -- do not revisit
 
-Decided with the maintainer, 2026-09-15:
-
-- **S1. Both jobs, not one.** The feature ships one-shot parsing *and*
-  before/after diffing. Diffing is not a phase-2 nice-to-have; it is the reason
-  the feature exists (section 1).
-- **S2. Word lists for `text` / `genre` / `all_texts` scopes come from wordform
-  occurrences**, walking the interlinear structure -- not from raw tokenization
-  of baseline paragraph text. Consequences are spelled out in section 6.3.
-- **S3. The HermitCrab config is cached, keyed on the `.fwdata` identity
-  (mtime + size) plus generator identity.** Regenerating on every parse is
-  unusable: it copies the whole project and shells out to a .NET generator.
-- **S4. PowerShell is the execution mechanism.** Every user is on Windows. The
-  bundled script stays PowerShell; the MCP does not reimplement HermitCrab
-  invocation in Python.
-- **S5. Parsing is read-only, always.** No parse path ever writes to the live
-  project, and no parse result is ever written back into the database (see
-  non-goals, section 15). All three tools are annotated `READ_ONLY_SAFE`.
-- **S6. The parse operates on a copy.** Config generation reads a copied
-  `.fwdata`, never the live one, so a FLEx instance holding the project is
-  undisturbed. This is already how `hcparse.ps1` behaves and it is correct.
-
----
-
-## 3. Prior art: what `hcparse.ps1` already got right
-
-The submitted script encodes four hard-won lessons. The bundled version must
-preserve all of them, and the spec records *why* so a later refactor does not
-quietly drop one.
-
-| Behaviour in the script | Why it is there |
-|---|---|
-| Copy the project before generating | A running FLEx holds `.fwdata`; `GenerateHCConfig.exe` against the live file is a lock fight at best |
-| `Get-Content $WordFile -Encoding UTF8` | PS 5.1 defaults to the ANSI code page for a BOM-less file. Without this, any non-Latin word list becomes mojibake and HermitCrab reports "invalid segment at position 1" for **every** word -- a total failure that looks like a grammar problem |
-| `UTF8Encoding($false)` when writing the HC script | HC reads the script as UTF-8; a BOM corrupts the first command |
-| Split `-Words` on `[,\s]+` | Under `powershell -File`, a comma-separated list arrives as one string |
-| `tracing on` / `stats -p` | The only machine-visible "why" HermitCrab offers |
-
-### 3.1 What it lacks for MCP use
-
-| Gap | Impact |
-|---|---|
-| Output is prose on stdout | Nothing to build a diff on |
-| `$fw` and `$hcTool` hardcoded | Breaks on any non-default install |
-| `& dotnet ...` with no `$LASTEXITCODE` check | A failed parse run looks like a successful empty one |
-| `& .\GenerateHCConfig.exe ... \| Out-Null` | Discards exactly the diagnostic the user asked to be able to read |
-| No timeout | A pathological grammar hangs the MCP's subprocess slot |
-| Temp files leak on throw (no `try/finally`) | Litter in `%TEMP%`, and the copied project can be hundreds of MB |
-| Words passed on the command line | Quoting, length, and encoding hazards for arbitrary orthographies |
-| No config reuse across runs | Every parse pays the full copy + generate cost |
-
-Section 9 is the hardening delta.
+- **S1. Both one-shot parsing and before/after diffing ship.** Diffing is the
+  reason the feature exists.
+- **S2. (REVISED, 2026-09-15)** The custom interlinear-walk word-list builder is
+  **retired**. LCM already owns it: `IStText.UniqueWordforms()` (`StText.cs:654-661`),
+  which `ParserListener` unions across a genre (`:609-613`) and across all texts
+  (`:650-654`). What survives is genre->text *selection* (section 6.1) and
+  dedup/ordering/limit for the sandbox word list (section 6.2).
+- **S3. The HermitCrab config is cached**, keyed on `.fwdata` identity plus
+  generator identity. Applies to the **sandbox spine only** (section 7).
+- **S4. PowerShell is the sandbox spine's mechanism.** Windows only.
+- **S5. (REVISED, 2026-09-15)** "Parsing is read-only, always" is **dead** --
+  spine 3 writes. Replaced by a per-mode statement:
+  - `flextools_try_word` and `flextools_parse_sandbox` are `READ_ONLY_SAFE` **by
+    construction**, not by convention (section 12.1).
+  - `flextools_parse_text` is write-capable and sits behind the full ladder.
+- **S6. Config generation runs on a copy** of the project, never the live `.fwdata`.
+- **S7. Responses summarise; they never inline the full result set.** A parse of
+  500 words with traces is hundreds of KB. Previews are capped and the detail is
+  reachable through `flextools_parse_log`. This applies to every tool here.
+- **S8. Depending on ParserCore is accepted.** It reaches beyond the pure-LCM
+  layer the MCP has used until now; the maintainer has accepted that cost
+  explicitly, because the alternative is a broken feedback loop. The dependency
+  widens the **layer** we touch, not the deployment **footprint**: `ParserCore.dll`
+  ships in `C:\Program Files\SIL\FieldWorks 9\`, the same directory
+  `versioning.py:172` already searches for `SIL.LCModel.dll`. Consequences
+  (version coupling, upgrade breakage) remain fair game; arguing the dependency
+  away does not.
+- **S9. Placement is split** (decided 2026-09-15): a thin read-only
+  `project.Parser` facade ships in **flexicon**; filing plus the
+  confirmation/backup ladder stays in **FlexToolsMCP**. See section 5.4.
 
 ---
 
-## 4. Architecture
+## 3. Two correctness rules that outrank convenience
 
-Three layers, each independently testable.
+### 3.1 Never infer parseability from database state
 
+`IWfiAnalysis` records are an artifact of work already performed -- parser runs
+**and** human interlinearization -- not a statement about what the grammar
+accepts. Therefore:
+
+- A project never parsed live has no parser-created analyses, so **every wordform
+  looks unparsed** while the grammar may accept all of it.
+- A project with extensive hand-interlinearized analyses looks healthy and still
+  says nothing about grammar coverage: those carry the *user* agent's opinion,
+  not the parser agent's.
+
+**G1 ("which words don't parse") is answerable only by running the parser, never
+by querying analyses.** Any implementation that enumerates wordforms with zero
+analyses and reports them as failures is WRONG.
+
+This is stated as an anti-requirement because the wrong implementation is the
+cheap one: querying the DB costs nothing, parsing costs real time, and an
+implementer under pressure will reach for the query. Same register as section
+8.4 -- a confident wrong answer about someone's grammar is worse than useless.
+
+### 3.2 Never report the wrong engine's results as the project's
+
+A project declares its own parser: `LanguageProject.MorphologicalDataOA.ActiveParser`
+is `"XAmple"` or `"HC"`, and `ParserWorker.cs:65` throws on anything else. Every
+parse tool reads it **first** and **refuses** -- never silently substitutes --
+when the project is on XAmple and the tool implements HC.
+
+Parsing with the wrong engine and reporting the results as the project's own is
+the section-8.4 violation one layer up. Error code `parser_engine_mismatch`; a
+one-field read, cheap enough to ship at CP1 regardless of whether XAmple support
+ever lands.
+
+---
+
+## 4. Prior art: what `hcparse.ps1` got right
+
+The contributed script encodes lessons the bundled version must preserve, and
+this spec records *why* so a later refactor does not drop one.
+
+| Behaviour | Why it is there |
+|---|---|
+| Copy the project before generating | A running FLEx holds `.fwdata` |
+| `Get-Content -Encoding UTF8` | PS 5.1 defaults to the ANSI code page for a BOM-less file. Without this, any non-Latin word list becomes mojibake and HermitCrab reports "invalid segment at position 1" for **every** word -- a total failure that looks like a grammar problem |
+| `UTF8Encoding($false)` writing the HC script | HC reads the script as UTF-8; a BOM corrupts the first command |
+| Split `-Words` on `[,\s]+` | Under `powershell -File` a comma-separated list arrives as one string |
+
+---
+
+## 5. Architecture
+
+### 5.1 Spine 1 -- in-process read (FLEx mode 2, and all discovery)
+
+```python
+parser = HCParser(project.Cache)     # HCParser.cs:50 -- takes ONLY a cache
+parser.Update()                      # loads grammar + lexicon
+result = parser.ParseWord(word)      # -> ParseResult (typed)
+trace  = parser.TraceWordXml(word, None)   # -> XDocument (typed)
 ```
-  flextools_parse(scope=...)
-          |
-  L1  scope resolution        Python, in-process, read-only subprocess runner
-          |                   -> deduped word list + scope_fingerprint
-          v
-  L2  parse execution         PowerShell: hcparse.ps1 (bundled, hardened)
-          |                   -> run artifact directory
-          v
-  L3  result parsing + diff   Python
-          |                   -> structured MCP response
-          v
-  flextools_parse_log / flextools_parse_diff
-```
 
-### 4.1 L1 -- scope resolution
+`HCParser`'s constructor takes no `PropertyTable`, no `IdleQueue`, no UI. Its
+usings are `SIL.LCModel`, `SIL.LCModel.Infrastructure`, `SIL.Machine.*`,
+`SIL.ObjectModel`. `ParserScheduler` and `ParserWorker` -- which *do* carry
+framework coupling -- are FLEx's GUI-responsiveness machinery and are **not
+used**; we drive parses synchronously.
 
-Runs through the **existing** read-only execution path
-(`handlers/execution.py` -> `subprocess_helpers.run_script_async`), with an
-internally generated snippet. It is not a new project-opening mechanism: it
-inherits the lock handling, the `project_locked` / `project_drive_unavailable`
-diagnostics, the timeout, and the process-tree kill that path already has.
+`ParseResult` carries `Analyses` (`ReadOnlyCollection<ParseAnalysis>`),
+`ErrorMessage`, `ParseTime`, and `IsValid`. **`IsValid` is an LCM object-liveness
+guard, not a linguistic judgement** (`ParseResult.cs:199-202`) -- it contributes
+nothing to G3 and must never be presented as a validity verdict.
 
-The snippet is MCP-authored and fixed, so it bypasses the LLM-facing discovery
-and casting gates (it is not user code). It is still read-only and still runs
-under the same runner.
+### 5.2 Spine 2 -- in-process write (FLEx mode 1, and 3b)
 
-### 4.2 L2 -- parse execution
+`ParseFiler.ProcessParse(IWfiWordform, ParserPriority, ParseResult, bool)` --
+FLEx's own filer, reached by the identical chain as the FLEx menu
+(`ParserListener` -> `ParserConnection` -> `Scheduler` -> `Worker` -> `ParseFiler`),
+so filed analyses carry honest parser-agent provenance.
 
-Bundled at `src/flextoolsmcp/scripts/hcparse.ps1`, shipped in the wheel
-(`MANIFEST.in` + `package_data`). Invoked as:
+Headless construction is **stubbed, not native**: `propertyTable` may be null,
+`taskUpdateHandler` may be a no-op, and `idleQueue`'s deferred `UpdateWordforms`
+is essential to a correct write but a headless caller invokes it **synchronously**
+instead of through a real `IdleQueue`.
+
+> Implementation note: supply a real stub `IdleQueue`, never a literal `null`.
+> A `Debug.Assert(idleQueue != null)` exists but is elided in the shipped release
+> build, so `null` would appear to work. Do not build on assert elision, and do
+> not let a later cleanup "simplify" the stub away.
+
+### 5.3 Spine 3 -- the sandbox (FLEx mode 3a)
+
+Export a config, optionally hand-edit it, run the `hc` CLI against it. Bundled at
+`src/flextoolsmcp/scripts/hcparse.ps1`, invoked as:
 
 ```
 powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File <hcparse.ps1> ...
 ```
 
-`-NoProfile` is not optional: a user profile that prints a banner lands in
-stdout and corrupts any output parsing.
+`-NoProfile` is not optional: a profile that prints a banner lands in stdout and
+corrupts output parsing.
 
-### 4.3 L3 -- artifacts
+The sandbox is genuinely usable, not merely isolated. `HermitCrabInput.dtd` is
+618 lines of DTD-documented XML whose elements are the linguist's own vocabulary
+-- `PhonologicalRule`, `PhoneticInput`, `LeftEnvironment`, `RightEnvironment`,
+`NaturalClasses`, `SegmentNaturalClass`, `SegmentDefinition`, `StemName`,
+`PartOfSpeech`. "Tighten the environment on this rule" is editing
+`<LeftEnvironment>` inside a `<PhonologicalRule>`.
 
-Every parse run gets a directory:
+### 5.4 Where the code lives (S9)
+
+- **flexicon** gets a thin read-only `project.Parser` facade wrapping
+  `HCParser(cache)` -- names to flexicon's own verb conventions. Rationale: the
+  MCP exists to generate FLExTools modules, and every generated module imports
+  `from flexicon import (...)`. Parser access living only in MCP server code is
+  unreachable from the artifact this project exists to produce.
+- **FlexToolsMCP** keeps filing, the confirmation/backup ladder, and all
+  gradient orchestration (diff, sandbox export, caching, run artifacts). The
+  write path needs stubs and sits on a non-undoable UOW that can delete data --
+  "run a vetted, gated procedure with irreversible side effects" is what the
+  MCP's ladder already owns; flexicon has no such ladder.
+
+Two costs to carry:
+
+- **Import must be lazy.** A future FieldWorks that renames or relocates
+  `ParserCore.dll` must degrade to "parser unavailable", never break
+  `import flexicon` for users of unrelated features.
+- **The version gate follows the code.** ParserCore is versioned independently of
+  `SIL.LCModel` and needs its **own** gate, in flexicon as well as the MCP. The
+  MCP's index is liblcm `v11.0.0` while the install is FieldWorks 9; nothing may
+  assume those numbers track each other.
+- Companion ask in the same cross-repo change: a `Texts.GetGenres()` wrapper.
+  `IText.GenresRC` is currently raw-LCM-only (section 6.1).
+
+### 5.5 Run artifacts
 
 ```
 ~/.flextoolsmcp/parse/
-  config-cache/<project>/<cache_key>/hc-config.xml
-  config-cache/<project>/<cache_key>/key.json
+  config-cache/<project>/<cache_key>/{hc-config.xml, key.json}   # managed, invalidatable
+  sandboxes/<project>/<name>/hc-config.xml                        # USER-OWNED, never touched
   runs/<project>/<run_id>/
-      run.json              # machine-readable: inputs, timings, exit codes, results
-      words.txt             # UTF-8, one word per line -- the exact input
-      hc-script.txt         # the HC command script as executed
-      hc-output.txt         # HC's -o output file
-      hc-stdout.txt         # HC console output
-      generate-config.log   # GenerateHCConfig stdout+stderr (see 3.1)
-      trace.txt             # present only when tracing ran (section 8.2)
+      run.json  words.txt  hc-script.txt  hc-output.txt
+      hc-stdout.txt  generate-config.log  trace.txt
 ```
 
-`run_id` is `<UTC yyyymmddTHHMMSSZ>-<8 hex>`. Retention: keep the newest 20 runs
-per project, prune oldest (mirrors `backup.py::_prune_old_backups`, and the
-lexicographic-sort-is-chronological-sort trick applies here too).
+`run_id` is `<UTC yyyymmddTHHMMSSZ>-<8 hex>`. Retention: newest 20 runs per
+project (mirrors `backup.py::_prune_old_backups`).
 
 ---
 
-## 5. Tools
+## 6. Scope resolution (what survives of old section 6)
 
-Three new tools. Names follow the existing `flextools_*` convention; all are
-registered in `tool_definitions.py` / `dispatch.py` like every other tool.
+For spines 1 and 2, the parse target list comes from LCM:
+`IStText.UniqueWordforms()`, unioned across a genre or across all texts exactly
+as `ParserListener` does. We do not build our own walk.
 
-### 5.1 `flextools_parse`
+### 6.1 Genre -> text selection
 
-Resolve a scope to words, parse them, return a summary plus a `run_id`.
+We still map a user-supplied genre string onto texts. `TextOperations.GetGenre`
+returns only the **first** genre, so a text tagged `[Narrative, Folklore]` scoped
+by `"Folklore"` would be missed. Genre selection must read the full reference
+collection `IText.GenresRC`.
 
-| Arg | Type | Default | Notes |
-|---|---|---|---|
-| `project_name` | str | session project | Resolved through `project_discovery` fuzzy matching, same as `run_module` |
-| `scope` | enum | `words` | `words` \| `text` \| `genre` \| `all_texts` \| `all_wordforms` |
-| `words` | list[str] | -- | Required when `scope="words"` |
-| `text_name` | str | -- | Required when `scope="text"` |
-| `genre` | str | -- | Required when `scope="genre"` |
-| `limit` | int | 500 | Cap on resolved words. See 6.5 |
-| `min_occurrences` | int | 1 | Skip wordforms rarer than this |
-| `include_baseline_tokens` | bool | false | Opt-in fallback for unanalyzed segments. See 6.3 |
-| `trace` | enum | `on_failure` | `off` \| `on_failure` \| `all`. See 8.2 |
-| `config_policy` | enum | `auto` | `auto` \| `reuse` \| `rebuild` |
-| `label` | str \| null | null | Human tag, e.g. `"before affix fix"` -- shows up in run listings and diffs |
-| `timeout_seconds` | int | 300 | Whole parse, config generation included |
+**`GenresRC` is reachable through no flexicon wrapper** -- this is raw-LCM
+access, one of the few places this feature drops beneath flexicon. If the
+flexicon-side facade lands (S9), a `Texts.GetGenres()` wrapper is the natural
+companion.
 
-Returns (success envelope, `_contract: tool-responses/1.0`):
+Matching is case-insensitive against genre name and abbreviation in the default
+analysis writing system. More than one match is `parse_scope_ambiguous`.
 
-```json
-{
-  "status": "ok",
-  "run_id": "20260915T142233Z-a1b2c3d4",
-  "label": "before affix fix",
-  "project": "Indonesian-HermitCrab",
-  "scope": {"kind": "genre", "genre": "Narrative",
-            "matched_texts": ["Kancil dan Buaya", "Asal Mula"],
-            "fingerprint": "sha256:..."},
-  "words": {"resolved": 412, "parsed_ok": 355, "no_parse": 57,
-            "truncated_by_limit": false},
-  "coverage": {"segments_seen": 1204, "segments_unanalyzed": 91,
-               "note": "91 segments have no interlinear analysis and contributed no words"},
-  "config": {"source": "cache", "cache_key": "...", "generated_at": "..."},
-  "staleness": "fresh",
-  "timings_s": {"scope": 4.1, "config": 0.0, "parse": 22.7},
-  "failures_preview": [
-     {"word": "menulis", "reason": "no_parse",
-      "explanation": "no morphological rule produced a full parse",
-      "trace_available": true}
-  ],
-  "next": ["flextools_parse_log(run_id=..., section='trace', word='menulis')",
-           "flextools_parse_diff(baseline=..., current=...)"]
-}
-```
+### 6.2 Word lists for the sandbox spine
 
-`failures_preview` is capped at 10. The full result set lives in `run.json` and
-is reachable via `flextools_parse_log`. **The tool response must never inline the
-whole word-by-word result set** -- a 500-word parse with traces is hundreds of KB
-and would blow the caller's context for no benefit.
-
-### 5.2 `flextools_parse_diff`
-
-| Arg | Type | Default | Notes |
-|---|---|---|---|
-| `baseline` | str | -- | `run_id`, or `"latest"`, or a `label` |
-| `current` | str | `"parse_now"` | `run_id`, or `"parse_now"` to run a fresh parse with the baseline's exact scope |
-| `force` | bool | false | Diff across differing scopes (section 10.2) |
-| `include` | enum | `changes` | `changes` \| `all` -- whether unchanged words appear |
-
-`current="parse_now"` is the ergonomic path: edit, then
-`flextools_parse_diff(baseline="before affix fix")` and the tool re-parses the
-identical word list and diffs in one call.
-
-Returns:
-
-```json
-{
-  "status": "ok",
-  "baseline": {"run_id": "...", "label": "before affix fix"},
-  "current":  {"run_id": "...", "label": null},
-  "verdict": "regression",
-  "summary": {"fixed": 3, "broken": 1, "changed": 7, "unchanged": 401,
-              "only_in_baseline": 0, "only_in_current": 0},
-  "broken": [{"word": "menulis", "was": 1, "now": 0,
-              "trace_available": true}],
-  "fixed":  [{"word": "mengambil", "was": 0, "now": 1}],
-  "changed":[{"word": "membaca", "was": 1, "now": 4,
-              "note": "analysis count rose -- new ambiguity"}]
-}
-```
-
-`verdict` is `regression` when `broken > 0`, `improvement` when
-`fixed > 0 and broken == 0`, `ambiguity_shift` when only `changed > 0`, else
-`no_change`.
-
-**Ambiguity is a regression too.** A word going from one analysis to seven still
-"parses" but the grammar got worse. `changed` exists to catch that; it must not
-be collapsed into `unchanged`.
-
-### 5.3 `flextools_parse_log`
-
-This is the tool the maintainer specifically asked for: *read the logs to know
-how/why it failed or worked*.
-
-| Arg | Type | Default | Notes |
-|---|---|---|---|
-| `run_id` | str | `"latest"` | |
-| `section` | enum | `summary` | `summary` \| `config_generation` \| `hc_stdout` \| `hc_output` \| `trace` \| `words` \| `results` |
-| `word` | str \| null | null | Restrict `trace` / `results` to one word |
-| `filter` | enum | `all` | `all` \| `failures` \| `successes` |
-| `lines` | int | 200 | Tail cap, mirroring `GetOperationLogsInput.log_lines` |
-| `offset` | int | 0 | For paging a long trace |
-
-`section="config_generation"` answers the single most common real failure --
-config generation silently produced nothing, so every word "fails". Under the
-current script that output is thrown away by `| Out-Null`; the bundled version
-must capture it (section 9).
-
-### 5.4 Extension to `flextools_health`
-
-Add a `parser` block to the existing health probe:
-
-```json
-"parser": {
-  "hc_tool": {"found": true, "path": "C:\\Users\\x\\AppData\\Local\\HermitCrabTool\\hc.dll"},
-  "dotnet":  {"found": true, "version": "8.0.11"},
-  "generate_config": {"found": true, "path": "C:\\Program Files\\SIL\\FieldWorks 9\\GenerateHCConfig.exe"},
-  "powershell": {"found": true, "version": "5.1.26100.1"},
-  "cached_configs": 2,
-  "ready": true
-}
-```
-
-Cheap, filesystem-only, no subprocess. This is how a user finds out the tool is
-not installed *before* burning five minutes on a copy-and-generate that was
-never going to work.
+The CLI genuinely needs a word-list file. Dedup (NFC-normalized), order by
+descending occurrence count then alphabetically, truncate by `limit` *after*
+ordering, and record `truncated_by_limit`.
 
 ---
 
-## 6. Scope resolution (settled decision S2)
+## 7. Config cache and three lifecycles
 
-### 6.1 The walk
+The cache applies to the **sandbox spine only**. Spines 1 and 2 read the live
+grammar through `HCParser.Update()`.
 
-For `text`, `genre`, and `all_texts`, words come from the interlinear structure,
-using flexicon facades that already exist (verified against
-`flexicon_api_v4.8.0.json`):
+### 7.1 Three lifecycles -- do not conflate them
+
+| Artifact | Lifecycle |
+|---|---|
+| The copied project | **Always deleted.** Confirmed leak today: `hcparse.ps1` cleans `$script` and `$out` but never removes `$work`, so a full project copy accumulates in `%TEMP%` indefinitely |
+| The generated config (cache) | Cache-managed, invalidatable, pruned |
+| A **user-owned sandbox config** | Keepable, hand-edited, **never** overwritten or invalidated by cache logic |
+
+H6 and H10 pull in opposite directions and must be written as three named
+lifecycles, or an implementer will conflate the copy with the config.
+
+### 7.2 Cache key and invalidation
 
 ```
-project.Texts.GetAll()                    -> IText
-  [filter by name or genre]
-project.Paragraphs.GetAll(text)           -> IStTxtPara
-project.Segments.GetAll(paragraph)        -> ISegment
-project.Segments.GetAnalyses(segment)     -> list[IAnalysis]   <-- polymorphic
-  [normalize each token to its owning IWfiWordform]
-project.Wordforms.GetForm(wordform)       -> str
+cache_key = sha256(fwdata_abspath, fwdata_size, fwdata_mtime_ns,
+                   generate_config_exe_path + size + mtime,
+                   hcparse_ps1_version_constant)
 ```
 
-### 6.2 The IAnalysis polymorphism
+Retention 3 per project, LRU. Invalidate explicitly whenever a write run
+completes against the project -- including **spine-2 parser writes**, not just
+`run_module` writes.
 
-`Segments.GetAnalyses()` returns `IAnalysis` tokens, which at runtime are
-`IWfiWordform`, `IWfiAnalysis`, or `IWfiGloss` depending on how far the human
-interlinearized that token. Normalization:
+### 7.3 The shared-mode caveat -- re-scoped, not deleted
 
-- `IWfiWordform` -> itself
-- `IWfiAnalysis` -> `project.WfiAnalyses.GetOwningWordform(a)`
-- `IWfiGloss` -> owning analysis -> owning wordform
-- punctuation tokens -> skipped
+Per the confirmed issue #96 root cause: when FLEx holds a project in shared mode,
+a peer's commit lands only in the in-memory shared commit log, `.fwdata` advances
+only when the master writes, and a fresh open never replays commit-log records.
 
-This is precisely the shape the casting index exists for, and flexicon has met
-it before -- `SegmentOperations.GetGloss` is documented as returning `''` "for
-token types that carry no chosen word gloss". The implementation must go through
-`resolve_property` / `casting_helpers` rather than assuming a concrete type, or
-it will `AttributeError` on the first partially-glossed text.
+- For the **sandbox spine** the export step reads `.fwdata`, so mtime/size can be
+  unchanged while the grammar has changed. The cache key is structurally
+  incapable of noticing, and rebuilding does not help.
+- For **spines 1 and 2** the staleness takes a different form: the live cache is
+  authoritative for the session that holds it, but a peer's edits are not visible.
 
-### 6.3 The honest limitation of S2
+When `project_access` reports `shared` or `held_by_other`, set
+`staleness: "shared_mode_unverifiable"`, carry a note telling the user to save or
+close FLEx, and downgrade a diff's `no_change` to `no_change_unverifiable`.
 
-Occurrence-based selection means **a segment nobody has interlinearized
-contributes nothing.** In a project where the texts are typed but not yet
-analyzed, `scope="all_texts"` can legitimately resolve to zero words.
-
-This is a feature, not a bug -- those are the words the user actually cares
-about parsing -- but it must be *visible*, never silent:
-
-- Every run reports `coverage.segments_unanalyzed`.
-- Zero resolved words is an error (`parse_scope_empty`), not an empty success,
-  and its hint names this cause first.
-- Opt-in escape: `include_baseline_tokens=true` falls back to whitespace and
-  punctuation tokenization of `Segments.GetBaselineText()` for segments with no
-  analyses. Off by default, because naive tokenization of an unfamiliar
-  orthography produces garbage words that then "fail to parse" and look like
-  grammar bugs.
-
-`scope="all_wordforms"` (`project.Wordforms.GetAll()`) is the cheap superset: the
-project's entire wordform inventory, no text walk. It includes wordforms with
-zero current occurrences (stale entries from deleted texts), so its numbers are
-not comparable to a text-scoped run -- the `scope_fingerprint` guard in 10.2
-enforces that.
-
-### 6.4 Genre matching -- use `GenresRC`, not `GetGenre`
-
-`TextOperations.GetGenre(text)` is documented as returning **the first** genre
-only. A text tagged `[Narrative, Folklore]` scoped by `"Folklore"` would be
-silently missed.
-
-Genre scope must read the full reference collection `IText.GenresRC`
-(`liblcm_api_v11.0.0.json`, `IText`) and match against every genre on the text.
-Matching is case-insensitive against both the genre's name and its abbreviation,
-in the default analysis writing system.
-
-More than one genre matching the string is `parse_scope_ambiguous`, returning the
-candidates rather than guessing. Same for `text_name`.
-
-### 6.5 Ordering, dedup, limit
-
-Resolved words are deduplicated (exact string match, after NFC normalization),
-then ordered by descending occurrence count, then alphabetically. `limit`
-truncates *after* that ordering, so a truncated run covers the most frequent
-words. `truncated_by_limit: true` is set, and the `scope_fingerprint` records the
-limit so a later diff cannot compare a truncated run against a full one without
-`force`.
+**Never promise a safe read-back interval.** There is no N that is safe.
 
 ---
 
-## 7. Config caching (settled decision S3)
+## 8. Diagnosis: G1 (which words fail) and G2 (why)
 
-### 7.1 The key
+### 8.1 Two taxonomies, not one
 
-```
-cache_key = sha256(
-    fwdata_abspath,
-    fwdata_size_bytes,
-    fwdata_mtime_ns,
-    generate_config_exe_path + its size + mtime,
-    hcparse_ps1_version_constant
-)
-```
+**In-process:** `ParseResult.ErrorMessage` plus the trace XML. Rule attribution
+and the 23-value `FailureReason` vocabulary live inside `<Trace>`.
 
-The generator and script identity are in the key so a FieldWorks upgrade or a
-script change invalidates every cached config instead of serving a stale one.
+**Sandbox/CLI:** three top-level outcomes only. `No valid parses.` **conflates**
+no-parse with no-lexical-entry; `invalid segment at position N`; success. The
+richer `FailureReason` values appear only inside traces.
 
-Stored as `config-cache/<project>/<cache_key>/{hc-config.xml, key.json}`.
-`key.json` records the inputs in plain text so a human can see why a cache
-entry exists. Retention: 3 per project, LRU by access time.
+Do not pretend these are one taxonomy. A CLI run genuinely cannot distinguish
+"root not in the lexicon" from "no rule produced a parse".
 
-### 7.2 Explicit invalidation beats mtime
+### 8.2 Tracing
 
-Do not rely on mtime alone. Whenever `run_module` completes a **write** run
-against a project, stamp that project's cache entries dirty immediately. It is
-one file write, it is exact, and it removes the entire class of "I edited, the
-parse used yesterday's grammar" bugs.
+In-process `TraceWordXml` is per-word by design, so tracing is **on demand**:
+parse the batch untraced, then trace the specific words the user drills into.
+The old "two-pass trace" design was an artifact of the CLI spine and applies only
+there.
 
-### 7.3 The shared-mode caveat -- this must be stated in the response
+Caps (section 9.3) apply to both.
 
-Per the confirmed root cause recorded in
-`specs/swahili-audit-2026-09` (issue #96): when FLEx holds a project in shared
-mode, a non-master peer's commit lands only in the in-memory shared commit log.
-`.fwdata` advances **only when the master writes**, and a fresh open never
-replays commit-log records.
+### 8.3 Reading the logs
 
-Therefore, when FLEx is holding the project:
+`flextools_parse_log(run_id, section, word, filter, lines, offset)` with sections
+`summary | config_generation | hc_stdout | hc_output | trace | words | results`.
 
-- `.fwdata` mtime/size can be unchanged even though the grammar *has* changed.
-  The cache key is not just stale -- it is structurally incapable of noticing.
-- Rebuilding the config does not help, because `GenerateHCConfig.exe` also reads
-  `.fwdata`.
+`section="config_generation"` answers the most common sandbox failure -- config
+generation produced nothing, so every word "fails". The current script discards
+exactly that output via `| Out-Null`.
 
-The only honest behaviour is to say so. Before every parse, consult
-`project_access` for a verdict. When it is `shared` or `held_by_other`:
+### 8.4 Never fabricate an explanation
 
-- set `staleness: "shared_mode_unverifiable"` in the response,
-- carry a `note`: *"FLEx is holding this project. The parse reflects the last
-  state saved to .fwdata, which may predate recent edits. Save in FLEx (or close
-  it) and re-run for a verified result."*
-- and in a `flextools_parse_diff`, refuse to report `verdict: "no_change"` as
-  reassurance -- downgrade it to `"no_change_unverifiable"`.
-
-**Never promise a safe read-back interval.** There is no N seconds that is safe;
-the staleness window is unbounded and human-gated.
+Where a trace is parseable, name the blocking rule or stage in one line. Where it
+is not, return the raw slice **and say it is raw**. Fabricating a linguistic
+explanation from an unrecognized trace would be a confident wrong answer about
+someone's grammar -- worse than useless. This principle is load-bearing and is
+referenced by sections 3.1, 3.2 and 9.
 
 ---
 
-## 8. Reading the logs (the "how/why" requirement)
+## 9. G3: overgeneration (why too many / invalid parses are allowed)
 
-### 8.1 Failure taxonomy
+Two layers, because rule attribution is inherently per-word.
 
-Every word in `run.json` gets a result record:
+### 9.1 Batch layer (cheap, whole-run, no tracing)
 
-```json
-{"word": "menulis", "parsed": false, "analyses": [],
- "failure": {"reason": "no_parse", "stage": "morphology",
-             "explanation": "...", "trace_offset": 4211}}
-```
+Computed from typed `ParseMorph` data. Each signal ships with its false-positive
+mode stated in the output -- **legitimate ambiguity is normal in many languages
+and a high count is not a bug**:
 
-Minimum `reason` vocabulary, ordered by how often it actually bites:
-
-| reason | What it really means | First thing to tell the user |
+| Signal | What it tells a linguist | False positive |
 |---|---|---|
-| `invalid_segment` | A character is not in the phoneme inventory | Usually encoding (see the UTF-8 lesson, section 3) or a genuinely unlisted grapheme -- check the writing system, not the grammar |
-| `no_parse` | Nothing produced a complete parse | The grammar gap the user is hunting |
-| `no_lexical_entry` | Root not found in the lexicon | Add the entry, or check the citation form's morph type |
-| `config_error` | HC rejected the configuration | Not a word problem; see `section='config_generation'` |
-| `timeout` | Parse exceeded the budget | Often a runaway rule; the trace shows the loop |
+| Analysis count per word | Worklist prioritizer, never a verdict | Real productive ambiguity |
+| Root-entry disagreement | One surface derived from two unrelated headwords -- often a spurious affix rule exposing a different root | Genuine root homographs |
+| Root analysed as affix stack | A rule loose enough to synthesize a word from affixes alone | Real zero-derivation / cliticization |
+| Same surface, incompatible MSA/category | Grammar treats one form as two unrelated categories with no derivation licensing the jump | Genuine cross-category homographs |
+| Count-distribution histogram | Re-run after an edit and diff it; a rightward shift is evidence something got looser | -- |
 
-`config_error` and `timeout` are run-level, not word-level, and must surface as
-error envelopes (section 11), not as 500 quiet word failures.
+### 9.2 Drill-down layer (per word, `TraceWordXml`)
 
-### 8.2 The two-pass trace
+The trace records the **entire search**, not just the winner. For each accepted
+analysis the `MorphologicalRuleApplied` / `LexEntry` sequence gives the rule
+chain: `entry -> rule1 (stratum, slot) -> rule2 -> ... -> surface`.
 
-`tracing on` emits HermitCrab's full rule-application record for every word.
-Across 500 words that is megabytes, and 95% of it describes words that parsed
-fine and that nobody will ever read.
+**The attribution method:** compare the chains of a word's N analyses
+side-by-side; the rule appearing in every "should not have parsed" chain is the
+overgeneration candidate.
 
-Default `trace="on_failure"` runs two passes:
+Note for implementers: this side-by-side comparison **does not exist yet**. It is
+net-new build, not presentation of something `TraceWordXml` already returns.
 
-1. **Pass 1, untraced:** parse the whole word list. Fast, small output.
-2. **Pass 2, traced:** re-run *only* the words that failed, with `tracing on`,
-   capped at 25 words (configurable `parser.trace_cap`). Write to `trace.txt`
-   with a per-word byte offset recorded in `run.json` so
-   `flextools_parse_log(section='trace', word='menulis')` can seek instead of
-   scanning.
+`selectTraceMorphs` is a **pre-parse filter** (`HCParser.cs:186-200`) restricting
+the search space before parsing. It does **not** attribute an already-produced
+analysis to a rule; do not design against it as if it did.
 
-`trace="off"` skips pass 2. `trace="all"` traces the whole list in one pass and
-is documented as expensive.
+### 9.3 The oracle, and its mandatory wording
 
-When more than `trace_cap` words failed, the run says so explicitly:
-`"57 words failed; traced the first 25. Re-run with a narrower scope for the
-rest."` Silently tracing a subset and not saying so is how a user concludes a
-word has no trace when it simply was not traced.
+The project's human-approved analyses are a real but partial gold standard. It is
+sound only where the exact morph-bundle signature already exists as an
+`IWfiAnalysis`; for an analysis never materialized in the DB there is simply no
+row to query.
 
-### 8.3 From trace to explanation
+**Project-state precondition:** on a project never parsed live, the oracle is not
+degraded, it is **absent**. The tool must say so -- "this project has no
+parser-created analyses, so no approval comparison is possible" -- rather than
+emit a report in which every analysis reads as unreviewed. Silently producing a
+degenerate report is how a user concludes their grammar is bad when the truth is
+nobody ever ran the parser.
 
-Where the trace is parseable, `failure.explanation` should name the blocking
-rule or the failed stage in one line. Where it is not, return the raw trace
-slice and say it is raw. Fabricating a linguistic explanation from an
-unrecognized trace format would be worse than useless -- it would be a confident
-wrong answer about someone's grammar.
+**Mandatory output wording:**
 
-The trace grammar is the largest genuine unknown in this spec; see section 14.
+- Approved: `"Approved by [user] on [date]."`
+- Disapproved: `"Marked incorrect by [user] on [date]."`
+- No stored opinion: `"Not yet reviewed by a human -- this is not evidence it is
+  wrong, only that nobody has checked it."`
 
-### 8.4 Telemetry
+**Never** render the third case as "invalid", "incorrect", "rejected", or
+"flagged". Those words claim a verdict that does not exist.
 
-Parse runs close into the existing `operations.jsonl` with
-`op_kind: "parse"` and fields `run_id, project, scope_kind, words_resolved,
-parsed_ok, no_parse, config_source, duration_s, outcome`. That keeps
-`flextools_get_operation_logs` a single front door for "what has this session
-done", and gives the diagnostic-report feature something to attach.
+### 9.4 Cost
 
----
-
-## 9. Hardening delta for `hcparse.ps1`
-
-The bundled `src/flextoolsmcp/scripts/hcparse.ps1` starts from the submitted
-script and applies:
-
-| # | Change | Reason |
-|---|---|---|
-| H1 | `-FieldWorksDir` parameter, resolved by the caller via `versioning._default_liblcm_search_paths()`; `-HcToolPath` parameter with config override `parser.hc_tool_path` | Hardcoded `C:\Program Files\SIL\FieldWorks 9` and `%LOCALAPPDATA%\HermitCrabTool` break non-default installs |
-| H2 | Words are passed **by file only** (`-WordFile`), never on the command line | Arbitrary orthographies plus PowerShell quoting is a losing game; also removes a command-line length ceiling |
-| H3 | Write `run.json` with inputs, exit codes, timings, and per-word results | L3 must not screen-scrape prose |
-| H4 | Check `$LASTEXITCODE` after `GenerateHCConfig.exe` **and** after `dotnet hc.dll`; non-zero is a hard failure with the captured log | Today a failed run is indistinguishable from an empty successful one |
-| H5 | Redirect `GenerateHCConfig` output to `generate-config.log` instead of `Out-Null` | This is the diagnostic the user explicitly asked to be able to read |
-| H6 | Wrap temp/copy lifecycle in `try/finally`; delete the copied project after config generation unless `-KeepCopy` | A throw currently leaks a full project copy into `%TEMP%` |
-| H7 | Free-space preflight before the copy: require >= 2x project size | Mirrors `backup.py`'s existing rule; a failed mid-copy is worse than a refusal |
-| H8 | `-TimeoutSeconds`, enforced around the `dotnet` call | A runaway grammar must not pin an MCP subprocess slot |
-| H9 | ASCII-only console output; no emoji, no box-drawing | Repo convention (CLAUDE.md), and these strings get parsed |
-| H10 | `-ConfigOut` so the caller places the config directly in the cache directory | Avoids a second copy of a large XML |
-| H11 | Preserve verbatim: the UTF-8 no-BOM script write, `-Encoding UTF8` on `Get-Content`, `[,\s]+` splitting | Section 3 -- these are bug fixes, not style |
-| H12 | `$script:HCPARSE_VERSION` constant, bumped on any behavioural change | Feeds the config cache key (7.1) |
-
-The original `hcparse.ps1` stays at the repo root as the contributed reference
-until CP2 lands, then is removed in favour of the bundled copy, with a
-`CHANGELOG` note crediting the contribution.
+Default drill-down cap 10-20 words per session, chosen by the user, never
+auto-traced in bulk. When 400 words look overgenerating, do **not** trace 400:
+report the batch summary, cluster by shared root entry or category pair (a single
+loose rule produces a cluster, not 400 independent problems), and recommend
+tracing 1-3 representatives per cluster.
 
 ---
 
-## 10. Diff semantics
+## 10. Tools
 
-### 10.1 Alignment
+Named per spine. **The spine is stated in the first line of each tool
+description** -- a calling model reads descriptions, not annotation bits.
 
-Diff aligns on the word string (NFC-normalized). Per word, comparing baseline
-analysis count `b` to current `c`:
+| Tool | Spine | Annotation | Purpose |
+|---|---|---|---|
+| `flextools_try_word` | in-process read | `READ_ONLY_SAFE` | "in-process, live DB, read-only, cannot add analyses" |
+| `flextools_parse_text` | in-process write | `readOnlyHint=False, destructiveHint=True` | "in-process, live DB, WRITES on apply=True, non-undoable, ladder-gated" |
+| `flextools_parse_sandbox` | sandbox | `READ_ONLY_SAFE` w.r.t. the live DB | "exported/copied grammar, never touches the live DB, speculative edits welcome" |
+| `flextools_parse_diff` | consumer | `READ_ONLY_SAFE` | Before/after over run artifacts |
+| `flextools_parse_log` | consumer | `READ_ONLY_SAFE` | Read run artifacts |
+| `flextools_health` (parser block) | -- | `READ_ONLY_SAFE` | Preflight for all three spines |
+
+`flextools_parse_text` takes `apply` (default `false`) and echoes `applied: true/false`.
+
+**Why a capability split rather than one tool with a flag.** Annotations declare
+a tool's *maximum reachable capability*, evaluated before any argument is known.
+`try_word`'s call path structurally cannot reach `ParseFiler` or xCore, so it
+earns `READ_ONLY_SAFE` on its own facts. Tagging it destructive would *overstate*
+and throttle the low-friction hypothesis-testing loop the gradient exists to
+enable. `parse_text` reuses `run_module`'s existing ladder verbatim rather than
+inventing a parallel gate.
+
+The sandbox tool's risk register is **disk and subprocess** (project copy,
+`dotnet` timeout), not the LCM write surface.
+
+---
+
+## 11. Diff semantics
+
+Align on FLEx's own analysis-matching notion, `MatchesIWfiAnalysis`
+(`ParseResult.cs:102-133`), rather than inventing a normalized signature -- the
+in-process spine gives typed morphs, so we can match the way FLEx matches.
 
 | Condition | Bucket |
 |---|---|
 | `b == 0, c > 0` | `fixed` |
 | `b > 0, c == 0` | `broken` |
-| `b > 0, c > 0`, analysis sets differ | `changed` |
+| both > 0, sets differ | `changed` |
 | identical | `unchanged` |
 
-Words present in only one run go to `only_in_baseline` / `only_in_current` and
-never into `fixed` / `broken` -- a word that was not tested cannot have been
-fixed.
+**Ambiguity is a regression too** -- one analysis becoming seven still "parses"
+but the grammar got worse. `changed` must not collapse into `unchanged`.
 
-Analysis-set comparison is on the normalized morpheme sequence (form + gloss +
-type per morph), not on raw trace text, so cosmetic output changes do not read
-as grammar changes.
+Sandbox corpus results classify into the **same** buckets: expected-but-missing =
+`broken`, actual-but-unexpected = `changed`. This is why the CLI's `test` results
+must be read from its `Expected parses:` / `Actual parses:` sections rather than
+its binary pass/fail line -- `test` uses exact multiset equality over form+gloss,
+order-sensitive, so a corpus entry fails on any legitimate **new ambiguity**, not
+only on a regression.
 
-### 10.2 The scope guard
-
-A diff is only meaningful across identical inputs. Each run stores a
-`scope_fingerprint = sha256(scope_kind, scope_target, limit, min_occurrences,
-sorted(word_list))`.
-
-Mismatched fingerprints are **refused** with `parse_scope_mismatch` unless
-`force=true`, and under `force` the diff is computed on the intersection only,
-with the exclusions reported. Comparing 412 narrative words against 3,000
-inventory wordforms and reporting "2,588 fixed" is exactly the kind of confident
-nonsense this guard exists to prevent.
-
----
-
-## 11. Error codes (contract extension)
-
-Appended to `docs/TOOL-CONTRACT.md`. All additive, so the contract stays at
-`tool-responses/1.0`; the stability promise requires a CHANGELOG entry under
-**"Tool contract"**.
-
-| Error code | Detail fields |
-|---|---|
-| `parser_tool_missing` | `component` (`hc_tool` \| `dotnet` \| `generate_config` \| `powershell`), `expected_path`, `install_hint` |
-| `parser_config_failed` | `exit_code`, `stderr_tail`, `log_path`, `run_id` |
-| `parser_timeout` | `timeout_seconds`, `words_completed`, `run_id`, `hint` |
-| `parse_scope_empty` | `scope`, `matched_texts`, `segments_unanalyzed`, `hint` |
-| `parse_scope_ambiguous` | `scope`, `requested`, `candidates` |
-| `parse_scope_mismatch` | `baseline_fingerprint`, `current_fingerprint`, `differing_fields`, `hint` |
-| `parse_run_not_found` | `run_id`, `available_runs` |
-
-Reused unchanged: `project_not_found`, `project_locked`,
-`project_drive_unavailable`, `project_path_mismatch`.
-
-`parser_tool_missing` must carry a real install hint, not a shrug. Most users
-will not have the standalone HermitCrab tool installed, and this error is the
-one they will hit first.
+Runs carry a `scope_fingerprint`; mismatched fingerprints are refused with
+`parse_scope_mismatch` unless `force=true`, and then diffed on the intersection
+only.
 
 ---
 
 ## 12. Safety
 
-- **No writes, ever.** All three tools are `READ_ONLY_SAFE`. `write_enabled` is
-  irrelevant to them and is not consulted.
-- **The live project is never opened for write**, and config generation runs on
-  a copy (S6).
-- **Disk:** a project copy can be hundreds of MB. Free-space preflight (H7); the
-  copy is deleted after generation (H6); only the config XML is retained, under
-  a bounded cache (7.1).
-- **Subprocess:** reuse `subprocess_helpers.run_script_async`, which already does
-  `taskkill /T /F` on Windows -- necessary here because `dotnet` spawns
-  grandchildren.
-- **No `Invoke-Expression`** anywhere in the script; word data reaches
-  PowerShell only through a file (H2).
-- **Untrusted content:** words come from the user's own project, and HC output
-  from a local tool. Neither is treated as instructions; both are data in the
-  response.
+### 12.1 Per-mode, not blanket
+
+- `flextools_try_word` -- cannot reach a write type. **The guarantee is about a
+  call path, not a class:** "a tool that constructs only `HCParser` and calls
+  `ParseWord`/`TraceWordXml`", never "ParserCore is UI-free". `ParserWorker` and
+  `ParserScheduler` pull xCore in through their own constructor parameters, so
+  "let's reuse ParserWorker for consistency" is precisely the refactor that
+  silently breaks it. Guarded by a standing test (section 16).
+- `flextools_parse_sandbox` -- no path back to the live DB exists in the tool.
+- `flextools_parse_text` -- write-capable; full ladder below.
+
+### 12.2 P0-1: filing can permanently delete analyses
+
+`ProcessParse` resets the parser agent's opinion on **every** existing analysis to
+`noopinion` (`ParseFiler.cs:226-227`), then `SetUnsuccessfulParseEvals` **deletes**
+any analysis where parser and user both hold `noopinion` (`:314-315`).
+Non-undoable (`UowService.NonUndoableStack`).
+
+So a pass against a broken or half-edited grammar permanently deletes previously
+parser-created, never-reviewed analyses -- triggered by the exact edit-then-check
+loop this feature enables. This is FLEx's own behaviour (a human hits it from the
+menu too), but we would trigger it in batch.
+
+**Risk inverts with project state.** Deletion requires pre-existing
+parser-created, never-reviewed analyses. A project never parsed live has none, so
+its *first* filing parse cannot delete anything; risk arrives with the second run
+and grows. The confirmation must therefore project **actual** deletions computed
+from project state -- a concrete "may delete 0 analyses" is far better than an
+abstract warning that trains people to click through.
+
+What the user never sees changed: `ProcessParse` never writes `ISegment.AnalysesRS`,
+and the user agent's `SetEvaluation` is called in exactly one place and only to
+**approve**. The parser cannot overwrite a human's approval.
+
+### 12.3 P0-2: the grammar can shrink silently
+
+`HCLoader.Load` always returns a `Language`; the ten `IHCLoadErrorLogger`
+callbacks are advisory, with no abort, no severity and no boolean. Errors go to
+`{ProjectName}HCLoadErrors.xml`, overwritten every load and never returned to any
+caller. `HCLoader.AddEntry` adds an entry only when `Allomorphs.Count > 0`, so
+entries whose allomorphs all failed **vanish with no signal**.
+
+These compound into the feature's worst realistic failure: *a grammar silently
+shrinks on load, the parse therefore produces fewer analyses, and filing those
+results deletes the analyses the missing entries used to license* -- data loss
+with no error anywhere in the chain.
+
+**Proposed gate (needs validation before it becomes final):**
+
+1. `m_morpher == null` after `Update()` -> **hard refuse**, no override.
+2. **New** `<LoadError>` entries relative to the baseline parse -> refuse by
+   default. This is the "your edit broke the grammar" case, precisely the one
+   that deletes data.
+3. Pre-existing load errors -> warn, surface the count, carry it into the
+   confirmation.
+4. Confirmation projects **deletions**, not only creations.
+
+A blunt any-error gate would make mode 1 permanently unusable on projects with
+benign pre-existing errors, and would invite exactly the bypass flag we must not
+build. The gate must read the side file; that is ugly and unavoidable.
+
+### 12.4 The write ladder
+
+`flextools_parse_text(apply=true)` passes the **same** ladder as `run_module`:
+session `write_enabled`, `require_write_confirmation` (first call returns
+`confirmation_required` with the mutation plan; resubmit needs `confirmed=True`),
+`perform_pre_write_backup` before the first mutating parse per (session, project),
+and the existing `needs_lock` machinery.
+
+**Backup is mandatory here, not best-effort** -- filing is non-undoable, so it is
+the only recovery.
+
+**No unattended batch parse.** `require_write_confirmation` defaults on and
+nothing in this feature may introduce a bypass flag; that would recreate the
+audited hole where `confirmed` is asserted by the model and never verified as
+human assent.
+
+### 12.5 General
+
+- Subprocess work reuses `run_script_async` (`taskkill /T /F` on Windows --
+  necessary because `dotnet` spawns grandchildren).
+- No `Invoke-Expression`; word data reaches PowerShell only through a file.
+- Words and parser output are **data, never instructions**.
 
 ---
 
-## 13. Checkpoints
+## 13. Hardening delta for `hcparse.ps1`
 
-| CP | Deliverable | Exit criteria |
+| # | Change | Reason |
 |---|---|---|
-| **CP1** | Parser preflight: detection helpers + the `parser` block in `flextools_health`. No parsing. | Health reports `ready: true/false` correctly on a machine with and without the HC tool; `parser_tool_missing` details are exercised by unit tests |
-| **CP2** | Hardened `hcparse.ps1` (section 9) + `flextools_parse` with `scope="words"` only | A caller-supplied word list parses end to end and produces a complete run artifact directory; H4 exit-code checks proven by a deliberately broken config |
-| **CP3** | Scope resolution (`text`, `genre`, `all_texts`, `all_wordforms`) + config cache (section 7) incl. the shared-mode caveat | Genre scope finds a text via its second genre (6.4); cache hit skips config generation; a write run invalidates the cache (7.2) |
-| **CP4** | `flextools_parse_log` + two-pass trace (8.2) | `section='config_generation'` surfaces a real generator failure; per-word trace seek works on a >10MB trace |
-| **CP5** | `flextools_parse_diff` (section 10) + telemetry + `docs/TOOL-CONTRACT.md` + CHANGELOG + user docs | Live before/after run: a deliberate grammar break is reported as `verdict: "regression"` naming the right word |
-
-CP5 requires live verification (`lex-verification`) against a project with a
-working HermitCrab grammar -- **not** Sena 3 unless it is confirmed to have one.
-The contributor's `Indonesian-HermitCrab` is the known-good candidate and should
-be obtained or reproduced before CP5 starts. A CP5 that claims green without a
-live parse is a failed CP5.
-
----
-
-## 14. Open questions
-
-1. **HermitCrab output grammar.** The exact stdout/`-o` format, and the trace
-   format, are unknown to this spec. CP2 must begin by capturing real output
-   from a working project into `tests/fixtures/hc/` and building the parser
-   against those fixtures. Do not write the output parser from assumption.
-2. **Does `GenerateHCConfig.exe` ship in every FieldWorks 9 install,** or only
-   some builds/versions? Affects whether `parser_tool_missing` is a rare edge or
-   the common case.
-3. **Where does `hc.dll` come from?** The script expects
-   `%LOCALAPPDATA%\HermitCrabTool\hc.dll`, which is not a standard FieldWorks
-   path. The install story needs documenting before users meet
-   `parser_tool_missing`.
-4. **Genre names and localization.** Genre possibility lists can be localized.
-   Matching against the default analysis WS (6.4) may miss a user working in a
-   localized UI. Revisit if it bites.
-5. **`.fwdata` vs. other backends.** This assumes a file-based project. A
-   Send/Receive or remote-backend project may need a different config path.
+| H1 | **REWRITTEN.** `hc` is a **dotnet global tool** (`PackAsTool=true`, `ToolCommandName=hc`, on nuget.org), installing to `%USERPROFILE%\.dotnet\tools` -- **not** `%LOCALAPPDATA%\HermitCrabTool\hc.dll` as the script assumes. Locate via PATH / `dotnet tool list -g`, with a config override. `parser_tool_missing`'s hint is literally `dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool` |
+| H2 | Words passed **by file only**, never on the command line | Arbitrary orthographies + PowerShell quoting; removes a length ceiling |
+| H3 | Write `run.json` with inputs, exit codes, timings, per-word results | L3 must not screen-scrape prose |
+| H4 | **REWRITTEN.** Exit code is useless: the CLI returns 0 even when words fail or error (per-command return values are discarded), and only a bad/missing config yields -1. Detect outcomes by parsing `stats`' counter line and per-word text. **Use the right stats variant**: `stats -p` covers parses only; `test` counters need `stats -t` or bare `stats`, or a corpus runner reads zeros |
+| H5 | Capture `GenerateHCConfig` output to `generate-config.log` instead of `Out-Null` | The diagnostic the user asked to read. **Its exit-code semantics are unverified** -- do not assume they match H4's finding |
+| H6 | **SPLIT.** The copied project is always deleted in `try/finally` -- confirmed leak today | See 7.1 |
+| H7 | Free-space preflight, >= 2x project size | Mirrors `backup.py` |
+| H8 | `-TimeoutSeconds` around the `dotnet` call | A runaway grammar must not pin a subprocess slot |
+| H9 | ASCII-only console output | Repo convention, and these strings get parsed |
+| H10 | **SPLIT.** `-ConfigOut` for the cache path, plus a distinct user-owned sandbox path the cache never touches | See 7.1 |
+| H11 | Preserve verbatim: UTF-8 no-BOM script write, `-Encoding UTF8`, `[,\s]+` splitting | Section 4 -- bug fixes, not style |
+| H12 | `$script:HCPARSE_VERSION`, bumped on behavioural change | Feeds the cache key |
 
 ---
 
-## 15. Non-goals
+## 14. Error codes
 
-- **XAmple.** FLEx's other parser is out of scope. The tool names are
-  deliberately generic (`flextools_parse`, not `flextools_hc_parse`) so an
-  `engine="xample"` argument can be added later without a rename.
-- **The in-GUI FLEx parser service.** We shell to the standalone tool; we do not
-  drive FLEx.
-- **Writing parse results back into the project** (approving analyses, creating
-  `IWfiAnalysis` records from HC output). That is a write path with its own
-  gates and its own spec. Parsing stays read-only (S5).
-- **Grammar authoring or rule suggestion.** Reporting "`menulis` broke" is in
-  scope. Proposing the rule change that fixes it is not, yet.
-- **Cross-platform support.** Windows only (S4).
-- **Parsing text the project has not interlinearized**, beyond the opt-in
-  fallback in 6.3.
+Additive, so the contract stays at `tool-responses/1.0`; requires a CHANGELOG
+entry under **"Tool contract"**.
+
+| Error code | Detail fields |
+|---|---|
+| `parser_engine_mismatch` | `configured_engine`, `supported_engines`, `hint` |
+| `parser_core_missing` | `expected_path`, `detected_version`, `required_version`, `install_hint` |
+| `grammar_load_unclean` | `signal` (`morpher_null` \| `new_load_errors`), `new_error_count`, `baseline_error_count`, `log_path` |
+| `parser_tool_missing` | `component`, `expected_path`, `install_hint` |
+| `parser_config_failed` | `exit_code`, `stderr_tail`, `log_path`, `run_id` |
+| `parser_timeout` | `timeout_seconds`, `words_completed`, `run_id`, `hint` |
+| `parse_scope_empty` | `scope`, `matched_texts`, `hint` |
+| `parse_scope_ambiguous` | `scope`, `requested`, `candidates` |
+| `parse_scope_mismatch` | `baseline_fingerprint`, `current_fingerprint`, `differing_fields`, `hint` |
+| `parse_run_not_found` | `run_id`, `available_runs` |
+
+Reused: `project_not_found`, `project_locked`, `project_drive_unavailable`,
+`project_path_mismatch`.
+
+---
+
+## 15. Checkpoints
+
+| CP | Spine | Deliverable | Writes? |
+|---|---|---|---|
+| **CP1** | -- | Preflight/health for all three spines: `ParserCore.dll` + its own version gate; `ActiveParser` read and `parser_engine_mismatch` refusal; `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. No parsing | No |
+| **CP2** | in-process read | `flextools_try_word` -- `HCParser(cache)`, `ParseWord`, `TraceWordXml`. Ships the `HCParser_DoesNotLoadXCore` standing test; that test **is** the safety story | No |
+| **CP3** | in-process read | Batch + reporting: `UniqueWordforms()` scoping, run artifacts, `parse_log`, `parse_diff`, G3 batch layer + drill-down | No |
+| **CP4** | in-process write | `ParseFiler` with stubs + synchronous `UpdateWordforms` + full ladder (12.4), deletion projection, refuse-to-file gate (12.3). Live verification incl. the `MoveConcAnnotationsToWordform` edge case. **First write** | **Yes** |
+| **CP5** | sandbox | Hardened `hcparse.ps1` (H1/H4, three lifecycles), `flextools_parse_sandbox`, corpus assertions via `test` with regression/new-ambiguity classification | No |
+| **CP6** | -- | Contract codes, CHANGELOG, telemetry, user docs | No |
+
+All feature **value** lands before any write exists. A negative outcome on the
+write path costs CP4 only.
 
 ---
 
 ## 16. Test plan
 
-**Unit (no FieldWorks required)**
-- Scope resolution against a recorded fixture of the texts/paragraphs/segments/
-  analyses walk, including: a text whose matching genre is second in `GenresRC`;
-  a segment with zero analyses; `IWfiGloss` and `IWfiAnalysis` tokens alongside
-  bare `IWfiWordform` tokens; punctuation tokens.
-- HC output parser against captured fixtures (question 1), including a
-  `config_error` capture and an `invalid_segment` capture.
-- Cache-key computation: stability across calls, change on mtime, change on
-  generator mtime, change on script version.
-- Diff alignment: every bucket in 10.1, plus the `only_in_*` cases and the
-  `parse_scope_mismatch` refusal.
-- Error envelopes: every code in section 11 validates against its detail model
-  (`extra="forbid"`).
+**Unit**
+- Genre selection via `GenresRC` finds a text whose matching genre is **second**.
+- Diff: every bucket, `only_in_*`, and the `parse_scope_mismatch` refusal.
+- Cache key: stability, and change on mtime / generator / script version.
+- Error envelopes validate against their detail models (`extra="forbid"`).
+- G3 batch signals against a fixture, including each stated false-positive case.
+- Oracle wording: the never-reviewed case renders the mandated sentence and
+  **never** the words "invalid", "incorrect", "rejected", "flagged".
 
-**Integration (Windows + FieldWorks, no HC tool)**
-- `flextools_health` reports `parser.ready: false` with an actionable hint.
-- `flextools_parse` fails fast with `parser_tool_missing` and does **not** copy
-  the project first.
+**Standing guarantees**
+- `HCParser_DoesNotLoadXCore` -- isolated process; after a real `Update()` +
+  `ParseWord()`, assert no `XCore` / `System.Windows.Forms` assembly is loaded.
+  This also empirically closes the residual `DisposableBase` question.
+- `ActiveParser` mismatch produces `parser_engine_mismatch`, never a parse.
+- A never-parsed project reports the oracle as **absent**, not as all-unreviewed.
+- Parseability is never derived from analysis counts (section 3.1).
+
+**Integration (Windows + FieldWorks, no `hc` tool)**
+- `flextools_health` reports the sandbox spine unavailable with the real
+  `dotnet tool install` hint, while the in-process spines report ready.
 
 **Live (`lex-verification`, HC-configured project)**
-- Non-Latin word list round-trips correctly -- the encoding regression in
-  section 3 must have a standing test, since its failure mode (every word
-  "fails") looks like a grammar problem and would otherwise be misdiagnosed.
-- Baseline parse -> deliberate grammar break via `run_module` -> diff reports
-  `regression` naming the right word -> revert -> diff reports `improvement`.
-- Cache invalidation after that write run actually took effect (7.2).
-- Shared-mode run (FLEx open) returns `staleness: "shared_mode_unverifiable"`.
+- Non-Latin word list round-trips -- the encoding regression in section 4 gets a
+  standing test, since its failure mode looks like a grammar problem.
+- Baseline parse -> deliberate grammar break -> diff reports `regression` naming
+  the right word -> revert -> diff reports `improvement`.
+- Deletion projection matches what filing actually deletes.
+- Refuse-to-file fires on a deliberately broken grammar load.
+- `MoveConcAnnotationsToWordform` edge case: delete an analysis a segment still
+  references and observe what LCM's generic cascade does.
+- Shared-mode run returns `staleness: "shared_mode_unverifiable"`.
+
+---
+
+## 17. Open questions
+
+1. **`GenerateHCConfig.exe`'s behaviour against the copied project.** A
+   FieldWorks binary whose source was not read. It is *pointed at* a copy by
+   construction -- an **unverified link, not a demonstrated leak**.
+2. **The refuse-to-file gate's baseline comparison** (12.3) needs validation
+   before it becomes final.
+3. **Localized genre names.** Matching against the default analysis WS may miss a
+   user working in a localized UI.
+4. **Non-file-based backends.** Send/Receive or remote-backend projects may need
+   a different export path.
+5. **Cross-repo:** flexicon's maintainers may decline a FieldWorks-parser
+   dependency. No advisory lock is in force, so it is unblocked, but the
+   dependency is a negotiation, not a technical finding.
+
+---
+
+## 18. Non-goals
+
+- **XAmple.** Out of scope -- and the *reason* matters, because a wrong reason is
+  what gets a non-goal casually reversed. It is not "a different parser". It is
+  that **XAmple has no external boundary at all**: HermitCrab ships `hc` as a
+  dotnet tool with a text-in/text-out contract we can shell to, while
+  `XAmpleParser` runs only in-process through native COM interop around
+  `xample.dll`. `IParser`-level symmetry hides an entire interop layer.
+  (`dataDir` was never the blocker -- it is a cheap static install-relative
+  folder.) Revisit only if a wrapper appears. The engine-mismatch **refusal**
+  (3.2) ships regardless.
+- **The in-GUI FLEx parser service.** We drive ParserCore, not FLEx.
+- **Grammar authoring or rule suggestion.** Reporting "`menulis` broke" and
+  "rule X is the loose one" is in scope. Editing the rule for the user is not.
+- **Cross-platform support.** Windows only.
+- **Inferring parseability from stored analyses.** Not merely out of scope --
+  forbidden (3.1).

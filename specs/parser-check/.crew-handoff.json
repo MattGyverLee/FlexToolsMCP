@@ -1,6 +1,6 @@
 {
   "feature": "parser-check",
-  "status": "needs_human",
+  "status": "in_progress",
   "last_cycle": 2,
   "spurts_completed": 1,
   "tasks_done": [
@@ -9,11 +9,13 @@
     "architecture correction absorbed: one CLI spine -> three spines",
     "checkpoints resequenced CP1-CP6 (CLI spine moved first -> last)",
     "spec rewrite directives drafted (section by section)",
-    "late maintainer correction folded: never infer parseability from DB state; file/grammar axis framing"
+    "late maintainer correction folded: never infer parseability from DB state; file/grammar axis framing",
+    "maintainer decisions landed: S2 retire (keep genre selection + sandbox word list), S5 replaced with per-mode statement and mode 1 approved fully gated, S9 placement = split (read-only facade in flexicon, filing + ladder in MCP)",
+    "SPEC.md rewritten against the cycle-2 directives (719 lines, 18 sections)"
   ],
-  "next_checkpoint": "maintainer decisions on S2, S5 and placement, then SPEC.md rewrite",
-  "next_entry": "Take the three decisions in the handoff to the maintainer; on their answers, rewrite SPEC.md per the directives in the cycle-2 synthesis, then start CP1 (preflight + engine-mismatch refusal).",
-  "blocker": "S2 retire / S5 replace / flexicon-vs-MCP placement are maintainer calls; SPEC.md must not be rewritten before they land",
+  "next_checkpoint": "CP1 -- preflight/health for all three spines + parser_engine_mismatch refusal",
+  "next_entry": "SPEC.md is rewritten and the three maintainer decisions are recorded in section 2 (S2, S5, S9). Next: CP1 -- ParserCore detection with its own version gate, ActiveParser read plus parser_engine_mismatch refusal, hc located via `dotnet tool list -g`, and GenerateHCConfig.exe detection, all surfaced through the flextools_health parser block. No parsing in CP1.",
+  "blocker": null,
   "p0_carry_forward": [
     "mode-1 filing can permanently delete never-human-reviewed analyses (non-undoable): mandatory backup, deletion projection in the confirmation, refuse-to-file on unclean grammar load",
     "HC loader exposes no clean success signal: gate must read {ProjectName}HCLoadErrors.xml side file; m_morpher == null is the only binary signal",
@@ -26,5 +28,9 @@
     "Validate the proposed load-error gate refinement (hard refuse on m_morpher==null; refuse on NEW load errors vs baseline; warn on pre-existing).",
     "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak."
   ],
-  "single_probe_note": "One project-state probe (parser-agent analyses, and how many are user-noopinion) serves three requirements at once: the never-parsed warning, the oracle precondition, and the deletion projection."
+  "single_probe_note": "One project-state probe (parser-agent analyses, and how many are user-noopinion) serves three requirements at once: the never-parsed warning, the oracle precondition, and the deletion projection.",
+  "open_for_validation": [
+    "12.3 refuse-to-file gate: the baseline/new-LoadError comparison is proposed, not settled",
+    "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak"
+  ]
 }

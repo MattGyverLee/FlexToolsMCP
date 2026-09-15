@@ -491,8 +491,35 @@ carries `SenseRA` (`ILexSense`), which carries its own gloss. Compare the
 composed gloss -- the stem sense above all -- against the human's `IWfiGloss.Form`.
 When the human glossed a word "read" and one analysis roots it in a sense glossed
 "read" while another roots it in "tie", that is genuine evidence about which
-proposal is spurious. Rank analyses by stem-sense agreement with the human gloss
-and report the ranking as **evidence, never as a verdict**.
+proposal is spurious.
+
+**The signal is ASYMMETRIC, and implementing it symmetrically would be worse
+than not implementing it.** Morphology is not reliably compositional: adding a
+morpheme can produce something greater than the sum of its parts -- a lexicalized
+derivation, an idiom, ordinary semantic drift. English `understand` is not
+`under` + `stand`. Therefore:
+
+- **Agreement promotes.** A composed gloss matching the human's word gloss is
+  decent evidence the analysis is right: it is both morphologically available and
+  semantically consistent.
+- **Disagreement must NOT demote.** A mismatch is ambiguous between "wrong
+  analysis" and "correct analysis of a non-compositional word". Ranking on
+  mismatch would systematically penalise the *correct* analysis of exactly the
+  words where morphology is most interesting.
+
+So the ranking is a **promotion-only** ordering: matching analyses rise, and
+everything else keeps its original order rather than being pushed down. Never
+render an unmatched analysis as less likely.
+
+**Persistent disagreement is a finding, not noise.** A word whose best-supported
+analysis has a composed gloss far from the human's recorded meaning is a
+candidate **lexicalized form** -- precisely the case a lexical entry, or a sense
+on a complex form, exists to record, because its meaning is not predictable from
+its parts. Report it as such:
+`"The parser can derive this word, but its parts do not add up to the recorded
+meaning. That may indicate a lexicalized form that deserves its own entry or
+sense, rather than a parsing error."`
+That reading is often more valuable to a linguist than the parse itself.
 
 This matters because it partly answers the gap in 9.3: the oracle was said to
 degrade to nothing on wordforms nobody has fully analysed. It does not. It
@@ -503,8 +530,12 @@ there is.
 **Guardrails, non-negotiable:**
 
 - A pairing is a **suggestion to a human**, never an automatic write. Gloss
-  agreement is a prior, not a proof: polysemy, homography, and a human gloss
-  describing a sense the parser's root does not carry all defeat it.
+  agreement is a prior, not a proof: polysemy, homography, non-compositional
+  meaning, and a human gloss describing a sense the parser's root does not carry
+  all defeat it.
+- **Promotion-only ranking**, per the asymmetry above. Any implementation that
+  sorts analyses by gloss distance -- pushing mismatches down -- is wrong and
+  must fail review, because it inverts the correct answer on lexicalized forms.
 - Never present a low-ranked analysis as wrong. The mandated tier wording of
   9.3.1 still applies; ranking reorders, it does not judge.
 - Report the confidence basis explicitly (1:1 count match vs. gloss-string
@@ -787,9 +818,15 @@ write path costs CP4 only.
   `IWfiMorphBundle.IsComplete` rather than a reimplemented predicate.
 - **Candidate pairing (9.3.2):** one parser analysis plus one human gloss yields
   a pairing ranked first, labelled as a suggestion with its confidence basis
-  stated, and **never** auto-filed. With N parser analyses, assert the ranking
-  follows stem-sense-gloss agreement with the human gloss, and that a low-ranked
-  analysis is never rendered as wrong.
+  stated, and **never** auto-filed.
+- **Promotion-only ranking (9.3.2)** -- the regression test that matters most
+  here. Fixture: a non-compositional word (composed gloss far from the human
+  gloss) whose *correct* analysis is the mismatching one. Assert it is NOT
+  demoted below a compositional-but-wrong competitor, and that no output renders
+  it as less likely. A sort-by-gloss-distance implementation must fail this test.
+- **Lexicalization finding (9.3.2):** a word the parser derives whose parts do
+  not add up to the recorded meaning is reported as a candidate lexicalized form,
+  not as a parse error.
 - **Duplicate projection (9.3.3):** a mode-1 confirmation against a fixture
   containing gloss-only analyses reports the duplicate count, not only creations
   and deletions.

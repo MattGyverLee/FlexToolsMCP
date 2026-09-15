@@ -17,7 +17,8 @@
     "cycle3 (spurt 2): four-way parallel review of the rewritten SPEC -- explore, domain, author, programmer. Produced 9 concrete spec edits.",
     "cycle4a (spurt 2): all 9 cycle-3 edits APPLIED to SPEC.md by lex-doc (5.4, 5.5, 5.6, 12.3, 14, new 10.2, 17). EDIT 9's 'retire ParserPriority question 4' had no SPEC.md target -- it lived only in this file and is now marked RESOLVED here; 5.6 already answers it inline.",
     "cycle4b (spurt 2): FIRST CODE OF THE FEATURE. get_resolved_fieldworks_dir() added to versioning.py (wraps locate_liblcm_dll, returns .parent or None); diagnostic_health._build_fieldworks_block() switched to it; new tests/test_versioning.py (4 tests). Suite test_versioning.py + test_flextools_health.py = 16 passed / 0 failed. diagnostic_health.py's 'pure composition' docstring remains literally true.",
-    "spurt 2 side-finding: the agent-proposal question (could the MCP propose analyses as its own ICmAgent?) was ruled OUT OF SCOPE by the maintainer and parked in docs/TODO.md with its verified LCM grounding."
+    "spurt 2 side-finding: the agent-proposal question (could the MCP propose analyses as its own ICmAgent?) was ruled OUT OF SCOPE by the maintainer and parked in docs/TODO.md with its verified LCM grounding.",
+    "PanGloss investigated in source: 9.5.3 rewritten (its three famous signals are corpus counters, NOT static -- corrected); 9.5.4 added, a ranked pathology-to-LCM mapping (10 rows) that is the CP1 scan implementation order"
   ],
   "next_checkpoint": "CP1 -- preflight/health for all three spines + parser_engine_mismatch refusal + flextools_grammar_health",
   "next_entry": "FIRST, fold the two confirmed domain findings below (oracle_weakness, hc_agent_not_bootstrapped) into SPEC.md -- they are verified but NOT yet in the spec, and both are CP1/CP2 preconditions. Then CP1 proper: capability probe, ActiveParser refusal, hc + GenerateHCConfig detection, and the pure-LCM grammar scan. The MCP-side detector placement is already specced (new src/flextoolsmcp/server/parser_probe.py, imported by diagnostic_health.py the way versioning.py is); get_resolved_fieldworks_dir() already exists to bind the probe to the same FieldWorks install.",
@@ -26,7 +27,8 @@
     "mode-1 filing can permanently delete never-human-reviewed analyses (non-undoable): mandatory backup, deletion projection in the confirmation, refuse-to-file on unclean grammar load. NARROWED by the oracle_weakness finding -- see spurt2_domain_findings[0]: analyses that occur in any segment are auto-user-approved immediately before the delete check, so they are SHIELDED. The real deletion set is 'user-noopinion AND not referenced by any segment'. The deletion projection must use that conjunction or it will over-project.",
     "HC loader exposes no clean success signal: gate must read {ProjectName}HCLoadErrors.xml side file; m_morpher == null is the only binary signal",
     "anti-requirement: enumerating wordforms with zero analyses and reporting them as parse failures is WRONG -- G1 is answerable only by running the parser",
-    "oracle needs a project-state precondition: on a never-parsed project the approval oracle is absent, not degraded, and the tool must say so"
+    "oracle needs a project-state precondition: on a never-parsed project the approval oracle is absent, not degraded, and the tool must say so",
+    "ANTI-METRIC (measured by PanGloss on Sena): FST size is anti-correlated with cost -- a 2,044-state net ran ~1300x slower than a 106,365-state one. Never rank grammars by any metric monotone in size or proposal count. No scalar health score."
   ],
   "spurt2_domain_findings": [
     {
@@ -63,10 +65,12 @@
     "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak.",
     "ParserPriority RESOLVED (ParserScheduler.cs:25-32): five values, ReloadGrammarAndLexicon=0 TryAWord=1 High=2 Medium=3 Low=4, lower wins, one sorted queue. No preemption of in-flight work and no CancellationToken anywhere -- word-boundary interleave is the only option. Retired as a question; 5.6 carries the answer inline.",
     "WATCH: local FieldWorks working tree has an uncommitted ParserScheduler.Work() change draining the whole queue into Parallel.ForEach -- kills TryAWord preemption. Do not copy it into our runner.",
-    "ASK Johnml1135: enumerate what PanGloss identifies as pathological for a compiled FST, item by item, so each maps onto an LCM check (9.5.5). Separately, whether a cheap ITraceManager/Morpher seam on HCParser is possible -- welcome but nothing is planned around it.",
     "flexicon read gaps on mode A's critical path: no allomorph->owning-entry accessor, and MSAOperations exposes NO read surface at all, yet 5.1.1's resolver must terminate in MSA HVOs.",
     "NEW (spurt 2): does a data migration or lazy path create the HermitCrab agent outside SetupAgents? Live read-only probe needed -- see spurt2_domain_findings[1].",
-    "NEW (spurt 2): SPEC.md line ~97's Clarifications log still says a single-word parse 'preempts' a background run. That is a dated historical record, deliberately not retro-edited, but it now contradicts 5.6's interleave-at-word-boundary architecture. Maintainer call: footnote it or leave it."
+    "NEW (spurt 2): SPEC.md line ~97's Clarifications log still says a single-word parse 'preempts' a background run. That is a dated historical record, deliberately not retro-edited, but it now contradicts 5.6's interleave-at-word-boundary architecture. Maintainer call: footnote it or leave it.",
+    "CHECK AT CP1: is SIL.Machine.Morphology.HermitCrab.GrammarHealthChecker public in the INSTALLED dll? PanGloss ported three lints from it (hc-undeclared-segment, hc-duplicate-feature-bundle, hc-partial-morpheme). If public, they are free.",
+    "VERIFY BEFORE WRITING: 7 of the 10 rows in the 9.5.4 mapping have unverified LCM property names. Only CodesOS, IPhIterationContext.Maximum and FeaturesOA were checked against the index. Most need pythonnet casts.",
+    "ASK Johnml1135 (optional now, no longer blocking): whether a cheap ITraceManager/Morpher seam on HCParser is possible. Instrument 3 is deferred; nothing is planned around it."
   ],
   "single_probe_note": "SUPERSEDED IN PART by the oracle_weakness finding. One project-state probe still serves three requirements (never-parsed warning, oracle precondition, deletion projection), but its predicate must change: a bare user-noopinion count is NOT 'never human-reviewed', because ParseFiler auto-approves in-segment analyses under the user agent. The probe must join against segment occurrence -- 'user-noopinion AND not referenced by any segment' -- for the deletion projection, and must report the auto-approved population separately so the oracle precondition is honest.",
   "open_for_validation": [

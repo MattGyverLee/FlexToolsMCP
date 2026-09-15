@@ -111,7 +111,7 @@ Each rung's safety property is **structural**, not conventional:
   pre-fills it, bounded and labelled a guess. No general segmenter is built (5.1.2).
 - Q: Where does the static grammar scan live, given it is the cheapest instrument
   but the exported config belongs to the last checkpoint? -> A: **Pure-LCM scan in
-  its own tool, landing early** (9.5.5) -- no export, no subprocess. It is
+  its own tool, landing early** (9.5.6) -- no export, no subprocess. It is
   *proposed* only when a parse that should have been quick was not, never
   routinely, and never when the session cannot run it.
 - Q: Is a caller-supplied decomposition authoritative, or should the MCP push back
@@ -124,7 +124,7 @@ Each rung's safety property is **structural**, not conventional:
   the primary G4 instrument: take what PanGloss has identified as pathological
   for a compiled FST and detect the same properties **statically in the lexicon**.
   A `HCParser` seam is welcome if it is cheap, but nothing is planned around it,
-  and **PanGloss is never a dependency** (9.5.5).
+  and **PanGloss is never a dependency** (9.5.6).
 - Q: Which checkpoint owns `flextools_grammar_health`, given it needs no parser at
   all? -> A: **CP1.** It is the primary G4 instrument and the cheapest thing in the
   feature, and CP1 is the earliest checkpoint whose dependencies it already
@@ -1103,7 +1103,7 @@ early warning for G4.
 **Instrument 1 is the primary one** (decided 2026-09-15). G4 is answered by
 static detection in the lexicon and grammar, not by runtime instrumentation.
 Instruments 2 and 3 are supporting evidence, and instrument 3 is explicitly not
-on the critical path -- see 9.5.5 for why.
+on the critical path -- see 9.5.6 for why.
 
 **1. Static heuristics over an exported grammar -- no parse at all.** The sandbox
 spine already exports a DTD-documented HC config (5.3) whose elements are exactly
@@ -1156,7 +1156,7 @@ Three facts shape the design:
    mode C. Measure this rather than assuming it.
 3. **`HCParser` will not let us inject one.** It constructs `FwXmlTraceManager`
    itself (`HCParser.cs:53`) and hands it to a `Morpher` held in a **private field
-   with no public getter** (`HCParser.cs:25`). See the open question in 9.5.5.
+   with no public getter** (`HCParser.cs:25`). See the open question in 9.5.6.
 
 > Also verified: there is **no `CancellationToken`, timeout, or step/node budget**
 > anywhere on `HCParser`, `IParser`, or `Morpher`. 5.6's cooperative,
@@ -1166,76 +1166,144 @@ Three facts shape the design:
 Instruments 1 and 2 do not depend on any of this and must not be sequenced behind
 it.
 
-#### 9.5.3 Adapting PanGloss's parser-health vocabulary
+#### 9.5.3 What PanGloss actually detects statically
 
-`sillsdev/PanGloss` (teammate: Johnml1135) turns out to have a developed
-parser-health capability, not a prospective one, and it is **more transferable
-than a sibling project normally would be**: PanGloss is a Rust port of
-HermitCrab's parser running a propose-and-confirm FST architecture, and it
-conformance-tests against the C# HermitCrab oracle in `sillsdev/machine` -- the
-same engine semantics this feature drives. Its vocabulary describes our engine,
-not an analogous one.
+`sillsdev/PanGloss` (teammate: Johnml1135) is a Rust port of HermitCrab's parser
+running a propose-and-confirm FST architecture, conformance-tested against the C#
+HermitCrab oracle in `sillsdev/machine`. Same engine semantics we drive, so its
+findings describe our parser rather than an analogous one. Investigated in source
+2026-09-15.
 
-**Its three measured pathology categories**, which extend 9.5.1 rather than
-duplicating it:
+**Correction to an earlier draft of this section.** Its three best-known signals
+-- *expensive object kinds* (self-time ms), *never-fires rules* (attempted >= 1,000
+times in one direction with zero outputs), and *unrooted derivations* (`no_root`,
+rules whose outputs repeatedly fail lexical lookup) -- are **corpus-driven
+counters from a real parse** (`pangloss batch --stats`), not static checks. Given
+9.5.6's decision they are out of reach as a mechanism. They survive as
+*vocabulary*: "dead-end morphology" is a real category and `no_root` names it.
 
-| PanGloss signal | Definition | What it catches |
+The static surface is smaller than PanGloss's own README suggests, and the
+valuable material is not in the CLI commands at all.
+
+**`fst-health` emits four findings and exactly one numeric threshold:**
+
+| Finding | Trigger | Threshold |
 |---|---|---|
-| **Expensive object kinds** | self-time in ms per object kind, nested work subtracted so cost is not double-counted | Where the search actually spends itself |
-| **Never-fires rules** | attempted >= **1,000** times in one direction with **zero** outputs in that direction | Rules that cost search space and return nothing -- candidates to narrow or remove |
-| **Unrooted derivations** (`no_root`) | morphological rules whose outputs repeatedly fail lexical lookup | Dead-end morphology: branches that are expensive *and* cannot terminate in a real word |
+| `BackendCoverageIncomplete` | every backend declines some construct -- nothing can represent it recall-preservingly | -- |
+| `UnknownUnboundedConstruct` (cost) | construct is proposed as a superset and pruned by the confirmer | -- |
+| `UnknownUnboundedConstruct` (per rule) | **an unbounded Kleene quantifier (`max="-1"`)** anywhere in a rule's LHS, RHS, or either environment | -- |
+| `RuleInteractionProduct` | `mrule_count x prule_count` | **64** |
 
-The third is the one worth stealing outright -- it names a failure mode 9.5.1
-missed. 9.5.1 lists *structural causes* (null morphemes, short allomorphs, loose
-rule environments); PanGloss's three are *measured symptoms*. They are
-complementary, and the static scan (instrument 1) and the postmortem
-(instrument 3) should corroborate each other: a rule flagged statically as
-underconstrained ought to show up as expensive or unrooted when measured. Where
-they disagree, the static scan is the one producing false positives.
+**`grammar-health` runs three authoring lints**, and these are *ported from C#*
+`SIL.Machine.Morphology.HermitCrab.GrammarHealthChecker`:
+`hc-undeclared-segment` (error -- a morph form contains a character the phoneme
+inventory never declares), `hc-duplicate-feature-bundle` (two segments with
+identical feature lanes, so "a segment-changing rule cannot reliably tell them
+apart"), and `hc-partial-morpheme` ("leaving it partial can broaden analysis and
+disable safe final-template pruning").
 
-**Its interpretation discipline is directly adoptable, and costs nothing to
-adopt.** PanGloss's stated safety principles are the same register as 8.4:
+> **Worth checking early.** `GrammarHealthChecker` is a **C# type in the machine
+> library**, and `SIL.Machine.Morphology.HermitCrab.dll` already ships in the
+> FieldWorks install directory we load from. If it is public in the installed
+> version, those three lints are free -- no port, no reimplementation. Verify at
+> CP1 alongside the capability probe.
 
-- Time ranks measured cost; attempts show participation. A frequently attempted
-  rule may still be cheap. Never cross-compare incompatible units -- a lexical
-  lookup does not rank against a rule application.
-- **A timeout produces a floor, not a total.** "The recorded work is real but
-  incomplete." This is exactly the wording our aborted-run postmortem needs.
-- **Zero output is corpus-relative.** A rule absent from the chosen words may be
-  necessary elsewhere. Our word-list scoping (6.1) makes this our problem too.
-- **Statistics do not establish correctness.**
+**The single most transferable idea is the net-shape screen.** It inspects a
+compiled FST statically -- `O(states + arcs)`, no word applied -- and asserts
+exactly one defect: a **zero-width cycle**, a loop whose every arc consumes
+nothing on the tape being read, so each lap yields a different output string. Its
+own framing is the sentence to carry over:
 
-**Adopt its prohibition on scalar scoring as an anti-requirement.** PanGloss's
-assessment spec explicitly forbids emitting a scalar grammar-quality score or a
-`better: true|false` verdict. Do the same here: **no "grammar health score."** A
-number invites ranking two grammars, and a linguist whose grammar scores 62 has
-been told nothing true. Report named signals with their counts and their
-false-positive modes, exactly as 9.1 already does for G3.
+> "The null-morph pathology is precisely an `in != EPSILON, out == EPSILON`
+> self-loop: invisible in the down direction, unbounded in the up direction."
 
-**What is NOT portable, and this sharpens the 9.5.2 open question.** PanGloss can
-measure self-time and attempt counts per object because it *owns* the engine; we
-call C# `HCParser` across pythonnet. Its `--step-cap` (default 50,000,000
-unmemoized analysis steps per word, framed as a deterministic termination
-safeguard rather than a tuning knob) is a better abort criterion than our
-wall-clock timeout precisely because it is reproducible -- and it is available to
-PanGloss for the same reason its counters are. Treat the step cap as the shape to
-aim at, not a thing we can assume; deterministic aborts probably require
-instrumentation we do not have.
+It has **no threshold**. It is a structural fact, not a measurement.
 
-Its handling of a capped run is adoptable regardless: a word that hits the cap
-emits a **typed incomplete row**, not a failure. That is the same commitment as
-5.6's partial-results rule, and it should use the same vocabulary.
+**Measured blow-up factors**, which is what makes 9.5.1's ranking evidence-based
+rather than intuitive:
 
-**Cheapest way to close the open question:** ask Johnml1135 directly whether
-per-object counters can be obtained from the C# HermitCrab engine, or only from
-PanGloss's port. That one answer decides whether instrument 3 is buildable at CP3
-or must wait. Two further convergence seams worth raising in the same
-conversation: `docs/fieldworks-parse-analysis-v1.schema.json`, which may be the
-right interchange shape for our run artifacts (5.5), and PanGloss's C ABI / CLI,
-which -- if it reaches release -- would be a fourth instrument rather than a
-replacement for any of these.
+- **425x** -- an affix allomorph whose whole shape is boundary characters
+  degenerates to a zero-width entry sitting on a self-loop, freely repeatable
+  (127 -> 53,992 proposals on one five-word slice).
+- **Six orders of magnitude** -- zero-surface slot allomorphs admitted at every
+  template level rather than once per slot: **2.5M candidates for one Sena word
+  where the engine returns 8.**
+- **Representation-variant products**, measured per language: Aweti **4096**,
+  Mbugwe 256, Sena 8, Amharic 8, Indonesian 4. A phoneme carrying several
+  orthographic representations multiplies out across a form -- "a twelve-segment
+  root whose segments each carry two spellings is 2^12."
+- **One epenthesis or metathesis rule anywhere widens the expensive route to the
+  whole grammar** -- a static per-grammar predicate, tripped by a rewrite rule
+  with an empty left-hand side.
 
-#### 9.5.4 Instrument 1's home: `flextools_grammar_health`
+**Adopt this warning; it is the most useful negative result in the repo.** Size is
+**anti-correlated** with cost. Measured on Sena, a 2,044-state / 21,114-arc
+network ran roughly **1300x slower** than a 106,365-state / 702,364-arc one:
+
+> "Any metric monotone in states, arcs, or total proposal count picks the wrong
+> candidate here."
+
+A scan must therefore never rank grammars by how big anything is. This is the
+mechanism behind 9.5.7's no-scalar-score rule, and it is measured rather than
+asserted.
+
+**Treat their numbers as placeholders, because they do.** PanGloss labels its own
+thresholds: the rule-product 64 is "a conservative, uncalibrated placeholder ...
+never used to reject a compile", and the 100 MB payload band says "no grammar was
+measured to pick it". Import the *checks*, never the constants, and never present
+a borrowed number as measured.
+
+**What PanGloss does NOT check, verified by exhaustive search.** There is **no
+short-allomorph check** -- no length test on allomorph forms produces any finding
+anywhere -- **no general permissive-environment check** beyond empty-LHS
+epenthesis and the unbounded quantifier, and **no overlapping-natural-class
+check**. The nearest are duplicate feature bundles at the *segment* level and
+overlapping environments between subrules of a single simultaneous rule.
+
+So 9.5.1's causes and PanGloss's findings are **complementary, and neither is a
+superset**. Two of the four causes named there have no PanGloss counterpart at
+all. Two shapes PanGloss names but has never built -- `null-cycle` and
+`optional-slot-branching` -- are catalogue entries with no producer, so
+implementing them here puts us ahead rather than behind.
+
+Their scope rule is ours too: **"A pathological verdict is INFORMATION, not
+permission to stop proposing."**
+
+#### 9.5.4 The pathology-to-LCM mapping
+
+This is the translation: what PanGloss identifies as pathological for a compiled
+FST, restated as something detectable in a FieldWorks lexicon. Ranked by
+PanGloss's own measured evidence, highest yield first.
+
+| # | Pathology | Evidence | LCM check |
+|---|---|---|---|
+| 1 | **Zero-surface morph in a repeatable position** | 425x; 10^6 | an `IMoForm` whose form is empty or only boundary characters, reachable from an optional slot or a self-looping position |
+| 2 | **Representation-variant product per form** | Aweti 4096 | product of `IPhPhoneme.CodesOS` counts over a form's segments -- **`CodesOS` verified**, inherited from `IPhTerminalUnit` |
+| 3 | **Epenthesis or metathesis anywhere** | whole-grammar cost class | an `IPhRegularRule` with an empty structural description; any `IPhMetathesisRule` |
+| 4 | **Unbounded quantifier in a pattern or environment** | `fst-health` finding | `IPhIterationContext.Maximum == -1` -- **verified**; `Maximum` and `Minimum` are `Int32` |
+| 5 | **Morphological x phonological rule product** | threshold 64, placeholder | affix-process rule count x (`IPhRegularRule` + `IPhMetathesisRule`) count |
+| 6 | **Partial morphemes** | `hc-partial-morpheme` | entries and affix rules lacking category or template analysis -- overlaps the tier-2 "sketched" notion of 9.3.1 |
+| 7 | **Multiple allomorphs per entry; stem-name restriction** | both proposed unconditionally, never filtered | `ILexEntry.AlternateFormsOS.Count > 1`; `IMoStemAllomorph.StemNameRA != null` |
+| 8 | **Unordered rule application; derivation depth** | 2^N, capped at N=6 | rule ordering within `IMoStratum`; standalone derivational rule count equals chain depth |
+| 9 | **Segments with identical feature bundles** | `hc-duplicate-feature-bundle` | compare `IPhPhoneme.FeaturesOA` within a phoneme set -- **`FeaturesOA` verified** |
+| 10 | **Optional template slots** | named by PanGloss, never built | independent apply/skip choices across `IMoInflAffixSlot`s -- we would be first |
+
+Plus the three 9.5.1 causes PanGloss does not cover at all: **short allomorphs**,
+**broadly permissive rule environments**, and **overlapping natural classes**.
+
+Two implementation notes:
+
+- **Only rows 2, 4 and 9 have had their LCM property names verified**, through
+  this project's own index. Every other row is a *proposed* mapping and must be
+  checked with `flextools_get_object_api` before it is written. Do not let the
+  table's confident formatting stand in for that check -- that is the 8.4 failure
+  applied to our own planning.
+- **Most of these properties require a pythonnet cast.** The index reports 26-27
+  casting-required properties on `IPhPhoneme` and `IPhIterationContext` alone, and
+  the phonological context collections are polymorphic. Use the index's
+  `cast_example` output rather than hand-writing accessors.
+
+#### 9.5.5 Instrument 1's home: `flextools_grammar_health`
 
 The static scan is **pure LCM** and therefore ships early, decoupled from the
 sandbox spine entirely. Everything 9.5.1 looks for is an LCM object: allomorphs
@@ -1243,6 +1311,10 @@ are `IMoForm`, rule environments are `IPhEnvironment` on `IPhRegularRule`,
 overlapping phonemes are `IPhNaturalClass`. No export, no project copy, no `hc`
 tool, no subprocess -- so it does not wait for CP5, and it is available from the
 moment a project can be opened.
+
+The checks it implements are the mapping of 9.5.4, in that order -- highest
+measured yield first, and each verified against the LCM index before it is
+written.
 
 **It ships at CP1** (section 15) -- it is the only substantial deliverable in this
 feature with no dependency on ParserCore, the `hc` tool, or a parse, so nothing
@@ -1261,7 +1333,7 @@ anyone who wants one; what is conditional is the *proposal*.
 
 And per 10.1, never propose it when the session cannot run it.
 
-#### 9.5.5 Decided: static detection over runtime instrumentation
+#### 9.5.6 Decided: static detection over runtime instrumentation
 
 Instrument 3 needs a custom `ITraceManager`, and `HCParser` exposes no way to
 supply one -- `m_morpher` is private with no getter (`HCParser.cs:25`), the trace
@@ -1290,7 +1362,7 @@ lexicon properties worth looking for*. We cannot compile an FST; we can look for
 the same properties directly in LCM.
 
 So the work is: take PanGloss's pathology list, translate each item from
-FST-compile terms into the LCM objects of 9.5.4, and implement the checks here.
+FST-compile terms into the LCM objects of 9.5.5, and implement the checks here.
 
 **PanGloss is never a dependency** -- not at runtime, not at build time, not as a
 bundled binary. What crosses the boundary is knowledge and, where licensing
@@ -1304,7 +1376,7 @@ So a search bound *is* reachable without any API change -- by editing project
 parameters, not by passing an argument. `Morpher.MaxUnapplications` exists and is
 **never set by FieldWorks**.
 
-#### 9.5.6 Reporting rule
+#### 9.5.7 Reporting rule
 
 A G4 finding names a **suspect**, never a defect. An unconstrained null morpheme
 may be exactly right for the language; a short allomorph may be the most common
@@ -1327,7 +1399,7 @@ description** -- a calling model reads descriptions, not annotation bits.
 | `flextools_parse_diff` | consumer | `READ_ONLY_SAFE` | Before/after over run artifacts |
 | `flextools_parse_log` | consumer | `READ_ONLY_SAFE` | Read run artifacts |
 | `flextools_parse_status` | consumer | `READ_ONLY_SAFE` | Progress and terminal state of a parse job; cancels one on request (5.6) |
-| `flextools_grammar_health` | in-process read | `READ_ONLY_SAFE` | Pure-LCM static scan for path-multiplying grammar properties (9.5.4). No parse, no export, no subprocess |
+| `flextools_grammar_health` | in-process read | `READ_ONLY_SAFE` | Pure-LCM static scan for path-multiplying grammar properties (9.5.5). No parse, no export, no subprocess |
 | `flextools_health` (parser block) | -- | `READ_ONLY_SAFE` | Preflight for all three spines (10.2) |
 
 `flextools_try_word(word, trace="none"|"selected"|"full", morphs=None)` covers
@@ -1710,9 +1782,9 @@ Reused: `project_not_found`, `project_locked`, `project_drive_unavailable`,
 
 | CP | Spine | Deliverable | Writes? |
 |---|---|---|---|
-| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.4) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
+| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.5) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
 | **CP2** | in-process read | **flexicon first** (S9): the read-only `project.Parser` facade plus `Texts.GetGenres()`, lazily imported and capability-probed on flexicon's own side. Then `flextools_try_word` -- `HCParser(cache)`, `ParseWord`, `TraceWordXml`, **all three trace modes of 5.1.1** including the morph-spec -> MSA-HVO resolver mode A needs. **Ships the job runner (5.6)**: states, incremental `run.json`, cancellation, the fast-path window, and `flextools_parse_status`. Ships the `HCParser_DoesNotLoadXCore` standing test; that test **is** the safety story | No |
-| **CP3** | in-process read | G4 instrument 2 (the bounded complete parse); `next_step` routing into the CP1 grammar scan. Instrument 3 only if 9.5.5's seam ever appears. Batch + reporting: `UniqueWordforms()` scoping, run artifacts, `parse_log`, `parse_diff`, G3 batch layer + drill-down. Consumes CP2's runner; adds no second execution model | No |
+| **CP3** | in-process read | G4 instrument 2 (the bounded complete parse); `next_step` routing into the CP1 grammar scan. Instrument 3 only if 9.5.6's seam ever appears. Batch + reporting: `UniqueWordforms()` scoping, run artifacts, `parse_log`, `parse_diff`, G3 batch layer + drill-down. Consumes CP2's runner; adds no second execution model | No |
 | **CP4** | in-process write | `ParseFiler` with stubs + synchronous `UpdateWordforms` + full ladder (12.4), deletion projection, refuse-to-file gate (12.3). Live verification incl. the `MoveConcAnnotationsToWordform` edge case. **First write** | **Yes** |
 | **CP5** | sandbox | Hardened `hcparse.ps1` (H1/H4, three lifecycles), `flextools_parse_sandbox`, corpus assertions via `test` with regression/new-ambiguity classification | No |
 | **CP6** | -- | Contract codes, CHANGELOG, telemetry, user docs | No |
@@ -1797,7 +1869,7 @@ the first checkpoint with nothing blocking it.
   anywhere in the output (9.5.3).
 - A `try_word` that misses the fast-path window emits a `next_step` proposing the
   static scan; one that answers inline does **not** -- the proposal is conditional
-  (9.5.4).
+  (9.5.5).
 - `next_step` never names a tool that does not exist, and never a lexicon query
   tool (10.1, 5.1.2).
 
@@ -1880,7 +1952,7 @@ the first checkpoint with nothing blocking it.
    Whether per-morpheme counters are obtainable from the C# engine decides
    instrument 3. **Resolved 2026-09-15 by not needing it**: instrument 1 (static
    LCM detection) is now the primary G4 instrument, enriched by PanGloss's
-   pathology list translated out of FST-compile terms (9.5.5). Instrument 3 is
+   pathology list translated out of FST-compile terms (9.5.6). Instrument 3 is
    deferred pending a possible `HCParser` seam -- a FieldWorks ask, not a PanGloss
    one. What remains genuinely open is narrower and is a question for Johnml1135:
    **what has PanGloss identified as pathological for a compiled FST**, item by

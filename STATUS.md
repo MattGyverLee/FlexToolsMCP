@@ -12,6 +12,47 @@ Spec: `specs/shared-mode-access/SPEC.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
+In spec review (not implemented, no branch): **parser-check** -- let the MCP
+run FLEx's parser so it can verify its own grammar/lexicon edits.
+Spec: `specs/parser-check/SPEC.md` (drafted on a since-corrected architecture).
+Crew reviews: `specs/parser-check/reviews/cycle{1,2}-*.md`.
+Machine state: `specs/parser-check/.crew-handoff.json`.
+
+**Spurt 1 (cycles 1-2) is COMPLETE and the feature is BLOCKED ON THE MAINTAINER.**
+Two crew cycles re-grounded the spec against FieldWorks source. The architecture
+changed underneath it: the spec assumed one mechanism (export a HermitCrab config,
+run the standalone `hc` CLI); the real design is three spines --
+in-process read-only (`HCParser(cache)`, provably cannot reach a write type),
+in-process write (`ParseFiler`, non-undoable, ladder-gated), and the export/CLI
+sandbox (verified to have no path back into the live database). That maps onto the
+maintainer's own confidence gradient: rehearse in the sandbox, hypothesis-test
+live read-only, commit only when confident.
+
+Three decisions are the maintainer's, and nothing should be rewritten before they
+land: retire settled point **S2** (the custom interlinear walk -- LCM's
+`IStText.UniqueWordforms()` already does it); replace settled point **S5**
+("parsing is read-only, always" -- dead, mode 1 writes) with a per-mode statement;
+and **placement** (the crew recommends a read-only `project.Parser` facade in
+flexicon with filing and the write ladder staying in the MCP -- a cross-repo call).
+
+A late maintainer correction added a correctness rule the design did not have:
+**never infer parseability from database state.** `IWfiAnalysis` records are the
+record of work already done (parser runs and hand-interlinearization), not a
+statement about what the grammar accepts -- so a project never parsed live looks
+100% unparsed while possibly being 100% parseable. "Which words fail" is
+answerable only by running the parser, never by querying analyses. That also
+gives the feature its organising frame: two orthogonal axes, *does it file?* and
+*whose grammar?* -- discovery is non-filing against the live grammar, the sandbox
+is non-filing against an edited exported grammar, mode 1 is filing against the
+live grammar, and filing from a sandbox parse is semantically incoherent rather
+than merely unbuilt.
+
+Two P0s must survive into whatever gets written: a mode-1 pass against a broken
+grammar can permanently DELETE never-human-reviewed analyses (`ParseFiler` resets
+parser opinion on every analysis, then deletes where parser and user both hold
+`noopinion`), and the HC loader offers no clean success signal, so the
+refuse-to-file gate has to read a temp XML side file.
+
 Paused (not abandoned): **diagnostic-report**, which is green through CP3 and
 whose next pickup is CP4 (docs + demo). Its section is retained below.
 

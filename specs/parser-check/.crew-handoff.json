@@ -1,0 +1,30 @@
+{
+  "feature": "parser-check",
+  "status": "needs_human",
+  "last_cycle": 2,
+  "spurts_completed": 1,
+  "tasks_done": [
+    "cycle1: headless feasibility, ParseFiler semantics, tool surface, HC CLI format",
+    "cycle2: placement recommendation, G3 design, dataDir/XAmple, sandbox verification",
+    "architecture correction absorbed: one CLI spine -> three spines",
+    "checkpoints resequenced CP1-CP6 (CLI spine moved first -> last)",
+    "spec rewrite directives drafted (section by section)",
+    "late maintainer correction folded: never infer parseability from DB state; file/grammar axis framing"
+  ],
+  "next_checkpoint": "maintainer decisions on S2, S5 and placement, then SPEC.md rewrite",
+  "next_entry": "Take the three decisions in the handoff to the maintainer; on their answers, rewrite SPEC.md per the directives in the cycle-2 synthesis, then start CP1 (preflight + engine-mismatch refusal).",
+  "blocker": "S2 retire / S5 replace / flexicon-vs-MCP placement are maintainer calls; SPEC.md must not be rewritten before they land",
+  "p0_carry_forward": [
+    "mode-1 filing can permanently delete never-human-reviewed analyses (non-undoable): mandatory backup, deletion projection in the confirmation, refuse-to-file on unclean grammar load",
+    "HC loader exposes no clean success signal: gate must read {ProjectName}HCLoadErrors.xml side file; m_morpher == null is the only binary signal",
+    "anti-requirement: enumerating wordforms with zero analyses and reporting them as parse failures is WRONG -- G1 is answerable only by running the parser",
+    "oracle needs a project-state precondition: on a never-parsed project the approval oracle is absent, not degraded, and the tool must say so"
+  ],
+  "updated": "2026-09-15",
+  "open_questions": [
+    "Does IStText.UniqueWordforms() return anything for a text never opened in interlinear (i.e. never tokenized)? Same DB-state-as-proxy trap one layer down.",
+    "Validate the proposed load-error gate refinement (hard refuse on m_morpher==null; refuse on NEW load errors vs baseline; warn on pre-existing).",
+    "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak."
+  ],
+  "single_probe_note": "One project-state probe (parser-agent analyses, and how many are user-noopinion) serves three requirements at once: the never-parsed warning, the oracle precondition, and the deletion projection."
+}

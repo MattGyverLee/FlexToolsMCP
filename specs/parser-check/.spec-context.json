@@ -1,0 +1,10 @@
+{
+  "workflow": "companion",
+  "specName": "parser-check",
+  "branch": "parser-check",
+  "selectedAt": "2026-09-15T20:00:03.160Z",
+  "currentStep": "specify",
+  "status": "draft",
+  "history": [],
+  "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c"
+}

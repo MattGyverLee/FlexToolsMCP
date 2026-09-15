@@ -467,6 +467,70 @@ opinion, so `SetUnsuccessfulParseEvals` will not delete them. They are safe from
 the P0 deletion path. Say so when reporting them, so a user does not fear that
 running a parse will discard their glossing work.
 
+#### 9.3.2 Incomplete records are useful evidence, of a different kind
+
+Tiers 1 and 2 are excluded from the morphological count (9.3.1). They are **not**
+excluded from the analysis. They answer a different question, and that makes them
+complementary rather than weak:
+
+> The human supplies the **what** (this word means X). The parser supplies the
+> **how** (this word decomposes as Y). The parser does not attempt word-level
+> semantics at all, so the two never contradict each other -- they compose.
+
+**The 1:1 case is the strong one.** When the parser produces exactly one full
+analysis and the human recorded exactly one word gloss, it is statistically
+likely they belong together: the parser's morphology is the missing "how" for the
+human's recorded "what". Surface that as a **candidate pairing**, ranked highest
+in the report, with wording that makes the inference visible rather than implied:
+`"One parser analysis, one human gloss -- these probably describe the same word.
+The parser's decomposition may be the morphology this gloss is missing."`
+
+**The 1:N case is a disambiguation signal, and this is where G3 gains a new
+input.** A parser analysis implies a *composed* gloss: each `IWfiMorphBundle`
+carries `SenseRA` (`ILexSense`), which carries its own gloss. Compare the
+composed gloss -- the stem sense above all -- against the human's `IWfiGloss.Form`.
+When the human glossed a word "read" and one analysis roots it in a sense glossed
+"read" while another roots it in "tie", that is genuine evidence about which
+proposal is spurious. Rank analyses by stem-sense agreement with the human gloss
+and report the ranking as **evidence, never as a verdict**.
+
+This matters because it partly answers the gap in 9.3: the oracle was said to
+degrade to nothing on wordforms nobody has fully analysed. It does not. It
+degrades to a *semantic* oracle, which is weaker for morphology but still
+discriminating -- and on a Gloss-mode-heavy project it may be the only oracle
+there is.
+
+**Guardrails, non-negotiable:**
+
+- A pairing is a **suggestion to a human**, never an automatic write. Gloss
+  agreement is a prior, not a proof: polysemy, homography, and a human gloss
+  describing a sense the parser's root does not carry all defeat it.
+- Never present a low-ranked analysis as wrong. The mandated tier wording of
+  9.3.1 still applies; ranking reorders, it does not judge.
+- Report the confidence basis explicitly (1:1 count match vs. gloss-string
+  agreement vs. both), so the user can see *why* a pairing was proposed.
+
+#### 9.3.3 Consequence: mode 1 duplicates against gloss-only work
+
+`ProcessAnalysis` looks for an existing `IWfiAnalysis` whose morph bundles match
+the parse. A gloss-only analysis has zero bundles and can never match
+(9.3.1), so filing **creates a second analysis** and the human's gloss-only
+record survives beside it -- one carrying meaning, one carrying morphology,
+unmerged.
+
+On a project with substantial Gloss-mode work, a mode-1 pass therefore produces
+duplicate analyses **by construction**. This is FLEx's own behaviour, not
+something we introduce, but we trigger it in batch and must disclose it:
+
+- The mode-1 confirmation (12.4) must project **duplicates** alongside creations
+  and deletions: "may create N analyses, M of which duplicate an existing
+  gloss-only record."
+- Merging the two -- completing a human's tier-1 record with the parser's
+  morphology -- would be a genuinely useful operation and is **out of scope
+  here**. It is a distinct write path, not reachable through `ProcessParse`, and
+  it needs its own design and its own gates. Recorded as a follow-up in 17.6,
+  not smuggled into this feature.
+
 **Project-state precondition:** on a project never parsed live, the oracle is not
 degraded, it is **absent**. The tool must say so -- "this project has no
 parser-created analyses, so no approval comparison is possible" -- rather than
@@ -721,6 +785,14 @@ write path costs CP4 only.
   "human approved N of M" count, that tiers 1 and 2 are reported by name rather
   than dropped or counted as disagreement, and that the tier is derived from
   `IWfiMorphBundle.IsComplete` rather than a reimplemented predicate.
+- **Candidate pairing (9.3.2):** one parser analysis plus one human gloss yields
+  a pairing ranked first, labelled as a suggestion with its confidence basis
+  stated, and **never** auto-filed. With N parser analyses, assert the ranking
+  follows stem-sense-gloss agreement with the human gloss, and that a low-ranked
+  analysis is never rendered as wrong.
+- **Duplicate projection (9.3.3):** a mode-1 confirmation against a fixture
+  containing gloss-only analyses reports the duplicate count, not only creations
+  and deletions.
 
 **Standing guarantees**
 - `HCParser_DoesNotLoadXCore` -- isolated process; after a real `Update()` +
@@ -761,6 +833,13 @@ write path costs CP4 only.
 5. **Cross-repo:** flexicon's maintainers may decline a FieldWorks-parser
    dependency. No advisory lock is in force, so it is unblocked, but the
    dependency is a negotiation, not a technical finding.
+6. **Follow-up feature, deliberately out of scope here: completing a gloss-only
+   analysis with parser morphology.** Per 9.3.3, filing duplicates rather than
+   merges, and the merge is the operation a user actually wants on a Gloss-mode
+   project -- it would turn tier-1 records into tier-3 ones and is arguably the
+   highest-value write this whole area could offer. It is not reachable through
+   `ProcessParse`, so it needs its own write path, its own gates, and its own
+   spec. Do not let it accrete into CP4.
 
 ---
 

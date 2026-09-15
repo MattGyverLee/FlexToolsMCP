@@ -416,6 +416,57 @@ sound only where the exact morph-bundle signature already exists as an
 `IWfiAnalysis`; for an analysis never materialized in the DB there is simply no
 row to query.
 
+#### 9.3.1 Human approval is not one thing -- tier it before comparing
+
+A human "approved analysis" may record **what a word means** without recording
+**how it decomposes**. FLEx's Gloss interlinear mode exists precisely to capture
+that: a word gloss and category, no morphology. Treating such a record as a
+morphological gold standard is a category error, not merely thin evidence.
+
+This is mechanically decisive, not a matter of taste. `MatchesIWfiAnalysis`
+(`ParseResult.cs:110-118`) requires
+`analysis.MorphBundlesOS.Count == this.Morphs.Count` and then
+`mb.MorphRA == current.Form && mb.MsaRA == current.Msa`. Therefore:
+
+- A **gloss-only** analysis has `MorphBundlesOS.Count == 0`, so it can match only
+  a parser result with zero morphs -- i.e. **never**.
+- A **sketched** bundle carrying a text `Form` but a null `MorphRA`/`MsaRA` fails
+  the identity comparison -- also **never**.
+
+Incomplete human records are thus *invisible* to the comparison. Counting them as
+"the human approved 0 of the parser's 6" is wrong: the human expressed an
+intention the parser's output cannot be measured against.
+
+**LCM already defines the distinction -- use it rather than inventing one.**
+`IWfiMorphBundle.IsComplete` (`OverridesLing_Wfi.cs:861-868`) is
+`SenseRA != null && MsaRA != null && MorphRA != null && <all analysis-WS glosses
+non-empty> && MorphRA.IsComplete`, and `WfiAnalysis.IsFullyFormed` (`:1160-1175`)
+requires a category, at least one complete gloss, **morph bundles that are all
+complete**, a human opinion, and no conflicting evaluations.
+
+> Reachability note: `IsFullyFormed` is `internal` and therefore NOT callable
+> from pythonnet. `IWfiAnalysis.IsComplete` and `IWfiMorphBundle.IsComplete` are
+> public on the interfaces, so compute the tier from `MorphBundlesOS.Count` plus
+> each bundle's `IsComplete`. Do not reimplement SIL's completeness predicate.
+
+| Tier | State | Usable as a morphological oracle? |
+|---|---|---|
+| 0 | No analysis at all | No -- nothing recorded |
+| 1 | Category and/or gloss, `MorphBundlesOS.Count == 0` (Gloss-mode work) | **No** -- meaning recorded, decomposition not |
+| 2 | Bundles present, some with null `MorphRA`/`MsaRA`/`SenseRA` | **No** -- morphology sketched, not linked |
+| 3 | Bundles present and all `IsComplete` | **Yes** -- comparable to parser output |
+
+Only tier 3 enters the "human approved N of the parser's M" statement. Tiers 1
+and 2 are reported **separately and by name**, never folded into a count and
+never silently dropped -- they are the user's recorded intent and are often the
+most interesting rows on the page, because they say "a human believes this word
+means X and has not yet said how it gets there."
+
+Corollary for section 12.2: tier-1 and tier-2 records carry a **user-agent**
+opinion, so `SetUnsuccessfulParseEvals` will not delete them. They are safe from
+the P0 deletion path. Say so when reporting them, so a user does not fear that
+running a parse will discard their glossing work.
+
 **Project-state precondition:** on a project never parsed live, the oracle is not
 degraded, it is **absent**. The tool must say so -- "this project has no
 parser-created analyses, so no approval comparison is possible" -- rather than
@@ -425,13 +476,20 @@ nobody ever ran the parser.
 
 **Mandatory output wording:**
 
-- Approved: `"Approved by [user] on [date]."`
+- Approved (tier 3): `"Approved by [user] on [date]."`
 - Disapproved: `"Marked incorrect by [user] on [date]."`
 - No stored opinion: `"Not yet reviewed by a human -- this is not evidence it is
   wrong, only that nobody has checked it."`
+- **Tier 1 (gloss only):** `"A human recorded what this word means, but not how
+  it decomposes -- there is no morphology here to compare the parser against."`
+- **Tier 2 (sketched, unlinked):** `"A human began a morphological analysis but
+  did not finish linking it -- [N] of [M] morphs are not linked to a lexical
+  entry, so it cannot be compared to the parser's output."`
 
 **Never** render the third case as "invalid", "incorrect", "rejected", or
-"flagged". Those words claim a verdict that does not exist.
+"flagged". Those words claim a verdict that does not exist. Equally, **never**
+render tiers 1 and 2 as disagreement with the parser -- the human has not
+disagreed, they have not yet spoken on the question the parser is answering.
 
 ### 9.4 Cost
 
@@ -657,6 +715,12 @@ write path costs CP4 only.
 - G3 batch signals against a fixture, including each stated false-positive case.
 - Oracle wording: the never-reviewed case renders the mandated sentence and
   **never** the words "invalid", "incorrect", "rejected", "flagged".
+- **Oracle completeness tiers (9.3.1)**, one fixture per tier: a gloss-only
+  analysis (`MorphBundlesOS.Count == 0`), a sketched analysis with a null
+  `MorphRA`, and a fully-linked analysis. Assert that only tier 3 enters the
+  "human approved N of M" count, that tiers 1 and 2 are reported by name rather
+  than dropped or counted as disagreement, and that the tier is derived from
+  `IWfiMorphBundle.IsComplete` rather than a reimplemented predicate.
 
 **Standing guarantees**
 - `HCParser_DoesNotLoadXCore` -- isolated process; after a real `Update()` +

@@ -1,8 +1,8 @@
 {
   "feature": "parser-check",
   "status": "in_progress",
-  "last_cycle": 2,
-  "spurts_completed": 1,
+  "last_cycle": 4,
+  "spurts_completed": 2,
   "tasks_done": [
     "cycle1: headless feasibility, ParseFiler semantics, tool surface, HC CLI format",
     "cycle2: placement recommendation, G3 design, dataDir/XAmple, sandbox verification",
@@ -11,26 +11,69 @@
     "spec rewrite directives drafted (section by section)",
     "late maintainer correction folded: never infer parseability from DB state; file/grammar axis framing",
     "maintainer decisions landed: S2 retire (keep genre selection + sandbox word list), S5 replaced with per-mode statement and mode 1 approved fully gated, S9 placement = split (read-only facade in flexicon, filing + ladder in MCP)",
-    "SPEC.md rewritten against the cycle-2 directives (719 lines, 18 sections)"
+    "SPEC.md rewritten against the cycle-2 directives (719 lines, 18 sections)",
+    "clarify session 2026-09-15: 5 maintainer decisions integrated -- (1) parses are start-and-poll jobs, (2) hybrid fast-path so single-word answers inline, (3) ParserCore gate is a capability probe not a version floor, (4) S9 flexicon-first (maintainer is the same person; not a negotiation), (5) no project lock -- only parser-analysis writes excluded, single-word preempts batch, IsValid guards filing",
+    "clarify session 2 (2026-09-15): try-a-word mechanics + efficiency steering. 6 decisions: structured next_step on every parse response (10.1); caller proposes the mode-A decomposition, MCP resolves + cheap assist (5.1.2); proposals gently flagged, never scored or refused (5.1.3); G4 added -- non-terminating/OOM parse diagnosis (9.5); static LCM detection chosen over runtime ITraceManager instrumentation (9.5.5); flextools_grammar_health moved to CP1",
+    "cycle3 (spurt 2): four-way parallel review of the rewritten SPEC -- explore, domain, author, programmer. Produced 9 concrete spec edits.",
+    "cycle4a (spurt 2): all 9 cycle-3 edits APPLIED to SPEC.md by lex-doc (5.4, 5.5, 5.6, 12.3, 14, new 10.2, 17). EDIT 9's 'retire ParserPriority question 4' had no SPEC.md target -- it lived only in this file and is now marked RESOLVED here; 5.6 already answers it inline.",
+    "cycle4b (spurt 2): FIRST CODE OF THE FEATURE. get_resolved_fieldworks_dir() added to versioning.py (wraps locate_liblcm_dll, returns .parent or None); diagnostic_health._build_fieldworks_block() switched to it; new tests/test_versioning.py (4 tests). Suite test_versioning.py + test_flextools_health.py = 16 passed / 0 failed. diagnostic_health.py's 'pure composition' docstring remains literally true.",
+    "spurt 2 side-finding: the agent-proposal question (could the MCP propose analyses as its own ICmAgent?) was ruled OUT OF SCOPE by the maintainer and parked in docs/TODO.md with its verified LCM grounding."
   ],
-  "next_checkpoint": "CP1 -- preflight/health for all three spines + parser_engine_mismatch refusal",
-  "next_entry": "SPEC.md is rewritten and the three maintainer decisions are recorded in section 2 (S2, S5, S9). Next: CP1 -- ParserCore detection with its own version gate, ActiveParser read plus parser_engine_mismatch refusal, hc located via `dotnet tool list -g`, and GenerateHCConfig.exe detection, all surfaced through the flextools_health parser block. No parsing in CP1.",
+  "next_checkpoint": "CP1 -- preflight/health for all three spines + parser_engine_mismatch refusal + flextools_grammar_health",
+  "next_entry": "FIRST, fold the two confirmed domain findings below (oracle_weakness, hc_agent_not_bootstrapped) into SPEC.md -- they are verified but NOT yet in the spec, and both are CP1/CP2 preconditions. Then CP1 proper: capability probe, ActiveParser refusal, hc + GenerateHCConfig detection, and the pure-LCM grammar scan. The MCP-side detector placement is already specced (new src/flextoolsmcp/server/parser_probe.py, imported by diagnostic_health.py the way versioning.py is); get_resolved_fieldworks_dir() already exists to bind the probe to the same FieldWorks install.",
   "blocker": null,
   "p0_carry_forward": [
-    "mode-1 filing can permanently delete never-human-reviewed analyses (non-undoable): mandatory backup, deletion projection in the confirmation, refuse-to-file on unclean grammar load",
+    "mode-1 filing can permanently delete never-human-reviewed analyses (non-undoable): mandatory backup, deletion projection in the confirmation, refuse-to-file on unclean grammar load. NARROWED by the oracle_weakness finding -- see spurt2_domain_findings[0]: analyses that occur in any segment are auto-user-approved immediately before the delete check, so they are SHIELDED. The real deletion set is 'user-noopinion AND not referenced by any segment'. The deletion projection must use that conjunction or it will over-project.",
     "HC loader exposes no clean success signal: gate must read {ProjectName}HCLoadErrors.xml side file; m_morpher == null is the only binary signal",
     "anti-requirement: enumerating wordforms with zero analyses and reporting them as parse failures is WRONG -- G1 is answerable only by running the parser",
     "oracle needs a project-state precondition: on a never-parsed project the approval oracle is absent, not degraded, and the tool must say so"
+  ],
+  "spurt2_domain_findings": [
+    {
+      "id": "oracle_weakness",
+      "severity": "spec-relevant, affects every G3 tier",
+      "status": "CONFIRMED against source by two independent reads (crew + lead). NOT YET IN SPEC.md.",
+      "claim": "'Human approved' does not mean a human assented. ParseFiler writes a HUMAN approval on the user's behalf for any analysis in use in a segment.",
+      "citation": "FieldWorks/Src/LexText/ParserCore/ParseFiler.cs:302-320, SetUnsuccessfulParseEvals. Comment at :310 reads 'ensure that used analyses have a user evaluation'; :311 does m_userAgent.SetEvaluation(analysis, Opinions.approves) when the analysis (or one of its glosses) appears in wordform.OccurrencesBag segment analyses -- and it fires BEFORE the noopinion/delete check at :313-318.",
+      "scope_correction": "BROADER than first reported. SetUnsuccessfulParseEvals is called on BOTH result branches at ParseFiler.cs:231 (ErrorMessage != null) and :238 (successful parse), for every wordform whose Checksum changed. So this is not a failure-path quirk -- every filing run writes user approvals across all processed wordforms.",
+      "consequences": [
+        "HumanApprovedAnalyses already contains analyses no human ever reviewed. It means 'a human approved this, OR it was in a text when the parser last ran.' Every G3 tier that reads human approval as human judgement is weaker than the spec assumes.",
+        "The single_probe_note is measuring the wrong thing: a user-noopinion count is NOT 'never human-reviewed', because in-segment analyses were silently upgraded out of noopinion.",
+        "Protective corollary for P0-1: in-segment analyses are shielded from the non-undoable delete. The deletion set is the conjunction 'user-noopinion AND not in any segment'."
+      ],
+      "next_action": "Spec edit in the G3 oracle section(s) + 12.3 deletion projection. Lead's call: this is a one-agent doc edit informed by a short domain pass, not a full cycle -- but it must land before any G3 tier text is treated as settled."
+    },
+    {
+      "id": "hc_agent_not_bootstrapped",
+      "severity": "CP1/CP2 precondition; potential unhandled throw",
+      "status": "CONFIRMED against source by two independent reads (crew + lead), EXCEPT the lazy/migration escape hatch, which needs live verification. NOT YET IN SPEC.md.",
+      "claim": "The HermitCrab agent is not created at project bootstrap, yet DefaultParserAgent looks it up by GUID and that lookup throws on a miss.",
+      "citation": "liblcm/src/SIL.LCModel/DomainServices/BootstrapNewLanguageProject.cs:140-165 (SetupAgents) creates exactly three agents -- kguidAgentDefUser, kguidAgentXAmpleParser, kguidAgentComputer -- and NOT kguidAgentHermitCrabParser. liblcm/src/SIL.LCModel/DomainImpl/OverridesLangProj.cs:218-231, LangProject.DefaultParserAgent, does ICmAgentRepository.GetObject(kguidAgentHermitCrabParser) when MorphologicalDataOA.ActiveParser == 'HC'. Its own XML doc comment at :216 declares <exception cref=\"KeyNotFoundException\"/>, so the throw is documented behaviour, not speculation.",
+      "consequences": [
+        "On a project that has never run HC, anything filing under the HC agent may throw KeyNotFoundException.",
+        "This interacts with the CP1 health block: an unhandled throw surfaces as a crash rather than a clean parser_* refusal. CP1's preflight should probe for the agent and refuse cleanly."
+      ],
+      "open_for_live_verification": "Whether a data migration or a lazy creation path materialises the HC agent elsewhere (e.g. on first HC run or on parser switch). Could not be confirmed from source alone. Probe read-only on a real project with ActiveParser='HC'."
+    }
   ],
   "updated": "2026-09-15",
   "open_questions": [
     "Does IStText.UniqueWordforms() return anything for a text never opened in interlinear (i.e. never tokenized)? Same DB-state-as-proxy trap one layer down.",
     "Validate the proposed load-error gate refinement (hard refuse on m_morpher==null; refuse on NEW load errors vs baseline; warn on pre-existing).",
-    "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak."
+    "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak.",
+    "ParserPriority RESOLVED (ParserScheduler.cs:25-32): five values, ReloadGrammarAndLexicon=0 TryAWord=1 High=2 Medium=3 Low=4, lower wins, one sorted queue. No preemption of in-flight work and no CancellationToken anywhere -- word-boundary interleave is the only option. Retired as a question; 5.6 carries the answer inline.",
+    "WATCH: local FieldWorks working tree has an uncommitted ParserScheduler.Work() change draining the whole queue into Parallel.ForEach -- kills TryAWord preemption. Do not copy it into our runner.",
+    "ASK Johnml1135: enumerate what PanGloss identifies as pathological for a compiled FST, item by item, so each maps onto an LCM check (9.5.5). Separately, whether a cheap ITraceManager/Morpher seam on HCParser is possible -- welcome but nothing is planned around it.",
+    "flexicon read gaps on mode A's critical path: no allomorph->owning-entry accessor, and MSAOperations exposes NO read surface at all, yet 5.1.1's resolver must terminate in MSA HVOs.",
+    "NEW (spurt 2): does a data migration or lazy path create the HermitCrab agent outside SetupAgents? Live read-only probe needed -- see spurt2_domain_findings[1].",
+    "NEW (spurt 2): SPEC.md line ~97's Clarifications log still says a single-word parse 'preempts' a background run. That is a dated historical record, deliberately not retro-edited, but it now contradicts 5.6's interleave-at-word-boundary architecture. Maintainer call: footnote it or leave it."
   ],
-  "single_probe_note": "One project-state probe (parser-agent analyses, and how many are user-noopinion) serves three requirements at once: the never-parsed warning, the oracle precondition, and the deletion projection.",
+  "single_probe_note": "SUPERSEDED IN PART by the oracle_weakness finding. One project-state probe still serves three requirements (never-parsed warning, oracle precondition, deletion projection), but its predicate must change: a bare user-noopinion count is NOT 'never human-reviewed', because ParseFiler auto-approves in-segment analyses under the user agent. The probe must join against segment occurrence -- 'user-noopinion AND not referenced by any segment' -- for the deletion projection, and must report the auto-approved population separately so the oracle precondition is honest.",
   "open_for_validation": [
-    "12.3 refuse-to-file gate: the baseline/new-LoadError comparison is proposed, not settled",
+    "12.3 refuse-to-file gate: rung 2 now resolved by an MCP-owned baseline keyed to scope_fingerprint; rung 3's benign-hypothesis remains a working hypothesis (rungs 1/3/4 otherwise validated)",
     "GenerateHCConfig.exe behaviour against the copied project -- unverified link, not a demonstrated leak"
+  ],
+  "known_lint_not_ours": [
+    "Pyright: versioning.py:59 returns tuple[int, ...] where Tuple[int, int, int] is declared. PRE-EXISTING, not introduced by cycle 4's get_resolved_fieldworks_dir()."
   ]
 }

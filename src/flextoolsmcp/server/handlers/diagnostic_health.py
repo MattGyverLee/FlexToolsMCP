@@ -53,7 +53,7 @@ try:
     from ..versioning import (
         detect_installed_library_version,
         detect_liblcm_version_from_disk,
-        locate_liblcm_dll,
+        get_resolved_fieldworks_dir,
         find_versioned_api_file,
         find_latest_versioned_api_file,
         extract_version_string,
@@ -62,7 +62,7 @@ except ImportError:
     from server.versioning import (
         detect_installed_library_version,
         detect_liblcm_version_from_disk,
-        locate_liblcm_dll,
+        get_resolved_fieldworks_dir,
         find_versioned_api_file,
         find_latest_versioned_api_file,
         extract_version_string,
@@ -170,11 +170,11 @@ def _build_fieldworks_block() -> Dict[str, Any]:
     """FieldWorks install detection + on-disk LibLCM version (server.py doesn't
     have this loaded into the CLR until a project is open, so we read the DLL
     off disk -- same approach as the session-header log line)."""
-    dll_path = locate_liblcm_dll()
+    fieldworks_dir = get_resolved_fieldworks_dir()
     liblcm_version_on_disk = detect_liblcm_version_from_disk()
     return {
-        "install_path": str(dll_path.parent) if dll_path else None,
-        "detected": dll_path is not None,
+        "install_path": str(fieldworks_dir) if fieldworks_dir else None,
+        "detected": fieldworks_dir is not None,
         "liblcm_version_on_disk": liblcm_version_on_disk,
     }
 

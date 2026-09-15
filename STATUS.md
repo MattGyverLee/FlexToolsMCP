@@ -12,15 +12,75 @@ Spec: `specs/shared-mode-access/SPEC.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
-In spec review (not implemented, no branch): **parser-check** -- let the MCP
+In spec review (first code landed, no branch): **parser-check** -- let the MCP
 run FLEx's parser so it can verify its own grammar/lexicon edits.
 Spec: `specs/parser-check/SPEC.md` (REWRITTEN 2026-09-15 against the corrected
-three-spine architecture; 719 lines, 18 sections).
-Crew reviews: `specs/parser-check/reviews/cycle{1,2}-*.md`.
+three-spine architecture; now **1925 lines**, 18 sections + new 10.2).
+Crew reviews: `specs/parser-check/reviews/cycle{1,2,3,4}-*.md`.
 Machine state: `specs/parser-check/.crew-handoff.json`.
 
-**Spurt 1 (cycles 1-2) is COMPLETE. The three maintainer decisions have LANDED
-and the spec is rewritten. Next pickup is CP1.**
+**Spurt 1 (cycles 1-2) COMPLETE. Spurt 2 (cycles 3-4) COMPLETE. Next pickup is
+CP1 -- but fold the two new domain findings into the spec FIRST (see below).**
+
+### parser-check spurt 2 (cycles 3-4) -- CLOSED
+
+**Cycle 3** ran a four-way parallel review of the rewritten spec (explore,
+domain, author, programmer) and produced 9 concrete spec edits. **Cycle 4** ran
+two tasks in parallel:
+
+- **lex-doc applied all 9 edits** to SPEC.md -- sections 5.4, 5.5, 5.6, 12.3,
+  14, 17, plus a new **10.2 `flextools_health` parser block**. One sub-item was
+  correctly *not* applied: EDIT 9's "retire the ParserPriority question" had no
+  SPEC.md target (the question lived only in `.crew-handoff.json`, and 5.6
+  already answers it inline). It is now marked RESOLVED in the handoff json.
+- **lex-programmer landed the feature's FIRST CODE.**
+  `get_resolved_fieldworks_dir()` added to
+  `src/flextoolsmcp/server/versioning.py` (thin wrapper over
+  `locate_liblcm_dll()`, returns `.parent` or `None`), and
+  `diagnostic_health._build_fieldworks_block()` switched onto it. New
+  `tests/test_versioning.py` (4 tests). `pytest tests/test_versioning.py
+  tests/test_flextools_health.py -q` -> **16 passed, 0 failed**. This exists so
+  the upcoming parser probe binds to the *same* FieldWorks install
+  `diagnostic_health` already resolved. `diagnostic_health.py`'s "pure
+  composition, no new detection logic" docstring contract is preserved.
+
+**TWO NEW DOMAIN FINDINGS -- confirmed against liblcm/FieldWorks source twice
+(crew, then independently re-read by the lead), and NOT yet in SPEC.md. Folding
+them in is the first task of spurt 3.**
+
+1. **The G3 oracle is weaker than the spec assumes.** `ParseFiler.cs:302-320`
+   (`SetUnsuccessfulParseEvals`) writes a **human** approval on the user's
+   behalf -- `m_userAgent.SetEvaluation(analysis, Opinions.approves)` at :311,
+   under the comment "ensure that used analyses have a user evaluation" -- for
+   any analysis occurring in a segment, **before** the noopinion/delete check at
+   :313-318. The lead's re-read found this is *broader* than first reported: it
+   is called on **both** result branches (`:231` error, `:238` success) for every
+   wordform whose checksum changed, so it is not a failure-path quirk. So
+   `HumanApprovedAnalyses` means "a human approved this, **OR** it was in a text
+   when the parser last ran." Every G3 tier reading human approval as human
+   judgement is affected. **Protective corollary:** in-segment analyses are
+   thereby shielded from the non-undoable delete, so P0-1's deletion set is
+   narrower than specced -- it is "user-noopinion **AND** not referenced by any
+   segment", and the `single_probe_note`'s bare user-noopinion count would
+   over-project deletions.
+2. **The HermitCrab agent is not bootstrapped.**
+   `BootstrapNewLanguageProject.cs:140-165` (`SetupAgents`) creates exactly three
+   agents -- DefUser, XAmpleParser, Computer -- and **not** HermitCrab. But
+   `LangProject.DefaultParserAgent` (`OverridesLangProj.cs:218-231`) calls
+   `ICmAgentRepository.GetObject(kguidAgentHermitCrabParser)` when
+   `ActiveParser == "HC"`, and its own XML doc comment at :216 declares
+   `<exception cref="KeyNotFoundException"/>` -- the throw is documented
+   behaviour. On a project that has never run HC this may throw, which would
+   surface as a **crash rather than a clean `parser_*` refusal**. That makes it a
+   CP1/CP2 precondition. Still open for live verification: whether a migration or
+   lazy path creates the agent elsewhere (not confirmable from source alone).
+
+**Parked, not dropped:** the maintainer ruled the "could the MCP propose
+analyses as its own `ICmAgent`?" question **out of scope** for this spec; it is
+recorded with its verified LCM grounding in `docs/TODO.md`.
+
+**Known lint, NOT spurt fallout:** Pyright flags `versioning.py:59` returning
+`tuple[int, ...]` against a declared `Tuple[int, int, int]`. Pre-existing.
 
 Decisions recorded in SPEC.md section 2:
 - **S2 retired** -- LCM's `IStText.UniqueWordforms()` already does the interlinear

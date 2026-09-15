@@ -116,3 +116,93 @@ convention and close this item.
 ### Next step
 
 Pull operation logs and count `start_module` vs. `get_module_template` invocations across recent sessions. If the ratio is heavily skewed toward `get_module_template`, that's the answer — propose folding or deprecating in a follow-up plan doc.
+
+---
+
+## Could the MCP propose analyses the user can accept, as its own agent?
+
+**Status:** open · **Added:** 2026-09-15 · **Origin:** parser-check spec session (not in scope for that spec)
+
+### The idea
+
+Today an analysis is owned by either a parser agent or the human. If the MCP could
+propose a `WfiAnalysis` the way a human does -- as a candidate the user reviews and
+accepts in FLEx -- that opens a "suggest, don't file" mode: the AI offers a
+decomposition, the analyst approves it in the normal FLEx workflow, and nothing is
+written on the user's behalf.
+
+### What the model already allows (verified, 2026-09-15)
+
+`ICmAgent` is not a closed set. Agents are created via
+`ICmAgentFactory.Create(guid, hvo, human: bool, version: string)` and added to
+`LangProject.AnalyzingAgentsOC` (`BootstrapNewLanguageProject.cs:143-163`). Each
+`CmAgent` owns exactly one `ApprovesOA` and one `DisapprovesOA` evaluation;
+`SetEvaluation` adds/removes that singleton from `WfiAnalysis.EvaluationsRC`, and
+"no opinion" is the absence of a reference (`OverridesCellar.cs:491-514`). A new
+opinion-owner is therefore purely additive -- no schema change, no migration.
+
+There is already a third agent meaning "machine, but not the parser":
+`kguidAgentComputer` (`ConstantAdditions.cs:85`), exposed as `DefaultComputerAgent`
+(`OverridesLangProj.cs:263-275`), bootstrapped with `human: false`. Its docstring:
+"Get the analyzing agent representing the computer. Do not use this for the parser;
+there is a dedicated agent for that purpose." `OpinionAgent` is a three-value enum --
+`Computer = -1`, Parser, Human (`AnalysisGuessServices.cs:52-57`) -- and FLEx's own
+guess machinery files under it.
+
+### What stays safe
+
+The human-approval oracle is structurally protected: `IsHumanApproved`,
+`IsHumanDisapproved` and `IncludeAnalysis` all filter on
+`((ICmAgent)ae.Owner).Human` (`AnalysisGuessServices.cs:238-297`), so a non-human
+agent is invisible to them and cannot contaminate the G3 signal. `ParserStatusIcon`
+reads `DefaultParserAgent` and `ApprovalStatusIcon` reads `DefaultUserAgent`
+specifically (`OverridesLing_Wfi.cs:1489,1510`), so neither column is corrupted.
+`AgentCount(agent)` is parameterized and works for any agent.
+
+### Three hazards to design around
+
+1. **ParseFiler deletes our analyses.** `ParseFiler.cs:312-315` checks ONLY the
+   parser agent and the user agent: if both are `noopinion`, `analysis.Delete()`.
+   An MCP-approved analysis with no parser and no human opinion is deleted on the
+   next reparse of that wordform -- our evaluation confers no protection. A proposed
+   analysis is fragile by construction; it survives only until the next parse touches
+   that word. Any "propose" feature must either accept that lifetime or find another
+   anchor.
+2. **`IsFullyFormed` requires a human evaluation** (`OverridesLing_Wfi.cs:1161-1176`
+   returns false when no eval has `.Human` true), so MCP-proposed analyses never read
+   as complete without a human. Arguably correct, but it must be stated.
+3. **Dissent has an invisible side effect.** `HasConflictingEvaluations` is
+   `EvaluationsRC.Select(e => e.Approves).Distinct().Count() > 1`
+   (`OverridesLing_Wfi.cs:1091`), and `IsFullyFormed` fails on it. An MCP
+   disapproval of a parser-approved analysis silently makes it incomplete with no
+   attributable cause in the FLEx UI. This is the one place a new agent genuinely
+   distorts the model.
+
+### Leaning
+
+Prefer `DefaultComputerAgent` over minting a dedicated MCP agent: it exists in every
+project, is semantically the right slot by its own docstring, and FLEx already has
+services that understand it. The cost is losing attribution -- "MCP proposed this"
+becomes indistinguishable from "FLEx guessed this." A dedicated GUID with `version`
+set to the tool version is fully model-legal if attribution matters, but it is
+invisible in every FLEx UI surface. Do NOT propose as the human agent
+(`kguidAgentDefUser`) -- that is precisely the G3 oracle.
+
+### Next step
+
+Route to lex-domain for a proper ruling before any design work: confirm the deletion
+lifetime in hazard 1 against a live project, and decide whether a transient proposal
+is useful enough to build on.
+
+### Incidental findings (worth acting on independently of this item)
+
+- `ParseFiler.cs:309-310` ("ensure that used analyses have a user evaluation") writes
+  a HUMAN approval on the user's behalf for any analysis in use in a segment. So
+  `HumanApprovedAnalyses` already includes analyses no human assented to -- the G3
+  oracle means "a human approved this, OR it was in a text when the parser ran."
+  Worth writing into the parser-check oracle section regardless.
+- `SetupAgents` bootstraps DefUser, XAmple and Computer but NOT HermitCrab
+  (`BootstrapNewLanguageProject.cs:143-163`), yet `DefaultParserAgent` calls
+  `GetObject(kguidAgentHermitCrabParser)`, which throws `KeyNotFoundException`. On a
+  project that has never run HC that lookup may throw -- a live CP1/CP2 precondition
+  for anything filing under the HC agent.

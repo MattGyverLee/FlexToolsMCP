@@ -201,6 +201,36 @@ def locate_liblcm_dll(
     return None
 
 
+def get_resolved_fieldworks_dir(
+    search_paths: Optional[list[Path]] = None,
+) -> Optional[Path]:
+    """Return the FieldWorks install directory that supplies SIL.LCModel.dll.
+
+    Thin wrapper over locate_liblcm_dll(): the DLL's parent directory *is*
+    the resolved FieldWorks install. Kept as a single shared accessor so
+    that any code needing "which FieldWorks install did we bind to" (e.g.
+    a future parser probe that must bind to the same install) reads from
+    one place instead of re-deriving `.parent` at each call site.
+
+    No caching here -- locate_liblcm_dll() is a plain filesystem check and
+    deliberately pure; recomputing it is cheap and avoids a second cache
+    invalidation policy to keep in sync with the DLL-location logic.
+
+    Args:
+        search_paths: Override search paths, passed through unchanged to
+            locate_liblcm_dll(). Defaults to FIELDWORKS_DLL_PATH env var
+            plus the standard FieldWorks install locations.
+
+    Returns:
+        Path to the FieldWorks install directory, or None if the DLL
+        isn't found.
+    """
+    dll_path = locate_liblcm_dll(search_paths=search_paths)
+    if dll_path is None:
+        return None
+    return dll_path.parent
+
+
 def detect_liblcm_version_from_disk(
     dll_name: str = "SIL.LCModel.dll",
     search_paths: Optional[list[Path]] = None,

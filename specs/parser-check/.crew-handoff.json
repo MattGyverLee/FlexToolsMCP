@@ -92,9 +92,6 @@
     "Pyright: versioning.py:59 returns tuple[int, ...] where Tuple[int, int, int] is declared. PRE-EXISTING, not introduced by cycle 4's get_resolved_fieldworks_dir()."
   ],
   "p2_tasks_md_nits": [
-    "tasks.md's closing file-sharing-invariant paragraph names the research.md writers as T016/T031/T029 and omits T032, which is [P]-tagged and writes the same file. Safe in practice (T032 lands a whole phase earlier) but the paragraph never states the phase-ordering that makes it safe. One clause fixes it.",
-    "T015's row-1 bullet went silent when E11 removed the slot-reachability claim, so 'counts every zero-surface IMoForm unconditionally' now lives only in T034's prose with no test behind it. Add a positive assertion: a zero-surface IMoForm reachable from no optional slot is still counted.",
-    "objects[] item shape is unspecified. T017 closes the Finding model at six keys (check_id, spec_row, count, measured, evidence_basis, objects), but Phase 4's independent test expects goto_urls, which can only live inside objects[] items -- a model no task defines. T014 already asserts 'no severity proxy at any nesting level' and that objects[] is never magnitude-sorted, so the item model should be closed (extra='forbid' + explicit key set) the same way.",
-    "AUTHOR VOICE (lex-doc judgment call, not an error): E14's literal CP1 replacement action string in T013 -- 'filing unavailable; the read spine above already confirms whether the grammar loads' -- is new prose the doc agent authored; no source document proposed exact wording. Reword freely; the only hard constraint is that it name no tool."
+    "RESOLVED 2026-09-16 (main session): all four items applied to tasks.md -- T032 phase-ordering clause added to the file-sharing-invariant paragraph; T015 gained a positive assertion that a zero-surface IMoForm reachable from no optional slot is still counted; FoundObject closed item model added to T017 and asserted by T014; T013 action string reworded (lex-doc flagged its own wording, and it overclaimed -- nothing at CP1 loads a grammar)."
   ]
 }

@@ -31,8 +31,8 @@ dependency position, not numeric order.
 
 **Wave 1 -- independent (different files):**
 
-- [ ] **T001** [P] Create the `server/scan/` package so the subprocess-run scan module has a home · `src/flextoolsmcp/server/scan/__init__.py`
-- [ ] **T002** [P] Add the shared CP1 test fixtures -- fake ParserCore member sets (complete, missing `ParseFiler.ProcessParse`, foreign directory), `ParserParameters` XML variants (valid `HC`, valid `XAmple`, corrupt), and LCM grammar-object stubs (`IMoForm`, `IPhPhoneme`, `IMoInflAffixSlot`, `IPhSegmentRule` with `Disabled`) · `tests/fixtures/parser_check.py`
+- [x] **T001** [P] Create the `server/scan/` package so the subprocess-run scan module has a home · `src/flextoolsmcp/server/scan/__init__.py`
+- [x] **T002** [P] Add the shared CP1 test fixtures -- fake ParserCore member sets (complete, missing `ParseFiler.ProcessParse`, foreign directory), `ParserParameters` XML variants (valid `HC`, valid `XAmple`, corrupt), and LCM grammar-object stubs (`IMoForm`, `IPhPhoneme`, `IMoInflAffixSlot`, `IPhSegmentRule` with `Disabled`) · `tests/fixtures/parser_check.py`
 
 ---
 
@@ -43,13 +43,13 @@ contract rows land **before** any handler emits them.
 
 **Wave 1 -- independent (different files):**
 
-- [ ] **T003** [P] Add the four detail models -- `ParserEngineMismatchDetail`, `ParserCoreMissingDetail`, `ParserAgentMissingDetail`, `ParserToolMissingDetail` -- with `model_config = ConfigDict(extra="forbid", populate_by_name=True)` and a `Literal` discriminator, matching the pattern from line 142 onward. Field names verbatim from [`contracts/error-codes.md`](./contracts/error-codes.md); closed enums `signal`, `component`, `probe_source` are the contract and must not be renamed, recased or extended. **Extend the `AnyDetail` Union** (`response_models.py:364-382`) to include all four new models -- otherwise `validate_detail()`'s discriminated `TypeAdapter` never sees them -- and bump the hand-maintained "18" to **22** in both the module docstring and `validate_detail()`'s own docstring (417-421), the same count T004 bumps in `TOOL-CONTRACT.md` · `src/flextoolsmcp/server/response_models.py`
-- [ ] **T004** [P] Add one table row per new code and change "one of the **18** codes below" to **22** (the count is hand-maintained) · `docs/TOOL-CONTRACT.md`
-- [ ] **T005** [P] Add the "Tool contract" entry recording the four additive codes, explicitly noting no version bump · `CHANGELOG.md`
+- [x] **T003** [P] Add the four detail models -- `ParserEngineMismatchDetail`, `ParserCoreMissingDetail`, `ParserAgentMissingDetail`, `ParserToolMissingDetail` -- with `model_config = ConfigDict(extra="forbid", populate_by_name=True)` and a `Literal` discriminator, matching the pattern from line 142 onward. Field names verbatim from [`contracts/error-codes.md`](./contracts/error-codes.md); closed enums `signal`, `component`, `probe_source` are the contract and must not be renamed, recased or extended. **Extend the `AnyDetail` Union** (`response_models.py:364-382`) to include all four new models -- otherwise `validate_detail()`'s discriminated `TypeAdapter` never sees them -- and bump the hand-maintained "18" to **22** in both the module docstring and `validate_detail()`'s own docstring (417-421), the same count T004 bumps in `TOOL-CONTRACT.md` · `src/flextoolsmcp/server/response_models.py`
+- [x] **T004** [P] Add one table row per new code and change "one of the **18** codes below" to **22** (the count is hand-maintained) · `docs/TOOL-CONTRACT.md`
+- [x] **T005** [P] Add the "Tool contract" entry recording the four additive codes, explicitly noting no version bump · `CHANGELOG.md`
 
 **⟶ Wait for Wave 1 to finish, then:**
 
-- [ ] **T006** Envelope test: each of the four detail models validates its contract example and **rejects an unknown field** (`extra="forbid"`), and each closed enum rejects a value outside its set. **Assert through `validate_detail()`**, not just the bare model class, so the shared discriminated-union validator every other code's detail payload goes through actually accepts each of the four new codes · `tests/test_parser_error_models.py`
+- [x] **T006** Envelope test: each of the four detail models validates its contract example and **rejects an unknown field** (`extra="forbid"`), and each closed enum rejects a value outside its set. **Assert through `validate_detail()`**, not just the bare model class, so the shared discriminated-union validator every other code's detail payload goes through actually accepts each of the four new codes · `tests/test_parser_error_models.py`
 
 ---
 

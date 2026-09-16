@@ -12,20 +12,122 @@ Spec: `specs/shared-mode-access/SPEC.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
-In planning -- plan + tasks written and crew-reviewed, first code landed, no
-branch: **parser-check** -- let the MCP run FLEx's parser so it can verify its
-own grammar/lexicon edits.
+In implementation -- CP1 Phase 1 + Phase 2 landed, on branch
+`feat/parser-check-cp1`: **parser-check** -- let the MCP run FLEx's parser so it
+can verify its own grammar/lexicon edits.
 Spec: `specs/parser-check/SPEC.md` (REWRITTEN 2026-09-15 against the corrected
 three-spine architecture; now **1925 lines**, 18 sections + new 10.2).
 Plan artifacts: `specs/parser-check/{plan,research,data-model}.md` + `contracts/`.
 Tasks: `specs/parser-check/tasks.md` -- **35 CP1 tasks, T001-T035**, reconciled
-through cycle 6.
-Crew reviews: `specs/parser-check/reviews/cycle{1,2,3,4,5,6}-*.md`.
+through cycle 6. **T001-T006 are `[x]`** (checkboxes owned by
+`write-context.py --materialize`, not hand-ticked).
+Crew reviews: `specs/parser-check/reviews/cycle{1..8}-*.md`.
 Machine state: `specs/parser-check/.crew-handoff.json`.
 
-**Spurts 1-3 COMPLETE (cycles 1-6). Next pickup is CP1 implementation: Phase 1
-Setup (T001, T002), then Phase 2 Foundational (T003-T006). No implementation
-code exists yet beyond `get_resolved_fieldworks_dir()` from spurt 2.**
+**Spurts 1-4 COMPLETE (cycles 1-8). CP1 Phase 1 (Setup) and Phase 2
+(Foundational) are done and green. Next pickup is Phase 3 / US1 -- the parser
+spine preflight, starting at wave 1: T007, T008, T032 in parallel.**
+
+### parser-check spurt 4 (cycles 7-8) -- CLOSED
+
+**First implementation spurt of the feature, and the first to run on a branch:
+`feat/parser-check-cp1`, cut from `a44ddee` on main.** lex-programmer's usual
+commit-direct-to-main convention was suspended for the duration; no specialist
+committed, and the whole spurt lands as one commit on the branch.
+
+**Cycle 7 -- CP1 Phase 1 + Phase 2, four tasks, file-disjoint by design.**
+
+- **T001/T002 (Setup).** New `src/flextoolsmcp/server/scan/` package (empty but
+  for its docstring -- it is the home for `grammar_scan_module.py`, which
+  arrives at T019 and runs in the FLExTools subprocess, never in the MCP server
+  process), plus `tests/fixtures/parser_check.py` carrying the three shared CP1
+  fixture groups (fake ParserCore member sets, `ParserParameters` XML variants,
+  LCM grammar-object stubs). No `pyproject.toml` edit was needed --
+  `[tool.setuptools.packages.find] where=["src"]` auto-discovers any directory
+  with an `__init__.py`.
+  - **Machine-specific trap worth remembering:** the fixtures are imported as
+    `from fixtures.parser_check import ...`, **not** `tests.fixtures...`,
+    because on this machine `import tests` resolves to an unrelated repo
+    (`d:\github\word2html\pub\tests\__init__.py`) that shadows a local `tests`
+    namespace package outright. The bare form matches pytest's rootdir sys.path
+    insertion and needs no `__init__.py` anywhere, consistent with the existing
+    tree.
+  - The `ParserParameters` XML shape is **illustrative, not sourced**: no
+    FieldWorks checkout is configured in `.env`, so it was modelled on the one
+    fragment SPEC.md:1493 quotes. Only the HC / XAmple / corrupt-reads-as-XAmple
+    distinction is contractually load-bearing at CP1, not the tag names. The
+    fixture docstring says so.
+
+- **T003 (the four detail models).** `ParserEngineMismatchDetail`,
+  `ParserCoreMissingDetail`, `ParserAgentMissingDetail`,
+  `ParserToolMissingDetail` added to `response_models.py`, each `extra="forbid"`
+  with a `Literal` discriminator and field names verbatim from
+  `contracts/error-codes.md`. The closed enums (`signal`, `component`,
+  `probe_source`, `agent_name`) are `Literal`s, unwidened.
+  - The load-bearing part landed: **all four joined the `AnyDetail` Union**
+    (`response_models.py:445-448`). `validate_detail()` builds
+    `TypeAdapter(Annotated[AnyDetail, Field(discriminator="error_code")])` at
+    call time, so a model outside the Union is invisible to the shared validator
+    no matter how correct it is.
+  - The hand-maintained "18" count turned out to live in **three** places in
+    that file, not the two the task named -- the module docstring's arithmetic
+    breakdown, the section comment above the Union (line 423), and
+    `validate_detail()`'s docstring. All now 22; `grep -n "18"` on the file
+    returns zero hits.
+
+- **T004/T005 (contract + changelog).** Four rows added to
+  `docs/TOOL-CONTRACT.md`'s error-code table and its count bumped 18 -> 22, plus
+  a "Tool contract" entry under `[Unreleased]`. The four codes are **additive**:
+  the contract stays at `tool-responses/1.0` and no existing response shape
+  moves.
+
+- **T006 (envelope test).** `tests/test_parser_error_models.py`, 21 tests,
+  asserting contract-example round-trips, unknown-field rejection and
+  closed-enum rejection (including case variants -- these are case-sensitive
+  contract values) **through `validate_detail()`**, checking the specific model
+  class comes back per discriminator. That last assertion is precisely what
+  would have failed had a model been left out of the Union.
+
+**Cycle 8 -- one real divergence, found in lead review, not by either author.**
+
+`docs/TOOL-CONTRACT.md:95` states *"All detail fields are optional unless
+noted"*, and T004's rows noted nothing -- but T003 had made 12 fields across the
+four models **required with no default**. A client building a
+`parser_core_missing` payload from the published table would omit
+`missing_members` and hit a `ValidationError` the doc says cannot happen. Two
+agents, each correct in isolation, neither able to see the other.
+
+Resolved **spec-faithfully**: `contracts/error-codes.md` marks only
+`detected_version`, `lcmodel_install_path` and `load_error` as "or null", so the
+models were right and the documentation was wrong. The models were left
+untouched and the four rows now carry inline required markers in the notation
+this table already used for `project_locked`'s `guidance` (required string) --
+no new notation, no legend, no new column. lex-doc re-derived every
+required/optional call from `response_models.py` line by line before editing and
+found no disagreement.
+
+The matching test gap closed too: a published contract claim with nothing
+pinning it is what drifts. 18 parametrized tests now assert that omitting each
+required field raises, **and** the positive counterpart -- that omitting each
+genuinely optional field still validates and returns `None`, which is the half
+that catches over-tightening.
+
+**Gates at close.** Full suite **1437 passed / 8 skipped** (1419 at the cycle-7
+baseline, 1398 before the spurt), `ruff` clean on every new and changed file,
+`validate_detail()` round-trips all four codes to the correct model class. No P0
+or P1 open. Per-task journaling for T001-T006 is written to
+`.spec-context.events.jsonl` and materialized, which is also what flipped the six
+`tasks.md` checkboxes -- **the script owns those boxes; do not hand-tick them.**
+
+**Deliberately NOT done:** `.claude/settings.json` is excluded from the spurt
+commit (already dirty before the spurt began, unrelated to CP1). The
+`.spec-context.json` `implement` step is **left unopened** -- Phase 3 is where
+implementation proper begins, so the next spurt opens it rather than this one
+back-dating it.
+
+**Machine state at close:** no FLEx writes at any point, and none possible --
+every CP1 deliverable here is `READ_ONLY_SAFE`, no `LcmCache` is opened, no
+grammar loaded, nothing parsed. Nothing to restore.
 
 ### parser-check spurt 2 (cycles 3-4) -- CLOSED
 

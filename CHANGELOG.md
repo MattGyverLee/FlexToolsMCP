@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Tool contract
+
+Four new error codes land in `docs/TOOL-CONTRACT.md`: `parser_engine_mismatch`
+(the active FLEx parser engine is not one of the engines the calling handler
+supports), `parser_core_missing` (ParserCore/`SIL.LCModel.dll` could not be
+resolved, resolved from a foreign install, is missing an expected member, or
+threw while loading), `parser_agent_missing` (the HermitCrab agent record
+could not be resolved off the active `LangProject`, in place of letting a
+`KeyNotFoundException` propagate out of a handler), and `parser_tool_missing`
+(an external HC tool -- the `hc` CLI or `GenerateHCConfig.exe` -- is not on
+the expected path). All four are purely additive: `tool-responses/1.0` does
+not move, and no existing response shape changes. The hand-maintained error
+code count in `docs/TOOL-CONTRACT.md` moves from 18 to 22 accordingly.
+
+At CP1, `parser_engine_mismatch` and `parser_agent_missing` ship as tested
+helpers with no live caller yet -- no spine-executing handler exists at this
+checkpoint to invoke them. Their first live caller arrives at CP2.
+
 ## [2.12.0] - 2026-09-10
 
 ### flexicon 4.8.0 is the new minimum

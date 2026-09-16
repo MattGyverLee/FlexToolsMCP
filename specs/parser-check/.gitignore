@@ -1,2 +1,6 @@
 # Run self-trace — local diagnostic, read only by the doctor.
 .trace.jsonl
+
+# Per-task finish append log -- transient, fully folded into .spec-context.json
+# by write-context.py --materialize. No other spec tracks it.
+.spec-context.events.jsonl

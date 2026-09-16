@@ -7,8 +7,8 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 18 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
-  + hvo_literal_write_risk)
+- 22 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk + 4 parser-check CP1 codes)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -357,8 +357,70 @@ class HvoLiteralWriteRiskDetail(BaseModel):
     next_steps: List[Any] = Field(default_factory=list)
 
 
+class ParserEngineMismatchDetail(BaseModel):
+    """Detail payload for parser_engine_mismatch rejections (parser-check CP1).
+
+    Raised by check_active_parser(project, supported_engines=("HC",)), called
+    as the first statement of each spine-executing handler, before any
+    HCParser or config-export construction. See contracts/error-codes.md.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_engine_mismatch"] = "parser_engine_mismatch"
+    configured_engine: str
+    supported_engines: List[str]
+    hint: str
+
+
+class ParserCoreMissingDetail(BaseModel):
+    """Detail payload for parser_core_missing rejections (parser-check CP1).
+
+    ``signal`` is a closed enum shared with the health block's
+    ``read.reason`` / ``write.reason`` -- do not rename, recase or extend.
+    ``detected_version`` is reported and never compared against a floor.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_core_missing"] = "parser_core_missing"
+    signal: Literal["absent", "foreign_install", "incompatible_surface", "load_failed"]
+    expected_path: str
+    detected_version: Optional[str] = None
+    missing_members: List[str]
+    lcmodel_install_path: Optional[str] = None
+    install_hint: str
+    load_error: Optional[str] = None
+
+
+class ParserAgentMissingDetail(BaseModel):
+    """Detail payload for parser_agent_missing rejections (parser-check CP1).
+
+    Raised instead of propagating KeyNotFoundException when a handler would
+    resolve the HermitCrab agent via LangProject.DefaultParserAgent. The read
+    spine is unaffected -- flextools_try_word never resolves an agent.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_agent_missing"] = "parser_agent_missing"
+    agent_guid: str
+    agent_name: Literal["HermitCrab"]
+    active_engine: str
+    probe_source: Literal["bootstrap_absent", "lookup_failed"]
+    hint: str
+
+
+class ParserToolMissingDetail(BaseModel):
+    """Detail payload for parser_tool_missing rejections (parser-check CP1).
+
+    ``component`` is a closed enum shared with flextools_health's
+    ``sandbox.components[].component`` -- the two components fail
+    independently, which is why health reports an array while this names one.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_tool_missing"] = "parser_tool_missing"
+    component: Literal["hc", "GenerateHCConfig.exe"]
+    expected_path: str
+    install_hint: str
+
+
 # ---------------------------------------------------------------------------
-# Discriminated union over all 18 per-code detail models
+# Discriminated union over all 22 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -380,6 +442,10 @@ AnyDetail = Union[
     ProjectNotFoundDetail,
     RuntimeErrorDetail,
     HvoLiteralWriteRiskDetail,
+    ParserEngineMismatchDetail,
+    ParserCoreMissingDetail,
+    ParserAgentMissingDetail,
+    ParserToolMissingDetail,
 ]
 
 
@@ -422,7 +488,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              18 known codes, plus any per-code detail fields.
+              22 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

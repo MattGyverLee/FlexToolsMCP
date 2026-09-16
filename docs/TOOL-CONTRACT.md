@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 18 codes below |
+| `error_code` | string | one of the 22 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -114,6 +114,10 @@ authoritative. All detail fields are optional unless noted.
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
 | `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`) |
 | `runtime_error` | `stderr`, `traceback`, `exit_code`, `error_type` |
+| `parser_engine_mismatch` | `configured_engine` (required string), `supported_engines` (required list), `hint` (required string) |
+| `parser_core_missing` | `signal` (required; `absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path` (required string), `detected_version` -- **reported and never compared: there is no version floor**, this is a standing guarantee with a regression test behind it (SPEC 16), `missing_members` (required list), `lcmodel_install_path`, `install_hint` (required string), `load_error` |
+| `parser_agent_missing` | `agent_guid` (required string), `agent_name` (required; always `"HermitCrab"`), `active_engine` (required string), `probe_source` (required; `bootstrap_absent` \| `lookup_failed`), `hint` (required string) |
+| `parser_tool_missing` | `component` (required; `"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (required string), `install_hint` (required string) |
 
 ---
 

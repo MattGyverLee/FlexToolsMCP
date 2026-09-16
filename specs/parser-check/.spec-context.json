@@ -1,10 +1,10 @@
 {
   "workflow": "companion",
   "specName": "parser-check",
-  "branch": "main",
+  "branch": "feat/parser-check-cp1",
   "selectedAt": "2026-09-15T20:00:03.160Z",
-  "currentStep": "tasks",
-  "status": "tasking",
+  "currentStep": "implement",
+  "status": "implementing",
   "history": [
     {
       "step": "specify",
@@ -61,6 +61,61 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-16T04:45:58.132Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-16T07:19:57.581Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:11.764Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:12.050Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:12.340Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:12.633Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:13.015Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T07:40:13.432Z"
     }
   ],
   "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c",
@@ -93,13 +148,14 @@
       "key_finding": "The MCP server process never opens a FieldWorks project -- every OpenProject lives in the script text execution.py generates for the subprocess. That splits CP1 into reflection in-process and LCM reads in the subprocess, and makes SPEC 10.2 HC-agent probe unreachable from flextools_health (spec already rules skipped, not failed). Separately, SPEC 9.5.4 row 8 is refuted against the index."
     },
     "tasks": {
-      "summary": "28 tasks across 6 phases: Setup(2) + Foundational(4, the four error codes) + US1 parser spine preflight(7) + US2 flextools_grammar_health(8) + US3 refusal helpers(4) + Polish(3); waves explicit, US2 shares no file with US1/US3 so it ships standalone."
+      "summary": "35 tasks across 6 phases: Setup(2) + Foundational(4, the four error codes + AnyDetail extension) + US1 parser spine preflight(8, incl. T032 D-note) + US2 flextools_grammar_health(14, incl. the T016->T031->T029 research chain, T027 SPEC correction, T030 subprocess seam, T033 scan table) + US3 refusal helpers(4) + Polish(2); waves explicit with join lines, no [P] pair shares a file, US2 shares no file with US1/US3 so it ships standalone."
     }
   },
   "coverage": {
     "SPEC-5.4": {
       "title": "ParserCore is gated by a capability probe -- same-install co-location plus a reflective member check -- never a version floor",
       "tasks": [
+        "T002",
         "T007",
         "T009",
         "T011"
@@ -108,6 +164,8 @@
     "SPEC-10.2": {
       "title": "flextools_health grows a parser block with exactly two states per spine; one dead spine must not blank the other two",
       "tasks": [
+        "T008",
+        "T012",
         "T032"
       ]
     },
@@ -123,6 +181,7 @@
     "SPEC-3.2": {
       "title": "Never report the wrong engine's results as the project's -- ActiveParser is re-read live and a corrupt value reads as XAmple and refuses",
       "tasks": [
+        "T002",
         "T022",
         "T024"
       ]
@@ -137,15 +196,24 @@
     "SPEC-9.5.5": {
       "title": "flextools_grammar_health ships at CP1 -- pure LCM, READ_ONLY_SAFE, no export, no hc tool, no parse",
       "tasks": [
+        "T001",
+        "T017",
+        "T018",
+        "T020",
+        "T021",
         "T029",
         "T030",
-        "T034",
-        "T035"
+        "T031"
       ]
     },
     "SPEC-9.5.4": {
       "title": "The pathology-to-LCM mapping is implemented in row order, every property name verified against the index first, with row 8 corrected and disabled rules excluded",
       "tasks": [
+        "T002",
+        "T015",
+        "T016",
+        "T019",
+        "T027",
         "T033",
         "T034",
         "T035"
@@ -154,7 +222,8 @@
     "SPEC-9.5.3": {
       "title": "No scalar score, no grade, no ranking by magnitude -- size is anti-correlated with cost, so no field a client could sort on as a severity proxy",
       "tasks": [
-        "T031"
+        "T014",
+        "T017"
       ]
     },
     "SPEC-9.5.7": {
@@ -173,6 +242,7 @@
     "SPEC-15": {
       "title": "CP1 boundary: no parser is constructed, no grammar is loaded, nothing is parsed; HCParser is touched by reflection only",
       "tasks": [
+        "T026",
         "T027"
       ]
     },
@@ -180,6 +250,64 @@
       "title": "hc is a dotnet global tool located via PATH / dotnet tool list -g under a bounded timeout, never %LOCALAPPDATA%\\HermitCrabTool\\hc.dll",
       "tasks": [
         "T010"
+      ]
+    },
+    "SPEC-10.1": {
+      "title": "next_step never proposes a tool that does not exist -- at CP1 the rows naming flextools_try_word degrade to tool: null, and the prose must not name it either",
+      "tasks": [
+        "T008",
+        "T013"
+      ]
+    },
+    "SPEC-16": {
+      "title": "The CP1-scoped verification groups all pass: envelope extra=forbid, ParserCore probe (5.4), HC agent probe (12.7), G4 grammar health (9.5), the two in-scope standing guarantees, and the Windows+FieldWorks no-hc integration bullet",
+      "tasks": [
+        "T028"
+      ]
+    }
+  },
+  "currentTask": "T006",
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Created the server/scan/ package that will host the subprocess-run grammar scan module; no pyproject.toml edit needed (setuptools auto-discovery)",
+      "files": [
+        "src/flextoolsmcp/server/scan/__init__.py"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Added shared CP1 fixtures: ParserCore member sets (complete/missing ProcessParse/foreign dir), ParserParameters XML variants (HC/XAmple/corrupt), LCM grammar-object stubs incl. IMoForm Form='***'",
+      "files": [
+        "tests/fixtures/parser_check.py"
+      ]
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "Added the four extra=forbid parser detail models with Literal discriminators and closed enums, extended the AnyDetail Union, bumped the hand-maintained code count 18->22 in all three in-file sites",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Added four error-code rows to the TOOL-CONTRACT table and bumped the count to 22; contract stays at tool-responses/1.0 (additive codes)",
+      "files": [
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "Added the Unreleased 'Tool contract' CHANGELOG entry recording the four additive codes and the no-version-bump rationale",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "Added 21 envelope tests asserting through validate_detail(): contract-example round-trip, extra-field rejection, and closed-enum rejection incl. case variants, per code",
+      "files": [
+        "tests/test_parser_error_models.py"
       ]
     }
   }

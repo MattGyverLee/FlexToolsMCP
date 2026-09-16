@@ -3,8 +3,184 @@
   "specName": "parser-check",
   "branch": "main",
   "selectedAt": "2026-09-15T20:00:03.160Z",
-  "currentStep": "specify",
-  "status": "draft",
-  "history": [],
-  "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c"
+  "currentStep": "tasks",
+  "status": "tasking",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-16T01:49:14.579Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-16T01:49:15.255Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-16T01:52:08.019Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T02:06:53.874Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T02:10:06.560Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-16T02:12:17.866Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-16T04:40:41.371Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T04:45:58.132Z"
+    }
+  ],
+  "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c",
+  "approach": "CP1 only: a new server/parser_probe.py holds all parser detection (same-install check, reflective ParserCore member probe, hc + GenerateHCConfig discovery, HC-agent probe, check_active_parser), composed by diagnostic_health.py into a new per-spine 'parser' health block. flextools_grammar_health ships the pure-LCM 9.5.4 static scan via the existing generated-module subprocess harness, since the MCP server process never opens a FieldWorks project. Four additive error codes join tool-responses/1.0.",
+  "decisions": [
+    {
+      "decision": "flextools_grammar_health runs its LCM scan in the generated-module subprocess via the existing execution.py harness",
+      "why": "The MCP server process never opens a FieldWorks project -- every OpenProject lives in the script text execution.py generates. run_script_async kills the process tree on timeout so a wedged pythonnet child cannot hold the .fwdata lock; opening a project in the long-lived server process would defeat that.",
+      "rejected": "Opening an LcmCache in the server process, or adding a third execution path just for read-only scans"
+    },
+    {
+      "decision": "The ParserCore capability probe runs in-process in parser_probe.py, with call-site memoization",
+      "why": "SPEC 5.4 requires the probe to never open an LcmCache. Assembly.LoadFile + member inspection is the pattern versioning.py:262 and liblcm_extractor.py:332 already use, and get_resolved_fieldworks_dir() already exists to bind it to the same FieldWorks install.",
+      "rejected": "A module-level cache in parser_probe.py, which would need an invalidation policy versioning.py deliberately avoids"
+    },
+    {
+      "decision": "In flextools_health the HC-agent probe always reports agent_probe=skipped; the probe itself ships as a reusable function for CP2 callers",
+      "why": "SPEC 10.2 conditions the agent probe on a project being open, which the health handler can never reach. diagnostic_health.py is contractually pure composition and promises never to open a project. The spec already rules this state safe: skipped, not failed, and never reported as a pass.",
+      "rejected": "Having health spawn a project-opening subprocess, or reporting write:unavailable when the probe cannot run"
+    },
+    {
+      "decision": "SPEC 9.5.4 row 8 mapping is refuted and needs correction: rule ordering is not a property of IMoStratum",
+      "why": "IMoStratum exposes exactly four own properties (Abbreviation, Description, Name, PhonemesRA) and no rule collection. Order lives on the rule: IPhSegmentRule.OrderNumber with InitialStratumRA/FinalStratumRA pointing rule->stratum. Also found: IPhSegmentRule.Disabled must gate every rule-based check, and IMoForm.IsComplete is a better row-6 predicate.",
+      "rejected": "Writing row 8 as specified, which would look for a collection that does not exist"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "CP1 plan + research + data-model + 3 contracts written; scope held to CP1 (preflight/health, two refusals, flextools_grammar_health).",
+      "key_finding": "The MCP server process never opens a FieldWorks project -- every OpenProject lives in the script text execution.py generates for the subprocess. That splits CP1 into reflection in-process and LCM reads in the subprocess, and makes SPEC 10.2 HC-agent probe unreachable from flextools_health (spec already rules skipped, not failed). Separately, SPEC 9.5.4 row 8 is refuted against the index."
+    },
+    "tasks": {
+      "summary": "28 tasks across 6 phases: Setup(2) + Foundational(4, the four error codes) + US1 parser spine preflight(7) + US2 flextools_grammar_health(8) + US3 refusal helpers(4) + Polish(3); waves explicit, US2 shares no file with US1/US3 so it ships standalone."
+    }
+  },
+  "coverage": {
+    "SPEC-5.4": {
+      "title": "ParserCore is gated by a capability probe -- same-install co-location plus a reflective member check -- never a version floor",
+      "tasks": [
+        "T007",
+        "T009",
+        "T011"
+      ]
+    },
+    "SPEC-10.2": {
+      "title": "flextools_health grows a parser block with exactly two states per spine; one dead spine must not blank the other two",
+      "tasks": [
+        "T032"
+      ]
+    },
+    "SPEC-14": {
+      "title": "Four additive error codes join tool-responses/1.0 with extra=forbid detail models, a TOOL-CONTRACT row each, and one CHANGELOG entry",
+      "tasks": [
+        "T003",
+        "T004",
+        "T005",
+        "T006"
+      ]
+    },
+    "SPEC-3.2": {
+      "title": "Never report the wrong engine's results as the project's -- ActiveParser is re-read live and a corrupt value reads as XAmple and refuses",
+      "tasks": [
+        "T022",
+        "T024"
+      ]
+    },
+    "SPEC-12.7": {
+      "title": "The HermitCrab agent may not exist; refuse with parser_agent_missing rather than let KeyNotFoundException escape, and leave the read spine ready",
+      "tasks": [
+        "T023",
+        "T025"
+      ]
+    },
+    "SPEC-9.5.5": {
+      "title": "flextools_grammar_health ships at CP1 -- pure LCM, READ_ONLY_SAFE, no export, no hc tool, no parse",
+      "tasks": [
+        "T029",
+        "T030",
+        "T034",
+        "T035"
+      ]
+    },
+    "SPEC-9.5.4": {
+      "title": "The pathology-to-LCM mapping is implemented in row order, every property name verified against the index first, with row 8 corrected and disabled rules excluded",
+      "tasks": [
+        "T033",
+        "T034",
+        "T035"
+      ]
+    },
+    "SPEC-9.5.3": {
+      "title": "No scalar score, no grade, no ranking by magnitude -- size is anti-correlated with cost, so no field a client could sort on as a severity proxy",
+      "tasks": [
+        "T031"
+      ]
+    },
+    "SPEC-9.5.7": {
+      "title": "A G4 finding names a suspect, never a defect -- report what was measured and what it costs, not that it is wrong",
+      "tasks": [
+        "T014"
+      ]
+    },
+    "SPEC-3.1": {
+      "title": "Never infer parseability from database state -- the scan reads grammar objects only, never wordforms or analyses",
+      "tasks": [
+        "T014",
+        "T026"
+      ]
+    },
+    "SPEC-15": {
+      "title": "CP1 boundary: no parser is constructed, no grammar is loaded, nothing is parsed; HCParser is touched by reflection only",
+      "tasks": [
+        "T027"
+      ]
+    },
+    "SPEC-H1": {
+      "title": "hc is a dotnet global tool located via PATH / dotnet tool list -g under a bounded timeout, never %LOCALAPPDATA%\\HermitCrabTool\\hc.dll",
+      "tasks": [
+        "T010"
+      ]
+    }
+  }
 }

@@ -12,15 +12,20 @@ Spec: `specs/shared-mode-access/SPEC.md`.
 Issues: [#92](https://github.com/MattGyverLee/FlexToolsMCP/issues/92) (CP1 bug),
 [#93](https://github.com/MattGyverLee/FlexToolsMCP/issues/93) (the feature).
 
-In spec review (first code landed, no branch): **parser-check** -- let the MCP
-run FLEx's parser so it can verify its own grammar/lexicon edits.
+In planning -- plan + tasks written and crew-reviewed, first code landed, no
+branch: **parser-check** -- let the MCP run FLEx's parser so it can verify its
+own grammar/lexicon edits.
 Spec: `specs/parser-check/SPEC.md` (REWRITTEN 2026-09-15 against the corrected
 three-spine architecture; now **1925 lines**, 18 sections + new 10.2).
-Crew reviews: `specs/parser-check/reviews/cycle{1,2,3,4}-*.md`.
+Plan artifacts: `specs/parser-check/{plan,research,data-model}.md` + `contracts/`.
+Tasks: `specs/parser-check/tasks.md` -- **35 CP1 tasks, T001-T035**, reconciled
+through cycle 6.
+Crew reviews: `specs/parser-check/reviews/cycle{1,2,3,4,5,6}-*.md`.
 Machine state: `specs/parser-check/.crew-handoff.json`.
 
-**Spurt 1 (cycles 1-2) COMPLETE. Spurt 2 (cycles 3-4) COMPLETE. Next pickup is
-CP1 -- but fold the two new domain findings into the spec FIRST (see below).**
+**Spurts 1-3 COMPLETE (cycles 1-6). Next pickup is CP1 implementation: Phase 1
+Setup (T001, T002), then Phase 2 Foundational (T003-T006). No implementation
+code exists yet beyond `get_resolved_fieldworks_dir()` from spurt 2.**
 
 ### parser-check spurt 2 (cycles 3-4) -- CLOSED
 
@@ -134,6 +139,104 @@ refuse-to-file gate has to read a temp XML side file.
 
 Paused (not abandoned): **diagnostic-report**, which is green through CP3 and
 whose next pickup is CP4 (docs + demo). Its section is retained below.
+
+### parser-check spurt 3 (cycles 5-6) -- CLOSED
+
+Spurt 3 opened by folding both confirmed spurt-2 domain findings into SPEC.md
+(commits `a1bc9ca`..`186c8d1`), then ran `/speckit-plan` and `/speckit-tasks`
+and put the resulting **tasks.md** through a full crew review.
+
+- **Cycle 5** ran a four-way parallel review of the generated 28-task tasks.md
+  (`lex-domain`, `lex-programmer`, `lex-qc`, `lex-author`). The lead reconciled
+  the four reports into **15 edits (E1-E15)**, including seven new tasks.
+- **Cycle 6** had `lex-doc` apply all 15. **None skipped.** tasks.md is now
+  **35 tasks, T001-T035, 245 lines**. New tasks sit at their *dependency*
+  position, not appended, and `T001`-`T028` keep their IDs -- external references
+  point at them.
+
+**What the 15 edits actually bought (the ones worth remembering):**
+
+- **E3/E15 -- the subprocess seam is now a decision, not an assumption.** New
+  `T029` must answer whether the generated-module interpreter can import
+  `flextoolsmcp.server.scan.*` directly. `handle_run_module` is one ~1800-line
+  function that ast-parses caller `code` **as a string** and splices it into a
+  literal template (`execution.py:~4172`), so research D1's claim that the
+  existing preflight/casting validators would "cover" a module living at
+  `server/scan/grammar_scan_module.py` is **not achievable as scoped**. T029
+  records the verdict and corrects D1; `T030` then builds whichever seam it
+  chose. The scan itself was split T019 (phonology, ungated) -> T034
+  (morphology) -> T035 (rule ordering), strictly ordered on the one file.
+- **E4 -- the four new detail models must join the `AnyDetail` Union**
+  (`response_models.py:364-382`), or `validate_detail()`'s discriminated
+  `TypeAdapter` never sees them. `T006` now asserts *through* `validate_detail()`,
+  not against the bare model class. Hand-maintained count 18 -> 22 in three
+  places.
+- **E6 -- the no-scalar-score guarantee got structural teeth.** A denylist alone
+  is bypassed by synonym, so `T017` now defines `GrammarHealthFinding` as a
+  closed `extra="forbid"` model with exactly six keys, and `T014` asserts that
+  allowlist, adds order-invariance (same checks, permuted count magnitudes,
+  byte-identical ordering) and a positive `measured` phrasing template.
+- **E11 -- the optional-slot claim is gone from all three places it appeared.**
+  Row 1 counts every zero-surface `IMoForm` **unconditionally**; the slot ->
+  `Affixes` -> MSA -> owning entry -> `AlternateFormsOS` walk is deferred
+  because the allomorph -> owning-entry hop is a known flexicon read gap already
+  tasked flexicon-first under S9.
+- **E1 -- the `"***"` trap.** The scan reads LCM directly, so it does **not** get
+  Flexicon's Operations-layer `"***"` -> `""` normalization. Emptiness predicate
+  is `form in (None, "", "***")`, with a regression test.
+- **E14 -- SPEC 10.1 prose leak.** Nulling `tool` was not enough for the
+  `write: unavailable`/`read: ready` rung: its action text still named
+  `flextools_try_word` in prose, and that tool does not exist until CP2.
+
+**Lead verification of the applied file (done, not delegated).** Both invariants
+the edit set had to re-serialize hold:
+
+- **File-disjointness.** No `[P]`-tagged pair shares a file anywhere in the 35
+  tasks. The two re-serialized chains are correct: `research.md` is written by
+  `T032` (Phase 3 W1) and then by `T016` -> `T031` -> `T029` strictly ordered
+  (Phase 4 W2), none of that chain `[P]`; `grammar_scan_module.py` is written by
+  `T019` -> `T034` -> `T035`, with only T019 `[P]` and only against a wave whose
+  other members own different files.
+- **The three-place E11 edit landed in all three places** -- T034's scan wording
+  (plus an explicit "`measured`/`evidence_basis` must not claim slot-conditioning
+  until that lands" guard), T015's row-1 bullet, and Phase 4's Independent-test
+  paragraph ("unconditional on position, since slot-reachability walking is
+  deferred").
+
+**Three P2 nits found in verification, deliberately NOT fixed this spurt** (none
+blocks starting CP1):
+
+1. tasks.md's closing **file-sharing invariant** paragraph lists the `research.md`
+   writers as `T016`/`T031`/`T029` and omits `T032`, which is `[P]`-tagged and
+   writes the same file. It is genuinely safe -- T032 lands a whole phase earlier
+   -- but that safety rests on phase ordering the paragraph never states. One
+   clause fixes it.
+2. **`T015` no longer asserts the behaviour it used to mis-assert.** E11 correctly
+   deleted the slot-reachability claim but left the row-1 bullet silent, so
+   "counts unconditionally" now lives only in T034's prose with no test behind
+   it. Add a positive assertion: a zero-surface `IMoForm` reachable from no
+   optional slot is still counted.
+3. **`objects[]` item shape is unspecified.** `T017` closes the *Finding* model at
+   six keys, but the Phase 4 independent test expects `goto_url`s, which can only
+   live inside `objects[]` items -- a model no task defines. Since `T014` asserts
+   "no severity proxy **at any nesting level**" and that `objects[]` is never
+   magnitude-sorted, the item model should be closed the same way.
+
+**One author-voice judgment call flagged by lex-doc:** E14's literal CP1
+replacement string ("filing unavailable; the read spine above already confirms
+whether the grammar loads") is new prose the doc agent authored -- no source
+document proposed exact wording. Reword freely if a different phrasing is
+preferred; the only hard constraint is that it name no tool.
+
+**Nothing was committed during cycles 5-6** -- tasks.md, the plan artifacts and
+all six crew reports were uncommitted working-tree changes at spurt close.
+`.spec-context.json` still reads `currentStep: tasks`, and its `coverage` map and
+`step_summaries.tasks` ("28 tasks") are **stale against the 35-task file** --
+T029-T035 appear in no coverage row. Refreshing that map is the first small chore
+of spurt 4.
+
+**Machine state at close:** no FLEx writes and no live-LCM access of any kind
+this spurt -- planning and document edits only. Nothing to restore.
 
 ## Active campaign: swahili-audit-2026-09 bugfix
 

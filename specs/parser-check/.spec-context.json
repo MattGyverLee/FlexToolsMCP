@@ -1,7 +1,7 @@
 {
   "workflow": "companion",
   "specName": "parser-check",
-  "branch": "parser-check",
+  "branch": "main",
   "selectedAt": "2026-09-15T20:00:03.160Z",
   "currentStep": "specify",
   "status": "draft",

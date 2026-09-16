@@ -96,6 +96,14 @@ Each rung's safety property is **structural**, not conventional:
   practice. Only writes to **parser-generated analyses** are excluded, a
   single-word parse **preempts** a background run (FLEx's own parser priority
   levels), and filing is guarded per result by `ParseResult.IsValid`.
+  <br>**Footnote, added 2026-09-15 (not a retro-edit).** The answer above is
+  recorded as it was given. Its *mechanism* has since been superseded:
+  `ParserScheduler.cs:25-32` has five priority levels over one sorted queue with
+  **no preemption of in-flight work and no `CancellationToken` anywhere**, so
+  what a single-word request actually gets is an **interleave at the next word
+  boundary**, not preemption. The user-visible guarantee (a single word is
+  answered without waiting for a batch to finish) is unchanged; 5.6 carries the
+  mechanism and governs.
 
 ### Session 2026-09-15 (second session -- try-a-word mechanics and steering)
 
@@ -882,6 +890,20 @@ sound only where the exact morph-bundle signature already exists as an
 `IWfiAnalysis`; for an analysis never materialized in the DB there is simply no
 row to query.
 
+It is weak in **two independent ways**, and both apply before any approval count
+is reported:
+
+1. **Completeness** (9.3.1) -- an approved record may carry meaning without
+   morphology, so there is nothing to compare the parser against.
+2. **Provenance** (9.3.4) -- most approvals are **tacit**, not affirmed. A
+   person used the analysis in a text and never clicked the approve check;
+   `ParseFiler` records approval on their behalf. Tacit and affirmed approvals
+   are stored identically and **cannot be reliably told apart**.
+
+The second is the stronger caveat. It does not thin the oracle; it changes what
+a stored opinion *means*, and it is orthogonal to the tiering -- a record can
+pass tier 3 on content while carrying an opinion no human ever formed.
+
 #### 9.3.1 Human approval is not one thing -- tier it before comparing
 
 A human "approved analysis" may record **what a word means** without recording
@@ -932,6 +954,11 @@ Corollary for section 12.2: tier-1 and tier-2 records carry a **user-agent**
 opinion, so `SetUnsuccessfulParseEvals` will not delete them. They are safe from
 the P0 deletion path. Say so when reporting them, so a user does not fear that
 running a parse will discard their glossing work.
+
+That shield is narrower than the one 9.3.4 describes, and the two must not be
+conflated: tiers 1 and 2 are safe because a human really did record them,
+whereas in-segment analyses are safe because `ParseFiler` approves them *on the
+user's behalf*. Both end at the same delete check, from opposite directions.
 
 #### 9.3.2 Incomplete records are useful evidence, of a different kind
 
@@ -1037,7 +1064,13 @@ nobody ever ran the parser.
 
 **Mandatory output wording:**
 
-- Approved (tier 3): `"Approved by [user] on [date]."`
+- Approved (tier 3), **and not in any segment**: `"Approved by [user] on
+  [date]."`
+- Approved (tier 3) **but occurring in a segment**: `"Approved under [user] on
+  [date]. This analysis is in use in a text, and approval is recorded for
+  anything left in use -- so it may have been affirmed, or merely used. There is
+  no way to tell which."` Never render this case with the bare sentence above,
+  and never call it unapproved or auto-approved; see 9.3.4.
 - Disapproved: `"Marked incorrect by [user] on [date]."`
 - No stored opinion: `"Not yet reviewed by a human -- this is not evidence it is
   wrong, only that nobody has checked it."`
@@ -1051,6 +1084,93 @@ nobody ever ran the parser.
 "flagged". Those words claim a verdict that does not exist. Equally, **never**
 render tiers 1 and 2 as disagreement with the parser -- the human has not
 disagreed, they have not yet spoken on the question the parser is answering.
+
+#### 9.3.4 "Human approved" is usually tacit, and tacit cannot be told from affirmed
+
+`ParseFiler.SetUnsuccessfulParseEvals` (`ParseFiler.cs:302-320`) writes a
+**user-agent approval on the user's behalf** for any analysis in use in a
+segment. The comment at `:310` states the intent -- "ensure that used analyses
+have a user evaluation" -- and `:311` calls
+`m_userAgent.SetEvaluation(analysis, Opinions.approves)` when the analysis, or
+one of its glosses, appears in the wordform's `OccurrencesBag` segment analyses.
+That call fires **before** the noopinion/delete check at `:313-318`.
+
+**This is not a failure-path quirk.** `SetUnsuccessfulParseEvals` is called on
+**both** result branches -- `ParseFiler.cs:231` (`ErrorMessage != null`) and
+`:238` (successful parse) -- for every wordform whose `Checksum` changed. Every
+filing run therefore writes user approvals across all the wordforms it processes.
+
+**What this looks like from the user's side, which is the common case.** The
+mechanism above is not exotic and it is not usually a machine inventing an
+opinion out of nothing. It is the ordinary interlinear workflow: a person works
+on a text, interacts with one or more parts of an analysis -- picks a sense,
+fixes a gloss, leaves the rest standing -- and **never clicks the check that
+approves it**. The analysis is now in use in a segment, so the next filing run
+records it as approved on their behalf.
+
+Call that a **tacit approval**. The distinction that matters is not
+human-versus-machine, it is:
+
+| | What the user did | Strength as an oracle |
+|---|---|---|
+| **Affirmed** | Clicked approve on this analysis | Strong -- a judgement about this analysis |
+| **Tacit** | Used it in a text without approving it | Real but weak -- selection, not a verdict |
+| **No opinion** | Nothing | None, and not evidence of wrongness |
+
+Tacit approval is **not nothing**. Leaving an analysis standing in a text you are
+working through is a weak human signal, and the spec must not talk about it as
+noise or as a bug. But it is not the act the oracle needs: the user affirmed
+nothing about the morphology, and may not have looked at it.
+
+**They cannot be reliably distinguished.** The stored evaluation is identical --
+same agent, same `Opinions.approves`, no flag recording which path wrote it and
+no separate timestamp for the click. This is the governing constraint on
+everything below, and no amount of care in the reporting layer removes it.
+
+Consequences, to be honoured rather than worked around:
+
+- `HumanApprovedAnalyses` means **"affirmed OR tacit"**, with no way to split it.
+  Any G3 statement that reads a user-agent approval as a judgement about the
+  morphology is weaker than it appears.
+- A bare user-`noopinion` count is **not** "never human-reviewed": in-segment
+  analyses were silently upgraded out of `noopinion`.
+- Protectively, and this is the part 12.2 depends on: in-segment analyses are
+  **shielded** from the non-undoable delete, because they hold a user approval
+  by the time the delete check runs. Tacit approval is weak evidence but a
+  **strong** shield -- exactly the asymmetry we want on a non-undoable path.
+
+**Mandatory reporting rule.** Where the oracle is reported, the population in
+which tacit approvals live is named **separately** and never folded into a bare
+approved count:
+
+> `"[N] analyses carry a human approval. [M] of those appear in a text, where
+> approval is recorded for anything left in use -- so some of those were used
+> rather than affirmed. There is no way to tell which."`
+
+The **only** discriminator available is a join against segment occurrence, and it
+is one-sided:
+
+- **Not in any segment, approved** -- someone clicked. Affirmed, reliably.
+- **In a segment, approved** -- affirmed **or** tacit, *unknowable*. A person who
+  genuinely clicked approve on a word in their text lands here too.
+
+So the join does not identify tacit approvals; it identifies the population they
+live in, which always also contains affirmed ones. Report the split as
+`{affirmed, indeterminate}`, never as `{affirmed, tacit}` -- the second labels
+individual analyses with a provenance the database does not record, and a user
+who *did* review their text would rightly call that wrong about their own work.
+Asserting that a human never reviewed an analysis on the strength of an opinion
+field is the same class of error as 3.1's inference from database state, one
+layer in.
+
+**One further weakening, unverified.** Segment assignment may not always follow
+from a human act at all: FLEx propagates guessed analyses through interlinear
+text, so an analysis can plausibly reach `AnalysesRS` by being *offered and not
+overruled* rather than chosen. If so, part of the indeterminate population is
+weaker than tacit. Not established here -- recorded as 17.12, to verify before
+CP3 leans on the split. It does not change the reporting rule, which already
+refuses to characterise individual analyses; it only makes that refusal more
+clearly right.
 
 ### 9.4 Cost
 
@@ -1495,7 +1615,14 @@ vocabulary (14) so health and error envelopes never drift apart:
   missing_members, lcmodel_install_path}` -- `parser_core_missing`'s shape
   verbatim. `write` additionally requires `ParseFiler.ProcessParse` in its
   member probe, so `read: ready` / `write: unavailable` is representable when
-  only that member is missing.
+  only that member is missing. `write` also carries the **project-side**
+  precondition of 12.7: with a project open, `ActiveParser == "HC"` and
+  `kguidAgentHermitCrabParser` absent from `ICmAgentRepository` gives
+  `write: unavailable`, `signal: parser_agent_missing`, and `{agent_guid,
+  active_engine}` in the reason. That probe needs an open project, so when
+  health runs session-independent it is **skipped, not failed**: `write` status
+  stays driven by the member probe alone and the reason records
+  `agent_probe: "skipped"`. A skipped probe is never reported as a pass.
 - `sandbox.components`: an **array** of `{component: "hc"|"GenerateHCConfig.exe",
   found, expected_path}` -- not singular like `parser_tool_missing`, because the
   two tools fail independently and a caller must know which one to install.
@@ -1538,6 +1665,7 @@ is reported as a warning on the run summary, not a refusal (5.6).
 | `write: unavailable`, `read: ready` | "use read-only Try A Word; filing unavailable" | `flextools_try_word` | `{}` | inline |
 | `sandbox.components[hc].found=false` | "install the hc dotnet tool" | none (external) | -- | n/a |
 | `sandbox: unavailable` (either component missing) | never propose `flextools_parse_sandbox` | -- | -- | -- |
+| `write: unavailable`, `signal: parser_agent_missing` | "this project has never run HermitCrab; run it once from FLEx's Parser menu, then retry filing" | `flextools_try_word` (read-only diagnosis is unaffected) | `{}` | inline |
 | `active_engine` mismatch | "project is on {configured_engine}; HC tools refused" | none (external, switch engine in FLEx) | -- | n/a |
 
 No rung ever names a tool whose spine is `unavailable` -- consistent with the
@@ -1606,9 +1734,29 @@ and grows. The confirmation must therefore project **actual** deletions computed
 from project state -- a concrete "may delete 0 analyses" is far better than an
 abstract warning that trains people to click through.
 
-What the user never sees changed: `ProcessParse` never writes `ISegment.AnalysesRS`,
-and the user agent's `SetEvaluation` is called in exactly one place and only to
-**approve**. The parser cannot overwrite a human's approval.
+**The deletion set is a conjunction, not a single predicate.** Before the delete
+check runs, `SetUnsuccessfulParseEvals` has already written a user approval for
+every processed analysis that occurs in a segment -- the tacit approval of 9.3.4.
+Those analyses are **shielded**: they no longer hold user `noopinion` at
+`:314-315`. Weak evidence, strong shield: an analysis a person merely left
+standing in a text cannot be silently deleted, which is the right outcome here
+even though that same approval is nearly worthless as an oracle. The projection
+must therefore compute
+
+> **user-`noopinion` AND not referenced by any segment**
+
+Projecting on user-`noopinion` alone **over-projects** -- it warns about
+analyses that cannot be deleted. That is not a safe direction to err in: it
+inflates the number a user is asked to accept, which is precisely how a
+confirmation stops being read.
+
+What the user never sees changed: `ProcessParse` never writes
+`ISegment.AnalysesRS`, and the user agent's `SetEvaluation` is called in exactly
+one place and only to **approve** -- so filing can never overwrite or revoke a
+human's opinion. Note the asymmetry 9.3.4 draws out, because this paragraph is
+easy to read as stronger than it is: that same single call site *adds* user
+approvals the human never gave. Filing cannot take a human opinion away; it can
+invent one.
 
 ### 12.3 P0-2: the grammar can shrink silently
 
@@ -1662,7 +1810,9 @@ settled as specified below):**
    a **working hypothesis**, not a proven baseline: nothing in `HCLoader.cs`
    establishes that such errors are rare or safe to ignore in the field. State
    it as an assumption, not a fact.
-4. Confirmation projects **deletions**, not only creations. **Validated.**
+4. Confirmation projects **deletions**, not only creations. **Validated** --
+   computed with 12.2's conjunction (user-`noopinion` **and** not referenced by
+   any segment), never a bare noopinion count.
 
 A blunt any-error gate would make mode 1 permanently unusable on projects with
 benign pre-existing errors, and would invite exactly the bypass flag we must not
@@ -1733,6 +1883,52 @@ report must not describe it as one.
 
 ---
 
+### 12.7 P0-3: the HermitCrab agent may not exist
+
+Numbered after 12.6 to avoid renumbering cross-referenced subsections; it ranks
+with 12.2 and 12.3, not below 12.5.
+
+`BootstrapNewLanguageProject.SetupAgents`
+(`liblcm/src/SIL.LCModel/DomainServices/BootstrapNewLanguageProject.cs:140-165`)
+creates exactly **three** agents -- `kguidAgentDefUser`,
+`kguidAgentXAmpleParser`, `kguidAgentComputer`. It does **not** create
+`kguidAgentHermitCrabParser`.
+
+`LangProject.DefaultParserAgent`
+(`liblcm/src/SIL.LCModel/DomainImpl/OverridesLangProj.cs:218-231`) nonetheless
+resolves `ICmAgentRepository.GetObject(CmAgentTags.kguidAgentHermitCrabParser)`
+when `MorphologicalDataOA.ActiveParser == "HC"`. Its own XML doc comment at
+`:216` declares `<exception cref="KeyNotFoundException"/>`: the throw is
+**documented behaviour**, not speculation.
+
+On a project that has never run HermitCrab, resolving the HC agent may therefore
+throw, and an unhandled throw surfaces as a crash rather than a clean `parser_*`
+refusal -- a handler that dies mid-call tells the user nothing, which is the one
+outcome this feature's preflight exists to prevent.
+
+**Requirement.** CP1's preflight **probes for the agent**; the affected spine
+reports `unavailable` with a named reason rather than letting the lookup throw:
+
+- `flextools_health`'s `write` probe (10.2) reports
+  `signal: parser_agent_missing` when a project is open, `ActiveParser == "HC"`,
+  and the agent is absent from `ICmAgentRepository`.
+- Any handler that would resolve the agent raises `parser_agent_missing` (14)
+  instead of propagating `KeyNotFoundException`.
+- The **read spine is unaffected**. `flextools_try_word` neither files nor
+  resolves an agent, so a missing HC agent must never mark `read` unavailable --
+  the diagnosis this feature exists to deliver stays available on exactly the
+  projects most likely to lack the agent.
+
+**Open for live verification** (17.10). Whether a data migration or a lazy path
+materialises the agent elsewhere -- on first HC run from FLEx's own menu, or on
+a parser switch -- could not be established from source. If such a path exists
+the probe becomes a **warning** rather than a refusal; the probe itself is
+required either way, because CP4 must not be the checkpoint that discovers this.
+Verify read-only against a real project with `ActiveParser == "HC"` that has
+never run the parser.
+
+---
+
 ## 13. Hardening delta for `hcparse.ps1`
 
 | # | Change | Reason |
@@ -1771,6 +1967,7 @@ entry under **"Tool contract"**.
 | `parse_scope_mismatch` | `baseline_fingerprint`, `current_fingerprint`, `differing_fields`, `hint` |
 | `parse_run_not_found` | `run_id`, `available_runs` |
 | `parser_filing_in_progress` | `run_id`, `started_at`, `words_completed`, `hint` |
+| `parser_agent_missing` | `agent_guid`, `agent_name` (`"HermitCrab"`), `active_engine`, `probe_source` (`bootstrap_absent` \| `lookup_failed`), `hint` |
 | `parse_morph_unresolved` | `morph`, `position`, `resolved_to` (`none` \| `ambiguous` \| `no_msa`), `candidates`, `hint` |
 
 Reused: `project_not_found`, `project_locked`, `project_drive_unavailable`,
@@ -1782,10 +1979,10 @@ Reused: `project_not_found`, `project_locked`, `project_drive_unavailable`,
 
 | CP | Spine | Deliverable | Writes? |
 |---|---|---|---|
-| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.5) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
+| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; **HC-agent probe with `parser_agent_missing` refusal** (12.7); `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.5) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
 | **CP2** | in-process read | **flexicon first** (S9): the read-only `project.Parser` facade plus `Texts.GetGenres()`, lazily imported and capability-probed on flexicon's own side. Then `flextools_try_word` -- `HCParser(cache)`, `ParseWord`, `TraceWordXml`, **all three trace modes of 5.1.1** including the morph-spec -> MSA-HVO resolver mode A needs. **Ships the job runner (5.6)**: states, incremental `run.json`, cancellation, the fast-path window, and `flextools_parse_status`. Ships the `HCParser_DoesNotLoadXCore` standing test; that test **is** the safety story | No |
 | **CP3** | in-process read | G4 instrument 2 (the bounded complete parse); `next_step` routing into the CP1 grammar scan. Instrument 3 only if 9.5.6's seam ever appears. Batch + reporting: `UniqueWordforms()` scoping, run artifacts, `parse_log`, `parse_diff`, G3 batch layer + drill-down. Consumes CP2's runner; adds no second execution model | No |
-| **CP4** | in-process write | `ParseFiler` with stubs + synchronous `UpdateWordforms` + full ladder (12.4), deletion projection, refuse-to-file gate (12.3). Live verification incl. the `MoveConcAnnotationsToWordform` edge case. **First write** | **Yes** |
+| **CP4** | in-process write | `ParseFiler` with stubs + synchronous `UpdateWordforms` + full ladder (12.4), deletion projection **on 12.2's conjunction**, refuse-to-file gate (12.3). Live verification incl. the `MoveConcAnnotationsToWordform` edge case, the 9.3.4 auto-approval (an in-segment analysis survives a filing pass that a bare-noopinion projection would have condemned), and 12.7's HC-agent lazy-creation question. **First write** | **Yes** |
 | **CP5** | sandbox | Hardened `hcparse.ps1` (H1/H4, three lifecycles), `flextools_parse_sandbox`, corpus assertions via `test` with regression/new-ambiguity classification | No |
 | **CP6** | -- | Contract codes, CHANGELOG, telemetry, user docs | No |
 
@@ -1833,6 +2030,19 @@ the first checkpoint with nothing blocking it.
 - **Duplicate projection (9.3.3):** a mode-1 confirmation against a fixture
   containing gloss-only analyses reports the duplicate count, not only creations
   and deletions.
+- **Approval provenance (9.3.4):** a fixture analysis holding a user-agent
+  `approves` **and** occurring in a segment is reported in the separately named
+  **indeterminate** population, never folded into a bare human-approved count.
+  An implementation that reads the opinion field alone must fail this test.
+  Assert the output never labels an individual analysis "tacit", "unreviewed" or
+  "auto-approved" -- the join is one-sided and an affirmed approval lands in the
+  same bucket.
+- **Deletion projection is a conjunction (12.2):** a fixture with two
+  parser-created, user-`noopinion` analyses -- one referenced by a segment, one
+  not -- projects **exactly one** deletion. A bare-noopinion projection returns
+  two and must fail. Pair it with the inverse assertion: the in-segment analysis
+  survives an actual filing pass, confirming the shield is real and not merely
+  projected.
 
 **flexicon facade (S9, 5.4)**
 - `import flexicon` succeeds on a machine with **no** ParserCore present, and
@@ -1850,6 +2060,17 @@ the first checkpoint with nothing blocking it.
   the regression test against reintroducing a version floor.
 - The probe opens no cache and loads no grammar: assert CP1 preflight performs no
   parse and leaves the project untouched.
+
+**HC agent probe (12.7)**
+- A project fixture with `ActiveParser == "HC"` and no `kguidAgentHermitCrabParser`
+  in `ICmAgentRepository` yields `write: unavailable` with
+  `signal=parser_agent_missing` -- and **no `KeyNotFoundException` escapes the
+  handler**. That escape is the failure this test exists to catch.
+- The same fixture leaves `read: ready` and `flextools_try_word` callable: a
+  missing agent never disables read-only diagnosis.
+- With no project open, `write.reason` records `agent_probe: "skipped"` and the
+  status is decided by the member probe alone -- a skipped probe never reads as
+  a pass.
 
 **Proposal review (5.1.3)**
 - A decomposition that conflicts with every recorded analysis is still traced
@@ -1975,6 +2196,24 @@ the first checkpoint with nothing blocking it.
 9. **The concrete output shape the detector returns.** 10.2's `ParserDetector`
    interface seam names the fields (`ProbeResult`, etc.); the parallel session
    owns specifying how each is actually populated.
+10. **Does anything create the HermitCrab agent outside `SetupAgents`?** (12.7).
+    A data migration or a lazy path -- on first HC run from FLEx's Parser menu,
+    or on a parser switch -- would downgrade 12.7's refusal to a warning. Source
+    reading could not settle it. **Live read-only probe**, against a project
+    with `ActiveParser == "HC"` that has never run the parser. Does not block
+    CP1: the probe ships either way, and only its verdict wording depends on
+    the answer.
+11. **`IStText.UniqueWordforms()` on a never-tokenized text.** Does it return
+    anything for a text never opened in interlinear? This is 3.1's
+    database-state-as-proxy trap one layer down: an empty result would mean "not
+    tokenized", not "no words", and CP3's scoping must not read it as the
+    latter. Verify before CP3 relies on the count.
+12. **Can a segment assignment arrive without a human act?** (9.3.4). FLEx
+    propagates guessed analyses through interlinear text; if an analysis can
+    reach `AnalysesRS` by being offered and not overruled, part of the
+    indeterminate population is weaker than tacit. Verify before CP3 leans on
+    the affirmed/indeterminate split. Does not affect the reporting rule, which
+    already declines to characterise individual analyses.
 
 ---
 

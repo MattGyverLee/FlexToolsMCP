@@ -74,6 +74,11 @@ except (ImportError, ValueError):
     from server.project_access import probe_project_access
 
 try:
+    from ..parser_probe import ParserDetector
+except (ImportError, ValueError):
+    from server.parser_probe import ParserDetector
+
+try:
     from . import op_telemetry
 except ImportError:
     from server.handlers import op_telemetry
@@ -176,6 +181,104 @@ def _build_fieldworks_block() -> Dict[str, Any]:
         "install_path": str(fieldworks_dir) if fieldworks_dir else None,
         "detected": fieldworks_dir is not None,
         "liblcm_version_on_disk": liblcm_version_on_disk,
+    }
+
+
+def _build_probe_reason(probe: Any, lcmodel_install_path: Optional[str]) -> Dict[str, Any]:
+    """Shape one ``parser_probe.ProbeResult`` into a reason dict's base
+    fields -- ``parser_core_missing``'s detail shape verbatim
+    (contracts/flextools_health-parser-block.md), reused for both
+    ``read.reason`` and the base of ``write.reason`` so health and the
+    error envelope never drift apart. Pure reshaping of fields the probe
+    already computed; no new detection here."""
+    return {
+        "signal": probe.signal,
+        "expected_path": probe.expected_path,
+        "detected_version": probe.detected_version,
+        "missing_members": list(probe.missing_members),
+        "lcmodel_install_path": lcmodel_install_path,
+    }
+
+
+def _build_parser_block() -> Dict[str, Any]:
+    """ParserCore/HC capability snapshot for the top-level ``parser`` key
+    (contracts/flextools_health-parser-block.md), shaped the way
+    ``_build_fieldworks_block()`` shapes FieldWorks detection above.
+
+    Pure composition, no new detection logic: every fact here already
+    exists on the ``parser_probe.ParserDetector`` instance this function
+    constructs (T009-T011); this function only reshapes those fields into
+    the contract's JSON. No location or reflection logic enters this
+    module.
+
+    Exactly two states per spine (``ready`` / ``unavailable``), never a
+    third ``degraded`` value -- degradation lives in ``reason`` /
+    ``components``. Each spine (``read``, ``write``, ``sandbox``) is read
+    from its own probe independently, so one dead spine can never blank
+    the others (``ParserDetector`` already isolates them; see its
+    docstring).
+
+    ``write``'s status is decided by the member probe **alone** -- because
+    ``flextools_health`` never opens a project (research D2),
+    ``ParserDetector.agent_probe`` is unconditionally ``"skipped"`` here,
+    and a skipped probe must never be read as a pass *nor* veto an
+    otherwise-ready write. It is always recorded, verbatim, in
+    ``write.reason["agent_probe"]`` -- visible, never silently folded into
+    a bare ``"ready"``.
+
+    ``active_engine`` is unconditionally ``None`` at CP1 (research D8,
+    same premise as the agent probe) and is never read by any status
+    decision in this function.
+    """
+    detector = ParserDetector()
+
+    lcmodel_install_path = detector.versions.lcmodel_install_path
+
+    read_reason: Optional[Dict[str, Any]] = None
+    if not detector.read_probe.ok:
+        read_reason = _build_probe_reason(detector.read_probe, lcmodel_install_path)
+
+    # write.reason is always built, whether or not write is "ready" -- the
+    # skipped agent_probe must stay visible either way (see docstring).
+    write_reason = _build_probe_reason(detector.write_probe, lcmodel_install_path)
+    write_reason["agent_probe"] = detector.agent_probe.state
+    if detector.agent_probe.state == "absent":
+        write_reason["agent_guid"] = detector.agent_probe.agent_guid
+        write_reason["active_engine"] = detector.agent_probe.active_engine
+
+    hc = detector.sandbox_probe.hc
+    generate_config = detector.sandbox_probe.generate_config
+    sandbox_ready = hc.ok and generate_config.ok
+
+    return {
+        "read": {
+            "status": "ready" if detector.read_probe.ok else "unavailable",
+            "reason": read_reason,
+        },
+        "write": {
+            "status": "ready" if detector.write_probe.ok else "unavailable",
+            "reason": write_reason,
+        },
+        "sandbox": {
+            "status": "ready" if sandbox_ready else "unavailable",
+            "components": [
+                {"component": "hc", "found": hc.ok, "expected_path": hc.expected_path},
+                {
+                    "component": "GenerateHCConfig.exe",
+                    "found": generate_config.ok,
+                    "expected_path": generate_config.expected_path,
+                },
+            ],
+        },
+        # Informational only -- never a status input (D8).
+        "active_engine": detector.active_engine,
+        "detected": {
+            "parser_core_version": detector.versions.parser_core_version,
+            "lcmodel_install_path": lcmodel_install_path,
+            "hc_tool_version": detector.versions.hc_tool_version,
+            "hc_path": hc.expected_path if hc.ok else None,
+            "generate_hc_config_path": generate_config.expected_path if generate_config.ok else None,
+        },
     }
 
 
@@ -361,6 +464,7 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
             "pid": os.getpid(),
         },
         "fieldworks": _build_fieldworks_block(),
+        "parser": _build_parser_block(),
         "libraries": libraries,
         "indexes": _build_indexes_block(index_dir, libraries),
         "session": session_state.summary(),

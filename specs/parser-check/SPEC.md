@@ -1404,24 +1404,40 @@ PanGloss's own measured evidence, highest yield first.
 | 5 | **Morphological x phonological rule product** | threshold 64, placeholder | affix-process rule count x (`IPhRegularRule` + `IPhMetathesisRule`) count |
 | 6 | **Partial morphemes** | `hc-partial-morpheme` | entries and affix rules lacking category or template analysis -- overlaps the tier-2 "sketched" notion of 9.3.1 |
 | 7 | **Multiple allomorphs per entry; stem-name restriction** | both proposed unconditionally, never filtered | `ILexEntry.AlternateFormsOS.Count > 1`; `IMoStemAllomorph.StemNameRA != null` |
-| 8 | **Unordered rule application; derivation depth** | 2^N, capped at N=6 | rule ordering within `IMoStratum`; standalone derivational rule count equals chain depth |
+| 8 | **Unordered rule application; derivation depth** | 2^N, capped at N=6 | rule ordering is `IPhSegmentRule.OrderNumber`, grouped via `InitialStratumRA`/`FinalStratumRA` -- **verified**; `IMoStratum` has no rule collection, only `Abbreviation`, `Description`, `Name`, `PhonemesRA`; standalone derivational rule count equals chain depth |
 | 9 | **Segments with identical feature bundles** | `hc-duplicate-feature-bundle` | compare `IPhPhoneme.FeaturesOA` within a phoneme set -- **`FeaturesOA` verified** |
 | 10 | **Optional template slots** | named by PanGloss, never built | independent apply/skip choices across `IMoInflAffixSlot`s -- we would be first |
 
 Plus the three 9.5.1 causes PanGloss does not cover at all: **short allomorphs**,
 **broadly permissive rule environments**, and **overlapping natural classes**.
 
-Two implementation notes:
+Three implementation notes:
 
-- **Only rows 2, 4 and 9 have had their LCM property names verified**, through
-  this project's own index. Every other row is a *proposed* mapping and must be
-  checked with `flextools_get_object_api` before it is written. Do not let the
-  table's confident formatting stand in for that check -- that is the 8.4 failure
-  applied to our own planning.
+- **Rows 1, 2, 3 (epenthesis half), 4, 6, 8, 9 and 10 have had their LCM property
+  names verified**, through this project's own index. Three items remain
+  *proposed* and must be checked with `flextools_get_object_api` before they are
+  written: row 3's metathesis half (`IPhMetathesisRule`), row 5's rule-count
+  product, and row 7's `AlternateFormsOS` half. Do not let the table's confident
+  formatting stand in for that check -- that is the 8.4 failure applied to our
+  own planning.
 - **Most of these properties require a pythonnet cast.** The index reports 26-27
   casting-required properties on `IPhPhoneme` and `IPhIterationContext` alone, and
   the phonological context collections are polymorphic. Use the index's
   `cast_example` output rather than hand-writing accessors.
+- **`OrderNumber` is a per-stratum-pair counter, not a grammar-wide ordinal.**
+  Each rule references exactly one `InitialStratumRA`/`FinalStratumRA` pair, so
+  `OrderNumber` is comparable only within that pair's grouping. Never sort or
+  compare it across pairs.
+- **The user assigns rules to strata; the data model stores that on the rule.**
+  In FLEx the linguist assigns a phonological rule to a stratum from the rule's
+  own settings, so the user's mental model is "this rule belongs to this
+  stratum." LCM stores exactly that relationship, but on the rule side
+  (`InitialStratumRA`/`FinalStratumRA`), which is why `IMoStratum` has no rule
+  collection to read back. The two views agree -- only the direction of the
+  reference differs. Row 8's `measured`/`evidence_basis` wording must speak the
+  user's direction ("rules assigned to stratum X"), never "stratum X owns rules",
+  and the absence of a collection on `IMoStratum` is not evidence that strata are
+  unordered or unassigned.
 
 #### 9.5.5 Instrument 1's home: `flextools_grammar_health`
 
@@ -1979,7 +1995,7 @@ Reused: `project_not_found`, `project_locked`, `project_drive_unavailable`,
 
 | CP | Spine | Deliverable | Writes? |
 |---|---|---|---|
-| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; **HC-agent probe with `parser_agent_missing` refusal** (12.7); `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.5) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
+| **CP1** | -- / in-process read | Preflight/health for all three spines: `ParserCore.dll` located and **capability-probed** (same-install co-location + reflective member check, 5.4); `ActiveParser` read and `parser_engine_mismatch` refusal; **HC-agent probe with `parser_agent_missing` refusal logic, shipped with tests; first live caller at CP2** (12.7); `hc` located via `dotnet tool list -g`; `GenerateHCConfig.exe`. **Plus `flextools_grammar_health`** (9.5.5) -- the primary G4 instrument, pure LCM, no parser involved. Delivers standalone value on day one | No |
 | **CP2** | in-process read | **flexicon first** (S9): the read-only `project.Parser` facade plus `Texts.GetGenres()`, lazily imported and capability-probed on flexicon's own side. Then `flextools_try_word` -- `HCParser(cache)`, `ParseWord`, `TraceWordXml`, **all three trace modes of 5.1.1** including the morph-spec -> MSA-HVO resolver mode A needs. **Ships the job runner (5.6)**: states, incremental `run.json`, cancellation, the fast-path window, and `flextools_parse_status`. Ships the `HCParser_DoesNotLoadXCore` standing test; that test **is** the safety story | No |
 | **CP3** | in-process read | G4 instrument 2 (the bounded complete parse); `next_step` routing into the CP1 grammar scan. Instrument 3 only if 9.5.6's seam ever appears. Batch + reporting: `UniqueWordforms()` scoping, run artifacts, `parse_log`, `parse_diff`, G3 batch layer + drill-down. Consumes CP2's runner; adds no second execution model | No |
 | **CP4** | in-process write | `ParseFiler` with stubs + synchronous `UpdateWordforms` + full ladder (12.4), deletion projection **on 12.2's conjunction**, refuse-to-file gate (12.3). Live verification incl. the `MoveConcAnnotationsToWordform` edge case, the 9.3.4 auto-approval (an in-segment analysis survives a filing pass that a bare-noopinion projection would have condemned), and 12.7's HC-agent lazy-creation question. **First write** | **Yes** |

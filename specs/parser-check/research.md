@@ -223,3 +223,220 @@ could sort on as a severity proxy. Counts are per finding and reported as eviden
 
 **Alternative considered.** *A severity enum per finding.* Rejected -- it is a scalar
 score with a small domain, and an implementer would sort by it.
+
+---
+
+## D8. `active_engine` is unconditionally `null` at CP1
+
+**Decision.** In `flextools_health`, `parser.active_engine` is unconditionally
+`null` at CP1. This is asserted by `_build_parser_block()` (T012), which had no
+recorded decision behind it until now.
+
+**Rationale.** It rests on precisely the same premise as `agent_probe: "skipped"`
+(D2): `flextools_health` never opens a project, and `ActiveParser` can only be
+read from an open project (`data-model.md` §`ParserDetector` return shape:
+"`active_engine` is informational only. It never decides a status";
+`contracts/flextools_health-parser-block.md`: "`active_engine` is informational
+only -- it echoes `ActiveParser` when a project is open, else `null`"). There is
+nothing to echo, so `null` is the only truthful value here -- not a placeholder,
+not a TODO.
+
+**`active_engine` is informational only and never a status input.** The
+engine-mismatch gate lives in the per-call preflight (`check_active_parser`,
+T024), not in health. So a `null` here costs no diagnostic power: no status field
+is derived from it, and no client can sort or gate on it either way.
+
+**What it gates.** T012's assertion of `active_engine is null` in
+`_build_parser_block()` previously had no recorded decision behind it. This note
+is that decision.
+
+**When it changes.** At CP2, once a spine-executing handler holds an open
+project, `active_engine` echoes `ActiveParser` (`"XAmple"` | `"HC"`,
+case-sensitive) -- still informational, still never a status input. The `null`
+at CP1 is a consequence of the session-independent boundary, not a permanent
+shape.
+
+---
+
+## D9. The three outstanding 9.5.4 LCM names, gated for T035/T034
+
+**Decision.** All three names D4 left unverified are **confirmed** against this
+project's LibLCM index (`liblcm_api_v11.0.0.json`) and its companion
+`casting_index_liblcm-v11.0.0.json`. Each becomes a **written** sub-check, not a
+`checks_skipped` entry.
+
+| Sub-check | Index evidence | Verdict | Consumer |
+|---|---|---|---|
+| `IMoAffixProcess` (row 5) | Entity present as its own interface (`liblcm_api_v11.0.0.json:94897`), `interfaces: [ICmObject, ICmObjectOrId, IMoAffixForm, IMoForm]`, own properties `FeatureConstraints`, `InputOS` (OS), `OutputOS` (OS). Listed as a `concrete_types` member of every `IMoForm`-based polymorphic collection (`AlternateFormsOS`, `AllomorphsOS`, `FormOS`, `LexemeFormOA`) in the casting index, class-name map `"MoAffixProcess": "IMoAffixProcess"` (casting_index line 301). Reading it from a polymorphic `IMoForm` slot requires `IMoAffixProcess(form)` after an `obj.ClassName` check. | **WRITTEN** | T035 |
+| `IPhMetathesisRule` (row 3, metathesis half) | Entity present (`liblcm_api_v11.0.0.json:108341`), `interfaces: [ICmObject, ICmObjectOrId, IPhSegmentRule]`, own properties `IsMiddleWithLeftSwitch`, `LeftEnvIndex`, `RightEnvIndex`, `StrucChangeOS`, etc. Per the known caveat, `Disabled`, `OrderNumber`, `InitialStratumRA`, `FinalStratumRA` are inherited from base `IPhSegmentRule` and correctly absent from this entity's own `properties` array -- checked directly, not assumed. It is one of the two concrete rule types owned by `IPhPhonData.PhonRulesOS` (`target_type: "IPhSegmentRule"`, `liblcm_api_v11.0.0.json:109579`), and its class-name mapping (`"PhMetathesisRule": "IPhMetathesisRule"`, casting_index line 450) confirms the cast target. Note: `PhonRulesOS` itself is **not** enumerated in the casting index's `polymorphic_collections` table (only `IMoForm`- and `IMoMorphSynAnalysis`-rooted collections are) -- a documentation gap worth flagging separately, not a reason to doubt the entity's existence. | **WRITTEN** | T035 |
+| `ILexEntry.AlternateFormsOS` (row 7, second half) | Declared directly on `ILexEntry` (`liblcm_api_v11.0.0.json:86250`, inside the `ILexEntry` block starting at line 85667), `kind: "OS"`, `relationship: "owns_sequence"`, `target_type: "IMoForm"`, `pythonic_name: "AlternateForms"`. `.Count` is a collection-level read (`ILcmOwningSequence`), so `AlternateFormsOS.Count > 1` needs no per-element cast -- casting only enters if a caller inspects an individual allomorph's concrete type, which row 7 does not require. | **WRITTEN** | T034 |
+
+**Rationale.** All three names resolve to exact-spelling, exact-casing index
+entities with no ambiguity, so none falls back to `checks_skipped` /
+`lcm_name_unverified`. Per the task's own rule that a sub-check is never
+silently dropped either way: had any of the three failed to resolve, this note
+would instead record, per failed sub-check, `checks_skipped` with reason
+`lcm_name_unverified` and name the same downstream consumer (T035 for rows 3/5,
+T034 for row 7) so the consuming task knows to omit rather than guess at that
+row's check.
+
+**`IMoStemAllomorph.StemNameRA` (row 7's first half) is unaffected** -- already
+verified in D4 and not re-litigated here.
+
+---
+
+## D10. `GrammarHealthChecker` is absent from the installed HermitCrab assembly -- the three PanGloss lints defer to CP2
+
+**Decision.** `SIL.Machine.Morphology.HermitCrab.GrammarHealthChecker` does not exist
+in the HermitCrab assembly installed on this machine (`SIL.Machine.Morphology.HermitCrab.dll`,
+assembly version `3.8.2.0`, resolved via `get_resolved_fieldworks_dir()` --
+`versioning.py:204` -- to `C:\Program Files\SIL\FieldWorks 9\`). The three
+PanGloss-ported lints -- `hc-undeclared-segment`, `hc-duplicate-feature-bundle`,
+`hc-partial-morpheme` -- do **not** come free and **defer to CP2**.
+
+**Rationale.** Probed by reflection only, following `parser_probe.py`'s own
+`Assembly.LoadFile` + `GetTypes()`/`GetMembers()` idiom (T009), reused rather than
+duplicated. Nothing was instantiated, no grammar was loaded, no parser was
+constructed -- consistent with this module's own CP1-boundary note that T026 asserts
+no `HCParser(` construction anywhere under `src/flextoolsmcp/server/**`.
+
+A bare `Assembly.LoadFile("SIL.Machine.Morphology.HermitCrab.dll")` followed by
+`GetTypes()` throws `System.Reflection.ReflectionTypeLoadException` on this machine --
+the same failure mode `probe_parser_core(HCPARSER_MEMBERS)` itself hits for
+`ParserCore.dll` here (independently reproduced: both return `signal="load_failed"`
+with an identical exception shape). `LoaderExceptions` name the cause:
+`Assembly.LoadFile` does not probe the loaded file's own directory for dependencies
+on this .NET Framework runtime (confirmed by the CLR's Fusion-log warning in the
+exception trace), so the CLR could not resolve `SIL.Machine, Version=3.8.2.0` or
+`SIL.Core, Version=17.0.0.0` even though both DLLs sit next to the target assembly.
+Pre-loading `SIL.Core.dll` (found on disk as `18.0.0.0`) and `SIL.Machine.dll`
+(`3.8.2.0`) from the same directory via `Assembly.LoadFile` before loading the
+HermitCrab assembly resolved this: `GetTypes()` then returned all 195 types with no
+partial-load exception, i.e. a complete, unambiguous type table -- not merely a
+partial scan that might be hiding the target behind another failed dependency.
+
+**Evidence.** Scanning the full, successfully-resolved 195-type table: no type named
+`GrammarHealthChecker` exists, and no type whose name contains `Grammar`, `Checker`,
+or `Health` exists anywhere in the assembly. This is a stronger finding than "present
+but not public" -- the type is absent outright from the assembly whose namespace
+(`SIL.Machine.Morphology.HermitCrab`) is exactly where PanGloss's grammar-health
+checks would be expected to live. A secondary check of the sibling `SIL.Machine.dll`
+(28 MB, evidently bundling further third-party dependencies) for the same exact type
+name could not be completed -- its own `GetTypes()` call throws past what pre-loading
+`SIL.Core.dll`/`SIL.Machine.dll` alone resolves -- so that assembly's absence is not
+independently confirmed, only the HermitCrab-specific one is. Given the
+fully-qualified name at stake names the HermitCrab assembly specifically, this is
+treated as sufficient rather than pursued further.
+
+**Consequence for the plan.** This confirms rather than overrides the task brief's
+strong prior: CP1's grammar health scan stays pure LCM (D1), executed in the
+generated-module subprocess, and touches no HermitCrab type. The three lints do not
+fold into T034/T035's scope at CP1 -- there is no free capability to fold in, since
+the type does not exist on this installed toolchain at all. Independent of that
+absence, folding them in would still couple CP1's LCM-only scan to the HermitCrab
+assembly and cross the CP1 boundary D1 establishes, so the deferral to CP2 holds even
+under a future SIL.Machine/HermitCrab release that adds this type.
+
+**Undetermined, not asserted, for other installs.** This verdict is scoped to the
+DLL version installed on this machine (HermitCrab `3.8.2.0`). No claim is made about
+any other FieldWorks/SIL.Machine version; a future CP2 task revisiting this should
+re-probe rather than assume this note still holds.
+
+---
+
+## D11. The generated-module subprocess CAN import `flextoolsmcp.server.scan.*` directly -- D1's "covered by the existing preflight/casting validators" claim is corrected
+
+**Decision.** Import works. `handle_run_module`'s subprocess is a plain CPython
+process running `sys.executable` -- the exact same interpreter that runs the MCP
+server itself, not IronPython and not a sandboxed environment. `import
+flextoolsmcp.server.scan.<anything>` succeeds in it, unconditionally, with no
+extra `PYTHONPATH`/`env` wiring needed. T030 should build the **import path**,
+not the splice path: a new, minimal script template that imports the scan
+module by name and returns findings via `report.Result(...)`, read back through
+the `===FLEXTOOLS_USER_RESULT===` sentinel -- exactly the mechanism the task
+brief names as preferred.
+
+**This verdict comes from an executed probe, not a code-read.** Code-reading
+supplied the hypothesis; the probe is what confirms it. Two things were run:
+
+1. `run_script_async` (`src/flextoolsmcp/server/subprocess_helpers.py:56-95`)
+   launches the child via `asyncio.create_subprocess_exec(sys.executable,
+   script_path, ...)`. Both of its two call sites in `execution.py` (lines 4452
+   and 4458, inside `handle_run_module`) pass no `env=` kwarg, so `env=None`
+   flows through to `create_subprocess_exec`, meaning the child inherits this
+   process's environment verbatim -- no explicit `PYTHONPATH` is ever set for
+   it anywhere in the file.
+2. A scratch probe (kept out of the repo, in the session scratchpad, deleted
+   after the run) reproduced `run_script_async` line-for-line -- same
+   `sys.executable`, same `env=None`, same `asyncio.create_subprocess_exec`
+   shape -- and pointed it at a temp script containing only:
+   `import flextoolsmcp.server.scan as scan_pkg`, then printing
+   `===FLEXTOOLS_USER_RESULT===` followed by a JSON blob (mirroring
+   `SimpleReporter.Result`, `execution.py:3871-3888`), then
+   `===FLEXTOOLS_RESULT_JSON===`. Run twice, once from the repo root and once
+   from an unrelated directory (`D:\tmp`) to rule out a cwd-dependent result.
+   Both runs: `returncode 0`, empty stderr, stdout
+   `{"imported_from": "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src\\flextoolsmcp\\server\\scan\\__init__.py", "ok": true}`
+   between the two sentinels, and the sentinel-parsing logic copied from
+   `execution.py:4481-4490` round-tripped it back into a dict successfully.
+
+**Why the import is available with no extra wiring.** `python -c "import
+sys; print(sys.executable)"` in this environment resolves to
+`D:\Apps\anaconda3\python.exe`. `pip show` reports no top-level `flextoolsmcp`
+metadata, but `D:\Apps\anaconda3\Lib\site-packages\__editable__.flextools_mcp-2.11.0.pth`
+exists and contains exactly one line: `D:\Github\_Projects\_LEX\FlexToolsMCP\src`.
+That `.pth` is processed by every fresh CPython process started with this same
+`python.exe` -- including a subprocess spawned via `sys.executable`, regardless
+of the parent's in-memory `sys.path` or working directory -- which is exactly
+why the cwd-independence check above matters: it rules out the alternative
+explanation that the import only "worked" because the probe happened to run
+from inside the repo. `flextoolsmcp.server.scan.__init__` (landed as T001,
+confirmed present at `src/flextoolsmcp/server/scan/__init__.py`) is therefore on
+`sys.path` in the generated-module subprocess by construction, for any
+deployment where `flextoolsmcp` is installed (editable or not) into the same
+interpreter that runs the MCP server -- which every real deployment is, since
+`run_script_async` always uses `sys.executable`, never a hardcoded or
+externally-configured interpreter path.
+
+**D1 correction.** D1 (`research.md:13-45`) states: "The scan's checks are
+authored as a module the harness runs, so they are covered by the existing
+preflight/casting validators." That is **not achievable as scoped** and is
+corrected here rather than reworded in place (D1 is left untouched per the
+append-only rule). `handle_run_module`'s preflight/casting gates (the AST-parse,
+casting-injection, and CUD-detection chain) run exclusively over the
+caller-supplied `code` **string** that gets spliced into `MODULE_CODE = {code}`
+(`execution.py:4181`) -- there is no code path by which a module already living
+on disk at `server/scan/grammar_scan_module.py` and merely `import`-ed ever
+passes through that string-based validator chain. What actually covers
+`grammar_scan_module.py` is what covers every other first-party file under
+`src/`: the repo's own test suite and lint, not the runtime validators built for
+LLM-generated `code` text. T019/T034/T035 should not expect casting-preflight
+protection on that module and must get their own casting correctness from
+tests, the same way any other hand-written file in this codebase does.
+
+**Consequence for the plan / what T030 must build.** T030 builds a new, small
+script-template function alongside (not inside) `handle_run_module` in
+`src/flextoolsmcp/server/handlers/execution.py`. It reuses the pieces that
+generalize -- `SimpleReporter` (`execution.py:3767+`) for `report.Result(...)`,
+the `OpenProject(...)` call needed to hand the scan module a live `project`
+handle, `run_script_async` for the launch, and the existing
+`===FLEXTOOLS_USER_RESULT===` / `===FLEXTOOLS_RESULT_JSON===` sentinel-pair
+convention for the return channel (same sentinels, same parsing logic,
+`execution.py:4481-4490`) -- but its "module code" is a fixed, literal one-liner
+import (`from flextoolsmcp.server.scan.grammar_scan_module import
+run_grammar_scan` or equivalent) followed by `report.Result(run_grammar_scan(project))`,
+never caller-supplied text, so none of the AST-parse/casting-injection/CUD
+preflight chain applies or is needed.
+
+**T030 is NOT forced to refactor `handle_run_module`.** The import path needs
+none of that function's ~1800 lines (write-lock negotiation, backup, casting
+injection, size-oscillation detection all exist to make arbitrary LLM-authored
+`code` text safe to run; a fixed first-party import has none of that risk
+surface). T030 adds a parallel, much smaller function and wires a new handler
+(T020) to it; `handle_run_module` itself is untouched.
+
+**Scope note.** This probe deliberately opened no FieldWorks project (CP1
+boundary): it only proves the import/sentinel seam in isolation. Confirming
+that `report.Result(...)` still round-trips correctly with a *real* open
+project and a *real* `grammar_scan_module.run_grammar_scan(project)` return
+value is T019/T030's job, not this task's.

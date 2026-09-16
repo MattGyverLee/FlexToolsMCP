@@ -9,7 +9,7 @@ and IDE autocomplete support.
 """
 
 from typing import Optional, Literal, Any, List
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .constants import API_MODES, API_MODES_DEFAULT, normalize_api_mode
 
 # Ensure API mode constants match Literal types
@@ -555,3 +555,63 @@ class FlexToolsHealthInput(BaseModel):
                     "telemetry JSONL. Slower (probes imports and reads a log file); "
                     "leave false for a quick check."
     )
+
+
+# ============================================================
+# Grammar health tool (parser-check CP1)
+# ============================================================
+
+class GrammarHealthInput(BaseModel):
+    """Pure-LCM static scan for path-multiplying grammar properties (SPEC 9.5.5).
+
+    Read-only. No parse, no export, no subprocess to `hc`, no `HCParser`.
+    See contracts/flextools_grammar_health.md.
+    """
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project. Uses session value if set by start()."
+    )
+    checks: Optional[List[str]] = Field(
+        default=None,
+        description="Restrict to named check_ids. None (default) runs all implemented checks."
+    )
+    limit: int = Field(
+        default=20,
+        description="Per-check cap on objects[]. SPEC S7: responses summarise, "
+                    "never inline the full set."
+    )
+
+
+class FoundObject(BaseModel):
+    """One object surfaced by a grammar health check (data-model.md `FoundObject`).
+
+    Closed model (extra="forbid") -- see data-model.md's "Validation rules":
+    error/finding detail models use extra="forbid" so a typo'd field fails
+    loudly rather than silently vanishing. Here it also closes the objects[]
+    nesting level against a smuggled severity proxy (score/grade/rank/etc.),
+    which is the whole reason this type exists as its own model rather than
+    an open dict.
+    """
+    model_config = ConfigDict(extra="forbid")
+    hvo: int
+    class_name: str
+    label: str
+    goto_url: Optional[str] = None
+
+
+class GrammarHealthFinding(BaseModel):
+    """One suspect from the static grammar scan (data-model.md `GrammarFinding`).
+
+    Closed model (extra="forbid"), exactly six fields. Deliberately has no
+    `severity`, `score`, `grade`, `rank`, or `priority` (D7, SPEC 9.5.3):
+    findings are grouped by check_id and never ordered by count. `count` is
+    evidence -- how many objects tripped the check -- never a total to sum
+    across findings.
+    """
+    model_config = ConfigDict(extra="forbid")
+    check_id: str
+    spec_row: Optional[int] = None
+    count: int
+    measured: str
+    evidence_basis: Optional[str] = None
+    objects: List[FoundObject] = Field(default_factory=list)

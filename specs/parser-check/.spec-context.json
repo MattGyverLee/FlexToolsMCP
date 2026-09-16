@@ -116,6 +116,189 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-16T07:40:13.432Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-16T08:12:21.003Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:17:14.470Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:25:29.023Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:30:43.468Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:31:46.509Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:34:53.056Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:35:05.697Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:36:48.385Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:37:03.090Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:38:24.578Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:40:51.189Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:41:17.422Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:43:09.693Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:45:23.209Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:45:44.745Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:52:40.438Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:55:25.759Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T08:56:40.753Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T09:04:44.759Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T09:09:58.337Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T09:11:50.461Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T09:20:05.739Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-16T09:22:13.488Z"
     }
   ],
   "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c",
@@ -140,6 +323,11 @@
       "decision": "SPEC 9.5.4 row 8 mapping is refuted and needs correction: rule ordering is not a property of IMoStratum",
       "why": "IMoStratum exposes exactly four own properties (Abbreviation, Description, Name, PhonemesRA) and no rule collection. Order lives on the rule: IPhSegmentRule.OrderNumber with InitialStratumRA/FinalStratumRA pointing rule->stratum. Also found: IPhSegmentRule.Disabled must gate every rule-based check, and IMoForm.IsComplete is a better row-6 predicate.",
       "rejected": "Writing row 8 as specified, which would look for a collection that does not exist"
+    },
+    {
+      "decision": "Row 1 measured wording in contracts/flextools_grammar_health.md changed from \"3 allomorphs with an empty surface form are reachable from an optional slot\" to \"3 allomorphs have an empty surface form\", with a note explaining the CP1/CP2 split.",
+      "why": "T033 found the contract example claimed slot-conditioning that CP1 does not measure -- the slot-reachability walk is deferred behind a known flexicon read gap (research D5/S9). Leaving it would have made the contract example itself violate T034s constraint that measured wording must not claim slot-conditioning, and would likely have failed T014s factual-phrasing assertion.",
+      "rejected": "Leaving the contract example alone and letting T034 diverge from it, which would have made the contract untrustworthy as the assertion target."
     }
   ],
   "step_summaries": {
@@ -266,7 +454,7 @@
       ]
     }
   },
-  "currentTask": "T006",
+  "currentTask": "T034",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -309,6 +497,182 @@
       "files": [
         "tests/test_parser_error_models.py"
       ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "Appended research D8 recording why parser.active_engine is unconditionally null at CP1 (same premise as agent_probe skipped, D2); gates T012's assertion",
+      "files": [
+        "specs/parser-check/research.md"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "37 health parser-block tests (two-state spines, no blanking, agent_probe skipped never a pass, active_engine never decides status, next_step names no nonexistent tool) + Windows/FieldWorks integration test; RED until T012/T013 land",
+      "files": [
+        "tests/test_parser_health_block.py"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "7 test classes for ParserCore probe: foreign_install, incompatible_surface with missing_members, version-floor regression guard (detected_version reported never compared), load_failed with load_error, and CP1 no-LcmCache/no-grammar boundary; RED until T009 lands",
+      "files": [
+        "tests/test_parser_probe.py"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "SPEC 9.5.4 four corrections: row 8 OrderNumber/stratum-pair grouping (IMoStratum has no rule collection), stale verification note rewritten (8 rows verified, 3 outstanding), OrderNumber per-pair comparability caveat added, SPEC 15 CP1 row reworded to 'refusal logic, shipped with tests; first live caller at CP2'",
+      "files": [
+        "specs/parser-check/SPEC.md"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Verified all three outstanding LCM names against liblcm_api_v11.0.0 index: IMoAffixProcess, IPhMetathesisRule and ILexEntry.AlternateFormsOS all CONFIRMED -- all three become written checks, no checks_skipped/lcm_name_unverified entry arises; recorded as research D9",
+      "files": [
+        "specs/parser-check/research.md",
+        "specs/parser-check/reviews/cycle10-domain-t016.md"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "New parser_probe.py: ProbeResult, same-install check via get_resolved_fieldworks_dir() locating ParserCore.dll, reflective member probe (positional binding), Assembly.LoadFile throw mapped to load_failed; no detected_version comparison. T007 0->15/15 passing, suite 1437->1452, no regressions",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "19 per-check unit tests (RED by design) against T002 stubs: row 1 zero-surface IMoForm incl. the '***' direct-LCM-read regression guard and unconditional-on-slot-reachability assertion, row 10 IMoInflAffixSlot.Optional with negative ICmPossibility cast guard, exclude_disabled_rules gate, and the lcm_name_unverified checks_skipped mechanism",
+      "files": [
+        "tests/test_grammar_scan_checks.py"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "CP1 scan implementation table in data-model.md: rows 1-10 per-row LCM predicates with cast_example guidance verified against the casting index, plus the five cross-cutting notes (form in (None,'','***') emptiness with no Flexicon normalization, OrderNumber stratum-pair-only comparability, gated sub-checks + lcm_name_unverified fallback, IPhSegmentRule base-declaration index trap, IMoInflAffixSlot is not ICmPossibility)",
+      "files": [
+        "specs/parser-check/data-model.md"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "20 engine-gate tests (RED until T024) asserting through validate_detail(): XAmple raises parser_engine_mismatch with configured_engine/supported_engines/hint and no parse attempted, case-sensitive closed set {XAmple,HC}, corrupt ParserParameters XML fails safe to XAmple and refuses (never silently HC), ActiveParser re-read live per call and never session-cached",
+      "files": [
+        "tests/test_parser_engine_gate.py"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "74 response-contract tests (23 green against the contract doc, 51 RED pending T017/T019/T020): recursive no-severity-proxy walk at every nesting level, structural closure via extra=forbid key allowlists on GrammarHealthFinding and FoundObject, order-invariance under permuted count magnitudes, no-verdict-wording denylist plus positive factual measured phrasing, and the SPEC 3.1 no-IWfiAnalysis/no-HCParser/no-LcmCache boundary",
+      "files": [
+        "tests/test_grammar_health.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Reflection-only probe of installed SIL.Machine.Morphology.HermitCrab.dll v3.8.2.0: GrammarHealthChecker ABSENT (full 195-type scan, no name or substring match). The three PanGloss-ported lints defer to CP2; nothing folds into T034/T035. Recorded as research D10; no type instantiated, no probe script left in the repo",
+      "files": [
+        "specs/parser-check/research.md"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "17 agent-probe tests (RED until T025): no KeyNotFoundException escape using a real CLR exception via mscorlib, full parser_agent_missing payload through validate_detail(), read-spine independence enforced by a spy asserting probe_hc_agent never calls probe_parser_core, and five tests that skipped can never be flattened into a pass (incl. the result carrying no .ok attribute at all)",
+      "files": [
+        "tests/test_parser_agent_probe.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "hc discovery as a dotnet global tool (PATH / dotnet tool list -g / HC_TOOL_PATH override) bounded by HC_DISCOVERY_TIMEOUT_SECONDS=5.0 with a distinct timeout signal so a hanging dotnet call never blocks the health response (SPEC open question 8); GenerateHCConfig.exe via filesystem lookup in the resolved FieldWorks dir. T007 stays 15/15",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "DECISION (executed probe, not a code-read): generated-module subprocess is plain CPython via sys.executable with env=None, so import flextoolsmcp.server.scan.* succeeds unconditionally -- T030 builds the preferred import template returning findings via report.Result() through the ===FLEXTOOLS_USER_RESULT=== sentinel, no handle_run_module refactor forced. Corrects research D1's unachievable 'covered by the existing preflight/casting validators' claim. Recorded as D11",
+      "files": [
+        "specs/parser-check/research.md"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Added GrammarHealthInput (project_name/checks/limit=20), FoundObject and GrammarHealthFinding to models.py, both output models closed with ConfigDict(extra=forbid) and exact key sets so T014's structural-closure assertion holds at every nesting level. test_grammar_health.py 23 passed/51 failed -> 60 passed/14 failed",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Registered flextools_grammar_health in tool_definitions.py with READ_ONLY_SAFE annotation and GrammarHealthInput schema; main session added the name to EXPECTED_TOOL_NAMES and READ_ONLY_TOOLS in tests/test_mcp_tools.py so the derived tool-count and readOnlyHint assertions cover it (30/30 passing)",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py",
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Subprocess scan seam (_build_scan_script + async run_scan_module) added alongside handle_run_module in execution.py per T029's import verdict: imports the scan module normally and reads findings back through the existing ===FLEXTOOLS_USER_RESULT=== sentinel via run_script_async. handle_run_module untouched. End-to-end launch verified plus all six result branches, incl. 'scan never ran' distinguished from 'no findings'",
+      "files": [
+        "src/flextoolsmcp/server/handlers/execution.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "ParserDetector aggregate composing T009's probe_parser_core and T010's discover_hc_tool/discover_generate_hc_config, plus SandboxProbe/AgentProbeState/ParserVersions and a probe_hc_agent() stub for T025. read/write/sandbox probes each computed independently under _safe_probe so no dead spine blanks another; agent_probe unconditionally skipped and active_engine unconditionally None per D2/D8; versions reported verbatim with no comparisons. T007 stays 15/15, pyright clean",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "check_active_parser(project, supported_engines) + ParserEngineMismatchError in parser_probe.py: live re-read per call with no caching, case-sensitive closed set {XAmple,HC}, and corrupt ParserParameters XML failing safe to XAmple so it refuses rather than silently proceeding as HC. Deliberately wired into no handler (first live caller at CP2). test_parser_engine_gate.py 4/20 -> 20/20",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "Created scan/grammar_scan_module.py: phonology rows 2 (IPhPhoneme.CodesOS), 4 (IPhIterationContext.Maximum == -1) and 9 (IPhPhoneme.FeaturesOA), plus shared helpers exclude_disabled_rules/skipped_check/is_empty_form for T034/T035, behind a fixed-order run_grammar_scan(project) entry point returning findings via report.Result(). No severity field at any level; row order fixed at authoring time, never count-sorted. Combined grammar tests 33 failed/60 passed -> 20 failed/73 passed",
+      "files": [
+        "src/flextoolsmcp/server/scan/grammar_scan_module.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "probe_hc_agent + AgentProbeState/AgentProbeResult split in parser_probe.py: resolves kguidAgentHermitCrabParser from ICmAgentRepository, catches KeyNotFoundException and maps it to parser_agent_missing with probe_source bootstrap_absent|lookup_failed. Modelled separately from ProbeResult so skipped can never flatten into ok=True (result carries no .ok). Independent of probe_parser_core (spy test passes). Wired into no handler. test_parser_agent_probe.py 17 failing -> 16 passed + 1 skipped",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "Morphology rows 1, 6, 7a, 7b, 10 in grammar_scan_module.py: row 1 zero-surface IMoForm counted unconditionally via form in (None,'','***') with measured wording claiming no slot-conditioning, row 6 IMoForm.IsComplete, row 7a IMoStemAllomorph.StemNameRA, row 7b ILexEntry.AlternateFormsOS.Count>1 written as a real check per D9 (not skipped), row 10 IMoInflAffixSlot.Optional with no ICmPossibility cast. Combined grammar tests 20 failed/73 passed -> 11 failed/82 passed",
+      "files": [
+        "src/flextoolsmcp/server/scan/grammar_scan_module.py"
+      ]
     }
-  }
+  },
+  "concerns": [
+    {
+      "note": "lex-domain agent type is read-only (Read/Grep/Glob/WebFetch) and cannot write files; T016 was dispatched to it as a file-writing task. It returned the verdict text and the main session performed the append. Future research-chain tasks that must WRITE should go to lex-doc or lex-programmer, or lex-domain should be paired with a writer.",
+      "step": "implement"
+    },
+    {
+      "note": "T018 (haiku) reported the test_mcp_tools tool-count failure as needing an update but did not apply it, leaving the suite red. Main session added flextools_grammar_health to EXPECTED_TOOL_NAMES and READ_ONLY_TOOLS. Small registration tasks on a fast model still need an explicit instruction to FIX derived-count tests, not just report them.",
+      "step": "implement"
+    }
+  ],
+  "verified": [
+    {
+      "what": "T023/T025 agent-probe case-sensitivity was silently skipped, not asserted",
+      "command": "python -m pytest tests/test_parser_agent_probe.py -q -rs",
+      "result": "Replaced the Enum-shaped self-skipping test with a real assertion through validate_detail(); 17 passed, 0 skipped",
+      "warnings": [
+        "AgentProbeState is a typing.Literal, not an Enum -- a defensible choice matching the feature other closed vocabularies, so the implementation was left alone and the test was corrected instead"
+      ]
+    }
+  ]
 }

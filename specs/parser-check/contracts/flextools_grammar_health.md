@@ -34,7 +34,7 @@ cheapest thing in the feature.
       "check_id": "zero-surface-morph-repeatable",
       "spec_row": 1,
       "count": 3,
-      "measured": "3 allomorphs with an empty surface form are reachable from an optional slot",
+      "measured": "3 allomorphs have an empty surface form",
       "evidence_basis": "PanGloss measured 425x on one five-word slice",
       "objects": [
         {"hvo": 12345, "class_name": "MoStemAllomorph", "label": "-", "goto_url": "silfw://..."}
@@ -44,6 +44,14 @@ cheapest thing in the feature.
   "next_step": null
 }
 ```
+
+**Row 1's `measured` wording is deliberately unconditional at CP1.** An earlier
+draft of this example read "are reachable from an optional slot", which CP1 does
+not measure: the slot-reachability walk (slot -> `Affixes` -> MSA -> owning entry
+-> `AlternateFormsOS`) is deferred, because the allomorph -> owning-entry hop is a
+known flexicon read gap (research D5, tasked flexicon-first under S9). CP1 counts
+every zero-surface `IMoForm` regardless of position, so `measured` must not claim
+slot-conditioning until that walk lands. The conditioned phrasing returns at CP2.
 
 ### Forbidden in the response
 

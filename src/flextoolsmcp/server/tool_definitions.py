@@ -42,6 +42,7 @@ from .models import (
     ListSkeletonsInput,
     PrepareReportInput,
     FlexToolsHealthInput,
+    GrammarHealthInput,
 )
 
 
@@ -417,6 +418,27 @@ Pass verbose=True to add: project lock status for the session's project,
 whether FLExInitialize/pythonnet are importable, and the last 5 operation
 outcomes from the telemetry log.""",
         input_model=FlexToolsHealthInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_grammar_health": ToolDef(
+        name="flextools_grammar_health",
+        description="""[GRAMMAR CHECK] Scan grammar for path-multiplying properties -- static LCM analysis.
+
+Pure-LCM scan for properties that multiply phonological search paths (SPEC 9.5.4).
+The primary G4 instrument: analyzes grammar objects in isolation with no parse, no
+export, and no subprocess overhead. Project is opened read-only.
+
+REPORTS suspects by check (zero-surface morphs, duplicate feature bundles, optional
+template slots, etc.), capped at limit per check (default 20). Each suspect is
+reported with its count and a sample of affected objects (hvo, class_name, label,
+goto_url). **No scoring, no severity, no verdict wording** -- only fact-based counts
+and measurements.
+
+Optional filters: restrict to named checks (null runs all), or use a different
+project. Returns findings[] ordered by measured yield (fixed per SPEC 9.5.4),
+plus a checks_skipped list for any checks whose LCM properties are not yet verified.""",
+        input_model=GrammarHealthInput,
         annotations=READ_ONLY_SAFE,
     ),
 

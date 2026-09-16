@@ -15,7 +15,9 @@
       "Bash(gh label *)",
       "Bash(mkdir -p \"d:/tmp/issues\")",
       "Bash(pytest *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Read(//d/Github/_Projects/_LEX/machine/src/SIL.Machine.Morphology.HermitCrab.Tool/**)",
+      "Read(//d/Github/_Projects/_LEX/FieldWorks/Src/LexText/ParserCore/**)"
     ],
     "additionalDirectories": [
       "D:\\Github\\_Projects\\_LEX\\FlexToolsMCP\\src",

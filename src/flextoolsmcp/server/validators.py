@@ -258,11 +258,19 @@ def validate_server_state() -> dict:
             "Pattern tracker not initialized (pattern analysis will be unavailable)"
         ))
 
-    # Issue #57 (C): surface stale lock warnings detected at startup.
-    # The api_index stores them as startup_lock_warnings (set in server.main()).
-    startup_lock_warnings = getattr(api_index, "startup_lock_warnings", [])
-    for lock_msg in startup_lock_warnings:
-        issues.append(("warning", lock_msg))
+    # Issue #145: dropped the startup-lock-warnings block that used to live
+    # here (it replayed the frozen api_index.startup_lock_warnings snapshot,
+    # same as the flextools_health bug). validate_server_state() is a
+    # preflight check of the server's own module/state initialization, run
+    # on every code execution, not a lock diagnostic -- re-sweeping the
+    # filesystem here on every run would add cost with no corresponding
+    # value, since lock warnings are non-fatal (they don't affect
+    # is_healthy) and stale locks are irrelevant to whether the server's
+    # own state is ready to execute code. flextools_health (see
+    # server/handlers/diagnostic_health.py) is the single, always-fresh
+    # source of truth for lock warnings; keeping only one caller of
+    # sweep_stale_locks() in the response path means the two can no longer
+    # disagree.
 
     return {
         "is_healthy": len([i for i in issues if i[0] == "error"]) == 0,

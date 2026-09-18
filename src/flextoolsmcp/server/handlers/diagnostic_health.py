@@ -16,7 +16,9 @@ COMPOSITION of existing detectors -- it introduces no new detection logic:
   the directory-mtime cache key in versioning.py)
 - get_index_dir() / get_log_dir() for filesystem locations
 - session_state for the current session snapshot
-- sweep_stale_locks() (already collected at startup) for lock warnings
+- sweep_stale_locks() (server/project_discovery.py), re-invoked on every
+  call (issue #145) rather than replaying the startup snapshot, for lock
+  warnings
 - op_telemetry's JSONL loader for the last-5-operations verbose block
 """
 
@@ -72,6 +74,11 @@ try:
     from ..project_access import probe_project_access
 except (ImportError, ValueError):
     from server.project_access import probe_project_access
+
+try:
+    from ..project_discovery import sweep_stale_locks
+except (ImportError, ValueError):
+    from server.project_discovery import sweep_stale_locks
 
 try:
     from . import op_telemetry
@@ -240,9 +247,12 @@ def _build_warnings(libraries: Dict[str, Dict[str, Any]]) -> List[str]:
                 f"{status['index_loaded'] or '?'} (stale). Run refresh with "
                 f"'python -m flextoolsmcp.refresh'."
             )
-    api_index = get_api_index()
-    if api_index is not None:
-        warnings.extend(getattr(api_index, "startup_lock_warnings", []) or [])
+    # Issue #145: re-scan for stale locks on every call instead of replaying
+    # the startup snapshot -- a lock held at server startup may have been
+    # released since (or a new one taken) by the time flextools_health runs.
+    # Not once-per-process gated: health is explicitly diagnostic, so it
+    # always reports current state.
+    warnings.extend(sweep_stale_locks())
 
     # "Why is the assistant behaving oddly?" is exactly what this tool is for,
     # and a checkout-as-workspace is one answer. Not once-per-process gated:

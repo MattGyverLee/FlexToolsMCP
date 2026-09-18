@@ -507,9 +507,6 @@ class APIIndex:
     flexicon_version: str | None = None
     flexlibs_stable_version: str | None = None
 
-    # Stale lock warnings detected at startup (surfaced by flextools_health)
-    startup_lock_warnings: list = field(default_factory=list)
-
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
         """Load API indexes at startup.
@@ -1046,8 +1043,11 @@ async def main():
     else:
         from server.project_discovery import sweep_stale_locks
     _stale_lock_warnings = sweep_stale_locks()
-    # Store on api_index so flextools_health can surface them without re-scanning.
-    api_index.startup_lock_warnings = _stale_lock_warnings
+    # Issue #145: no longer stored on api_index -- flextools_health now calls
+    # sweep_stale_locks() itself on every invocation so it always reflects
+    # current state (a lock present/absent at startup can change well before
+    # the next health check). This call remains only for the boot-time
+    # WARNING log lines below (issue #57 (C) intent).
     if _stale_lock_warnings:
         for _w in _stale_lock_warnings:
             _log_warning(_w)

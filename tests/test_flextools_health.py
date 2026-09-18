@@ -376,6 +376,87 @@ class TestHandleFlexToolsHealth:
         assert "recent_operations" in data["verbose"]
 
 
+# ---------------------------------------------------------------------------
+# Issue #145: flextools_health must re-scan for stale locks on every call,
+# not replay a frozen startup snapshot.
+# ---------------------------------------------------------------------------
+
+class TestLockWarningFreshness:
+    def _run(self, args, index_dir):
+        import server.handlers.diagnostic_health as dh
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(dh, "get_index_dir", lambda: index_dir)
+            mp.setattr(dh, "detect_installed_library_version", lambda *a, **kw: None)
+            result = asyncio.run(dh.handle_flextools_health(args))
+        return json.loads(result[0].text)
+
+    def _make_project(self, projects_dir, project_name, with_lock=False):
+        proj_dir = projects_dir / project_name
+        proj_dir.mkdir(parents=True, exist_ok=True)
+        (proj_dir / f"{project_name}.fwdata").write_text("", encoding="utf-8")
+        if with_lock:
+            (proj_dir / f"{project_name}.fwdata.lock").write_text("", encoding="utf-8")
+        return proj_dir
+
+    def test_lock_appearing_after_startup_is_reported(self, tmp_path, monkeypatch):
+        """A lock file that shows up only AFTER the (simulated) startup sweep
+        must still be reported by a later flextools_health call -- proving
+        the tool re-scans instead of replaying a frozen snapshot."""
+        projects_dir = tmp_path / "projects"
+        index_dir = tmp_path / "index"
+        monkeypatch.setenv("FW_PROJECTS_DIR", str(projects_dir))
+        self._make_project(projects_dir, "LateLock", with_lock=False)
+
+        # Simulate the startup sweep finding nothing (no lock exists yet).
+        from server.project_discovery import sweep_stale_locks
+        assert sweep_stale_locks() == []
+
+        # Lock appears after "startup".
+        (projects_dir / "LateLock" / "LateLock.fwdata.lock").write_text("", encoding="utf-8")
+
+        data = self._run({"verbose": False}, index_dir)
+        assert any("LateLock" in w for w in data["warnings"]), (
+            f"Expected a warning about the post-startup lock, got: {data['warnings']}"
+        )
+
+    def test_lock_removed_after_startup_is_not_reported(self, tmp_path, monkeypatch):
+        """A lock file present at (simulated) startup but released before the
+        health check must NOT be reported -- proving the tool doesn't replay
+        a stale positive from a frozen snapshot."""
+        projects_dir = tmp_path / "projects"
+        index_dir = tmp_path / "index"
+        monkeypatch.setenv("FW_PROJECTS_DIR", str(projects_dir))
+        self._make_project(projects_dir, "ReleasedLock", with_lock=True)
+
+        # Simulate the startup sweep finding the lock.
+        from server.project_discovery import sweep_stale_locks
+        startup_warnings = sweep_stale_locks()
+        assert any("ReleasedLock" in w for w in startup_warnings)
+
+        # Lock is released before the health check runs.
+        (projects_dir / "ReleasedLock" / "ReleasedLock.fwdata.lock").unlink()
+
+        data = self._run({"verbose": False}, index_dir)
+        assert not any("ReleasedLock" in w for w in data["warnings"]), (
+            f"Stale (released) lock should not be reported, got: {data['warnings']}"
+        )
+
+    def test_validate_server_state_does_not_duplicate_lock_warnings(self, tmp_path, monkeypatch):
+        """validators.validate_server_state() must not surface its own
+        (potentially frozen) copy of lock warnings -- flextools_health is the
+        single source of truth, so the two paths can't disagree."""
+        projects_dir = tmp_path / "projects"
+        monkeypatch.setenv("FW_PROJECTS_DIR", str(projects_dir))
+        self._make_project(projects_dir, "DualPathLock", with_lock=True)
+
+        from server.validators import validate_server_state
+        result = validate_server_state()
+        lock_issues = [msg for _sev, msg in result["issues"] if "DualPathLock" in msg]
+        assert lock_issues == [], (
+            f"validate_server_state() should not emit lock warnings, got: {lock_issues}"
+        )
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))

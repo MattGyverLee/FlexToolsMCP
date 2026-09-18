@@ -1,0 +1,183 @@
+{
+  "workflow": "companion",
+  "specName": "parser-check-cp2",
+  "branch": "parser-check-cp2",
+  "selectedAt": "2026-09-18T18:25:57.391Z",
+  "currentStep": "specify",
+  "status": "specified",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-18T18:28:12.725Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-18T18:34:11.205Z"
+    }
+  ],
+  "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
+  "coverage": {
+    "FR-001": {
+      "title": "The project object available to generated scripts MUST expose a read-only parser area alongside its existing areas, offering: a plain parse of a word, a parse returning the parser'"
+    },
+    "FR-002": {
+      "title": "The parser area MUST NOT expose any way to record, file or otherwise write parse results. The absence MUST be stated where a future contributor will read it, because the read-only"
+    },
+    "FR-003": {
+      "title": "Loading the parser component MUST be triggered by use, never by import, so that a future installation that renames or relocates it degrades to \"parser unavailable\" instead of break"
+    },
+    "FR-004": {
+      "title": "Before use, the system MUST verify that the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise."
+    },
+    "FR-005": {
+      "title": "Before use, the system MUST verify by inspection that every operation it intends to call exists, and MUST bind those operations positionally rather than by parameter name."
+    },
+    "FR-006": {
+      "title": "The detected parser version MUST be reported and MUST NOT be compared against any minimum. A standing test MUST guard this in each repository that probes."
+    },
+    "FR-007": {
+      "title": "Scripts MUST be able to read all genres assigned to a text, not only the first."
+    },
+    "FR-008": {
+      "title": "Scripts MUST be able to get the entry that owns an allomorph."
+    },
+    "FR-009": {
+      "title": "Scripts MUST be able to read morpho-syntactic analyses without dropping to raw data-model access, since resolving a user's hypothesis terminates in them."
+    },
+    "FR-010": {
+      "title": "Parser results crossing into script-visible form MUST preserve the identity of the underlying lexical objects, not only their text, because later checkpoints align results against"
+    },
+    "FR-011": {
+      "title": "The new surface MUST be released as a versioned package before the assistant-side work is tested against it; the assistant's declared minimum version and its bundled index of that"
+    },
+    "FR-012": {
+      "title": "The assistant MUST offer a tool that parses one word and MUST expose all three levels of answer: restricted-to-a-hypothesis, plain yes/no, and full explanation. Each MUST reach the"
+    },
+    "FR-013": {
+      "title": "The plain yes/no level MUST NOT present itself as explaining a failure, and MUST point the caller at an explaining level instead."
+    },
+    "FR-014": {
+      "title": "Guidance MUST steer callers to the restricted level when they have a hypothesis and to the full explanation only when they do not, since the full explanation is the expensive one a"
+    },
+    "FR-015": {
+      "title": "Every handler that reaches the parser MUST check the project's configured parser engine as its first action, before any parser is constructed, and MUST refuse a project configured"
+    },
+    "FR-016": {
+      "title": "A missing recording agent MUST NOT mark reading unavailable, since reading neither records nor needs one."
+    },
+    "FR-017": {
+      "title": "The new tools MUST be annotated read-only-safe, and that annotation MUST be backed by a standing test asserting that a real parse loads no user-interface framework code into the pr"
+    },
+    "FR-018": {
+      "title": "The restricted trace MUST accept a decomposition expressed in terms a caller can actually write -- entry headwords, headword plus sense, or internal identifiers -- and resolve it t"
+    },
+    "FR-019": {
+      "title": "If any piece of a decomposition resolves to no usable analysis, the request MUST be refused, naming the piece, its position and its candidates, and no parse MUST be run."
+    },
+    "FR-020": {
+      "title": "Lookup structures used for resolution MUST be built once per run and reused across words."
+    },
+    "FR-021": {
+      "title": "Where every piece has exactly one unambiguous candidate, the system MAY offer a proposed decomposition; when it does, it MUST label it proposed and unverified."
+    },
+    "FR-022": {
+      "title": "Guidance offered when a decomposition is missing MUST name only actions the caller can actually perform with the tools that exist."
+    },
+    "FR-023": {
+      "title": "A caller's proposed decomposition MUST always be traced exactly as given. The system MUST NOT substitute a different restriction, widen it to an unrestricted search, reorder, score"
+    },
+    "FR-024": {
+      "title": "Where the system has something to say about a proposal, it MUST be limited to an adjacent candidate or a conflict with recorded analyses, MUST be worded as an observation rather th"
+    },
+    "FR-025": {
+      "title": "Agreement between a proposal and recorded analyses MUST produce no commentary."
+    },
+    "FR-026": {
+      "title": "All parser execution MUST go through one run mechanism. There MUST NOT be a separate synchronous path."
+    },
+    "FR-027": {
+      "title": "A run MUST report a distinct stage for starting, loading the grammar, parsing, filing (defined but unreachable in this checkpoint), completed, failed and cancelled."
+    },
+    "FR-028": {
+      "title": "A run reaching a terminal stage inside a configurable grace window (default 5 seconds) MUST return its results inline; otherwise it MUST return a handle. The window governs reporti"
+    },
+    "FR-029": {
+      "title": "Results MUST be written to the run's record as they are produced, so a run that dies or is cancelled leaves everything completed so far readable."
+    },
+    "FR-030": {
+      "title": "Runs MUST be ordered by the same priority levels and ordering the host application uses, lowest value first, first-in-first-out within a level, enqueued per word."
+    },
+    "FR-031": {
+      "title": "A higher-priority single word MUST interleave at the running batch's next word boundary. The batch MUST NOT restart or lose position, the grammar MUST NOT be reloaded, and the batc"
+    },
+    "FR-032": {
+      "title": "Cancellation MUST be cooperative, stopping at the next word boundary and leaving a cancelled terminal stage over the partial results."
+    },
+    "FR-033": {
+      "title": "The assistant MUST offer a read-only status tool taking a run handle and reporting stage, progress, and -- on a terminal stage -- the result summary or the failure with its guidanc"
+    },
+    "FR-034": {
+      "title": "A failed run MUST carry guidance pointing at the diagnostic instruments, since memory exhaustion is the case where a diagnosis beats a retry."
+    },
+    "FR-035": {
+      "title": "A status request for an unknown handle MUST be refused naming the handle and the handles that do exist."
+    },
+    "FR-036": {
+      "title": "A cancelled run MUST be reportable with the count of words completed and the stage it was in when cancelled."
+    },
+    "FR-037": {
+      "title": "Three refusal codes MUST be added additively to the existing tool response contract -- unresolvable morph, unknown run, and cancelled run -- with the documented count raised from 2"
+    },
+    "FR-038": {
+      "title": "Every piece of guidance shipped in CP1 that had to point at nothing because this tool did not exist MUST be revisited and pointed at it."
+    },
+    "FR-039": {
+      "title": "Test groups deferred by CP1 MUST be brought into scope: the no-user-interface-code guarantee, the no-oracle case, the conditional-proposal case, and the script-library facade group"
+    },
+    "FR-040": {
+      "title": "Whether the three grammar lints deferred at CP1 are folded in here MUST be decided and, if deferred again, recorded as such."
+    },
+    "FR-041": {
+      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository. The script library MUST probe only the read operations its own surface binds; this reposito"
+    },
+    "FR-042": {
+      "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed. Holding a grammar MUST NOT turn grammar"
+    },
+    "FR-043": {
+      "title": "A held grammar MUST have its currency confirmed before it is reused, and MUST be reloaded when it reports stale. A parse MUST NOT be served from a grammar whose currency was not co"
+    }
+  },
+  "last_action": "living specs evaluated — skipped (not configured)",
+  "size": "oversized",
+  "classification": {
+    "projectedFiles": 30,
+    "projectedTasks": 55,
+    "scopeSignal": "larger",
+    "verdict": "oversized"
+  },
+  "context": [
+    "source: specs/parser-check/CP2-SPEC.md sections 3.4, 5.1-5.4, 9, 10",
+    "parent: specs/parser-check/SPEC.md section 15 (CP2 row)",
+    "predecessor: CP1 tasks T001-T035, specs/parser-check/tasks.md",
+    "area: src/flextoolsmcp/server/parser_probe.py (must NOT be modified -- decision D1)",
+    "live evidence: IndonesianHC-Complete engine=HC, 3 phon rules, 41 entries",
+    "live evidence: Malay Parsing-20230810withHC engine=HC, 4 phon rules, 281 entries",
+    "live evidence: Sena 3 engine=XAmple, 0 phon rules -- ruled out as verification target",
+    "constraint: CP2 is entirely read-only; no write path anywhere in scope",
+    "constraint: one execution model only -- no second synchronous path alongside the runner"
+  ],
+  "intent": "Make the FieldWorks parser answerable read-only -- ask whether a word parses, why it failed, and whether a proposed decomposition holds -- through a released script-library surface and two assistant tools running on one job runner.",
+  "expectations": [
+    "Writing, filing or recording parse results anywhere in a project (later checkpoint)",
+    "Batch scoping, run comparison and run logging (later checkpoint)",
+    "The isolated sandbox for grammar generation (later checkpoint)",
+    "Any general-purpose word segmenter or search over possible decompositions",
+    "Modifying the capability check already shipped in this repository (decision D1)"
+  ]
+}

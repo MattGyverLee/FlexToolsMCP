@@ -1,0 +1,48 @@
+{
+  "feature": "parser-check-cp2",
+  "status": "in_progress",
+  "last_cycle": 1,
+  "spurts_completed": 1,
+  "branch": "feat/parser-check-cp1",
+  "branch_note": "CP2 is still on the CP1 branch. A feat/parser-check-cp2 branch has NOT been cut -- do that before the first CP2a implementation task, not before the spec-amendment pass (which touches specs/ only).",
+  "tasks_done": [
+    "cycle1 (spurt 1): five-lane parallel recon -- Explore x2 (MCP side, flexicon side), lex-domain (LCM/FieldWorks source), lex-archivist (CP1 carry-overs), lex-doc (contract fit). All five reports on disk in specs/parser-check-cp2/reviews/.",
+    "cycle1 synthesis: specs/parser-check-cp2/reviews/cycle1-synthesis.md -- the planning brief /speckit.companion.plan will be handed. Contains the 21-item decision ledger, 12 required spec amendments, and the CP2a/CP2b decomposition with its evidence gate.",
+    "USER DECISION LANDED (authoritative, D-00): flexicon Part A is extended and PROVEN before any MCP-side change. Hard predecessor phase, not interleaved. User's reasoning on being shown the FR-043 finding: 'Refuted by LCM reality? yes, this is exactly why I expected flexicon to be extended before making changes to the MCP.'",
+    "Decomposition RESOLVED by that decision: CP2 splits three ways -- CP2a (flexicon 4.9.0, ~13 files, flexicon repo only), CP2a-bridge (dependency floor + index artifacts in this repo, ~4 files, after the tag), CP2b (MCP tools + job runner, ~17 files). Seam is at 'Part A proven', NOT at 'Part A released'.",
+    "16 decisions made by lead (D-01..D-16), 3 escalations left open (E-B, E-C, E-D). E-A resolved by the user."
+  ],
+  "key_findings": [
+    "FR-043 IS PARTIALLY REFUTED BY LCM REALITY (most valuable finding of the spurt, and the worked justification for D-00). HCParser.Update() is itself conditional -- 'if (m_changeListener.Reset() || m_forceUpdate) LoadParser();' -- so Reload()->Update() as specced does NOT unconditionally discard. FieldWorks' own force-reload path is ParserWorker.ReloadGrammarAndLexicon(): Reset() THEN CheckNeedsUpdate(). Bound wrong, it fails SILENTLY and serves the next parse from the stale grammar the caller believes it discarded.",
+    "Reset() and IsUpToDate() are MISSING from parser_probe.py's HCPARSER_MEMBERS, but FR-041/SC-016 forbid touching that file. Resolved by D-02: each check probes what its own surface binds -- the requirement lands on the NEW flexicon-side probe, parser_probe.py stays untouched, SC-016 stays green. Consequence: the two member lists diverge in BOTH directions after CP2, so the spec's 'this repository keeps its larger check' becomes false and must read 'different, overlapping' (spec edit E3).",
+    "THERE IS NO JOB/QUEUE/WORKER/RUN-RECORD MACHINERY ANYWHERE in this repo. SessionState is in-memory; run_script_async is one create_subprocess_exec + wait_for with no handle and no cancellation token; the only concurrency primitive on the request path is kernel.project_write_locks (per-project asyncio.Lock). US4 extends NOTHING -- 100% net-new. Best structural precedent for the run record is skeleton_storage.py:43-50 (JSONL append under a threading.Lock + env dir override).",
+    "The Verbatim Constraint index path 'index/python/flexicon_api_v4.9.0.json' DOES NOT EXIST. Real root is src/flextoolsmcp/index/python/. Worse: the sibling flexicon_lcm_bridge_v<ver>.json is version-locked to the same flexicon version (server.py:665 loads it keyed to self.flexicon_version, handlers/equivalence.py:64 consumes it) and the spec never mentions it -- shipping only the api file SILENTLY removes the bridge for 4.9.0. refresh.py:217 derives the bridge prefix, so a full refresh produces both; the risk is a hand-copied index.",
+    "parse_morph_unresolved field-count drift: parent SPEC.md section 14 says 5 fields including resolved_to (none|ambiguous|no_msa), CP2-SPEC.md section 7 says 4. Decided (D-03) toward the parent spec's five -- the three values are exactly what 5.1.2 must distinguish, and the spec's own edge cases list no_msa and ambiguous as SEPARATE cases.",
+    "flextools_parse_status decided (D-04) to ALWAYS return a success envelope on terminal stages (state: cancelled|failed); parse_job_cancelled fires only from calls that ACT ON a dead run. Only error parse_status emits is parse_run_not_found. Reversible cheaply at plan review (E-B).",
+    "FR-010 identity holds at OBJECT level only for ParseWord (MorphInfo carries real IMoForm/IMoMorphSynAnalysis refs). ParseWordXml/TraceWordXml return an already-serialized XDocument where objects are Hvo integer attributes only. Do NOT plan a typed object-identity marshaller for the trace.",
+    "Allomorph->owning-entry is a flexicon WRAPPER gap, not an LCM gap -- MoForm.OwningEntry already exists (OverridesLing_MoClasses.cs:3113) and four sibling GetOwningEntry templates exist in flexicon. Scopes that deliverable down to ~20 lines. Genres and MSA reads are real gaps; MSA is the nontrivial one (subtypes expose different property sets, so it is not one flat wrapper).",
+    "FR-017's no-XCore guarantee rests on .NET LAZY PER-TYPE BINDING, not on absence of a reference: ParserCore.csproj DOES reference xCore/xCoreInterfaces/FwUtils at assembly level; the 'using XCore;' statements are confined to ParseFiler/ParserScheduler/ParserWorker, not HCParser/HCLoader/IParser. The test must assert the loaded-assembly list of the process AFTER a real Update()+ParseWord(), in the run_scan_module CHILD process -- test_cp1_boundary.py's in-process monkeypatched spies structurally cannot see a CLR assembly load.",
+    "FR-040 DECIDED (D-07): the three grammar lints are DEFERRED AGAIN to CP3, recorded. GrammarHealthChecker is ABSENT OUTRIGHT from the installed HermitCrab 3.8.2.0 (fully-resolved 195-type scan, research.md:290-324), so 'fold in' means writing three lints from scratch with independent correctness risk. Rider: CP3 must RE-PROBE, not reuse D10's version-specific verdict.",
+    "flexicon's only lazy-load precedent (lcm_casting._ensure_interfaces:84) RAISES at :103 rather than degrading. SC-001's 'unavailable with a reason' return value is genuinely new code with no template to copy -- test absence by simulating it, not by assuming it.",
+    "Error-code count is 22 everywhere (TOOL-CONTRACT.md:69, response_models.py:10/:423/:491, contracts/error-codes.md:3) and NO test asserts it. CP2 makes it 25. D-12 adds a drift test deriving the count from the AnyDetail union. CLAUDE.md's '18' is stale (D-13)."
+  ],
+  "escalations_open": [
+    "E-B: is the maintainer content that flextools_parse_status never returns an error envelope for a terminal run (D-04)? Recommendation: accept, flag at plan review. Cheap to reverse before implementation.",
+    "E-C: the 4.9.0 tag push and gh release create are MAINTAINER acts, not crew acts. CP2a ends with the release commit prepared and ratchets green; the loop hands off rather than tagging.",
+    "E-D: proving FR-043's STALE half requires a WRITE to a FLEx project (only an LCM change sets ModelChanged). Recommendation (a): prove the stale branch offline against a stubbed change listener at CP2a; defer the live proof to CP2b on a backed-up/copied project, where the loop MUST stop with needs_human. CP2a itself needs NO write and NO authorisation."
+  ],
+  "next_checkpoint": "Spec amendments applied, then /speckit.companion.plan run for CP2a ONLY.",
+  "next_entry": "Cycle 2 is a SINGLE lex-doc task: apply the twelve amendments in section 6 of specs/parser-check-cp2/reviews/cycle1-synthesis.md to specs/parser-check-cp2/spec.md, plus the one table row in specs/parser-check/CP2-SPEC.md section 7 (edit E7). Five are BLOCKING because the spec is factually false or unsatisfiable as written: E1 (index path + bridge artifact), E2 (FR-043 = Reset()+Update()), E3 (FR-041/SC-016 'larger' -> 'different, overlapping'), E7 (parse_morph_unresolved gains resolved_to), E8 (parse_status success envelope), E12 (record the user's D-00 ordering and the CP2a/CP2b split as a new Decision D4). DO NOT plan CP2b yet -- plan CP2a only; CP2b's shape depends on what Part A's surface turns out to be, and planning it now recreates the exact posture D-00 exists to prevent. Cut feat/parser-check-cp2 before the first CP2a implementation task, not before the amendment pass (specs/ only). lex-simplify enters only when CP2b's runner design exists.",
+  "blocker": null,
+  "reports": [
+    "specs/parser-check-cp2/reviews/cycle1-explore-mcp.md",
+    "specs/parser-check-cp2/reviews/cycle1-explore-flexicon.md",
+    "specs/parser-check-cp2/reviews/cycle1-domain.md",
+    "specs/parser-check-cp2/reviews/cycle1-archivist.md",
+    "specs/parser-check-cp2/reviews/cycle1-doc.md",
+    "specs/parser-check-cp2/reviews/cycle1-synthesis.md"
+  ],
+  "crew_note": "Explore and lex-domain have NO write tool -- they return reports inline and the main session persists them. Only lex-doc, lex-archivist, lex-programmer, lex-simplify and lex-lead can write files. Factor this into every dispatch plan.",
+  "machine_state": "No FLEx project was opened and no FLEx write occurred at any point in spurt 1. Static analysis and file reads only. Nothing to restore.",
+  "updated": "2026-09-18"
+}

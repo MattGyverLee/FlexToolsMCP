@@ -62,6 +62,7 @@ order.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -89,9 +90,27 @@ assert len(_VERDICT_WORDS) == 11
 # A "factual, count-based phrasing template" (T014's positive check): a
 # measured string must open with a count and use a factual/measurement verb,
 # never assert a verdict with no visible evidence.
+#
+# The verb set is an allowlist of *observation* verbs -- what was counted and
+# what those objects do -- deliberately excluding verbs that would import a
+# judgement ("fails", "violates", "breaks"). It is widened to cover the
+# vocabulary the shipped checks actually use, whose wording basis is
+# data-model.md's CP1 scan implementation table: "have" (rows 1, 3a, 7b),
+# "use" (row 4), "share" (row 9) and "admit" (row 10) are all plain
+# observations and belong here. Keeping them out was an oversight in the
+# original list, not a wording rule -- and one that went unnoticed because
+# the template was only ever applied to the contract example, never to the
+# strings the scan really emits. It is now applied to both; see
+# TestShippedMeasuredStringsMatchTheTemplate.
+# The "something must follow the count" requirement is a LOOKAHEAD, not a
+# consuming `\S`. Consuming it silently required the verb to sit after at
+# least one further word, which excluded the perfectly factual "{n} is the
+# ... product" form that rows 2 and 5 use -- the verb lands immediately after
+# the count there, so its own first letter was being eaten by the `\S`.
 _MEASURED_TEMPLATE_RE = re.compile(
-    r"^\d[\d,]*\s+\S.*\b(is|are|can|reachable|present|found|exceeds?|"
-    r"matches?|attach(?:es)?|host(?:s)?|equals?)\b",
+    r"^\d[\d,]*\s+(?=\S).*\b(is|are|can|reachable|present|found|exceeds?|"
+    r"matches?|attach(?:es)?|host(?:s)?|equals?|ha(?:ve|s)|uses?|"
+    r"shares?|admits?)\b",
     re.IGNORECASE,
 )
 
@@ -519,14 +538,21 @@ class TestOrderInvarianceOfFindings:
         magnitude-sorted -- checked across two runs where the "magnitude"
         (hvo, standing in for whatever a real scan would vary) is permuted
         between calls."""
+        # Both fixtures are permutations of the same set, and BOTH must be
+        # non-ascending: the `!= sorted(...)` guards below exist to prove the
+        # order assertions are non-vacuous (i.e. that they would actually fail
+        # against an implementation that sorted). An already-ascending fixture
+        # makes its own guard unsatisfiable -- `sorted([5, 42, 100])` is
+        # `[5, 42, 100]`, so "preserve this order" and "differ from sorted
+        # order" become contradictory demands that no implementation can meet.
         run_a = [_raw_finding("zero-surface-morph-repeatable", 1, 3, [100, 5, 42])]
-        run_b = [_raw_finding("zero-surface-morph-repeatable", 1, 3, [5, 42, 100])]
+        run_b = [_raw_finding("zero-surface-morph-repeatable", 1, 3, [5, 100, 42])]
 
         hvos_a = [o.hvo for o in _call_assemble(run_a)[0].objects]
         hvos_b = [o.hvo for o in _call_assemble(run_b)[0].objects]
 
         assert hvos_a == [100, 5, 42], "objects[] must preserve raw scan order, not sort ascending/descending"
-        assert hvos_b == [5, 42, 100], "objects[] must preserve raw scan order, not sort ascending/descending"
+        assert hvos_b == [5, 100, 42], "objects[] must preserve raw scan order, not sort ascending/descending"
         assert hvos_a != sorted(hvos_a)
         assert hvos_b != sorted(hvos_b)
 
@@ -639,6 +665,84 @@ class TestVerdictWordingNeverDescribesAFinding:
         findings = _call_assemble(raw)
         for f in findings:
             _assert_no_verdict_words(f.measured)
+
+
+# ---------------------------------------------------------------------------
+# The phrasing guards, applied to what the scan actually emits
+#
+# T014's positive check existed only against the contract example and against
+# hand-built fixture findings, so the vocabulary the scan really ships was
+# never policed by it -- which is exactly how four shipped verbs came to sit
+# outside the allowlist unnoticed. These tests read the measured templates
+# straight out of grammar_scan_module.py's source, so a new check added with
+# verdict-laden or non-count-based wording fails here even if nobody thinks
+# to add a fixture for it.
+# ---------------------------------------------------------------------------
+
+_SCAN_MODULE_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "src" / "flextoolsmcp" / "server" / "scan" / "grammar_scan_module.py"
+)
+
+
+def _shipped_measured_templates():
+    """Every string literal assigned to `measured` in the scan module.
+
+    Read via AST rather than by importing the module: importing it would pull
+    in the LCM-facing scan code, which has no business being loaded in the
+    MCP server's own test process (SPEC 3.1 / the CP1 boundary). Adjacent
+    string literals are folded by the parser into a single Constant, so a
+    multi-line implicit concatenation arrives here already joined.
+    """
+    tree = ast.parse(_SCAN_MODULE_PATH.read_text(encoding="utf-8"))
+    templates = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(t, ast.Name) and t.id == "measured" for t in node.targets
+        ):
+            continue
+        value = node.value
+        # `measured = "...".format(...)` -- unwrap to the literal.
+        if (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Attribute)
+            and value.func.attr == "format"
+        ):
+            value = value.func.value
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            templates.append(value.value)
+    return templates
+
+
+class TestShippedMeasuredStringsMatchTheTemplate:
+    def test_the_extractor_is_not_vacuous(self):
+        """If this ever returns nothing, every test below passes for free."""
+        templates = _shipped_measured_templates()
+        assert len(templates) >= 10, (
+            f"expected one measured template per SPEC 9.5.4 row, got "
+            f"{len(templates)}: {templates}"
+        )
+
+    def test_every_shipped_measured_string_matches_the_factual_template(self):
+        for template in _shipped_measured_templates():
+            rendered = template.replace("{}", "7")
+            assert _MEASURED_TEMPLATE_RE.search(rendered), (
+                f"shipped measured template does not match the factual, "
+                f"count-based phrasing template: {rendered!r}"
+            )
+
+    def test_every_shipped_measured_string_avoids_verdict_words(self):
+        for template in _shipped_measured_templates():
+            _assert_no_verdict_words(template.replace("{}", "7"))
+
+    def test_the_template_check_would_catch_a_verdict_phrasing(self):
+        """Non-vacuity guard for the check above: a plausible bad string --
+        count-led, but asserting a verdict rather than an observation -- must
+        be rejected, so a green run means the allowlist is doing work."""
+        assert not _MEASURED_TEMPLATE_RE.search("7 allomorphs fail validation")
+        assert not _MEASURED_TEMPLATE_RE.search("allomorphs are empty")
 
 
 if __name__ == "__main__":

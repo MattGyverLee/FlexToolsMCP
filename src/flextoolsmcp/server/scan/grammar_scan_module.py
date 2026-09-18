@@ -59,8 +59,8 @@ follows for ``check_id`` slugs, cast requirements and ``measured``/
 ``evidence_basis`` wording, per T033's own instruction that where the two
 disagree, its table wins.
 
-Module layout (for T034 -- rows 1, 6, 7a/7b, 10 -- and T035 -- rows
-3a/3b, 5, 8 -- landing later; read this before adding a row):
+Module layout (rows 2/4/9 landed at T019, rows 1/6/7a/7b/10 at T034 and
+rows 3a/3b/5/8 at T035; read this before adding a row):
 
     1. Shared, pure-Python helpers (``is_empty_form``, ``exclude_disabled_
        rules``, ``skipped_check``, ``_found_object``, ``_emit``) -- LCM-free,
@@ -80,10 +80,9 @@ Module layout (for T034 -- rows 1, 6, 7a/7b, 10 -- and T035 -- rows
        function and appends its result via ``_emit`` (or
        ``checks_skipped.append(skipped_check(...))`` for a gated,
        unconfirmed row) IN SPEC 9.5.4 ROW ORDER, marked with one comment
-       per row slot. T034/T035 insert their own calls at the marked
-       comment for their row, in row-number order among rows 1/2/3a/3b/4/
-       5/6/7a/7b/8/9/10 -- inserting a call is the whole integration; no
-       other function in this module needs to change.
+       per row slot, in row-number order among rows 1/2/3a/3b/4/5/6/7a/
+       7b/8/9/10 -- adding a call is the whole integration; no other
+       function in this module needs to change.
 
 Why LCM imports are local, not top-of-file: ``SIL.LCModel`` is a pythonnet
 binding only resolvable inside the FLExTools/flexicon runtime (FieldWorks
@@ -99,7 +98,7 @@ runs against a live project in the generated-module subprocess.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +262,7 @@ def _emit(
 # "zero-surface-morph-repeatable", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_zero_surface_morph_repeatable(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_zero_surface_morph_repeatable(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 1 / data-model.md row 1.
 
     LCM predicate (T033/data-model.md): ``is_zero_surface_form(form)`` over
@@ -308,7 +307,7 @@ def _scan_zero_surface_morph_repeatable(project) -> Tuple[int, str, str, List[Di
 # "representation-variant-product", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_representation_variant_product(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_representation_variant_product(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 2 / data-model.md row 2.
 
     LCM predicate (T033): product of ``IPhPhoneme.CodesOS`` counts
@@ -357,11 +356,115 @@ def _scan_representation_variant_product(project) -> Tuple[int, str, str, List[D
 
 
 # ---------------------------------------------------------------------------
+# Row 3a -- epenthesis-empty-struc-desc (T035, check_id
+# "epenthesis-empty-struc-desc", NOT gated on T016 -- the epenthesis half of
+# SPEC 9.5.4 row 3 reads only `IPhRegularRule`, a name research D4 already
+# verified).
+# ---------------------------------------------------------------------------
+
+def _scan_epenthesis_empty_struc_desc(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+    """SPEC 9.5.4 row 3 (first half) / data-model.md row 3a.
+
+    LCM predicate (T033): ``IPhRegularRule`` where ``StrucDescOS`` is empty,
+    with ``Disabled == False``. An empty structural description is how an
+    epenthesis rule is spelled in LCM -- nothing on the left-hand side, so
+    the rule can insert material anywhere its environment admits.
+
+    ``StrucDescOS`` is an ``ILcmOwningSequence`` of ``IPhSimpleContext``, so
+    its emptiness is a collection-level ``.Count == 0`` read -- deliberately
+    NOT ``is_empty_form`` (data-model.md cross-cutting rule 2), which is the
+    ``IMultiUnicode``/``IMultiString`` "***" predicate and does not apply to
+    a collection.
+
+    ``Disabled`` gating (data-model.md cross-cutting rule 7): applied via
+    ``exclude_disabled_rules`` over the repository walk BEFORE anything is
+    counted, never as a filter over an already-built result.
+
+    The index-inheritance trap (cross-cutting rule 5): ``StrucDescOS`` and
+    ``Disabled`` are declared once on the base ``IPhSegmentRule`` and are
+    absent from ``IPhRegularRule``'s own ``properties`` array in
+    ``liblcm_api_v11.0.0.json`` -- verified directly against that file.
+    Their absence from ``flextools_get_object_api``'s own-properties listing
+    for ``IPhRegularRule`` is not evidence of absence; C# interface
+    inheritance carries both onto every ``IPhRegularRule`` receiver.
+
+    Enumeration: ``project.ObjectsIn(IPhRegularRuleRepository)`` -- the
+    generic-repository escape hatch, same idiom as rows 1/4/6/7a/10.
+
+    Cast: ``IPhRegularRule(obj).StrucDescOS`` (T033's cast_example), applied
+    unconditionally even though the repository already yields
+    ``IPhRegularRule``-typed objects -- same
+    cast-applied-unconditionally precedent rows 2/4/7a/9 set.
+    """
+    from SIL.LCModel import IPhRegularRule, IPhRegularRuleRepository
+
+    count = 0
+    suspects: List[Dict[str, Any]] = []
+    for rule in exclude_disabled_rules(project.ObjectsIn(IPhRegularRuleRepository)):
+        rr = IPhRegularRule(rule)
+        struc_desc = rr.StrucDescOS
+        if struc_desc is None or struc_desc.Count == 0:
+            count += 1
+            # IPhSegmentRule.Name is an IMultiUnicode, but T033's table names
+            # no label source for this row -- "" per FoundObject.label's
+            # documented empty spelling, matching rows 4/10's precedent.
+            suspects.append(_found_object(project, rr, ""))
+
+    measured = "{} phonological rules have an empty structural description".format(count)
+    # data-model.md row 3a lists "--": PanGloss publishes no measured factor
+    # for this row, so nothing is invented here (SPEC 8.4).
+    evidence_basis = None
+    return count, measured, evidence_basis, suspects
+
+
+# ---------------------------------------------------------------------------
+# Row 3b -- metathesis-rule-present (T035, check_id "metathesis-rule-present").
+# GATED on T016 -- and research D9 records `IPhMetathesisRule` as CONFIRMED
+# ("WRITTEN"): entity present at liblcm_api_v11.0.0.json:108341, interfaces
+# [ICmObject, ICmObjectOrId, IPhSegmentRule], class-name map
+# "PhMetathesisRule" -> "IPhMetathesisRule". So this half is written as a
+# normal check and is NOT routed to checks_skipped.
+# ---------------------------------------------------------------------------
+
+def _scan_metathesis_rule_present(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+    """SPEC 9.5.4 row 3 (second half) / data-model.md row 3b.
+
+    LCM predicate (T033): ``IPhMetathesisRule`` count, with
+    ``Disabled == False``. This is a type test only -- the mere presence of
+    an enabled metathesis rule is the whole-grammar cost class SPEC 9.5.4
+    row 3 names; no property of the rule is inspected.
+
+    ``Disabled`` gating (cross-cutting rule 7): ``exclude_disabled_rules``
+    over the repository walk, before counting. ``Disabled`` reaches an
+    ``IPhMetathesisRule`` receiver by inheritance from ``IPhSegmentRule``
+    (cross-cutting rule 5) -- research D9 checked this directly rather than
+    assuming it, and confirmed the property is correctly absent from
+    ``IPhMetathesisRule``'s own ``properties`` array.
+
+    Enumeration: ``project.ObjectsIn(IPhMetathesisRuleRepository)``.
+
+    Cast: none (T033's cast_example: "type test only ... no property cast").
+    """
+    from SIL.LCModel import IPhMetathesisRuleRepository
+
+    count = 0
+    suspects: List[Dict[str, Any]] = []
+    for rule in exclude_disabled_rules(project.ObjectsIn(IPhMetathesisRuleRepository)):
+        count += 1
+        # No label source in T033's table for this row -- "" as with row 3a.
+        suspects.append(_found_object(project, rule, ""))
+
+    measured = "{} metathesis rules are present in the grammar".format(count)
+    evidence_basis = None  # data-model.md row 3b lists "--" -- no PanGloss factor.
+    return count, measured, evidence_basis, suspects
+
+
+# ---------------------------------------------------------------------------
 # Row 4 -- unbounded-quantifier (T019, check_id "unbounded-quantifier",
 # not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_unbounded_quantifier(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_unbounded_quantifier(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 4 / data-model.md row 4.
 
     LCM predicate (T033): ``IPhIterationContext.Maximum == -1``.
@@ -397,11 +500,84 @@ def _scan_unbounded_quantifier(project) -> Tuple[int, str, str, List[Dict[str, A
 
 
 # ---------------------------------------------------------------------------
+# Row 5 -- rule-product-morph-phon (T035, check_id "rule-product-morph-phon").
+# GATED on T016 for BOTH its multiplicands -- and research D9 records
+# `IMoAffixProcess` as CONFIRMED ("WRITTEN": entity present at
+# liblcm_api_v11.0.0.json:94897, interfaces [ICmObject, ICmObjectOrId,
+# IMoAffixForm, IMoForm], class-name map "MoAffixProcess" ->
+# "IMoAffixProcess") and `IPhMetathesisRule` likewise CONFIRMED (see row 3b
+# above). Both gates open, so this row is written as a normal check and is
+# NOT routed to checks_skipped.
+# ---------------------------------------------------------------------------
+
+def _scan_rule_product_morph_phon(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+    """SPEC 9.5.4 row 5 / data-model.md row 5.
+
+    LCM predicate (T033): ``IMoAffixProcess`` count x (``IPhRegularRule`` +
+    ``IPhMetathesisRule``, ``Disabled == False``) count -- the morphological
+    multiplicand times the phonological one.
+
+    ``Disabled`` gating (cross-cutting rule 7) applies to the phonological
+    multiplicand only: ``Disabled`` is an ``IPhSegmentRule`` property, and
+    ``IMoAffixProcess`` is an ``IMoForm``, not a segment rule, so it has no
+    ``Disabled`` to gate on. Both rule repositories are filtered through
+    ``exclude_disabled_rules`` BEFORE either count is taken, never after the
+    product is formed.
+
+    ``count`` is the product itself (matching the row's own `measured`
+    wording basis), reported as a number and never compared against
+    PanGloss's placeholder threshold of 64 as a pass/fail line -- D7 / SPEC
+    9.5.3: "treat their numbers as placeholders". That threshold is carried
+    in ``evidence_basis`` as *their* measurement, which is the only place a
+    number of theirs belongs.
+
+    ``objects[]`` names both multiplicands' members -- the affix processes
+    first, then the enabled phonological rules -- in repository enumeration
+    order, never magnitude-ordered, capped by ``_emit``'s own preview cap.
+
+    Enumeration: ``project.ObjectsIn(...)`` over the three repositories.
+    T033's table says "counts via repository ``.Count``"; this walks them
+    instead because the phonological multiplicand must have its disabled
+    rules excluded before counting (a repository-level ``.Count`` cannot),
+    and because ``objects[]`` needs the members themselves.
+
+    Cast: none (T033's cast_example) -- no property is read off a rule here,
+    and each repository already yields its own interface type.
+    """
+    from SIL.LCModel import (
+        IMoAffixProcessRepository,
+        IPhMetathesisRuleRepository,
+        IPhRegularRuleRepository,
+    )
+
+    suspects: List[Dict[str, Any]] = []
+
+    affix_process_count = 0
+    for affix_process in project.ObjectsIn(IMoAffixProcessRepository):
+        affix_process_count += 1
+        # IMoAffixProcess is an IMoForm, so .Form is its label source --
+        # same read rows 1/6 use. _found_object normalizes ""/"***"/None.
+        suspects.append(_found_object(project, affix_process, affix_process.Form))
+
+    phonological_rule_count = 0
+    for repository in (IPhRegularRuleRepository, IPhMetathesisRuleRepository):
+        for rule in exclude_disabled_rules(project.ObjectsIn(repository)):
+            phonological_rule_count += 1
+            suspects.append(_found_object(project, rule, ""))
+
+    product = affix_process_count * phonological_rule_count
+
+    measured = "{} is the morphological x phonological rule product".format(product)
+    evidence_basis = "64"  # PanGloss's own placeholder threshold (data-model.md row 5), never a pass/fail line here.
+    return product, measured, evidence_basis, suspects
+
+
+# ---------------------------------------------------------------------------
 # Row 6 -- partial-morpheme-incomplete-form (T034, check_id
 # "partial-morpheme-incomplete-form", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 6 / data-model.md row 6.
 
     LCM predicate (T033, research D4): ``IMoForm.IsComplete == False`` --
@@ -436,7 +612,7 @@ def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, str, List
 # T016 despite sharing row 7 with the gated 7b half below).
 # ---------------------------------------------------------------------------
 
-def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 7 (first half) / data-model.md row 7a.
 
     LCM predicate (T033, research D4 -- VERIFIED, not part of D9's gate):
@@ -473,7 +649,7 @@ def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, str, 
 # ambiguity (liblcm_api_v11.0.0.json:86250).
 # ---------------------------------------------------------------------------
 
-def _scan_multiple_allomorphs_per_entry(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_multiple_allomorphs_per_entry(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 7 (second half) / data-model.md row 7b.
 
     LCM predicate (T033, research D9): ``ILexEntry.AlternateFormsOS.Count >
@@ -504,11 +680,121 @@ def _scan_multiple_allomorphs_per_entry(project) -> Tuple[int, str, str, List[Di
 
 
 # ---------------------------------------------------------------------------
+# Row 8 -- unordered-rule-application-stratum-pair (T035, check_id
+# "unordered-rule-application-stratum-pair", not gated on T016 -- this is
+# T027's CORRECTED mapping).
+# ---------------------------------------------------------------------------
+
+def _scan_unordered_rule_application_stratum_pair(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+    """SPEC 9.5.4 row 8 (as corrected by T027) / data-model.md row 8.
+
+    LCM predicate (T033): group ``IPhSegmentRule`` (``Disabled == False``)
+    by its own ``(InitialStratumRA, FinalStratumRA)`` pair; within each
+    group, count members and/or ``OrderNumber`` spread.
+
+    **Where ordering lives.** On the rule: ``IPhSegmentRule.OrderNumber``,
+    with the stratum pair referenced from the rule via ``InitialStratumRA``
+    / ``FinalStratumRA``. ``IMoStratum`` has NO rule collection -- its own
+    properties are exactly ``Abbreviation``, ``Description``, ``Name``,
+    ``PhonemesRA`` (verified against ``liblcm_api_v11.0.0.json``) -- so this
+    function walks rules and groups by their stratum references, and never
+    walks strata looking for a rule list. SPEC 9.5.4's own note: the
+    linguist's mental model ("this rule belongs to this stratum") and LCM's
+    storage direction agree; only the direction of the reference differs,
+    and the absence of a collection on ``IMoStratum`` is not evidence that
+    strata are unordered or unassigned. ``measured`` below therefore speaks
+    the user's direction -- rules assigned to a stratum pair -- and never
+    "a stratum owns rules".
+
+    **``OrderNumber`` is comparable only within one stratum-pair grouping**
+    (data-model.md cross-cutting rule 3): it is a per-pair counter, not a
+    grammar-wide ordinal. Every ``OrderNumber`` read below happens inside a
+    single group's own member list, and two rules' ``OrderNumber``s are
+    compared only when they already share the same
+    ``(InitialStratumRA, FinalStratumRA)`` key. Nothing here sorts by
+    ``OrderNumber`` -- not across pairs, not within one either: groups and
+    their members stay in repository enumeration order, so this function
+    adds no sort step to a module whose fixed-order guarantee depends on
+    there being none.
+
+    Grouping key: the two strata's ``Hvo``s (``None`` when the reference is
+    null), not their names. An ``Hvo`` is an identity that is already a
+    plain int, so it needs no ``IMultiUnicode`` read and cannot collide the
+    way two same-named strata could.
+
+    ``count`` is the number of enabled rules that sit in a stratum-pair
+    grouping holding more than one rule -- the ``N`` PanGloss's "2^N, capped
+    at N=6" factor is about. A grouping holding exactly one rule contributes
+    nothing: a single rule has no other rule to be ordered against.
+    ``measured`` additionally reports how many of those rules share an
+    ``OrderNumber`` with another rule *in the same grouping* -- the
+    ``OrderNumber``-spread arm of T033's "and/or", computed strictly
+    within-group. Neither number is summed with any other row's count.
+
+    Enumeration: ``project.ObjectsIn(IPhSegmentRuleRepository)`` -- the base
+    interface's own repository, which yields both concrete rule types
+    (``IPhRegularRule`` and ``IPhMetathesisRule``) in one walk.
+
+    Cast: ``IPhSegmentRule(obj).OrderNumber`` / ``.InitialStratumRA`` /
+    ``.FinalStratumRA`` (T033's cast_example), applied unconditionally per
+    rows 2/4/7a/9's precedent. Cross-cutting rule 5 again: all four of
+    ``OrderNumber``/``InitialStratumRA``/``FinalStratumRA``/``Disabled`` are
+    declared once on ``IPhSegmentRule`` and are invisible in
+    ``flextools_get_object_api``'s own-properties listing for either derived
+    interface -- that absence is not evidence of absence.
+    """
+    from SIL.LCModel import IPhSegmentRule, IPhSegmentRuleRepository
+
+    # Insertion-ordered: dicts preserve insertion order, so groups and their
+    # members stay in repository enumeration order end to end.
+    groups: Dict[Tuple[Any, Any], List[Any]] = {}
+    for rule in exclude_disabled_rules(project.ObjectsIn(IPhSegmentRuleRepository)):
+        sr = IPhSegmentRule(rule)
+        initial_stratum = sr.InitialStratumRA
+        final_stratum = sr.FinalStratumRA
+        key = (
+            getattr(initial_stratum, "Hvo", None),
+            getattr(final_stratum, "Hvo", None),
+        )
+        groups.setdefault(key, []).append(sr)
+
+    count = 0
+    shared_order_number_count = 0
+    suspects: List[Dict[str, Any]] = []
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        # Every OrderNumber read and comparison below is confined to this
+        # one group -- i.e. to rules that already share a stratum pair.
+        order_numbers = [member.OrderNumber for member in members]
+        # Indexed rather than zip()ed: order_numbers is built from members by
+        # comprehension, so the two are the same length by construction, and
+        # indexing avoids both a second CLR read of OrderNumber per member and
+        # any dependence on zip(strict=) in the subprocess interpreter.
+        for index, member in enumerate(members):
+            order_number = order_numbers[index]
+            count += 1
+            if order_numbers.count(order_number) > 1:
+                shared_order_number_count += 1
+            # T033's table names no label source for this row -- "" per
+            # FoundObject.label's documented empty spelling (rows 4/10).
+            suspects.append(_found_object(project, member, ""))
+
+    measured = (
+        "{} rules are ordered within a stratum-pair grouping that holds more "
+        "than one rule, and {} of those rules share an OrderNumber with "
+        "another rule assigned to the same stratum pair"
+    ).format(count, shared_order_number_count)
+    evidence_basis = "2^N, capped at N=6"  # PanGloss's own factor (data-model.md row 8).
+    return count, measured, evidence_basis, suspects
+
+
+# ---------------------------------------------------------------------------
 # Row 9 -- duplicate-feature-bundle (T019, check_id
 # "duplicate-feature-bundle", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_duplicate_feature_bundle(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_duplicate_feature_bundle(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 9 / data-model.md row 9.
 
     LCM predicate (T033): pairwise ``IPhPhoneme.FeaturesOA`` equality
@@ -569,7 +855,7 @@ def _scan_duplicate_feature_bundle(project) -> Tuple[int, str, str, List[Dict[st
 # "optional-template-slot-branching", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_optional_template_slot_branching(project) -> Tuple[int, str, str, List[Dict[str, Any]]]:
+def _scan_optional_template_slot_branching(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 10 / data-model.md row 10.
 
     LCM predicate (T033, research D4 cross-cutting rule 6 -- VERIFIED):
@@ -623,15 +909,22 @@ def run_grammar_scan(project) -> Dict[str, Any]:
     Structural fixed-order guarantee (data-model.md: "Findings are grouped
     by check_id and never ordered by count"; SPEC S7/D7): ``findings`` is
     built by calling ``_emit`` exactly once per implemented row, in SPEC
-    9.5.4 row order (2, 4, 9 at T019). There is no sort step anywhere in
-    this function -- order is guaranteed by Python executing these
-    statements top-to-bottom, the same way ``checks_run`` accumulates in
-    call order, not by any comparator applied after the fact. T034/T035
-    preserve the guarantee simply by inserting their own ``_emit(...)``
-    call (or, for a row T016 leaves unconfirmed,
-    ``checks_skipped.append(skipped_check(...))``) at the row's marked
-    comment below, in row-number order -- no restructuring of this
-    function, and no change to ``_emit`` itself, is needed to add a row.
+    9.5.4 row order -- all twelve check slots (rows 1, 2, 3a, 3b, 4, 5, 6,
+    7a, 7b, 8, 9, 10) are now present, T019 having contributed 2/4/9, T034
+    1/6/7a/7b/10 and T035 3a/3b/5/8. There is no sort step anywhere in this
+    function -- order is guaranteed by Python executing these statements
+    top-to-bottom, the same way ``checks_run`` accumulates in call order,
+    not by any comparator applied after the fact. A later row is added the
+    same way each of these was: one ``_emit(...)`` call (or, for a row T016
+    leaves unconfirmed, ``checks_skipped.append(skipped_check(...))``) in
+    row-number order -- no restructuring of this function, and no change to
+    ``_emit`` itself.
+
+    ``checks_skipped`` is empty as shipped: every T016-gated sub-check
+    (rows 3b, 5, 7b) was recorded CONFIRMED by research D9, so each is
+    written as a normal check. The list and ``skipped_check`` stay in place
+    as the declared fallback, per data-model.md cross-cutting rule 4's rule
+    that a gated sub-check is never silently dropped either way.
     """
     checks_run: List[str] = []
     checks_skipped: List[Dict[str, str]] = []
@@ -643,13 +936,24 @@ def run_grammar_scan(project) -> Dict[str, Any]:
     count, measured, evidence_basis, objects = _scan_representation_variant_product(project)
     _emit(checks_run, findings, "representation-variant-product", 2, count, measured, evidence_basis, objects)
 
-    # --- Row 3a ("epenthesis-empty-struc-desc") and 3b ("metathesis-rule-present",
-    #     gated on T016) -- T035 -- insert their calls here. ---
+    count, measured, evidence_basis, objects = _scan_epenthesis_empty_struc_desc(project)
+    _emit(checks_run, findings, "epenthesis-empty-struc-desc", 3, count, measured, evidence_basis, objects)
+
+    # Row 3b, "metathesis-rule-present": gated on T016, and research D9
+    # records IPhMetathesisRule as CONFIRMED -- written here as a normal
+    # check, not routed to checks_skipped.
+    count, measured, evidence_basis, objects = _scan_metathesis_rule_present(project)
+    _emit(checks_run, findings, "metathesis-rule-present", 3, count, measured, evidence_basis, objects)
 
     count, measured, evidence_basis, objects = _scan_unbounded_quantifier(project)
     _emit(checks_run, findings, "unbounded-quantifier", 4, count, measured, evidence_basis, objects)
 
-    # --- Row 5 ("rule-product-morph-phon", gated on T016) -- T035 -- inserts its call here. ---
+    # Row 5, "rule-product-morph-phon": gated on T016 for both multiplicands,
+    # and research D9 records IMoAffixProcess and IPhMetathesisRule as
+    # CONFIRMED -- written here as a normal check, not routed to
+    # checks_skipped.
+    count, measured, evidence_basis, objects = _scan_rule_product_morph_phon(project)
+    _emit(checks_run, findings, "rule-product-morph-phon", 5, count, measured, evidence_basis, objects)
 
     count, measured, evidence_basis, objects = _scan_partial_morpheme_incomplete_form(project)
     _emit(checks_run, findings, "partial-morpheme-incomplete-form", 6, count, measured, evidence_basis, objects)
@@ -663,7 +967,17 @@ def run_grammar_scan(project) -> Dict[str, Any]:
     count, measured, evidence_basis, objects = _scan_multiple_allomorphs_per_entry(project)
     _emit(checks_run, findings, "multiple-allomorphs-per-entry", 7, count, measured, evidence_basis, objects)
 
-    # --- Row 8 ("unordered-rule-application-stratum-pair") -- T035 -- inserts its call here. ---
+    count, measured, evidence_basis, objects = _scan_unordered_rule_application_stratum_pair(project)
+    _emit(
+        checks_run,
+        findings,
+        "unordered-rule-application-stratum-pair",
+        8,
+        count,
+        measured,
+        evidence_basis,
+        objects,
+    )
 
     count, measured, evidence_basis, objects = _scan_duplicate_feature_bundle(project)
     _emit(checks_run, findings, "duplicate-feature-bundle", 9, count, measured, evidence_basis, objects)

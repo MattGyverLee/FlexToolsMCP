@@ -4,7 +4,7 @@
   "branch": "feat/parser-check-cp1",
   "selectedAt": "2026-09-15T20:00:03.160Z",
   "currentStep": "implement",
-  "status": "implementing",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -299,6 +299,69 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-16T09:22:13.488Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T14:36:38.905Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T14:46:35.013Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T14:46:51.348Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T14:56:33.170Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T15:06:41.907Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T15:08:32.452Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T15:27:04.850Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-18T15:27:05.166Z"
     }
   ],
   "telemetryInstanceId": "30571ebd-23d5-4d1f-b0de-bbc64147890c",
@@ -328,6 +391,19 @@
       "decision": "Row 1 measured wording in contracts/flextools_grammar_health.md changed from \"3 allomorphs with an empty surface form are reachable from an optional slot\" to \"3 allomorphs have an empty surface form\", with a note explaining the CP1/CP2 split.",
       "why": "T033 found the contract example claimed slot-conditioning that CP1 does not measure -- the slot-reachability walk is deferred behind a known flexicon read gap (research D5/S9). Leaving it would have made the contract example itself violate T034s constraint that measured wording must not claim slot-conditioning, and would likely have failed T014s factual-phrasing assertion.",
       "rejected": "Leaving the contract example alone and letting T034 diverge from it, which would have made the contract untrustworthy as the assertion target."
+    },
+    {
+      "decision": "{\"decision\":\"Widened _MEASURED_TEMPLATE_RE verb allowlist (have/has/use/share/admit) and changed its post-count guard from a consuming \\S to a lookahead, then applied the template to every shipped measured string via AST extraction\",\"why\":\"The guard only ever ran against the contract example and hand-built fixtures, so the vocabulary the scan actually emits was never policed; four shipped verbs sat outside the allowlist and the consuming \\S also excluded the factual N is the X product form used by rows 2 and 5\",\"rejected\":\"Rewording the contract example and the four shipped measured strings to fit the existing regex, which would have drifted user-facing wording away from data-model.md CP1 table without fixing the coverage gap\"}"
+    },
+    {
+      "decision": "Fixed TestOrderInvarianceOfFindings run_b fixture from [5,42,100] to [5,100,42]",
+      "why": "sorted([5,42,100]) == [5,42,100], so the preserve-this-order assertion and the != sorted(...) non-vacuity guard demanded opposite things; the test was unsatisfiable by any implementation",
+      "rejected": "Relaxing or deleting the != sorted(...) guard, which is what makes the order assertion non-vacuous"
+    },
+    {
+      "decision": "grammar_health handler addresses the scan by dotted name only and never imports grammar_scan_module into the MCP server process",
+      "why": "research D11 confirmed the generated-module subprocess can import flextoolsmcp.server.scan.* directly; keeping the import in the child preserves the CP1 boundary that the server opens no LcmCache",
+      "rejected": "The text-splice path, which D11 superseded"
     }
   ],
   "step_summaries": {
@@ -337,6 +413,9 @@
     },
     "tasks": {
       "summary": "35 tasks across 6 phases: Setup(2) + Foundational(4, the four error codes + AnyDetail extension) + US1 parser spine preflight(8, incl. T032 D-note) + US2 flextools_grammar_health(14, incl. the T016->T031->T029 research chain, T027 SPEC correction, T030 subprocess seam, T033 scan table) + US3 refusal helpers(4) + Polish(2); waves explicit with join lines, no [P] pair shares a file, US2 shares no file with US1/US3 so it ships standalone."
+    },
+    "implement": {
+      "summary": "CP1 parser-check complete: parser block + next_step rungs on flextools_health, flextools_grammar_health tool end to end (models, scan rows 1-10, subprocess seam, handler, dispatch), four error codes, and a static+dynamic CP1 boundary regression"
     }
   },
   "coverage": {
@@ -454,7 +533,7 @@
       ]
     }
   },
-  "currentTask": "T034",
+  "currentTask": "T028",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -653,6 +732,56 @@
       "files": [
         "src/flextoolsmcp/server/scan/grammar_scan_module.py"
       ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "_build_parser_block() composing ParserDetector into the top-level parser key; two states per spine, agent_probe skipped recorded in write.reason, active_engine null",
+      "files": [
+        "src/flextoolsmcp/server/handlers/diagnostic_health.py"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "Implemented SPEC 9.5.4 rule-ordering rows 3a/3b/5/8 in the CP1 grammar scan module; both T016-gated sub-checks confirmed by research D9, so none routed to checks_skipped",
+      "files": [
+        "src/flextoolsmcp/server/scan/grammar_scan_module.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Added parser next_step rungs (top-level parser_next_steps, all tool:null at CP1) with the literal CP1 action text for write-unavailable/read-ready and the hc install hint; recorded the degradation in the contract",
+      "files": [
+        "src/flextoolsmcp/server/handlers/diagnostic_health.py",
+        "specs/parser-check/contracts/flextools_health-parser-block.md"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "CP1 boundary regression: AST+literal static scan over server tree plus dynamic BoundarySpy, both self-falsified via planted-snippet tests; 103 tests",
+      "files": [
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Grammar-health handler: runs run_grammar_scan through the T030 subprocess seam (server process opens no project), assembles checks_run/checks_skipped/findings/next_step:null in SPEC 9.5.4 row order, caps objects[] at limit, reuses the four project error codes unchanged",
+      "files": [
+        "src/flextoolsmcp/server/handlers/grammar_health.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Routed flextools_grammar_health: TOOL_GRAMMAR_HEALTH constant, ALL_TOOL_NAMES entry, both import modes, handler alias and DISPATCH_ROUTES entry",
+      "files": [
+        "src/flextoolsmcp/server/dispatch.py"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Validated all CP1-scoped SPEC 16 groups: full suite 1730 passed / 8 skipped / 0 failed, ruff clean on src and tests",
+      "files": [
+        "repository root"
+      ]
     }
   },
   "concerns": [
@@ -662,6 +791,14 @@
     },
     {
       "note": "T018 (haiku) reported the test_mcp_tools tool-count failure as needing an update but did not apply it, leaving the suite red. Main session added flextools_grammar_health to EXPECTED_TOOL_NAMES and READ_ONLY_TOOLS. Small registration tasks on a fast model still need an explicit instruction to FIX derived-count tests, not just report them.",
+      "step": "implement"
+    },
+    {
+      "note": "T035 work was destroyed mid-run when a parallel agent reverted a temporary edit with git checkout -- <path>, discarding another agent uncommitted changes. Recovered byte-identical from the subagent transcript. Parallel agents sharing an unstaged working tree need an explicit no-destructive-git rule and a staged checkpoint before any falsification step.",
+      "step": "implement"
+    },
+    {
+      "note": "Two pre-existing B904 lint errors remain in scripts/check_doc_snippets.py, outside CP1 scope and left unfixed.",
       "step": "implement"
     }
   ],
@@ -673,6 +810,33 @@
       "warnings": [
         "AgentProbeState is a typing.Literal, not an Enum -- a defensible choice matching the feature other closed vocabularies, so the implementation was left alone and the test was corrected instead"
       ]
+    },
+    {
+      "what": "Full test suite after all CP1 tasks",
+      "command": "python -m pytest tests/ -q",
+      "result": "1730 passed, 8 skipped, 0 failed, 36 subtests passed",
+      "warnings": [
+        "23 pytest warnings, pre-existing ast.Str deprecation in scripts/check_doc_snippets.py, unrelated to CP1"
+      ]
+    },
+    {
+      "what": "Project lint",
+      "command": "python -m ruff check src/ tests/",
+      "result": "All checks passed",
+      "warnings": [
+        "2 pre-existing B904 in scripts/check_doc_snippets.py, outside src/ and tests/, left unfixed as out of CP1 scope"
+      ]
+    },
+    {
+      "what": "SPEC 16 CP1-scoped groups run individually",
+      "command": "pytest per group: error models 39, probe 15, agent probe 17, grammar health 97, engine gate 20, boundary 107, health block 37",
+      "result": "all green; the Windows+FieldWorks-no-hc integration bullet really executed on this machine rather than skipping"
+    },
+    {
+      "what": "T013 next_step rungs are falsifiable",
+      "command": "injected a flextools_try_word-naming action into _build_parser_next_steps and re-ran TestNextStepCP1Degradation",
+      "result": "test went red as required, then reverted; guard confirmed to have teeth"
     }
-  ]
+  ],
+  "last_action": "all 35 tasks done -- 1730 passed, 8 skipped, 0 failed; ruff clean"
 }

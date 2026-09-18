@@ -99,6 +99,31 @@ SPEC 10.1 forbids proposing a tool that does not exist, so at CP1 those rows deg
 to the external-action wording with `tool: null`. The rows land in full at CP2, when
 the tool they name is real.
 
+**CP1 degradation, as shipped (T013).** `tool: null` alone is not enough for the
+`write: unavailable` / `read: ready` row: its action text still names the tool in
+prose, which is the same violation. At CP1 these two rows are emitted as:
+
+| State | CP1 action | CP1 tool | est_cost |
+|---|---|---|---|
+| `write: unavailable`, `read: ready` | "filing is unavailable on this install; read-only parser diagnosis is unaffected." | `null` | inline |
+| `write: unavailable`, `signal: parser_agent_missing` | unchanged (names no tool in prose) | `null` | inline |
+
+The replacement text is literal. It deliberately does **not** say the read spine
+confirms the grammar loads -- nothing at CP1 loads a grammar, so `read: ready`
+means only that ParserCore's read surface is reachable.
+
+The rungs are emitted as a list at the response's top level, in a
+`parser_next_steps` key beside `parser` (each item in SPEC 10.1's
+`{action, tool, args, rationale, est_cost}` shape) -- not inside the `parser`
+block, whose key set is copied verbatim from SPEC 10.2 and is exactly the five
+keys shown above. Every CP1 rung carries `tool: null`: the only rows with a tool
+to name name `flextools_try_word`. `flextools_parse_sandbox` is never named while
+either sandbox component is missing. The `GenerateHCConfig.exe`-missing state has
+no action row of its own (the table gives it only the negative rule); the fact is
+carried by `sandbox.components`. The `active_engine` mismatch row never fires from
+health at CP1, since health never opens a project and `active_engine` is always
+`null`; that gate lives in the per-call preflight.
+
 The install hint for `hc` is literally
 `dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool` (SPEC H1). `hc` is a
 dotnet **global tool**, located via PATH / `dotnet tool list -g` with a config

@@ -282,6 +282,128 @@ def _build_parser_block() -> Dict[str, Any]:
     }
 
 
+# The `hc` install hint is a literal, quoted verbatim from SPEC H1 -- `hc` is a
+# dotnet GLOBAL tool, located via PATH / `dotnet tool list -g`, not a file under
+# %LOCALAPPDATA%. Never reword this command; a caller pastes it.
+_HC_INSTALL_HINT = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool"
+
+# CP1 replacement action text for the `write: unavailable` / `read: ready` row.
+# The contract's own wording ("use read-only Try A Word; filing unavailable")
+# names flextools_try_word in prose, and SPEC 10.1 forbids proposing a tool that
+# does not exist -- nulling `tool` alone would leave the tool named in the
+# action. This wording names no tool. It deliberately does NOT claim the grammar
+# loads: nothing at CP1 loads a grammar, so `read: ready` means only that
+# ParserCore's read surface is reachable.
+_WRITE_UNAVAILABLE_READ_READY_ACTION = (
+    "filing is unavailable on this install; read-only parser diagnosis is "
+    "unaffected."
+)
+
+
+def _parser_next_step(
+    action: str,
+    rationale: str,
+    est_cost: str,
+    tool: Optional[str] = None,
+    args: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """One structured rung in SPEC 10.1's shape ({action, tool, args,
+    rationale, est_cost}). ``tool`` defaults to None because every CP1 rung
+    is external: the two rows that would name a tool name
+    ``flextools_try_word``, which does not exist until CP2."""
+    return {
+        "action": action,
+        "tool": tool,
+        "args": args,
+        "rationale": rationale,
+        "est_cost": est_cost,
+    }
+
+
+def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The `next_step` rungs for whichever parser spines are unhealthy
+    (contracts/flextools_health-parser-block.md, "next_step per unhealthy
+    state"; SPEC 10.1 for the rung shape).
+
+    Takes the already-composed `parser` block rather than a detector, so
+    detection still happens exactly once per health call and this function
+    stays what `_build_parser_block()` is: reshaping of facts already
+    computed. No new detection logic enters this module.
+
+    CP1 degradation, per the contract's CP1 caveat: the two rows that name
+    `flextools_try_word` degrade to `tool: None`, and the
+    `write: unavailable` / `read: ready` row additionally swaps its action
+    text for `_WRITE_UNAVAILABLE_READ_READY_ACTION`, since the contract's
+    wording names the tool in prose. No rung here ever names
+    `flextools_parse_sandbox` either -- sandbox is the one spine whose
+    tool is proposed by name in the contract, and only when both
+    components are found, which is a CP2+ tool in any case.
+
+    `active_engine` mismatch has no rung here: `flextools_health` never
+    opens a project (research D2/D8), so `active_engine` is always None and
+    the mismatch gate lives in the per-call preflight, not in health.
+    """
+    steps: List[Dict[str, Any]] = []
+
+    read = parser["read"]
+    write = parser["write"]
+
+    if read["status"] == "unavailable":
+        steps.append(_parser_next_step(
+            action="install/repair FieldWorks so ParserCore is reachable",
+            rationale=(
+                "ParserCore's read surface could not be resolved on this "
+                "install, so no parser spine is callable."
+            ),
+            est_cost="n/a",
+        ))
+
+    if write["status"] == "unavailable":
+        write_signal = (write.get("reason") or {}).get("signal")
+        if write_signal == "parser_agent_missing":
+            steps.append(_parser_next_step(
+                action=(
+                    "this project has never run HermitCrab; run it once from "
+                    "FLEx's Parser menu, then retry filing"
+                ),
+                rationale=(
+                    "kguidAgentHermitCrabParser is absent from the project's "
+                    "agent repository, so filed results would have no owning "
+                    "agent."
+                ),
+                est_cost="inline",
+            ))
+        elif read["status"] == "ready":
+            steps.append(_parser_next_step(
+                action=_WRITE_UNAVAILABLE_READ_READY_ACTION,
+                rationale=(
+                    "ParseFiler.ProcessParse is missing from this ParserCore, "
+                    "so parse results cannot be filed back; read: ready means "
+                    "only that ParserCore's read surface is reachable."
+                ),
+                est_cost="inline",
+            ))
+
+    # sandbox: only the hc row carries an action (the contract's
+    # GenerateHCConfig.exe state is the negative rule "never propose the
+    # sandbox tool", already honoured by emitting no rung that names it).
+    hc = next(
+        (c for c in parser["sandbox"]["components"] if c["component"] == "hc"),
+        None,
+    )
+    if hc is not None and not hc["found"]:
+        steps.append(_parser_next_step(
+            action="install the hc dotnet tool",
+            rationale=(
+                "hc is a dotnet global tool, located via PATH / "
+                "`dotnet tool list -g`; install it with `{}`.".format(_HC_INSTALL_HINT)
+            ),
+            est_cost="n/a",
+        ))
+
+    return steps
+
+
 def _read_index_file_meta(path: Path) -> Dict[str, Any]:
     """Read {name, schema, entities} from a versioned API JSON file."""
     meta: Dict[str, Any] = {"name": path.name, "schema": None, "entities": 0}
@@ -456,6 +578,9 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
 
     index_dir = get_index_dir()
     libraries = _build_libraries_block(index_dir)
+    # Detect once; the rungs are shaped from the composed block, not from a
+    # second ParserDetector() pass.
+    parser = _build_parser_block()
 
     result: Dict[str, Any] = {
         "server": {
@@ -464,7 +589,10 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
             "pid": os.getpid(),
         },
         "fieldworks": _build_fieldworks_block(),
-        "parser": _build_parser_block(),
+        "parser": parser,
+        # Sibling of "parser" rather than a key inside it: the block's shape is
+        # copied verbatim from SPEC 10.2 and carries exactly five keys.
+        "parser_next_steps": _build_parser_next_steps(parser),
         "libraries": libraries,
         "indexes": _build_indexes_block(index_dir, libraries),
         "session": session_state.summary(),

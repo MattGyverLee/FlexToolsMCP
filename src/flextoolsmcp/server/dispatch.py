@@ -34,6 +34,7 @@ from .models import (
     ListSkeletonsInput,
     PrepareReportInput,
     FlexToolsHealthInput,
+    GrammarHealthInput,
 )
 
 # ============================================================
@@ -80,6 +81,9 @@ TOOL_LIST_SKELETONS = "flextools_list_skeletons"
 # Diagnostics tool (issue #56)
 TOOL_FLEXTOOLS_HEALTH = "flextools_health"
 
+# Grammar health tool (parser-check CP1)
+TOOL_GRAMMAR_HEALTH = "flextools_grammar_health"
+
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
@@ -103,6 +107,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_LIST_SKELETONS,
     TOOL_PREPARE_REPORT,
     TOOL_FLEXTOOLS_HEALTH,
+    TOOL_GRAMMAR_HEALTH,
 ])
 
 # Import all handler functions
@@ -147,6 +152,9 @@ def _import_handlers():
         from .handlers.diagnostic_health import (
             handle_flextools_health,
         )
+        from .handlers.grammar_health import (
+            handle_flextools_grammar_health,
+        )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
         from server.handlers.admin import (
@@ -186,6 +194,9 @@ def _import_handlers():
         from server.handlers.diagnostic_health import (
             handle_flextools_health,
         )
+        from server.handlers.grammar_health import (
+            handle_flextools_grammar_health,
+        )
 
     return {
         "handle_start": handle_start,
@@ -209,6 +220,7 @@ def _import_handlers():
         "handle_resolve_type": handle_resolve_type,
         "handle_prepare_report": handle_prepare_report,
         "handle_flextools_health": handle_flextools_health,
+        "handle_flextools_grammar_health": handle_flextools_grammar_health,
     }
 
 
@@ -234,6 +246,7 @@ handle_find_wrappers_for_lcm = _handlers["handle_find_wrappers_for_lcm"]
 handle_resolve_type = _handlers["handle_resolve_type"]
 handle_prepare_report = _handlers["handle_prepare_report"]
 handle_flextools_health = _handlers["handle_flextools_health"]
+handle_flextools_grammar_health = _handlers["handle_flextools_grammar_health"]
 
 
 # Type alias for tool handlers
@@ -284,6 +297,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
 
     # Diagnostics tool (issue #56)
     TOOL_FLEXTOOLS_HEALTH: (handle_flextools_health, FlexToolsHealthInput),
+
+    # Grammar health tool (parser-check CP1, issue #93)
+    TOOL_GRAMMAR_HEALTH: (handle_flextools_grammar_health, GrammarHealthInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

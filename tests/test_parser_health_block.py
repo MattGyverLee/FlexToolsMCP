@@ -52,6 +52,7 @@ flextools_try_word").
 from __future__ import annotations
 
 import asyncio
+import itertools
 import json
 import shutil
 import subprocess
@@ -179,10 +180,32 @@ def _patch_detector(monkeypatch, dh, detector):
     monkeypatch.setattr(dh, "ParserDetector", lambda *a, **kw: detector)
 
 
+_STUB_INDEX_SEQ = itertools.count()
+
+
+def _stub_index_dir(tmp_path):
+    """An empty, per-call stub index dir whose PATH STRING cannot contain a
+    tool name.
+
+    pytest derives tmp_path's own name from the test function's name, so
+    e.g. test_flextools_try_word_never_appears_* gets a tmp_path literally
+    containing "flextools_try_word" -- and flextools_health echoes its
+    index dir back at indexes.index_dir. Feeding tmp_path straight in would
+    make the whole-response substring assertions below ("flextools_try_word
+    not in json.dumps(data)") fail on the fixture's own directory name
+    rather than on anything the handler said, i.e. unpassable regardless of
+    the implementation. Using a sibling directory under tmp_path.parent
+    keeps the per-call isolation (nothing is ever written here; the handler
+    only scans it) while dropping the test name from the string.
+    """
+    return tmp_path.parent / "stub-index-{}".format(next(_STUB_INDEX_SEQ))
+
+
 def _run_health(monkeypatch, tmp_path, detector, args=None):
     import server.handlers.diagnostic_health as dh
 
-    monkeypatch.setattr(dh, "get_index_dir", lambda: tmp_path / "index")
+    index_dir = _stub_index_dir(tmp_path)
+    monkeypatch.setattr(dh, "get_index_dir", lambda: index_dir)
     monkeypatch.setattr(dh, "detect_installed_library_version", lambda *a, **kw: None)
     _patch_detector(monkeypatch, dh, detector)
 

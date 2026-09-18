@@ -31,17 +31,77 @@ Machine state: `specs/parser-check/.crew-handoff.json`.
 Spec: `specs/parser-check-cp2/spec.md` (580 lines). Source:
 `specs/parser-check/CP2-SPEC.md`. Machine state:
 `specs/parser-check-cp2/.crew-handoff.json`.
-Crew reviews: `specs/parser-check-cp2/reviews/cycle1-*.md`.
+Crew reviews: `specs/parser-check-cp2/reviews/cycle{1..3}-*.md`.
 **Planning brief (read this first):**
 `specs/parser-check-cp2/reviews/cycle1-synthesis.md`.
 
-**CP2 spurt 1 (cycle 1) COMPLETE -- recon closed and synthesised. Next pickup is
-cycle 2: one `lex-doc` task applying the twelve spec amendments in section 6 of
-the synthesis brief, then `/speckit.companion.plan` for CP2a ONLY.**
+**CP2 spurt 2 (cycles 2-3) COMPLETE -- the spec amendments are applied and
+verified. The spec is no longer factually false on any of the five blocking
+points. Next pickup is `/speckit.companion.plan` for CP2a ONLY -- do NOT plan
+CP2b.**
 
 **Spurts 1-4 COMPLETE (cycles 1-8). CP1 Phase 1 (Setup) and Phase 2
 (Foundational) are done and green. Next pickup is Phase 3 / US1 -- the parser
 spine preflight, starting at wave 1: T007, T008, T032 in parallel.**
+
+### parser-check CP2 spurt 2 (cycles 2-3) -- CLOSED
+
+**Purpose: make the spec true before anything is planned against it.** Spurt 1
+found the CP2 spec factually false in five blocking places; this spurt fixed
+them. Cycle 2 applied the twelve amendments from section 6 of the synthesis
+brief (`lex-doc` on `specs/parser-check-cp2/spec.md`, `lex-archivist` on
+`specs/parser-check/CP2-SPEC.md`), with `lex-qc` and a context lane checking the
+result. Cycle 3 closed the four defects that check found. Nothing was
+implemented; no FLEx project was opened; no write occurred; no branch was cut.
+
+**The five blocking amendments, all verified landed by the lead's own reads:**
+
+- **E1 -- index path + bridge artifact.** `CP2-SPEC.md:56-57` and `:197-198` now
+  name the real root `src/flextoolsmcp/index/python/` and, crucially, the
+  version-locked sibling `flexicon_lcm_bridge_v4.9.0.json`. The spec previously
+  named a path that does not exist and never mentioned the bridge at all --
+  shipping only the api file would have silently dropped the bridge for 4.9.0.
+- **E2 -- FR-043 reload binding.** `spec.md:382-388` now states the discard as
+  *two obligations in sequence* (reset, then reload) and says in terms that a
+  reload request issued alone is conditional and fails silently. The rationale
+  at `:611-616` cites `ParserWorker.ReloadGrammarAndLexicon()`. `CP2-SPEC.md:94`
+  maps `Reload()` to `Reset()` then `Update()` with the footnote at `:97-101`.
+  The bare-`Update()` binding is gone from both documents.
+- **E3 -- FR-041/SC-016.** The two probes are now described as *different and
+  overlapping in both directions* rather than one being simply larger
+  (`spec.md:372`, `:484`, `:579`). `parser_probe.py` stays untouched.
+- **E7 -- `parse_morph_unresolved` gains `resolved_to`.** This is the amendment
+  that took two cycles. All three documents now agree on the parent spec's
+  five-field order -- `morph`, `position`, `resolved_to`, `candidates`, `hint`:
+  `SPEC.md:1987`, `CP2-SPEC.md` section 7 (with the enum footnoted as
+  `none | ambiguous | no_msa`), and `spec.md` FR-037 at `:352-354`. The
+  four-field drift is fully retired.
+- **E8 / E12.** `flextools_parse_status` returns a success envelope on terminal
+  stages (`spec.md:331-343`); the user's D-00 ordering is recorded as **Decision
+  D4** at `:642`, with FR-011 and the Schedule risk (`:699`) pointing at it.
+
+**The cycle-3 correction worth remembering.** Cycle 2's pass left FR-011 reading
+as though the 4.9.0 *release* were the gate that permits assistant-side work. It
+is not -- the gate is D4's **evidence** requirement ("Part A **proven**", not
+"Part A released"), which is the whole point of the CP2a/CP2a-bridge seam.
+`spec.md:255-261` now separates the two: the release's existence and version
+alignment are a *precondition*, the evidence gate is what permits. Getting this
+backwards would have re-created the exact posture D-00 exists to prevent.
+
+**`.spec-context.json` correctly left alone by cycle 3.** Its titles are
+truncated at 180 characters; both cycle-3 edits fall past that point, so the
+materialized file needed no regeneration. Verified against the diff.
+
+**Still open, not blocking the plan step:** escalations E-B (does the maintainer
+accept that `flextools_parse_status` never returns an error envelope for a
+terminal run? -- flag at plan review, cheap to reverse), E-C (the 4.9.0 tag push
+and `gh release create` are maintainer acts; the loop hands off rather than
+tagging), and E-D (proving FR-043's *stale* half needs a live FLEx write; CP2a
+proves it offline against a stubbed change listener, CP2b must stop
+`needs_human` for the live proof).
+
+**Machine state at close:** no FLEx project opened, no FLEx write at any point in
+this spurt. Static analysis and file reads only. Nothing to restore.
 
 ### parser-check CP2 spurt 1 (cycle 1) -- CLOSED
 

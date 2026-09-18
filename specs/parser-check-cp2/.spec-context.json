@@ -33,7 +33,7 @@
       "title": "Loading the parser component MUST be triggered by use, never by import, so that a future installation that renames or relocates it degrades to \"parser unavailable\" instead of break"
     },
     "FR-004": {
-      "title": "Before use, the system MUST verify that the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise."
+      "title": "Before use, the system MUST verify that the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise. This check is directory"
     },
     "FR-005": {
       "title": "Before use, the system MUST verify by inspection that every operation it intends to call exists, and MUST bind those operations positionally rather than by parameter name."
@@ -45,7 +45,7 @@
       "title": "Scripts MUST be able to read all genres assigned to a text, not only the first."
     },
     "FR-008": {
-      "title": "Scripts MUST be able to get the entry that owns an allomorph."
+      "title": "Scripts MUST be able to get the entry that owns an allomorph. The underlying data model already exposes this relationship; the gap this checkpoint closes is that the script library"
     },
     "FR-009": {
       "title": "Scripts MUST be able to read morpho-syntactic analyses without dropping to raw data-model access, since resolving a user's hypothesis terminates in them."
@@ -129,7 +129,7 @@
       "title": "A status request for an unknown handle MUST be refused naming the handle and the handles that do exist."
     },
     "FR-036": {
-      "title": "A cancelled run MUST be reportable with the count of words completed and the stage it was in when cancelled."
+      "title": "A cancelled run MUST be reportable with the count of words completed and the stage it was in when cancelled. Reporting a cancelled run's status is not itself a refusal; the cancell"
     },
     "FR-037": {
       "title": "Three refusal codes MUST be added additively to the existing tool response contract -- unresolvable morph, unknown run, and cancelled run -- with the documented count raised from 2"
@@ -141,10 +141,10 @@
       "title": "Test groups deferred by CP1 MUST be brought into scope: the no-user-interface-code guarantee, the no-oracle case, the conditional-proposal case, and the script-library facade group"
     },
     "FR-040": {
-      "title": "Whether the three grammar lints deferred at CP1 are folded in here MUST be decided and, if deferred again, recorded as such."
+      "title": "Whether the three grammar lints deferred at CP1 are folded in here MUST be decided and, if deferred again, recorded as such. *(Decision D5.)*"
     },
     "FR-041": {
-      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository. The script library MUST probe only the read operations its own surface binds; this reposito"
+      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository. The script library MUST probe the read operations its own surface binds, including the relo"
     },
     "FR-042": {
       "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed. Holding a grammar MUST NOT turn grammar"

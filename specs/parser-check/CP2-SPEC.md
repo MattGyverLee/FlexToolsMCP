@@ -53,7 +53,8 @@ prepared for. The real sequence:
 A1  flexicon: facade + 3 read gaps, behind a lazy import + capability probe
 A2  flexicon: release  (4.8.0 -> 4.9.0)
 A3  MCP: bump the floor in pyproject.toml/requirements.txt to >=4.9.0,<5
-A4  MCP: regenerate the index -> index/python/flexicon_api_v4.9.0.json
+A4  MCP: regenerate the index -> src/flextoolsmcp/index/python/flexicon_api_v4.9.0.json
+     and its version-locked sibling flexicon_lcm_bridge_v4.9.0.json
      (`python -m flextoolsmcp.refresh`; the floor and the indexed version must
       match -- see CLAUDE.md's note on the 2.10.0 mismatch that shipped an index
       built at 4.5.2 against a >=4.3.0 floor)
@@ -90,8 +91,15 @@ nothing more:
 | `TryWord(form)` | `ParseWord(string) -> ParseResult` | B |
 | `TryWordXml(form)` | `ParseWordXml(string) -> XDocument` | B |
 | `TraceWord(form, msa_hvos=None)` | `TraceWordXml(string, IEnumerable<int>)` | A when `msa_hvos` given, C when `None` |
-| `Reload()` | `Update()` | -- |
+| `Reload()` | `Reset()` then `Update()` | -- |
 | `IsUpToDate()` | `IsUpToDate()` | -- |
+
+`Reload()`'s two-step binding is required: `HCParser.Update()` is itself
+conditional (`if (m_changeListener.Reset() || m_forceUpdate) LoadParser();`), so
+calling it alone on an unchanged model does nothing -- serving the next parse
+from the stale grammar the caller believes it discarded. `Reset()` first,
+matching FieldWorks' own `ParserWorker.ReloadGrammarAndLexicon()`, is what makes
+the discard unconditional.
 
 `ParseFiler` is **not** wrapped. Per S9 the write path stays in the MCP, and per
 12.1 a facade that cannot reach a write type is what makes the read spine's
@@ -186,10 +194,11 @@ rather than a smell. Flag for crew review; this decides whether CP2 touches
 - Version: **4.9.0** (additive surface, no breaking change).
 - MCP floor: `pyflexicon>=4.9.0,<5` in `pyproject.toml` **and**
   `requirements.txt` -- CLAUDE.md notes these mirror each other.
-- Index: regenerate so `index/python/flexicon_api_v4.9.0.json` exists and the
-  floor matches the indexed version. The 2.10.0 incident (index built at 4.5.2
-  against a `>=4.3.0` floor, resolving to 4.4.1 in practice) is the failure mode
-  to avoid.
+- Index: regenerate so `src/flextoolsmcp/index/python/flexicon_api_v4.9.0.json`
+  and its version-locked sibling `flexicon_lcm_bridge_v4.9.0.json` both exist and
+  the floor matches the indexed version. Shipping only the api file silently
+  drops the bridge for 4.9.0. The 2.10.0 incident (index built at 4.5.2 against a
+  `>=4.3.0` floor, resolving to 4.4.1 in practice) is the failure mode to avoid.
 - `__init__.pyi` must declare the new public surface -- flexicon has an existing
   ratchet test on the declared surface (`3fbc922`, "declare the full public
   surface in `__init__.pyi`").
@@ -366,13 +375,15 @@ easy to miss because they are already `[x]`:
 ## 7. Error codes added at CP2
 
 Additive to `tool-responses/1.0`; CHANGELOG entry under "Tool contract", count
-bumped from 22.
+bumped from 22 to 25.
 
 | Code | Detail fields |
 |---|---|
-| `parse_morph_unresolved` | `morph`, `candidates`, `position`, `hint` |
+| `parse_morph_unresolved` | `morph`, `position`, `resolved_to`\*, `candidates`, `hint` |
 | `parse_run_not_found` | `run_id`, `available_runs` *(already specced in SPEC 14; first emitted here)* |
 | `parse_job_cancelled` | `run_id`, `words_completed`, `state_at_cancel` |
+
+\* `resolved_to` is one of: `none` \| `ambiguous` \| `no_msa`.
 
 `parser_engine_mismatch`, `parser_core_missing`, `parser_agent_missing` and
 `parser_tool_missing` ship at CP1 and are merely *emitted* here.

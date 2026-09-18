@@ -191,7 +191,10 @@ survive. Separately, submit an urgent single word during a running batch.
 - The parser component is present but belongs to a different FieldWorks installation
   than the data model in use.
 - The parser's own interface and its implementation disagree on what a parameter is
-  called, so anything bound by name breaks while positional binding works.
+  called for the two operations that produce XML output (`ParseWordXml` and
+  `TraceWordXml`, whose parameter is `form` where the interface says `word`), so
+  anything bound by name to either of those two breaks while positional binding works;
+  the plain word-parse operation's interface and implementation already agree.
 - A piece of a proposed decomposition matches a headword but that headword carries no
   usable analysis.
 - A piece matches several homographs, or several allomorphs of one entry.
@@ -225,6 +228,10 @@ survive. Separately, submit an urgent single word during a running batch.
   unavailable" instead of breaking unrelated features.
 - **FR-004**: Before use, the system MUST verify that the parser component comes from
   the same installation directory as the data model in use, and MUST refuse otherwise.
+  This check is directory equality only: a foreign parser component copied into the
+  correct installation directory passes undetected. That is accepted -- the
+  alternative, loading and invoking the component to verify it, is exactly what this
+  check exists to avoid.
 - **FR-005**: Before use, the system MUST verify by inspection that every operation it
   intends to call exists, and MUST bind those operations positionally rather than by
   parameter name.
@@ -232,15 +239,26 @@ survive. Separately, submit an urgent single word during a running batch.
   against any minimum. A standing test MUST guard this in each repository that probes.
 - **FR-007**: Scripts MUST be able to read all genres assigned to a text, not only the
   first.
-- **FR-008**: Scripts MUST be able to get the entry that owns an allomorph.
+- **FR-008**: Scripts MUST be able to get the entry that owns an allomorph. The
+  underlying data model already exposes this relationship; the gap this checkpoint
+  closes is that the script library has not yet wrapped it, not that the relationship
+  is missing.
 - **FR-009**: Scripts MUST be able to read morpho-syntactic analyses without dropping
   to raw data-model access, since resolving a user's hypothesis terminates in them.
 - **FR-010**: Parser results crossing into script-visible form MUST preserve the
   identity of the underlying lexical objects, not only their text, because later
-  checkpoints align results against recorded analyses by identity.
+  checkpoints align results against recorded analyses by identity. For the plain
+  parse this identity is preserved as live object references; inside the trace
+  explanation, objects survive only as integer identifiers on an already-serialised
+  document, and recovering their identity there requires a repository lookup rather
+  than being carried directly.
 - **FR-011**: The new surface MUST be released as a versioned package before the
   assistant-side work is tested against it; the assistant's declared minimum version
-  and its bundled index of that library MUST name the same released version.
+  and its bundled index of that library MUST name the same released version. This
+  release's existence and version alignment are a precondition for the assistant-side
+  work, not the gate that permits it -- the gate is Decision D4's evidence requirement,
+  satisfied on its own timeline. Pushing the release tag is a maintainer act, not an
+  automated one.
 
 **Asking whether a word parses (US2)**
 
@@ -311,36 +329,52 @@ survive. Separately, submit an urgent single word during a running batch.
   leaving a cancelled terminal stage over the partial results.
 - **FR-033**: The assistant MUST offer a read-only status tool taking a run handle and
   reporting stage, progress, and -- on a terminal stage -- the result summary or the
-  failure with its guidance.
+  failure with its guidance. This report MUST be returned as a successful response even
+  when the run's terminal stage is failed or cancelled, since asking about a dead run is
+  a successful query, not a failed request; the only refusal this tool MUST issue is for
+  a handle that does not correspond to any run.
 - **FR-034**: A failed run MUST carry guidance pointing at the diagnostic instruments,
   since memory exhaustion is the case where a diagnosis beats a retry.
 - **FR-035**: A status request for an unknown handle MUST be refused naming the handle
   and the handles that do exist.
 - **FR-036**: A cancelled run MUST be reportable with the count of words completed and
-  the stage it was in when cancelled.
+  the stage it was in when cancelled. Reporting a cancelled run's status is not itself a
+  refusal; the cancelled-run refusal code MUST fire only when a call attempts to act on
+  an already-terminal run -- a second cancellation request, or a single-word request
+  attaching to a run someone else already cancelled -- not from the status tool simply
+  reporting that state.
 
 **Contract and carry-over (cross-cutting)**
 
 - **FR-037**: Three refusal codes MUST be added additively to the existing tool
   response contract -- unresolvable morph, unknown run, and cancelled run -- with the
-  documented count raised from 22 and a changelog entry recorded.
+  documented count raised from 22 and a changelog entry recorded. The unresolvable-morph
+  refusal MUST carry five detail fields -- `morph`, `position`, `resolved_to` (one of
+  `none`, `ambiguous`, or `no_msa`), `candidates`, and `hint` -- matching the parent
+  specification's contract, since collapsing the no-usable-analysis case and the
+  multiple-candidate case into a bare refusal would reproduce the silent-narrowing
+  failure this checkpoint's resolver guarantees exist to prevent.
 - **FR-038**: Every piece of guidance shipped in CP1 that had to point at nothing
   because this tool did not exist MUST be revisited and pointed at it.
 - **FR-039**: Test groups deferred by CP1 MUST be brought into scope: the
   no-user-interface-code guarantee, the no-oracle case, the conditional-proposal case,
   and the script-library facade group.
 - **FR-040**: Whether the three grammar lints deferred at CP1 are folded in here MUST
-  be decided and, if deferred again, recorded as such.
+  be decided and, if deferred again, recorded as such. *(Decision D5.)*
 
 **Decisions resolved during specification (cross-cutting)**
 
 - **FR-041**: This checkpoint MUST NOT modify the capability check already shipped in
-  this repository. The script library MUST probe only the read operations its own
-  surface binds; this repository MUST keep its larger check, which additionally covers
-  the write operation it gates and which the library deliberately does not wrap. Both
-  checks MUST state, where a contributor will read it, that their member lists differ
-  by design and MUST NOT be unified -- an unexplained divergence between two
-  safety-critical checks is indistinguishable from drift.
+  this repository. The script library MUST probe the read operations its own surface
+  binds, including the reload and currency operations that surface adds; this
+  repository's already-shipped check MUST keep the write operation it gates, which the
+  library deliberately does not wrap. The two checks are different and overlapping, not
+  one simply larger than the other, and each MUST state, where a contributor will read
+  it, what the other check has that it lacks -- an unexplained divergence between two
+  safety-critical checks is indistinguishable from drift. Each MUST also carry a
+  one-line pointer noting that a capability passing on one side is not guaranteed to
+  pass on the other, since an installation could report the parser usable under one
+  check while the other would refuse it.
 - **FR-042**: At most one loaded grammar MUST be held at a time, for the project in
   use, and it MUST be released when another project's grammar is needed. Holding a
   grammar MUST NOT turn grammar loading -- the step that most often exhausts memory --
@@ -348,7 +382,10 @@ survive. Separately, submit an urgent single word during a running batch.
 - **FR-043**: A held grammar MUST have its currency confirmed before it is reused, and
   MUST be reloaded when it reports stale. A parse MUST NOT be served from a grammar
   whose currency was not confirmed. An explicit reload request MUST discard the held
-  grammar unconditionally.
+  grammar unconditionally, expressed as two obligations in sequence: the held grammar
+  MUST first be reset, and the reload MUST then be requested. A reload request issued
+  alone is conditional and would fail silently, serving the next parse from the stale
+  grammar the caller believes it discarded.
 
 **Explicitly out of scope**
 
@@ -414,7 +451,8 @@ survive. Separately, submit an urgent single word during a running batch.
 - **SC-012**: All three answer levels succeed against a live project with a working
   grammar, with the restricted level driven by a caller-supplied decomposition.
 - **SC-013**: The full test suite is green, including the groups CP1 deferred, and the
-  declared minimum library version equals the version of the bundled index.
+  declared minimum library version equals the version of every bundled flexicon index
+  artifact.
 - **SC-014**: At no point is more than one loaded grammar held; across a sequence of
   runs spanning two projects, switching projects releases the previous grammar -- 0
   grammars retained for a project not in use.
@@ -422,8 +460,9 @@ survive. Separately, submit an urgent single word during a running batch.
   immediately before reuse, and 100% of stale reports produce a reload before any word
   of that request is parsed.
 - **SC-016**: Each capability check is guarded by its own standing test over its own
-  member list, each carries a written statement that the divergence is deliberate, and
-  this checkpoint changes 0 lines of the check already shipped in this repository.
+  member list, each carries a written statement naming what the other check has that it
+  lacks, and this checkpoint changes 0 lines of the check already shipped in this
+  repository.
 - **SC-017**: All three answer levels are verified live against `IndonesianHC-Complete`;
   the long-run behaviours -- grace-window overflow, word-boundary interleave,
   cooperative cancellation and partial-result survival -- are verified live against
@@ -438,11 +477,13 @@ survive. Separately, submit an urgent single word during a running batch.
 - The new library surface is additive, so a minor version bump (4.9.0) is correct and
   no breaking change is implied.
 - The two capability checks -- the one already shipped in this repository and the new
-  one in the script library -- are deliberately **different by design**: the library
-  checks only the read operations it wraps, this repository keeps its larger check
-  covering the write operation it gates. Divergence between them is therefore correct
-  rather than drift, and this checkpoint does not modify the shipped check. *(Decision
-  D1.)*
+  one in the script library -- are deliberately **different and overlapping by
+  design**: the library checks the read operations it wraps, including the reload and
+  currency operations its surface adds; this repository keeps its check covering the
+  write operation it gates, which the library does not wrap. The divergence now runs in
+  both directions rather than one check simply being larger, and it is therefore
+  correct rather than drift; this checkpoint does not modify the shipped check.
+  *(Decision D1.)*
 - A loaded grammar is held for reuse, but only one at a time and only for the project
   in use, and its currency is confirmed before every reuse. Reuse is what makes the
   interleave guarantee affordable; the single-slot bound is what stops it becoming an
@@ -466,6 +507,15 @@ survive. Separately, submit an urgent single word during a running batch.
   be configured for the supported engine and to carry real phonological rules. The usual
   sample project, `Sena 3`, is configured for the *other* engine and carries no rules, so
   it would be refused by this feature's own engine gate. *(Decision D3.)*
+- The script-library surface is extended and proven before any change is made on this
+  repository's side; this checkpoint splits into CP2a (the library), CP2a-bridge (this
+  repository's dependency floor and refreshed index artifacts), and CP2b (the assistant
+  tools and run machinery), and CP2b does not start until CP2a's evidence gate is
+  satisfied and the bridge has landed. *(Decision D4.)*
+- The three grammar lints deferred at CP1 are deferred again, to CP3, since the type they
+  would have folded into is absent from the installed engine version entirely; that
+  absence is engine-version-specific and CP3 must re-probe it rather than reuse this
+  checkpoint's verdict. *(Decision D5.)*
 
 ## Dependencies
 
@@ -488,8 +538,10 @@ written, not paraphrases of them.
 - Released script-library version: **`4.9.0`**
 - Declared minimum, in both `pyproject.toml` and `requirements.txt`:
   `pyflexicon>=4.9.0,<5`
-- Bundled index file that must exist and match that floor:
-  `index/python/flexicon_api_v4.9.0.json`
+- Bundled index artifacts that must exist and match that floor: the complete output of
+  `python -m flextoolsmcp.refresh` for `4.9.0` under `src/flextoolsmcp/index/python/`,
+  which currently comprises `flexicon_api_v4.9.0.json` and
+  `flexicon_lcm_bridge_v4.9.0.json`
 - New assistant tools: `flextools_try_word`, `flextools_parse_status`
 - Standing test name for the no-user-interface-code guarantee: `HCParser_DoesNotLoadXCore`
 - Run stages, exactly these names:
@@ -505,14 +557,16 @@ written, not paraphrases of them.
 
 The source document carried three open questions into this specification. All three are
 resolved below; each is reflected in the requirements, assumptions and success criteria
-above.
+above. Two further decisions, D4 and D5, were added during CP2 planning recon and are
+recorded after them.
 
 ### D1 -- Capability-check duplication: keep the two checks deliberately different
 
-**Decision**: adopt the source document's option (c). The script library probes only the
-read operations its own surface binds; this repository keeps its larger check, covering
-also the write operation it gates and which the library deliberately does not wrap. This
-checkpoint does not touch `src/flextoolsmcp/server/parser_probe.py`. Requirement FR-041.
+**Decision**: adopt the source document's option (c). The script library probes the read
+operations its own surface binds, including the reload and currency operations that
+surface adds; this repository keeps its check, covering also the write operation it gates
+and which the library deliberately does not wrap. This checkpoint does not touch
+`src/flextoolsmcp/server/parser_probe.py`. Requirement FR-041.
 
 **Why**: option (b) -- move the check into the library and consume it here -- fails on
 its own terms: this repository's health report must keep working when the library is
@@ -521,9 +575,18 @@ assert both enumerate the same set -- only detects drift if someone runs both su
 it asserts an equality that is not actually true, since the two surfaces genuinely differ.
 Option (c) is the only one where different member lists are correct rather than a smell.
 
+**Consequence, recorded after CP2's own recon**: the two lists diverge in both
+directions, not toward one being simply larger. The script library's probe gains members
+its surface newly binds that the repository's shipped probe was never asked to check; the
+repository's probe keeps the write operation the library does not wrap. Each check must
+therefore state what the *other* carries that it lacks, not only that a difference exists.
+
 **What it costs**: a deliberate divergence with no recorded rationale becomes
 indistinguishable from drift within a release or two. FR-041 therefore requires each check
-to *state* that the difference is intended, not merely to be different.
+to *state* that the difference is intended, not merely to be different. The residual risk
+of a two-directional divergence is that an installation could report the parser usable
+under one check while the other would refuse it; each check's one-line pointer at the
+other is the accepted mitigation, not a closed gap.
 
 ### D2 -- Loaded-grammar lifetime: one grammar, held, currency-checked before reuse
 
@@ -541,6 +604,16 @@ memory: an unbounded per-project cache would make the worst failure mode more li
 less. Checking currency before reuse is what separates a fast answer from a confidently
 wrong one -- serving a parse from a grammar the user has since edited is the same class of
 failure as the resolver's silently narrowed search.
+
+**Binding detail, confirmed against the underlying reload operation**: the reload
+operation this facade binds to, `HCParser.Update()`, is itself conditional --
+`if (m_changeListener.Reset() || m_forceUpdate) LoadParser();` -- so calling it alone on
+an unchanged model does nothing. FieldWorks' own force-reload path,
+`ParserWorker.ReloadGrammarAndLexicon()`, calls `Reset()` first and only then checks
+whether an update is needed. This is why FR-043's "discard unconditionally" is expressed
+as two obligations in sequence rather than one call: reset, then reload. The currency
+read FR-043's "confirmed before reuse" clause needs is `HCParser.IsUpToDate()`
+(`=> !m_changeListener.ModelChanged`).
 
 **What it costs**: this is process-lifetime state this repository does not currently keep,
 and the single slot means alternating between two projects reloads every time. That is
@@ -566,10 +639,68 @@ entries cannot.
 that `loading_grammar` exists to make diagnosable. That path stays covered by reasoning and
 by the failure-side guidance of FR-034, not by live evidence at this checkpoint.
 
+### D4 -- Sequencing: the script library is extended and proven before any change lands here
+
+**Decision**: Part A (the script-library facade) is extended and proven before any change
+is made on this repository's side. This is a hard predecessor phase, not interleaved work.
+The checkpoint therefore splits into three parts: **CP2a** -- the library itself, in the
+script-library repository only; **CP2a-bridge** -- this repository's dependency floor and
+refreshed index artifacts, landing after CP2a's release tag and before any parser-facing
+change here; and **CP2b** -- the assistant tools and the run machinery, in this repository,
+which may not start until CP2a's evidence gate below is satisfied and the bridge has
+landed. Requirement FR-011 and the "Schedule" risk below.
+
+**Why**: this ordering is the user's, not a preference available for trade -- "Refuted by
+LCM reality? yes, this is exactly why I expected flexicon to be extended before making
+changes to the MCP." The worked justification is that the reload-binding defect recorded
+in Decision D2 is discoverable only from the library/LCM side, because it lives in the
+behaviour of the reload operation itself, not in any artifact on this repository's side.
+Built the other way round -- assistant tools first, library proven later -- the reload
+binding fails silently and hands the user a confident, wrong answer about whether their
+word parses, right after they explicitly asked for a reload. One finding on the library
+side paid for the whole ordering.
+
+**The evidence gate CP2b may not start without**: ratchets passing is not proof -- every
+structural ratchet the library carries would also have passed a reload bound to the
+non-discarding form. The gate is behavioural evidence across three required tiers,
+cheapest first: offline, with no FieldWorks installed at all; reflective, with FieldWorks
+installed but no project open; and live and read-only, against a single real project. A
+fourth tier -- proving the stale half of the reload guarantee live, which requires writing
+to a project to make its grammar stale -- is explicitly deferred to CP2b and requires human
+authorisation before it runs; the loop must stop rather than perform that write
+unattended.
+
+**What it costs**: the checkpoint cannot be planned or built as one undifferentiated unit.
+CP2b's shape depends on what the library's surface actually turns out to be once proven, so
+planning it in detail before CP2a's evidence lands would recreate the same
+unproven-assumption posture this ordering exists to prevent. The release tag and release
+creation that close CP2a are the maintainer's acts, not the crew's.
+
+### D5 -- Grammar lints: deferred again, to CP3
+
+**Decision**: the three grammar lints deferred at CP1 are not folded into this checkpoint.
+They are deferred again, to CP3, and that deferral is recorded here rather than left
+implicit. Requirement FR-040.
+
+**Why**: the premise that motivated folding them in here does not hold. The health-checking
+type they were expected to fold into is absent outright from the installed engine version
+-- a full scan of every type in that assembly found no matching type and none carrying a
+name that suggests grammar health checking. Folding them in would therefore mean writing
+three lints from scratch against the underlying data, with independent correctness risk,
+inside a checkpoint that is already oversized and already carries entirely new run
+machinery.
+
+**What it costs**: the gap stays open one checkpoint longer, but it stays a named gap
+rather than a silent one. *Rider*: this absence is specific to the installed engine
+version; CP3 must re-probe it rather than reuse this checkpoint's verdict.
+
 ## Risks
 
-- **Schedule**: the cross-repository release gates everything; the assistant-side work
-  cannot be tested against a published dependency until it lands.
+- **Schedule**: the cross-repository release gates everything, per Decision D4 -- the
+  script-library surface is extended and proven before any change is made on this
+  repository's side, and the assistant-side work cannot be tested against a published
+  dependency until the release lands. Pushing the release tag and creating the release are
+  the maintainer's acts, not the crew's.
 - **Scope**: the run machinery is substantial new infrastructure arriving attached to a
   tool that, for one word against a loaded grammar, would otherwise be a single
   synchronous call. Shipping the tool synchronously and adding the machinery later is

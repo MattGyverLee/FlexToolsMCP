@@ -3,8 +3,8 @@
   "specName": "parser-check-cp2",
   "branch": "parser-check-cp2",
   "selectedAt": "2026-09-18T18:25:57.391Z",
-  "currentStep": "specify",
-  "status": "specified",
+  "currentStep": "plan",
+  "status": "planned",
   "history": [
     {
       "step": "specify",
@@ -19,6 +19,34 @@
       "kind": "complete",
       "by": "extension",
       "at": "2026-09-18T18:34:11.205Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-18T21:01:28.295Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T21:08:49.283Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T21:17:36.680Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-18T21:19:04.858Z"
     }
   ],
   "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
@@ -179,5 +207,34 @@
     "The isolated sandbox for grammar generation (later checkpoint)",
     "Any general-purpose word segmenter or search over possible decompositions",
     "Modifying the capability check already shipped in this repository (decision D1)"
-  ]
+  ],
+  "approach": "CP2a adds a read-only parser area (project.Parser) to the flexicon package plus three read gaps (text genres, allomorph owning entry, MSA reads), then cuts a 4.9.0 release. The work is mostly pattern replication against settled flexicon idioms; the two genuinely new pieces are a capability probe that degrades with a reason (no template exists in the package) and a reload bound as reset-then-update rather than a bare update. It ends with a written A1-A3 evidence artifact, which is CP2b's entry gate -- not a passing test count.",
+  "decisions": [
+    {
+      "decision": "Re-tier evidence gate A1: run it with FieldWorks present and simulate parser-component absence, instead of the briefed no-FieldWorks/CI framing",
+      "why": "import flexicon itself requires FieldWorks -- __init__.py:76 pulls in FLExInit, whose module scope calls InitialiseFWGlobals() and raises when the registry key is absent. The briefed A1 could not execute its first check. It was doubly wrong: no CI workflow runs pytest on a hosted runner, and the self-hosted windows+fieldworks pool has zero registered runners. SC-001 is unaffected -- it speaks about the parser component being absent, not FieldWorks.",
+      "rejected": "Refactoring the package import chain so import flexicon works without FieldWorks -- a package-wide change entirely outside US1"
+    },
+    {
+      "decision": "FR-009 wires the existing MorphosyntaxAnalysis wrapper and MSACollection rather than designing a new MSA read surface",
+      "why": "Both classes are already complete in the package (morphosyntax_analysis.py:74, msa_collection.py:76) with full is_*/as_*/pos_* families, and are instantiated by no code path at all. The cycle-1 brief called MSA reads the nontrivial gap; that is right about the shape and wrong about the cost. Wiring template is AllomorphOperations.GetAll:104, the same two-subtype case already shipped end to end.",
+      "rejected": "Designing a fresh flat MSA reader -- duplicates a tested surface and is wrong for a hierarchy whose subtypes expose different property sets"
+    },
+    {
+      "decision": "Reload binds as reset-then-update (two steps); the parser CAPABILITIES token lands last, after tiers A1-A3 pass",
+      "why": "HCParser.Update() is guarded by a conditional that short-circuits on an unchanged model, so a bare update would ship a discard guarantee that is fiction -- the exact shape of the RollbackToMark incident Constitution Principle I cites. Separately, test_capabilities.py:12-16 states a token added without a landed capability behind it is a Principle V violation, and the token is read across the repo boundary by FlexToolsMCP.",
+      "rejected": "Binding Reload to Update and documenting the conditionality -- documenting that a required guarantee does not hold is a Principle V violation dressed as candour"
+    },
+    {
+      "decision": "Allomorph owning-entry copies LexSenseOperations.GetOwningEntry (OwnerOfClass + null guard), not the three one-hop .Owner siblings",
+      "why": "Three of the four existing GetOwningEntry siblings (Etymology, Pronunciation, Variant) take a single .Owner hop and are unguarded, so a null owner throws inside the cast. An IMoForm can sit under an affix-form chain where one hop lands on the wrong object. Constitution Principle I cites copying a working pattern without re-checking it on the target type as the documented root cause of issues #36, #39 and #40.",
+      "rejected": "Copying the nearest sibling by file proximity -- AllomorphOperations sits in Lexicon/ beside the Variant and Pronunciation ones, which is exactly how the wrong template gets chosen"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "CP2a planned: flexicon parser facade + three read gaps + 4.9.0 release cut, with plan.md, research.md, data-model.md and two contracts; CP2a-bridge and CP2b explicitly fenced out",
+      "key_finding": "import flexicon requires FieldWorks (FLExInit calls InitialiseFWGlobals at module scope), so the cycle-1 brief evidence tier A1 could not run as written and was re-tiered; separately the MSA wrapper and collection FR-009 needs are already written in the package and instantiated by nothing, making that gap wiring rather than design"
+    }
+  }
 }

@@ -498,34 +498,50 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
 
 
 # ============================================================
-# Nested-UnitOfWork detection (issue #92 follow-up)
+# Nested-UnitOfWork detection (issue #92 follow-up; re-derived for #144)
 # ============================================================
 #
 # CP1 (issue #92) hardcoded `undoable=False` at the generated OpenProject()
-# call so flexicon takes the working BeginNonUndoableTask() path (see
-# handlers/execution.py's generated run_module() body). That means a
-# write-enabled run now always has ONE non-undoable UnitOfWork open for the
-# whole session -- opened once at OpenProject(), closed once at
-# CloseProject() (flexicon's FLExProject.py: `writeEnabled and not
-# _undoable` branch calls `MainCacheAccessor.BeginNonUndoableTask()`/
-# `EndNonUndoableTask()`). A user script that opens its OWN raw UnitOfWork
-# on top of that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper
-# (constructor or static .Do*() calls), or a bare
-# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
-# task inside the runner's own. liblcm does not merge tasks opened this
-# way (only flexicon's OWN Transaction()/UndoableOperation() context
-# managers check ActionHandlerAccessor.CurrentDepth and join instead of
-# nesting -- see flexicon's transaction.py / undoable_operation.py). A
-# second raw BeginUndoTask/BeginNonUndoableTask call rolls back the
-# ALREADY-OPEN unit of work first, before it throws (UndoStack.cs), which
-# discards every mutation the runner's own outer task was holding, for the
-# whole run -- silently, if the script also swallows the exception.
+# call on the premise that flexicon's `undoable=True` path opened no
+# UnitOfWork and every mutating call raised. That premise is false on
+# flexicon builds advertising the "per-operation-uow" capability (see
+# handlers/execution.py's `_probe_undoable_capability()` / issue #144):
+# under `undoable=True`, `OpenProject()` opens no session-long envelope
+# BECAUSE each mutation opens its own named task instead
+# (flexicon's FLExProject.py: `writeEnabled and self._undoable` branch) --
+# nothing raises. On flexicon <=4.3.0 (no capability token), the legacy
+# path still holds: `writeEnabled and not _undoable` calls
+# `MainCacheAccessor.BeginNonUndoableTask()` once at OpenProject() and
+# `EndNonUndoableTask()` once at CloseProject(), giving ONE non-undoable
+# UnitOfWork open for the whole session.
 #
-# This gate fires ONLY on write-enabled runs. flexicon's OpenProject() only
-# calls BeginNonUndoableTask() when writeEnabled=True and undoable=False
-# (which is now unconditional per CP1); a read-only run opens no
-# UnitOfWork at all, so there is nothing open to nest into and no
-# rollback-and-discard risk -- see FLExProject.py's OpenProject() body.
+# Either way, a user script that opens its OWN raw UnitOfWork --
+# UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper (constructor or
+# static .Do*() calls), or a bare
+# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
+# task inside whichever one is already open: the runner's session-long
+# task in legacy mode, or flexicon's own per-operation task in capable
+# mode. liblcm does not merge tasks opened this way (only flexicon's OWN
+# Transaction()/UndoableOperation() context managers check
+# ActionHandlerAccessor.CurrentDepth and join instead of nesting -- see
+# flexicon's transaction.py / undoable_operation.py). A second raw
+# BeginUndoTask/BeginNonUndoableTask call rolls back the ALREADY-OPEN unit
+# of work first, before it throws (UndoStack.cs), which discards whatever
+# that outer task was holding -- the whole run's writes in legacy mode, or
+# just that one operation's writes in capable mode -- silently, if the
+# script also swallows the exception.
+#
+# The gate itself stays construct-based and UNCONDITIONAL regardless of
+# mode: a script cannot reliably know at the call site whether it is
+# executing inside flexicon's per-operation wrapper, so it fires on the
+# construct either way. Only the user-facing explanation is
+# mode-conditional (see handlers/execution.py's nested_unit_of_work
+# message).
+#
+# This gate fires ONLY on write-enabled runs. In both modes, a read-only
+# run opens no UnitOfWork at all, so there is nothing open to nest into
+# and no rollback-and-discard risk -- see FLExProject.py's OpenProject()
+# body.
 
 _NESTED_UOW_HELPER_NAMES = ("UndoableUnitOfWorkHelper", "NonUndoableUnitOfWorkHelper")
 _NESTED_UOW_RAW_METHODS = ("BeginUndoTask", "BeginNonUndoableTask")

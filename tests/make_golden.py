@@ -149,7 +149,11 @@ GOLDEN_FIXTURES: dict[str, dict] = {
         "issues": [],
     },
     "nested_unit_of_work": {
-        "message": "Code opens its own raw liblcm UnitOfWork, which nests inside the runner's already-open non-undoable task and will discard this run's writes.",
+        # Issue #144: message is mode-conditional at runtime (legacy vs.
+        # flexicon's "per-operation-uow" capability); this fixture uses the
+        # capable-mode wording since that is what a flexicon 4.8.0+
+        # install (the wheel this repo pins) produces.
+        "message": "Code opens its own raw liblcm UnitOfWork. flexicon already wraps each mutation in its own named unit of work; a raw helper call executing while one of those is open nests inside it and will discard that operation's writes before the error is raised.",
         "constructs": [],
     },
     "project_locked": {

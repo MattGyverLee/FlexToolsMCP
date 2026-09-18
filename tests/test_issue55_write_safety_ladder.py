@@ -4,11 +4,18 @@
 Issue #55: Write-path safety ladder -- automatic pre-write backup (Rung 2),
 enforced mutation confirmation (Rung 3).
 
-Rung 1 (undoable-by-default) was removed by CP1 / issue #92: flexicon's
-undoable=True path never actually persisted writes (BeginUndoTask arity
-mismatch / UnitOfWork registration errors), and the whole undoable session
-flag plus its LCM-undo plumbing was deleted rather than fixed -- see
-CHANGELOG.md.
+Rung 1 (undoable-by-default) was removed by CP1 / issue #92 at the time:
+flexicon's undoable=True path was believed to never persist writes
+(BeginUndoTask arity mismatch / UnitOfWork registration errors), so the
+whole undoable session flag plus its LCM-undo plumbing was deleted rather
+than fixed -- see CHANGELOG.md. Issue #144 re-derived that premise as
+false on flexicon builds advertising the "per-operation-uow" capability
+(under `undoable=True` there, each mutation opens and persists its own
+named task -- nothing is missing). The generated runner now probes for
+that capability instead of hardcoding `undoable=False`; on capability-less
+(<=4.3.0) builds it still resolves to `False`, so this rung's original
+removal rationale still applies unchanged there. Rungs 2 and 3 below are
+independent of which mode the probe picks.
 
 Covers each remaining rung's acceptance criteria:
 - Rung 2: perform_pre_write_backup() creates/retains/opts-out/skips-on-low-disk;

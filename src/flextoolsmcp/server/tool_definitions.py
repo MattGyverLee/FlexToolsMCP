@@ -110,8 +110,13 @@ feature; it is carried through to any run_module ops this turn unless a given
 op overrides it with its own user_request.
 
 write_enabled is inherited from the prior session on re-init when not
-explicitly provided (per #9 fix). There is no undo: writes are direct and
-immediate (see docs/RECOVERY.md for the pre-write backup safety net).""",
+explicitly provided (per #9 fix). Undo behavior depends on the installed
+flexicon build: on builds advertising the "per-operation-uow" capability,
+each mutating call opens its own named FLEx undo task, so a run's writes
+land in FLEx's Ctrl+Z menu individually. On older flexicon (<=4.3.0, no
+capability token), there is no undo at all: writes are direct and
+immediate. Either way, see docs/RECOVERY.md for the pre-write backup
+safety net -- do not rely on undo as your only recovery path.""",
         input_model=FlexToolsStartInput,
         annotations=READ_ONLY_SAFE,
     ),

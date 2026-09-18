@@ -3,23 +3,36 @@
 """
 Issue #92 follow-up: nested-UnitOfWork pre-flight gate.
 
-CP1 hardcoded `undoable=False` at the generated OpenProject() call, so a
-write-enabled run now always has ONE non-undoable UnitOfWork open for the
-whole session (flexicon's FLExProject.OpenProject() -- writeEnabled=True
-and undoable=False -- calls `MainCacheAccessor.BeginNonUndoableTask()` once
-and closes it once at CloseProject()). A script that opens its OWN raw
-liblcm UnitOfWork on top of that -- UndoableUnitOfWorkHelper /
-NonUndoableUnitOfWorkHelper (constructor or static .Do*() calls), or a bare
-IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second task
-inside the runner's own. liblcm does not merge tasks opened this way; the
-already-open UnitOfWork is rolled back first (discarding the whole run's
-writes), before the second Begin* call throws.
+CP1 (issue #92) hardcoded `undoable=False` at the generated OpenProject()
+call on the premise that flexicon's `undoable=True` path opened no
+UnitOfWork and every mutating call raised. Issue #144 re-derived that
+premise: it is false on flexicon builds advertising the
+"per-operation-uow" capability (probed via `_probe_undoable_capability()`
+/ the `getattr(flexicon, "CAPABILITIES", frozenset())` gate in
+handlers/execution.py). Under `undoable=True` on those builds,
+`OpenProject()` opens no session-long envelope BECAUSE each mutation opens
+its own named task instead (flexicon's FLExProject.py); nothing raises. On
+flexicon <=4.3.0 (no capability token), the legacy path still holds: one
+non-undoable UnitOfWork is opened once at OpenProject() and closed once at
+CloseProject().
+
+Either way, a script that opens its OWN raw liblcm UnitOfWork on top of
+that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper (constructor
+or static .Do*() calls), or a bare
+IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
+task inside whichever one is already open: the runner's session task in
+legacy mode, or flexicon's own per-operation task in capable mode. liblcm
+does not merge tasks opened this way; the already-open UnitOfWork is
+rolled back first (discarding the writes it was holding), before the
+second Begin* call throws.
 
 `validators.detect_nested_unit_of_work()` is an AST-based pre-flight
 detector (unit-tested directly below); `handlers.execution.handle_run_module`
 wires it in as a hard-refuse gate, `nested_unit_of_work`, that fires ONLY on
-write-enabled runs -- flexicon's OpenProject() only opens that UnitOfWork
-when writeEnabled=True, so a read-only run has nothing open to nest into.
+write-enabled runs and stays construct-based and unconditional regardless
+of mode -- a script cannot know at the call site whether it is executing
+inside flexicon's per-operation wrapper. Only the user-facing message is
+mode-conditional (see TestGateWiring below and handlers/execution.py).
 
 Covers:
 - TestDetectNestedUnitOfWork: each raw construct is detected by the
@@ -311,3 +324,87 @@ class TestGateWiring:
         result = asyncio.run(execution_mod.handle_run_module(args))
         data = _parse(result)
         assert data.get("error_code") != "nested_unit_of_work"
+
+
+# ---------------------------------------------------------------------------
+# Issue #144: capability probe + mode-conditional rejection message.
+# ---------------------------------------------------------------------------
+
+class _FakeFlexiconModuleWithCapability:
+    CAPABILITIES = frozenset({"per-operation-uow", "transaction-rollback"})
+
+
+class _FakeFlexiconModuleWithoutCapability:
+    """Simulates flexicon <=4.3.0: no CAPABILITIES attribute at all."""
+
+
+class TestCapabilityProbe:
+    def test_probe_true_when_capability_token_present(self, monkeypatch):
+        import sys
+        monkeypatch.setitem(sys.modules, "flexicon", _FakeFlexiconModuleWithCapability())
+        assert execution_mod._probe_undoable_capability() is True
+
+    def test_probe_false_on_capability_less_build(self, monkeypatch):
+        """Simulated flexicon <=4.3.0 build: CAPABILITIES is undefined, so
+        getattr(..., frozenset()) yields an empty set and the probe is
+        False -- the legacy floor is preserved byte-for-byte."""
+        import sys
+        monkeypatch.setitem(sys.modules, "flexicon", _FakeFlexiconModuleWithoutCapability())
+        assert execution_mod._probe_undoable_capability() is False
+
+    def test_probe_false_when_flexicon_not_importable(self, monkeypatch):
+        import sys
+        monkeypatch.setitem(sys.modules, "flexicon", None)
+        assert execution_mod._probe_undoable_capability() is False
+
+
+class TestModeConditionalMessage:
+    """The nested_unit_of_work rejection message text depends on whether
+    the installed flexicon build advertises the per-operation-uow
+    capability (issue #144) -- the gate itself fires either way."""
+
+    def test_message_is_legacy_variant_when_capability_absent(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)
+        monkeypatch.setattr(execution_mod, "run_script_async", _boom_subprocess)
+        monkeypatch.setattr(execution_mod, "_probe_undoable_capability", lambda: False)
+
+        args = {
+            "code": (
+                "if modifyAllowed:\n"
+                "    cache.ActionHandlerAccessor.BeginNonUndoableTask()\n"
+            ),
+            "project_name": "TestProj_nested_legacy_msg",
+            "write_enabled": True,
+            "confirmed": True,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        data = _parse(result)
+        assert data["error_code"] == "nested_unit_of_work"
+        assert "already-open non-undoable task" in data["message"]
+        assert "per-operation" not in data["message"]
+
+    def test_message_is_capable_variant_when_capability_present(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path)
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)
+        monkeypatch.setattr(execution_mod, "run_script_async", _boom_subprocess)
+        monkeypatch.setattr(execution_mod, "_probe_undoable_capability", lambda: True)
+
+        args = {
+            "code": (
+                "if modifyAllowed:\n"
+                "    cache.ActionHandlerAccessor.BeginNonUndoableTask()\n"
+            ),
+            "project_name": "TestProj_nested_capable_msg",
+            "write_enabled": True,
+            "confirmed": True,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        data = _parse(result)
+        assert data["error_code"] == "nested_unit_of_work"
+        assert "own named unit of work" in data["message"]
+        assert "already-open non-undoable task" not in data["message"]

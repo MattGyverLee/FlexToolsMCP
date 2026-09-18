@@ -298,7 +298,7 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Diagnostics tool (issue #56)
     TOOL_FLEXTOOLS_HEALTH: (handle_flextools_health, FlexToolsHealthInput),
 
-    # Grammar health tool (parser-check CP1, issue #93)
+    # Grammar health tool (parser-check CP1)
     TOOL_GRAMMAR_HEALTH: (handle_flextools_grammar_health, GrammarHealthInput),
 }
 

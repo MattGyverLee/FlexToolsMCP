@@ -229,6 +229,11 @@
       "decision": "Allomorph owning-entry copies LexSenseOperations.GetOwningEntry (OwnerOfClass + null guard), not the three one-hop .Owner siblings",
       "why": "Three of the four existing GetOwningEntry siblings (Etymology, Pronunciation, Variant) take a single .Owner hop and are unguarded, so a null owner throws inside the cast. An IMoForm can sit under an affix-form chain where one hop lands on the wrong object. Constitution Principle I cites copying a working pattern without re-checking it on the target type as the documented root cause of issues #36, #39 and #40.",
       "rejected": "Copying the nearest sibling by file proximity -- AllomorphOperations sits in Lexicon/ beside the Variant and Pronunciation ones, which is exactly how the wrong template gets chosen"
+    },
+    {
+      "decision": "E-B RESOLVED by the user at plan review: flextools_parse_status ALWAYS returns a success envelope on terminal stages, carrying state cancelled|failed. parse_job_cancelled fires only from calls that ACT ON a dead run; parse_run_not_found is the only error the status tool emits.",
+      "why": "Asking about a dead run is a successful query, not a failed request. An error envelope carries no result payload by convention, which would make SC-008 partial-result readability unreportable through the very tool FR-033 provides for it. Confirms the spec as already written (D-04, amendment E8) -- no spec change required.",
+      "rejected": "An error envelope for terminal runs, which costs SC-008 readability; and a split (success for cancelled, error for failed), which gives CP2b callers a two-branch rule to remember while SC-008 applies equally to both"
     }
   ],
   "step_summaries": {

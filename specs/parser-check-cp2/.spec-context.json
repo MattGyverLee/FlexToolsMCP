@@ -4,7 +4,7 @@
   "branch": "parser-check-cp2",
   "selectedAt": "2026-09-18T18:25:57.391Z",
   "currentStep": "implement",
-  "status": "implementing",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -283,6 +283,13 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-19T12:39:18.464Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T13:05:45.795Z"
     }
   ],
   "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
@@ -517,7 +524,7 @@
       ]
     }
   },
-  "last_action": "CP2a complete 31/31 -- flexicon release commit 1b6f5533 prepared and pushed on feat/parser-check-cp2, NOT tagged (E-C maintainer act). Offline 1920 passed 0 failed; live 17 passed 0 skipped run_mode=live. Evidence at specs/parser-check-cp2/evidence/cp2a-evidence.md. Next: CP2a-bridge (pyflexicon>=4.9.0,<5 floor, index refresh, floor/index-equality test) in THIS repo before CP2b.",
+  "last_action": "CP2a COMPLETE 31/31, QC gate passed after fixes. flexicon 296f3b5 (amended cut, force-pushed with user approval) on feat/parser-check-cp2 -- NOT tagged, E-C is a maintainer act. FlexToolsMCP c2432a9. Offline 1923/0 failed; live 18/0 skipped run_mode=live. Next: CP2a-bridge in THIS repo (pyflexicon>=4.9.0,<5 floor, index refresh, floor/index-equality test) before CP2b.",
   "size": "oversized",
   "classification": {
     "projectedFiles": 30,

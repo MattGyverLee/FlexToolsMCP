@@ -35,14 +35,136 @@ Crew reviews: `specs/parser-check-cp2/reviews/cycle{1..3}-*.md`.
 **Planning brief (read this first):**
 `specs/parser-check-cp2/reviews/cycle1-synthesis.md`.
 
+**CP2a is SPECCED, PLANNED and TASKED (31 tasks, T001-T031) and is HELD at
+0/31 with `needs_human`.** The spurt-4 blocker (a second agent loop holding the
+flexicon repo) has **CLEARED**, and the `feat/parser-check-cp2` branch has
+already been cut there. A **different** blocker now stands: the campaign
+driver's sessions have no permission to execute commands inside the flexicon
+repo, and CP2a is ~30/31 a flexicon-repo checkpoint. See "spurt 5" below.
+
+*(The paragraph below is history. Spurt 2's plan-step pickup was taken in
+spurt 3; the plan and task list exist.)*
 **CP2 spurt 2 (cycles 2-3) COMPLETE -- the spec amendments are applied and
 verified. The spec is no longer factually false on any of the five blocking
-points. Next pickup is `/speckit.companion.plan` for CP2a ONLY -- do NOT plan
-CP2b.**
+points.**
 
 **Spurts 1-4 COMPLETE (cycles 1-8). CP1 Phase 1 (Setup) and Phase 2
 (Foundational) are done and green. Next pickup is Phase 3 / US1 -- the parser
 spine preflight, starting at wave 1: T007, T008, T032 in parallel.**
+
+### parser-check CP2 spurt 5 (cycle 5) -- HELD, `needs_human`
+
+**0/31 CP2a tasks done, unchanged from spurt 4. Nothing was implemented, no
+branch was cut, no FLEx project was opened, and not one file in the flexicon
+repository was touched.** What this spurt actually produced is a corrected
+picture of why CP2a is stopped, because the recorded reason was no longer the
+real one.
+
+**The spurt-4 blocker has CLEARED.** The `lcm-member-truth-sweep` loop that was
+holding the flexicon repo has committed all of its in-flight work -- flexicon's
+reflog runs through `c08ede4` ("docs(lcm-truth-sweep): record #332 and #333 for
+the checkpoint-4 incidentals"), and the three uncommitted files the blocker
+named landed as commits. `flexicon/.claude/ralph-loop.local.md` no longer
+exists, so that loop is not armed.
+
+**And `next_entry` step 2 is already done.** `feat/parser-check-cp2` exists in
+the flexicon repo at `c08ede4`, byte-identical to `main`, carrying zero
+commits, and `flexicon/.git/HEAD` points at it. **Do not cut it again.**
+
+**But a different, harder blocker now stands, and it is the one that stopped
+this spurt.** This session could not execute *any* command scoped to the
+flexicon repo -- `git -C <flexicon> status --short`, the same command with the
+sandbox override, and `cd <flexicon> && python -c ...` were all auto-denied
+("requires approval, and this session has no approval surface"). Commands
+inside *this* repo ran fine. `--add-dir` (added for CP2 in `0363fe2`) grants
+file read/write in a directory; it does **not** grant Bash execution scoped to
+it.
+
+That is fatal to CP2a specifically, and it dies at the first task. **T001 is a
+prescribed `python -m pytest -m "not requires_live_project" -q` run with cwd
+inside the flexicon repo.** That is not a stylistic preference. The Flexicon
+Constitution (`flexicon/.specify/memory/constitution.md:35-39`) makes that
+exact string "the required test invocation, which every brief must quote
+explicitly", prohibits `pytest --ignore=tests/contract` at `:41-44` as "a
+live-write command wearing the costume of a scoping flag", and at `:114-117`
+states a change **may not be reported complete** until that invocation has been
+run and its full counts quoted. With no ability to run it, **no CP2a task can
+be completed as defined** -- not T001, and not any task after it. 30 of the 31
+tasks land in flexicon; `T029` is the only one that lands here, and it is a
+Phase 4 task presupposing the rest.
+
+**Writing flexicon code anyway was considered and rejected.** File writes there
+may well have been permitted. Taking them would have left unrunnable,
+unverifiable, uncommittable edits in a second repository's working tree -- a
+Principle I/IV violation, and a re-creation of the exact cross-session
+tree-contamination hazard that produced the spurt-4 blocker in the first place.
+
+**The same denial also stopped the spurt from committing itself.** `git add -A`
+was refused in *this* repo too, so three files are **uncommitted working-tree
+changes** on `feat/parser-check-cp1` at close: this `STATUS.md`,
+`specs/parser-check-cp2/.crew-handoff.json`, and the new
+`specs/parser-check-cp2/reviews/cycle5-explore-taskrefs.md`. They are complete
+and internally consistent -- **commit them as-is; they are not partial work.**
+A dirty tree here is the spurt's own output, not someone else's leftovers.
+
+**Remediation is configuration, not design.** `scripts/ralph/run-campaign.ps1:37`
+defaults `-PermissionMode` to `bypassPermissions`; this spurt plainly did not
+run with those effective permissions. Re-launch at that default, or add Bash
+allow rules covering `git -C D:/Github/_Projects/_LEX/flexicon *`, plain
+`git add`/`git commit`/`git push`, and the tasks.md "Required invocation"
+pytest command; or run CP2a interactively. Nothing needs rework; no CP2a task
+was started.
+
+**Salvaged work -- the one piece of CP2a de-risking that needed no command
+execution.** tasks.md cites roughly forty concrete `path:line` templates and
+anchors in the flexicon tree, and flexicon has taken a number of commits since
+tasks.md was written. A read-only lane audited every citation against the
+current tree: `specs/parser-check-cp2/reviews/cycle5-explore-taskrefs.md`.
+**Read it before implementing any task that cites a line number** -- copying a
+template that does not say what it was believed to say is this campaign's
+documented recurring failure (issues #36, #39, #40, and D-A8's reasoning in
+T008).
+
+It found three load-bearing defects, **none of them yet applied to tasks.md**:
+
+- **T007 cites a template that does not show what T007 says to copy.** The task
+  requires `@wrap_enumerable` stacked above `@OperationsMethod` and names
+  `LexSenseOperations.GetSemanticDomains` as the template -- but that method
+  carries `@OperationsMethod` **alone**. An implementer copying it faithfully
+  drops the very requirement the task sets. Cite
+  `AllomorphOperations.py:102-104` instead.
+- **T009's file already exists, and it is a write class.**
+  `flexicon/code/Lexicon/MSAOperations.py` is 1230 lines of
+  `CreateStem`/`CreateInflAff`/`RemoveOrphaned`/`ChangeAffixVariant` with no
+  read accessor. T009 reads as if it creates the module; it must instead add a
+  read accessor to an existing write-capable class -- so its deliverable is
+  **not** read-only-by-construction the way `flexicon/code/Parser/` is, and
+  nothing in T010/T011's read-only framing may be inherited by association.
+- **T013's justification citation is false.** `_op_aliases.py:6-8` never
+  mentions service facades, `POS`, `MSA`, `Discourse` or `ProjectSettings`.
+  Decision D-A3 (singular `project.Parser`) is still **right**; only its cited
+  evidence is wrong. The real evidence is `_op_aliases.py:79-84` plus
+  `FLExProject.py:1622`, `:1649`, `:2212`, `:2787`, `:2916`.
+
+The reassuring half is worth recording too: 24 of ~30 citations are exact, and
+**every ratchet and registry citation is line-accurate** -- precisely the ones
+whose wrongness would have surfaced late and expensively. `version` is still
+exactly `"4.8.0"`, so T023's bump target holds.
+
+**What this spurt could NOT confirm:** that flexicon's *working tree* is clean.
+That needs `git status`, which was denied. Its commits landed and its loop file
+is gone, but cleanliness is inferred, not proven -- and three interactive
+flexicon sessions were idle on this machine during the spurt, one of which is
+the likely author of the branch cut. T001's baseline is only meaningful over a
+clean tree, so the next session runs `git status --short` there first and
+treats a dirty tree as a stop, not a nuisance.
+
+**One caution to carry.** The truth-sweep campaign is *quiescent, not
+finished*: `flexicon/specs/lcm-member-truth-sweep/.crew-handoff.json` still
+reads `status: in_progress` with checkpoints 5-8 outstanding. Because
+flexicon's HEAD was moved to `feat/parser-check-cp2`, a naive resume of *that*
+campaign would now commit its work onto CP2a's branch. Whoever resumes either
+campaign must check out the right branch first.
 
 ### parser-check CP2 spurt 2 (cycles 2-3) -- CLOSED
 

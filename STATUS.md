@@ -52,6 +52,39 @@ points.**
 (Foundational) are done and green. Next pickup is Phase 3 / US1 -- the parser
 spine preflight, starting at wave 1: T007, T008, T032 in parallel.**
 
+### parser-check CP2 spurt 6 (cycle 6) -- CP2a IMPLEMENTATION STARTED, 5/31
+
+**Phases 1 (Setup) and 2 (Foundational) are COMPLETE. Hard gate 1 is PASSED.**
+T001, T002, T003, T004, T006 done. Next pickup is T005 (the tier A1
+behavioural half, tests-first) and Wave 2's three read gaps.
+
+**The gate result, which is the load-bearing finding of this spurt:**
+`Reset()` and `IsUpToDate()` both exist on the real installed
+`ParserCore.dll` 9.3.10.0 -- their first verification anywhere in either
+repository. FR-043's reset-then-update reload (D-A5) is therefore bindable
+as specified. Three details the facade depends on: `IsUpToDate()` returns
+`bool` and takes no arguments, so currency is answered by *asking the
+parser*, never from a local flag; `Reset()` returns `void`, not `bool`, so
+the reload cannot report what it did and T019/A3.3 must witness the discard
+another way; and both members are on `IParser`, not only on the concrete
+`HCParser`, so binding through the interface is safe.
+
+**The T001 baseline is clean** -- 1878 passed, 0 failed. There are no
+pre-existing failures, so any later CP2a failure is CP2a's and may not be
+recorded as inherited. Full suite after T003/T006: 1889 passed, 0 failed.
+
+Evidence: `specs/parser-check-cp2/evidence/raw/baseline.md`,
+`specs/parser-check-cp2/evidence/raw/tier-a2.md`.
+flexicon commits: `fef690c` (T002), `4f2fac4` (T003), `18a293b` (T006), on
+`feat/parser-check-cp2`, pushed.
+
+**Not run via the campaign driver.** `run-campaign.ps1` cannot be launched
+from inside a Claude Code auto-mode session -- spawning `claude -p` with
+`bypassPermissions` is refused outright, and under `acceptEdits` the spurt
+has no command execution in the flexicon repo, which is where 30 of CP2a's
+31 tasks land. Spurt 5 proved that the expensive way. This spurt ran in the
+main session instead.
+
 ### parser-check CP2 spurt 5 (cycle 5) -- HELD, `needs_human`
 
 **0/31 CP2a tasks done, unchanged from spurt 4. Nothing was implemented, no

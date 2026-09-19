@@ -53,3 +53,6 @@ htmlcov/
 # caller omits the log_dir_fn override (see FlexToolsMCP#109).
 operations.jsonl*
 operations.log*
+
+# Ralph campaign run logs (transcripts + rendered prompts)
+reports/ralph/

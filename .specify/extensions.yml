@@ -1,4 +1,82 @@
 installed: []
 settings:
   auto_execute_hooks: true
-hooks: {}
+
+# ---------------------------------------------------------------------------
+# LEX crew review gates, wired into the spec-kit pipeline itself.
+#
+# Before this, crew review was prompt-driven: whatever the session was told to
+# do. That works for a driven campaign and not at all for a plain
+# `/speckit.companion.resume`, which dispatches stock spec-kit steps and knows
+# nothing about lex-qc or lex-verification. Registering the gates here moves
+# them inside the pipeline, so they fire the same way for an unattended
+# campaign run, an interactive `/speckit.companion.plan`, and a bare resume.
+#
+# Contract notes (from the companion command bodies, verified 2026-09-18):
+#   * `optional: false` emits `EXECUTE_COMMAND: <command>` and the host WAITS
+#     for the hook before continuing. `optional: true` only offers it.
+#   * `enabled: false` disables a hook; a missing `enabled` means enabled.
+#   * A hook with a NON-EMPTY `condition` is deliberately SKIPPED by the
+#     companion command body (conditions are left to the HookExecutor), so no
+#     gate below uses one -- conditional scope lives in `prompt` instead.
+#   * Hook checking must never fail the host command; a malformed entry is
+#     skipped silently. Keep this file parseable.
+# ---------------------------------------------------------------------------
+hooks:
+  after_specify:
+    - extension: lex-crew
+      command: lex-domain
+      optional: false
+      description: "Domain gate -- validate the new spec against LCM/FieldWorks reality before anything is planned against it"
+      prompt: |
+        Review the spec just written for this feature against LCM and
+        FieldWorks source reality, not against its own internal consistency.
+        Check specifically: named file/index paths exist; every LCM call the
+        spec binds to does what the spec claims (read the C# if unsure);
+        error-contract field names AND field ORDER match the parent
+        specs/parser-check/SPEC.md; version-locked sibling artifacts are named.
+        Report findings as BLOCKING or non-blocking. Rationale: CP2 spurt 1
+        found this spec class factually false in five blocking places, and the
+        E7 field-order divergence alone cost two crew cycles to unwind.
+
+  after_plan:
+    - extension: lex-crew
+      command: lex-qc
+      optional: false
+      description: "Plan gate -- does the plan carry its test-coverage and pattern-audit obligations before tasks are generated"
+      prompt: |
+        Review the implementation plan for this feature. Confirm it names the
+        tests that will prove each requirement, that any shaped bug it touches
+        carries a pattern-audit obligation, and that write-path work (if any)
+        carries a live-LCM verification obligation. Flag coverage that the
+        plan asserts but does not schedule. Report BLOCKING vs non-blocking.
+
+  after_implement:
+    - extension: lex-crew
+      command: lex-qc
+      optional: false
+      description: "Code-quality gate on the implemented tasks"
+      prompt: |
+        Review the code just implemented for this feature: style consistency
+        with the surrounding module, complexity, error handling, and test
+        coverage. Block on a missing pattern-audit section for a shaped bug,
+        and on missing live-LCM evidence for a write-path change. Report
+        findings as BLOCKING or non-blocking with file:line references.
+
+    - extension: lex-crew
+      command: lex-verification
+      optional: true
+      description: "Live-LCM evidence -- REQUIRED for any write-path change, skip for read-only work"
+      prompt: |
+        Run this hook only when the implemented tasks changed a WRITE path
+        (anything that mutates a FieldWorks project). For read-only work, skip
+        it and say so in one line.
+
+        When it does apply: verify the change against a live FLEx/LCM database
+        (Target or Sena 3) and produce pre/post evidence artifacts. Report FAIL
+        when live verification did not actually happen -- an unrun verification
+        is not a pass.
+
+        UNATTENDED RUNS: if a live write would be required and no human is
+        watching, do NOT perform it. Stop and report that the spurt must end
+        with status needs_human.

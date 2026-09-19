@@ -1,0 +1,83 @@
+{
+  "campaign": "parser-check CP3-CP6",
+  "parent_spec": "specs/parser-check/SPEC.md",
+  "roadmap_section": "section 15 (Checkpoints table)",
+  "branch_policy": "cut feat/parser-check-<cp> before the first IMPLEMENTATION task of that checkpoint; spec/plan-only spurts stay on the current branch",
+  "push": true,
+  "checkpoints": [
+    {
+      "id": "CP2",
+      "feature": "parser-check-cp2",
+      "feature_dir": "specs/parser-check-cp2",
+      "title": "read spine goes live -- IN FLIGHT, CP2a only",
+      "writes": false,
+      "scope": "Already specced. Follow .crew-handoff.json next_entry exactly: plan CP2a ONLY (flexicon-side Part A), never CP2b. The spec is amendment-clean as of spurt 2 -- do not re-litigate E1/E2/E3/E7/E8/E12.",
+      "scope_refs": [
+        "specs/parser-check-cp2/spec.md",
+        "specs/parser-check-cp2/reviews/cycle1-synthesis.md (the planning brief: 21-item decision ledger + CP2a/CP2a-bridge/CP2b decomposition)",
+        "specs/parser-check-cp2/.crew-handoff.json (D-00 ordering, escalations E-B/E-C/E-D)"
+      ],
+      "extra_dirs": [],
+      "unattended_note": "Listed so the same rig can finish the in-flight checkpoint. E-C (the 4.9.0 tag push and gh release create) is a MAINTAINER act -- the crew must hand off rather than tag."
+    },
+    {
+      "id": "CP3",
+      "feature": "parser-check-cp3",
+      "feature_dir": "specs/parser-check-cp3",
+      "title": "batch + reporting on CP2's runner (in-process read)",
+      "writes": false,
+      "depends_on": "parser-check-cp2 at feature_complete",
+      "scope": "G4 instrument 2 (the bounded complete parse); next_step routing into the CP1 grammar scan; UniqueWordforms() scoping; run artifacts; parse_log; parse_diff; the G3 batch layer + drill-down. Consumes CP2's job runner and adds NO second execution model. Instrument 3 only if the 9.5.6 seam has actually appeared.",
+      "scope_refs": [
+        "specs/parser-check/SPEC.md sections 9.5.2, 9.5.5, 9.5.6",
+        "specs/parser-check/SPEC.md:1171 (CP3 leans on the split)",
+        "specs/parser-check/SPEC.md:2225-2232 (the two counts CP3 must RE-PROBE, not assume)",
+        "D-07/D5: the three grammar lints were deferred to CP3 and CP3 must RE-PROBE GrammarHealthChecker, not reuse D10's version-specific verdict"
+      ],
+      "extra_dirs": []
+    },
+    {
+      "id": "CP4",
+      "feature": "parser-check-cp4",
+      "feature_dir": "specs/parser-check-cp4",
+      "title": "ParseFiler write path (FIRST WRITE)",
+      "writes": true,
+      "depends_on": "parser-check-cp3 at feature_complete",
+      "scope": "ParseFiler with stubs + synchronous UpdateWordforms + the full ladder (12.4), deletion projection on 12.2's conjunction, the refuse-to-file gate (12.3), and live verification including MoveConcAnnotationsToWordform, the 9.3.4 auto-approval case, and 12.7's HC-agent lazy-creation question.",
+      "scope_refs": [
+        "specs/parser-check/SPEC.md sections 12.2, 12.3, 12.4, 12.7, 9.3.4"
+      ],
+      "extra_dirs": [],
+      "unattended_note": "WRITE CHECKPOINT. The driver refuses to run this unattended unless -AllowWriteCheckpoints is passed, and even then the spurt prompt forbids a live FLEx write and must stop needs_human. Spec/plan/tasks for CP4 are safe to automate; implementation of the filing path is not."
+    },
+    {
+      "id": "CP5",
+      "feature": "parser-check-cp5",
+      "feature_dir": "specs/parser-check-cp5",
+      "title": "hardened sandbox spine",
+      "writes": false,
+      "depends_on": "parser-check-cp4 at feature_complete",
+      "scope": "Hardened hcparse.ps1 (H1/H4, three lifecycles), flextools_parse_sandbox, corpus assertions via `test` with regression / new-ambiguity classification.",
+      "scope_refs": [
+        "specs/parser-check/SPEC.md section 13 (sandbox spine), H1/H4",
+        "hcparse.ps1 at the repo root"
+      ],
+      "extra_dirs": []
+    },
+    {
+      "id": "CP6",
+      "feature": "parser-check-cp6",
+      "feature_dir": "specs/parser-check-cp6",
+      "title": "contract codes, CHANGELOG, telemetry, user docs",
+      "writes": false,
+      "depends_on": "parser-check-cp5 at feature_complete",
+      "scope": "Contract codes (including the error-code count drift test from D-12 and the stale '18' in CLAUDE.md per D-13), CHANGELOG, telemetry, user docs.",
+      "scope_refs": [
+        "docs/TOOL-CONTRACT.md",
+        "specs/parser-check/contracts/error-codes.md",
+        "CHANGELOG.md"
+      ],
+      "extra_dirs": []
+    }
+  ]
+}

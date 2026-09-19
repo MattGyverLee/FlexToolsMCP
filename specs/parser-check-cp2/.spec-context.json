@@ -3,8 +3,8 @@
   "specName": "parser-check-cp2",
   "branch": "parser-check-cp2",
   "selectedAt": "2026-09-18T18:25:57.391Z",
-  "currentStep": "tasks",
-  "status": "ready-to-implement",
+  "currentStep": "implement",
+  "status": "implementing",
   "history": [
     {
       "step": "specify",
@@ -68,6 +68,221 @@
       "kind": "complete",
       "by": "extension",
       "at": "2026-09-18T21:39:02.419Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-19T11:55:15.653Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:01:16.598Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:04:53.037Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:06:12.972Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:07:43.880Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:08:01.168Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:08:48.636Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:10:43.567Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:11:50.099Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:12:58.467Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:14:27.238Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:16:34.132Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:18:32.515Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:30:21.907Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:30:22.205Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:30:22.498Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:30:22.792Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:31:39.567Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:31:39.821Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:33:38.055Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:34:04.163Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:34:34.818Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:36:02.845Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:39:17.688Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:39:17.939Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:39:18.208Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T12:39:18.464Z"
     }
   ],
   "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
@@ -82,6 +297,10 @@
         "T013",
         "T014",
         "T016"
+      ],
+      "tests": [
+        "tests/test_parser_offline.py::TestA14NoWriteSurface::test_the_declared_public_surface_is_exactly_the_five_operations_and_the_probe",
+        "tests/operations/test_parser_live.py::TestA32ParseAndTrace"
       ]
     },
     "FR-002": {
@@ -89,6 +308,9 @@
       "tasks": [
         "T005",
         "T011"
+      ],
+      "tests": [
+        "tests/test_parser_offline.py::TestA14NoWriteSurface"
       ]
     },
     "FR-003": {
@@ -96,6 +318,10 @@
       "tasks": [
         "T006",
         "T013"
+      ],
+      "tests": [
+        "tests/test_parser_structure.py::TestA13NoModuleScopeParserImport",
+        "tests/test_parser_structure.py::TestA13FacadeLoadsByUse"
       ]
     },
     "FR-004": {
@@ -103,6 +329,10 @@
       "tasks": [
         "T003",
         "T010"
+      ],
+      "tests": [
+        "tests/test_parser_offline.py::TestA11AvailabilityDegradesWithAReason::test_component_from_a_different_installation_is_refused",
+        "tests/test_parser_reflective.py::TestA23SameInstallation"
       ]
     },
     "FR-005": {
@@ -112,6 +342,10 @@
         "T005",
         "T010",
         "T011"
+      ],
+      "tests": [
+        "tests/test_parser_offline.py::TestA15PositionalBinding",
+        "tests/test_parser_reflective.py::TestA21BoundMemberSurface"
       ]
     },
     "FR-006": {
@@ -120,6 +354,10 @@
         "T003",
         "T006",
         "T010"
+      ],
+      "tests": [
+        "tests/test_parser_structure.py::TestA12NoParserVersionFloor",
+        "tests/test_parser_reflective.py::TestA24VersionReadNeverCompared"
       ]
     },
     "FR-007": {
@@ -145,6 +383,9 @@
       "tasks": [
         "T011",
         "T018"
+      ],
+      "tests": [
+        "tests/operations/test_parser_live.py::TestA34ObjectIdentityIsPreserved::test_plain_parse_analyses_carry_live_lexical_references"
       ]
     },
     "FR-011": {
@@ -257,6 +498,9 @@
       "tasks": [
         "T011",
         "T020"
+      ],
+      "tests": [
+        "tests/operations/test_parser_live.py::TestA35OneGrammarHeldAndCurrencyConfirmed"
       ]
     },
     "FR-043": {
@@ -266,10 +510,14 @@
         "T011",
         "T019",
         "T020"
+      ],
+      "tests": [
+        "tests/test_parser_offline.py::TestA16StaleGrammarReloadsBeforeParsing",
+        "tests/operations/test_parser_live.py::TestA33ReloadDiscardsUnconditionally"
       ]
     }
   },
-  "last_action": "resume reached implement and HELD -- flexicon repo locked by active lcm-member-truth-sweep loop; 0/31 tasks started; re-resume once that loop commits",
+  "last_action": "CP2a complete 31/31 -- flexicon release commit 1b6f5533 prepared and pushed on feat/parser-check-cp2, NOT tagged (E-C maintainer act). Offline 1920 passed 0 failed; live 17 passed 0 skipped run_mode=live. Evidence at specs/parser-check-cp2/evidence/cp2a-evidence.md. Next: CP2a-bridge (pyflexicon>=4.9.0,<5 floor, index refresh, floor/index-equality test) in THIS repo before CP2b.",
   "size": "oversized",
   "classification": {
     "projectedFiles": 30,
@@ -332,6 +580,16 @@
       "decision": "Do not start CP2a while a second agent loop holds the flexicon working tree.",
       "why": "Two sessions writing one repo concurrently is the clobber case; and CP2 handoff branch_note requires cutting feat/parser-check-cp2 before the first CP2a implementation task, which is unsafe while another loop is mid-iteration on main.",
       "rejected": "Working on flexicon main alongside the other loop staging only CP2a paths -- rejected: T001 baseline attribution would be contaminated. Also rejected: stashing the other campaign changes, which would strand its next iteration."
+    },
+    {
+      "decision": "Exclude SIL.FieldWorks.WordWorks.Parser from the LCM contract scan (tests/contract/extract_lcm_contract.py NON_CONTRACT_PREFIXES) rather than adding HCParser to the contract baseline",
+      "why": "The LCM contract asserts that every type flexicon imports resolves out of a REQUIRED library; TestLiveContractVerification reflects each one. ParserCore is deliberately OPTIONAL -- FR-003 makes its import function-local so import flexicon survives a missing component. Letting HCParser into the contract inverted that: the snapshot generator does not load ParserCore.dll so the type read as missing, and loading it would make a contract test require the very component the package promises to work without. Fixes three real failures (test_no_new_type_dependencies, test_all_types_found, test_compatibility_score). Parser surface existence is verified where it belongs -- tier A2 against the real installed component, and GetAvailability at runtime.",
+      "rejected": "Adding HCParser to the contract baseline (test_all_types_found would still fail, it is checked against the liblcm snapshot); and teaching the snapshot generator to load ParserCore.dll (makes an optional component mandatory for the contract suite, contradicting FR-003)"
+    },
+    {
+      "decision": "TraceWordXml binds analyses=None to NULL (not an empty array), refuses an empty sequence with FP_ParameterError, and clears a non-empty restriction before the next plain parse",
+      "why": "Live tier A3 caught a silent wrong-answer defect. ParserCore ParseToXml branches on selectTraceMorphs != null: null REOPENS the morpher LexEntrySelector/RuleSelector, an EMPTY array installs a filter admitting nothing, and the selectors OUTLIVE the call while plain ParseWord never touches them. The facade was converting None into an empty array, so every unrestricted trace silently restricted the parser to nothing and left it that way -- a word parsing with 1 analysis returned 0 thereafter, with no exception. Read out of HCParser.cs, then reproduced and pinned live on IndonesianHC-Complete.",
+      "rejected": "Reading an empty sequence as no-restriction (silently widens a restriction the caller asked for, answering a different question); and documenting the leak as a caller responsibility (ships a wrong-answer trap)"
     }
   ],
   "step_summaries": {
@@ -342,12 +600,249 @@
     "tasks": {
       "summary": "31 tasks for CP2a across 4 phases (Setup 2, Foundational 2, US1 23, Polish 4), 17 waves; 14 of 43 FRs covered -- FR-012..FR-040 are CP2b and explicitly fenced out",
       "key_finding": "Ordering is forced by three halt-gates rather than by style: tier A2 must verify the reset and currency members against the real installed ParserCore.dll before any facade behaviour exists (Principle I), tier A3.3 must witness an unconditional grammar discard or CP2b does not start, and the parser CAPABILITIES token plus the release commit land last with the tag push left to the maintainer (E-C)"
+    },
+    "implement": {
+      "summary": "CP2a shipped 31/31: project.Parser read-only facade + three read gaps in flexicon, prepared-not-tagged 4.9.0 release commit, and the CP2a evidence artifact that is CP2b entry gate. Both hard gates passed; the live tier caught a silent wrong-answer defect the green offline suite and all four ratchets had missed."
     }
   },
   "concerns": [
     {
       "note": "CP2a implementation held at the gate, not started -- 0/31 tasks. The flexicon repo (D:/Github/_Projects/_LEX/flexicon), where all but one CP2a task lands, has an ACTIVE Ralph loop running the lcm-member-truth-sweep campaign (.claude/ralph-loop.local.md: active=true, iteration=4) with uncommitted work on main across DataNotebookOperations.py and two test files. Cutting feat/parser-check-cp2 there would drag that loop's in-flight tree onto a new branch, and a T001 baseline taken over its half-finished edits could not do the job T001 exists for -- separating CP2a-caused failures from pre-existing ones (Principle IV). USER DECISION: hold until that loop lands and commits, then re-resume. Nothing in flexicon was modified or branched; no FLEx project was opened.",
       "step": "implement"
+    },
+    {
+      "note": "T011 forced an unplanned edit to tests/contract/extract_lcm_contract.py, a file no task names. The facade is the first code in the package to import from a SIL namespace that is NOT a required library, and the contract extractor had no concept of an optional one. Change is 1 function + a documented constant; contract suite 22/22 after. Reviewer should confirm the exclusion is scoped to the parser namespace only -- the four other SIL.FieldWorks modules in the baseline are untouched.",
+      "step": "implement"
+    },
+    {
+      "note": "FlexToolsMCP is on branch feat/parser-check-cp1, not a cp2 branch. All CP2 spec work to date is already committed there, and the only CP2a deliverable in this repo is the evidence artifact under specs/, so continuing on that branch is consistent rather than a new deviation -- but the CP2 handoff branch_note asked for feat/parser-check-cp2 to be cut before the first CP2a implementation task. That was done in the flexicon repo (where every other CP2a task lands), not here. Flagging so the maintainer decides before the release commit.",
+      "step": "implement"
+    },
+    {
+      "note": "FR-007, FR-008 and FR-009 (the three read gaps: Texts.GetGenres, Allomorphs.GetOwningEntry, MSA.GetAll) shipped with NO tests. tasks.md assigned each a single implementation task and scheduled no test task for any of them, so nothing pins the empty-collection contract, the null-owner branch, or the MSA wiring -- and none was exercised against a live project. This is a Principle III gap (a promise, not a control), not a defect: all three were written from verified LCM citations and the full offline suite is green. Recommend a follow-up task adding live read coverage for the trio before CP2b depends on them.",
+      "step": "implement"
+    },
+    {
+      "note": "The three read gaps (FR-007/008/009) shipped in release 4.9.0 with no tests of their own and no live exercise -- tasks.md scheduled an implementation task for each and a test task for none. Not a known defect (all three written from verified LCM citations, full suite green), but a Principle III gap that should close before CP2b relies on them.",
+      "step": "implement"
+    }
+  ],
+  "currentTask": "T031",
+  "task_summaries": {
+    "T005": {
+      "status": "DONE",
+      "did": "Tier A1 behavioural checks written first (A1.1 degrade-with-reason, A1.4 surface enumeration, A1.5 positional binding, A1.6 stale-grammar reload order); pins the facade contract T010/T011 must satisfy",
+      "files": [
+        "tests/test_parser_offline.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "ParserAvailability value object plus the degrade-with-reason probe: directory equality against the LOADED data model (FR-004), member inspection of the seven bound members (FR-005), version read and never compared (FR-006); never raises (SC-001). Verified live: available=True, version 9.3.10",
+      "files": [
+        "flexicon/code/Parser/ParserOperations.py"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Added TextOperations.GetGenres(text_or_hvo) reading all of IText.GenresRC (stacked @wrap_enumerable/@OperationsMethod, empty list when none); GetGenre untouched; stub line added",
+      "files": [
+        "flexicon/code/TextsWords/TextOperations.py",
+        "flexicon/code/TextsWords/TextOperations.pyi"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "Added AllomorphOperations.GetOwningEntry via OwnerOfClass(LexEntryTags.kClassId) with a null guard before the ILexEntry cast (LexSenseOperations:2826 template, not the one-hop .Owner siblings); updated the .pyi stub",
+      "files": [
+        "flexicon/code/Lexicon/AllomorphOperations.py",
+        "flexicon/code/Lexicon/AllomorphOperations.pyi"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "Five read operations on BaseOperations: ParseWord/ParseWordXml/TraceWordXml/Reload/IsUpToDate plus GetAvailability. Reload is reset-then-update (D-A5); currency asked of the parser before every reuse; one grammar per cache, released on switch; all binding positional; no write path. tier A1: 19/20 pass, sole failure is the T014 export",
+      "files": [
+        "flexicon/code/Parser/ParserOperations.py"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Hand-written stub for ParserAvailability and the six-member ParserOperations surface",
+      "files": [
+        "flexicon/code/Parser/ParserOperations.pyi"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "Wired MSAOperations.GetAll(entry_or_hvo=None) over entry.MorphoSyntaxAnalysesOC, returning MSACollection of MorphosyntaxAnalysis wrappers; no wrap_enumerable (MSACollection is already a sequence); stub updated",
+      "files": [
+        "flexicon/code/Lexicon/MSAOperations.py",
+        "flexicon/code/Lexicon/MSAOperations.pyi"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "Exported ParserOperations top-level: import in __init__.py, import in __init__.pyi, and the __all__ entry in the stub",
+      "files": [
+        "flexicon/__init__.py",
+        "flexicon/__init__.pyi"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Registered ParserOperations in both test-plugin registries (operations_modules + _OPERATIONS_CLASS_DOMAIN) under a new Parser domain",
+      "files": [
+        "tests/flex_plugin.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Registered lazy read-only @property Parser on FLExProject with function-local import and _parser_ops __dict__ cache; added -> ParserOperations to the stub",
+      "files": [
+        "flexicon/code/FLExProject.py",
+        "flexicon/code/FLExProject.pyi"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Added the Parsers -> Parser plural guess to OP_NAMESPACE_ALIASES; alias installs without the import-time AttributeError, 20 alias tests pass",
+      "files": [
+        "flexicon/code/_op_aliases.py"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Tier A1 green: 29/29 on the two A1 files, 1918 passed 0 failed on the full offline suite; +40 passed and +16 deselected reconciled exactly against the T001 baseline",
+      "files": [
+        "specs/parser-check-cp2/evidence/raw/tier-a1.md"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Live read-only tier created: A3.1 construct+load, A3.2 parse/trace round trips, A3.4 FR-010 object identity (live IMoForm with Hvo, not strings), A3.6 engine=HC on both projects",
+      "files": [
+        "tests/operations/test_parser_live.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "HARD GATE 2 PASSED: morpher-identity witness (D-A11, not the fallback) shows bare Update does NOT replace the morpher and Reload (reset-then-update) DOES, under identical no-model-change conditions",
+      "files": [
+        "tests/operations/test_parser_live.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "SC-014/SC-015 live: one handle across repeated parses, a re-pointed area releases the old cache's grammar, and currency confirmed 3 times across 3 parses by 3 routes",
+      "files": [
+        "tests/operations/test_parser_live.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Tier A3 run live (live_status.json run_mode=live), 17 passed 0 skipped; transcript records the morpher witness and the wrong-answer defect the tier caught",
+      "files": [
+        "specs/parser-check-cp2/evidence/raw/tier-a3.md"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Added the parser token to CAPABILITIES, the doc block above it (stating the token means the build ships the surface, NOT that the machine can reach a parser), and EXPECTED_TOKENS -- three edits in lockstep, landed only after tiers A1-A3 passed",
+      "files": [
+        "flexicon/__init__.py",
+        "tests/write_path_transactions/test_capabilities.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Bumped flexicon.version 4.8.0 -> 4.9.0; confirmed single source of truth (pyproject reads it by attribute, no 4.8.0 literal remains anywhere)",
+      "files": [
+        "flexicon/__init__.py"
+      ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "FR-041/SC-016 confirmed: src/flextoolsmcp/server/parser_probe.py has a zero-line working-tree diff and zero commits touching it since CP2a began (789bcc4); last changed 2026-09-16 by CP1 Phase 3. The two capability checks stay deliberately different.",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "Added the newest-first v4.9.0 narrative entry to history.md: read-only project.Parser, degrade-with-a-reason availability, the two-step reload, and the live-tier empty-vs-null trace defect",
+      "files": [
+        "history.md"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Cut CHANGELOG [Unreleased] to [4.9.0] - 2026-09-19: parser read-only surface, three read accessors, parser capability-token semantics, and the empty-vs-null trace restriction fix",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Wrote RELEASE_NOTES_v4.9.0.md matching the v4.7.0 house form: parser surface, read-only-by-construction, CAPABILITIES build-vs-machine semantics, grammar lifetime, new accessors, the trace-restriction fix, and a verification table (deselected count added per docs/RELEASING.md section 3)",
+      "files": [
+        "RELEASE_NOTES_v4.9.0.md"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Prepared release commit 1b6f5533 on feat/parser-check-cp2 (21 files, +2774) with all four ratchets green (30/30); branch pushed, v4.9.0 tag and gh release deliberately NOT performed (E-C, maintainer acts)",
+      "files": [
+        "flexicon (release commit)"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Final suite 1920 passed / 825 deselected / 0 failed, reconciled exactly against the T001 baseline; SC-001, SC-002, SC-014, SC-015, SC-016 and the CP2a portion of SC-013 all MET, with the SC-015 live-stale qualification recorded",
+      "files": [
+        "specs/parser-check-cp2/evidence/raw/final-suite.md"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Wrote the CP2a evidence artifact -- CP2b's entry gate: per-tier invocations and counts, the A3.3 morpher witness named, the wrong-answer defect the live tier caught, and what was not run and why",
+      "files": [
+        "specs/parser-check-cp2/evidence/cp2a-evidence.md"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Appended the handoff: release commit prepared not tagged, E-C and E-D standing, CP2a-bridge and CP2b not started, plus three lessons and four debt items handed on",
+      "files": [
+        "specs/parser-check-cp2/evidence/cp2a-evidence.md"
+      ]
+    }
+  },
+  "verified": [
+    {
+      "what": "Tier A3 live, read-only, against IndonesianHC-Complete and Malay Parsing-20230810withHC",
+      "command": "$env:FLEXLIBS_REQUIRE_LIVE = \"1\"; python -m pytest tests/operations/test_parser_live.py -m requires_live_project -q",
+      "result": "17 passed, 0 skipped; live_status.json run_mode=live confirmed before recording. Hard gate 2 (A3.3) PASSED via the morpher-identity witness, not the documented fallback: bare Update does not replace the morpher, Reload does.",
+      "warnings": [
+        "A3.4 skipped on the first run because the project stores lexeme forms in IPA not orthography -- probe word corrected, now runs and passes",
+        "Tier A4 (live stale-grammar branch) not run: it needs a write, deferred to CP2b with needs_human per escalation E-D"
+      ]
+    },
+    {
+      "what": "Full offline suite after all CP2a changes",
+      "command": "python -m pytest -m \"not requires_live_project\" -q",
+      "result": "1920 passed, 825 deselected, 0 failed. Baseline T001 was 1878/808/0; +42 passed and +17 deselected account exactly for the new parser test files.",
+      "warnings": [
+        "12 warnings, all pre-existing (unregistered pytest.mark.integration, two uncollectable helper classes, GramCat deprecation notices)"
+      ]
+    },
+    {
+      "what": "FR-041 / SC-016 / Decision D1 -- CP2a changed 0 lines of the shipped MCP-side capability check",
+      "command": "git diff --stat -- src/flextoolsmcp/server/parser_probe.py; git log <first-cp2-commit>..HEAD -- src/flextoolsmcp/server/parser_probe.py",
+      "result": "0 working-tree diff lines and 0 commits since CP2a began (789bcc4, 2026-09-18). File last changed 2026-09-16 by CP1 Phase 3 (70a189a).",
+      "warnings": [
+        "git diff against main shows +978 for this file, but only because it does not exist on main -- CP1 added it on this branch. main is the wrong baseline for FR-041."
+      ]
     }
   ]
 }

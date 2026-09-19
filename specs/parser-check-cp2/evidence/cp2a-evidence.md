@@ -34,8 +34,8 @@ not run, by design.**
 | Tier | What it proves | Invocation | Result |
 |---|---|---|---|
 | **A2** | the members the facade binds exist on the real installed component | `python -m pytest tests/test_parser_reflective.py -m "not requires_live_project" -v` | **11 passed** |
-| **A1** | the facade degrades with a reason, exposes no write, binds positionally, and reloads a stale grammar before parsing | `python -m pytest -m "not requires_live_project" -q` | **1920 passed, 0 failed** |
-| **A3** | it all actually works against a real grammar | `$env:FLEXLIBS_REQUIRE_LIVE = "1"; python -m pytest tests/operations/test_parser_live.py -m requires_live_project -q` | **17 passed, 0 skipped** |
+| **A1** | the facade degrades with a reason, exposes no write, binds positionally, and reloads a stale grammar before parsing | `python -m pytest -m "not requires_live_project" -q` | **1923 passed, 0 failed** |
+| **A3** | it all actually works against a real grammar | `$env:FLEXLIBS_REQUIRE_LIVE = "1"; python -m pytest tests/operations/test_parser_live.py -m requires_live_project -q` | **18 passed, 0 skipped** |
 | **A4** | the stale branch, live | -- | **NOT RUN** -- see below |
 
 Bare `pytest` was never run, and neither was `pytest --ignore=tests/contract`:
@@ -76,7 +76,7 @@ detected version reads `9.3.10` and is used in no decision.
 
 ## Tier A1 -- offline behaviour and standing controls
 
-`29 passed` across the two A1 files; `1920 passed, 0 failed` for the whole
+`33 passed` across the two A1 files; `1923 passed, 0 failed` for the whole
 offline suite.
 
 ### Reconciliation against the T001 baseline
@@ -87,13 +87,15 @@ accounted for:
 
 | | baseline (T001) | final (T028) | delta |
 |---|---|---|---|
-| passed | 1878 | 1920 | **+42** |
-| deselected | 808 | 825 | **+17** |
+| passed | 1878 | 1923 | **+45** |
+| deselected | 808 | 826 | **+18** |
 | failed | **0** | **0** | 0 |
 
-- **+42 passed** = the three new offline parser files: `test_parser_offline.py`
-  (22) + `test_parser_structure.py` (9) + `test_parser_reflective.py` (11).
-- **+17 deselected** = `tests/operations/test_parser_live.py`, correctly
+- **+45 passed** = the three new offline parser files, `test_parser_offline.py`
+  (24) + `test_parser_structure.py` (9) + `test_parser_reflective.py` (11) =
+  44, plus the one guard added to `tests/contract/test_lcm_contract.py` in
+  response to the QC gate.
+- **+18 deselected** = `tests/operations/test_parser_live.py`, correctly
   excluded from the offline tier and run under its own invocation.
 
 No test that passed at baseline fails now. **Nothing is being carried as
@@ -227,6 +229,55 @@ exactly these two calls.
 
 ---
 
+## Pattern audit
+
+Required by Constitution Quality Gate 3 for a shaped bug, and initially
+missing from this artifact -- the QC gate blocked on its absence. The
+diagnosis above was not a sweep.
+
+**The shape.** *A Python `None`/empty optional collection marshalled across
+the pythonnet boundary into a CLR reference parameter, where the callee
+branches on `!= null` so the two readings are near-opposites, and the effect
+outlives the call.*
+
+**Sweep basis.** Over `flexicon/**/*.py`, excluding `__pycache__`:
+
+| Probe | Hits |
+|---|---|
+| `System.Array[...]` construction | **1** -- `flexicon/code/Parser/ParserOperations.py:811`, the site itself |
+| `System.Collections.Generic.List[...]`, `List[System....]` | 0 |
+| `.ToArray()`, `Enumerable.Empty` | 0 |
+| literal `None` passed as a CLR call argument (non-docstring) | 12, all inspected |
+
+**Finding: no sibling occurrences. This is the package's only site that
+marshals a Python optional collection into a CLR reference parameter.**
+
+The twelve `None`-at-a-CLR-call hits were inspected rather than counted, and
+none carries the shape, because none involves a *collection* parameter:
+
+- `FLExProject.py:3848` (`bldr.Replace(..., None)`), `:4539`
+  (`SetString(hvo, fid, None)`), `:4548` (`set_String(ws, None)`),
+  `ExampleOperations.py:1052`, `EtymologyOperations.py:549` -- null-as-clear
+  on a string or a field. The callee's null semantics **are** the intent, and
+  there is no empty form to confuse it with.
+- `BaseOperations.py:2977` (`PropertyInfo.GetValue(parent, None)`),
+  `FLExProject.py:963` (`bound.Invoke(sl, None)`) -- the .NET reflection
+  convention for "no index arguments". Fixed by the API, not a choice.
+- `FLExProject.py:1046`, `:4351`, `POSOperations.py:1162` -- Python-level
+  defaults that never cross the boundary as an ambiguous collection.
+
+**By-construction claim for the future.** The shape needs a CLR parameter
+typed as a reference collection whose callee distinguishes null from empty.
+Only `TraceWordXml(string, IEnumerable<int>)` in the bound surface qualifies,
+and it is now the only such call. Any future binding of a CLR method taking a
+collection parameter re-opens this obligation.
+
+**The obligation CP2b inherits.** CP2b's restricted-trace tool sits directly
+on this call and will pass caller-supplied decompositions into it. It inherits
+both the null-vs-empty contract and the outlives-the-call property.
+
+---
+
 ## What was NOT run, and why
 
 **Tier A4 -- the live half of FR-043's stale branch. NOT RUN.**
@@ -287,6 +338,64 @@ should be reconciled into the other:
 Each probes what its own surface binds. The divergence is recorded in both
 places, so a later contributor finding them different learns that it was
 intended.
+
+---
+
+## The QC gate blocked, and what that changed
+
+The registered `after_implement` code-quality gate returned **BLOCKED** on the
+first prepared cut, with three findings. All three were real, all three were
+verified independently before being fixed, and the release commit was amended
+rather than followed by a patch -- the tag was still unpushed, so the cut was
+still the cheap place to fix them.
+
+**B-1 -- the null/empty fix was not exception-safe.** `TraceWordXml` set its
+`_restricted` flag *after* the component call. But the component installs its
+selectors at the **start** of the call, so a trace that threw part-way through
+left the morpher narrowed while the flag stayed false -- the clear would be
+skipped and the next plain parse served truncated. That is the original defect
+reachable by a second route. The flag is now set **before** the call, which
+fails the safe way: the worst case is one wasted clearing parse instead of a
+wrong answer. Pinned offline by a test that makes the stub's trace raise.
+
+**B-2 -- no pattern audit.** The artifact diagnosed the shaped bug well and
+swept for siblings not at all, which Constitution Quality Gate 3 requires. The
+sweep is now above, run and verified independently: `System.Array[...]` is
+constructed in exactly one place in the package, and none of the twelve
+`None`-at-a-CLR-call sites involves a collection parameter. No siblings.
+
+**B-3 -- the backup witness could not run.** The A3.3 fallback looked for the
+HC side file under the project directory and read `ProjectName` as an
+attribute when it is a method, so it always returned `None`. A documented
+guarantee that could not execute -- precisely the shape this checkpoint spent
+its effort avoiding, sitting inside the test that enforces it. It failed
+*closed*, so no false pass was produced and the A3.3 result stands. Fixed
+(the component writes to its private `m_outputDirectory`, `HCParser.cs:152`)
+and, more importantly, **now exercised on every run** by its own test, so a
+dead fallback fails loudly instead of waiting for the day the primary witness
+breaks.
+
+Three non-blocking findings were also taken:
+
+- the class docstring claimed "read-only by construction" without stating its
+  limit; the inherited `Swap` / `MoveBefore` / `MoveAfter` /
+  `ApplySyncableProperties` generics are reachable and do write, though none
+  can record a parse result. The limit is now stated in both the class
+  docstring and the `FLExProject.Parser` property, not only in a test;
+- `_restricted` was not cleared on reload or project switch, so the flag
+  approximated component state rather than tracking it -- which is what made
+  B-1 easy to miss. Now cleared in both places;
+- `NON_CONTRACT_PREFIXES` was a silent exclusion list with no guard. A test
+  now pins it to the one reviewed entry, so widening it means editing a test
+  rather than appending a line nobody sees.
+
+One finding is recorded and **not** fixed, because it is out of scope:
+`BaseOperations.Swap` calls `_TransactionCM` but never `_EnsureWriteEnabled`,
+unlike its five siblings -- an unguarded writer on all 43 Operations classes.
+Pre-existing, unrelated to CP2a, and it needs its own issue.
+
+Counts after the fixes: offline **1923 passed, 0 failed**; live **18 passed,
+0 skipped**, `run_mode: live`.
 
 ---
 

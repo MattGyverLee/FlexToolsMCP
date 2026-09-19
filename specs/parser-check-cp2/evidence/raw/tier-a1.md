@@ -44,6 +44,13 @@ default tier.
 
 ## Result
 
+**These are the counts AS AT T017, and they are deliberately not restated to
+the final ones.** Later tasks added tests: T018-T021 added the live tier, and
+the QC gate's findings added two offline pins and one contract guard. The
+final reconciled figures are in [`final-suite.md`](final-suite.md) (T028).
+Rewriting a transcript to match a later run would destroy the audit trail
+this file exists to be.
+
 Focused run, the two A1 files:
 
 ```

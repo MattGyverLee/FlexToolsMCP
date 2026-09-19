@@ -590,6 +590,11 @@
       "decision": "TraceWordXml binds analyses=None to NULL (not an empty array), refuses an empty sequence with FP_ParameterError, and clears a non-empty restriction before the next plain parse",
       "why": "Live tier A3 caught a silent wrong-answer defect. ParserCore ParseToXml branches on selectTraceMorphs != null: null REOPENS the morpher LexEntrySelector/RuleSelector, an EMPTY array installs a filter admitting nothing, and the selectors OUTLIVE the call while plain ParseWord never touches them. The facade was converting None into an empty array, so every unrestricted trace silently restricted the parser to nothing and left it that way -- a word parsing with 1 analysis returned 0 thereafter, with no exception. Read out of HCParser.cs, then reproduced and pinned live on IndonesianHC-Complete.",
       "rejected": "Reading an empty sequence as no-restriction (silently widens a restriction the caller asked for, answering a different question); and documenting the leak as a caller responsibility (ships a wrong-answer trap)"
+    },
+    {
+      "decision": "Set the _restricted flag BEFORE the component call, not after, and pin the A3.3 fallback witness with its own test",
+      "why": "QC gate finding B-1: the component installs its selectors at the START of TraceWordXml, so a trace that raises part-way leaves the morpher narrowed; a flag set afterwards would never be set, the clear would be skipped, and the next plain parse would be silently truncated -- the original defect by a second route. Setting first fails safe (one wasted clearing parse) instead of open (a wrong answer). Separately B-3: the documented fallback witness returned None unconditionally and nothing checked it, so it is now exercised on every run -- an unusable backup is not a backup.",
+      "rejected": "A try/finally around the trace call (equivalent, but the flag-first form makes the invariant readable at the assignment rather than in a handler); and leaving the fallback unpinned on the grounds that the primary witness works today"
     }
   ],
   "step_summaries": {
@@ -624,6 +629,10 @@
     },
     {
       "note": "The three read gaps (FR-007/008/009) shipped in release 4.9.0 with no tests of their own and no live exercise -- tasks.md scheduled an implementation task for each and a test task for none. Not a known defect (all three written from verified LCM citations, full suite green), but a Principle III gap that should close before CP2b relies on them.",
+      "step": "implement"
+    },
+    {
+      "note": "Pre-existing and NOT fixed by CP2a, surfaced by the QC gate: BaseOperations.Swap (BaseOperations.py:1197-1281) calls _TransactionCM but never _EnsureWriteEnabled, unlike MoveUp/MoveDown/MoveToIndex/MoveBefore/MoveAfter/ApplySyncableProperties. _TransactionCM is an undo-labelling wrapper, not a write guard, so Swap is an unguarded writer on all 43 Operations classes. Sort has the same shape but is inert where _GetSequence is not overridden. Needs its own issue against flexicon.",
       "step": "implement"
     }
   ],
@@ -842,6 +851,15 @@
       "result": "0 working-tree diff lines and 0 commits since CP2a began (789bcc4, 2026-09-18). File last changed 2026-09-16 by CP1 Phase 3 (70a189a).",
       "warnings": [
         "git diff against main shows +978 for this file, but only because it does not exist on main -- CP1 added it on this branch. main is the wrong baseline for FR-041."
+      ]
+    },
+    {
+      "what": "Registered after_implement code-quality gate (lex-qc), and the fixes for everything it blocked on",
+      "command": "lex-qc review of flexicon 1b6f5533; then python -m pytest -m \"not requires_live_project\" -q and the live tier re-run",
+      "result": "Gate returned BLOCKED with 3 findings, all real and all verified independently before fixing: B-1 the _restricted flag was set after the trace call so an exception left the restriction uncleared (wrong answer by a second route); B-2 no pattern-audit section for a shaped bug; B-3 the A3.3 fallback witness could not execute (wrong path, and ProjectName read as an attribute when it is a method). All three fixed by amending the cut. After: offline 1923 passed 0 failed, live 18 passed 0 skipped run_mode=live. Pattern audit found NO siblings -- System.Array[...] is constructed in exactly one place in the package.",
+      "warnings": [
+        "lex-verification (optional hook) correctly skipped: CP2a is read-only, and read-only live evidence was already produced as tier A3",
+        "BaseOperations.Swap calls _TransactionCM but never _EnsureWriteEnabled, unlike its five siblings -- pre-existing unguarded writer on all 43 Operations classes, out of CP2a scope, needs its own issue"
       ]
     }
   ]

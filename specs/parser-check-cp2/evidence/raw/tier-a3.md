@@ -45,21 +45,21 @@ triggers a modal liblcm dialog that freezes the suite.
 ## Result
 
 ```
-17 passed in 6.18s
+18 passed in 6.33s
 ```
 
 **Zero failures, zero skips.** Every assertion in the tier executed against a
 real grammar.
 
-Full offline suite after the tier's fixes: **1920 passed, 0 failed**.
+Full offline suite after the tier's fixes: **1923 passed, 0 failed**.
 
 | Group | Covers | Outcome |
 |---|---|---|
 | `TestA31ConstructsAndLoads` (2) | A3.1 -- real cache, real grammar | pass |
-| `TestA32ParseAndTrace` (5) | A3.2 -- parse and trace round trips | pass |
+| `TestA32ParseAndTrace` (5) | A3.2 -- parse and trace round trips, and the restriction-leak regression pin | pass |
 | `TestA34ObjectIdentityIsPreserved` (1) | **A3.4 -- FR-010 object identity** | pass |
 | `TestA36ExpectedEngine` (2) | A3.6 -- engine HC on both projects | pass |
-| `TestA33ReloadDiscardsUnconditionally` (3) | **A3.3 -- THE GATE** | pass |
+| `TestA33ReloadDiscardsUnconditionally` (4) | **A3.3 -- THE GATE**, plus the fallback-availability pin | pass |
 | `TestA35OneGrammarHeldAndCurrencyConfirmed` (4) | A3.5 -- SC-014, SC-015 | pass |
 
 ---
@@ -108,10 +108,24 @@ did not.
 **Why not elapsed time.** Timing is a correlation, not a witness. A small
 grammar on a warm cache reloads fast enough that any threshold either passes
 a no-op or fails a real reload depending on the machine. The documented
-fallback -- the rewrite of `{ProjectName}HCLoadErrors.xml`, which CP1 already
-treats as the load signal -- is implemented in the test and used only if the
-field read fails. It did not fail. Had **neither** witness been available the
-test would have FAILED, not skipped: an absent witness is absent evidence.
+fallback -- the rewrite of `{ProjectName}HCLoadErrors.xml` -- is implemented
+in the test and used only if the field read fails. It did not fail. Had
+**neither** witness been available the test would have FAILED, not skipped:
+an absent witness is absent evidence.
+
+**The fallback was dead when first written, and the QC gate caught it.** It
+looked for the side file under the project directory and read
+`project.ProjectName` as an attribute when it is a method, so it returned
+`None` unconditionally: a documented backup witness that could not run. The
+component actually writes the file to its private `m_outputDirectory`
+(`HCParser.cs:152`), which resolves to the user's temp directory here. Both
+faults are fixed, and -- the part that matters -- the fallback is now
+**exercised on every run** by
+`TestA33ReloadDiscardsUnconditionally::test_the_fallback_witness_is_actually_available`,
+independently of whether it is needed. It failed closed rather than open, so
+no false pass was ever produced and the A3.3 result above stands; but a
+guarantee nobody checks is the shape Principle I exists to prevent, and an
+unusable backup is not a backup.
 
 ---
 

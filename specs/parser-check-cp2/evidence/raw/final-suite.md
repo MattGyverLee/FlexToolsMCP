@@ -17,7 +17,7 @@ Bare `pytest` was never run, and neither was `pytest --ignore=tests/contract`.
 ## Result
 
 ```
-1920 passed, 825 deselected, 12 warnings in 30.94s
+1923 passed, 826 deselected, 12 warnings in 33.59s
 ```
 
 Run with every CP2a change in the tree, including the release paperwork, so
@@ -28,17 +28,19 @@ the `flexlibs2` alias ratchet saw the new `CHANGELOG.md`, `history.md` and
 
 | | baseline (T001) | final (T028) | delta |
 |---|---|---|---|
-| passed | 1878 | 1920 | **+42** |
-| deselected | 808 | 825 | **+17** |
+| passed | 1878 | 1923 | **+45** |
+| deselected | 808 | 826 | **+18** |
 | **failed** | **0** | **0** | **0** |
 
 Every unit of both deltas is accounted for:
 
-- **+42 passed** = the three new offline parser files.
-  `tests/test_parser_offline.py` (22) + `tests/test_parser_structure.py` (9)
-  + `tests/test_parser_reflective.py` (11) = 42. The T001 baseline was taken
-  after T002 and before T003 and T006 landed, so all three are new since it.
-- **+17 deselected** = `tests/operations/test_parser_live.py`, correctly
+- **+45 passed** = the three new offline parser files,
+  `tests/test_parser_offline.py` (24) + `tests/test_parser_structure.py` (9)
+  + `tests/test_parser_reflective.py` (11) = 44, plus the single
+  exclusion-list guard added to `tests/contract/test_lcm_contract.py` in
+  response to the QC gate. The T001 baseline was taken after T002 and before
+  T003 and T006 landed, so all three parser files are new since it.
+- **+18 deselected** = `tests/operations/test_parser_live.py`, correctly
   excluded here and run under its own invocation (tier A3).
 
 **No test that passed at baseline fails now, and no failure is being carried

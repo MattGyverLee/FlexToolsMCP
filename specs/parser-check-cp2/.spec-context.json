@@ -3,8 +3,8 @@
   "specName": "parser-check-cp2",
   "branch": "parser-check-cp2",
   "selectedAt": "2026-09-18T18:25:57.391Z",
-  "currentStep": "plan",
-  "status": "planned",
+  "currentStep": "tasks",
+  "status": "ready-to-implement",
   "history": [
     {
       "step": "specify",
@@ -47,42 +47,115 @@
       "kind": "complete",
       "by": "extension",
       "at": "2026-09-18T21:19:04.858Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-18T21:24:32.217Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-18T21:31:49.256Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-18T21:39:02.419Z"
     }
   ],
   "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
   "coverage": {
     "FR-001": {
-      "title": "The project object available to generated scripts MUST expose a read-only parser area alongside its existing areas, offering: a plain parse of a word, a parse returning the parser'"
+      "title": "The project object available to generated scripts MUST expose a read-only parser area alongside its existing areas, offering a plain parse, a structured parse, a trace, a reload and a currency read",
+      "tasks": [
+        "T002",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T016"
+      ]
     },
     "FR-002": {
-      "title": "The parser area MUST NOT expose any way to record, file or otherwise write parse results. The absence MUST be stated where a future contributor will read it, because the read-only"
+      "title": "The parser area MUST NOT expose any way to record, file or otherwise write parse results, and the absence MUST be stated where a future contributor will read it",
+      "tasks": [
+        "T005",
+        "T011"
+      ]
     },
     "FR-003": {
-      "title": "Loading the parser component MUST be triggered by use, never by import, so that a future installation that renames or relocates it degrades to \"parser unavailable\" instead of break"
+      "title": "Loading the parser component MUST be triggered by use, never by import, so a renamed or relocated installation degrades to parser unavailable instead of breaking import",
+      "tasks": [
+        "T006",
+        "T013"
+      ]
     },
     "FR-004": {
-      "title": "Before use, the system MUST verify that the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise. This check is directory"
+      "title": "Before use the system MUST verify the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise; the check is directory equality only",
+      "tasks": [
+        "T003",
+        "T010"
+      ]
     },
     "FR-005": {
-      "title": "Before use, the system MUST verify by inspection that every operation it intends to call exists, and MUST bind those operations positionally rather than by parameter name."
+      "title": "Before use the system MUST verify by inspection that every operation it intends to call exists, and MUST bind those operations positionally rather than by parameter name",
+      "tasks": [
+        "T003",
+        "T005",
+        "T010",
+        "T011"
+      ]
     },
     "FR-006": {
-      "title": "The detected parser version MUST be reported and MUST NOT be compared against any minimum. A standing test MUST guard this in each repository that probes."
+      "title": "The detected parser version MUST be reported and MUST NOT be compared against any minimum; a standing test MUST guard this in each repository that probes",
+      "tasks": [
+        "T003",
+        "T006",
+        "T010"
+      ]
     },
     "FR-007": {
-      "title": "Scripts MUST be able to read all genres assigned to a text, not only the first."
+      "title": "Scripts MUST be able to read all genres assigned to a text, not only the first",
+      "tasks": [
+        "T007"
+      ]
     },
     "FR-008": {
-      "title": "Scripts MUST be able to get the entry that owns an allomorph. The underlying data model already exposes this relationship; the gap this checkpoint closes is that the script library"
+      "title": "Scripts MUST be able to get the entry that owns an allomorph; the data model exposes the relationship, the script library never wrapped it",
+      "tasks": [
+        "T008"
+      ]
     },
     "FR-009": {
-      "title": "Scripts MUST be able to read morpho-syntactic analyses without dropping to raw data-model access, since resolving a user's hypothesis terminates in them."
+      "title": "Scripts MUST be able to read morpho-syntactic analyses without dropping to raw data-model access",
+      "tasks": [
+        "T009"
+      ]
     },
     "FR-010": {
-      "title": "Parser results crossing into script-visible form MUST preserve the identity of the underlying lexical objects, not only their text, because later checkpoints align results against"
+      "title": "Parser results crossing into script-visible form MUST preserve the identity of the underlying lexical objects, not only their text",
+      "tasks": [
+        "T011",
+        "T018"
+      ]
     },
     "FR-011": {
-      "title": "The new surface MUST be released as a versioned package before the assistant-side work is tested against it; the assistant's declared minimum version and its bundled index of that"
+      "title": "The new surface MUST be released as a versioned package before the assistant-side work is tested against it; the declared minimum and bundled index must agree",
+      "tasks": [
+        "T023",
+        "T024",
+        "T025",
+        "T026",
+        "T027"
+      ]
     },
     "FR-012": {
       "title": "The assistant MUST offer a tool that parses one word and MUST expose all three levels of answer: restricted-to-a-hypothesis, plain yes/no, and full explanation. Each MUST reach the"
@@ -172,16 +245,31 @@
       "title": "Whether the three grammar lints deferred at CP1 are folded in here MUST be decided and, if deferred again, recorded as such. *(Decision D5.)*"
     },
     "FR-041": {
-      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository. The script library MUST probe the read operations its own surface binds, including the relo"
+      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository; the script library MUST probe the read operations its own surface binds",
+      "tasks": [
+        "T003",
+        "T010",
+        "T029"
+      ]
     },
     "FR-042": {
-      "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed. Holding a grammar MUST NOT turn grammar"
+      "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed",
+      "tasks": [
+        "T011",
+        "T020"
+      ]
     },
     "FR-043": {
-      "title": "A held grammar MUST have its currency confirmed before it is reused, and MUST be reloaded when it reports stale. A parse MUST NOT be served from a grammar whose currency was not co"
+      "title": "A held grammar MUST have its currency confirmed before reuse and MUST be reloaded when stale; a parse MUST NOT be served from a grammar whose currency was not confirmed",
+      "tasks": [
+        "T005",
+        "T011",
+        "T019",
+        "T020"
+      ]
     }
   },
-  "last_action": "living specs evaluated — skipped (not configured)",
+  "last_action": "resume reached implement and HELD -- flexicon repo locked by active lcm-member-truth-sweep loop; 0/31 tasks started; re-resume once that loop commits",
   "size": "oversized",
   "classification": {
     "projectedFiles": 30,
@@ -234,12 +322,32 @@
       "decision": "E-B RESOLVED by the user at plan review: flextools_parse_status ALWAYS returns a success envelope on terminal stages, carrying state cancelled|failed. parse_job_cancelled fires only from calls that ACT ON a dead run; parse_run_not_found is the only error the status tool emits.",
       "why": "Asking about a dead run is a successful query, not a failed request. An error envelope carries no result payload by convention, which would make SC-008 partial-result readability unreportable through the very tool FR-033 provides for it. Confirms the spec as already written (D-04, amendment E8) -- no spec change required.",
       "rejected": "An error envelope for terminal runs, which costs SC-008 readability; and a split (success for cancelled, error for failed), which gives CP2b callers a two-branch rule to remember while SC-008 applies equally to both"
+    },
+    {
+      "decision": "Tier A3 live tiers (T018-T021) are pre-authorised to run unattended, read-only.",
+      "why": "They open IndonesianHC-Complete and Malay Parsing-20230810withHC with writeEnabled=False -- no write, no restore, so tasks.md states no human authorisation is required. Gate T019/A3.3 (the reload-discards witness) blocks CP2b and cannot be cleared offline. Run with FLEXLIBS_REQUIRE_LIVE=1 and confirm tests/live_status.json run_mode == live before recording anything; a mock fallback is FAIL, not a pass.",
+      "rejected": "Halting after T017 and surfacing the live tier for supervision -- rejected by the user, it leaves the discard proof unproven and CP2b blocked for no safety gain on a read-only run."
+    },
+    {
+      "decision": "Do not start CP2a while a second agent loop holds the flexicon working tree.",
+      "why": "Two sessions writing one repo concurrently is the clobber case; and CP2 handoff branch_note requires cutting feat/parser-check-cp2 before the first CP2a implementation task, which is unsafe while another loop is mid-iteration on main.",
+      "rejected": "Working on flexicon main alongside the other loop staging only CP2a paths -- rejected: T001 baseline attribution would be contaminated. Also rejected: stashing the other campaign changes, which would strand its next iteration."
     }
   ],
   "step_summaries": {
     "plan": {
       "summary": "CP2a planned: flexicon parser facade + three read gaps + 4.9.0 release cut, with plan.md, research.md, data-model.md and two contracts; CP2a-bridge and CP2b explicitly fenced out",
       "key_finding": "import flexicon requires FieldWorks (FLExInit calls InitialiseFWGlobals at module scope), so the cycle-1 brief evidence tier A1 could not run as written and was re-tiered; separately the MSA wrapper and collection FR-009 needs are already written in the package and instantiated by nothing, making that gap wiring rather than design"
+    },
+    "tasks": {
+      "summary": "31 tasks for CP2a across 4 phases (Setup 2, Foundational 2, US1 23, Polish 4), 17 waves; 14 of 43 FRs covered -- FR-012..FR-040 are CP2b and explicitly fenced out",
+      "key_finding": "Ordering is forced by three halt-gates rather than by style: tier A2 must verify the reset and currency members against the real installed ParserCore.dll before any facade behaviour exists (Principle I), tier A3.3 must witness an unconditional grammar discard or CP2b does not start, and the parser CAPABILITIES token plus the release commit land last with the tag push left to the maintainer (E-C)"
     }
-  }
+  },
+  "concerns": [
+    {
+      "note": "CP2a implementation held at the gate, not started -- 0/31 tasks. The flexicon repo (D:/Github/_Projects/_LEX/flexicon), where all but one CP2a task lands, has an ACTIVE Ralph loop running the lcm-member-truth-sweep campaign (.claude/ralph-loop.local.md: active=true, iteration=4) with uncommitted work on main across DataNotebookOperations.py and two test files. Cutting feat/parser-check-cp2 there would drag that loop's in-flight tree onto a new branch, and a T001 baseline taken over its half-finished edits could not do the job T001 exists for -- separating CP2a-caused failures from pre-existing ones (Principle IV). USER DECISION: hold until that loop lands and commits, then re-resume. Nothing in flexicon was modified or branched; no FLEx project was opened.",
+      "step": "implement"
+    }
+  ]
 }

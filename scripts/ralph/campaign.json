@@ -11,13 +11,15 @@
       "feature_dir": "specs/parser-check-cp2",
       "title": "read spine goes live -- IN FLIGHT, CP2a only",
       "writes": false,
-      "scope": "Already specced. Follow .crew-handoff.json next_entry exactly: plan CP2a ONLY (flexicon-side Part A), never CP2b. The spec is amendment-clean as of spurt 2 -- do not re-litigate E1/E2/E3/E7/E8/E12.",
+      "scope": "Already specced. Follow .crew-handoff.json next_entry exactly: plan CP2a ONLY (flexicon-side Part A), never CP2b. The spec is amendment-clean as of spurt 2 -- do not re-litigate E1/E2/E3/E7/E8/E12. CP2a lands in the flexicon repo (declared in extra_dirs), not this one.",
       "scope_refs": [
         "specs/parser-check-cp2/spec.md",
         "specs/parser-check-cp2/reviews/cycle1-synthesis.md (the planning brief: 21-item decision ledger + CP2a/CP2a-bridge/CP2b decomposition)",
         "specs/parser-check-cp2/.crew-handoff.json (D-00 ordering, escalations E-B/E-C/E-D)"
       ],
-      "extra_dirs": [],
+      "extra_dirs": [
+        "D:/Github/_Projects/_LEX/flexicon"
+      ],
       "unattended_note": "Listed so the same rig can finish the in-flight checkpoint. E-C (the 4.9.0 tag push and gh release create) is a MAINTAINER act -- the crew must hand off rather than tag."
     },
     {

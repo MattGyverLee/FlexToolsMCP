@@ -73,8 +73,8 @@ Named here so they are not implemented early by association (plan.md, "Scope fen
 
 **Wave 1 -- independent (different files):**
 
-- [ ] **T001** [P] Capture the pre-change baseline: run `python -m pytest -m "not requires_live_project" -q`, save the full transcript and its exact invocation, and enumerate every failure as **pre-existing** with an attribution. This is not a smoke check -- with no CI anywhere (no hosted-runner workflow, and the self-hosted `[windows, fieldworks]` pool has zero registered runners), it is the only record that separates a failure CP2a caused from one it inherited, and Principle IV requires that separation in the evidence artifact · `specs/parser-check-cp2/evidence/raw/baseline.md`
-- [ ] **T002** [P] Create the new domain package with an empty `__init__.py`. Own package rather than `Lexicon/` or `TextsWords/` because it wraps a different assembly (`ParserCore.dll`) with a different availability lifetime, and the package boundary is what makes "this whole area can be unavailable" expressible (D-A2) · `flexicon/code/Parser/__init__.py`
+- [x] **T001** [P] Capture the pre-change baseline: run `python -m pytest -m "not requires_live_project" -q`, save the full transcript and its exact invocation, and enumerate every failure as **pre-existing** with an attribution. This is not a smoke check -- with no CI anywhere (no hosted-runner workflow, and the self-hosted `[windows, fieldworks]` pool has zero registered runners), it is the only record that separates a failure CP2a caused from one it inherited, and Principle IV requires that separation in the evidence artifact · `specs/parser-check-cp2/evidence/raw/baseline.md`
+- [x] **T002** [P] Create the new domain package with an empty `__init__.py`. Own package rather than `Lexicon/` or `TextsWords/` because it wraps a different assembly (`ParserCore.dll`) with a different availability lifetime, and the package boundary is what makes "this whole area can be unavailable" expressible (D-A2) · `flexicon/code/Parser/__init__.py`
 
 ---
 
@@ -86,11 +86,11 @@ task in Phase 3.** No design may assume a member exists; `Reset` and
 
 **Wave 1 -- single task:**
 
-- [ ] **T003** Write and run tier A2, against the **real installed** `ParserCore.dll`, FieldWorks present and **no project opened** (no LCM cache, therefore no write risk of any kind). Assert A2.1 every member the facade will bind exists -- construction from a cache, update, reset, currency read, plain parse, structured parse, trace; A2.2 the reset and currency members **specifically**, which the shipped MCP-side check does not cover and which this verifies for the first time anywhere; A2.3 same-installation directory equality holds on this machine (FR-004); A2.4 the detected version is read and unused (FR-006) · `tests/test_parser_reflective.py`
+- [x] **T003** Write and run tier A2, against the **real installed** `ParserCore.dll`, FieldWorks present and **no project opened** (no LCM cache, therefore no write risk of any kind). Assert A2.1 every member the facade will bind exists -- construction from a cache, update, reset, currency read, plain parse, structured parse, trace; A2.2 the reset and currency members **specifically**, which the shipped MCP-side check does not cover and which this verifies for the first time anywhere; A2.3 same-installation directory equality holds on this machine (FR-004); A2.4 the detected version is read and unused (FR-006) · `tests/test_parser_reflective.py`
 
 **--> Wait for Wave 1 to finish, then:**
 
-- [ ] **T004** Save the A2 transcript with its exact invocation and the observed member list. **Gate:** if A2.2 fails, the facade cannot be built as designed -- halt and return to research rather than working around it. Running this tier before any behaviour exists is the entire point of the ordering · `specs/parser-check-cp2/evidence/raw/tier-a2.md`
+- [x] **T004** Save the A2 transcript with its exact invocation and the observed member list. **Gate:** if A2.2 fails, the facade cannot be built as designed -- halt and return to research rather than working around it. Running this tier before any behaviour exists is the entire point of the ordering · `specs/parser-check-cp2/evidence/raw/tier-a2.md`
 
 ---
 

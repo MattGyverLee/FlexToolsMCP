@@ -152,6 +152,21 @@ ralph loop and this driver would fight over iteration.
   `extra_dirs` the campaign entry declares. Drop to `-PermissionMode acceptEdits`
   if you would rather have non-allowlisted Bash denied outright -- but expect the
   crew to lose `pytest`/`git`/`python` unless `.claude/settings.json` allows them.
+- **`extra_dirs` grants file access, not command execution.** `--add-dir` lets a
+  spurt read and edit files in another repo; it does **not** authorise Bash
+  scoped to that directory. Under `acceptEdits`, `git -C <other-repo> status` and
+  a `pytest` run over there are both denied with "no approval surface". For a
+  checkpoint whose work lands in a sibling repo -- CP2a is 30-of-31 in
+  `flexicon` -- `extra_dirs` alone is not enough: run at the documented
+  `bypassPermissions` default, or add allow rules covering
+  `git -C <other-repo> *` and that repo's test invocation. CP2 spurt 5 burned a
+  full session discovering exactly this and could not even commit its own
+  findings.
+- **The stall detector watches `HEAD` in *this* repo only.** For a sibling-repo
+  checkpoint, the commits it would look for land elsewhere. What saves it is the
+  handoff-hash half of the test: every spurt must update
+  `specs/<feature>/.crew-handoff.json` here, so real progress always moves one of
+  the two signals. Keep that obligation in the prompt if you touch it.
 
 ## Keeping each session small
 

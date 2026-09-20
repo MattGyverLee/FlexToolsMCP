@@ -20,6 +20,7 @@ test that no shipped template/recipe teaches a phantom accessor.
 """
 
 import ast
+import json
 import pathlib
 
 import pytest
@@ -220,6 +221,21 @@ class TestShippedArtifactsUsePhantomFreeAccessors:
                 assert f"project.{phantom}" not in example.get("code", ""), (
                     f"worked example {example['id']!r} teaches project.{phantom}"
                 )
+
+    def test_served_flexicon_template_has_no_phantom_accessor(self):
+        """Guard the actual tool output, not just the source file on disk."""
+        from flextoolsmcp.server.handlers.admin import handle_get_module_template
+
+        try:
+            from tests.test_mcp_tools import run_async
+        except ImportError:  # pragma: no cover - direct pytest invocation
+            from test_mcp_tools import run_async
+
+        payload = json.loads(run_async(handle_get_module_template({"flavor": "flexicon"}))[0].text)
+        assert payload.get("status") == "success", payload
+        template = payload["template"]
+        for phantom in PROJECT_ACCESSOR_ALIASES:
+            assert f"project.{phantom}" not in template
 
 
 # ---------------------------------------------------------------------------

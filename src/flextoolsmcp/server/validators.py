@@ -2892,37 +2892,89 @@ def _indexed_operations_class_names(api_index: Optional[Any]) -> Set[str]:
     }
 
 
+def _iter_property_write_targets(
+    tree: ast.AST,
+) -> Iterator[Tuple[Union[ast.Assign, ast.AugAssign, ast.AnnAssign], ast.AST]]:
+    """Yield every assignment target that could be a raw property write."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                yield node, target
+        elif isinstance(node, ast.AugAssign):
+            yield node, node.target
+        elif isinstance(node, ast.AnnAssign):
+            yield node, node.target
+
+
+def _typed_property_write_target(
+    target: ast.AST, cast_aliases: Dict[str, str]
+) -> Optional[Tuple[str, str, str]]:
+    """Return (interface, chain, context_expr) for a typed raw-LCM property write.
+
+    Recognized typed roots:
+      - cast aliases:        `s = ILexSense(x)` then `s.Gloss = ...`
+      - inline casts:        `ILexSense(x).Gloss = ...`
+      - subscripts rooted in either of the above:
+                             `ILexEntry(e).SensesOS[0].Gloss = ...`
+    """
+    current = target
+    attr_chain: List[str] = []
+    while True:
+        if isinstance(current, ast.Attribute):
+            attr_chain.append(current.attr)
+            current = current.value
+            continue
+        if isinstance(current, ast.Subscript):
+            current = current.value
+            continue
+        break
+
+    if not attr_chain:
+        return None
+
+    interface: Optional[str] = None
+    if isinstance(current, ast.Name) and current.id in cast_aliases:
+        interface = cast_aliases[current.id]
+    elif isinstance(current, ast.Call):
+        interface = _direct_cast_call_interface(current)
+
+    if not interface:
+        return None
+
+    chain_str = '.'.join(reversed(attr_chain))
+    try:
+        context_expr = ast.unparse(target)
+    except Exception:
+        context_expr = chain_str
+    return interface, chain_str, context_expr
+
+
 def _find_cast_alias_property_writes(
-    assigns: List[ast.Assign], cast_aliases: Dict[str, str]
+    tree: ast.AST, cast_aliases: Dict[str, str]
 ) -> List[Dict[str, Any]]:
-    """Find property assignments rooted at a cast-alias variable.
+    """Find typed raw-LCM property writes invisible to line-based regexes.
 
     Detects:
         s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos
-        s_typed.Gloss = new_value
+        IFsClosedValue(t).FeatureRA = None
+        ILexEntry(e).SensesOS[0].Gloss = "x"
 
     Returns mutation dicts compatible with find_liblcm_mutations() output.
     """
     mutations: List[Dict[str, Any]] = []
-    for node in assigns:
-        for target in node.targets:
-            current = target
-            attr_chain: List[str] = []
-            while isinstance(current, ast.Attribute):
-                attr_chain.append(current.attr)
-                current = current.value
-            if not attr_chain or not isinstance(current, ast.Name):
-                continue
-            if current.id not in cast_aliases:
-                continue
-            interface = cast_aliases[current.id]
-            chain_str = '.'.join(reversed(attr_chain))
-            mutations.append({
-                'method': f'{interface}.{chain_str}=',
-                'line': node.lineno,
-                'category': 'Update',
-                'context': f'{current.id}.{chain_str} = ...',
-            })
+    for node, target in _iter_property_write_targets(tree):
+        if not isinstance(target, ast.Attribute):
+            continue
+        resolved = _typed_property_write_target(target, cast_aliases)
+        if resolved is None:
+            continue
+        interface, chain_str, context_expr = resolved
+        mutations.append({
+            'method': f'{interface}.{chain_str}=',
+            'line': node.lineno,
+            'category': 'Update',
+            'context': f'{context_expr} = ...',
+        })
     return mutations
 
 
@@ -3716,9 +3768,10 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     if tree is not None:
         ast_assigns, ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Cycle 2 / Finding B: `ast_assigns + ast_bindings` widens facade/alias
-        # resolution to AnnAssign/NamedExpr/For/withitem binding forms.
-        # `_find_cast_alias_property_writes` below (Step 4b) deliberately still
-        # gets the unwidened `ast_assigns` -- see `_collect_assign_call_nodes`.
+        # resolution to AnnAssign/NamedExpr/For/withitem binding forms. Step 4b's
+        # raw-property-write scan reuses the alias map built from the same union,
+        # but walks the whole tree itself because inline-cast writes are not
+        # represented by an assignment alias at all.
         facade_names = _resolve_facade_names(ast_assigns + ast_bindings, api_index)
         operations_aliases, cast_aliases = _resolve_alias_maps(
             ast_assigns + ast_bindings, facade_names, accessor_to_ops
@@ -3959,13 +4012,15 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Step 4: Detect raw LibLCM mutations and check if they're protected
     liblcm_mutations = find_liblcm_mutations(code, facade_names)
 
-    # Step 4b: AST-based cast-alias property writes (#8). Catches:
+    # Step 4b: AST-based typed raw-property writes (#8, #104). Catches:
     #     s_typed = ILexSense(sense)
     #     s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos    # <- invisible to regex
-    # Reuses cast_aliases + ast_assigns built once at Step 1b.
-    if cast_aliases:
+    #     IFsClosedValue(t).FeatureRA = None                     # <- inline cast
+    # Reuses cast_aliases built once at Step 1b; the helper walks the whole tree
+    # so inline-cast / subscript-rooted writes are seen too.
+    if tree is not None:
         liblcm_mutations.extend(
-            _find_cast_alias_property_writes(ast_assigns, cast_aliases)
+            _find_cast_alias_property_writes(tree, cast_aliases)
         )
 
     # protected_ranges already calculated above in Step 2

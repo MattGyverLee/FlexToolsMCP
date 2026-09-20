@@ -1,5 +1,49 @@
 # Ron-build Log Triage -- Issue Drafts (2026-09-04 .. 2026-09-15)
-Status: DRAFT -- nothing filed. Review and approve before any `gh issue create`.
+Status: FILED 2026-09-20. 9 of 11 drafts filed after re-verification against main 2b67cdd.
+ISSUE-02 was filed instead as a comment on flexicon#268 (defect class already closed).
+ISSUE-11 was not filed (behavior already implemented under #93).
+
+| draft | filed as |
+|---|---|
+| ISSUE-01 | flexicon#338 |
+| ISSUE-03 | FlexToolsMCP#159 |
+| ISSUE-04 | flexicon#339 |
+| ISSUE-05 | flexicon#340 |
+| ISSUE-06 | flexicon#341 |
+| ISSUE-07 | flexicon#342 |
+| ISSUE-08 | FlexToolsMCP#160 |
+| ISSUE-09 | FlexToolsMCP#161 |
+| ISSUE-10 | FlexToolsMCP#162 |
+| ISSUE-02 | comment on flexicon#268 |
+| ISSUE-11 | not filed (working as designed, #93) |
+
+## Re-verification (against main 2b67cdd2f0d25ee9542b2805f19a85473b0d904d, 2026-09-20)
+
+Re-ran `gh issue list --repo MattGyverLee/FlexToolsMCP --state all --limit 300` and the
+same for `MattGyverLee/flexicon`, and read the diffs of the four PRs merged since this
+file's original cross-check (#157/fdbf8e9 CI fix, #156/fdca9ce shared-mode read
+staleness, #155/3d5bec6 raw-LCM write detection, #154/1ea5775 CreateValue write-gate
+tests). All four touch only `src/flextoolsmcp/server/handlers/execution.py`,
+`src/flextoolsmcp/server/validators.py`, and their tests -- none of that code overlaps
+any of the 11 drafts below (no changes to `OpenProject()`'s `ui=` call, the
+`project_locked`/stale-lock preflight branch, `find_writing_system`/`GetMorphType`,
+the bulk-import codegen guidance, or entity-discovery/`VariantOperations`).
+
+| ID | verdict | evidence | action |
+|----|---------|----------|--------|
+| ISSUE-01 | STILL-LIVE | flexicon repo; no code touched by the 4 PRs relates to publication defaults. Closest existing issue, flexicon#218 (closed 2026-07-02, "PublicationsOA warning masked by silent-skip"), is about a masked warning, not create-time publication-list membership -- not a dup. | FILE AS-IS |
+| ISSUE-02 | PARTIAL (likely FIXED, but don't file standalone) | flexicon#260 (closed 2026-09-08) fixed one direction. flexicon#268 (open, filed 2026-09-08, P3) states explicitly "the problem is not the resolvers, which are now correct" and lists `GetForm` (:629) among the 4 of 11 `__GetAllomorphObject` call sites now live-covered by `tests/operations/test_t8_hvo_path_gate.py`, which asserts the class-discriminated cast across the HVO axis. This is the same resolver Ron's crashes went through on 2026-09-10. No newer flexicon issue reports a recurrence of the stem/affix/generic mismatch after #268. | DO NOT FILE -- add Ron's log excerpt as a comment on flexicon#268 asking for explicit stem/affix/generic regression coverage (the "sibling sweep" the draft asks for), rather than opening a new bug for what looks like an already-closed defect class |
+| ISSUE-03 | STILL-LIVE | `src/flextoolsmcp/server/handlers/execution.py:4019` still calls `project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)` unconditionally, with no signature introspection or capability gate on `ui=` itself (only `HeadlessLcmUI`'s own import is guarded, lines 3986-3997). None of the 4 merged PRs touched this call. | FILE AS-IS |
+| ISSUE-04 | STILL-LIVE (flexicon-side; unaffected by FlexToolsMCP PRs) | flexicon#257 (closed 2026-09-10T19:42:52Z) predates the 2026-09-11T15:11:10Z `MSAOperations` recurrence noted in the draft; no newer flexicon issue found for either name. FlexToolsMCP#100 (the suspected root cause) is still OPEN, untouched by the 4 merged PRs. | FILE AS-IS |
+| ISSUE-05 | STILL-LIVE | flexicon-side; no `GetKind`/`IsFeatureBased` accessor issue found in the current flexicon issue list; unrelated to the 4 merged PRs. | FILE AS-IS |
+| ISSUE-06 | STILL-LIVE | flexicon#279 (open) is still the closest related item and is not an exact dup (API-decision tracking issue, not a `CmPossibilityFactory.Create` doc/wrapper request). Unaffected by the 4 merged PRs. | FILE AS-IS |
+| ISSUE-07 | STILL-LIVE | No `PhonemeOperations.GetName` or `LexSenseOperations.GetMSA` issue found in the current flexicon list (closest is flexicon#333, open 2026-09-20, about `project.Object(hvo)` breaking `GetMSA`/`GetInflectionClass` via the HVO path specifically -- a different, narrower defect, not a dup of the missing-accessor request). Unaffected by the 4 merged PRs. | FILE AS-IS |
+| ISSUE-08 | STILL-LIVE -- **not a regression of flexicon#211** (verified) | Read flexicon#211's full body: it is scoped exactly to `find_writing_system()`'s return value being unusable as a WS **handle** for `get_String`/`GetFreeTranslation` (an argument-type mismatch), and its suggested fixes are either an int-handle helper or coercing WS-taking methods -- none of which change `find_writing_system()`'s own return type. The JSON-serialization symptom here confirms `find_writing_system()` still returns the raw `CoreWritingSystemDefinition` object today, exactly as the draft's own "Suspected cause" already guessed (narrow fix scope, not regression). `GetMorphType()` returning raw `IMoMorphType` is a separate, never-filed gap. Unaffected by the 4 merged PRs (none touch WS/morph-type serialization). | FILE WITH EDITS -- drop "possible regression of flexicon#211" from the title/body; reframe as "flexicon#211 fixed the get_String/GetFreeTranslation argument case only; find_writing_system()'s own return value, and GetMorphType(), remain raw LCM objects and are still not JSON-safe" |
+| ISSUE-09 | STILL-LIVE | FlexToolsMCP-side codegen/style-guide gap; none of the 4 merged PRs touch `FLEXTOOLS-STYLE-GUIDE.md` or bulk-import guidance. No dup found. | FILE AS-IS |
+| ISSUE-10 | STILL-LIVE | FlexToolsMCP#100 ("Index entities lack access_path...") is still OPEN and untouched by the 4 merged PRs (they only touch `execution.py`/`validators.py`, not the entity-discovery/index layer). Still related-not-exact per the original draft. | FILE AS-IS |
+| ISSUE-11 | DUPLICATE of already-implemented behavior -- **verified, do not file** | Read `src/flextoolsmcp/server/handlers/execution.py:4320-4513`: `probe_project_access()` is already called at preflight time (before any reject), and its `verdict` already distinguishes `stale_lock` (dead PID -- proceeds immediately, logs `[SHARED] stale_lock ... proceeding`) from `held_by_other` (live PID -- rejects). This liveness check predates the ron-build logs entirely (introduced under issue #93, commits `39d1caf`/`6677fd8`/`6dc459a`/`520dba4`/`7a4fa5c`, all long since merged), and is unrelated to and untouched by the 4 PRs merged this week. The observed 2026-09-14 reject-then-recover pair is therefore not evidence of a missing proactive check -- `holder_pid` 8452 was genuinely still alive at 05:40:56 (correctly rejected as `held_by_other`) and had died by 05:43:07 (correctly proceeded as `stale_lock` on resubmit). No code change can close a ~2-minute real-world liveness gap between two separate preflight calls; the "different code path from #145" framing in the draft is correct but the underlying ask is already met. | DO NOT FILE -- the proactive check already exists (pre-dates these logs, from issue #93); this is working as designed, not a gap |
+
+Updated dup notes for the Summary Table below: ISSUE-02 dup/likely-fixed against flexicon#268 (not just #260); ISSUE-08 confirmed NOT a regression of flexicon#211 (narrower original fix scope, per #211's own text); ISSUE-11 confirmed already implemented (issue #93), no filing needed.
 
 Source: triage shards T1 (2026-09-04/05, German-vocabulary session), T2 (2026-09-10/11, Malayalam AI),
 T3 (2026-09-12..14, Malayalam AI), T4 (2026-09-14/15, Malayalam AI). Cross-checked against
@@ -11,19 +55,20 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
 | ID | proposed title | repo | severity | occurrences | dates seen | dup of existing issue? |
 |----|-----------------|------|----------|--------------|------------|--------------------------|
 | ISSUE-01 | New entries/senses/examples default-publish into unrelated publications on creation | flexicon | P1 | 1 audit run uncovering 70 entries + 378 examples | 2026-09-05 | no exact dup found |
-| ISSUE-02 | AllomorphOperations.GetForm crashes on non-matching Mo*Allomorph/MoForm subtype (regression of #260) | flexicon | P1 | 5 | 2026-09-10 | regression of flexicon#260 (closed 2026-09-08) |
+| ISSUE-02 | AllomorphOperations.GetForm crashes on non-matching Mo*Allomorph/MoForm subtype (regression of #260) | flexicon | P1 | 5 | 2026-09-10 | RE-VERIFIED 2026-09-20: likely fixed -- flexicon#268 (open, P3) confirms GetForm's resolver is now correct with live HVO-path test coverage; comment on #268, do not file |
 | ISSUE-03 | FLExProject.OpenProject() rejects 'ui' kwarg on current Flexicon builds | FlexToolsMCP | P1 | 1 (deterministic every session start on this build) | 2026-09-10 | no exact dup found |
 | ISSUE-04 | ImportError regression for MSAOperations + new gap for PhonFeatureOperations import name | flexicon | P2 | 4 | 2026-09-10 -> 2026-09-11 | partial regression of flexicon#257 (closed 2026-09-10); related #100 |
 | ISSUE-05 | AddPhoneme raises FP_ParameterError on feature-based natural class with no pre-check | flexicon | P2 | 1 | 2026-09-10 | no exact dup found |
 | ISSUE-06 | Document/wrap CmPossibilityFactory.Create to avoid overload-resolution TypeErrors | flexicon | P2 | 1 | 2026-09-05 | related flexicon#279 (open, not exact) |
 | ISSUE-07 | flexicon API completeness: PhonemeOperations.GetName / LexSenseOperations.GetMSA missing | flexicon | P2 | 2 | 2026-09-13 -> 2026-09-14 | no exact dup found |
-| ISSUE-08 | Docs gap: find_writing_system()/GetMorphType() return raw LCM objects, break json.dumps | FlexToolsMCP | P2 | 2 | 2026-09-13 | possible regression of flexicon#211 (closed 2026-07-17) -- verify |
+| ISSUE-08 | Docs gap: find_writing_system()/GetMorphType() return raw LCM objects, break json.dumps | FlexToolsMCP | P2 | 2 | 2026-09-13 | RE-VERIFIED 2026-09-20: NOT a regression of flexicon#211 -- #211's fix was scoped to the get_String/GetFreeTranslation argument case only; find_writing_system()'s own return value was never changed. File with edits (drop "regression" framing). |
 | ISSUE-09 | Bulk-import codegen doesn't auto-create missing POS categories per stated user intent | FlexToolsMCP | P1 | 1 op / 69 sub-failures | 2026-09-13 | no exact dup found |
 | ISSUE-10 | undiscovered_entity blocks VariantOperations even though flexicon exposes it | FlexToolsMCP | P2 | 1 | 2026-09-14 | related FlexToolsMCP#100 (open, not exact) |
-| ISSUE-11 | Consider proactive stale-lock detection instead of reject-then-retry on project_locked | FlexToolsMCP | P3 | 1 reject+recovery pair | 2026-09-14 | related FlexToolsMCP#145 (closed) -- different code path |
+| ISSUE-11 | Consider proactive stale-lock detection instead of reject-then-retry on project_locked | FlexToolsMCP | P3 | 1 reject+recovery pair | 2026-09-14 | RE-VERIFIED 2026-09-20: not a dup of #145, but the requested proactive check already exists in `execution.py` (pre-dates these logs, landed under issue #93); the observed reject+recover pair is real-world PID-death timing, not a code gap. Do not file. |
 
 ## Drafts
 
+**FILED AS flexicon#338**
 ### ISSUE-01
 - **repo:** MattGyverLee/flexicon
 - **title:** New entries/senses/examples default-publish into unrelated publications on creation
@@ -78,6 +123,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: 9a1d3172206a.
   ```
 
+**NOT FILED -- posted as a comment on flexicon#268 instead**
 ### ISSUE-02
 - **repo:** MattGyverLee/flexicon
 - **title:** AllomorphOperations.GetForm crashes on non-matching Mo*Allomorph/MoForm subtype (regression of #260)
@@ -133,6 +179,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   than to file a new issue.
   ```
 
+**FILED AS FlexToolsMCP#159**
 ### ISSUE-03
 - **repo:** MattGyverLee/FlexToolsMCP
 - **title:** FLExProject.OpenProject() rejects 'ui' kwarg on current Flexicon builds
@@ -179,6 +226,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: a4645303ac0a.
   ```
 
+**FILED AS flexicon#339**
 ### ISSUE-04
 - **repo:** MattGyverLee/flexicon
 - **title:** ImportError regression for MSAOperations + new gap for PhonFeatureOperations import name
@@ -230,6 +278,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   #257 plus a comment on #100 rather than a standalone issue.
   ```
 
+**FILED AS flexicon#340**
 ### ISSUE-05
 - **repo:** MattGyverLee/flexicon
 - **title:** AddPhoneme raises FP_ParameterError on feature-based natural class with no pre-check
@@ -273,6 +322,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: 5d5876e108a1.
   ```
 
+**FILED AS flexicon#341**
 ### ISSUE-06
 - **repo:** MattGyverLee/flexicon
 - **title:** Document/wrap CmPossibilityFactory.Create to avoid overload-resolution TypeErrors
@@ -318,6 +368,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: 2430405ec599.
   ```
 
+**FILED AS flexicon#342**
 ### ISSUE-07
 - **repo:** MattGyverLee/flexicon
 - **title:** flexicon API completeness: PhonemeOperations.GetName / LexSenseOperations.GetMSA missing
@@ -368,6 +419,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: 800ccfe4afab.
   ```
 
+**FILED AS FlexToolsMCP#160**
 ### ISSUE-08
 - **repo:** MattGyverLee/FlexToolsMCP
 - **title:** Docs gap: find_writing_system()/GetMorphType() return raw LCM objects, break json.dumps
@@ -402,15 +454,16 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   2: `IMoMorphType` at 2026-09-13 22:39:00, `CoreWritingSystemDefinition` at 2026-09-13 22:39:24.
 
   ## Suspected cause
-  flexicon#211 ("find_writing_system() returns a WS object, not the int Handle that get_String/
-  GetFreeTranslation need") was closed 2026-07-17, nearly two months before this occurrence -- the
-  `CoreWritingSystemDefinition` leak here may indicate that fix didn't cover every call site, or is a
-  regression, or (more likely) that #211 fixed the specific `get_String`/`GetFreeTranslation` argument
-  case but `find_writing_system()`'s direct return value is still a raw WS object in other contexts.
-  The `GetMorphType()` half is a separate, likely-never-filed gap.
+  This is **not** a regression of flexicon#211 (verified 2026-09-20 against that issue's full text).
+  #211 was scoped exactly to `find_writing_system()`'s return value being unusable as a WS *handle*
+  argument to `get_String`/`GetFreeTranslation`, and its fix addressed that argument-type mismatch
+  without changing what `find_writing_system()` itself returns. So `find_writing_system()` still
+  returns a raw `CoreWritingSystemDefinition` today, by design of that narrower fix -- it is simply
+  not JSON-safe, and that was never in #211's scope. The `GetMorphType()` half returning a raw
+  `IMoMorphType` is a separate gap that has never been filed.
 
   ## Suggested fix direction
-  Verify #211's fix scope against this exact call pattern (regression check first). Separately, add a
+  No regression check needed -- #211 is correctly closed and out of scope here. Add a
   FLEXTOOLS-STYLE-GUIDE.md callout (per CLAUDE.md's existing "Empty Multistring Fields" pattern) that
   `find_writing_system()` and `GetMorphType()` return LCM objects, not JSON-safe values, with the
   correct accessor to extract a primitive.
@@ -420,6 +473,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Regression-check against flexicon#211 before filing as new.
   ```
 
+**FILED AS FlexToolsMCP#161**
 ### ISSUE-09
 - **repo:** MattGyverLee/FlexToolsMCP
 - **title:** Bulk-import codegen doesn't auto-create missing POS categories per stated user intent
@@ -467,6 +521,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Filed by /lex-logscan from a runtime-log triage pass (DRAFT -- not yet filed). Fingerprint: 4bca0c7c10b8.
   ```
 
+**FILED AS FlexToolsMCP#162**
 ### ISSUE-10
 - **repo:** MattGyverLee/FlexToolsMCP
 - **title:** undiscovered_entity blocks VariantOperations even though flexicon exposes it
@@ -511,6 +566,7 @@ and against `main` commits `0d3a791` (closes #144) and `991a869` (closes #145).
   Check against FlexToolsMCP#100 before filing -- may be more appropriate as a comment there.
   ```
 
+**NOT FILED -- already implemented under #93; working as designed**
 ### ISSUE-11
 - **repo:** MattGyverLee/FlexToolsMCP
 - **title:** Consider proactive stale-lock detection instead of reject-then-retry on project_locked

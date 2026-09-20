@@ -348,5 +348,11 @@ Users won't see an error—the code will "work" but with incorrect behavior/sign
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+shell commands, and other important information, read the current plan:
+`specs/parser-check-cp2b/plan.md` (parser-check CP2a-bridge + CP2b).
+
+Companions: `specs/parser-check-cp2b/spec.md` (scoping; the authoritative
+requirement text is `specs/parser-check-cp2/spec.md`),
+`specs/parser-check-cp2b/research.md`, `data-model.md`,
+`contracts/tools.md`, `contracts/bridge.md`, `quickstart.md`.
 <!-- SPECKIT END -->

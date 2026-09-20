@@ -4299,9 +4299,26 @@ MODULE_CODE = {code}
             from server.project_access import probe_project_access, build_access_remedy
             from server.project_discovery import check_project_locked
         _access = None
-        if needs_lock:
+        _probe_access = needs_lock or (not write_enabled)
+        if _probe_access:
             _access = probe_project_access(project_name)
         _live_fw_peer = _access is not None and _access.verdict == "open_shared"
+        _shared_mode_read_back = None
+        if (not write_enabled) and _access is not None and _access.verdict == "open_shared":
+            _shared_mode_read_back = {
+                "verdict": "open_shared",
+                "sharing_enabled": True,
+                "holder_pid": _access.holder.pid if _access.holder else None,
+                "holder_process": _access.holder.process_name if _access.holder else None,
+                "note": (
+                    "This read was opened as a fresh non-master peer while FLEx is "
+                    "the shared-mode master. A fresh read-only session shows the "
+                    "last master flush and may read pre-write state even when a peer "
+                    "write already committed to the shared commit log. Do not treat "
+                    "this read-back as proof a write was lost, and do not retry a "
+                    "write solely based on this result."
+                ),
+            }
 
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an
@@ -4584,6 +4601,8 @@ MODULE_CODE = {code}
         # FLEx peer / over a stale lock rather than against an idle project.
         if _shared_mode is not None:
             execution_result["shared_mode"] = _shared_mode
+        if _shared_mode_read_back is not None:
+            execution_result["shared_mode_read_back"] = _shared_mode_read_back
 
         # Include write certification result
         execution_result["write_certification"] = {

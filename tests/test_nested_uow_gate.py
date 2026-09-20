@@ -46,7 +46,11 @@ Covers:
 """
 
 import asyncio
+import contextlib
+import importlib.abc
+import importlib.util
 import json
+import sys
 
 
 from flextoolsmcp.server import kernel, project_discovery
@@ -338,6 +342,42 @@ class _FakeFlexiconModuleWithoutCapability:
     """Simulates flexicon <=4.3.0: no CAPABILITIES attribute at all."""
 
 
+@contextlib.contextmanager
+def _flexicon_import_raises(message, name="flexicon"):
+    """Make `import <name>` raise a bare Exception, as a FieldWorks-less host does.
+
+    Not `monkeypatch.setitem(sys.modules, name, None)` -- that yields an
+    ImportError, which is the one failure mode these call sites already
+    handled. The real hazard is the NON-ImportError: flexicon imports fine
+    and then raises out of its own init. Reproduced here with a meta-path
+    finder whose loader raises in exec_module, which is where the real
+    InitialiseFWGlobals() call lives.
+    """
+    class _RaisingLoader(importlib.abc.Loader):
+        def create_module(self, spec):
+            return None
+
+        def exec_module(self, module):
+            raise Exception(message)
+
+    class _RaisingFinder:
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == name:
+                return importlib.util.spec_from_loader(fullname, _RaisingLoader())
+            return None
+
+    finder = _RaisingFinder()
+    cached = sys.modules.pop(name, None)
+    sys.meta_path.insert(0, finder)
+    try:
+        yield
+    finally:
+        sys.meta_path.remove(finder)
+        sys.modules.pop(name, None)
+        if cached is not None:
+            sys.modules[name] = cached
+
+
 class TestCapabilityProbe:
     def test_probe_true_when_capability_token_present(self, monkeypatch):
         import sys
@@ -356,6 +396,56 @@ class TestCapabilityProbe:
         import sys
         monkeypatch.setitem(sys.modules, "flexicon", None)
         assert execution_mod._probe_undoable_capability() is False
+
+    def test_probe_false_when_flexicon_raises_at_import(self, monkeypatch):
+        """Installed flexicon, no FieldWorks -- the probe must NOT propagate.
+
+        `import flexicon` runs FLExGlobals.InitialiseFWGlobals() at import
+        time, which raises a BARE `Exception` ("64bit FieldWorks 9 not
+        found"), not an ImportError. Windows CI is precisely that host:
+        pyflexicon is a declared dependency and installs, FieldWorks does
+        not exist. While this probe caught only ImportError that exception
+        escaped `handle_run_module`, and every write-enabled gate test that
+        reached the mode-conditional message died with it -- main was red
+        on two tests in this file for that reason alone.
+
+        The probe only picks message wording, so an uninitializable
+        flexicon must read as "no capability", never as a traceback.
+        """
+        with _flexicon_import_raises("64bit FieldWorks 9 not found"):
+            assert execution_mod._probe_undoable_capability() is False
+
+
+class TestApiModeValidationResilience:
+    """`_validate_api_mode` reports "unusable here"; it never raises.
+
+    Same root cause as TestCapabilityProbe's import-raises case: flexicon
+    and flexlibs both run FieldWorks init at import time and raise a bare
+    Exception when FLEx is absent. An installed-but-uninitializable library
+    is exactly what this function exists to report, so it has to come back
+    as a clean (False, reason) pair.
+    """
+
+    def test_flexicon_installed_but_uninitializable_is_a_clean_refusal(self):
+        with _flexicon_import_raises("64bit FieldWorks 9 not found"):
+            ok, msg = execution_mod._validate_api_mode("flexicon")
+        assert ok is False
+        assert "not initializable" in msg
+        assert "64bit FieldWorks 9 not found" in msg
+
+    def test_flexlibs_installed_but_uninitializable_is_a_clean_refusal(self):
+        with _flexicon_import_raises("64bit FieldWorks 9 not found", name="flexlibs"):
+            ok, msg = execution_mod._validate_api_mode("flexlibs_stable")
+        assert ok is False
+        assert "not initializable" in msg
+
+    def test_flexicon_missing_still_reports_not_found(self, monkeypatch):
+        """The ImportError branch keeps its own distinct wording."""
+        import sys
+        monkeypatch.setitem(sys.modules, "flexicon", None)
+        ok, msg = execution_mod._validate_api_mode("flexicon")
+        assert ok is False
+        assert "not found" in msg
 
 
 class TestModeConditionalMessage:

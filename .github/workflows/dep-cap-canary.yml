@@ -41,16 +41,24 @@ jobs:
         id: audit
         # Exit 1 means "a cap is excluding a newer release" -- a finding, not a
         # failure. Exit 2 is a real error (network/parse) and should fail the job.
+        #
+        # BOTH invocations need the `set +e` guard. The --markdown run used to
+        # sit after `set -e`, where the step's own `bash -e` killed the job on
+        # the exit-1 finding -- so the one and only time this canary has fired
+        # (2026-09-01, mcp 2.2.0 excluded by the `<2` cap) it reported its
+        # finding by failing, which is exactly what the comment above says it
+        # must not do, and no issue was ever opened.
         run: |
           set +e
           python scripts/cap_canary.py --json > canary.json
           rc=$?
+          python scripts/cap_canary.py --markdown > canary.md
+          rc_md=$?
           set -e
-          if [ "$rc" = "2" ]; then
+          if [ "$rc" = "2" ] || [ "$rc_md" = "2" ]; then
             echo "cap_canary.py failed to run" >&2
             exit 1
           fi
-          python scripts/cap_canary.py --markdown > canary.md
           echo "blocked=$(jq '.blocked | length' canary.json)" >> "$GITHUB_OUTPUT"
           jq -r '.blocked[] | "\(.name)==\(.latest)"' canary.json > blocked.txt
           cat canary.md

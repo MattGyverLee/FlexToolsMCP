@@ -33,6 +33,7 @@ Coverage:
 """
 
 import ast
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -192,13 +193,50 @@ def test_absent_stub_map_leaves_behavior_unchanged():
 # ---- regression guard against the real installed flexicon ------------------
 
 def _flexicon_repo_root():
+    """Locate the installed flexicon tree WITHOUT importing flexicon.
+
+    `import flexicon` runs FLExGlobals.InitialiseFWGlobals() at import time,
+    which raises a BARE Exception ("64bit FieldWorks 9 not found") -- not an
+    ImportError -- on any host without a FieldWorks install. Windows CI is
+    exactly that host: pyflexicon is a declared dependency and installs
+    fine, FieldWorks does not exist, and the old `except ImportError` let
+    that bare Exception escape and fail this test on every run.
+
+    find_spec() resolves the package location from the finders without
+    executing flexicon/__init__.py, so the init never runs. Nothing below
+    needs a live flexicon anyway: analyze_flexicon() is pure AST over the
+    .py/.pyi files on disk. Keeping the probe import-free is what lets this
+    guard actually RUN on CI rather than skip there.
+    """
     try:
-        import flexicon
-    except ImportError:
+        spec = importlib.util.find_spec("flexicon")
+    except Exception:  # noqa: BLE001 -- a broken/partial install must skip, not error
+        return None
+    if spec is None or not spec.origin:
         return None
     # analyze_flexicon() wants the root that contains flexicon/code/.
-    root = Path(flexicon.__file__).resolve().parent.parent
+    root = Path(spec.origin).resolve().parent.parent
     return root if (root / "flexicon" / "code").is_dir() else None
+
+
+def test_repo_root_probe_never_imports_flexicon():
+    """The locator must stay import-free, on every host.
+
+    On a box with pyflexicon installed and no FieldWorks -- Windows CI --
+    importing flexicon raises a bare Exception out of its own init, which
+    is not an ImportError and so escaped the old `except ImportError`
+    probe. This test fails if anyone reintroduces an import here: after the
+    call, flexicon must not appear in sys.modules (and on a host where some
+    earlier test already imported it, the probe must not be the thing that
+    did so).
+    """
+    already_loaded = "flexicon" in sys.modules
+    _flexicon_repo_root()
+    if not already_loaded:
+        assert "flexicon" not in sys.modules, (
+            "_flexicon_repo_root() imported flexicon; on a FieldWorks-less "
+            "host that import raises a bare Exception and fails the suite"
+        )
 
 
 def _census(doc):

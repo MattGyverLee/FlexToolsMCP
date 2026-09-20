@@ -185,7 +185,7 @@ class Api:
             raise DegradedCheck(
                 "cannot import flextoolsmcp.server.constants (%s) -- run this "
                 "with the project environment, not an isolated interpreter" % exc
-            )
+            ) from exc
         self.accessor_aliases = dict(PROJECT_ACCESSOR_ALIASES)
 
         props = {p["name"] for p in flex_project.get("properties", []) if p.get("name")}
@@ -413,7 +413,7 @@ def served_code_snippets():
         raise DegradedCheck(
             "cannot import the served code surfaces (%s) -- run this with the "
             "project environment, not an isolated interpreter" % exc
-        )
+        ) from exc
     for recipe_id, recipe in CURATED_RECIPES.items():
         out.append(Snippet("recipe", recipe_id, recipe.get("code", "")))
     for example in WORKED_EXAMPLES:

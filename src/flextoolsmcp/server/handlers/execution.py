@@ -226,7 +226,15 @@ def _probe_undoable_capability() -> bool:
     """
     try:
         import flexicon  # type: ignore
-    except ImportError:
+    except Exception:  # noqa: BLE001 -- see below; do not narrow to ImportError
+        # Deliberately broad. `import flexicon` runs
+        # FLExGlobals.InitialiseFWGlobals() at import time, which raises a
+        # BARE Exception ("64bit FieldWorks 9 not found") on any host without
+        # a FieldWorks install -- a headless CI runner, or a Windows box with
+        # pyflexicon installed but no FLEx. That is not an ImportError, so an
+        # `except ImportError` here lets it escape and takes down a caller
+        # that only wanted to pick message wording. Same reasoning as
+        # tests/test_issue84_project_lexsense_accessor.py::_require_live_flexicon.
         return False
     _caps = getattr(flexicon, "CAPABILITIES", frozenset())
     return "per-operation-uow" in _caps
@@ -241,15 +249,24 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     Returns:
         (is_valid, error_message)
     """
+    # Both probes below catch the broad Exception on purpose. flexicon and
+    # flexlibs each run FLExGlobals.InitialiseFWGlobals() at import time,
+    # which raises a bare Exception ("64bit FieldWorks 9 not found") rather
+    # than ImportError when FieldWorks is absent. An installed-but-
+    # uninitializable library is exactly the "this mode is unusable here"
+    # case this function exists to report, so it must come back as a clean
+    # (False, reason) and never as a traceback out of a validation call.
     if api_mode == "flexicon":
         try:
             import flexicon  # type: ignore
-            # Check version is available (flexicon uses 'version' not '__version__')
-            if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-                return False, "flexicon missing version info"
-            return True, ""
         except ImportError as e:
             return False, f"flexicon not found: {e}"
+        except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
+            return False, f"flexicon installed but not initializable: {e}"
+        # Check version is available (flexicon uses 'version' not '__version__')
+        if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
+            return False, "flexicon missing version info"
+        return True, ""
 
     elif api_mode == "flexlibs_stable":
         try:
@@ -257,6 +274,8 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
             return True, ""
         except ImportError as e:
             return False, f"flexlibs not found: {e}"
+        except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
+            return False, f"flexlibs installed but not initializable: {e}"
 
     elif api_mode == "liblcm":
         # LibLCM is optional, validated at runtime

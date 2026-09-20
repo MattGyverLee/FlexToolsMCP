@@ -1,0 +1,915 @@
+{
+  "workflow": "companion",
+  "specName": "parser-check-cp2b",
+  "branch": "feat/parser-check-cp1 (maintainer decision pending: feat/parser-check-cp2)",
+  "selectedAt": "2026-09-19T23:37:09.848Z",
+  "currentStep": "implement",
+  "status": "implementing",
+  "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
+  "history": [
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "ai",
+      "at": "2026-09-19T23:37:09.848Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T23:37:09.848Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T23:37:09.848Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T23:37:09.848Z"
+    },
+    {
+      "step": "plan",
+      "substep": "qc-gate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-19T23:42:03.892Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "ai",
+      "at": "2026-09-20T00:09:01.753Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:09:01.753Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-20T00:19:28.433Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:20:57.156Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:20:57.398Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:20:57.661Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:27:12.168Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:27:12.410Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:27:12.662Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:27:12.911Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:27:13.178Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:33:06.725Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:33:06.974Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:33:07.218Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:33:07.459Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:35:33.475Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:35:33.722Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:35:33.965Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:40:51.569Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:40:51.825Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:40:52.071Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T00:40:52.312Z"
+    }
+  ],
+  "context": "Continuation of specs/parser-check-cp2 (CP2a, complete 31/31). This feature covers the two never-planned parts of CP2: CP2a-bridge (FR-011, this repo's dependency floor and bundled index) and CP2b (US2/US3/US4, FR-012..FR-040 -- flextools_try_word, flextools_parse_status, the morph resolver and the run machinery). Authoritative requirement text stays in specs/parser-check-cp2/spec.md; this feature's spec.md is a scoping document.",
+  "intent": "Plan the remaining half of parser-check CP2, chosen by the user over three other readings of '/speckit-plan CP2-SPEC.md'.",
+  "decisions": [
+    {
+      "id": "user-scope",
+      "decision": "Plan CP2b + CP2a-bridge in a new feature directory, leaving the completed CP2a artifacts untouched.",
+      "by": "user"
+    },
+    {
+      "id": "D-B1",
+      "decision": "Bridge lands as one unit (floor + index + equality test). The equality test compares the version server/versioning.py resolves (live-module-first), NOT importlib.metadata, which reads 4.8.0 here against a 4.9.0 tree. Proving the published distribution installs is a separate task with its own evidence line.",
+      "by": "ai"
+    },
+    {
+      "id": "D-B2",
+      "decision": "CP2b introduces a long-lived parse worker process, one per project, holding the LCM cache and the grammar. Forced by R-02: this server process never opens a project, and a one-shot subprocess cannot satisfy FR-031/FR-042/SC-009/SC-014.",
+      "by": "ai"
+    },
+    {
+      "id": "D-B3",
+      "decision": "check_active_parser runs as the first statement of the WORKER's request handler, not the server handler, because it reads an open project. FR-015's substance ('before any parser is constructed') is satisfied strictly and guarded by a zero-parser-calls test.",
+      "by": "ai"
+    },
+    {
+      "id": "D-B4",
+      "decision": "The bridge regenerates three flexicon-version-locked artifacts, not the two the Verbatim Constraints name; common_patterns_flexicon-v<ver>.json sits one directory up. Equality asserts over a discovered set, never a hardcoded pair.",
+      "by": "ai"
+    },
+    {
+      "id": "D-B6",
+      "decision": "tests/test_cp1_boundary.py is amended (scope narrowed in writing, worker allowlist pinned by a test), never deleted or weakened.",
+      "by": "ai"
+    },
+    {
+      "id": "D-B8",
+      "decision": "The three CP2a read-gap accessors get tests in flexicon BEFORE the resolver is written -- CP2a's debt by origin, CP2b's precondition by dependency.",
+      "by": "ai"
+    },
+    {
+      "decision": "The floor/index equality test discovers artifacts by pattern over BOTH _v and -v separators and asserts a vacuity guard, rather than checking a hardcoded pair.",
+      "why": "D-B4 was right and understated: there are three flexicon-locked artifacts, and common_patterns_flexicon-v4.9.0.json uses a - separator while the other two use _. A hardcoded pair would have ignored the third permanently; a discovery sweep with a broken pattern would pass vacuously over an empty set.",
+      "rejected": "Hardcoding the two artifacts the Verbatim Constraints name."
+    },
+    {
+      "decision": "Dropped the source-introspection shape guards from the flexicon GetGenres test instead of making them work.",
+      "why": "Both claims were already covered behaviorally, and GetGenres is decorated with @wrap_enumerable which does not use functools.wraps -- so getsource() returned the decorator body and inspect.unwrap() could not follow it. A guard that goes red for a reason it is not about is a guard that gets deleted.",
+      "rejected": "Closure-walking machinery to recover the undecorated source."
+    },
+    {
+      "decision": "server/parse/__init__.py exports nothing and imports none of its own submodules.",
+      "why": "The package spans two processes. A convenience re-export would be a server-process import of worker_main by the back door, defeating R-02 and the one-worker-per-project ownership the package exists to express.",
+      "rejected": "A conventional facade __init__ re-exporting the public names."
+    }
+  ],
+  "expectations": [
+    "E-C RESOLVED: pyflexicon 4.9.0 is published (maintainer, 2026-09-19). It is NOT installed in this environment and will not be within this session -- flexicon resolves to the working tree at 4.9.0 while pip metadata reads 4.8.0.",
+    "E-D STANDING: tier A4 (FR-043's live stale half) requires a live write and human authorisation. An unattended run must stop with needs_human.",
+    "CP2a's evidence gate is SATISFIED -- A1/A2/A3 all passed including the A3.3 unconditional-discard proof."
+  ],
+  "concerns": [
+    "The parse worker process is the scope risk AND a process-lifetime risk: a long-lived pythonnet holder of a .fwdata lock is a worse version of issue #57.",
+    "CP2-SPEC.md section 3.1 is factually stale -- it names TryWord/TryWordXml/TraceWord; the shipped surface is six differently-named members. A task updates it in place.",
+    "FR-043 is only half dischargeable in this slice; the evidence artifact must not show it green.",
+    "CP2a's pattern-audit by-construction claim is re-opened by resolver.py binding TraceWordXml's collection parameter. The sweep must be re-run -- a missing pattern audit is what CP2a's QC gate blocked on.",
+    "No CI: no hosted runner, zero registered self-hosted runners. Every measurement is local and manual.",
+    "Open maintainer decision: this repo is on feat/parser-check-cp1; CP2b writes production code here.",
+    {
+      "note": "T009 (clean-environment install of published pyflexicon 4.9.0) NOT RUN and left unchecked: pyflexicon 4.9.0 is published but not installed here; flexicon resolves to the working tree at 4.9.0 while pip metadata reads 4.8.0 (E-C). It must never be folded into T005/T007 green -- those prove in-tree agreement, not that the published distribution installs anywhere.",
+      "step": "implement"
+    },
+    {
+      "note": "BLOCKS T021/T022 AS WRITTEN: subprocess_helpers.run_script_async is one-shot -- it calls process.communicate() (waits for exit) with stdin=DEVNULL, so it cannot host a long-lived worker speaking line-delimited JSON on stdin/stdout. T022 says to launch through the existing run_script_async FAMILY and to tear down via _kill_process_tree. Reading that as a sibling launcher in the same module, sharing _kill_process_tree and the start_new_session process-group discipline, is the only way to satisfy both halves; calling run_script_async literally is impossible. Needs confirmation before the worker is built.",
+      "step": "implement"
+    }
+  ],
+  "step_summaries": {
+    "plan": "Phase 0 research (8 findings) and Phase 1 design complete. Artifacts: spec.md (scoping, 5 deltas from CP2a's execution), research.md, data-model.md, contracts/tools.md, contracts/bridge.md, quickstart.md (9 scenarios), plan.md (9 phases A-I, per-requirement test coverage table). No NEEDS CLARIFICATION remains; three open items are escalations, not research questions. Registered after_plan gate (lex-qc) returned FIX ISSUES with three BLOCKING coverage-table defects, all real and all fixed: test_flextools_health.py cited but absent from Project Structure (now scheduled as AMENDED); SC-004 had no discharge row (now its own row, as a measured rate not a boolean); SC-012 was mislabelled onto FR-015's engine-gate row and SC-017 appeared only as a code comment (both now have their own rows). The gate PASSED the two hard checks (pattern-audit obligation carried forward; E-D live-LCM gating real, stops with needs_human) and independently verified all four factual claims the plan makes about source.",
+    "tasks": "tasks.md generated: 68 tasks, T001-T068 contiguous, every line in the required checklist format with a file path. Phase 1 Setup (T001-T003), Phase 2 Foundational (T004-T026: the bridge, R-08's three flexicon accessor tests, and the run machinery), Phase 3 US2/P2 (T027-T034, the MVP), Phase 4 US3/P3 (T035-T043), Phase 5 US4/P4 (T044-T053), Phase 6 Polish (T054-T068). The run machinery sits in Foundational rather than inside US4 because the parent spec states US2 and US3 run on it and FR-026 forbids a second execution path -- so US3 and US4 are independently TESTABLE but not independently DELIVERABLE, and tasks.md says so rather than implying otherwise. A requirement coverage cross-check table mirrors plan.md's with task IDs. No before_tasks or after_tasks hook is registered in .specify/extensions.yml."
+  },
+  "coverage": {
+    "FR-001": {
+      "title": "The project object available to generated scripts MUST expose a read-only parser area alongside its existing areas, offering a plain parse, a structured parse, a trace, a reload and a currency read",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-002": {
+      "title": "The parser area MUST NOT expose any way to record, file or otherwise write parse results, and the absence MUST be stated where a future contributor will read it",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-003": {
+      "title": "Loading the parser component MUST be triggered by use, never by import, so a renamed or relocated installation degrades to parser unavailable instead of breaking import",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-004": {
+      "title": "Before use the system MUST verify the parser component comes from the same installation directory as the data model in use, and MUST refuse otherwise; the check is directory equality only",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-005": {
+      "title": "Before use the system MUST verify by inspection that every operation it intends to call exists, and MUST bind those operations positionally rather than by parameter name",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-006": {
+      "title": "The detected parser version MUST be reported and MUST NOT be compared against any minimum; a standing test MUST guard this in each repository that probes",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-010": {
+      "title": "Parser results crossing into script-visible form MUST preserve the identity of the underlying lexical objects, not only their text",
+      "tasks": [],
+      "note": "discharged by CP2a (specs/parser-check-cp2), complete 31/31 -- not in this feature's scope"
+    },
+    "FR-007": {
+      "title": "Scripts MUST be able to read all genres assigned to a text, not only the first",
+      "tasks": [
+        "T010",
+        "T013"
+      ],
+      "note": "implemented in CP2a, untested until now (R-08); test lands in the flexicon repository",
+      "tests": [
+        "flexicon:tests/operations/test_text_genres.py"
+      ]
+    },
+    "FR-008": {
+      "title": "Scripts MUST be able to get the entry that owns an allomorph; the data model exposes the relationship, the script library never wrapped it",
+      "tasks": [
+        "T011",
+        "T013"
+      ],
+      "note": "implemented in CP2a, untested until now (R-08); test lands in the flexicon repository",
+      "tests": [
+        "flexicon:tests/operations/test_allomorph_owner.py"
+      ]
+    },
+    "FR-009": {
+      "title": "Scripts MUST be able to read morpho-syntactic analyses without dropping to raw data-model access",
+      "tasks": [
+        "T012",
+        "T013"
+      ],
+      "note": "implemented in CP2a, untested until now (R-08); the resolver's terminal accessor",
+      "tests": [
+        "flexicon:tests/operations/test_msa_read.py"
+      ]
+    },
+    "FR-011": {
+      "title": "The new surface MUST be released as a versioned package before the assistant-side work is tested against it; the declared minimum and bundled index must agree",
+      "tasks": [
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T067"
+      ],
+      "note": "T009 (clean-environment install of the published distribution) is a SEPARATE evidence line; it cannot run in this session and must be recorded as not run rather than folded into T005's green",
+      "tests": [
+        "tests/test_flexicon_index_floor.py"
+      ]
+    },
+    "FR-012": {
+      "title": "The assistant MUST offer a tool that parses one word and MUST expose all three levels of answer: restricted-to-a-hypothesis, plain yes/no, and full explanation. Each MUST reach the",
+      "tasks": [
+        "T028",
+        "T031"
+      ]
+    },
+    "FR-013": {
+      "title": "The plain yes/no level MUST NOT present itself as explaining a failure, and MUST point the caller at an explaining level instead.",
+      "tasks": [
+        "T029",
+        "T031"
+      ]
+    },
+    "FR-014": {
+      "title": "Guidance MUST steer callers to the restricted level when they have a hypothesis and to the full explanation only when they do not, since the full explanation is the expensive one a",
+      "tasks": [
+        "T029",
+        "T031"
+      ]
+    },
+    "FR-015": {
+      "title": "Every handler that reaches the parser MUST check the project's configured parser engine as its first action, before any parser is constructed, and MUST refuse a project configured",
+      "tasks": [
+        "T026",
+        "T031",
+        "T033"
+      ]
+    },
+    "FR-016": {
+      "title": "A missing recording agent MUST NOT mark reading unavailable, since reading neither records nor needs one.",
+      "tasks": [
+        "T031"
+      ]
+    },
+    "FR-017": {
+      "title": "The new tools MUST be annotated read-only-safe, and that annotation MUST be backed by a standing test asserting that a real parse loads no user-interface framework code into the pr",
+      "tasks": [
+        "T032"
+      ]
+    },
+    "FR-018": {
+      "title": "The restricted trace MUST accept a decomposition expressed in terms a caller can actually write -- entry headwords, headword plus sense, or internal identifiers -- and resolve it t",
+      "tasks": [
+        "T035",
+        "T039"
+      ]
+    },
+    "FR-019": {
+      "title": "If any piece of a decomposition resolves to no usable analysis, the request MUST be refused, naming the piece, its position and its candidates, and no parse MUST be run.",
+      "tasks": [
+        "T036",
+        "T038",
+        "T039"
+      ]
+    },
+    "FR-020": {
+      "title": "Lookup structures used for resolution MUST be built once per run and reused across words.",
+      "tasks": [
+        "T035",
+        "T039"
+      ]
+    },
+    "FR-021": {
+      "title": "Where every piece has exactly one unambiguous candidate, the system MAY offer a proposed decomposition; when it does, it MUST label it proposed and unverified.",
+      "tasks": [
+        "T040",
+        "T041"
+      ]
+    },
+    "FR-022": {
+      "title": "Guidance offered when a decomposition is missing MUST name only actions the caller can actually perform with the tools that exist.",
+      "tasks": [
+        "T040",
+        "T041"
+      ]
+    },
+    "FR-023": {
+      "title": "A caller's proposed decomposition MUST always be traced exactly as given. The system MUST NOT substitute a different restriction, widen it to an unrestricted search, reorder, score",
+      "tasks": [
+        "T041",
+        "T043"
+      ]
+    },
+    "FR-024": {
+      "title": "Where the system has something to say about a proposal, it MUST be limited to an adjacent candidate or a conflict with recorded analyses, MUST be worded as an observation rather th",
+      "tasks": [
+        "T041",
+        "T043"
+      ]
+    },
+    "FR-025": {
+      "title": "Agreement between a proposal and recorded analyses MUST produce no commentary.",
+      "tasks": [
+        "T041",
+        "T043"
+      ]
+    },
+    "FR-026": {
+      "title": "All parser execution MUST go through one run mechanism. There MUST NOT be a separate synchronous path.",
+      "tasks": [
+        "T023",
+        "T060"
+      ]
+    },
+    "FR-027": {
+      "title": "A run MUST report a distinct stage for starting, loading the grammar, parsing, filing (defined but unreachable in this checkpoint), completed, failed and cancelled.",
+      "tasks": [
+        "T014",
+        "T016"
+      ],
+      "tests": [
+        "tests/test_parse_stages.py"
+      ]
+    },
+    "FR-028": {
+      "title": "A run reaching a terminal stage inside a configurable grace window (default 5 seconds) MUST return its results inline; otherwise it MUST return a handle. The window governs reporti",
+      "tasks": [
+        "T023",
+        "T024"
+      ]
+    },
+    "FR-029": {
+      "title": "Results MUST be written to the run's record as they are produced, so a run that dies or is cancelled leaves everything completed so far readable.",
+      "tasks": [
+        "T019",
+        "T020",
+        "T053"
+      ],
+      "tests": [
+        "tests/test_parse_record.py"
+      ]
+    },
+    "FR-030": {
+      "title": "Runs MUST be ordered by the same priority levels and ordering the host application uses, lowest value first, first-in-first-out within a level, enqueued per word.",
+      "tasks": [
+        "T017",
+        "T018"
+      ],
+      "tests": [
+        "tests/test_parse_priority_queue.py"
+      ]
+    },
+    "FR-031": {
+      "title": "A higher-priority single word MUST interleave at the running batch's next word boundary. The batch MUST NOT restart or lose position, the grammar MUST NOT be reloaded, and the batc",
+      "tasks": [
+        "T049",
+        "T052",
+        "T053"
+      ]
+    },
+    "FR-032": {
+      "title": "Cancellation MUST be cooperative, stopping at the next word boundary and leaving a cancelled terminal stage over the partial results.",
+      "tasks": [
+        "T050",
+        "T051"
+      ]
+    },
+    "FR-033": {
+      "title": "The assistant MUST offer a read-only status tool taking a run handle and reporting stage, progress, and -- on a terminal stage -- the result summary or the failure with its guidanc",
+      "tasks": [
+        "T046",
+        "T051"
+      ]
+    },
+    "FR-034": {
+      "title": "A failed run MUST carry guidance pointing at the diagnostic instruments, since memory exhaustion is the case where a diagnosis beats a retry.",
+      "tasks": [
+        "T048"
+      ]
+    },
+    "FR-035": {
+      "title": "A status request for an unknown handle MUST be refused naming the handle and the handles that do exist.",
+      "tasks": [
+        "T047",
+        "T051"
+      ]
+    },
+    "FR-036": {
+      "title": "A cancelled run MUST be reportable with the count of words completed and the stage it was in when cancelled. Reporting a cancelled run's status is not itself a refusal; the cancell",
+      "tasks": [
+        "T046",
+        "T051"
+      ]
+    },
+    "FR-037": {
+      "title": "Three refusal codes MUST be added additively to the existing tool response contract -- unresolvable morph, unknown run, and cancelled run -- with the documented count raised from 2",
+      "tasks": [
+        "T037",
+        "T045",
+        "T054",
+        "T055",
+        "T056"
+      ]
+    },
+    "FR-038": {
+      "title": "Every piece of guidance shipped in CP1 that had to point at nothing because this tool did not exist MUST be revisited and pointed at it.",
+      "tasks": [
+        "T040",
+        "T057",
+        "T058"
+      ]
+    },
+    "FR-039": {
+      "title": "Test groups deferred by CP1 MUST be brought into scope: the no-user-interface-code guarantee, the no-oracle case, the conditional-proposal case, and the script-library facade group",
+      "tasks": [
+        "T061"
+      ]
+    },
+    "FR-040": {
+      "title": "Whether the three grammar lints deferred at CP1 are folded in here MUST be decided and, if deferred again, recorded as such. *(Decision D5.)*",
+      "tasks": [
+        "T062"
+      ]
+    },
+    "FR-041": {
+      "title": "This checkpoint MUST NOT modify the capability check already shipped in this repository; the script library MUST probe the read operations its own surface binds",
+      "tasks": [
+        "T064"
+      ],
+      "note": "0 lines changed; recorded by git diff --stat in the evidence artifact"
+    },
+    "FR-042": {
+      "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed",
+      "tasks": [
+        "T065"
+      ]
+    },
+    "FR-043": {
+      "title": "A held grammar MUST have its currency confirmed before reuse and MUST be reloaded when stale; a parse MUST NOT be served from a grammar whose currency was not confirmed",
+      "tasks": [
+        "T065",
+        "T066"
+      ],
+      "note": "HALF dischargeable here. T065 covers the current branch; the live STALE branch is T066 / escalation E-D and needs human authorisation. The evidence artifact must not show FR-043 green if T066 does not run."
+    },
+    "SC-003": {
+      "title": "success criterion SC-003",
+      "tasks": [
+        "T032"
+      ]
+    },
+    "SC-004": {
+      "title": "success criterion SC-004",
+      "tasks": [
+        "T034"
+      ],
+      "note": "a MEASURED RATE over repeated attempts (>=95% inline), not a boolean; the attempt count and the observed rate both go in the evidence artifact"
+    },
+    "SC-005": {
+      "title": "success criterion SC-005",
+      "tasks": [
+        "T036",
+        "T038",
+        "T039"
+      ]
+    },
+    "SC-006": {
+      "title": "success criterion SC-006",
+      "tasks": [
+        "T041",
+        "T043"
+      ]
+    },
+    "SC-007": {
+      "title": "success criterion SC-007",
+      "tasks": [
+        "T035",
+        "T039"
+      ]
+    },
+    "SC-008": {
+      "title": "success criterion SC-008",
+      "tasks": [
+        "T019",
+        "T020",
+        "T053"
+      ],
+      "tests": [
+        "tests/test_parse_record.py::test_everything_completed_survives_an_abrupt_stop"
+      ]
+    },
+    "SC-009": {
+      "title": "success criterion SC-009",
+      "tasks": [
+        "T049",
+        "T052",
+        "T053"
+      ]
+    },
+    "SC-010": {
+      "title": "success criterion SC-010",
+      "tasks": [
+        "T023",
+        "T024"
+      ]
+    },
+    "SC-011": {
+      "title": "success criterion SC-011",
+      "tasks": [
+        "T040",
+        "T058"
+      ]
+    },
+    "SC-012": {
+      "title": "success criterion SC-012",
+      "tasks": [
+        "T033",
+        "T043"
+      ]
+    },
+    "SC-013": {
+      "title": "success criterion SC-013",
+      "tasks": [
+        "T005",
+        "T007",
+        "T067"
+      ]
+    },
+    "SC-014": {
+      "title": "success criterion SC-014",
+      "tasks": [
+        "T065"
+      ]
+    },
+    "SC-015": {
+      "title": "success criterion SC-015",
+      "tasks": [
+        "T065",
+        "T066"
+      ],
+      "note": "T066 is the live write (E-D); unattended runs stop with needs_human"
+    },
+    "SC-016": {
+      "title": "success criterion SC-016",
+      "tasks": [
+        "T064"
+      ]
+    },
+    "SC-017": {
+      "title": "success criterion SC-017",
+      "tasks": [
+        "T053"
+      ],
+      "note": "requires Malay Parsing-20230810withHC; 41 entries cannot exercise these, the project split is not interchangeable"
+    },
+    "pattern-audit": {
+      "title": "CLAUDE.md sweep-pattern obligation, re-opened by resolver.py binding TraceWordXml's IEnumerable<int>",
+      "tasks": [
+        "T042"
+      ],
+      "note": "this is the gate CP2a's QC blocked on; the sweep result goes in the evidence artifact"
+    },
+    "R-06": {
+      "title": "tests/test_cp1_boundary.py amended, never weakened; worker allowlist pinned by a test",
+      "tasks": [
+        "T059"
+      ]
+    }
+  },
+  "size": "oversized",
+  "classification": "campaign -- full crew cycle, not the CLAUDE.md fast path",
+  "currentTask": "T020",
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Maintainer branch decision resolved: stay on feat/parser-check-cp1, feat/parser-check-cp2 NOT cut here; recorded with the note that the flexicon repo's feat/parser-check-cp2 is a different branch and must not be conflated",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "Created cp2b-evidence.md with CP2a's five recording disciplines as enforced headings; every unrun measurement pre-seeded as NOT RUN with what stays unproven, including T009 and T066",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Created server/parse/ package exporting nothing; docstring pins the two-process split and why worker_main.py is never imported server-side (R-02)",
+      "files": [
+        "src/flextoolsmcp/server/parse/__init__.py"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Regenerated the bundled index; all THREE flexicon-locked artifacts moved 4.8.0->4.9.0 (the third, common_patterns_flexicon-v*, uses a '-v' separator and sits one dir up)",
+      "files": [
+        "src/flextoolsmcp/index/python/flexicon_api_v4.9.0.json",
+        "src/flextoolsmcp/index/python/flexicon_lcm_bridge_v4.9.0.json",
+        "src/flextoolsmcp/index/common_patterns_flexicon-v4.9.0.json"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "Wrote the 3-way floor/resolved/artifact equality test, discovery-based over both _v and -v separators, with a vacuity guard and a LibLCM-exclusion guard; resolved version comes from versioning.py not importlib.metadata",
+      "files": [
+        "tests/test_flexicon_index_floor.py"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "Observed the test RED pre-bridge: 2 failed, 4 passed; red output enumerates all three artifacts, which is the direct proof pattern discovery caught the unnamed third",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Raised the floor to pyflexicon>=4.9.0,<5 in pyproject.toml and requirements.txt; equality test green, 6 passed",
+      "files": [
+        "pyproject.toml",
+        "requirements.txt"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "Full repo suite after the floor change: 1737 passed, 8 skipped, 0 failed, 36 subtests; no pre-existing failures to name",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "flexicon: 6 offline tests for Texts.GetGenres (FR-007) pinning the never-None empty-list contract and snapshot semantics; membership not order, since GenresRC is a reference collection",
+      "files": [
+        "flexicon:tests/operations/test_text_genres.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "flexicon: 7 offline tests for Allomorphs.GetOwningEntry (FR-008); cast stand-in RAISES on None so guard-after-cast is caught offline, plus the nested-owner case that a one-hop .Owner reimplementation fails",
+      "files": [
+        "flexicon:tests/operations/test_allomorph_owner.py"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "flexicon: 10 offline tests for MSA.GetAll (FR-009), the resolver's terminal accessor; pins re-iterability (a generator would make the resolver report a spurious unresolvable morph) and that orphans are not filtered",
+      "files": [
+        "flexicon:tests/operations/test_msa_read.py"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "flexicon suite via the required marker-filtered invocation: 1946 passed, 826 deselected, 0 failed; delta exactly 1923 (CP2a baseline) + 23 new",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "Closed 7-member RunStage enum + transition table; 'filing' declared with NO inbound edge so its unreachability is by construction, not by current-code accident",
+      "files": [
+        "src/flextoolsmcp/server/parse/stages.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Five priority levels as IntEnum (lower wins); docstring records that the ordering guarantee is ours and FieldWorks' ParserScheduler must not be cited or copied",
+      "files": [
+        "src/flextoolsmcp/server/parse/priority.py"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "49 tests: seven names verbatim, transition graph, terminal absorption, and filing-unreachability proven BOTH structurally and by AST sweep over server/parse/, with a vacuity guard on the sweep",
+      "files": [
+        "tests/test_parse_stages.py"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Single sorted queue with per-wordform granularity, FIFO within level via monotonic tiebreaker (heapq is unstable); accepts CP3's Medium/Low now; rejects empty restricted_to at enqueue as FR-019 refusal-not-widening",
+      "files": [
+        "src/flextoolsmcp/server/parse/queue.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "21 tests: priority ordering, 10-item FIFO (a 2-item version passes by luck half the time), per-wordform granularity as FR-031's precondition, empty-restriction refusal",
+      "files": [
+        "tests/test_parse_priority_queue.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "Append-only JSONL run record: per-word write+flush+fsync, meta.json atomically replaced, traces out of line, size cap enforced from day one (skeleton_storage's documented debt not inherited), server-minted hex run_id",
+      "files": [
+        "src/flextoolsmcp/server/parse/record.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "32 tests: per-word flush proven via a second reader mid-run, kill survival incl. truncated final line, cap raises not truncates, and 10 hostile run_id strings refused",
+      "files": [
+        "tests/test_parse_record.py"
+      ]
+    }
+  },
+  "verified": [
+    {
+      "what": "Floor/resolved/artifact three-way equality, observed RED before the floor moved then green after",
+      "command": "python -m pytest tests/test_flexicon_index_floor.py -q",
+      "result": "2 failed 4 passed pre-bridge (T006 acceptance); 6 passed post-bridge (T007)",
+      "warnings": []
+    },
+    {
+      "what": "Full FlexToolsMCP suite after the dependency floor change",
+      "command": "python -m pytest -q",
+      "result": "1737 passed, 8 skipped, 0 failed, 36 subtests passed in 59.16s",
+      "warnings": [
+        "23 pre-existing ast.Str DeprecationWarning from flexicon_analyzer.py:211, unrelated"
+      ]
+    },
+    {
+      "what": "flexicon suite via its required marker-filtered invocation after the three R-08 accessor tests",
+      "command": "python -m pytest -m \"not requires_live_project\" -q",
+      "result": "1946 passed, 826 deselected, 0 failed; delta exactly 1923 (CP2a baseline) + 23 new",
+      "warnings": [
+        "12 pre-existing GramCatOperations deprecation warnings (issue #276)"
+      ]
+    },
+    {
+      "what": "New CP2b machinery unit suites",
+      "command": "python -m pytest tests/test_parse_stages.py tests/test_parse_priority_queue.py tests/test_parse_record.py -q",
+      "result": "49 + 21 + 32 = 102 passed, 0 failed",
+      "warnings": []
+    }
+  ],
+  "last_action": "Phase 1 + bridge + R-08 + machinery foundations done: 19/68 tasks, 102 new tests green, both repo suites clean. Blocked at T021/T022 pending the run_script_async one-shot finding."
+}

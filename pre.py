@@ -211,34 +211,6 @@ def _available_projects_payload() -> Dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# DEAD BUT RETAINED: three-tier casting-helper injection.
-#
-# `_validate_api_mode`, `_get_casting_helpers_code` and `_get_api_mode_imports`
-# are currently CALLED BY NOTHING on a live path. `_get_api_mode_imports` has no
-# call sites; the only callers of the other two are inside it. The generated
-# runner script does not import `casting_helpers`, so the injection these
-# implement has not happened since at least the 2.3.1 packaging release.
-#
-# They are kept here deliberately. The parser-check campaign (CP1-CP6) is an
-# ADDITIVE campaign: removing an unrelated capability is out of its scope, and
-# a deletion riding along in a parser-check commit is how a capability question
-# gets decided without ever being asked. The restore-vs-delete decision, and
-# the overlap with the auto-fix rewrite path that already ships, are tracked as
-# their own issues rather than settled here.
-#
-# Two things a future reader must not conclude from this block:
-#   * That the feature works. It does not run. Do not cite it as live coverage.
-#   * That `_validate_api_mode` can simply be wired up. `api_mode` no longer
-#     selects runtime libraries -- the runner imports `flexicon` unconditionally
-#     -- so there is no live seam for it to gate. That gap is its own issue.
-#
-# NO INJECTION TIER IS REPORTED ANYWHERE, because nothing is injected. The
-# pre-flight casting DETECTION is separate, real, and still runs: it is what
-# populates `casting_issues`.
-# ---------------------------------------------------------------------------
-
-
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
@@ -474,6 +446,8 @@ def _log_operation_start(
     code: str,
     source_kind: str,
     casting_check: Optional[Dict[str, Any]] = None,
+    injection_tier: Optional[str] = None,
+    helpers_needed: Optional[set] = None,
     user_intent: Optional[str] = None,
     user_request: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -538,14 +512,15 @@ def _log_operation_start(
     )
 
     if casting_check is not None:
-        # Reached by no caller today -- all three call sites omit
-        # `casting_check` -- but kept because the shape is right and the
-        # caller that wants it is a one-line change. What is NOT kept is the
-        # injection tier: nothing injects, so nothing may report a tier.
-        logger.info(
-            f"Preflight casting: "
-            f"issues={len(casting_check.get('casting_issues') or [])}"
+        issue_count = len(casting_check.get("casting_issues") or [])
+        tier = injection_tier or casting_check.get("injection_tier", "?")
+        helpers = sorted(helpers_needed) if helpers_needed else sorted(
+            casting_check.get("helpers_needed") or []
         )
+        logger.info(
+            f"Preflight casting: issues={issue_count} tier={tier} helpers={helpers or '[]'}"
+        )
+        # Per-issue detail (DEBUG) so the .log captures WHY the helper was injected.
         for issue in (casting_check.get("casting_issues") or [])[:10]:
             logger.debug(
                 f"  casting: line={issue.get('line')} property={issue.get('property')} "
@@ -3651,26 +3626,29 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     timeout_seconds = args.get("timeout_seconds", 300)
 
+    # Determine three-tier injection strategy based on pre-flight results
+    # Tier 1 (none): No casting issues → Skip helper injection (lightweight)
+    # Tier 2 (minimal): Issues found but handled → Inject only needed helpers (balanced)
+    # Tier 3 (full): Defensive mode → Inject full suite (heavy but safest)
+    injection_tier = casting_check.get("injection_tier", "full")  # Default to full for safety
+    helpers_needed = casting_check.get("helpers_needed", set())  # Set of specific helpers
+
     # Operation Start was logged at the top of handle_run_module; now that
-    # pre-flight has passed, append the casting telemetry and an explicit
-    # "preflight passed" marker so a failure later in the subprocess can be
-    # told apart from a failure that never made it past validation.
-    #
-    # NO INJECTION TIER IS REPORTED, because nothing is injected. This used
-    # to read `Preflight: passed (tier=full)` while injecting nothing -- a
-    # log line that answered the reader's question with something untrue.
-    # The casting DETECTION below is real and stays: `casting_issues` is
-    # what pre-flight actually found.
+    # pre-flight has passed, append the casting/injection telemetry and an
+    # explicit "preflight passed" marker so a failure later in the subprocess
+    # can be told apart from a failure that never made it past validation.
     logger = get_operations_logger()
-    casting_issues = casting_check.get("casting_issues") or []
-    if casting_issues:
-        logger.info(f"Preflight casting: issues={len(casting_issues)}")
-        for issue in casting_issues[:10]:
+    if (casting_check.get("casting_issues") or []) or injection_tier != "none" or helpers_needed:
+        logger.info(
+            f"Preflight casting: issues={len(casting_check.get('casting_issues') or [])} "
+            f"tier={injection_tier} helpers={sorted(helpers_needed) if helpers_needed else '[]'}"
+        )
+        for issue in (casting_check.get("casting_issues") or [])[:10]:
             logger.debug(
                 f"  casting: line={issue.get('line')} property={issue.get('property')} "
                 f"pattern={issue.get('pattern','')[:80]!r}"
             )
-    logger.info("Preflight:       passed")
+    logger.info(f"Preflight:       passed (tier={injection_tier})")
 
     # Build warnings
     warnings = []

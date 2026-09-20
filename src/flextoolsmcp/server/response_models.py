@@ -7,8 +7,10 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 22 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
-  + hvo_literal_write_risk + 4 parser-check CP1 codes)
+- 25 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk + 4 parser-check CP1 codes
+  + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
+  parse_job_cancelled)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -419,8 +421,101 @@ class ParserToolMissingDetail(BaseModel):
     install_hint: str
 
 
+class ParseMorphCandidate(BaseModel):
+    """One entry a piece of a decomposition might have meant (CP2b).
+
+    `msa_hvo` being null IS the `no_msa` signal -- data-model.md section 4
+    says so explicitly rather than leaving it to be inferred. The field is
+    not omitted in that case and not filled with a sentinel: null is the
+    fact, and echoing it lets the caller see WHICH candidate carried no
+    analysis rather than only that something did.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    headword: str
+    sense: Optional[str] = None
+    msa_hvo: Optional[int] = None
+    entry_hvo: int
+
+
+class ParseMorphUnresolvedDetail(BaseModel):
+    """Detail payload for parse_morph_unresolved rejections (parser-check CP2b).
+
+    Raised when any piece of a caller's proposed decomposition does not
+    resolve to a usable analysis. **No parse runs** for such a request
+    (FR-019, SC-005, asserted as a negative).
+
+    FIVE FIELDS, IN THIS EXACT ORDER: ``morph``, ``position``,
+    ``resolved_to``, ``candidates``, ``hint``. The order was the subject of
+    a three-way agreement check during CP2's cycle 3; do not reorder,
+    rename, recase or pluralize. ``tests/test_response_contract.py`` asserts
+    the order, not merely the membership.
+
+    ``resolved_to`` is a CLOSED enum and its three members are kept distinct
+    on purpose: ``none`` means fix the spelling, ``ambiguous`` means pick
+    the homograph, ``no_msa`` means the entry carries no analysis and needs
+    work. Collapsing them reproduces the silent-narrowing failure the
+    requirement exists to prevent.
+
+    ``candidates`` carries the REJECTED options too. A refusal naming no
+    candidates can only be retried; one that names them can be acted on.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_morph_unresolved"] = "parse_morph_unresolved"
+    morph: Optional[Any] = None
+    position: Optional[int] = None
+    resolved_to: Literal["none", "ambiguous", "no_msa"]
+    candidates: List[ParseMorphCandidate] = Field(default_factory=list)
+    hint: str
+
+
+class ParseRunNotFoundDetail(BaseModel):
+    """Detail payload for parse_run_not_found rejections (parser-check CP2b).
+
+    The ONLY refusal ``flextools_parse_status`` issues (FR-035). Asking
+    about a run that has already failed or been cancelled is a SUCCESSFUL
+    query -- a dead run is a fact about the run, not a fault in the request
+    -- so neither of those reaches this model.
+
+    ``available_runs`` is what makes the refusal actionable. A handle is an
+    opaque 32-character string; told only "no such run", a caller has
+    nothing to compare theirs against and no way to tell a typo from a run
+    the server has forgotten.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_run_not_found"] = "parse_run_not_found"
+    run_id: str
+    available_runs: List[str] = Field(default_factory=list)
+    hint: str
+
+
+class ParseJobCancelledDetail(BaseModel):
+    """Detail payload for parse_job_cancelled rejections (parser-check CP2b).
+
+    Raised when a request attaches to a run that is already in a terminal
+    state -- a second cancel, or a word submitted against a run that has
+    stopped (FR-036).
+
+    NOT RAISED BY ``flextools_parse_status``. Asking after a cancelled run
+    is a successful query reporting ``words_completed`` and the stage it was
+    in when it stopped; this code fires when something tries to ACT on a run
+    that has already ended. Both directions get a test
+    (``tests/test_parse_status_handler.py``), because the asymmetry is the
+    part of FR-033/FR-036 that is easy to implement backwards.
+
+    ``words_completed`` and ``state_at_cancel`` ride on the refusal because
+    the partial results survive the cancellation (FR-029) and the caller
+    needs to know how much of the work is readable.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_job_cancelled"] = "parse_job_cancelled"
+    run_id: str
+    words_completed: int
+    state_at_cancel: str
+    hint: str
+
+
 # ---------------------------------------------------------------------------
-# Discriminated union over all 22 per-code detail models
+# Discriminated union over all 25 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -446,6 +541,9 @@ AnyDetail = Union[
     ParserCoreMissingDetail,
     ParserAgentMissingDetail,
     ParserToolMissingDetail,
+    ParseMorphUnresolvedDetail,
+    ParseRunNotFoundDetail,
+    ParseJobCancelledDetail,
 ]
 
 

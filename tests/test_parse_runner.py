@@ -438,18 +438,51 @@ async def test_cancelling_an_unknown_run_returns_none(record_dir):
     assert await runner.cancel_run("0" * 32) is None
 
 
-async def test_cancelling_a_finished_run_leaves_it_alone(record_dir):
-    """FR-036's asymmetry begins here: a terminal run does not re-cancel."""
+async def test_cancelling_a_finished_run_refuses_and_leaves_it_alone(record_dir):
+    """FR-036's asymmetry begins here: a terminal run does not re-cancel.
+
+    AMENDED AT T050, not weakened. Both original guarantees still hold --
+    the run does not become `cancelled`, and the worker is never asked --
+    and the refusal the requirement names is now raised rather than the
+    call returning quietly. "Cancelled successfully" for a run that ended
+    ten minutes ago tells the caller something false about what just
+    happened.
+
+    The refusal carries what survived, because the partial results are
+    readable and the caller needs to know how much there is.
+    """
+    from flextoolsmcp.server.parse.runner import RunAlreadyTerminal
+
     worker = FakeWorker()
     runner = make_runner(worker, record_dir, grace_window=30.0)
 
     handle = await runner.start_run(project_name="P", wordforms=["w"])
     assert handle.stage is RunStage.COMPLETED
 
-    again = await runner.cancel_run(handle.run_id)
-    assert again is handle
-    assert again.stage is RunStage.COMPLETED, "a finished run must not become cancelled"
+    with pytest.raises(RunAlreadyTerminal) as caught:
+        await runner.cancel_run(handle.run_id)
+
+    assert handle.stage is RunStage.COMPLETED, "a finished run must not become cancelled"
     assert worker.cancelled_runs == [], "a terminal run must not be sent to the worker"
+
+    detail = caught.value.detail
+    assert detail["error_code"] == "parse_job_cancelled"
+    assert detail["run_id"] == handle.run_id
+    assert detail["words_completed"] == 1
+    assert detail["state_at_cancel"] == "completed"
+    assert detail["hint"]
+
+
+async def test_cancelling_an_unknown_run_is_none_not_a_refusal(record_dir):
+    """A handle that names no run is a different thing from a dead one.
+
+    `None` rather than `RunAlreadyTerminal`: there is no run to report
+    `words_completed` for, and the caller's problem is the handle, not the
+    run's state. The tool boundary turns this into `parse_run_not_found`.
+    """
+    runner = make_runner(FakeWorker(), record_dir, grace_window=30.0)
+
+    assert await runner.cancel_run("0" * 32) is None
 
 
 # ---------------------------------------------------------------------------

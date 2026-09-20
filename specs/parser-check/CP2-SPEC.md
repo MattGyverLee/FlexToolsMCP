@@ -86,13 +86,45 @@ joins that list).
 It wraps exactly the surface 5.4's capability probe already enumerates, and
 nothing more:
 
+> **CORRECTED IN PLACE AT CP2b.** This table previously named `TryWord`,
+> `TryWordXml` and `TraceWord`. **None of those three exists.** They
+> described a design that was not built, and the table was left standing
+> after the facade shipped under different names -- so a reader following
+> it wrote code against three operations that are not there. The shipped
+> surface is below, read off `flexicon/code/Parser/ParserOperations.py`
+> (spec.md Delta 1, CP2b T063).
+
+The facade has **exactly six members**, frozen by a set-equality test in the
+flexicon repository. That frozen set is what backs `flextools_try_word`'s
+`READ_ONLY_SAFE` annotation: **none of the six records, files or writes a
+parse result**, and adding one that did would silently invalidate the
+annotation.
+
 | Facade call | Wraps | Mode (5.1.1) |
 |---|---|---|
-| `TryWord(form)` | `ParseWord(string) -> ParseResult` | B |
-| `TryWordXml(form)` | `ParseWordXml(string) -> XDocument` | B |
-| `TraceWord(form, msa_hvos=None)` | `TraceWordXml(string, IEnumerable<int>)` | A when `msa_hvos` given, C when `None` |
+| `GetAvailability()` | the live availability probe -- `(available, reason, version)` | -- |
+| `ParseWord(word)` | `ParseWord(string) -> ParseResult` (live LCM objects) | B |
+| `ParseWordXml(word)` | `ParseWordXml(string) -> XDocument` | B |
+| `TraceWordXml(word, analyses=None)` | `TraceWordXml(string, IEnumerable<int>)` | A when `analyses` given, C when `None` |
 | `Reload()` | `Reset()` then `Update()` | -- |
 | `IsUpToDate()` | `IsUpToDate()` | -- |
+
+Two bindings in that table are load-bearing rather than descriptive.
+
+**`TraceWordXml` and `ParseWord` are bound POSITIONALLY.** The shipped
+implementation names the first parameter `word`; flexicon's own offline test
+double for the same facade names it `form`. A keyword binding therefore works
+against exactly one of them and raises `TypeError` against the other.
+
+**`analyses` distinguishes `None` from an empty sequence, and they mean
+opposite things.** `None` is "no restriction"; an empty sequence is "admit
+nothing", and the setting outlives the call. `flexicon` refuses the empty
+sequence with `FP_ParameterError`; a tool that let one through would corrupt
+the next parse as well as this one.
+
+**`GetAvailability()` is called, never inferred.** `flexicon.CAPABILITIES`
+containing `"parser"` records what the build was compiled to support, not
+what this machine can currently do.
 
 `Reload()`'s two-step binding is required: `HCParser.Update()` is itself
 conditional (`if (m_changeListener.Reset() || m_forceUpdate) LoadParser();`), so

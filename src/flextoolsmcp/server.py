@@ -143,6 +143,7 @@ KNOWN_EXCEPTIONS = {
 
 # Helper validation functions were extracted to validators module
 # Import them at the top if needed for use in server.py
+import contextlib
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool,
@@ -1115,6 +1116,28 @@ async def main():
             raise
         finally:
             _server_run_done = _time_module.time()
+
+            # Reap the parse worker, if one was ever started (parser-check
+            # CP2b). THIS IS NOT TIDINESS: a parse worker is long-lived by
+            # design -- it holds a loaded grammar so a second word does not
+            # pay for the load again -- and while it lives it holds the
+            # project's `.fwdata` lock. Left behind, it keeps that lock
+            # until its own 600-second idle timeout, and a worker wedged
+            # inside a grammar load never times out at all. That is issue
+            # #57's failure mode with a much longer window than the
+            # one-shot children that preceded it.
+            #
+            # Imported here rather than at module scope so a server that
+            # never parsed does not pull the parse package in just to shut
+            # down, and suppressed because a failure to reap must not turn
+            # a clean exit into a crash -- the kill path inside `aclose`
+            # is itself the last resort.
+            with contextlib.suppress(Exception):
+                if __package__:
+                    from .server.handlers.parse import aclose_runner
+                else:
+                    from server.handlers.parse import aclose_runner
+                await aclose_runner()
 
 def run() -> None:
     """Synchronous entry point for the ``flextoolsmcp`` console script.

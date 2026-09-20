@@ -294,9 +294,18 @@ _HC_INSTALL_HINT = "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Too
 # action. This wording names no tool. It deliberately does NOT claim the grammar
 # loads: nothing at CP1 loads a grammar, so `read: ready` means only that
 # ParserCore's read surface is reachable.
+#: The contract's own wording for this row (SPEC 10.2, copied into
+#: `contracts/flextools_health-parser-block.md:91`). It names the tool,
+#: which is the point: filing is what is unavailable, and a caller should
+#: be told that the read spine is still fully usable and by what.
+#:
+#: CP1 could not say this. `flextools_try_word` did not exist, SPEC 10.1
+#: forbids proposing a tool that does not exist, and naming it in prose is
+#: the same violation as naming it in the `tool` field -- so CP1 shipped a
+#: replacement that named nothing. **CP2b is when the row lands in full**,
+#: which is exactly what the CP1 caveat said would happen.
 _WRITE_UNAVAILABLE_READ_READY_ACTION = (
-    "filing is unavailable on this install; read-only parser diagnosis is "
-    "unaffected."
+    "use read-only Try A Word; filing unavailable"
 )
 
 
@@ -308,9 +317,12 @@ def _parser_next_step(
     args: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """One structured rung in SPEC 10.1's shape ({action, tool, args,
-    rationale, est_cost}). ``tool`` defaults to None because every CP1 rung
-    is external: the two rows that would name a tool name
-    ``flextools_try_word``, which does not exist until CP2."""
+    rationale, est_cost}).
+
+    ``tool`` still defaults to None, because most rungs here ARE external --
+    "install/repair FieldWorks", "install the hc dotnet tool". The two rows
+    that name ``flextools_try_word`` pass it explicitly from CP2b on; before
+    that they could not, since the tool did not exist."""
     return {
         "action": action,
         "tool": tool,
@@ -330,14 +342,21 @@ def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
     stays what `_build_parser_block()` is: reshaping of facts already
     computed. No new detection logic enters this module.
 
-    CP1 degradation, per the contract's CP1 caveat: the two rows that name
-    `flextools_try_word` degrade to `tool: None`, and the
-    `write: unavailable` / `read: ready` row additionally swaps its action
-    text for `_WRITE_UNAVAILABLE_READ_READY_ACTION`, since the contract's
-    wording names the tool in prose. No rung here ever names
-    `flextools_parse_sandbox` either -- sandbox is the one spine whose
-    tool is proposed by name in the contract, and only when both
-    components are found, which is a CP2+ tool in any case.
+    CP1's degradation is OVER (CP2b, FR-038). The two rows that name
+    `flextools_try_word` now do so -- in the `tool` field and in the
+    contract's own action wording -- because the tool exists. CP1 degraded
+    them to `tool: None` with replacement prose precisely because SPEC 10.1
+    forbids proposing a tool that does not exist, and the CP1 caveat said
+    they would land in full "at CP2, when the tool they name is real".
+
+    `flextools_parse_sandbox` is still never named: sandbox is the one
+    spine whose tool the contract proposes by name, and only when both
+    components are found -- and that tool does not exist yet. The same rule
+    that released the two rows above keeps this one held.
+
+    A registry sweep in `tests/test_parser_health_block.py` asserts that
+    every tool named anywhere in the emitted guidance is a registered tool,
+    so the next row to be released cannot be released early.
 
     `active_engine` mismatch has no rung here: `flextools_health` never
     opens a project (research D2/D8), so `active_engine` is always None and
@@ -366,20 +385,28 @@ def _build_parser_next_steps(parser: Dict[str, Any]) -> List[Dict[str, Any]]:
                     "this project has never run HermitCrab; run it once from "
                     "FLEx's Parser menu, then retry filing"
                 ),
+                # Names the tool from CP2b on. A missing recording agent
+                # does NOT make reading unavailable -- reading neither
+                # records nor needs one (FR-016) -- so pointing at the read
+                # tool here is the whole substance of the row.
+                tool="flextools_try_word",
                 rationale=(
                     "kguidAgentHermitCrabParser is absent from the project's "
                     "agent repository, so filed results would have no owning "
-                    "agent."
+                    "agent. Reading is unaffected: it neither records nor "
+                    "needs an agent."
                 ),
                 est_cost="inline",
             ))
         elif read["status"] == "ready":
             steps.append(_parser_next_step(
                 action=_WRITE_UNAVAILABLE_READ_READY_ACTION,
+                tool="flextools_try_word",
                 rationale=(
                     "ParseFiler.ProcessParse is missing from this ParserCore, "
                     "so parse results cannot be filed back; read: ready means "
-                    "only that ParserCore's read surface is reachable."
+                    "ParserCore's read surface is reachable, and the read "
+                    "spine is fully usable."
                 ),
                 est_cost="inline",
             ))

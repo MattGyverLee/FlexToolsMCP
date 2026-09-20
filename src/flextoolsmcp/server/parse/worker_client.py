@@ -146,6 +146,11 @@ class ParseWorkerClient:
         #: run_id -> callback for messages that belong to a run rather than
         #: to one request (`stage`, `cancelled`).
         self._run_listeners: dict[str, Callable[[dict[str, Any]], None]] = {}
+        #: Futures awaiting an `assemblies` answer. A plain list rather than
+        #: an id-keyed dict because the message carries no request id: it is
+        #: a diagnostic about the process, not about a request, and every
+        #: waiter wants the same answer.
+        self._assembly_waiters: list[asyncio.Future] = []
         self._protocol: Optional[int] = None
         self._closed = False
         self._write_lock = asyncio.Lock()
@@ -295,7 +300,7 @@ class ParseWorkerClient:
     def _dispatch(self, message: dict[str, Any]) -> None:
         kind = message.get("type")
 
-        if kind in ("result", "error"):
+        if kind in ("result", "resolved", "error"):
             request_id = message.get("request_id")
             future = self._pending.pop(request_id, None) if request_id else None
             if future is not None and not future.done():
@@ -314,13 +319,20 @@ class ParseWorkerClient:
                 )
             return
 
-        if kind in ("stage", "cancelled"):
+        if kind in ("stage", "cancelled", "interleaved"):
             listener = self._run_listeners.get(message.get("run_id") or "")
             if listener is not None:
                 try:
                     listener(message)
                 except Exception as exc:  # noqa: BLE001
                     _log.warning("Run listener failed: %s", exc)
+            return
+
+        if kind == "assemblies":
+            waiters, self._assembly_waiters = self._assembly_waiters, []
+            for future in waiters:
+                if not future.done():
+                    future.set_result(list(message.get("names") or []))
             return
 
         if kind in ("pong", "ready", "bye"):
@@ -338,6 +350,10 @@ class ParseWorkerClient:
         """
         pending, self._pending = self._pending, {}
         for future in pending.values():
+            if not future.done():
+                future.set_exception(exc)
+        waiters, self._assembly_waiters = self._assembly_waiters, []
+        for future in waiters:
             if not future.done():
                 future.set_exception(exc)
 
@@ -418,6 +434,69 @@ class ParseWorkerClient:
         arrives on the run listener when that boundary is reached.
         """
         await self._send({"type": "cancel", "run_id": run_id})
+
+    async def resolve_morphs(
+        self,
+        *,
+        request_id: str,
+        run_id: str,
+        morphs: list,
+        only_if_indexed: bool = False,
+        timeout: float = 120.0,
+    ) -> dict:
+        """Resolve a decomposition against the project's lexicon.
+
+        NOT A PARSE. The worker answers this from its lexicon index without
+        touching the parser area, which is what makes FR-019's "an
+        unresolvable piece runs no parse" achievable rather than merely
+        asserted -- the refusal happens before anything is enqueued.
+
+        The generous timeout is for the first call on a large project: the
+        index is built once, and building it walks every entry. Later calls
+        answer from memory.
+        """
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        self._pending[request_id] = future
+
+        try:
+            await self._send(
+                {
+                    "type": "resolve",
+                    "request_id": request_id,
+                    "run_id": run_id,
+                    "morphs": morphs,
+                    "only_if_indexed": bool(only_if_indexed),
+                }
+            )
+        except Exception:
+            self._pending.pop(request_id, None)
+            raise
+
+        return await asyncio.wait_for(future, timeout=timeout)
+
+    async def loaded_assemblies(self, *, timeout: float = 30.0) -> list:
+        """The worker's OWN loaded CLR assemblies, by simple name.
+
+        A diagnostic, off the parse path entirely. Its one caller is
+        `HCParser_DoesNotLoadXCore`, which backs the `READ_ONLY_SAFE`
+        annotation: the assertion has to be made against the process that
+        parsed, and this process is not it.
+
+        Answered on the worker's reader thread, so it does not queue behind
+        a word being parsed -- which matters, because the test asks right
+        after a parse and a queued answer would time out behind the next.
+        """
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        self._assembly_waiters.append(future)
+        try:
+            await self._send({"type": "assemblies"})
+            return await asyncio.wait_for(future, timeout=timeout)
+        except Exception:
+            with contextlib.suppress(ValueError):
+                self._assembly_waiters.remove(future)
+            raise
 
     async def ping(self) -> bool:
         """Liveness check. False rather than raising if the worker is gone."""

@@ -129,6 +129,7 @@ __all__ = [
     "PROTOCOL_VERSION",
     "DEFAULT_IDLE_TIMEOUT_SECONDS",
     "ParseWorker",
+    "loaded_assembly_names",
     "main",
 ]
 
@@ -206,6 +207,33 @@ def _log(message: str) -> None:
     sys.stderr.flush()
 
 
+def loaded_assembly_names() -> list[str]:
+    """Every CLR assembly loaded into THIS process, by simple name.
+
+    Exists for one caller: `HCParser_DoesNotLoadXCore`
+    (tests/test_parser_no_xcore.py), which backs the `READ_ONLY_SAFE`
+    annotation on the parse tools. That test has to read the list from the
+    process that actually parsed -- the server process never loads
+    `ParserCore` at all, so asserting there would prove nothing.
+
+    Returns `[]` when pythonnet is not loaded, which is the stub case. The
+    test treats an empty list as "could not observe" and skips rather than
+    passing: a vacuous green here would retire the one guarantee that makes
+    the read-only claim checkable.
+    """
+    try:
+        import clr  # noqa: F401  -- import side effect: starts the CLR bridge
+        from System import AppDomain
+    except Exception:  # noqa: BLE001 -- no CLR here; see docstring
+        return []
+
+    names = []
+    for assembly in AppDomain.CurrentDomain.GetAssemblies():
+        with contextlib.suppress(Exception):
+            names.append(str(assembly.GetName().Name))
+    return names
+
+
 # ---------------------------------------------------------------------------
 # The parse backend seam
 # ---------------------------------------------------------------------------
@@ -249,6 +277,14 @@ class _ParseBackend:
         """Parse one word. Returns `{"parse": ..., "trace_xml": ...}`."""
         raise NotImplementedError
 
+    def lexicon_rows(self) -> list:
+        """Every entry, as plain rows the resolver can index (FR-018).
+
+        Plain data, never LCM objects: `LexiconIndex` must hold no reference
+        into a cache, and the rows cross no process boundary carrying one.
+        """
+        raise NotImplementedError
+
     def release(self) -> None:
         """Drop the held grammar and any project handle."""
         raise NotImplementedError
@@ -289,10 +325,30 @@ class _StubBackend(_ParseBackend):
     ) -> dict[str, Any]:
         if self._parse_seconds:
             time.sleep(self._parse_seconds)
+
+        if level == "restricted" and not restricted_to:
+            # The stub refuses exactly where the real backend refuses. It is
+            # the offline oracle the queue, interleave and cancellation
+            # tests assert against, so a stub that quietly accepted an empty
+            # restriction would report the widening FR-019 forbids as a
+            # clean unrestricted parse -- and those tests would go green
+            # over the one failure they exist to catch.
+            raise ValueError(
+                "An empty restriction reached the parser. This is a refusal "
+                "(parse_morph_unresolved), never a widening to an "
+                "unrestricted parse (FR-019)."
+            )
+
         analyses = [
             {
                 "morphs": [wordform],
-                "restricted_to": list(restricted_to) if restricted_to else None,
+                # `is not None`, not a truthiness test: None means "no
+                # restriction" and an empty sequence means "admit nothing".
+                # Collapsing them here would make the echo lie about which
+                # one the caller sent.
+                "restricted_to": (
+                    list(restricted_to) if restricted_to is not None else None
+                ),
             }
         ]
         trace_xml = None
@@ -305,8 +361,71 @@ class _StubBackend(_ParseBackend):
             "trace_xml": trace_xml,
         }
 
+    def lexicon_rows(self) -> list:
+        """A tiny fixed lexicon, shaped to exercise all three outcomes.
+
+        `pukul` resolves; `kirim` is ambiguous between two entries; `kosong`
+        exists and carries no analysis. Without the last two the stub would
+        make `ambiguous` and `no_msa` unreachable, and a stub that can only
+        produce success is the one that lets a collapse of the three
+        outcomes pass unnoticed.
+        """
+        return [
+            {"headword": "pukul", "entry_hvo": 101,
+             "senses": ["hit"], "msa_hvos": [5001]},
+            {"headword": "kirim", "entry_hvo": 102,
+             "senses": ["send"], "msa_hvos": [5002]},
+            {"headword": "kirim", "entry_hvo": 103,
+             "senses": ["deliver"], "msa_hvos": [5003]},
+            {"headword": "kosong", "entry_hvo": 104,
+             "senses": ["empty"], "msa_hvos": []},
+        ]
+
     def release(self) -> None:
         self._loaded = False
+
+
+class ParserUnavailableError(RuntimeError):
+    """`GetAvailability()` said no. Carries the contract's refusal payload.
+
+    Raised instead of a bare `RuntimeError` so the refusal survives the
+    channel. `_report_exception` marshals any exception carrying a `detail`
+    dict under its own `error_code`; without one this arrives at the caller
+    as `runtime_error`, which the contract's refusal table explicitly does
+    not say (contracts/tools.md: "`parser_core_missing` -- GetAvailability()
+    reports unavailable; `reason` is carried through").
+
+    The facade's `reason` is free text, so it rides in `load_error` rather
+    than in `signal`: `signal` is a CLOSED enum shared with the health
+    block's `read.reason` / `write.reason` and must not be widened to hold
+    a sentence. `load_failed` is the member that fits -- the parser answered
+    and said it cannot serve, which is not the same as it being absent.
+
+    `detail` is shaped to match `response_models.ParserCoreMissingDetail`
+    exactly, field for field, because that model is `extra="forbid"`: a
+    stray key here is a validation failure at the far end, not a tolerated
+    extra.
+    """
+
+    def __init__(self, project_name: str, reason: str, availability: Any) -> None:
+        super().__init__(
+            f"The parser is not available for {project_name!r}: {reason}"
+        )
+        self.detail = {
+            "error_code": "parser_core_missing",
+            "signal": "load_failed",
+            "expected_path": str(getattr(availability, "path", "") or ""),
+            "detected_version": _as_text(getattr(availability, "version", None)),
+            "missing_members": [],
+            "lcmodel_install_path": None,
+            "install_hint": (
+                "Run flextools_health to see which parser components this "
+                "machine has. The parser reported itself unavailable rather "
+                "than missing, so the usual cause is a component present but "
+                "not usable -- see load_error for what it said."
+            ),
+            "load_error": reason,
+        }
 
 
 class _RealBackend(_ParseBackend):
@@ -479,10 +598,7 @@ class _RealBackend(_ParseBackend):
             self._availability_checked = True
             if not getattr(availability, "available", False):
                 reason = getattr(availability, "reason", None) or "no reason given"
-                raise RuntimeError(
-                    f"The parser is not available for "
-                    f"{self._project_name!r}: {reason}"
-                )
+                raise ParserUnavailableError(self._project_name, reason, availability)
 
         if not self._grammar_loaded:
             self._grammar_loaded = True
@@ -497,6 +613,70 @@ class _RealBackend(_ParseBackend):
             # stage could not be predicted.
             _log(f"IsUpToDate() failed, reporting no load: {exc}")
             return False
+
+    def lexicon_rows(self) -> list:
+        """Read every entry once: headword, senses, and its MSA identifiers.
+
+        Verified against `IndonesianHC-Complete` before being written --
+        `LexEntry.GetAll()`, `LexEntry.GetHeadword(entry)`,
+        `MSA.GetAll(entry)` with `.Hvo` on each, and
+        `LexEntry.GetAllSenses` + `Senses.GetGloss`. Guessing this surface
+        is how CP2's section 3.1 came to tabulate three operations that do
+        not exist (spec.md Delta 1).
+
+        AN ENTRY WITH NO MSAs IS KEPT, with an empty `msa_hvos`. That row is
+        the `no_msa` outcome; dropping it would turn "this entry carries no
+        analysis" into "no such entry" and send the caller to fix a spelling
+        that is already correct.
+
+        Per-entry failures are skipped rather than fatal, but only for the
+        OPTIONAL parts: an entry whose headword cannot be read cannot be
+        named by one, so it can never answer a headword lookup. Senses and
+        analyses degrade to empty, which is a true statement about what
+        could be read.
+        """
+        project = self._project
+        rows: list[dict[str, Any]] = []
+
+        for entry in project.LexEntry.GetAll():
+            try:
+                headword = project.LexEntry.GetHeadword(entry)
+            except Exception as exc:  # noqa: BLE001 -- see docstring
+                _log(f"skipping an entry with no readable headword: {exc}")
+                continue
+            if not headword:
+                continue
+
+            try:
+                msa_hvos = [int(msa.Hvo) for msa in project.MSA.GetAll(entry)]
+            except Exception as exc:  # noqa: BLE001
+                _log(f"no analyses readable for {headword!r}: {exc}")
+                msa_hvos = []
+
+            senses: list[str] = []
+            try:
+                for sense in project.LexEntry.GetAllSenses(entry):
+                    gloss = project.Senses.GetGloss(sense)
+                    if gloss:
+                        senses.append(str(gloss))
+            except Exception as exc:  # noqa: BLE001
+                _log(f"no senses readable for {headword!r}: {exc}")
+
+            try:
+                entry_hvo = int(entry.Hvo)
+            except Exception:  # noqa: BLE001
+                entry_hvo = 0
+
+            rows.append(
+                {
+                    "headword": str(headword),
+                    "entry_hvo": entry_hvo,
+                    "senses": senses,
+                    "msa_hvos": msa_hvos,
+                }
+            )
+
+        return rows
 
     def reload_grammar(self) -> None:
         """Discard and rebuild the grammar now, as reset-then-update.
@@ -605,6 +785,31 @@ def _summarize_plain(result: Any) -> dict[str, Any]:
     return {"parsed": int(count) > 0, "analysis_count": int(count)}
 
 
+class _SpecView:
+    """A `MorphSpec` as it arrives over the channel: a plain dict.
+
+    `resolver.resolve_spec` reads `headword` / `sense` / `msa_hvo` /
+    `position` by attribute, and the server-side model supplies them that
+    way. Rather than import the pydantic model into the worker -- which
+    would drag the whole `server.models` import graph into a process whose
+    job is to hold a grammar -- this gives the dict the same four
+    attributes. The resolver stays indifferent to which side called it,
+    which is what lets one implementation serve both.
+    """
+
+    __slots__ = ("headword", "sense", "msa_hvo", "position")
+
+    def __init__(self, raw: dict[str, Any]) -> None:
+        self.headword = raw.get("headword")
+        self.sense = raw.get("sense")
+        self.msa_hvo = raw.get("msa_hvo")
+        self.position = raw.get("position")
+
+    @property
+    def morph(self) -> Any:
+        return self.headword if self.headword is not None else self.msa_hvo
+
+
 # ---------------------------------------------------------------------------
 # The worker
 # ---------------------------------------------------------------------------
@@ -632,6 +837,20 @@ class ParseWorker:
         self._emit = emit
 
         self._queue = ParseQueue()
+        #: Resolve requests parked by the reader thread for the main loop.
+        #: A list plus a lock rather than a Queue because the main loop takes
+        #: the whole batch at once: resolves are answered at word boundaries,
+        #: and draining them one per boundary would make a four-piece
+        #: decomposition wait four words behind a running batch.
+        self._resolve_pending: list[dict[str, Any]] = []
+        self._resolve_lock = threading.Lock()
+        #: The lexicon index, built ONCE and held for the worker's life
+        #: (FR-020, SC-007). Held here rather than in the backend so that
+        #: "how many times was it built" is answerable in one place.
+        self._index = None
+        #: The run whose word was served last. Only used to notice when the
+        #: worker changes hands, which is what an interleave IS.
+        self._current_run: Optional[str] = None
         #: Per-word channel metadata, keyed by (run_id, index_in_run):
         #: the request id to answer and the trace level asked for. Carried
         #: alongside the queue rather than inside `QueuedWord`, because the
@@ -685,6 +904,20 @@ class ParseWorker:
                 self._cancel_pending.add(run_id)
         elif kind == "ping":
             self._emit({"type": "pong"})
+        elif kind == "resolve":
+            # Queued for the MAIN loop, never answered here. This runs on the
+            # reader thread, and reading the lexicon means touching the LCM
+            # cache -- which the parse loop is also touching. One thread owns
+            # the project; that rule is what keeps this worker's behaviour
+            # explicable.
+            with self._resolve_lock:
+                self._resolve_pending.append(message)
+        elif kind == "assemblies":
+            # A diagnostic, not part of the parse path. It exists so
+            # `HCParser_DoesNotLoadXCore` can read the loaded-assembly list
+            # of the process that did the parsing; asked from the server
+            # process the answer would be about the wrong process.
+            self._emit({"type": "assemblies", "names": loaded_assembly_names()})
         elif kind == "shutdown":
             self._exit_reason = "shutdown"
             self._draining.set()
@@ -771,6 +1004,9 @@ class ParseWorker:
         """
         while True:
             self._drain_cancellations()
+            # Answered at a word boundary, like everything else that is not
+            # a parse. One word of latency, never more.
+            self._drain_resolves()
 
             word = self._queue.dequeue()
 
@@ -795,6 +1031,87 @@ class ParseWorker:
 
         self._drain_cancellations()
         return self._exit_reason
+
+    def _drain_resolves(self) -> None:
+        """Answer every parked resolve request. Runs on the main loop only.
+
+        THE ENGINE GATE RUNS FIRST HERE TOO. Resolving touches the lexicon,
+        not the parser area, so FR-015 does not strictly reach it -- but a
+        project this tool will refuse to parse should not be quietly
+        surveyed either, and running the gate uniformly is one fewer place
+        for it to be forgotten. It also means an `XAmple` project refuses
+        having done no lexicon work at all.
+
+        A resolve answers with the RESOLUTIONS, not with a verdict. Which
+        outcome refuses and what the refusal says is the server's business
+        (`handlers/parse.py`); this end reports what it found, including the
+        candidates it rejected, because those are what make a refusal
+        actionable rather than merely final.
+        """
+        with self._resolve_lock:
+            pending, self._resolve_pending = self._resolve_pending, []
+        if not pending:
+            return
+
+        from .resolver import LexiconIndex, resolve_spec
+
+        for message in pending:
+            request_id = message.get("request_id")
+            try:
+                self._backend.preflight()
+
+                if self._index is None and message.get("only_if_indexed"):
+                    # The bounded proposal assist asks this way. FR-021 is a
+                    # MAY, and a MAY must never make the caller pay for a
+                    # full lexicon walk it did not ask for: on a large
+                    # project building the index dominates the call, and a
+                    # plain yes/no that silently became a lexicon sweep
+                    # would be a worse tool than one that offered nothing.
+                    self._emit(
+                        {
+                            "type": "resolved",
+                            "request_id": request_id,
+                            "run_id": message.get("run_id"),
+                            "resolutions": [],
+                            "index_ready": False,
+                            "index_entries": 0,
+                        }
+                    )
+                    continue
+
+                if self._index is None:
+                    # Once per worker, which is at least once per run and
+                    # strictly stronger than SC-007 asks for.
+                    self._index = LexiconIndex(self._backend.lexicon_rows())
+                    _log(f"lexicon index built: {len(self._index)} entries")
+
+                resolutions = []
+                for raw in message.get("morphs") or []:
+                    resolution = resolve_spec(_SpecView(raw), self._index)
+                    resolutions.append(
+                        {
+                            "position": _SpecView(raw).position,
+                            "outcome": resolution.outcome,
+                            "msa_hvos": list(resolution.msa_hvos),
+                            "candidates": [
+                                c.to_dict() for c in resolution.candidates
+                            ],
+                            "morph": _SpecView(raw).morph,
+                        }
+                    )
+
+                self._emit(
+                    {
+                        "type": "resolved",
+                        "request_id": request_id,
+                        "run_id": message.get("run_id"),
+                        "resolutions": resolutions,
+                        "index_ready": True,
+                        "index_entries": len(self._index),
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001 -- marshalled below
+                self._report_exception(exc, request_id, message.get("run_id"))
 
     def _drain_cancellations(self) -> None:
         """Report every run cancelled since the last word boundary.
@@ -854,6 +1171,8 @@ class ParseWorker:
         if self._queue.is_cancelled(word.run_id):
             self._report_cancelled(word.run_id)
             return
+
+        self._note_interleave(word)
 
         try:
             self._before_parse(word)
@@ -921,6 +1240,49 @@ class ParseWorker:
         )
 
     # -- outbound helpers -------------------------------------------------
+
+    def _note_interleave(self, word: QueuedWord) -> None:
+        """Announce a change of hands, so a paused batch does not look stalled.
+
+        THE INTERLEAVE IS A QUEUE-JUMP, NOT PREEMPTION (FR-031). Nothing
+        here stops, restarts or rewinds the running batch: a
+        higher-priority word simply wins the next `dequeue()`, which is a
+        word boundary. The batch keeps its position, loses no work, and the
+        grammar is not reloaded -- all three because nothing about the
+        batch is touched at all.
+
+        What WOULD go wrong without this notice is purely a reporting
+        failure, and a bad one: a caller polling their batch during an
+        interleave sees `words_completed` stop advancing with no
+        explanation, concludes the run has hung, and cancels it. So the
+        displaced run is told who has the worker, and told again when it
+        gets it back. That pair is SC-009's "reported batch progress
+        accounts for the interleave" -- without it the criterion has no
+        observable (data-model.md section 1).
+
+        Only emitted when the run actually CHANGES. A batch running
+        uninterrupted emits nothing, which keeps the channel quiet in the
+        common case.
+        """
+        previous = self._current_run
+        current = word.run_id
+        if previous == current:
+            return
+        self._current_run = current
+
+        # The run that just lost the worker -- but only if it still has
+        # work pending. A run whose last word simply finished has not been
+        # interleaved with; it is done.
+        if previous is not None and self._queue.pending_count(previous):
+            self._emit(
+                {"type": "interleaved", "run_id": previous, "by": current}
+            )
+
+        # The run that just got the worker is, by definition, waiting on
+        # nobody. Clearing is as important as setting: a stale
+        # `interleaved_by` would tell a caller their finished run is still
+        # queued behind someone.
+        self._emit({"type": "interleaved", "run_id": current, "by": None})
 
     def _report_cancelled(self, run_id: str) -> None:
         """Announce a cancelled run once, carrying what survived it."""

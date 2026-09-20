@@ -76,10 +76,19 @@ TERMINAL_STAGES: frozenset[RunStage] = frozenset(
 
 #: The transition table from data-model.md section 2.
 #:
-#: Three properties worth stating because each is a decision:
+#: Four properties worth stating because each is a decision:
 #:   * `starting -> cancelled` is reachable. A run can be cancelled before
 #:     the worker ever picks it up, and that must not require inventing a
 #:     pass through `loading_grammar`.
+#:   * `starting -> parsing` is reachable, and this is the WARM PATH. The
+#:     data-model diagram drew only the cold one, so the first live run of
+#:     scenario 1 found a second call re-entering `loading_grammar` against
+#:     a grammar that was already held -- announcing a multi-second load
+#:     that never happened. That is not a cosmetic slip: the stage exists
+#:     precisely because it is the expensive step (FR-027), and the
+#:     quickstart requires a second call not to re-enter it. A run that
+#:     reuses a held grammar therefore goes straight to `parsing`, and the
+#:     edge has to exist for it to say so.
 #:   * Every non-terminal stage can reach `failed`. A death is possible
 #:     anywhere; pretending otherwise would force a real failure to be
 #:     reported as something it was not.
@@ -88,7 +97,15 @@ TERMINAL_STAGES: frozenset[RunStage] = frozenset(
 #:     under future edits to the runner rather than depending on them.
 ALLOWED_TRANSITIONS: dict[RunStage, frozenset[RunStage]] = {
     RunStage.STARTING: frozenset(
-        {RunStage.LOADING_GRAMMAR, RunStage.FAILED, RunStage.CANCELLED}
+        {
+            RunStage.LOADING_GRAMMAR,
+            # The warm path -- see above. NOT a shortcut around the load:
+            # the worker reports `loading_grammar` whenever one happens, so
+            # taking this edge is the worker saying none did.
+            RunStage.PARSING,
+            RunStage.FAILED,
+            RunStage.CANCELLED,
+        }
     ),
     RunStage.LOADING_GRAMMAR: frozenset(
         {RunStage.PARSING, RunStage.FAILED, RunStage.CANCELLED}

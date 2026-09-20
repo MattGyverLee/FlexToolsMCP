@@ -9,7 +9,7 @@ and IDE autocomplete support.
 """
 
 from typing import Optional, Literal, Any, List
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .constants import API_MODES, API_MODES_DEFAULT, normalize_api_mode
 
 # Ensure API mode constants match Literal types
@@ -615,3 +615,167 @@ class GrammarHealthFinding(BaseModel):
     measured: str
     evidence_basis: Optional[str] = None
     objects: List[FoundObject] = Field(default_factory=list)
+
+
+# ============================================================
+# Parse tools (parser-check CP2b)
+# ============================================================
+
+class MorphSpec(BaseModel):
+    """One piece of a caller's proposed decomposition (data-model.md section 4).
+
+    Declared HERE rather than in `server/parse/resolver.py` because this is
+    the shape a *caller* writes: it arrives over the tool boundary inside
+    `TryWordInput.morphs` and has to be validated before any resolver is
+    reached. The resolver imports it from this module and turns it into MSA
+    identifiers; that direction keeps `models.py` free of any dependency on
+    the parse package, which is the one import edge that would drag run
+    machinery into every tool's schema generation.
+
+    Closed model (`extra="forbid"`) for the same reason the grammar-health
+    detail models are: a typo'd field in a decomposition must fail loudly.
+    Silently dropping `msa_hov=123` would leave the piece looking like a bare
+    headword and resolve it to something the caller did not ask for -- exactly
+    the silent narrowing FR-019 exists to prevent.
+
+    THERE IS DELIBERATELY NO FREE-TEXT `form` FIELD. A bare surface string is
+    a search, and this feature ships no segmenter; accepting one would promise
+    a segmentation the tool cannot perform (data-model.md section 4).
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    headword: Optional[str] = Field(
+        default=None,
+        description="Entry headword for this piece, as it appears in the lexicon. "
+                    "Exactly one of headword / msa_hvo is required."
+    )
+    sense: Optional[Any] = Field(
+        default=None,
+        description="Optional sense, as a gloss string or a 1-based sense number. "
+                    "Disambiguates homographs; ignored when msa_hvo is given."
+    )
+    msa_hvo: Optional[int] = Field(
+        default=None,
+        description="The identifier form, for a caller that already resolved this "
+                    "piece. Exactly one of headword / msa_hvo is required."
+    )
+    position: Optional[int] = Field(
+        default=None,
+        description="0-based index of this piece in the decomposition. Optional on "
+                    "input -- filled from list order when omitted -- and always "
+                    "present downstream, because it is echoed in the refusal."
+    )
+
+    @model_validator(mode="after")
+    def _exactly_one_identifier(self) -> "MorphSpec":
+        """Exactly one of `headword` / `msa_hvo`, never both and never neither.
+
+        Both is not a harmless redundancy: the two can disagree, and there is
+        no defensible rule for which one wins. Neither leaves nothing to
+        resolve, which reaches the resolver as an empty selection -- the one
+        input the underlying component reads as "admit nothing" rather than
+        "no restriction" (contracts/tools.md, "Never widen").
+        """
+        has_headword = self.headword is not None and str(self.headword).strip() != ""
+        has_hvo = self.msa_hvo is not None
+        if has_headword and has_hvo:
+            raise ValueError(
+                "A morph gives either a headword or an msa_hvo, not both -- the "
+                "two can disagree and there is no rule for which wins. Drop one."
+            )
+        if not has_headword and not has_hvo:
+            raise ValueError(
+                "Each morph needs a headword or an msa_hvo. There is no free-text "
+                "form field: a bare surface string is a search, and this tool "
+                "ships no segmenter."
+            )
+        return self
+
+
+class TryWordInput(BaseModel):
+    """Parse one word at one of three levels (parser-check CP2b, FR-012).
+
+    Read-only. The three levels are exposed as three because they answer
+    different questions at different costs, and each reaches its own
+    underlying operation (contracts/tools.md, "Levels"):
+
+        restricted -> TraceWordXml(word, analyses)   fastest; needs `morphs`
+        plain      -> ParseWord(word)                a cheap yes/no
+        explain    -> TraceWordXml(word, None)       slowest; no hypothesis
+
+    `morphs` ON A NON-RESTRICTED LEVEL IS A USAGE ERROR. Accepting and
+    ignoring it would silently discard the caller's hypothesis and hand back
+    an unrestricted answer that looks like a restricted one -- the caller
+    would read a full-search result as confirmation of their decomposition.
+    Refusing costs one round trip and names the level they wanted.
+
+    `project_name` is optional here and falls back to the session, matching
+    every other project-touching tool (`GrammarHealthInput`, `RunModuleInput`).
+    The contract calls it required in the sense that the call cannot proceed
+    without one: the handler refuses with `project_name_required` when neither
+    the argument nor the session supplies it.
+    """
+    word: str = Field(
+        description="The surface form to parse. One wordform, not a phrase."
+    )
+    level: Literal["restricted", "plain", "explain"] = Field(
+        description="restricted: trace only the decomposition in `morphs` (fastest; "
+                    "use when you have a hypothesis). plain: yes/no, no reason "
+                    "(cheapest). explain: full trace with no hypothesis (slowest, "
+                    "and the one under a budget cap -- use it only when you have no "
+                    "decomposition to propose)."
+    )
+    morphs: Optional[List[MorphSpec]] = Field(
+        default=None,
+        description="The proposed decomposition, in order. REQUIRED and non-empty "
+                    "for level='restricted'; a usage error on any other level."
+    )
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project whose worker parses this word. "
+                    "Uses the session value if set by start()."
+    )
+
+    @model_validator(mode="after")
+    def _morphs_match_level(self) -> "TryWordInput":
+        """Tie `morphs` to `level`, in both directions, and fill `position`.
+
+        The empty list is refused for `restricted` rather than read as "no
+        restriction". `TraceWordXml` reads an empty selection as "admit
+        nothing" -- the opposite -- and the setting outlives the call, so a
+        widening here would not even stay inside this request
+        (contracts/tools.md, "Never widen"; spec.md Delta 2).
+        """
+        if self.level == "restricted":
+            if not self.morphs:
+                raise ValueError(
+                    "level='restricted' traces a decomposition, so `morphs` is "
+                    "required and must be non-empty. An empty selection is not "
+                    "'no restriction' -- the parser reads it as 'admit nothing'. "
+                    "Use level='explain' to trace without a hypothesis."
+                )
+            for index, morph in enumerate(self.morphs):
+                if morph.position is None:
+                    morph.position = index
+        elif self.morphs is not None:
+            raise ValueError(
+                "`morphs` is only meaningful at level='restricted'; you passed "
+                "level=" + repr(self.level) + ". Accepting it here would discard "
+                "your decomposition and return an unrestricted answer that looks "
+                "like a restricted one. Use level='restricted' to trace it, or "
+                "drop `morphs`."
+            )
+        return self
+
+
+class ParseStatusInput(BaseModel):
+    """Ask after a parse run by its handle (parser-check CP2b, FR-033).
+
+    Read-only, and one field by design. Asking about a run that has already
+    failed or been cancelled is a SUCCESSFUL query, not a failed request --
+    the only refusal this tool issues is `parse_run_not_found`, for a handle
+    that corresponds to no run at all (contracts/tools.md).
+    """
+    run_id: str = Field(
+        description="The handle returned when a parse outlived the grace window."
+    )

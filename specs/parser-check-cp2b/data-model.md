@@ -58,13 +58,28 @@ starting | loading_grammar | parsing | filing | completed | failed | cancelled
 
 ```
 starting -> loading_grammar -> parsing -> completed
-                 |                |
-                 +-> failed       +-> failed
-                 |                +-> cancelled
-                 +-> cancelled
+    |            |                |
+    |            +-> failed       +-> failed
+    |            |                +-> cancelled
+    |            +-> cancelled
+    |
+    +-------------------------> parsing        (grammar already held)
+    +-> failed
+    +-> cancelled
 ```
 
 `starting -> cancelled` is reachable (cancel before the worker picks it up).
+
+**`starting -> parsing` is the warm path**, and it is the edge this diagram
+originally omitted. A run whose project already has its grammar held pays for no
+load, so it must not report one: the stage exists precisely because it is the
+expensive step, and announcing a multi-second load that did not happen is a false
+report, not a harmless extra. Quickstart scenario 1 requires a second call not to
+re-enter `loading_grammar`, and the first live run of it caught the runner
+announcing the stage unconditionally. Only the **worker** knows whether a load is
+about to happen -- it is what holds the grammar -- so the worker emits
+`loading_grammar` when one is, and its absence is what takes this edge.
+
 Nothing leaves a terminal stage. A cancel or a second cancel against a terminal run
 is `parse_job_cancelled`, **not** a stage change (FR-036).
 

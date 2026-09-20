@@ -441,3 +441,75 @@ async def test_stub_worker_opens_no_project_and_constructs_no_parser(client):
     """
     result = await client.parse_word(request_id="q", run_id="R", wordform="uji")
     assert result["parse"]["stub"] is True
+
+
+# ---------------------------------------------------------------------------
+# (4) Server shutdown reaps the worker
+# ---------------------------------------------------------------------------
+#
+# A fourth way the worker is supposed to go away, and the one that was
+# missing: the server process exiting. `handlers/parse.aclose_runner()`
+# existed and nothing called it, so a worker holding a loaded grammar --
+# and the project's `.fwdata` lock -- would have outlived the server that
+# started it, until its own 600-second idle timeout. A worker wedged inside
+# a grammar load never reaches that timeout at all.
+#
+# That is issue #57's failure mode with a far longer window than the
+# one-shot children that preceded CP2b, which is exactly why the three
+# lifetime tests above exist. This is the fourth.
+
+
+async def test_aclose_runner_reaps_the_pool_and_is_idempotent():
+    """It closes what exists, and builds nothing when there is nothing."""
+    from flextoolsmcp.server.handlers import parse as parse_handler
+    from flextoolsmcp.server.parse.runner import ParseRunner
+
+    class _Pool:
+        def __init__(self):
+            self.closed = 0
+
+        async def aclose(self):
+            self.closed += 1
+
+    pool = _Pool()
+    parse_handler.set_runner(ParseRunner(pool=pool))
+    try:
+        await parse_handler.aclose_runner()
+        assert pool.closed == 1, "the pool was not reaped"
+
+        # Second call: nothing left to reap, and it must NOT build a runner
+        # just to close it -- a server that never parsed must not spawn a
+        # worker on its way out.
+        await parse_handler.aclose_runner()
+        assert pool.closed == 1
+        assert parse_handler._runner is None
+    finally:
+        parse_handler.set_runner(None)
+
+
+def test_the_server_shutdown_path_actually_calls_it():
+    """Structural, because the behavioural version cannot reach here.
+
+    `aclose_runner` being correct is worth nothing if nothing calls it --
+    which was the state this test was written to fix. Read off `main()`'s
+    source: a reap that is only *available* at shutdown is a reap that does
+    not happen.
+    """
+    import ast
+    import inspect
+
+    import flextoolsmcp.server as server_module
+
+    source = inspect.getsource(server_module.main)
+    tree = ast.parse(source.lstrip())
+
+    calls = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    assert "aclose_runner" in calls, (
+        "the server's shutdown path does not reap the parse worker; a "
+        "long-lived worker holding a .fwdata lock would outlive the server "
+        "(issue #57)"
+    )

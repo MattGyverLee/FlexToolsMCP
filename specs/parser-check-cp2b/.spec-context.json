@@ -4,7 +4,7 @@
   "branch": "feat/parser-check-cp1 (maintainer decision pending: feat/parser-check-cp2)",
   "selectedAt": "2026-09-19T23:37:09.848Z",
   "currentStep": "implement",
-  "status": "implementing",
+  "status": "completed",
   "telemetryInstanceId": "d315e28b-ad06-4299-bdea-c3ebbcd2313b",
   "history": [
     {
@@ -294,6 +294,325 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-20T02:49:06.307Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T02:55:36.079Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:00:09.323Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:00:09.578Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:00:09.831Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:04:51.804Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:12:25.336Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:20:09.400Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:23:44.931Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:36:08.116Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:36:08.367Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:36:08.631Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T038",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:36:08.888Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T039",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:42:35.254Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:42:35.506Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:46:45.854Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T043",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:46:46.128Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T044",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:46:46.390Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:50:37.412Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T045",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:50:37.690Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T046",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:50:37.975Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T047",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:50:38.240Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T048",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:58:15.061Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T049",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:58:28.367Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T050",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:58:28.628Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T051",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:58:28.884Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T052",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T03:58:29.138Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:07:09.971Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:11:39.072Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:11:39.329Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:11:39.580Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:11:39.832Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:11:40.082Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:17:54.507Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:17:54.754Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:17:54.993Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T064",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:17:55.235Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T065",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:17:55.481Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T067",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:25:00.410Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T068",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T04:25:00.651Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-20T04:25:00.958Z"
     }
   ],
   "context": "Continuation of specs/parser-check-cp2 (CP2a, complete 31/31). This feature covers the two never-planned parts of CP2: CP2a-bridge (FR-011, this repo's dependency floor and bundled index) and CP2b (US2/US3/US4, FR-012..FR-040 -- flextools_try_word, flextools_parse_status, the morph resolver and the run machinery). Authoritative requirement text stays in specs/parser-check-cp2/spec.md; this feature's spec.md is a scoping document.",
@@ -363,6 +682,26 @@
       "decision": "T059/T060 done early, out of Phase 6 order",
       "why": "the CP1 boundary test went red the moment T026 landed (exactly as research.md R-06 predicted); leaving the suite red through Phases 3-5 would mask new failures",
       "rejected": "deferring to Phase 6 as scheduled"
+    },
+    {
+      "decision": "The morph resolver holds only PURE decision logic in server/parse/resolver.py; the lexicon READ happens in the worker process",
+      "why": "The CP1 boundary forbids the MCP server process from ever opening a project, and resolving headwords needs the lexicon. A resolver that read LCM server-side could not exist however it were written. Splitting it this way keeps all three outcomes unit-testable without FieldWorks",
+      "rejected": "Putting the lexicon read in resolver.py as parse/__init__.py originally implied -- impossible under the boundary; and shipping the whole index over the channel -- unbounded on a large project"
+    },
+    {
+      "decision": "HCParser_DoesNotLoadXCore asserts the parse-path DELTA, not the absolute absence the parent specs word it as",
+      "why": "Measured live: opening a FieldWorks project loads System.Windows.Forms and FwUtils before any parser exists, so the absolute form is unsatisfiable and the obvious way to make it pass is to delete it. SPEC 12.1 says the guarantee is about a call path, not a class, and the delta form is strictly stronger -- ParserCore must appear IN the delta",
+      "rejected": "Asserting the absolute and skipping/deleting it when red, which would retire the guarantee that backs READ_ONLY_SAFE"
+    },
+    {
+      "decision": "Added starting -> parsing to the stage transition table as the warm path",
+      "why": "The runner announced loading_grammar unconditionally, so a run reusing a held grammar reported a multi-second load that never happened -- a false report of the one stage FR-027 makes distinct because it is the expensive step. The worker is the only party that knows, so it now owns the stage",
+      "rejected": "Leaving the runner to announce it, or suppressing loading_grammar entirely -- which would pass quickstart scenario 1 and destroy the reason the stage exists"
+    },
+    {
+      "decision": "The proposal assist (FR-021, a MAY) fires only for the one-piece case and only from an already-warm lexicon index",
+      "why": "This tool ships no segmenter, so the only decomposition it can honestly offer is the word itself being a headword; and only_if_indexed keeps a plain yes/no from silently becoming a full lexicon walk on a large project",
+      "rejected": "Proposing multi-piece decompositions (would require segmentation this tool cannot do), and building the index on demand (would make the cheapest level pay the most expensive cost)"
     }
   ],
   "expectations": [
@@ -392,11 +731,38 @@
     {
       "note": "flexicon HeadlessLcmUI.SynchronizeInvoke returns None and liblcm dereferences it unguarded in SendPropChangedNotifications; a loaded HC parser is the change-watcher its issue-285 contingency warned about, so any headless WRITE while a grammar is held crashes. FlexToolsMCP is unaffected (worker opens read-only) but this should be filed upstream on flexicon.",
       "step": "implement"
+    },
+    {
+      "note": "FR-041 contains a real internal conflict: its first sentence forbids modifying parser_probe.py (T064 evidences this as 0 lines changed) while its last sentence requires that file to state what the flexicon check carries that it lacks. Every relevant definition lives in that one file, so there is nowhere else to put the note. Followed the explicit 0-lines instruction and recorded the gap with a recommended resolution; this needs a DECISION, not more evidence",
+      "step": "implement"
+    },
+    {
+      "note": "resolved_to ambiguous and no_msa are not live-exercisable: neither installed project carries a homograph or an MSA-less entry (Indonesian 41, Malay 281, both zero). Covered exhaustively against a constructed lexicon; a test asserts the measurement so the gap fails loudly if the data changes",
+      "step": "implement"
+    },
+    {
+      "note": "The pattern audit found three keyword-binding siblings on the WRITE path (execution.py:3946, execution.py:4988, worked_examples.py:237) against a divergent double at execution.py:338. Left unfixed because changing generated-module text requires the full crew cycle and live-LCM verification, which does not belong inside a read-only checkpoint",
+      "step": "implement"
+    },
+    {
+      "note": "SPEC 16 and CP2-SPEC word HCParser_DoesNotLoadXCore as an absolute that is not satisfiable; the shipped test asserts the delta instead. Those parent documents should be restated in delta terms -- flagged rather than edited, since they are parent-checkpoint documents",
+      "step": "implement"
+    },
+    {
+      "note": "aclose_runner() existed with no caller -- the server shutdown path never reaped the parse worker, leaving a .fwdata lock held until the workers own 600s idle timeout (issue #57, longer window than pre-CP2b one-shot children). Found while preparing the QC brief, fixed in server.py with two tests. QC read the file post-fix and recorded it as already wired",
+      "step": "implement"
+    },
+    {
+      "note": "QC deferred follow-up: resolver.refusal_detail only accepts a Resolution with a duck-typed .spec, so handlers/parse.py (_Spec) and worker_main.py (_SpecView) have independently built the same four-attribute adapter; _refusal_from_row also patches detail[candidates] after the call. A data-first entry point would remove both. Deferred to the next touch of the file on the reviewers recommendation",
+      "step": "implement"
     }
   ],
   "step_summaries": {
     "plan": "Phase 0 research (8 findings) and Phase 1 design complete. Artifacts: spec.md (scoping, 5 deltas from CP2a's execution), research.md, data-model.md, contracts/tools.md, contracts/bridge.md, quickstart.md (9 scenarios), plan.md (9 phases A-I, per-requirement test coverage table). No NEEDS CLARIFICATION remains; three open items are escalations, not research questions. Registered after_plan gate (lex-qc) returned FIX ISSUES with three BLOCKING coverage-table defects, all real and all fixed: test_flextools_health.py cited but absent from Project Structure (now scheduled as AMENDED); SC-004 had no discharge row (now its own row, as a measured rate not a boolean); SC-012 was mislabelled onto FR-015's engine-gate row and SC-017 appeared only as a code comment (both now have their own rows). The gate PASSED the two hard checks (pattern-audit obligation carried forward; E-D live-LCM gating real, stops with needs_human) and independently verified all four factual claims the plan makes about source.",
-    "tasks": "tasks.md generated: 68 tasks, T001-T068 contiguous, every line in the required checklist format with a file path. Phase 1 Setup (T001-T003), Phase 2 Foundational (T004-T026: the bridge, R-08's three flexicon accessor tests, and the run machinery), Phase 3 US2/P2 (T027-T034, the MVP), Phase 4 US3/P3 (T035-T043), Phase 5 US4/P4 (T044-T053), Phase 6 Polish (T054-T068). The run machinery sits in Foundational rather than inside US4 because the parent spec states US2 and US3 run on it and FR-026 forbids a second execution path -- so US3 and US4 are independently TESTABLE but not independently DELIVERABLE, and tasks.md says so rather than implying otherwise. A requirement coverage cross-check table mirrors plan.md's with task IDs. No before_tasks or after_tasks hook is registered in .specify/extensions.yml."
+    "tasks": "tasks.md generated: 68 tasks, T001-T068 contiguous, every line in the required checklist format with a file path. Phase 1 Setup (T001-T003), Phase 2 Foundational (T004-T026: the bridge, R-08's three flexicon accessor tests, and the run machinery), Phase 3 US2/P2 (T027-T034, the MVP), Phase 4 US3/P3 (T035-T043), Phase 5 US4/P4 (T044-T053), Phase 6 Polish (T054-T068). The run machinery sits in Foundational rather than inside US4 because the parent spec states US2 and US3 run on it and FR-026 forbids a second execution path -- so US3 and US4 are independently TESTABLE but not independently DELIVERABLE, and tasks.md says so rather than implying otherwise. A requirement coverage cross-check table mirrors plan.md's with task IDs. No before_tasks or after_tasks hook is registered in .specify/extensions.yml.",
+    "implement": {
+      "summary": "CP2b complete: flextools_try_word and flextools_parse_status ship read-only over a one-mechanism parse runner, with the morph resolver, the held grammar, the interleave and cooperative cancellation -- all seven quickstart scenarios run live and green, full suite 2032 passed / 0 failed"
+    }
   },
   "coverage": {
     "FR-001": {
@@ -488,6 +854,10 @@
       "tasks": [
         "T028",
         "T031"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_the_level_reaches_the_worker_untouched",
+        "tests/test_try_word_handler.py::test_each_level_binds_to_its_own_facade_member_positionally"
       ]
     },
     "FR-013": {
@@ -495,6 +865,10 @@
       "tasks": [
         "T029",
         "T031"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_a_failed_plain_parse_reports_only_that_it_failed",
+        "tests/test_parse_live.py::test_scenario_3_a_failing_word_at_plain_offers_no_reason"
       ]
     },
     "FR-014": {
@@ -502,6 +876,9 @@
       "tasks": [
         "T029",
         "T031"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_restricted_is_offered_before_explain"
       ]
     },
     "FR-015": {
@@ -510,18 +887,28 @@
         "T026",
         "T031",
         "T033"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_an_xample_project_is_refused_with_zero_parser_area_calls",
+        "tests/test_parse_live.py::test_scenario_2_no_parser_is_constructed_for_an_xample_project"
       ]
     },
     "FR-016": {
       "title": "A missing recording agent MUST NOT mark reading unavailable, since reading neither records nor needs one.",
       "tasks": [
         "T031"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_a_missing_recording_agent_does_not_block_reading"
       ]
     },
     "FR-017": {
       "title": "The new tools MUST be annotated read-only-safe, and that annotation MUST be backed by a standing test asserting that a real parse loads no user-interface framework code into the pr",
       "tasks": [
         "T032"
+      ],
+      "tests": [
+        "tests/test_parser_no_xcore.py::test_HCParser_DoesNotLoadXCore"
       ]
     },
     "FR-018": {
@@ -529,6 +916,9 @@
       "tasks": [
         "T035",
         "T039"
+      ],
+      "tests": [
+        "tests/test_parse_resolver.py::test_a_headword_resolves"
       ]
     },
     "FR-019": {
@@ -537,6 +927,9 @@
         "T036",
         "T038",
         "T039"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_an_unresolvable_piece_refuses_with_zero_parses"
       ]
     },
     "FR-020": {
@@ -544,6 +937,9 @@
       "tasks": [
         "T035",
         "T039"
+      ],
+      "tests": [
+        "tests/test_parse_resolver.py::test_the_index_is_built_once_however_many_pieces_are_resolved"
       ]
     },
     "FR-021": {
@@ -551,6 +947,9 @@
       "tasks": [
         "T040",
         "T041"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_a_proposal_is_labelled_proposed_and_unverified"
       ]
     },
     "FR-022": {
@@ -558,6 +957,9 @@
       "tasks": [
         "T040",
         "T041"
+      ],
+      "tests": [
+        "tests/test_try_word_handler.py::test_the_look_it_up_rung_is_a_run_module_snippet_not_a_tool"
       ]
     },
     "FR-023": {
@@ -565,6 +967,9 @@
       "tasks": [
         "T041",
         "T043"
+      ],
+      "tests": [
+        "tests/test_parse_proposal.py::test_a_decomposition_disagreeing_with_everything_is_still_traced"
       ]
     },
     "FR-024": {
@@ -579,6 +984,9 @@
       "tasks": [
         "T041",
         "T043"
+      ],
+      "tests": [
+        "tests/test_parse_proposal.py::test_agreement_produces_no_commentary"
       ]
     },
     "FR-026": {
@@ -595,7 +1003,8 @@
         "T016"
       ],
       "tests": [
-        "tests/test_parse_stages.py"
+        "tests/test_parse_stages.py::test_the_warm_path_edge_exists",
+        "tests/test_parse_live.py::test_scenario_5_loading_grammar_is_distinguished_from_parsing"
       ]
     },
     "FR-028": {
@@ -603,6 +1012,9 @@
       "tasks": [
         "T023",
         "T024"
+      ],
+      "tests": [
+        "tests/test_parse_live.py::test_scenario_5_a_run_outliving_the_window_keeps_going"
       ]
     },
     "FR-029": {
@@ -613,7 +1025,7 @@
         "T053"
       ],
       "tests": [
-        "tests/test_parse_record.py"
+        "tests/test_parse_live.py::test_scenario_6_a_killed_worker_loses_no_finished_results"
       ]
     },
     "FR-030": {
@@ -632,6 +1044,9 @@
         "T049",
         "T052",
         "T053"
+      ],
+      "tests": [
+        "tests/test_parse_priority_queue.py::test_an_urgent_word_interleaves_without_the_batch_losing_anything"
       ]
     },
     "FR-032": {
@@ -639,6 +1054,9 @@
       "tasks": [
         "T050",
         "T051"
+      ],
+      "tests": [
+        "tests/test_parse_live.py::test_scenario_6_cancel_stops_at_a_boundary_and_keeps_what_finished"
       ]
     },
     "FR-033": {
@@ -646,12 +1064,18 @@
       "tasks": [
         "T046",
         "T051"
+      ],
+      "tests": [
+        "tests/test_parse_status_handler.py::test_a_failed_run_reports_ok_and_carries_its_failure"
       ]
     },
     "FR-034": {
       "title": "A failed run MUST carry guidance pointing at the diagnostic instruments, since memory exhaustion is the case where a diagnosis beats a retry.",
       "tasks": [
         "T048"
+      ],
+      "tests": [
+        "tests/test_parse_status_handler.py::test_a_failed_runs_guidance_names_instruments_never_a_retry"
       ]
     },
     "FR-035": {
@@ -659,6 +1083,9 @@
       "tasks": [
         "T047",
         "T051"
+      ],
+      "tests": [
+        "tests/test_parse_status_handler.py::test_an_unknown_handle_refuses_naming_the_handles_that_exist"
       ]
     },
     "FR-036": {
@@ -666,6 +1093,9 @@
       "tasks": [
         "T046",
         "T051"
+      ],
+      "tests": [
+        "tests/test_parse_status_handler.py::test_a_second_cancel_raises_parse_job_cancelled"
       ]
     },
     "FR-037": {
@@ -676,6 +1106,9 @@
         "T054",
         "T055",
         "T056"
+      ],
+      "tests": [
+        "tests/test_response_contract.py::TestParserCheckCP2bCodes"
       ]
     },
     "FR-038": {
@@ -684,12 +1117,18 @@
         "T040",
         "T057",
         "T058"
+      ],
+      "tests": [
+        "tests/test_parser_health_block.py::TestNextStepRowsThatNameTryWord"
       ]
     },
     "FR-039": {
       "title": "Test groups deferred by CP1 MUST be brought into scope: the no-user-interface-code guarantee, the no-oracle case, the conditional-proposal case, and the script-library facade group",
       "tasks": [
         "T061"
+      ],
+      "tests": [
+        "tests/test_spec16_deferred_groups.py"
       ]
     },
     "FR-040": {
@@ -709,6 +1148,9 @@
       "title": "At most one loaded grammar MUST be held at a time, for the project in use, and it MUST be released when another project's grammar is needed",
       "tasks": [
         "T065"
+      ],
+      "tests": [
+        "tests/test_parse_live.py::test_fr042_at_most_one_grammar_is_held_at_a_time"
       ]
     },
     "FR-043": {
@@ -717,7 +1159,10 @@
         "T065",
         "T066"
       ],
-      "note": "HALF dischargeable here. T065 covers the current branch; the live STALE branch is T066 / escalation E-D and needs human authorisation. The evidence artifact must not show FR-043 green if T066 does not run."
+      "note": "HALF dischargeable here. T065 covers the current branch; the live STALE branch is T066 / escalation E-D and needs human authorisation. The evidence artifact must not show FR-043 green if T066 does not run.",
+      "tests": [
+        "tests/test_parse_live.py::test_fr043_currency_is_confirmed_before_every_reuse"
+      ]
     },
     "SC-003": {
       "title": "success criterion SC-003",
@@ -845,7 +1290,7 @@
   },
   "size": "oversized",
   "classification": "campaign -- full crew cycle, not the CLAUDE.md fast path",
-  "currentTask": "T066",
+  "currentTask": "T068",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1058,6 +1503,310 @@
       "files": [
         "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
       ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Added TryWordInput + MorphSpec (and ParseStatusInput alongside) to server/models.py; morphs on a non-restricted level and an empty restricted selection are both usage errors, not silent ignores",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Created handlers/parse.py with handle_flextools_try_word: one ParseRunner singleton, project resolution, restriction resolved before the worker is asked for anything, grace-window inline result vs bare handle, and worker refusals re-emitted with their detail unchanged (RunFailure now carries error_code/detail)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/runner.py"
+      ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "Plain level reports only that nothing parsed (explains_failure=False, no reason-bearing key) and points at restricted then explain; FR-014 defaults emitted as SPEC 10.1 rungs, and a successful plain parse gets no rungs at all",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Registered flextools_try_word in tool_definitions.py with READ_ONLY_SAFE and routed it in dispatch.py (23 tools)",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py",
+        "src/flextoolsmcp/server/dispatch.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "tests/test_try_word_handler.py (27 tests): three levels reach three calls with positional binding proved by a name-agnostic facade double; plain carries no reason-bearing key; guidance order restricted-then-explain; engine gate asserted as ZERO parser-area calls for XAmple plus a live re-read flip; FR-016 asserted behaviourally and structurally. Also fixed a real gap found writing it -- GetAvailability() unavailable raised a bare RuntimeError and reached callers as runtime_error instead of the contract's parser_core_missing; worker_main now raises ParserUnavailableError carrying that detail with the facade reason in load_error",
+      "files": [
+        "tests/test_try_word_handler.py",
+        "src/flextoolsmcp/server/parse/worker_main.py"
+      ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "tests/test_parser_no_xcore.py, RUN LIVE and green (4 passed) against IndonesianHC-Complete. Added an assemblies probe to the worker protocol so the list comes from the process that parsed. Measured finding: System.Windows.Forms and FwUtils are loaded by opening the project, before any parser exists, so the spec's absolute wording is unsatisfiable; the test asserts the parse-path DELTA instead (SPEC 12.1 call-path form), which also gives a sharper vacuity guard -- ParserCore must appear in the delta. Observed RED before acceptance. Evidence recorded",
+      "files": [
+        "tests/test_parser_no_xcore.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "tests/test_parse_live.py, quickstart scenarios 1-3 RUN LIVE and green (6 passed, 53.57s). Found and fixed a real defect: ParseRunner announced loading_grammar unconditionally, so a warm run reported a grammar load that never happened -- the worker now owns the stage, and starting->parsing was added to the transition table and data-model.md as the warm path, pinned by two stage tests including one that the cold edges survive",
+      "files": [
+        "tests/test_parse_live.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/parse/stages.py",
+        "tests/test_parse_stages.py",
+        "specs/parser-check-cp2b/data-model.md",
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "SC-004 measured as a rate over 24 distinct words against a held grammar: 24/24 answered inline (100%, required >=95%), median 47ms against the 5s window, 0 overflows. Both numbers plus fastest/median/slowest recorded in cp2b-evidence.md and emitted as evidence/sc004-inline-rate.json by the test itself rather than transcribed from a log",
+      "files": [
+        "tests/test_parse_live.py",
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md",
+        "specs/parser-check-cp2b/evidence/sc004-inline-rate.json"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "server/parse/resolver.py: pure decision logic (LexiconIndex, resolve_spec, refusal_detail) importable from both processes; the lexicon read lives in the worker because the server never opens a project. Index built once per worker, counted so SC-007 is asserted not inferred. Accessors verified live first (LexEntry.GetAll/GetHeadword, MSA.GetAll .Hvo, Senses.GetGloss). Corrected parse/__init__.py, which had listed the resolver as server-process without qualification",
+      "files": [
+        "src/flextoolsmcp/server/parse/resolver.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/parse/__init__.py"
+      ]
+    },
+    "T036": {
+      "status": "DONE",
+      "did": "The three outcomes kept distinct end to end: none/ambiguous/no_msa each get their own hint naming a different action; an entry with no MSAs is kept as a row with empty msa_hvos so no_msa cannot decay into none; a sense filter that matches nothing is abandoned rather than narrowing to none",
+      "files": [
+        "src/flextoolsmcp/server/parse/resolver.py"
+      ]
+    },
+    "T037": {
+      "status": "DONE",
+      "did": "ParseMorphUnresolvedDetail + ParseMorphCandidate in response_models.py, extra=forbid with a Literal discriminator, five fields in the pinned order morph/position/resolved_to/candidates/hint; union count raised 22 -> 23",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T038": {
+      "status": "DONE",
+      "did": "Restricted level wired so resolution completes before any parse is enqueued; first failing piece refuses and zero parses run; empty selection is a refusal never a widening; handler fills morph positions so a refusal can always name the failing piece. Added FR-019/SC-005 negative tests over all three outcomes asserting an EMPTY parse-call list",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "tests/test_try_word_handler.py"
+      ]
+    },
+    "T039": {
+      "status": "DONE",
+      "did": "tests/test_parse_resolver.py, 23 tests: all three input forms (headword, headword+sense as gloss or number, identifier); the three outcomes asserted as a SET so a collapse cannot hide; a stale identifier refused rather than passed to the parser; the index built exactly once asserted by count; and the no_msa row kept in the index given its own test",
+      "files": [
+        "tests/test_parse_resolver.py"
+      ]
+    },
+    "T040": {
+      "status": "DONE",
+      "did": "Bounded proposal assist: proposes only the one-piece case (the word IS a headword), labelled 'proposed, unverified' with a 'NOT a parse' caveat, and only from an already-warm index via only_if_indexed so a plain yes/no never becomes a lexicon walk. FR-022/SC-011: the look-it-up rung is a flextools_run_module snippet, since no lexicon-query tool exists; added a sweep asserting every emitted rung names a registered tool",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "tests/test_try_word_handler.py"
+      ]
+    },
+    "T041": {
+      "status": "DONE",
+      "did": "tests/test_parse_proposal.py, 11 tests: SC-006's six zeros asserted as zeros (no substitution, widening, reordering, scoring, demotion, no confidence key at any nesting level, silence on agreement), plus the ranking-by-agreement killer -- a decomposition disagreeing with every recorded analysis is traced exactly as given and not remarked on",
+      "files": [
+        "tests/test_parse_proposal.py"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "Quickstart scenario 4 live and green (4 passed): resolvable decomposition traced as given; unresolvable piece refused with the five fields in pinned order and zero runs started; divergent decomposition traced anyway. Measured finding: NEITHER live project (Indonesian 41 entries, Malay 281) has a homograph or an MSA-less entry, so ambiguous/no_msa are not live-exercisable -- a test now asserts that measurement so the gap fails loudly if the data ever changes",
+      "files": [
+        "tests/test_parse_live.py"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "ParseStatusInput (a single run_id) added to server/models.py alongside the other parse input models",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T042": {
+      "status": "DONE",
+      "did": "Sweep-pattern audit run (Explore, very thorough) for both shapes. Shape 1 (null-vs-empty at a CLR boundary): NO siblings -- exactly one live hit repo-wide, the excluded original; two idiom matches in this checkpoint's own code FIXED (the stub oracle would have hidden the widening FR-019 forbids). Shape 2 (keyword binding vs a divergent double): FOUR siblings found, with the divergence located at execution.py:338 (liblcm-flavour OpenProject lacks undoable/ui). worker_main.py:483 triaged as shape-match-not-defect with reasons; the three execution.py / worked_examples.py sites recorded for follow-up as write-path work out of CP2b scope. Full table in evidence",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T045": {
+      "status": "DONE",
+      "did": "ParseRunNotFoundDetail and ParseJobCancelledDetail added to response_models.py, extra=forbid with Literal discriminators; union count raised 23 -> 25",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T046": {
+      "status": "DONE",
+      "did": "handle_flextools_parse_status: stage, words_completed/total, interleaved_by, result_summary on completed, failure on failed. A terminal failed or cancelled run reports status=ok -- asking about a dead run is a successful query (FR-033)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T047": {
+      "status": "DONE",
+      "did": "parse_run_not_found is the only refusal the tool issues, naming the handle and listing the handles that exist; tool registered READ_ONLY_SAFE in tool_definitions.py and routed in dispatch.py (24 tools)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/tool_definitions.py",
+        "src/flextoolsmcp/server/dispatch.py",
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "T048": {
+      "status": "DONE",
+      "did": "Verified RunFailure.next_step names flextools_health and flextools_grammar_health and never a retry; the status handler emits the same two as structured rungs",
+      "files": [
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T049": {
+      "status": "DONE",
+      "did": "Word-boundary interleave reported: the worker emits an 'interleaved' notice only when the worker changes hands, telling the displaced run who has it and telling it again when it gets it back; the runner records it as interleaved_by and persists it. Queue-jump not preemption -- nothing touches the running batch",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/parse/runner.py"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "Cooperative cancellation completed with FR-036's refusal: ParseRunner.cancel_run now raises RunAlreadyTerminal carrying a parse_job_cancelled detail for a run that has already ended, while an unknown handle stays None. Amended the pre-existing runner test rather than weakening it -- both its original guarantees still hold",
+      "files": [
+        "src/flextoolsmcp/server/parse/runner.py",
+        "tests/test_parse_runner.py"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "tests/test_parse_status_handler.py, 12 tests covering BOTH directions of the asymmetry on the same run: asking after a failed/cancelled run returns status ok with what survived, while a second cancel raises parse_job_cancelled; plus an AST check that the status handler never calls cancel_run, and parse_run_not_found naming the handles that exist",
+      "files": [
+        "tests/test_parse_status_handler.py"
+      ]
+    },
+    "T052": {
+      "status": "DONE",
+      "did": "Interleave assertions driven through a real ParseWorker on the stub backend: urgent word begins at the next word boundary, 0 words repeated, 0 words lost, grammar loaded EXACTLY ONCE across both runs, and interleaved_by both set and cleared -- plus silence for a run with the worker to itself",
+      "files": [
+        "tests/test_parse_priority_queue.py"
+      ]
+    },
+    "T053": {
+      "status": "DONE",
+      "did": "Quickstart scenarios 5 and 6 live and green against Malay Parsing-20230810withHC: grace-window overflow with words_completed advancing across two polls and cancel_requested still False; loading_grammar and parsing distinguished on a cold run asserted on the stage path not a poll race; parse_run_not_found naming the real handle; live interleave with the urgent word finishing while the batch runs and neither reloading the grammar; cooperative cancel with partial results read off DISK and a second cancel refusing; and a killed worker losing no finished result. Sized from measurement -- 4.6s cold load, 53ms/word warm, so 200 words",
+      "files": [
+        "tests/test_parse_live.py"
+      ]
+    },
+    "T054": {
+      "status": "DONE",
+      "did": "Three rows added to docs/TOOL-CONTRACT.md for parse_morph_unresolved (five keys, order stated), parse_run_not_found and parse_job_cancelled; documented count raised 22 -> 25",
+      "files": [
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T055": {
+      "status": "DONE",
+      "did": "CHANGELOG entry under Tool contract covering the three CP2b codes, the two shapes easiest to get backwards, and that the contract stays at tool-responses/1.0",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T056": {
+      "status": "DONE",
+      "did": "test_response_contract.py extended: the three codes join the envelope round-trip sweep, parse_morph_unresolved's FIELD ORDER is pinned, resolved_to asserted as a closed three-member enum, extra=forbid checked per code, and the documented count compared against the union so the hand-maintained number cannot drift",
+      "files": [
+        "tests/test_response_contract.py"
+      ]
+    },
+    "T057": {
+      "status": "DONE",
+      "did": "Both CP1 rows that degraded to tool:null now name flextools_try_word, and the write-unavailable/read-ready row's action text reverted to the contract's own wording. flextools_parse_sandbox stays unnamed -- the same rule that released these two still holds it",
+      "files": [
+        "src/flextoolsmcp/server/handlers/diagnostic_health.py"
+      ]
+    },
+    "T058": {
+      "status": "DONE",
+      "did": "Health tests amended (in tests/test_parser_health_block.py, where the rungs are actually covered -- tasks.md names test_flextools_health.py). CP1's 'every tool value must be null' replaced by a REGISTRY sweep asserting 0 references to tools that do not exist -- strictly stronger, survives every future tool, and shown to detect one by an injected bad rung",
+      "files": [
+        "tests/test_parser_health_block.py"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "tests/test_spec16_deferred_groups.py closes 2 of CP1's 4 deferred SPEC 16 groups (script-library facade; conditional proposal, with the negative half that makes it conditional); the no-UI-code group was closed by T032. The no-oracle case is still not implementable -- CP2b ships no review surface -- and the deferral's PREMISE is asserted by a test that fails the day filing becomes reachable. All four enumerated by name in evidence",
+      "files": [
+        "tests/test_spec16_deferred_groups.py",
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "D5's grammar-lint deferral recorded with its re-probe obligation: the absence is engine-version specific, so CP3 must re-probe rather than inherit CP2's verdict",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "CP2-SPEC.md section 3.1 corrected in place: the table named TryWord/TryWordXml/TraceWord, none of which exists. Replaced with the shipped six-member surface read off ParserOperations.py, plus the three bindings that are load-bearing (positional, None-vs-empty, GetAvailability called not inferred)",
+      "files": [
+        "specs/parser-check/CP2-SPEC.md"
+      ]
+    },
+    "T064": {
+      "status": "DONE",
+      "did": "git diff --stat on parser_probe.py recorded as 0 lines changed. Comparing the two capability checks found FR-041's last sentence only HALF discharged: flexicon's GetAvertability names what our probe carries that it lacks, but parser_probe.py names nothing about flexicon's. Fixing it would require touching the file T064 requires untouched -- a real conflict inside FR-041. Followed the explicit instruction, recorded the gap and a recommended resolution for the crew gate rather than deciding it alone",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T065": {
+      "status": "DONE",
+      "did": "FR-042/FR-043's current half verified live: at most one held grammar with the old worker demonstrably dead after a project switch; currency confirmed before every reuse (three warm calls, none re-entering loading_grammar, with the cold run asserted to prove non-vacuity); explicit reload is Reload() not a bare Update(); and the ordinary parse path asks IsUpToDate() without reloading. FR-043 recorded as HALF discharged -- the stale half is E-D/T066",
+      "files": [
+        "tests/test_parse_live.py"
+      ]
+    },
+    "T067": {
+      "status": "DONE",
+      "did": "Full suite run at repo root WITHOUT deselecting the live tier: python -m pytest -q -> 2032 passed, 0 failed, 0 errors, 8 skipped, 36 subtests, 337.93s. Exact invocation and full counts recorded, plus the note that a headless machine reports 1976 passed with 56 deselected and proves strictly less",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T068": {
+      "status": "DONE",
+      "did": "Evidence finalized: per-scenario table (all 7 run), the ten success criteria with measured numbers, SC-004 with its attempt count, the pattern-audit result, FR-043 shown as HALF discharged with E-D named, T009 recorded as NOT RUN and T066 as run. Four known gaps carried forward explicitly, including one (FR-041's last sentence) flagged as needing a decision rather than more evidence, and three spec corrections listed",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
     }
   },
   "verified": [
@@ -1117,7 +1866,48 @@
       "warnings": [
         "step 6 took 0.018s not a full 0.672s reload -- the reload was incremental, so timing alone does not prove it; the currency transition and call order do"
       ]
+    },
+    {
+      "what": "full test suite including the live requires_flex tier",
+      "command": "python -m pytest -q",
+      "result": "2032 passed, 0 failed, 0 errors, 8 skipped, 36 subtests, 337.93s",
+      "warnings": [
+        "23 DeprecationWarning about ast.Str in flexicon_analyzer.py -- pre-existing, unrelated to the parse work",
+        "8 skips are pre-existing and none is a CP2b test declining to run"
+      ]
+    },
+    {
+      "what": "HCParser_DoesNotLoadXCore against a live worker on IndonesianHC-Complete",
+      "command": "python -m pytest tests/test_parser_no_xcore.py -q",
+      "result": "4 passed; the parse added 5 assemblies, none of them UI; observed RED first by adding SIL.Machine to the forbidden list"
+    },
+    {
+      "what": "quickstart scenarios 1-6 plus FR-042/043 against live FieldWorks projects",
+      "command": "python -m pytest tests/test_parse_live.py -q",
+      "result": "17 passed against IndonesianHC-Complete and Malay Parsing-20230810withHC, read-only"
+    },
+    {
+      "what": "SC-004 inline rate as a measured rate, not a boolean",
+      "command": "python -m pytest tests/test_parse_live.py::test_sc004_inline_rate_over_a_set_of_words -q",
+      "result": "24/24 answered inline = 100% (required >=95%), median 47ms against the 5s window; both numbers written to evidence/sc004-inline-rate.json by the test"
+    },
+    {
+      "what": "full suite re-run after closing the QC gate findings",
+      "command": "python -m pytest -q",
+      "result": "2036 passed, 0 failed, 8 skipped, 344.45s, live tier included",
+      "warnings": [
+        "supersedes the earlier 2032-passed run; four tests added since"
+      ]
+    },
+    {
+      "what": "LEX QC gate (registered after_implement hook)",
+      "command": "Agent subagent_type=lex-qc",
+      "result": "APPROVE, 91/100, no blocking issues; pattern-audit gate PASS with an independent spot-check of execution.py:338; live-LCM gate N/A for a read-only diff, verified by code inspection",
+      "warnings": [
+        "3 non-blocking items closed in-session",
+        "1 non-blocking item deferred on the reviewers own recommendation: give resolver.py a data-first refusal entry point so handlers/parse.py and worker_main.py stop reinventing the same four-attribute adapter"
+      ]
     }
   ],
-  "last_action": "T066/E-D run and green; FR-043 fully discharged; next is T027 (US2)"
+  "last_action": "all 68 tasks done -- full suite 2032 passed, 0 failed, 8 skipped (live tier included); 4 concerns recorded, FR-041's internal conflict needs a decision"
 }

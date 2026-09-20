@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 22 codes below |
+| `error_code` | string | one of the 25 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -118,6 +118,9 @@ authoritative. All detail fields are optional unless noted.
 | `parser_core_missing` | `signal` (required; `absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path` (required string), `detected_version` -- **reported and never compared: there is no version floor**, this is a standing guarantee with a regression test behind it (SPEC 16), `missing_members` (required list), `lcmodel_install_path`, `install_hint` (required string), `load_error` |
 | `parser_agent_missing` | `agent_guid` (required string), `agent_name` (required; always `"HermitCrab"`), `active_engine` (required string), `probe_source` (required; `bootstrap_absent` \| `lookup_failed`), `hint` (required string) |
 | `parser_tool_missing` | `component` (required; `"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (required string), `install_hint` (required string) |
+| `parse_morph_unresolved` | **Exactly five keys, in this order**: `morph`, `position` (0-based index in the decomposition), `resolved_to` (required; `none` \| `ambiguous` \| `no_msa`), `candidates` (required list of `{headword, sense, msa_hvo, entry_hvo}` -- **`msa_hvo: null` IS the `no_msa` signal**), `hint` (required string). The three `resolved_to` values are kept distinct because they call for three different actions: fix the spelling, pick the homograph, or add an analysis to the entry. **No parse runs** for a request that raises this. |
+| `parse_run_not_found` | `run_id` (required string), `available_runs` (required list -- the handles that DO exist, named rather than counted), `hint` (required string). The only refusal `flextools_parse_status` issues. |
+| `parse_job_cancelled` | `run_id` (required string), `words_completed` (required int -- the partial results are readable), `state_at_cancel` (required string), `hint` (required string). Raised when something tries to **act** on a run that has already ended. **Not** raised by `flextools_parse_status`: asking about a terminal run is a successful query. |
 
 ---
 

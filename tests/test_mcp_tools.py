@@ -88,6 +88,11 @@ EXPECTED_TOOL_NAMES = [
     "flextools_prepare_report",
     "flextools_health",
     "flextools_grammar_health",
+    # parser-check CP2b. READ_ONLY_SAFE, and that annotation is backed by
+    # the HCParser_DoesNotLoadXCore standing test rather than by assertion
+    # (tests/test_parser_no_xcore.py, FR-017).
+    "flextools_try_word",
+    "flextools_parse_status",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
@@ -113,6 +118,8 @@ READ_ONLY_TOOLS = [
     "flextools_list_skeletons",
     "flextools_health",
     "flextools_grammar_health",
+    "flextools_try_word",
+    "flextools_parse_status",
 ]
 
 # Tools that should be marked destructiveHint=True

@@ -75,6 +75,7 @@ __all__ = [
     "DEFAULT_GRACE_WINDOW_SECONDS",
     "RunFailure",
     "RunHandle",
+    "RunAlreadyTerminal",
     "ParseRunner",
 ]
 
@@ -120,6 +121,17 @@ class RunFailure:
     stage_at_failure: str
     error_type: Optional[str] = None
     next_step: str = _FAILURE_NEXT_STEP
+    #: Set when the failure was a worker-side REFUSAL rather than a crash --
+    #: `parser_engine_mismatch`, `parser_core_missing`. Carried so the
+    #: handler can re-emit the refusal under its own code instead of
+    #: flattening every death into `runtime_error`, which would lose the one
+    #: thing the caller can act on. `detail` is the worker's payload,
+    #: UNCHANGED: it is already shaped like the matching response model, and
+    #: the field ORDER of `parser_engine_mismatch` is pinned by the parent
+    #: spec, so a round-trip through a rebuilt dict is where it would drift
+    #: (research.md R-03).
+    error_code: Optional[str] = None
+    detail: Optional[dict[str, Any]] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,6 +139,8 @@ class RunFailure:
             "stage_at_failure": self.stage_at_failure,
             "error_type": self.error_type,
             "next_step": self.next_step,
+            "error_code": self.error_code,
+            "detail": self.detail,
         }
 
 
@@ -168,6 +182,40 @@ class RunHandle:
         return is_terminal(self.stage)
 
 
+class RunAlreadyTerminal(Exception):
+    """A cancel arrived for a run that had already ended (FR-036).
+
+    Carries a `parse_job_cancelled`-shaped detail, so a caller re-emits it
+    rather than rebuilding it -- the same discipline the worker channel
+    follows for `parser_engine_mismatch` (research.md R-03).
+
+    NOT raised by `flextools_parse_status`. Asking after a terminal run is a
+    successful query; this is for something trying to ACT on one. The two
+    directions are easy to implement backwards, which is why they are
+    separated here at the source rather than at the tool boundary.
+    """
+
+    def __init__(self, handle: "RunHandle") -> None:
+        state = handle.stage_at_cancel or handle.stage.value
+        super().__init__(
+            f"Run {handle.run_id} has already ended ({handle.stage.value})."
+        )
+        self.detail = {
+            "error_code": "parse_job_cancelled",
+            "run_id": handle.run_id,
+            "words_completed": handle.words_completed,
+            "state_at_cancel": state,
+            "hint": (
+                f"This run ended in {handle.stage.value!r} and cannot be "
+                f"cancelled again. {handle.words_completed} of "
+                f"{handle.words_total} words completed before it stopped, and "
+                f"those results are readable -- they were written as they "
+                f"were produced. Use flextools_parse_status to read them."
+            ),
+        }
+        self.handle = handle
+
+
 class ParseRunner:
     """Owns every run: its stages, its record, and its worker.
 
@@ -196,6 +244,13 @@ class ParseRunner:
     @property
     def grace_window(self) -> float:
         return self._grace_window
+
+    @property
+    def pool(self):
+        """The worker pool. Exposed for the one caller that needs a worker
+        WITHOUT starting a run: the morph resolver, which must reach the
+        lexicon before any parse is enqueued (FR-019)."""
+        return self._pool
 
     def get(self, run_id: str) -> Optional[RunHandle]:
         return self._runs.get(run_id)
@@ -313,8 +368,20 @@ class ParseRunner:
             worker = await self._pool.get(handle.project_name)
             worker.listen_to_run(handle.run_id, lambda m: self._on_run_message(handle, m))
 
-            self._set_stage(handle, RunStage.LOADING_GRAMMAR)
-
+            # THE STAGE IS NOT ANNOUNCED FROM HERE. It used to be: this line
+            # set `loading_grammar` unconditionally, before the worker had
+            # been asked for anything. The worker is the only party that
+            # knows whether a load is actually about to happen -- it holds
+            # the grammar -- and it already emits the stage when one is, so
+            # announcing it here overrode the truth with a guess. The first
+            # live run of quickstart scenario 1 caught it: a second call
+            # against a HELD grammar reported a multi-second grammar load
+            # that never occurred, which is exactly the report FR-027 makes
+            # this stage distinct in order to give honestly.
+            #
+            # So the run stays in `starting` until the worker says
+            # otherwise, and `starting -> parsing` is a real edge for the
+            # warm case (stages.py).
             for index, wordform in enumerate(wordforms):
                 if handle.cancel_requested:
                     break
@@ -329,7 +396,11 @@ class ParseRunner:
                     index_in_run=index,
                 )
 
-                if handle.stage is RunStage.LOADING_GRAMMAR:
+                # A word came back, so the run is parsing whatever the
+                # worker's stage messages did or did not arrive in time to
+                # say. Reached from `starting` on the warm path and from
+                # `loading_grammar` on the cold one.
+                if handle.stage in (RunStage.STARTING, RunStage.LOADING_GRAMMAR):
                     self._set_stage(handle, RunStage.PARSING)
 
                 entry = {
@@ -357,7 +428,7 @@ class ParseRunner:
                     handle, RunStage.CANCELLED, stage_at_cancel=stage_at_cancel
                 )
             else:
-                if handle.stage is RunStage.LOADING_GRAMMAR:
+                if handle.stage in (RunStage.STARTING, RunStage.LOADING_GRAMMAR):
                     # An empty run still passes through parsing, so the
                     # stage history stays a path through the graph.
                     self._set_stage(handle, RunStage.PARSING)
@@ -406,8 +477,13 @@ class ParseRunner:
             error_type=type(exc).__name__,
         )
         detail = getattr(exc, "detail", None)
-        if isinstance(detail, dict) and detail.get("hint"):
-            failure.message = detail["hint"]
+        if isinstance(detail, dict):
+            failure.detail = detail
+            if detail.get("hint"):
+                failure.message = detail["hint"]
+        error_code = getattr(exc, "error_code", None)
+        if error_code:
+            failure.error_code = error_code
         handle.failure = failure
         _log.warning(
             "Parse run %s failed during %s: %s",
@@ -437,6 +513,15 @@ class ParseRunner:
             if stage is not handle.stage and can_transition(handle.stage, stage):
                 with contextlib.suppress(InvalidStageTransition):
                     self._set_stage(handle, stage)
+        elif kind == "interleaved":
+            # Who currently has the worker, or None when this run does.
+            # Recorded rather than derived: only the worker knows, and a
+            # server-side guess would be wrong exactly when it mattered.
+            handle.interleaved_by = message.get("by")
+            with contextlib.suppress(Exception):
+                handle.record.set_stage(
+                    handle.stage, interleaved_by=handle.interleaved_by
+                )
         elif kind == "cancelled":
             handle.words_completed = int(
                 message.get("words_completed", handle.words_completed)
@@ -452,14 +537,25 @@ class ParseRunner:
         has actually stopped at a word boundary, which is what keeps
         partial results readable and honest (FR-032, FR-029).
 
-        A run already terminal is returned unchanged. The caller decides
-        what that means -- for `flextools_parse_status` a second cancel is
-        `parse_job_cancelled` (FR-036), which is a refusal this method does
-        not itself issue.
+        A run already terminal raises `RunAlreadyTerminal`, which carries
+        the `parse_job_cancelled` payload (FR-036). Raised here rather than
+        left to each caller so the refusal cannot be forgotten at one call
+        site and issued at another.
+
+        Note the asymmetry this does NOT create: *asking* after a terminal
+        run stays a successful query. `flextools_parse_status` never calls
+        this method.
         """
         handle = self._runs.get(run_id)
-        if handle is None or handle.is_terminal:
-            return handle
+        if handle is None:
+            return None
+        if handle.is_terminal:
+            # FR-036: a cancel against a run that has already ended is
+            # `parse_job_cancelled`, carrying what survived. Raised rather
+            # than returned quietly, because "cancelled successfully" for a
+            # run that ended ten minutes ago tells the caller something
+            # false about what just happened.
+            raise RunAlreadyTerminal(handle)
 
         handle.cancel_requested = True
         with contextlib.suppress(WorkerError, Exception):

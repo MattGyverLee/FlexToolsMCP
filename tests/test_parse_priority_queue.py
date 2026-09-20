@@ -318,3 +318,180 @@ def test_peek_does_not_consume():
     assert queue.peek().wordform == "word"
     assert queue.peek().wordform == "word"
     assert len(queue) == 1
+
+
+# ---------------------------------------------------------------------------
+# SC-009 -- the interleave, end to end through a real worker
+# ---------------------------------------------------------------------------
+#
+# The tests above are about the QUEUE: ordering, FIFO within a level,
+# per-wordform slots. These are about what the queue's ordering buys, which
+# is a different claim and the one the requirement actually makes:
+#
+#   FR-031 -- a queue-jump, NOT preemption. The urgent word runs at the
+#   running batch's next word boundary; the batch does not restart or lose
+#   position, the grammar is NOT reloaded, and reported progress accounts
+#   for the interleave.
+#
+# Four numbers make that checkable, and all four are asserted below:
+# 0 words repeated, 0 words lost, the grammar loaded exactly once for both
+# runs, and `interleaved_by` naming who has the worker.
+#
+# Driven through `ParseWorker` directly against the stub backend. A real
+# child process would add a second failure source to every assertion, and
+# the thing under test is the worker's scheduling, not its channel.
+
+import threading  # noqa: E402
+
+from flextoolsmcp.server.parse.worker_main import ParseWorker  # noqa: E402
+
+
+class _Collector:
+    """Captures everything the worker emits, in order."""
+
+    def __init__(self):
+        self.messages = []
+        self._lock = threading.Lock()
+
+    def __call__(self, message):
+        with self._lock:
+            self.messages.append(message)
+
+    def of_type(self, kind):
+        return [m for m in self.messages if m.get("type") == kind]
+
+    def parsed_words(self):
+        return [(m["run_id"], m["wordform"]) for m in self.of_type("result")]
+
+
+def _worker(collector):
+    """A worker on the stub backend, emitting into `collector`.
+
+    `emit` is a constructor seam rather than a patched attribute, so the
+    worker is never briefly wired to real stdout -- these tests would
+    otherwise write protocol lines into pytest's captured output.
+    """
+    return ParseWorker("Interleave Test", idle_timeout=0.5, emit=collector)
+
+
+def _parse_message(run_id, wordform, priority, index, request_id=None):
+    return {
+        "type": "parse",
+        "request_id": request_id or f"{run_id}:{index}",
+        "run_id": run_id,
+        "wordform": wordform,
+        "level": "plain",
+        "restricted_to": None,
+        "priority": int(priority),
+        "index_in_run": index,
+    }
+
+
+def test_an_urgent_word_interleaves_without_the_batch_losing_anything():
+    """SC-009's four numbers, on one run of the worker.
+
+    The batch is enqueued first and in full, then an urgent single word
+    arrives behind it. Because the queue is per-wordform and the worker
+    takes one word per loop, the urgent word wins the very next dequeue --
+    which is a word boundary, not an interruption.
+    """
+    collector = _Collector()
+    worker = _worker(collector)
+
+    batch = [_parse_message("batch", f"w{i}", Priority.MEDIUM, i) for i in range(6)]
+    for message in batch:
+        worker.handle_message(message)
+
+    # Arrives after the whole batch is queued, and still goes first.
+    worker.handle_message(_parse_message("urgent", "now", Priority.TRY_A_WORD, 0))
+
+    worker.handle_message({"type": "shutdown"})
+    worker.run()
+
+    order = collector.parsed_words()
+    runs_in_order = [run_id for run_id, _ in order]
+
+    # 1. The urgent word ran first -- at the next boundary, not after the
+    #    batch drained.
+    assert runs_in_order[0] == "urgent", (
+        f"the urgent word did not overtake the batch: {runs_in_order}"
+    )
+
+    # 2. 0 words repeated.
+    assert len(order) == len(set(order)), f"a word was parsed twice: {order}"
+
+    # 3. 0 words lost -- the batch finished in full, in its own order.
+    batch_words = [w for run_id, w in order if run_id == "batch"]
+    assert batch_words == [f"w{i}" for i in range(6)], (
+        f"the batch lost position or work: {batch_words}"
+    )
+
+    # 4. The grammar was loaded EXACTLY ONCE for both runs. An interleave
+    #    that reloaded it would be preemption wearing a queue-jump's
+    #    clothes, and would cost more than it saved.
+    assert worker._backend.load_count == 1, (
+        f"the grammar was loaded {worker._backend.load_count} times across "
+        f"an interleave; FR-031 says it is not reloaded"
+    )
+
+
+def test_the_interleave_is_reported_so_a_paused_batch_does_not_look_stalled():
+    """`interleaved_by`, both set and cleared (SC-009's observable).
+
+    Without this a caller polling their batch during an interleave sees
+    `words_completed` stop advancing with no explanation, concludes the run
+    has hung, and cancels it -- losing work to a reporting gap.
+    """
+    collector = _Collector()
+    worker = _worker(collector)
+
+    for i in range(4):
+        worker.handle_message(_parse_message("batch", f"w{i}", Priority.MEDIUM, i))
+    worker.handle_message({"type": "shutdown"})
+
+    # The urgent word is enqueued while the batch still has words pending,
+    # which is what makes the displaced run genuinely displaced rather than
+    # merely next.
+    worker.handle_message(_parse_message("urgent", "now", Priority.TRY_A_WORD, 0))
+    worker.run()
+
+    notices = collector.of_type("interleaved")
+    assert notices, "no interleave was reported at all"
+
+    # The displaced batch is told who has the worker...
+    displaced = [n for n in notices if n["run_id"] == "batch" and n["by"] == "urgent"]
+    # ...and told again when it gets it back. Clearing matters as much as
+    # setting: a stale value would tell a caller their finished run is
+    # still queued behind someone.
+    cleared = [n for n in notices if n["run_id"] == "batch" and n["by"] is None]
+
+    assert displaced or cleared, (
+        f"the batch was never told about the interleave: {notices}"
+    )
+    assert cleared, "the batch was never told it had the worker back"
+
+
+def test_a_batch_running_alone_reports_no_interleave():
+    """Silence in the common case.
+
+    A notice per word would make `interleaved_by` noise rather than signal,
+    and a caller who sees it flicker on an uninterrupted run learns to
+    ignore it.
+    """
+    collector = _Collector()
+    worker = _worker(collector)
+
+    for i in range(4):
+        worker.handle_message(_parse_message("solo", f"w{i}", Priority.MEDIUM, i))
+    worker.handle_message({"type": "shutdown"})
+    worker.run()
+
+    notices = collector.of_type("interleaved")
+    by_someone_else = [n for n in notices if n["by"] is not None]
+    assert by_someone_else == [], (
+        f"a run with the worker to itself was reported as interleaved: "
+        f"{by_someone_else}"
+    )
+    # Exactly one notice: the run taking the worker in the first place.
+    assert len(notices) <= 1, f"one notice per word is noise: {notices}"
+

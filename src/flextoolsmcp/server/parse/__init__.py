@@ -20,7 +20,10 @@ understand before editing anything here:
     record.py         the append-only run record on disk
     runner.py         the run lifecycle and the 5-second grace window
     worker_client.py  the server side of the worker channel
-    resolver.py       the morph resolver (headwords -> MSA identifiers)
+    resolver.py       the morph resolver's DECISION LOGIC -- pure, holds no
+                      project, and imported by BOTH processes. The lexicon
+                      read it works over happens in the worker, because the
+                      server never has a project open to read one from.
 
   Worker process (NEVER imported by the server process):
     worker_main.py    the long-lived parse worker

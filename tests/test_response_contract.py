@@ -227,6 +227,28 @@ ALL_ERROR_CODES = [
         findings=[{"line": 3, "detail": "SetGloss(sense_or_hvo=12345)"}],
         next_steps=["Carry the GUID and re-resolve with project.Object(guid_str)"],
     )),
+    # parser-check CP2b
+    ("parse_morph_unresolved", dict(
+        morph="kirim",
+        position=1,
+        resolved_to="ambiguous",
+        candidates=[
+            {"headword": "kirim", "sense": "send", "msa_hvo": 5002, "entry_hvo": 102},
+            {"headword": "kirim", "sense": "deliver", "msa_hvo": 5003, "entry_hvo": 103},
+        ],
+        hint="Pick one with `sense`, or give its msa_hvo directly.",
+    )),
+    ("parse_run_not_found", dict(
+        run_id="0" * 32,
+        available_runs=["a" * 32],
+        hint="Handles are issued by flextools_try_word.",
+    )),
+    ("parse_job_cancelled", dict(
+        run_id="a" * 32,
+        words_completed=17,
+        state_at_cancel="parsing",
+        hint="This run has already ended; its partial results are readable.",
+    )),
 ]
 
 
@@ -275,6 +297,32 @@ DETAIL_MODEL_MAP = {
     "hvo_literal_write_risk": HvoLiteralWriteRiskDetail,
 }
 
+#: CP2b's three. Separate from the map above because two of them have
+#: REQUIRED fields, so `model_cls(error_code=code)` -- which is what the
+#: map's test does -- cannot construct them. Constructing them with their
+#: required fields is the point: a model whose required fields could be
+#: omitted would not be pinning anything.
+CP2B_DETAIL_FIXTURES = {
+    "parse_morph_unresolved": dict(
+        morph="kosong",
+        position=0,
+        resolved_to="no_msa",
+        candidates=[
+            {"headword": "kosong", "sense": None, "msa_hvo": None, "entry_hvo": 104}
+        ],
+        hint="That entry carries no morphosyntactic analysis.",
+    ),
+    "parse_run_not_found": dict(
+        run_id="0" * 32, available_runs=[], hint="No runs on this server."
+    ),
+    "parse_job_cancelled": dict(
+        run_id="a" * 32,
+        words_completed=4,
+        state_at_cancel="parsing",
+        hint="Already ended.",
+    ),
+}
+
 
 class TestDetailModelRoundTrip:
     """Each detail model validates minimal fixture data without error."""
@@ -283,6 +331,133 @@ class TestDetailModelRoundTrip:
     def test_detail_model_validates(self, code, model_cls):
         detail = model_cls(error_code=code)
         assert detail.error_code == code
+
+
+class TestParserCheckCP2bCodes:
+    """The three CP2b codes: the count, the field ORDER, and the closures.
+
+    `parse_morph_unresolved`'s field order is pinned rather than merely its
+    membership. The order was the subject of a three-way agreement check
+    during CP2's cycle 3, and a reordering is exactly the change that passes
+    every behavioural test -- the keys are all still there, and every caller
+    reading them by name still works. What breaks is the agreement.
+    """
+
+    @pytest.mark.parametrize("code,fixture", list(CP2B_DETAIL_FIXTURES.items()))
+    def test_detail_model_validates_with_its_required_fields(self, code, fixture):
+        from flextoolsmcp.server.response_models import (
+            ParseJobCancelledDetail,
+            ParseMorphUnresolvedDetail,
+            ParseRunNotFoundDetail,
+        )
+
+        models = {
+            "parse_morph_unresolved": ParseMorphUnresolvedDetail,
+            "parse_run_not_found": ParseRunNotFoundDetail,
+            "parse_job_cancelled": ParseJobCancelledDetail,
+        }
+        detail = models[code].model_validate(dict(fixture, error_code=code))
+        assert detail.error_code == code
+
+    def test_parse_morph_unresolved_field_order_is_pinned(self):
+        """`morph`, `position`, `resolved_to`, `candidates`, `hint`. That order.
+
+        Do not reorder, rename, recase or pluralize. If this test fails
+        because a field was added, the addition is the thing to reconsider:
+        the model is `extra="forbid"` precisely so the shape is closed.
+        """
+        from flextoolsmcp.server.response_models import ParseMorphUnresolvedDetail
+
+        fields = [
+            name
+            for name in ParseMorphUnresolvedDetail.model_fields
+            if name != "error_code"
+        ]
+        assert fields == [
+            "morph",
+            "position",
+            "resolved_to",
+            "candidates",
+            "hint",
+        ], f"parse_morph_unresolved's field order drifted: {fields}"
+
+    def test_resolved_to_is_a_closed_enum_of_exactly_three(self):
+        """The three failures stay three.
+
+        Widening this enum is how "could not resolve" creeps back in as a
+        fourth, catch-all value -- which is the collapse the three exist to
+        prevent.
+        """
+        import typing
+
+        from flextoolsmcp.server.response_models import ParseMorphUnresolvedDetail
+
+        annotation = ParseMorphUnresolvedDetail.model_fields["resolved_to"].annotation
+        assert set(typing.get_args(annotation)) == {"none", "ambiguous", "no_msa"}
+
+    @pytest.mark.parametrize(
+        "code", ["parse_morph_unresolved", "parse_run_not_found", "parse_job_cancelled"]
+    )
+    def test_extra_keys_are_forbidden(self, code):
+        """A typo'd field fails loudly rather than vanishing."""
+        import pydantic
+
+        from flextoolsmcp.server.response_models import (
+            ParseJobCancelledDetail,
+            ParseMorphUnresolvedDetail,
+            ParseRunNotFoundDetail,
+        )
+
+        models = {
+            "parse_morph_unresolved": ParseMorphUnresolvedDetail,
+            "parse_run_not_found": ParseRunNotFoundDetail,
+            "parse_job_cancelled": ParseJobCancelledDetail,
+        }
+        payload = dict(CP2B_DETAIL_FIXTURES[code], error_code=code, sneaky=1)
+        with pytest.raises(pydantic.ValidationError):
+            models[code].model_validate(payload)
+
+    def test_the_documented_error_code_count_is_twenty_five(self):
+        """FR-037: the hand-maintained count in the contract doc tracks reality.
+
+        Hand-maintained counts drift silently, which is why this compares
+        the prose against the union rather than trusting either.
+        """
+        import re
+        import typing
+        from pathlib import Path
+
+        from flextoolsmcp.server.response_models import AnyDetail
+
+        union_size = len(typing.get_args(AnyDetail))
+        assert union_size == 25, f"the detail union holds {union_size} models"
+
+        doc = (
+            Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
+        ).read_text(encoding="utf-8")
+        stated = re.search(r"one of the (\d+) codes below", doc)
+        assert stated, "TOOL-CONTRACT.md no longer states a code count"
+        assert int(stated.group(1)) == union_size, (
+            f"TOOL-CONTRACT.md says {stated.group(1)} codes; the union has "
+            f"{union_size}"
+        )
+
+    @pytest.mark.parametrize(
+        "code", ["parse_morph_unresolved", "parse_run_not_found", "parse_job_cancelled"]
+    )
+    def test_each_new_code_has_a_row_in_the_contract_doc(self, code):
+        from pathlib import Path
+
+        doc = (
+            Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
+        ).read_text(encoding="utf-8")
+        assert f"`{code}`" in doc, (
+            f"{code} is emitted but undocumented; FR-037 requires a row"
+        )
+
+    def test_the_contract_version_did_not_move(self):
+        """Additive throughout: three codes, same contract version."""
+        assert CONTRACT_VERSION == "tool-responses/1.0"
 
 
 # ---------------------------------------------------------------------------

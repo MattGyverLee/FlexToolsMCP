@@ -43,6 +43,8 @@ from .models import (
     PrepareReportInput,
     FlexToolsHealthInput,
     GrammarHealthInput,
+    TryWordInput,
+    ParseStatusInput,
 )
 
 
@@ -439,6 +441,77 @@ Optional filters: restrict to named checks (null runs all), or use a different
 project. Returns findings[] ordered by measured yield (fixed per SPEC 9.5.4),
 plus a checks_skipped list for any checks whose LCM properties are not yet verified.""",
         input_model=GrammarHealthInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_try_word": ToolDef(
+        name="flextools_try_word",
+        description="""[PARSE] Does this word parse, and if not, why not? -- one word, three levels.
+
+Parses a single wordform against the project's HermitCrab grammar and returns a
+complete answer in one call. Read-only: the project is opened read-only in a
+separate worker process, and nothing on this path records, files or writes a
+parse result.
+
+THREE LEVELS, because they answer different questions at different costs:
+- level='restricted' -- you have a hypothesis. Give the decomposition in `morphs`
+  as entry headwords (optionally headword + sense) or msa_hvo identifiers, and
+  the trace is restricted to exactly it. FASTEST, because the selection collapses
+  the search space before any tracing cost is paid.
+- level='plain' -- a cheap yes/no. Reports only THAT nothing parsed; it does not
+  know why and never pretends to.
+- level='explain' -- you have no hypothesis. The parser's full trace. SLOWEST, and
+  the level under a budget cap.
+
+Pick restricted when you have a decomposition in mind; pick explain only when you
+do not. `morphs` is required for restricted and is a usage error on the other two
+levels -- it is never silently ignored.
+
+There is no free-text form field: pieces are named by entry headword, because this
+tool ships no segmenter.
+
+Trace payloads are written to a file and reported by path, never inlined -- a trace
+runs to tens or hundreds of kilobytes.
+
+Refuses with parser_engine_mismatch when the project is configured for an engine
+other than HermitCrab (checked before any parser is constructed), parser_core_missing
+when the parser is not available on this machine, and parse_morph_unresolved when any
+piece of a decomposition does not resolve -- in which case NO parse runs.
+
+If the parse outlives the 5-second reporting window you get a run_id instead of a
+result. The parse is still running: poll it with flextools_parse_status.""",
+        input_model=TryWordInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_status": ToolDef(
+        name="flextools_parse_status",
+        description="""[PARSE] Poll a parse run by its handle -- stage, progress, result or failure.
+
+Read-only. Takes the run_id that flextools_try_word returns when a parse outlives
+its 5-second reporting window, and reports where that run has got to.
+
+Reports one of seven stages: starting, loading_grammar, parsing, filing, completed,
+failed, cancelled. loading_grammar is distinguished from parsing on purpose -- on a
+large project the grammar load dominates the run before a single word is parsed, and
+it is the step that most often exhausts memory.
+
+A run that has FAILED or been CANCELLED is reported as a successful response, not an
+error: asking about a dead run is a successful query. A cancelled run reports how many
+words completed before it stopped and the stage it was in; those partial results are
+written to the run record as they are produced, so a run that dies at word 4,000
+leaves 4,000 readable.
+
+A failed run carries its failure with the stage it died in and points at
+flextools_health and flextools_grammar_health -- never at a retry, because the usual
+cause is memory exhausted during the grammar load and repeating the run repeats the
+step that exhausted it.
+
+interleaved_by names the run currently occupying the worker, so a batch paused by an
+urgent single word does not look stalled.
+
+The only refusal is parse_run_not_found, which names the handles that do exist.""",
+        input_model=ParseStatusInput,
         annotations=READ_ONLY_SAFE,
     ),
 

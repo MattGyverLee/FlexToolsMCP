@@ -464,43 +464,93 @@ class TestActiveEngineNeverDecidesStatus:
 
 
 # ---------------------------------------------------------------------------
-# next_step: never names flextools_try_word, never names a tool whose
-# spine is unavailable, never proposes flextools_parse_sandbox when a
-# sandbox component is missing; CP1's literal degraded-action-text row
+# next_step: the two rows that name flextools_try_word LAND IN FULL at CP2b;
+# no rung names a tool whose spine is unavailable; flextools_parse_sandbox
+# is still never proposed
 # ---------------------------------------------------------------------------
+#
+# AMENDED AT CP2b (FR-038), NOT WEAKENED. CP1 degraded two rows to
+# `tool: null` with replacement action prose, because SPEC 10.1 forbids
+# proposing a tool that does not exist and `flextools_try_word` did not.
+# The CP1 caveat said in as many words that they "land in full at CP2, when
+# the tool they name is real". They do, and the tests below now assert the
+# landed state.
+#
+# The underlying rule is UNCHANGED and is now asserted more strongly than
+# before, by a registry sweep over every emitted rung rather than by a
+# hardcoded "must be null": a rung may name a tool if and only if that tool
+# is registered. That is what kept `flextools_try_word` out at CP1 and what
+# still keeps `flextools_parse_sandbox` out now.
 
-class TestNextStepCP1Degradation:
-    def test_flextools_try_word_never_appears_anywhere_read_unavailable(self, monkeypatch, tmp_path):
+class TestNextStepRowsThatNameTryWord:
+    def test_flextools_try_word_is_still_never_named_when_read_is_unavailable(self, monkeypatch, tmp_path):
+        """The rule that held at CP1 and still holds: never name a tool whose
+        spine is unavailable.
+
+        This row is UNCHANGED by CP2b. `flextools_try_word` existing does
+        not make it usable on an install where ParserCore's read surface
+        cannot be resolved -- pointing a caller at it here would send them
+        to a tool that cannot run.
+        """
         detector = _detector(read_ok=False, read_signal="absent", write_ok=False, write_signal="absent")
         data = _run_health(monkeypatch, tmp_path, detector)
         assert "flextools_try_word" not in json.dumps(data)
 
-    def test_flextools_try_word_never_appears_write_unavailable_read_ready(self, monkeypatch, tmp_path):
+    def test_the_write_unavailable_read_ready_row_lands_in_full(self, monkeypatch, tmp_path):
+        """CP2b: the row names the tool, in the field AND in the contract's
+        own action wording.
+
+        Filing is what is unavailable. A caller should be told the read
+        spine is fully usable and by what -- which is the whole substance
+        of this row, and the part CP1 had to withhold.
+        """
         detector = _detector(
             read_ok=True,
             write_ok=False, write_signal="incompatible_surface",
             write_missing_members=["ParseFiler.ProcessParse"],
         )
         data = _run_health(monkeypatch, tmp_path, detector)
-        blob = json.dumps(data)
-        assert "flextools_try_word" not in blob
 
-        # CP1's literal replacement action text for this exact row
-        # (contracts/flextools_health-parser-block.md, "next_step per
-        # unhealthy state"; tasks.md T013). Names no tool.
-        assert (
-            "filing is unavailable on this install; read-only parser "
-            "diagnosis is unaffected."
-        ) in blob
+        rows = [
+            rung
+            for rung in data["parser_next_steps"]
+            if rung["tool"] == "flextools_try_word"
+        ]
+        assert rows, f"the row did not land: {data['parser_next_steps']}"
 
-    def test_flextools_try_word_never_appears_agent_missing_row(self, monkeypatch, tmp_path):
+        # The contract's own wording (SPEC 10.2, copied to
+        # contracts/flextools_health-parser-block.md:91).
+        assert rows[0]["action"] == "use read-only Try A Word; filing unavailable"
+
+        # And CP1's replacement text is gone -- it existed only to avoid
+        # naming a tool that did not exist.
+        assert "read-only parser diagnosis is unaffected" not in json.dumps(data)
+
+    def test_the_agent_missing_row_lands_in_full(self, monkeypatch, tmp_path):
+        """A missing recording agent does NOT make reading unavailable.
+
+        FR-016. Reading neither records nor needs an agent, so this row
+        names the read tool -- which is precisely the boundary CP1 shipped
+        the agent probe to protect and had no caller to demonstrate.
+        """
         detector = _detector(
             read_ok=True,
             write_ok=False, write_signal="parser_agent_missing",
             agent_state="absent", agent_guid="kguidAgentHermitCrabParser", active_engine="HC",
         )
         data = _run_health(monkeypatch, tmp_path, detector)
-        assert "flextools_try_word" not in json.dumps(data)
+
+        rows = [
+            rung
+            for rung in data["parser_next_steps"]
+            if rung["tool"] == "flextools_try_word"
+        ]
+        assert rows, f"the row did not land: {data['parser_next_steps']}"
+        assert "HermitCrab" in rows[0]["action"]
+        assert data["parser"]["read"]["status"] == "ready", (
+            "a missing recording agent marked READING unavailable; FR-016 "
+            "says it must not"
+        )
 
     def test_flextools_parse_sandbox_never_proposed_when_hc_missing(self, monkeypatch, tmp_path):
         detector = _detector(sandbox_hc_ok=False, sandbox_generate_config_ok=True)
@@ -522,19 +572,60 @@ class TestNextStepCP1Degradation:
         [
             {"read_ok": False, "read_signal": "absent", "write_ok": False, "write_signal": "absent"},
             {"write_ok": False, "write_signal": "incompatible_surface", "write_missing_members": ["ParseFiler.ProcessParse"]},
+            {"write_ok": False, "write_signal": "parser_agent_missing", "agent_state": "absent"},
             {"sandbox_hc_ok": False},
             {"sandbox_generate_config_ok": False},
         ],
     )
-    def test_no_tool_key_anywhere_names_a_real_tool_at_cp1(self, monkeypatch, tmp_path, kwargs):
-        """At CP1 no next_step row has a real tool to propose (both rows
-        that would name one degrade to tool: null per the contract's CP1
-        caveat) -- so every "tool" value found anywhere in the response
-        must be null, for every degraded combination."""
+    def test_no_rung_anywhere_names_a_tool_that_does_not_exist(self, monkeypatch, tmp_path, kwargs):
+        """SC-011: 0 next_step references to tools that do not exist.
+
+        THIS REPLACES CP1's "every tool value must be null", and is the
+        stronger form of the same rule. The old assertion was true only
+        because no proposable tool existed yet; it would have had to be
+        deleted the moment one did, taking the guarantee with it. Checking
+        against the REGISTRY instead means the rule survives every tool this
+        project ever adds -- and still fails today if a rung names
+        `flextools_parse_sandbox`, which does not exist.
+
+        Swept over every unhealthy combination, because a rung reachable
+        from only one of them would otherwise escape.
+        """
+        from flextoolsmcp.server.dispatch import get_all_tool_names
+
+        registered = set(get_all_tool_names())
         detector = _detector(**kwargs)
         data = _run_health(monkeypatch, tmp_path, detector)
+
         for tool_value in _find_all(data, "tool"):
-            assert tool_value is None
+            assert tool_value is None or tool_value in registered, (
+                f"guidance names {tool_value!r}, which is not a registered "
+                f"tool (SC-011)"
+            )
+
+    def test_the_sweep_would_catch_a_nonexistent_tool(self, monkeypatch, tmp_path):
+        """The sweep above, shown to detect something.
+
+        A guarantee asserted only over passing data has not been shown to
+        work. This injects a rung naming a tool that does not exist and
+        confirms the same check rejects it -- so the sweep is known to be
+        load-bearing rather than merely green.
+        """
+        from flextoolsmcp.server.dispatch import get_all_tool_names
+
+        registered = set(get_all_tool_names())
+        detector = _detector(sandbox_hc_ok=False)
+        data = _run_health(monkeypatch, tmp_path, detector)
+        data["parser_next_steps"].append(
+            {"action": "x", "tool": "flextools_parse_sandbox", "args": None,
+             "rationale": "y", "est_cost": "z"}
+        )
+
+        offenders = [
+            t for t in _find_all(data, "tool")
+            if t is not None and t not in registered
+        ]
+        assert offenders == ["flextools_parse_sandbox"], offenders
 
 
 # ---------------------------------------------------------------------------

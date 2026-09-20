@@ -135,6 +135,37 @@ def test_happy_path_edges(source, target):
     assert can_transition(source, target)
 
 
+def test_the_warm_path_edge_exists():
+    """`starting -> parsing`: a run against an already-held grammar.
+
+    Pinned as its own test because it is the edge the data-model diagram
+    originally omitted, and because removing it again would not break any
+    cold-path test -- every one of those passes through `loading_grammar`
+    and would keep passing while the warm path silently regressed to
+    announcing a grammar load that never happened.
+
+    The stage is distinct precisely because it is the step that dominates a
+    cold run and most often exhausts memory (FR-027). Reporting it for a run
+    that paid for no load is a false report, and quickstart scenario 1
+    requires a second call not to re-enter it.
+    """
+    assert can_transition(RunStage.STARTING, RunStage.PARSING), (
+        "a run reusing a held grammar has no load to report, so it must be "
+        "able to reach 'parsing' directly"
+    )
+
+
+def test_the_warm_path_is_not_a_way_around_the_stage_entirely():
+    """The cold edge survives alongside the warm one.
+
+    The cheap way to make the warm path pass is to stop reporting
+    `loading_grammar` at all, which would pass scenario 1 and destroy the
+    reason the stage exists.
+    """
+    assert can_transition(RunStage.STARTING, RunStage.LOADING_GRAMMAR)
+    assert can_transition(RunStage.LOADING_GRAMMAR, RunStage.PARSING)
+
+
 @pytest.mark.parametrize(
     "source",
     [RunStage.STARTING, RunStage.LOADING_GRAMMAR, RunStage.PARSING],

@@ -20,6 +20,28 @@ At CP1, `parser_engine_mismatch` and `parser_agent_missing` ship as tested
 helpers with no live caller yet -- no spine-executing handler exists at this
 checkpoint to invoke them. Their first live caller arrives at CP2.
 
+Three further error codes land at CP2b, alongside the two parse tools:
+`parse_morph_unresolved` (a piece of a caller's proposed decomposition did
+not resolve -- carrying `resolved_to: none | ambiguous | no_msa`, which are
+kept distinct because they call for three different actions from the caller,
+plus the candidates considered so the refusal can be acted on rather than
+only retried), `parse_run_not_found` (a handle corresponding to no run,
+naming the handles that do exist) and `parse_job_cancelled` (something tried
+to **act** on a run that had already ended, carrying how much work survived).
+Additive again: `tool-responses/1.0` does not move, and the hand-maintained
+count in `docs/TOOL-CONTRACT.md` goes from 22 to 25.
+
+`parser_engine_mismatch` and `parser_core_missing` get their first live
+callers here, which is what CP1 said would happen at CP2.
+
+Two notes on shapes that are easy to get backwards. `parse_morph_unresolved`
+has **exactly five keys in a fixed order** -- `morph`, `position`,
+`resolved_to`, `candidates`, `hint` -- and a request that raises it runs
+**no parse at all**. `parse_job_cancelled` is **not** emitted by
+`flextools_parse_status`: asking after a run that failed or was cancelled is
+a successful query returning `status: "ok"` with what survived, because the
+run's death is a fact about the run rather than a fault in the request.
+
 ## [2.12.0] - 2026-09-10
 
 ### flexicon 4.8.0 is the new minimum

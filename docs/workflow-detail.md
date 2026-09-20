@@ -516,14 +516,25 @@ Queues a rollback, doesn't auto-execute.
 - **Surface:** `dropped_message_count` returned in summary; "Output exceeded buffer" note added if `>0`
 - Most-recent retained — the tail of execution is what matters
 
-#### Three-tier casting helper injection
-- **Where:** `_get_casting_helpers_code()` before `exec`
-- **What:** three injection levels:
-  - `none` → no casting issues, skip helpers
-  - `minimal` → inject only the names code touches
-  - `full` → inject the whole suite (defensive default)
-- **Why:** lighter context cost when not needed, full safety when ambiguity exists
-- Tier chosen by gate 5 pre-flight result
+#### Three-tier casting helper injection -- RETIRED
+- **Status:** removed. It is documented here only so the name does not send
+  the next reader looking for code that is gone.
+- **What it was:** three levels (`none` / `minimal` / `full`) of casting-helper
+  definitions injected into the generated module before `exec`.
+- **What actually happened:** the implementation was never called. Pre-flight
+  computed a tier and *logged* it -- `Preflight: passed (tier=full)` -- while
+  injecting nothing, so the log reported a defence that was not in place.
+- **What remains:** casting **detection** is untouched and still runs. Pre-flight
+  still finds casting issues and still reports them as `casting_issues`; it
+  simply no longer claims to have injected helpers in response.
+- **Why it was built:** lighter context cost when helpers were not needed, full
+  safety when ambiguity existed. The tier was chosen by the gate 5 pre-flight
+  result -- which still runs, and still produces that result; nothing consumes
+  it any more.
+- **If you are looking for this because generated code hit a casting error:**
+  the helpers were never being injected, so their absence is not a regression
+  you introduced. Whether they should be restored is an open question, not a
+  settled one.
 
 ### Learning & visibility
 

@@ -41,6 +41,9 @@ those was an assumption in the plan before it was an observation here.
     FR-042/043  at most ONE held grammar, released when another project's
                 is needed, currency confirmed before every reuse, and an
                 explicit reload performed as reset-then-update
+    Resolver    all three resolution outcomes against a REAL lexicon --
+                `ok`, `ambiguous` and `no_msa` -- on a project that has the
+                data for them
 
 Marked `requires_flex`: skipped without a FieldWorks install and the named
 projects. Each scenario starts its own worker rather than sharing one, so a
@@ -241,6 +244,39 @@ async def parse_status(run_id):
     return json.loads(response[0].text)
 
 
+async def try_word_settled(runner, **kwargs):
+    """Call the tool, and if it hands back a handle, wait for the run to end.
+
+    THE ENGINE GATE'S REFUSAL CAN ARRIVE AFTER THE GRACE WINDOW, and that is
+    the contract working rather than a defect. The gate runs inside the
+    WORKER -- it has to, because the server must never open a project to
+    read `ActiveParser` -- so on a cold worker the refusal cannot be
+    delivered until the project has been opened, and opening a 1,400-entry
+    project can take longer than five seconds. The window governs reporting
+    only, so the call returns a handle and the refusal lands on the run.
+
+    A test that accepted only the inline form would be asserting how fast
+    the machine is. This settles the run and reports the refusal either way,
+    using the handler's OWN `_refusal_from_failure` so the shape is
+    production's rather than one invented here.
+    """
+    payload = await try_word(**kwargs)
+    if payload.get("status") != "ok" or not payload.get("run_id"):
+        return payload
+
+    handle = runner.get(payload["run_id"])
+    if handle is None:
+        return payload
+    if not handle.is_terminal:
+        await asyncio.wait_for(handle.done.wait(), timeout=180)
+
+    if handle.stage is RunStage.FAILED and handle.failure is not None:
+        refusal = parse_handler._refusal_from_failure(handle.failure)
+        if refusal is not None:
+            return json.loads(refusal[0].text)
+    return payload
+
+
 async def warm(runner, project=HC_PROJECT):
     """Pay for the grammar load once, so later calls face a HELD grammar.
 
@@ -355,8 +391,13 @@ async def test_scenario_1_a_second_call_does_not_reload_the_grammar(tmp_path):
 async def test_scenario_2_an_xample_project_is_refused_naming_both_engines(tmp_path):
     """`Sena 3` refuses with `parser_engine_mismatch`, naming XAmple and HC."""
     async with live_runner(tmp_path) as (runner, _recorder):
-        payload = await try_word(
-            project_name=XAMPLE_PROJECT, word="anything", level="plain"
+        # Settled, not inline: on a cold worker this project takes longer to
+        # open than the grace window allows, so the refusal legitimately
+        # arrives on the run rather than in the first response. What must be
+        # true either way is that it IS a refusal, and that it names both
+        # engines.
+        payload = await try_word_settled(
+            runner, project_name=XAMPLE_PROJECT, word="anything", level="plain"
         )
         skip_unless_live(payload, XAMPLE_PROJECT)
 
@@ -1074,8 +1115,11 @@ async def test_fr042_at_most_one_grammar_is_held_at_a_time(tmp_path):
     about ownership and a memory reading would be a proxy for it at best.
     """
     async with live_runner(tmp_path) as (runner, _recorder):
-        first = await try_word(
-            project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
+        # Settled on purpose: releasing a project's worker while one of its
+        # runs is still in flight would be testing teardown-under-load, not
+        # the one-held-grammar rule.
+        first = await try_word_settled(
+            runner, project_name=HC_PROJECT, word=PARSING_WORD, level="plain"
         )
         skip_unless_live(first, HC_PROJECT)
 
@@ -1087,8 +1131,8 @@ async def test_fr042_at_most_one_grammar_is_held_at_a_time(tmp_path):
 
         # A second project's grammar is needed. The first slot is released.
         await runner.pool.release(HC_PROJECT)
-        second = await try_word(
-            project_name=SCALE_PROJECT, word=SCALE_WORDS[0], level="plain"
+        second = await try_word_settled(
+            runner, project_name=SCALE_PROJECT, word=SCALE_WORDS[0], level="plain"
         )
         skip_unless_live(second, SCALE_PROJECT)
 
@@ -1203,4 +1247,166 @@ def test_fr043_the_ordinary_parse_path_does_not_reload():
         "the ordinary parse path reloads the grammar; that is a second "
         "currency path (spec.md Delta 2)"
     )
+
+
+# ---------------------------------------------------------------------------
+# The resolver, against a real lexicon that can produce all three outcomes
+# ---------------------------------------------------------------------------
+#
+# WHY A THIRD PROJECT. The two quickstart projects cannot produce
+# `ambiguous` or `no_msa` -- measured, not assumed: `IndonesianHC-Complete`
+# (41 entries) and `Malay Parsing-20230810withHC` (281) have **zero**
+# homograph headwords and **zero** entries without an MSA between them. The
+# resolver's decision-making is covered exhaustively against a constructed
+# lexicon in `tests/test_parse_resolver.py`; what THAT cannot cover is
+# whether a real lexicon read produces the row shapes those outcomes are
+# decided from.
+#
+# `Tlachichilco Tepehua-NT Noparse` can: HC-configured, 3704 entries, with
+# 19 headwords carried by exactly two MSA-bearing entries and 185 carried by
+# a single entry with no MSA. Read-only, like everything else in this file.
+#
+# A NOTE ON HOMOGRAPHS, because it was worth checking rather than assuming.
+# FLEx sometimes appends a homograph number to a headword (`lati2`,
+# `putauk'atamay2` are in this project), which would make two homographs
+# resolve to DIFFERENT strings and the `ambiguous` outcome unreachable in
+# practice. It does not always: 19 headwords here are carried by two entries
+# under the identical string. So `ambiguous` is genuinely reachable, and the
+# sense filter that disambiguates it is doing real work.
+
+#: HC-configured, and the only project here with the lexicon shape the
+#: resolver's three outcomes need.
+RESOLVER_PROJECT = os.environ.get(
+    "FLEXTOOLSMCP_LIVE_RESOLVER_PROJECT", "Tlachichilco Tepehua-NT Noparse"
+)
+
+#: One headword carried by exactly TWO entries, both with an analysis.
+RESOLVER_AMBIGUOUS_HEADWORD = "mapu'ay"
+
+#: One headword carried by exactly ONE entry that has NO analysis.
+RESOLVER_NO_MSA_HEADWORD = "talaqach'itaqxa"
+
+#: One headword carried by exactly ONE entry that HAS an analysis.
+RESOLVER_OK_HEADWORD = "pu'uxkuntayay"
+
+
+async def _resolve_live(runner, headword):
+    """Resolve one headword through the real worker. Skips if unavailable."""
+    try:
+        worker = await runner.pool.get(RESOLVER_PROJECT)
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"No live worker for {RESOLVER_PROJECT!r}: {exc}")
+
+    answer = await worker.resolve_morphs(
+        request_id=f"live-resolve:{headword}",
+        run_id="live-resolve",
+        morphs=[{"headword": headword, "sense": None, "msa_hvo": None,
+                 "position": 0}],
+    )
+    assert answer["resolutions"], answer
+    return answer["resolutions"][0]
+
+
+async def test_a_real_lexicon_produces_the_ok_outcome(tmp_path):
+    """One entry, one analysis -> `ok`, carrying real MSA identifiers."""
+    async with live_runner(tmp_path) as (runner, _recorder):
+        row = await _resolve_live(runner, RESOLVER_OK_HEADWORD)
+
+        assert row["outcome"] == "ok", row
+        assert row["msa_hvos"], "an ok resolution carried no identifiers"
+        assert all(isinstance(h, int) for h in row["msa_hvos"])
+
+
+async def test_a_real_lexicon_produces_the_ambiguous_outcome(tmp_path):
+    """Two entries under one headword -> `ambiguous`, with both named.
+
+    The refusal has to name the candidates or the caller cannot act on it:
+    "it is ambiguous" without saying between what can only be retried.
+    """
+    async with live_runner(tmp_path) as (runner, _recorder):
+        row = await _resolve_live(runner, RESOLVER_AMBIGUOUS_HEADWORD)
+
+        assert row["outcome"] == "ambiguous", row
+        assert row["msa_hvos"] == [], (
+            "an ambiguous resolution must select nothing -- picking one of "
+            "the homographs would be the substitution FR-023 forbids"
+        )
+        assert len(row["candidates"]) >= 2, row
+        entry_hvos = {c["entry_hvo"] for c in row["candidates"]}
+        assert len(entry_hvos) >= 2, (
+            f"the candidates all come from one entry, so this is not really "
+            f"an ambiguity: {row['candidates']}"
+        )
+        assert all(c["msa_hvo"] is not None for c in row["candidates"]), (
+            "these candidates all have analyses; a null msa_hvo here would "
+            "mean the outcome should have been no_msa"
+        )
+
+
+async def test_a_real_lexicon_produces_the_no_msa_outcome(tmp_path):
+    """One entry, no analysis -> `no_msa`, which is NOT `none`.
+
+    The distinction that matters to a linguist: the spelling is right and
+    the lexicon entry is what needs work. Reporting `none` would send them
+    to fix a headword that is already correct.
+    """
+    async with live_runner(tmp_path) as (runner, _recorder):
+        row = await _resolve_live(runner, RESOLVER_NO_MSA_HEADWORD)
+
+        assert row["outcome"] == "no_msa", row
+        assert row["msa_hvos"] == []
+        assert len(row["candidates"]) == 1, row
+        assert row["candidates"][0]["msa_hvo"] is None, (
+            "a null msa_hvo IS the no_msa signal (data-model.md section 4)"
+        )
+        assert row["candidates"][0]["entry_hvo"], (
+            "the entry exists and must be named -- that is the whole "
+            "difference from `none`"
+        )
+
+
+async def test_all_three_outcomes_stay_distinct_on_one_real_lexicon(tmp_path):
+    """The distinction, on live data, in one test.
+
+    Each test above sees one outcome and would still pass if the resolver
+    collapsed the others into it. This is the one that fails on a collapse.
+    """
+    async with live_runner(tmp_path) as (runner, _recorder):
+        outcomes = {}
+        for label, headword in (
+            ("ok", RESOLVER_OK_HEADWORD),
+            ("ambiguous", RESOLVER_AMBIGUOUS_HEADWORD),
+            ("no_msa", RESOLVER_NO_MSA_HEADWORD),
+            ("none", "zzzznotaword"),
+        ):
+            outcomes[label] = (await _resolve_live(runner, headword))["outcome"]
+
+        assert outcomes == {
+            "ok": "ok",
+            "ambiguous": "ambiguous",
+            "no_msa": "no_msa",
+            "none": "none",
+        }, f"outcomes collapsed against a real lexicon: {outcomes}"
+
+
+async def test_the_fixtures_still_have_the_shape_these_tests_assume(tmp_path):
+    """The test data is a fact about a project, and facts change.
+
+    If someone edits this project -- adds an analysis to the no-MSA entry,
+    merges the homographs -- the three tests above would start failing with
+    confusing messages about the resolver. This one fails first and says the
+    real reason: go pick new fixtures.
+    """
+    async with live_runner(tmp_path) as (runner, _recorder):
+        ambiguous = await _resolve_live(runner, RESOLVER_AMBIGUOUS_HEADWORD)
+        no_msa = await _resolve_live(runner, RESOLVER_NO_MSA_HEADWORD)
+
+        assert ambiguous["outcome"] == "ambiguous" and no_msa["outcome"] == "no_msa", (
+            f"{RESOLVER_PROJECT!r} no longer has the lexicon shape these "
+            f"tests need ({RESOLVER_AMBIGUOUS_HEADWORD!r} -> "
+            f"{ambiguous['outcome']}, {RESOLVER_NO_MSA_HEADWORD!r} -> "
+            f"{no_msa['outcome']}). Pick new fixtures: the project had 19 "
+            f"two-entry homographs and 185 MSA-less entries when these were "
+            f"chosen."
+        )
 

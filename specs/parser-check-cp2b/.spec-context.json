@@ -755,6 +755,14 @@
     {
       "note": "QC deferred follow-up: resolver.refusal_detail only accepts a Resolution with a duck-typed .spec, so handlers/parse.py (_Spec) and worker_main.py (_SpecView) have independently built the same four-attribute adapter; _refusal_from_row also patches detail[candidates] after the call. A data-first entry point would remove both. Deferred to the next touch of the file on the reviewers recommendation",
       "step": "implement"
+    },
+    {
+      "note": "The engine-gate refusal is not always inline: the gate runs in the worker (the server must never open a project to read ActiveParser), so on a cold worker the refusal arrives after the grace window and the caller gets a handle first. Not a defect -- FR-015 guarantees ORDER, not latency -- but the quickstarts wording for scenario 2 reads as though it were always inline",
+      "step": "implement"
+    },
+    {
+      "note": "The three-tier casting-helper injection was not running while handle_run_module logged Preflight: passed (tier=full). Dead implementation and false telemetry retired; the injection itself is NOT restored. Whether it should be is a CP3 write-path question",
+      "step": "implement"
     }
   ],
   "step_summaries": {
@@ -1906,6 +1914,14 @@
       "warnings": [
         "3 non-blocking items closed in-session",
         "1 non-blocking item deferred on the reviewers own recommendation: give resolver.py a data-first refusal entry point so handlers/parse.py and worker_main.py stop reinventing the same four-attribute adapter"
+      ]
+    },
+    {
+      "what": "full suite on the final tree, after resolving all three open questions",
+      "command": "python -m pytest -q",
+      "result": "2046 passed, 0 failed, 8 skipped, 390.13s, live tier included",
+      "warnings": [
+        "an earlier run spanned a whitespace edit and was discarded rather than kept with a caveat"
       ]
     }
   ],

@@ -113,6 +113,43 @@ PARSE_FILER_MEMBERS: FrozenSet[str] = frozenset({"ParseFiler.ProcessParse"})
 WRITE_REQUIRED_MEMBERS: FrozenSet[str] = HCPARSER_MEMBERS | PARSE_FILER_MEMBERS
 """The write spine's required member set -- HCParser's surface plus the filer."""
 
+# ---------------------------------------------------------------------------
+# THE OTHER CAPABILITY CHECK, AND WHAT IT COVERS THAT THIS ONE DOES NOT.
+#
+# There are two parser capability checks, and they are DIFFERENT AND
+# OVERLAPPING -- not one simply larger than the other. The other one is
+# `ParserOperations.GetAvailability()` in the flexicon package. Each probes
+# the surface IT binds, which is why the member lists differ; they are not
+# drifting apart by accident, and neither is a stale copy of the other.
+#
+#   This check covers, and flexicon's does NOT:
+#       HCParser(LcmCache)          -- the ctor; flexicon never constructs one
+#       Update()                    -- reached only through its Reload()
+#       ParseFiler.ProcessParse     -- FILING. flexicon deliberately does not
+#                                      wrap the write path at all, so its
+#                                      check has nothing to say about it.
+#                                      This is the important one: the write
+#                                      spine is gated here and nowhere else.
+#
+#   flexicon's check covers, and this one does NOT:
+#       IsUpToDate()                -- the held grammar's currency
+#       Reset()                     -- the first half of its Reload()
+#                                      (Reload is Reset-then-Update, and the
+#                                      order is load-bearing)
+#
+# So a contributor editing the lists above should expect them to disagree
+# with flexicon's, and should NOT "fix" the disagreement by copying one into
+# the other -- that would make this probe demand members no caller here
+# binds, and would make flexicon's demand the filing member it has no use
+# for. If you add a member to THIS list, add it because a call site in THIS
+# repository binds it.
+#
+# Required by FR-041, which asks that each check state, where a contributor
+# will read it, what the other has that it lacks -- an unexplained
+# divergence between two checks is indistinguishable from drift within a
+# release or two. flexicon's side carries the mirror image of this note.
+# ---------------------------------------------------------------------------
+
 
 # ---------------------------------------------------------------------------
 # ProbeResult (data-model.md)

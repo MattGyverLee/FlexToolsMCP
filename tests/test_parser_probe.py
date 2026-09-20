@@ -403,3 +403,109 @@ class TestCP1Boundary:
             probe_parser_core(COMPLETE_PARSER_CORE_MEMBERS)
 
         assert lcm_cache_calls == []
+
+
+# ---------------------------------------------------------------------------
+# FR-041 -- the two capability checks diverge ON PURPOSE
+# ---------------------------------------------------------------------------
+#
+# Added at CP2b. The member lists were used by several tests and pinned by
+# none, so the specific mistake FR-041 exists to prevent -- "these two lists
+# disagree, let me make them match" -- would have passed the whole suite.
+#
+# These tests do NOT modify the check (FR-041 forbids that, and CP2b did
+# not): they pin what it already is, and they pin the divergence itself as
+# intentional.
+
+
+class TestCapabilityCheckDivergenceIsIntentional:
+    """The read/write member sets, and what flexicon's check does not share."""
+
+    def test_the_read_spine_member_set_is_exactly_these_five(self):
+        # Imported from the module under test, NOT from the fixtures module
+        # this file also imports a `HCPARSER_MEMBERS` from -- that one is a
+        # tuple mirror kept for the fake DLL surfaces, and asserting against
+        # it would pin the fixture rather than the probe.
+        from flextoolsmcp.server.parser_probe import HCPARSER_MEMBERS
+
+        assert HCPARSER_MEMBERS == frozenset(
+            {
+                "HCParser(LcmCache)",
+                "Update()",
+                "ParseWord(string)",
+                "TraceWordXml(string, IEnumerable<int>)",
+                "ParseWordXml(string)",
+            }
+        ), (
+            "the read spine's member set changed. If you are syncing it with "
+            "flexicon's GetAvailability() list, stop: the two probe different "
+            "surfaces on purpose (FR-041, and the note above these lists)."
+        )
+
+    def test_the_write_spine_adds_exactly_the_filer(self):
+        from flextoolsmcp.server.parser_probe import (
+            HCPARSER_MEMBERS,
+            PARSE_FILER_MEMBERS,
+            WRITE_REQUIRED_MEMBERS,
+        )
+
+        assert PARSE_FILER_MEMBERS == frozenset({"ParseFiler.ProcessParse"})
+        assert WRITE_REQUIRED_MEMBERS == HCPARSER_MEMBERS | PARSE_FILER_MEMBERS
+        assert WRITE_REQUIRED_MEMBERS - HCPARSER_MEMBERS == frozenset(
+            {"ParseFiler.ProcessParse"}
+        ), "the two spines must differ by exactly one member (SPEC 5.2)"
+
+    def test_the_filing_member_is_gated_here_and_nowhere_else(self):
+        """The one thing this check has that flexicon's cannot.
+
+        flexicon never wraps the write path, so its capability check has
+        nothing to say about filing. If this member were dropped from here,
+        the write spine would be ungated on both sides at once.
+        """
+        from flextoolsmcp.server.parser_probe import WRITE_REQUIRED_MEMBERS
+
+        assert any("ProcessParse" in m for m in WRITE_REQUIRED_MEMBERS), (
+            "ParseFiler.ProcessParse is no longer required by the write "
+            "spine; nothing else in either repository gates filing"
+        )
+
+    def test_the_currency_members_are_deliberately_absent_here(self):
+        """The one thing flexicon's check has that this one does not.
+
+        `IsUpToDate()` and `Reset()` belong to the held-grammar contract,
+        which lives entirely on flexicon's facade -- this probe has no
+        caller that binds either, so demanding them here would refuse an
+        install over a member nothing in this repository uses.
+
+        Asserted as an ABSENCE so that adding them is a deliberate act with
+        a failing test to answer, rather than a tidy-up.
+        """
+        from flextoolsmcp.server.parser_probe import WRITE_REQUIRED_MEMBERS
+
+        for member in ("IsUpToDate", "Reset()"):
+            assert not any(member in m for m in WRITE_REQUIRED_MEMBERS), (
+                f"{member} was added to this probe's member set. It is "
+                f"flexicon's to check -- see the FR-041 note above the lists."
+            )
+
+    def test_the_divergence_is_documented_where_the_lists_are_edited(self):
+        """FR-041's last sentence, asserted rather than assumed.
+
+        The note has to be next to the lists, because that is what a
+        contributor is looking at when they are tempted to sync them.
+        """
+        import inspect
+
+        from flextoolsmcp.server import parser_probe
+
+        source = inspect.getsource(parser_probe)
+        head = source[: source.index("class ProbeResult")]
+
+        assert "GetAvailability" in head, (
+            "parser_probe no longer names the other capability check; FR-041 "
+            "requires each to state what the other has that it lacks"
+        )
+        assert "IsUpToDate" in head and "ProcessParse" in head, (
+            "the note no longer names the members that actually differ, "
+            "which is the only part of it that is checkable"
+        )

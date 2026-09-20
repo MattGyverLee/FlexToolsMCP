@@ -593,6 +593,47 @@ different claims. It also asserts the *first* call DID report its load, so
 the "not re-entered" assertion cannot pass vacuously against a build that
 never reports the stage at all.
 
+#### The engine gate's refusal is not always INLINE, and cannot be
+
+Found by running the full suite rather than the scenarios in isolation:
+quickstart scenario 2 intermittently came back `status: "ok"` with a
+`run_id` instead of the `parser_engine_mismatch` refusal.
+
+**Not a defect. It is the design, and it could not be otherwise.** The gate
+runs inside the WORKER, because the server process must never open a
+project to read `ActiveParser` (research.md R-02). So on a **cold** worker
+the refusal cannot be delivered until the project has been opened -- and
+`Sena 3` (1,462 entries) can take longer than the five-second grace window
+to open. The window governs reporting only, so the call correctly returns a
+handle and the refusal lands on the run a moment later.
+
+The guarantee FR-015 makes is about ORDER, not latency: nothing in the
+parser area is touched before the engine is checked. That is asserted
+separately and holds either way -- `ParserCore` is absent from the refusing
+worker's loaded-assembly list.
+
+**The quickstart's wording is slightly optimistic.** Scenario 2 says the
+expected result is `parser_engine_mismatch`, which reads as inline. On a
+warm worker it is. On a cold one the caller gets a handle first. Both are
+the contract working; only the second is surprising, and it is the one a
+user meets first on a fresh session.
+
+**What was changed:** the test, not the product. `try_word_settled()` in
+`tests/test_parse_live.py` accepts either form and asserts what must be
+true of both -- that it IS a refusal, that it names `XAmple` as configured
+and `HC` as supported -- reusing the handler's own `_refusal_from_failure`
+so the shape it checks is production's rather than one invented in a test.
+The earlier version asserted the inline form only, which made it a test of
+how fast the machine was; it passed in isolation and failed in a full
+suite, which is the worst way for a test to be wrong.
+
+**Worth considering for CP3:** whether a caller pointing at an
+XAmple-configured project should be told so before a worker is started at
+all. The server cannot read `ActiveParser` itself, but a previously-opened
+project's engine could be remembered -- at the cost of the live re-read
+FR-015 requires, which is probably not a trade worth making. Recorded as an
+observation, not a recommendation.
+
 #### Scenario 2's negative, live
 
 `ParserCore` is **absent** from the loaded-assembly list of the worker that
@@ -615,7 +656,7 @@ readable copy: [`sc004-inline-rate.json`](./sc004-inline-rate.json).
 | **Answered inline** | **24** |
 | **Observed inline rate** | **100.0%** (required: >=95%) |
 | Grace window | 5.0s (the default, unmodified) |
-| Fastest / median / slowest | 0.046s / 0.047s / 0.063s |
+| Fastest / median / slowest | 0.015s / 0.078s / 0.359s |
 | Overflowed the window | none |
 
 **Both numbers are here because a rate without its denominator is the
@@ -634,8 +675,13 @@ taken from the project itself, all of which genuinely parse.
 is excluded deliberately, and the held-grammar precondition it establishes is
 the same one scenario 1 asserts directly.
 
-The median of 47ms against a 5000ms window is two orders of magnitude of
-headroom, which is why no attempt overflowed. That headroom is a property of
+**The per-word timings move with machine load; the rate does not.** An
+earlier run of this same test reported 0.046 / 0.047 / 0.063s, the figures
+above were taken while the full suite was running alongside it, and both
+reported 24/24 inline. That is the point of measuring a rate rather than a
+duration: the criterion is about whether a caller gets an answer in one
+call, and a 0.078s median against a 5000ms window has
+enough headroom that ordinary contention does not threaten it. That headroom is a property of
 this project (41 entries, 3 rules); `Malay Parsing-20230810withHC` is the
 scale project and its figures belong to the scenarios in T053.
 
@@ -682,24 +728,77 @@ breaks against one of them.
 | Site | Grade | Disposition |
 |---|---|---|
 | `server/parse/worker_main.py:483` | HIGH (shape) | **No change, deliberately.** `project.OpenProject(projectName=..., writeEnabled=False, undoable=False, ui=lcm_ui)` binds all four by keyword, in the very class whose `parse()` docstring declares positional binding load-bearing. **But the rationale does not transfer**: flexicon's shipped signature is `OpenProject(self, projectName, writeEnabled=False, undoable=True, ui=None)` and its own double (`tests/test_issue96_teardown_visibility.py:187`) matches all four names. There is no divergence on this path. Converting to `OpenProject(name, False, False, ui)` would trade real readability -- two bare positional booleans, the shape that gets miswired later -- for a risk that does not exist here. Recorded rather than "fixed" so the reasoning survives the next sweep. |
-| `server/handlers/execution.py:3946` | HIGH | **Out of CP2b scope; recorded for follow-up.** Generated-module runner binds the same four `OpenProject` params by keyword. This is injected text, so a divergence surfaces as a subprocess-side `TypeError` with no local signal. |
-| `server/handlers/execution.py:4988` | HIGH | **Out of CP2b scope; recorded for follow-up.** The CP1 scan runner, same binding, **duplicated rather than shared with `:3946`** -- so a fix at one site silently misses the other. The duplication is the more interesting finding. |
-| `server/handlers/execution.py:338` | HIGH | **The divergent double, and the reason the three above are graded HIGH.** The liblcm-flavour `class FLExProject` defines `OpenProject(self, projectName, writeEnabled=False)` -- no `undoable`, no `ui`. Any caller reaching it with the four-keyword form raises `TypeError: unexpected keyword argument 'undoable'`. This is an exact structural analogue of the `word`/`form` divergence. |
+| `server/handlers/execution.py:3946` | HIGH -> **CLEARED** | Generated-module runner binds the same four `OpenProject` params by keyword. **Not a defect:** the only implementation it can reach is flexicon's, whose signature is `OpenProject(self, projectName, writeEnabled=False, undoable=True, ui=None)` -- all four names match. The divergent stand-in it was graded against turned out to be unreachable (next row). |
+| `server/handlers/execution.py:4988` | HIGH -> **CLEARED** | The CP1 scan runner, same binding, same clearance. The duplication between this and `:3946` is real and remains worth consolidating, but it is a tidiness matter, not a correctness one. |
+| `server/handlers/execution.py:338` | HIGH -> **REMOVED** | This was graded the divergent double: a liblcm-flavour `class FLExProject` with `OpenProject(self, projectName, writeEnabled=False)` -- no `undoable`, no `ui`. **It was dead code.** It lived inside `_get_api_mode_imports`, which had **0 calls, 0 attribute references and no name in any string literal**; the `{imports}` slot it appeared to feed is filled from an unrelated local list in `handle_start_module`. It could never meet the call sites above. Deleted -- see "What the audit found underneath" below. |
 | `server/worked_examples.py:237` | MED | **Out of CP2b scope; recorded for follow-up.** `project.MSA.CreateInflAff(sense, pos, slots=None)` teaches BOTH halves at once -- a collection-typed parameter bound by keyword with `None` as the neutral default -- and it is served to LLM callers as a template, so it propagates the idiom into generated modules. The highest-leverage of the out-of-scope items. |
 
-**Why the `execution.py` sites are not fixed here.** They are CP1-era
-generated-module text on the **write path**; CLAUDE.md requires the full
-crew cycle and live-LCM verification with `FLEXLIBS_REQUIRE_LIVE=1` for a
-change there, and "it is only a keyword binding" is not an argument for
-skipping it. Folding that into CP2b would put an unverified write-path edit
-inside a read-only checkpoint. They are recorded so the obligation is
-carried, not dropped.
+#### What the audit found underneath
 
-**The by-construction claim is renewed.** Any future binding of a CLR method
-taking a collection parameter re-opens shape 1; any keyword binding to a
-facade method that has a divergent stand-in re-opens shape 2. Shape 2 now
-has a named, located divergence (`execution.py:338`), so the next sweep
-starts from a fact rather than a hypothesis.
+Triaging the shape-2 siblings turned up something larger than the binding
+question, and it is the real result of this audit.
+
+`_get_api_mode_imports` was not merely uncalled. It was the **only**
+consumer of `_get_casting_helpers_code` and `_validate_api_mode`, and the
+only consumer anywhere of `casting_helpers.HELPER_FUNCTION_DEFS`. The
+generated runner script does not import `casting_helpers` at all. So the
+**three-tier casting-helper injection** -- a documented safety feature that
+injects safe-cast helpers into every generated module -- **did not run**,
+and had not since at least the `2.3.1` packaging release.
+
+Worse than the absence: `handle_run_module` still computed the tier and
+logged it. Every run emitted
+
+```
+Preflight:       passed (tier=full)
+```
+
+for a run that injected nothing. A log line that answers the reader's
+question with something untrue is worse than no log line, and this one sat
+directly on the write path's telemetry.
+
+The feature's two dedicated documents (`docs/THREE_TIER_INJECTION.md`,
+`docs/CASTING_SYSTEM.md`, ~760 lines, added 2026-04-06) had already been
+**deleted**, which reads as a retirement that was decided and then left
+half-done -- implementation, telemetry and a stale line in
+`docs/workflow-detail.md` all left behind.
+
+**Retired properly, on the maintainer's decision:**
+
+| | |
+|---|---|
+| `execution.py` | 156 lines removed -- `_validate_api_mode`, `_get_casting_helpers_code`, `_get_api_mode_imports` -- with a comment in their place recording what was there and why it went |
+| `execution.py` | `_log_operation_start` loses its `injection_tier` / `helpers_needed` parameters and its tier logging; **no call site ever passed them**, so that whole branch was unreachable too |
+| `execution.py` | `handle_run_module` no longer reports a tier. `Preflight: passed`, with no claim attached. |
+| `docs/workflow-detail.md` | the section is marked RETIRED and says what actually happened, so the name does not send the next reader hunting for code that is gone |
+
+**Casting DETECTION is untouched and still runs.** Pre-flight still finds
+casting issues and still reports them as `casting_issues`; it simply no
+longer claims to have injected helpers in response. That distinction is the
+whole change: a real check kept, a false claim removed.
+
+**This is a finding to carry into CP3, not a closed item.** Nothing here
+restores the injection. If the helpers were meant to be reaching generated
+modules, that is a write-path change needing the full crew cycle and live
+verification -- and it is now visible rather than hidden behind a log line
+saying it already happened.
+
+**The by-construction claim is renewed, and shape 2's is now narrower.**
+Any future binding of a CLR method taking a collection parameter re-opens
+shape 1. Shape 2 re-opens on any keyword binding to a facade method that
+has a divergent stand-in -- and after this audit **no such divergence
+exists in the tree**: the only one found was dead and has been removed. The
+next sweep therefore starts from a cleared field rather than from a list of
+deferred obligations.
+
+**A note on grading, for the next sweep.** All four shape-2 siblings were
+graded HIGH on a structural match that was real, and all four turned out to
+be non-defects -- three because the implementation they reach has matching
+parameter names, one because it was unreachable. The sweep was still worth
+running: it is what surfaced the retired-feature finding above, which was
+worth considerably more than the binding question it was looking for. But
+"structurally identical to a known bug" is a reason to look, not a finding
+in itself, and the triage is where the value was.
 
 _Not yet run._ **Re-opened obligation.** CP2a's null-vs-empty sweep found no
 siblings but recorded a by-construction claim that any future binding of a
@@ -745,16 +844,35 @@ _Not yet recorded._
 
 ### T064 -- FR-041, `parser_probe.py` unchanged
 
+**Evidence form changed, on the maintainer's decision.** T064 originally
+asked for `git diff --stat` showing **0 lines changed**. That instrument
+turned out to forbid the very note FR-041's last sentence requires (see
+below), so the requirement was discharged with a more precise one instead:
+**0 lines of executable code changed**, proven by comparing the module's
+AST against the committed version.
+
 ```
+executable AST identical: True
+raw text identical:       False
+line delta:               37
+
 $ git diff --stat -- src/flextoolsmcp/server/parser_probe.py
-$
+ src/flextoolsmcp/server/parser_probe.py | 37 +++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+$ git diff -- src/flextoolsmcp/server/parser_probe.py | grep -c '^+[^+#]'
+0
 ```
 
-**0 lines changed.** No output, no files listed. CP1's capability check is
-byte-identical: same two gates, same `HCPARSER_MEMBERS` /
-`WRITE_REQUIRED_MEMBERS`, same signals, same behaviour. FR-041's first
-sentence -- "MUST NOT modify the capability check already shipped in this
-repository" -- is discharged.
+**The check is unchanged in behaviour**: same two gates, same
+`HCPARSER_MEMBERS` / `WRITE_REQUIRED_MEMBERS`, same signals. All 37 added
+lines are comments -- zero added lines carry executable content.
+
+AST equality is the stronger instrument here. A line count forbids a
+comment while permitting a same-line logic change; AST equality does the
+reverse, which is what "MUST NOT modify the capability check" actually
+means. FR-041's first sentence is discharged, and more tightly than a
+diffstat could.
 
 #### The two checks, and what each says about the other
 
@@ -776,32 +894,40 @@ the two are not drifting apart by accident", and explain that the other
 module probes the surface it binds including the filing member this class
 never binds.
 
-**Our side does NOT.** `parser_probe.py` contains no reference to the
-flexicon check -- searched for `flexicon`, `GetAvailability`,
-`ParserOperations`, "script library", "the other check" and "divergence";
-zero hits. So FR-041's last sentence is **half discharged**, on the
-flexicon side only.
+**Our side now does too.** `parser_probe.py` previously contained no
+reference to the flexicon check at all. It now carries a note sited
+directly above the member lists -- where a contributor tempted to sync them
+is actually looking -- naming exactly what differs:
 
-**Why it was not fixed here, and what the choice was.** The note would have
-to live in `parser_probe.py` -- every relevant definition
+* **this check has, flexicon's has not:** `HCParser(LcmCache)`, `Update()`,
+  and `ParseFiler.ProcessParse`. The last is the important one: **filing is
+  gated here and nowhere else**, because flexicon never wraps the write
+  path at all.
+* **flexicon's has, this one has not:** `IsUpToDate()` and `Reset()` -- the
+  held grammar's currency members, which no call site in this repository
+  binds.
+
+FR-041's last sentence is now discharged on **both** sides.
+
+**The conflict, and how it was resolved.** FR-041's first sentence and its
+last pull opposite ways for this one file: every relevant definition
 (`HCPARSER_MEMBERS`, `PARSE_FILER_MEMBERS`, `WRITE_REQUIRED_MEMBERS`,
-`probe_parser_core`) is in that one file, so there is nowhere else a
-contributor would read it. Adding even a comment-only note would make the
-`git diff --stat` above non-empty, and T064 asks for **0 lines changed**
-specifically.
+`probe_parser_core`) lives in `parser_probe.py`, so there is nowhere else a
+contributor would read the note -- and adding even a comment makes a
+diffstat non-empty.
 
-That is a real conflict inside FR-041: its first sentence and its last
-sentence pull opposite ways for this file. **The explicit instruction was
-followed** -- the file is untouched -- and the gap is written down here
-rather than silently resolved, because picking one half of a requirement
-over the other is a call for review, not for an implementer working alone.
+Resolved by changing the **instrument** rather than dropping either half of
+the requirement: the note was added, and "unmodified" is demonstrated by
+AST equality instead of a line count. Both sentences are discharged.
 
-**Recommended resolution for the crew gate:** add a comment-only note to
-`parser_probe.py` naming what the flexicon check carries that this one does
-not (the `Reload` / `IsUpToDate` currency members), and change T064's
-evidence from "0 lines changed" to "0 lines of CHECK changed", demonstrated
-by an AST comparison rather than a line count. That discharges both
-sentences instead of trading one for the other.
+**And the lists are now pinned.** They were used by several tests and
+asserted by none, so the specific mistake this note warns against -- "these
+two lists disagree, let me make them match" -- would have passed the entire
+suite. `tests/test_parser_probe.py` now pins the read set, the write set's
+one-member delta, `ParseFiler.ProcessParse` as gated here and nowhere else,
+`IsUpToDate` / `Reset` as deliberately **absent**, and the presence of the
+note itself. Pinning is not modifying: the check is unchanged, and the AST
+comparison above is what says so.
 
 
 _Not yet run._
@@ -959,18 +1085,18 @@ Exact invocation, at the repository root:
 ```
 $ python -m pytest -q
 ...
-2036 passed, 8 skipped, 23 warnings, 36 subtests passed in 344.45s (0:05:44)
+2046 passed, 8 skipped, 23 warnings, 36 subtests passed in 390.13s (0:06:30)
 ```
 
 | | |
 |---|---|
-| **Passed** | **2036** |
+| **Passed** | **2046** |
 | **Failed** | **0** |
 | **Errors** | **0** |
 | Skipped | 8 |
 | Subtests passed | 36 |
 | Warnings | 23 |
-| Wall clock | 344.45s (5m 44s) |
+| Wall clock | 390.13s (6m 30s) |
 
 **Run WITHOUT `-m "not requires_flex"`, so the live tier ran.** That matters:
 `tests/test_parse_live.py` (17 tests) and `tests/test_parser_no_xcore.py`
@@ -984,16 +1110,21 @@ run. The 23 warnings are all one pre-existing `DeprecationWarning` about
 
 **What this count is not.** It is the suite on **this machine**, which has
 FieldWorks 9.3.10, `pyflexicon` 4.9.0 and both live projects installed. On a
-headless machine the same command reports 1972 passed with 64 deselected --
+headless machine the same command reports 1977 passed with 71 deselected --
 also green, and proving strictly less. The number above is the one that
 stands behind the live claims in this document.
 
-**Re-run after the QC gate.** The count above is the FINAL one. An earlier
-run of the same command reported 2032 passed; four tests were added after it
-while closing the QC gate's findings -- two pinning the server-shutdown reap
-(see below) and two covering branches QC identified as untested. The earlier
-number is superseded rather than both being quoted, because a stale count
-beside a fresh one invites the wrong one to be cited.
+**The count above is the FINAL one, and it moved twice.** 2032 after the
+implement step; 2036 after the QC gate's findings were closed (four tests
+added); 2046 after the three open questions were resolved (ten more -- five
+pinning the two capability checks' deliberate divergence, five proving the
+resolver's outcomes against a real lexicon). Each number supersedes the last
+rather than all three being quoted, because a stale count beside a fresh one
+invites the wrong one to be cited.
+
+The final figure was taken on the final tree. An earlier run of it spanned a
+whitespace edit, so it was discarded and the suite re-run rather than the
+number being kept with a caveat attached.
 
 **A defect the gate's own review brief surfaced.** `aclose_runner()` existed
 and **nothing called it**: the server's shutdown path never reaped the parse
@@ -1033,7 +1164,7 @@ was always there.
 |---|---|
 | **SC-004** (inline rate) | **24/24 = 100%**, required >=95%. Median 47ms against a 5s window. Both numbers, T034. |
 | **SC-003** (0 UI components after a real parse) | **0** on the parse path -- the delta the parse added is 5 assemblies, none of them UI. T032. |
-| **SC-013** (full suite) | **2036 passed, 0 failed**, live tier included. T067. |
+| **SC-013** (full suite) | **2046 passed, 0 failed**, live tier included. T067. |
 | SC-005 (0 parses for an unresolvable piece) | 0, asserted as a negative at both the handler and the live layer |
 | SC-006 (traced exactly as given) | six zeros, `tests/test_parse_proposal.py` |
 | SC-007 (index built once per run) | 1, counted not timed |
@@ -1069,24 +1200,41 @@ scenario 7**, which RAN (T066) against a copied project with authorisation.
 
 ### Known gaps, carried forward rather than closed
 
-1. **`ambiguous` and `no_msa` are not live-exercisable.** Measured: neither
-   installed project carries a homograph or an entry without an analysis
-   (`IndonesianHC-Complete` 41 entries, `Malay Parsing-20230810withHC` 281,
-   both zero). The outcomes are covered exhaustively against a constructed
-   lexicon in `tests/test_parse_resolver.py`; what stays unproven live is
-   that a real lexicon read produces those row shapes. A test asserts the
-   measurement, so the gap fails loudly if the data ever changes (T043).
-2. **FR-041's last sentence is half discharged.** `parser_probe.py` states
-   nothing about what the flexicon check carries that it lacks, and fixing
-   that conflicts with T064's "0 lines changed". Recorded with a recommended
-   resolution under T064; **this one needs a decision, not more evidence.**
+1. ~~`ambiguous` and `no_msa` are not live-exercisable.~~ **CLOSED.** The
+   two quickstart projects genuinely cannot produce them (41 and 281
+   entries, zero homographs and zero MSA-less entries between them) -- but
+   a read-only scan of the other installed projects found one that can:
+   **`Tlachichilco Tepehua-NT Noparse`**, HC-configured, 3704 entries, with
+   19 headwords carried by two MSA-bearing entries and 185 carried by a
+   single entry with no analysis. `tests/test_parse_live.py` now proves all
+   four outcomes distinct against a real lexicon. No write, no
+   authorisation required.
+
+   Worth recording from that scan: FLEx sometimes appends a homograph
+   number to a headword (that project contains `lati2`, `putauk-atamay2`),
+   which would have made `ambiguous` unreachable by construction. It does
+   not always -- 19 headwords there are shared verbatim -- so the outcome,
+   and the sense filter that resolves it, are both doing real work.
+2. ~~FR-041's last sentence is half discharged.~~ **CLOSED.** The note was
+   added to `parser_probe.py`, the member lists were pinned by tests, and
+   T064's evidence instrument changed from a line count to AST equality.
+   See T064.
 3. **SPEC 16's no-oracle case remains deferred** -- CP2b ships no review
    surface for it to be about. The deferral's premise is asserted by a test
-   (T061).
-4. **Three write-path keyword-binding sites** from the pattern audit
-   (`execution.py:3946`, `execution.py:4988`, `worked_examples.py:237`) are
-   recorded and unfixed, because changing generated-module text is write-path
-   work requiring the full crew cycle and live-LCM verification.
+   (T061). **Still open, and correctly so.**
+4. ~~Three write-path keyword-binding sites.~~ **CLOSED on triage.** Two are
+   non-defects: the implementation they reach names all four parameters the
+   same way. The divergent stand-in that made them look dangerous was dead
+   code and has been removed. `worked_examples.py:237` remains a
+   documentation nit -- a served template that teaches a keyword-bound
+   collection parameter -- not a defect. See T042.
+5. **NEW, and the most consequential thing this checkpoint found outside its
+   own scope:** the three-tier casting-helper injection was not running,
+   while `handle_run_module` logged `Preflight: passed (tier=full)` as
+   though it were. The dead implementation and the false telemetry have been
+   retired. **Nothing here restores the injection**, and whether it should
+   be restored is a CP3 question. See T042, "What the audit found
+   underneath".
 
 ### Spec corrections made in place
 

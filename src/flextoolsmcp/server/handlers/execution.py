@@ -211,162 +211,30 @@ def _available_projects_payload() -> Dict[str, Any]:
     }
 
 
-def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
-    """Validate that the requested API mode libraries are properly installed.
-
-    Args:
-        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
-
-    Returns:
-        (is_valid, error_message)
-    """
-    if api_mode == "flexicon":
-        try:
-            import flexicon  # type: ignore
-            # Check version is available (flexicon uses 'version' not '__version__')
-            if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-                return False, "flexicon missing version info"
-            return True, ""
-        except ImportError as e:
-            return False, f"flexicon not found: {e}"
-
-    elif api_mode == "flexlibs_stable":
-        try:
-            import flexlibs  # type: ignore  # noqa: F401  # availability probe
-            return True, ""
-        except ImportError as e:
-            return False, f"flexlibs not found: {e}"
-
-    elif api_mode == "liblcm":
-        # LibLCM is optional, validated at runtime
-        return True, ""
-
-    return False, f"Unknown API mode: {api_mode}"
-
-
-def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Optional[set] = None) -> str:
-    """Generate casting helpers code based on injection tier.
-
-    Uses HELPER_FUNCTION_DEFS from constants to avoid duplication.
-
-    Args:
-        injection_tier: 'none' | 'minimal' | 'full'
-        helpers_needed: Set of helper names for 'minimal' tier
-
-    Returns:
-        Python code string with helper definitions (or empty if tier='none')
-    """
-    try:
-        from ...casting_helpers import HELPER_FUNCTION_DEFS
-    except ImportError:
-        from casting_helpers import HELPER_FUNCTION_DEFS
-
-    if injection_tier == "none":
-        return ""
-
-    if injection_tier == "minimal" and helpers_needed:
-        # Only import what's needed
-        helper_names = ", ".join(sorted(helpers_needed))
-        return f"""
-# Auto-injected: Minimal casting helpers for polymorphic types (three-tier strategy, tier 2)
-try:
-    from casting_helpers import {helper_names}
-except ImportError:
-    # Fallback: Define only needed helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-    # Full injection (tier='full' or defensive fallback)
-    return f"""
-# Auto-injected: Safe casting helpers for polymorphic types (three-tier strategy, tier 3 - full)
-try:
-    from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
-except ImportError:
-    # Fallback: Define all helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-
-def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> str:
-    """Generate imports and namespace dict for a given API mode.
-
-    Args:
-        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
-        helpers_needed: Optional set of specific helper names to inject (e.g., {'get_headword'})
-        injection_tier: 'none' | 'minimal' | 'full'
-            - none: Don't inject casting helpers (code pre-flighted, safe)
-            - minimal: Only inject helpers in helpers_needed set
-            - full: Inject full suite of helpers (defensive mode)
-
-    Returns:
-        imports_code: Python code string with imports and helpers
-
-    Raises:
-        ValueError: If API mode is invalid or required libraries are not installed
-    """
-    if helpers_needed is None:
-        helpers_needed = set()
-
-    # Gate #1: Validate API mode is valid
-    is_valid, error_msg = _validate_api_mode(api_mode)
-    if not is_valid:
-        raise ValueError(f"API mode validation failed: {error_msg}")
-
-    # Base imports per API mode
-    BASE_IMPORTS = {
-        "flexlibs_stable": "from flexlibs import FLExInitialize, FLExCleanup, FLExProject",
-        "flexicon": "from flexicon import FLExInitialize, FLExCleanup, FLExProject",
-        "liblcm": """import clr
-clr.AddReference('SIL.LCModel')
-from SIL.LCModel import *
-from SIL.LCModel.Core.WritingSystems import *
-
-def FLExInitialize():
-    \"\"\"Initialize LibLCM backend.\"\"\"
-    pass
-
-def FLExCleanup():
-    \"\"\"Cleanup LibLCM backend.\"\"\"
-    pass
-
-class FLExProject:
-    \"\"\"Wrapper for direct LibLCM project access.\"\"\"
-    def __init__(self):
-        self._backend = None
-        self._cache = None
-
-    def OpenProject(self, projectName, writeEnabled=False):
-        \"\"\"Open project using LibLCM directly.\"\"\"
-        try:
-            from SIL.LCModel import LcmCache
-            self._cache = LcmCache.CreateCacheForNewLcmProject(projectName, "en", "en", "en",
-                                                               writeSystemType=LcmWriteSystemType.kDefault)
-            self._backend = self._cache.ServiceLocator
-        except Exception as e:
-            raise RuntimeError(f"Failed to open LibLCM project: {e}")
-
-    def CloseProject(self):
-        \"\"\"Close project.\"\"\"
-        if self._cache:
-            self._cache.Dispose()
-
-    def __getattr__(self, name):
-        \"\"\"Delegate unknown attributes to backend.\"\"\"
-        if self._backend:
-            return getattr(self._backend, name)
-        raise AttributeError(f"Project not initialized: {name}")
-""",
-    }
-
-    if api_mode not in BASE_IMPORTS:
-        raise ValueError(f"Unknown API mode: {api_mode}")
-
-    # Get base imports and append casting helpers (single shared logic)
-    imports = BASE_IMPORTS[api_mode]
-    casting_helpers = _get_casting_helpers_code(injection_tier, helpers_needed)
-    imports += casting_helpers
-
-    return imports
+# ---------------------------------------------------------------------------
+# RETIRED: three-tier casting-helper injection.
+#
+# `_validate_api_mode`, `_get_casting_helpers_code` and
+# `_get_api_mode_imports` lived here and were **never called**. The last of
+# the three was the only consumer of the other two, and the only consumer
+# anywhere of `casting_helpers.HELPER_FUNCTION_DEFS`; the generated runner
+# script does not import `casting_helpers` at all. So the injection they
+# implemented did not happen, and had not happened since at least the
+# 2.3.1 packaging release.
+#
+# Retired rather than repaired because the retirement had already been
+# decided elsewhere and left half-done: the feature's two dedicated
+# documents (`docs/THREE_TIER_INJECTION.md`, `docs/CASTING_SYSTEM.md`) were
+# deleted, while the implementation, a stale line in
+# `docs/workflow-detail.md` and -- worst -- telemetry reporting a tier
+# nothing acted on were all left behind. A log line reading
+# `Preflight: passed (tier=full)` for a run that injected nothing is worse
+# than no log line, because it answers the question a reader came with.
+#
+# The pre-flight casting DETECTION is untouched and still runs: it is what
+# populates `casting_issues`, which is real and still reported. Only the
+# injection that never happened, and the tier that described it, are gone.
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -446,8 +314,6 @@ def _log_operation_start(
     code: str,
     source_kind: str,
     casting_check: Optional[Dict[str, Any]] = None,
-    injection_tier: Optional[str] = None,
-    helpers_needed: Optional[set] = None,
     user_intent: Optional[str] = None,
     user_request: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -512,15 +378,14 @@ def _log_operation_start(
     )
 
     if casting_check is not None:
-        issue_count = len(casting_check.get("casting_issues") or [])
-        tier = injection_tier or casting_check.get("injection_tier", "?")
-        helpers = sorted(helpers_needed) if helpers_needed else sorted(
-            casting_check.get("helpers_needed") or []
-        )
+        # Reached by no caller today -- all three call sites omit
+        # `casting_check` -- but kept because the shape is right and the
+        # caller that wants it is a one-line change. What is NOT kept is the
+        # injection tier: nothing injects, so nothing may report a tier.
         logger.info(
-            f"Preflight casting: issues={issue_count} tier={tier} helpers={helpers or '[]'}"
+            f"Preflight casting: "
+            f"issues={len(casting_check.get('casting_issues') or [])}"
         )
-        # Per-issue detail (DEBUG) so the .log captures WHY the helper was injected.
         for issue in (casting_check.get("casting_issues") or [])[:10]:
             logger.debug(
                 f"  casting: line={issue.get('line')} property={issue.get('property')} "
@@ -3626,29 +3491,26 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     timeout_seconds = args.get("timeout_seconds", 300)
 
-    # Determine three-tier injection strategy based on pre-flight results
-    # Tier 1 (none): No casting issues → Skip helper injection (lightweight)
-    # Tier 2 (minimal): Issues found but handled → Inject only needed helpers (balanced)
-    # Tier 3 (full): Defensive mode → Inject full suite (heavy but safest)
-    injection_tier = casting_check.get("injection_tier", "full")  # Default to full for safety
-    helpers_needed = casting_check.get("helpers_needed", set())  # Set of specific helpers
-
     # Operation Start was logged at the top of handle_run_module; now that
-    # pre-flight has passed, append the casting/injection telemetry and an
-    # explicit "preflight passed" marker so a failure later in the subprocess
-    # can be told apart from a failure that never made it past validation.
+    # pre-flight has passed, append the casting telemetry and an explicit
+    # "preflight passed" marker so a failure later in the subprocess can be
+    # told apart from a failure that never made it past validation.
+    #
+    # NO INJECTION TIER IS REPORTED, because nothing is injected. This used
+    # to read `Preflight: passed (tier=full)` while injecting nothing -- a
+    # log line that answered the reader's question with something untrue.
+    # The casting DETECTION below is real and stays: `casting_issues` is
+    # what pre-flight actually found.
     logger = get_operations_logger()
-    if (casting_check.get("casting_issues") or []) or injection_tier != "none" or helpers_needed:
-        logger.info(
-            f"Preflight casting: issues={len(casting_check.get('casting_issues') or [])} "
-            f"tier={injection_tier} helpers={sorted(helpers_needed) if helpers_needed else '[]'}"
-        )
-        for issue in (casting_check.get("casting_issues") or [])[:10]:
+    casting_issues = casting_check.get("casting_issues") or []
+    if casting_issues:
+        logger.info(f"Preflight casting: issues={len(casting_issues)}")
+        for issue in casting_issues[:10]:
             logger.debug(
                 f"  casting: line={issue.get('line')} property={issue.get('property')} "
                 f"pattern={issue.get('pattern','')[:80]!r}"
             )
-    logger.info(f"Preflight:       passed (tier={injection_tier})")
+    logger.info("Preflight:       passed")
 
     # Build warnings
     warnings = []

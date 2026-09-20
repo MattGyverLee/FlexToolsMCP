@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.8.0"
+    "version": "4.9.0"
   },
   "by_method": {
     "AdhocProhibition.__init__": {
@@ -1600,6 +1600,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -1671,6 +1672,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -1736,6 +1738,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -1836,6 +1839,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -1901,6 +1905,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -1988,6 +1993,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2056,6 +2062,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2134,6 +2141,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2208,6 +2216,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2274,6 +2283,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2288,6 +2298,57 @@
         "MorphTypeRA",
         "MorphTypeRA (ReferenceAtomic)"
       ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "AllomorphOperations.GetOwningEntry": {
+      "class": "AllomorphOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "allomorph_or_hvo": [
+            "arg[0] of _ValidateParam()",
+            "arg[0] of __GetAllomorphObject()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Conditional logic for handling special cases",
+            "type": "conditional"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemAllomorph",
+        "IMoAffixAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorphFactory",
+        "ILexEntry",
+        "IPhEnvironment",
+        "LexEntryTags",
+        "ITsString",
+        "TsStringUtils",
+        "IMoStemAllomorph",
+        "IMoStemAllomorphFactory",
+        "IMoAffixAllomorph",
+        "IMoAffixAllomorphFactory"
+      ],
+      "mapping_type": "pure_python",
+      "method": "GetOwningEntry",
+      "methods_called": [],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -2340,6 +2401,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2410,6 +2472,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2472,6 +2535,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2553,6 +2617,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2631,6 +2696,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2685,6 +2751,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -2727,6 +2794,7 @@
         "IMoAffixAllomorphFactory",
         "ILexEntry",
         "IPhEnvironment",
+        "LexEntryTags",
         "ITsString",
         "TsStringUtils",
         "IMoStemAllomorph",
@@ -14132,11 +14200,10 @@
           ]
         },
         "properties_accessed": [
-          "RecordsOC (OwningCollection)"
+          "RecordsOC (OwningCollection)",
+          "ResearchNotebookOA (OwningAtomic)"
         ],
-        "repositories_used": [
-          "IRnResearchNbkRepository"
-        ],
+        "repositories_used": [],
         "transformations": [
           {
             "default": "None",
@@ -14184,11 +14251,10 @@
         ".set_String()"
       ],
       "properties_accessed": [
-        "RecordsOC (OwningCollection)"
+        "RecordsOC (OwningCollection)",
+        "ResearchNotebookOA (OwningAtomic)"
       ],
-      "repositories_used": [
-        "IRnResearchNbkRepository"
-      ],
+      "repositories_used": [],
       "utilities_used": [
         "TsStringUtils.MakeString"
       ]
@@ -14296,11 +14362,10 @@
         },
         "properties_accessed": [
           "RecordsOC (OwningCollection)",
+          "ResearchNotebookOA (OwningAtomic)",
           "SubRecordsOS (OwningSequence)"
         ],
-        "repositories_used": [
-          "IRnResearchNbkRepository"
-        ],
+        "repositories_used": [],
         "transformations": [
           {
             "description": "Converts to int",
@@ -14330,11 +14395,10 @@
       ],
       "properties_accessed": [
         "RecordsOC (OwningCollection)",
+        "ResearchNotebookOA (OwningAtomic)",
         "SubRecordsOS (OwningSequence)"
       ],
-      "repositories_used": [
-        "IRnResearchNbkRepository"
-      ],
+      "repositories_used": [],
       "utilities_used": []
     },
     "DataNotebookOperations.Duplicate": {
@@ -14363,11 +14427,10 @@
         "properties_accessed": [
           "Owner",
           "RecordsOC (OwningCollection)",
+          "ResearchNotebookOA (OwningAtomic)",
           "SubRecordsOS (OwningSequence)"
         ],
-        "repositories_used": [
-          "IRnResearchNbkRepository"
-        ],
+        "repositories_used": [],
         "transformations": [
           {
             "default": "False",
@@ -14411,11 +14474,10 @@
       "properties_accessed": [
         "Owner",
         "RecordsOC (OwningCollection)",
+        "ResearchNotebookOA (OwningAtomic)",
         "SubRecordsOS (OwningSequence)"
       ],
-      "repositories_used": [
-        "IRnResearchNbkRepository"
-      ],
+      "repositories_used": [],
       "utilities_used": []
     },
     "DataNotebookOperations.Exists": {
@@ -18208,11 +18270,10 @@
           ]
         },
         "properties_accessed": [
-          "ClassID",
           "EnvironmentsOS (OwningSequence)",
-          "LeftContextOA (OwningAtomic)",
+          "LeftContextRA (ReferenceAtomic)",
           "PhonologicalDataOA (OwningAtomic)",
-          "RightContextOA (OwningAtomic)"
+          "RightContextRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -18257,11 +18318,10 @@
         ".Insert()"
       ],
       "properties_accessed": [
-        "ClassID",
         "EnvironmentsOS (OwningSequence)",
-        "LeftContextOA (OwningAtomic)",
+        "LeftContextRA (ReferenceAtomic)",
         "PhonologicalDataOA (OwningAtomic)",
-        "RightContextOA (OwningAtomic)"
+        "RightContextRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": [
@@ -18314,7 +18374,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "env_or_hvo": [
@@ -18322,9 +18382,7 @@
             "arg[0] of __ResolveObject()"
           ]
         },
-        "properties_accessed": [
-          "LeftContextOA (OwningAtomic)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -18346,12 +18404,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetLeftContextPattern",
       "methods_called": [],
-      "properties_accessed": [
-        "LeftContextOA (OwningAtomic)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -18433,7 +18489,7 @@
       "inline": {
         "calls_ensure_write_enabled": false,
         "factories_used": [],
-        "mapping_type": "direct",
+        "mapping_type": "pure_python",
         "methods_called": [],
         "param_usage": {
           "env_or_hvo": [
@@ -18441,9 +18497,7 @@
             "arg[0] of __ResolveObject()"
           ]
         },
-        "properties_accessed": [
-          "RightContextOA (OwningAtomic)"
-        ],
+        "properties_accessed": [],
         "repositories_used": [],
         "transformations": [
           {
@@ -18465,12 +18519,10 @@
         "ITsString",
         "TsStringUtils"
       ],
-      "mapping_type": "direct",
+      "mapping_type": "pure_python",
       "method": "GetRightContextPattern",
       "methods_called": [],
-      "properties_accessed": [
-        "RightContextOA (OwningAtomic)"
-      ],
+      "properties_accessed": [],
       "repositories_used": [],
       "utilities_used": []
     },
@@ -48175,6 +48227,77 @@
       "repositories_used": [],
       "utilities_used": []
     },
+    "MSAOperations.GetAll": {
+      "class": "MSAOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "convenience",
+        "methods_called": [],
+        "param_usage": {
+          "entry_or_hvo": [
+            "arg[0] of __ResolveEntry()"
+          ]
+        },
+        "properties_accessed": [
+          "MorphoSyntaxAnalysesOC (OwningCollection)"
+        ],
+        "repositories_used": [
+          "ILexEntryRepository"
+        ],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "entry_or_hvo",
+            "type": "default_value"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to str",
+            "pattern": "str",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IMoStemMsa",
+        "IMoStemMsaFactory",
+        "IMoDerivAffMsa",
+        "IMoDerivAffMsaFactory",
+        "IMoInflAffMsa",
+        "IMoInflAffMsaFactory",
+        "IMoUnclassifiedAffixMsa",
+        "IMoUnclassifiedAffixMsaFactory",
+        "ILexSense",
+        "ILexEntry",
+        "ILexEntryRepository",
+        "IWfiMorphBundleRepository",
+        "LexEntryTags",
+        "MsaType",
+        "SandboxGenericMSA"
+      ],
+      "mapping_type": "convenience",
+      "method": "GetAll",
+      "methods_called": [],
+      "properties_accessed": [
+        "MorphoSyntaxAnalysesOC (OwningCollection)"
+      ],
+      "repositories_used": [
+        "ILexEntryRepository"
+      ],
+      "utilities_used": []
+    },
     "MSAOperations.GetSyncableProperties": {
       "class": "MSAOperations",
       "factories_used": [],
@@ -55907,6 +56030,226 @@
         "ITsString",
         "TsStringUtils"
       ],
+      "mapping_type": "pure_python",
+      "method": "__init__",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.GetAvailability": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "GetAvailability",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.IsUpToDate": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to bool",
+            "pattern": "bool",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "IsUpToDate",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.ParseWord": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "word": [
+            "arg[1] of _ClearAnyRestriction()",
+            "arg[0] of ParseWord()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "ParseWord",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.ParseWordXml": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "word": [
+            "arg[0] of ParseWordXml()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "ParseWordXml",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.Reload": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {},
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "Reload",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.TraceWordXml": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "analyses": [
+            "arg[0] of _AsIdentifierSequence()"
+          ],
+          "word": [
+            "arg[0] of TraceWordXml()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "default": "None",
+            "param": "analyses",
+            "type": "default_value"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
+      "mapping_type": "pure_python",
+      "method": "TraceWordXml",
+      "methods_called": [],
+      "properties_accessed": [],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "ParserOperations.__init__": {
+      "class": "ParserOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "pure_python",
+        "methods_called": [],
+        "param_usage": {
+          "project": [
+            "arg[0] of __init__()"
+          ]
+        },
+        "properties_accessed": [],
+        "repositories_used": [],
+        "transformations": [],
+        "utilities_used": []
+      },
+      "lcm_deps": [],
       "mapping_type": "pure_python",
       "method": "__init__",
       "methods_called": [],
@@ -75916,7 +76259,6 @@
         ],
         "mapping_type": "composite",
         "methods_called": [
-          ".Add()",
           ".set_String()"
         ],
         "param_usage": {
@@ -75982,7 +76324,6 @@
       "mapping_type": "composite",
       "method": "Create",
       "methods_called": [
-        ".Add()",
         ".set_String()"
       ],
       "properties_accessed": [
@@ -76001,7 +76342,7 @@
         "factories_used": [],
         "mapping_type": "direct",
         "methods_called": [
-          ".Remove()"
+          ".Delete()"
         ],
         "param_usage": {
           "text_or_hvo": [
@@ -76030,7 +76371,7 @@
       "mapping_type": "direct",
       "method": "Delete",
       "methods_called": [
-        ".Remove()"
+        ".Delete()"
       ],
       "properties_accessed": [],
       "repositories_used": [],
@@ -76473,6 +76814,60 @@
       ],
       "mapping_type": "direct",
       "method": "GetGenre",
+      "methods_called": [],
+      "properties_accessed": [
+        "GenresRC (ReferenceCollection)"
+      ],
+      "repositories_used": [],
+      "utilities_used": []
+    },
+    "TextOperations.GetGenres": {
+      "class": "TextOperations",
+      "factories_used": [],
+      "inline": {
+        "calls_ensure_write_enabled": false,
+        "factories_used": [],
+        "mapping_type": "direct",
+        "methods_called": [],
+        "param_usage": {
+          "text_or_hvo": [
+            "arg[0] of __GetTextObject()"
+          ]
+        },
+        "properties_accessed": [
+          "GenresRC (ReferenceCollection)"
+        ],
+        "repositories_used": [],
+        "transformations": [
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
+          },
+          {
+            "description": "Converts to list",
+            "pattern": "list",
+            "type": "type_conversion"
+          }
+        ],
+        "utilities_used": []
+      },
+      "lcm_deps": [
+        "IText",
+        "ITextFactory",
+        "IStTextFactory",
+        "IStTxtParaFactory",
+        "ITextRepository",
+        "IStTxtPara",
+        "ICmPossibility",
+        "ICmMedia",
+        "ICmMediaFactory",
+        "ICmFolderFactory",
+        "ITsString",
+        "TsStringUtils"
+      ],
+      "mapping_type": "direct",
+      "method": "GetGenres",
       "methods_called": [],
       "properties_accessed": [
         "GenresRC (ReferenceCollection)"
@@ -79215,7 +79610,6 @@
           "AnalysesOC (OwningCollection)",
           "CategoryRA (ReferenceAtomic)",
           "Form",
-          "InflClassRA (ReferenceAtomic)",
           "MeaningsOC (OwningCollection)",
           "MorphBundlesOS (OwningSequence)",
           "MorphRA (ReferenceAtomic)",
@@ -79268,7 +79662,6 @@
         "AnalysesOC (OwningCollection)",
         "CategoryRA (ReferenceAtomic)",
         "Form",
-        "InflClassRA (ReferenceAtomic)",
         "MeaningsOC (OwningCollection)",
         "MorphBundlesOS (OwningSequence)",
         "MorphRA (ReferenceAtomic)",
@@ -81638,7 +82031,6 @@
         },
         "properties_accessed": [
           "Form",
-          "InflClassRA (ReferenceAtomic)",
           "MorphBundlesOS (OwningSequence)",
           "MorphRA (ReferenceAtomic)",
           "MsaRA (ReferenceAtomic)",
@@ -81691,7 +82083,6 @@
       ],
       "properties_accessed": [
         "Form",
-        "InflClassRA (ReferenceAtomic)",
         "MorphBundlesOS (OwningSequence)",
         "MorphRA (ReferenceAtomic)",
         "MsaRA (ReferenceAtomic)",
@@ -82050,7 +82441,7 @@
           ]
         },
         "properties_accessed": [
-          "InflClassRA (ReferenceAtomic)"
+          "MsaRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
@@ -82096,7 +82487,7 @@
       "method": "GetInflectionClass",
       "methods_called": [],
       "properties_accessed": [
-        "InflClassRA (ReferenceAtomic)"
+        "MsaRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -82421,13 +82812,13 @@
         "methods_called": [],
         "param_usage": {
           "item": [
-            "arg[0] of hasattr()"
+            "arg[0] of hasattr()",
+            "arg[0] of getattr()"
           ]
         },
         "properties_accessed": [
           "Form",
           "Guid",
-          "InflClassRA (ReferenceAtomic)",
           "MorphRA (ReferenceAtomic)",
           "MsaRA (ReferenceAtomic)",
           "SenseRA (ReferenceAtomic)"
@@ -82464,7 +82855,6 @@
       "properties_accessed": [
         "Form",
         "Guid",
-        "InflClassRA (ReferenceAtomic)",
         "MorphRA (ReferenceAtomic)",
         "MsaRA (ReferenceAtomic)",
         "SenseRA (ReferenceAtomic)"
@@ -82724,13 +83114,18 @@
           ]
         },
         "properties_accessed": [
-          "InflClassRA (ReferenceAtomic)"
+          "MsaRA (ReferenceAtomic)"
         ],
         "repositories_used": [],
         "transformations": [
           {
             "description": "Conditional logic for handling special cases",
             "type": "conditional"
+          },
+          {
+            "description": "Converts to int",
+            "pattern": "int",
+            "type": "type_conversion"
           },
           {
             "description": "Converts to list",
@@ -82755,7 +83150,7 @@
       "method": "SetInflectionClass",
       "methods_called": [],
       "properties_accessed": [
-        "InflClassRA (ReferenceAtomic)"
+        "MsaRA (ReferenceAtomic)"
       ],
       "repositories_used": [],
       "utilities_used": []
@@ -83248,7 +83643,6 @@
           "AnalysesOC (OwningCollection)",
           "CategoryRA (ReferenceAtomic)",
           "Form",
-          "InflClassRA (ReferenceAtomic)",
           "MeaningsOC (OwningCollection)",
           "MorphBundlesOS (OwningSequence)",
           "MorphRA (ReferenceAtomic)",
@@ -83291,7 +83685,6 @@
         "AnalysesOC (OwningCollection)",
         "CategoryRA (ReferenceAtomic)",
         "Form",
-        "InflClassRA (ReferenceAtomic)",
         "MeaningsOC (OwningCollection)",
         "MorphBundlesOS (OwningSequence)",
         "MorphRA (ReferenceAtomic)",

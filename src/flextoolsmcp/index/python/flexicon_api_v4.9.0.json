@@ -3,7 +3,7 @@
   "_source": {
     "description": "Flexicon - Deep Python wrapper for LibLCM (~90% coverage)",
     "type": "flexicon",
-    "version": "4.8.0"
+    "version": "4.9.0"
   },
   "categories": {
     "discourse": {
@@ -48,6 +48,8 @@
         "MediaType",
         "NC",
         "OperationsMethod",
+        "ParserAvailability",
+        "ParserOperations",
         "PythonicWrapper",
         "Seg",
         "SegmentDefinition",
@@ -3408,6 +3410,7 @@
         "IMoStemAllomorphFactory",
         "IPhEnvironment",
         "ITsString",
+        "LexEntryTags",
         "TsStringUtils"
       ],
       "methods": [
@@ -3921,6 +3924,45 @@
           "returns": "IMoMorphType: The morpheme type (stem, prefix, suffix, etc.). ",
           "signature": "GetMorphType(allomorph_or_hvo)",
           "summary": "Returns the morpheme type (stem, root, prefix, suffix, infix, affix).",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Get the lexical entry that owns this allomorph.\n",
+          "example": "            >>> entry = project.LexEntry.Find(\"run\")\n            >>> allomorphs = project.Allomorphs.GetAll(entry)\n            >>> owner = project.Allomorphs.GetOwningEntry(allomorphs[0])\n            >>> print(project.LexEntry.GetHeadword(owner))\n            run\n\n            >>> # Round trip: GetAll walks entry -> allomorphs; this walks\n            >>> # allomorph -> entry.\n            >>> for allomorph in project.Allomorphs.GetAll():\n            ...     owner = project.Allomorphs.GetOwningEntry(allomorph)\n            ...     if owner is None:\n            ...         continue\n            ...     form = project.Allomorphs.GetForm(allomorph)\n            ...     print(f\"{form} -> {project.LexEntry.GetHeadword(owner)}\")\n            run -> run\n            ran -> run\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetOwningEntry",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If allomorph_or_hvo is None."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "ILexEntry: The owning entry, or None if the allomorph has no owning entry anywhere above it in the ownership chain.",
+              "type": "ILexEntry"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The IMoForm object (IMoStemAllomorph or IMoAffixAllomorph) or HVO.",
+              "name": "allomorph_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_NullParameterError: If allomorph_or_hvo is None."
+          ],
+          "return_type": "ILexEntry",
+          "returns": "ILexEntry: The owning entry, or None if the allomorph has no owning entry anywhere above it in the ownership chain. ",
+          "signature": "GetOwningEntry(allomorph_or_hvo)",
+          "summary": "Get the lexical entry that owns this allomorph.",
           "usage_hint": "retrieval"
         },
         {
@@ -16851,7 +16893,7 @@
             },
             {
               "default": false,
-              "description": "For sub-records (SubRecordsOS is an ordered sequence), controls whether the duplicate is inserted immediately after the source. Ignored for top-level records: RecordsOC is an unordered ILcmOwningCollection with no Insert() method, so top-level duplicates are always appended via Add().",
+              "description": "For sub-records (SubRecordsOS is an ordered sequence), controls whether the duplicate is inserted immediately after the source. Ignored for top-level records: RecordsOC (owned by ResearchNotebookOA -- ruling C1) is an unordered ILcmOwningCollection with no Insert() method, so top-level duplicates are always appended via Add().",
               "name": "insert_after",
               "type": "bool"
             },
@@ -20184,7 +20226,7 @@
         },
         {
           "description": "Duplicate a phonological environment, creating a new copy with a new GUID.\n",
-          "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> word_initial = envOps.Create(\"Word Initial\")\n            >>> envOps.SetStringRepresentation(word_initial, \"#_\")\n            >>> # Deep copy (default - includes owned context objects)\n            >>> copy = envOps.Duplicate(word_initial)\n            >>> print(envOps.GetName(copy))\n            Word Initial\n\n            >>> # Shallow copy (no context objects)\n            >>> between_vowels = envOps.Create(\"Between Vowels\")\n            >>> copy = envOps.Duplicate(between_vowels, deep=False)\n",
+          "example": "            >>> envOps = EnvironmentOperations(project)\n            >>> word_initial = envOps.Create(\"Word Initial\")\n            >>> envOps.SetStringRepresentation(word_initial, \"#_\")\n            >>> copy = envOps.Duplicate(word_initial)\n            >>> print(envOps.GetName(copy))\n            Word Initial\n\n            >>> # `deep` is INERT for context objects (see Notes) -- this\n            >>> # produces the same context references as the call above.\n            >>> between_vowels = envOps.Create(\"Between Vowels\")\n            >>> copy = envOps.Duplicate(between_vowels, deep=False)\n",
           "is_classmethod": false,
           "is_mutating": true,
           "is_property": false,
@@ -20223,7 +20265,7 @@
             },
             {
               "default": true,
-              "description": "If True (default), deep copy owned context objects (LeftContextOA, RightContextOA). If False, contexts are not copied.",
+              "description": "INERT for this method -- kept only because it is pinned surface (EnvironmentOperations.pyi:18). LeftContextRA/RightContextRA are Reference Atomic, not owned, so there is nothing to \"deep copy\": the duplicate always references the SAME context objects as the source, regardless of this flag. See specs/lcm-member-truth-sweep/spec.md C7.",
               "name": "deep",
               "type": "bool"
             }
@@ -29508,6 +29550,48 @@
           "signature": "ConstChartClauseMarkers()",
           "summary": "Access to clause marker operations for constituent chart rows.",
           "usage_hint": null
+        },
+        {
+          "description": "Access to READ-ONLY morphological parser operations.\n\nSingular, like the other service facades (``POS``, ``LexEntry``,\n``MSA``): a plural accessor names a collection namespace, and a\nparser is a service rather than a collection.\n\nTHE IMPORT BELOW IS FUNCTION-LOCAL ON PURPOSE, and that is FR-003\nrather than a style choice. Nothing about the parser is loaded when\n``flexicon`` is imported, so a machine whose parser component is\nmissing, relocated, or from a different FieldWorks installation\nstill imports the package -- it degrades to \"parser unavailable\",\ncarrying a reason, instead of failing at import. Loading is\ntriggered by USE.\n\nNothing this area ADDS writes: none of its six operations records\nor files a parse result back into the project, and a standing test\nenforces that by set equality over the public surface rather than by\nreviewing method names. The limit of the claim, stated so a caller\nis not misled by it: the generic reordering helpers inherited by\nevery Operations class are still present here, and Swap /\nMoveBefore / MoveAfter / ApplySyncableProperties take their targets\nas arguments and will write if handed writable objects. None can\nrecord a parse result. See ParserOperations' class docstring.\n",
+          "example": "            >>> project = FLExProject()\n            >>> project.OpenProject(\"MyProject\", writeEnabled=False)\n            >>> # Ask first -- asking never raises, on any machine\n            >>> status = project.Parser.GetAvailability()\n            >>> if not status.available:\n            ...     print(status.reason)\n            ... else:\n            ...     result = project.Parser.ParseWord(\"mengambil\")\n            ...     doc = project.Parser.ParseWordXml(\"mengambil\")\n            ...     trace = project.Parser.TraceWordXml(\"mengambil\")\n            >>> # Grammar currency is asked, never assumed\n            >>> if status.available and not project.Parser.IsUpToDate():\n            ...     project.Parser.Reload()",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": true,
+          "is_staticmethod": false,
+          "lcm_mapping": {
+            "calls_ensure_write_enabled": false,
+            "factories_used": [],
+            "mapping_type": "pure_python",
+            "methods_called": [],
+            "param_usage": {},
+            "properties_accessed": [],
+            "repositories_used": [],
+            "transformations": [
+              {
+                "description": "Converts to int",
+                "pattern": "int",
+                "type": "type_conversion"
+              }
+            ],
+            "utilities_used": []
+          },
+          "name": "Parser",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {
+              "description": "ParserOperations: Instance providing read-only parser methods.",
+              "type": "ParserOperations"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "ParserOperations",
+          "returns": "ParserOperations: Instance providing read-only parser methods. ",
+          "signature": "Parser()",
+          "summary": "Access to READ-ONLY morphological parser operations.",
+          "usage_hint": "conversion"
         }
       ],
       "source_file": "FLExProject",
@@ -43085,7 +43169,7 @@
         "BaseOperations"
       ],
       "category": "lexicon",
-      "description": "Creation + attach operations for morphosyntactic analyses (MSAs).\n\nA LexSense's grammatical analysis lives in\n``sense.MorphoSyntaxAnalysisRA``, which is a reference to an MSA owned\nby ``sense.Entry.MorphoSyntaxAnalysesOC``. LCM offers four concrete\nMSA subtypes that share IMoMorphSynAnalysis as base; each subtype has\nits own factory whose 2-arg Create overload takes an owner (the sense's\nentry) and a SandboxGenericMSA descriptor.\n\nThis wrapper hides the ServiceLocator + SandboxGenericMSA dance and\nauto-attaches the new MSA to the sense, mirroring the read-side\ncoverage in MorphosyntaxAnalysis.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nentry = list(project.LexiconAllEntries())[0]\nsense = entry.SensesOS[0]\n\n# Stem MSA (most common case): assign POS to a lexical entry.\nverb_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateStem(sense, verb_pos)\n\n# Derivational affix: noun -> verb\nn_pos = project.POS.Find(\"Noun\")\nv_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)\n\nSee Also:\nmorphosyntax_analysis.MorphosyntaxAnalysis (reading)\nmsa_collection.MSACollection (iteration)",
+      "description": "Read, creation and attach operations for morphosyntactic analyses (MSAs).\n\nA LexSense's grammatical analysis lives in\n``sense.MorphoSyntaxAnalysisRA``, which is a reference to an MSA owned\nby ``sense.Entry.MorphoSyntaxAnalysesOC``. LCM offers four concrete\nMSA subtypes that share IMoMorphSynAnalysis as base; each subtype has\nits own factory whose 2-arg Create overload takes an owner (the sense's\nentry) and a SandboxGenericMSA descriptor.\n\nThis wrapper hides the ServiceLocator + SandboxGenericMSA dance and\nauto-attaches the new MSA to the sense; ``GetAll`` covers the reading\ndirection, handing back MorphosyntaxAnalysis wrappers in an\nMSACollection so subtype differences never reach the caller.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\nentry = list(project.LexiconAllEntries())[0]\nsense = entry.SensesOS[0]\n\n# Read: every MSA owned by the entry, already wrapped.\nfor msa in project.MSA.GetAll(entry):\nif msa.is_deriv_aff_msa:\nprint(msa.pos_from, \"->\", msa.pos_to)\n\n# Stem MSA (most common case): assign POS to a lexical entry.\nverb_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateStem(sense, verb_pos)\n\n# Derivational affix: noun -> verb\nn_pos = project.POS.Find(\"Noun\")\nv_pos = project.POS.Find(\"Verb\")\nproject.MSA.CreateDerivAff(sense, from_pos=n_pos, to_pos=v_pos)\n\nSee Also:\nmorphosyntax_analysis.MorphosyntaxAnalysis (reading)\nmsa_collection.MSACollection (iteration)",
       "example": "",
       "id": "MSAOperations",
       "lcm_dependencies": [
@@ -43414,6 +43498,49 @@
           "usage_hint": "creation"
         },
         {
+          "description": "Get every morphosyntactic analysis owned by an entry, or by the\nwhole project.\n\nReads ``entry.MorphoSyntaxAnalysesOC`` and returns a smart\ncollection of wrapped MSA objects that transparently handle the\nfour concrete subtypes (MoStemMsa, MoDerivAffMsa, MoInflAffMsa,\nMoUnclassifiedAffixMsa). The caller never tests ``ClassName`` and\nnever casts: subtype differences are reached through the\nwrapper's ``is_*`` / ``as_*`` / ``pos_*`` families instead.\n",
+          "example": "            >>> entry = list(project.LexiconAllEntries())[0]\n            >>>\n            >>> # Every MSA on one entry\n            >>> msas = project.MSA.GetAll(entry)\n            >>> print(msas)  # Shows subtype breakdown\n            # MSACollection (3 total)\n            #   MoStemMsa: 2 (66%)\n            #   MoDerivAffMsa: 1 (33%)\n            >>>\n            >>> # Iterate the wrapped objects -- no ClassName, no cast\n            >>> for msa in msas:\n            ...     if msa.is_deriv_aff_msa:\n            ...         print(msa.pos_from, \"->\", msa.pos_to)\n            ...     else:\n            ...         print(msa.pos_main)\n            >>>\n            >>> # len() and indexing work directly on the collection\n            >>> print(len(msas))\n            3\n            >>> first = msas[0]\n            >>>\n            >>> # Filter by subtype, or by POS, and chain the two\n            >>> verb_pos = project.POS.Find(\"Verb\")\n            >>> verb_stems = project.MSA.GetAll(entry).filter(pos_main=verb_pos)\n            >>>\n            >>> # Project-wide sweep\n            >>> all_msas = project.MSA.GetAll()\n            >>> print(f\"Project has {len(all_msas)} MSAs\")\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetAll",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If entry_or_hvo is supplied but does not"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "MSACollection[MorphosyntaxAnalysis]: Smart collection of MorphosyntaxAnalysis wrapper objects, showing a subtype breakdown on ``str()`` and supporting filtered queries. Empty collection if the entry owns no MSAs.",
+              "type": "MSACollection[MorphosyntaxAnalysis]"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The ILexEntry object or HVO whose MorphoSyntaxAnalysesOC should be read. Pass None (the default) to sweep every entry in the project.",
+              "name": "entry_or_hvo",
+              "type": ""
+            }
+          ],
+          "raises": [
+            "FP_ParameterError: If entry_or_hvo is supplied but does not",
+            "resolve to a valid ILexEntry."
+          ],
+          "return_type": "MSACollection[MorphosyntaxAnalysis]",
+          "returns": "MSACollection[MorphosyntaxAnalysis]: Smart collection of MorphosyntaxAnalysis wrapper objects, showing a subtype breakdown on ``str()`` and supporting filtered queries. Empty collection if the entry owns no MSAs. ",
+          "signature": "GetAll(entry_or_hvo=None)",
+          "summary": "Get every morphosyntactic analysis owned by an entry, or by the\nwhole project.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Get dictionary of syncable properties for cross-project\nsynchronization of an MSA's feature structure(s).\n",
           "example": "",
           "is_classmethod": false,
@@ -43627,7 +43754,7 @@
       "namespace": "flexicon.code.Lexicon.MSAOperations",
       "properties": [],
       "source_file": "Lexicon/MSAOperations",
-      "summary": "Creation + attach operations for morphosyntactic analyses (MSAs).",
+      "summary": "Read, creation and attach operations for morphosyntactic analyses (MSAs).",
       "tags": [
         "lexicon",
         "operations"
@@ -50836,6 +50963,307 @@
       ],
       "type": "class",
       "usage_hint": "Provides operations for working with texts data in FieldWorks"
+    },
+    "ParserAvailability": {
+      "base_classes": [],
+      "category": "general",
+      "description": "Whether this project can reach the parser, and why not if it cannot.\n\nReturned, never raised. Asking whether the parser is reachable succeeds\non every machine, in every condition -- a missing component, a component\nfrom another FieldWorks install, a component whose surface has moved, a\npermissions error on the directory, a pythonnet failure. That is SC-001,\nand it is the single property tier A1 exists to test.\n\nThis is the first degrading-with-reason return in flexicon. The package\notherwise has exactly two behaviours, raise or silently become None, and\nneither is right here: a script that wants to know whether it can parse\nshould be able to ask without guarding the question in a try block.\n\nAttributes:\navailable (bool): Whether the parser operations may be called.\nreason (str): Why not, when `available` is False. Empty when\navailable. States WHAT WAS CHECKED and nothing more.\nversion (str or None): The detected component version, or None when\nthe component was never loaded. Reported, never compared.\n",
+      "example": "        >>> status = project.Parser.GetAvailability()\n        >>> if not status.available:\n        ...     print(f\"No parser: {status.reason}\")\n        ... else:\n        ...     print(f\"Parser {status.version} ready\")\n        Parser 9.3.10 ready\n\n    See Also:\n        ParserOperations.GetAvailability",
+      "id": "ParserAvailability",
+      "lcm_dependencies": [],
+      "methods": [],
+      "name": "ParserAvailability",
+      "namespace": "flexicon.code.Parser.ParserOperations",
+      "properties": [],
+      "source_file": "Parser/ParserOperations",
+      "summary": "Whether this project can reach the parser, and why not if it cannot.",
+      "tags": [
+        "general"
+      ],
+      "type": "class",
+      "usage_hint": "Class for working with general data in FieldWorks"
+    },
+    "ParserOperations": {
+      "access_path": "project.Parser",
+      "base_classes": [
+        "BaseOperations"
+      ],
+      "category": "general",
+      "description": "READ-ONLY access to the FieldWorks morphological parser.\n\nReached as ``project.Parser``. Ask a word whether it parses, get the\nparser's structured answer, or trace an attempt to see why it failed.\n\nTHIS SURFACE IS READ-ONLY BY CONSTRUCTION, AND THAT IS LOAD-BEARING.\nThere is no operation here that records, files or otherwise writes a\nparse result back into the project, and there is no transaction and no\nwrite-enable check anywhere in this module -- because there is nothing\nto guard. If you are about to add a method that persists a parse, stop:\nthe read-only safety claim made by every caller of this surface rests on\nthat absence, and a standing test enumerates the public surface by set\nequality to keep it true (tests/test_parser_offline.py, A1.4). Persisting\na parse is a later checkpoint's work and arrives with its own guards.\n\nTHE EXACT LIMIT OF THAT CLAIM, since a caller is entitled to know where\nit stops. \"Read-only\" covers everything this class ADDS -- all six\nmethods above. It does not extend to the generic reordering helpers every\nOperations class inherits from BaseOperations. Four of them (Sort,\nMoveUp, MoveDown, MoveToIndex) are inert here because they route through\n`_GetSequence`, which this class deliberately does not override. The rest\n-- Swap, MoveBefore, MoveAfter, ApplySyncableProperties -- take their\ntargets as arguments and WILL write if you hand them writable objects.\nNone of them can record a parse result, and this class adds no new reach,\nbut `project.Parser.Swap(a, b)` is not a no-op and should not be read as\none.\n\nDEGRADES, DOES NOT EXPLODE. On a machine where the parser component is\nmissing, relocated, or from a different FieldWorks installation,\nimporting flexicon still works and ``GetAvailability()`` answers with a\nreason. Only CALLING an operation raises, and it raises with that same\nreason. Ask first if you are not sure::\n\nstatus = project.Parser.GetAvailability()\nif not status.available:\nreport.Warning(status.reason)\n\nONE GRAMMAR, AND ITS CURRENCY IS ASKED, NEVER ASSUMED. At most one\nloaded grammar is held at a time, for the project in use; switching\nprojects releases the previous one. Before every parse the parser is\nASKED whether its grammar is current, and a stale grammar is reloaded\nbefore the word is parsed -- never after, and never from a local flag\nthat this class maintains, because a local flag is exactly what goes\nstale when something else changes the model.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"IndonesianHC-Complete\", writeEnabled=False)\n\nstatus = project.Parser.GetAvailability()\nif status.available:\nresult = project.Parser.ParseWord(\"mengambil\")\ntrace = project.Parser.TraceWordXml(\"mengambil\")\n\nproject.CloseProject()\n\nSee Also:\nParserAvailability",
+      "example": "",
+      "id": "ParserOperations",
+      "lcm_dependencies": [],
+      "methods": [
+        {
+          "description": "Report whether this project can reach the parser, and why not if it cannot.\n\nAsking NEVER raises, on any machine, in any condition. A missing\ncomponent, a component from another FieldWorks install, a component\nwhose surface has moved, a permissions error, a pythonnet failure --\neach produces a status carrying what went wrong.\n",
+          "example": "            >>> status = project.Parser.GetAvailability()\n            >>> print(status.available, status.version)\n            True 9.3.10\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetAvailability",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP_ParameterError",
+                "when": "Invalid parameter (e.g., wrong type, invalid HVO)"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "ParserAvailability: `available`, `reason`, and the detected `version` (reported, never compared against a minimum).",
+              "type": "ParserAvailability"
+            }
+          },
+          "parameters": [],
+          "raises": [],
+          "return_type": "ParserAvailability",
+          "returns": "ParserAvailability: `available`, `reason`, and the detected `version` (reported, never compared against a minimum). ",
+          "signature": "GetAvailability()",
+          "summary": "Report whether this project can reach the parser, and why not if it cannot.",
+          "usage_hint": "retrieval"
+        },
+        {
+          "description": "Ask the parser whether its loaded grammar is current.\n",
+          "example": "            >>> print(project.Parser.IsUpToDate())\n            True\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "IsUpToDate",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If the parser is unavailable, carrying the same"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "bool: True if the loaded grammar matches the project's current model, False if it is stale.",
+              "type": "bool"
+            }
+          },
+          "parameters": [],
+          "raises": [
+            "FP_RuntimeError: If the parser is unavailable, carrying the same",
+            "reason `GetAvailability()` would have reported."
+          ],
+          "return_type": "bool",
+          "returns": "bool: True if the loaded grammar matches the project's current model, False if it is stale. ",
+          "signature": "IsUpToDate()",
+          "summary": "Ask the parser whether its loaded grammar is current.",
+          "usage_hint": "validation"
+        },
+        {
+          "description": "Parse a single word form and return the parser's result object.\n",
+          "example": "            >>> result = project.Parser.ParseWord(\"mengambil\")\n            >>> print(result.Analyses.Count)\n            2\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ParseWord",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If the parser is unavailable, carrying the same"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "ParseResult: The parser's own result. Analyses on it carry LIVE references to the lexical objects they were built from -- IMoForm, IMoMorphSynAnalysis, ILexEntryInflType -- not their text. A caller can go from a parse straight back to the entry that produced it without a lookup.",
+              "type": "ParseResult"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The word form to parse, in the vernacular.",
+              "name": "word",
+              "type": "str"
+            }
+          ],
+          "raises": [
+            "FP_RuntimeError: If the parser is unavailable, carrying the same",
+            "reason `GetAvailability()` would have reported."
+          ],
+          "return_type": "ParseResult",
+          "returns": "ParseResult: The parser's own result. Analyses on it carry LIVE references to the lexical objects they were built from -- IMoForm, IMoMorphSynAnalysis, ILexEntryInflType -- not their text. A caller can go from a parse straight back to the entry that produced it without a lookup. ",
+          "signature": "ParseWord(word)",
+          "summary": "Parse a single word form and return the parser's result object.",
+          "usage_hint": "conversion"
+        },
+        {
+          "description": "Parse a single word form and return the parser's structured document.\n",
+          "example": "            >>> doc = project.Parser.ParseWordXml(\"mengambil\")\n            >>> print(doc.Root.Name.LocalName)\n            Wordform\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "ParseWordXml",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If the parser is unavailable, carrying the same"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "XDocument: The parser's serialized parse document.",
+              "type": "XDocument"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The word form to parse, in the vernacular.",
+              "name": "word",
+              "type": "str"
+            }
+          ],
+          "raises": [
+            "FP_RuntimeError: If the parser is unavailable, carrying the same",
+            "reason `GetAvailability()` would have reported."
+          ],
+          "return_type": "XDocument",
+          "returns": "XDocument: The parser's serialized parse document. ",
+          "signature": "ParseWordXml(word)",
+          "summary": "Parse a single word form and return the parser's structured document.",
+          "usage_hint": "conversion"
+        },
+        {
+          "description": "Discard the loaded grammar and load it again. Unconditionally.\n",
+          "example": "            >>> project.Parser.Reload()\n            >>> print(project.Parser.IsUpToDate())\n            True\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "Reload",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If the parser is unavailable, carrying the same"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "None",
+              "type": "None"
+            }
+          },
+          "parameters": [],
+          "raises": [
+            "FP_RuntimeError: If the parser is unavailable, carrying the same",
+            "reason `GetAvailability()` would have reported."
+          ],
+          "return_type": "None",
+          "returns": "None ",
+          "signature": "Reload()",
+          "summary": "Discard the loaded grammar and load it again.",
+          "usage_hint": null
+        },
+        {
+          "description": "Trace a parse attempt, optionally restricted to specific analyses.\n\nA trace explains an attempt: which rules fired, which failed, and\nwhere a candidate was rejected. It is the expensive answer, and the\none worth asking for when a plain parse came back empty.\n",
+          "example": "            >>> doc = project.Parser.TraceWordXml(\"mengambil\")\n            >>> print(doc.Root.Name.LocalName)\n            Wordform\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "TraceWordXml",
+          "output_behavior": {
+            "empty": null,
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_RuntimeError: If the parser is unavailable, carrying the same"
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If `analyses` is an empty sequence. Pass None"
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "XDocument: The parser's serialized trace document.",
+              "type": "XDocument"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The word form to trace, in the vernacular.",
+              "name": "word",
+              "type": "str"
+            },
+            {
+              "default": null,
+              "description": "Identifiers of the analyses to restrict the trace to. None traces without restriction. An EMPTY sequence is refused -- see Raises.",
+              "name": "analyses",
+              "type": "iterable of int, optional"
+            }
+          ],
+          "raises": [
+            "FP_RuntimeError: If the parser is unavailable, carrying the same",
+            "reason `GetAvailability()` would have reported.",
+            "FP_ParameterError: If `analyses` is an empty sequence. Pass None",
+            "for an unrestricted trace; an empty restriction would limit",
+            "the trace to no analyses at all."
+          ],
+          "return_type": "XDocument",
+          "returns": "XDocument: The parser's serialized trace document. ",
+          "signature": "TraceWordXml(word, analyses=None)",
+          "summary": "Trace a parse attempt, optionally restricted to specific analyses.",
+          "usage_hint": null
+        },
+        {
+          "description": "Initialize ParserOperations with a FLExProject instance.\n",
+          "example": "",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "__init__",
+          "output_behavior": {
+            "empty": null,
+            "failure": [],
+            "notes": [],
+            "success": {}
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "The FLExProject instance to operate on.",
+              "name": "project",
+              "type": ""
+            }
+          ],
+          "raises": [],
+          "return_type": "",
+          "returns": "",
+          "signature": "__init__(project)",
+          "summary": "Initialize ParserOperations with a FLExProject instance.",
+          "usage_hint": null
+        }
+      ],
+      "name": "ParserOperations",
+      "namespace": "flexicon.code.Parser.ParserOperations",
+      "properties": [],
+      "source_file": "Parser/ParserOperations",
+      "summary": "READ-ONLY access to the FieldWorks morphological parser.",
+      "tags": [
+        "general",
+        "operations"
+      ],
+      "type": "class",
+      "usage_hint": "Provides operations for working with general data in FieldWorks"
     },
     "PersonOperations": {
       "access_path": "project.Person",
@@ -70463,6 +70891,56 @@
           "usage_hint": "retrieval"
         },
         {
+          "description": "Get every genre assigned to a text.\n\nReads the text's ``GenresRC`` reference collection in full, so a\ntext carrying more than one genre reports all of them. The singular\nGetGenre reports only the first and is deliberately unchanged; use\nthis method whenever the count matters.\n",
+          "element_source_property": "GenresRC",
+          "element_type": "ICmPossibility",
+          "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>> genres = project.Texts.GetGenres(text)\n            >>> for genre in genres:\n            ...     print(genre.Name.BestAnalysisAlternative.Text)\n            Narrative\n            >>> if not genres:\n            ...     print(\"No genre assigned\")\n",
+          "is_classmethod": false,
+          "is_mutating": false,
+          "is_property": false,
+          "is_staticmethod": false,
+          "name": "GetGenres",
+          "output_behavior": {
+            "empty": {
+              "description": "Empty list/iterator when no items",
+              "value": "[]"
+            },
+            "failure": [
+              {
+                "exception": "FP",
+                "when": "_NullParameterError: If text_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the text does not exist or is invalid."
+              }
+            ],
+            "notes": [],
+            "success": {
+              "description": "list: List of ICmPossibility genre objects assigned to the text. Empty list when no genre is assigned (never None).",
+              "type": "list"
+            }
+          },
+          "parameters": [
+            {
+              "default": null,
+              "description": "Either an IText object or its HVO (integer identifier).",
+              "name": "text_or_hvo",
+              "type": ""
+            }
+          ],
+          "polymorphic": true,
+          "raises": [
+            "FP_NullParameterError: If text_or_hvo is None.",
+            "FP_ParameterError: If the text does not exist or is invalid."
+          ],
+          "return_type": "list",
+          "returns": "list: List of ICmPossibility genre objects assigned to the text. Empty list when no genre is assigned (never None). ",
+          "signature": "GetGenres(text_or_hvo)",
+          "summary": "Get every genre assigned to a text.",
+          "usage_hint": "retrieval"
+        },
+        {
           "description": "Check if a text's translation is marked as complete.\n\nRetrieves the IsTranslated boolean property indicating whether the\ntext has been fully translated or not.\n",
           "example": "            >>> text = list(project.Texts.GetAll())[0]\n            >>> is_translated = project.Texts.GetIsTranslated(text)\n            >>> if is_translated:\n            ...     print(\"Text translation is complete\")\n            ... else:\n            ...     print(\"Text translation is incomplete\")\n",
           "is_classmethod": false,
@@ -75846,6 +76324,18 @@
               {
                 "exception": "FP",
                 "when": "_NullParameterError: If bundle_or_hvo is None."
+              },
+              {
+                "exception": "FP",
+                "when": "_ParameterError: If the bundle's MSA is null, or is not a"
+              },
+              {
+                "exception": "MoStemMsa",
+                "when": "(the only MSA subtype with a plain"
+              },
+              {
+                "exception": "InflectionClassRA",
+                "when": ") -- there is no writable target."
               }
             ],
             "notes": [
@@ -75869,7 +76359,10 @@
           ],
           "raises": [
             "FP_ReadOnlyError: If the project is not opened with write enabled.",
-            "FP_NullParameterError: If bundle_or_hvo is None."
+            "FP_NullParameterError: If bundle_or_hvo is None.",
+            "FP_ParameterError: If the bundle's MSA is null, or is not a",
+            "MoStemMsa (the only MSA subtype with a plain",
+            "InflectionClassRA) -- there is no writable target."
           ],
           "return_type": "",
           "returns": "",
@@ -78528,7 +79021,7 @@
   "metadata": {
     "categories": {
       "discourse": 7,
-      "general": 38,
+      "general": 40,
       "grammar": 18,
       "lexicon": 15,
       "lists": 8,
@@ -78538,7 +79031,7 @@
       "system": 7,
       "texts": 10
     },
-    "files_analyzed": 93,
+    "files_analyzed": 94,
     "lcm_interfaces_used": [
       "CellarPropertyType",
       "CellarPropertyTypeFilter",
@@ -78770,13 +79263,13 @@
     ],
     "mapping_types": {
       "composite": 104,
-      "convenience": 210,
-      "direct": 599,
-      "pure_python": 618
+      "convenience": 211,
+      "direct": 598,
+      "pure_python": 628
     },
-    "methods_with_return_type": 965,
-    "total_classes": 118,
-    "total_methods": 1531,
-    "total_properties": 155
+    "methods_with_return_type": 974,
+    "total_classes": 120,
+    "total_methods": 1541,
+    "total_properties": 156
   }
 }

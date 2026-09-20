@@ -50,7 +50,7 @@
     },
     "AllomorphOperations": {
       "category": "lexicon",
-      "method_count": 17,
+      "method_count": 18,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -599,7 +599,7 @@
     },
     "MSAOperations": {
       "category": "lexicon",
-      "method_count": 11,
+      "method_count": 12,
       "methods": {},
       "wraps_interfaces": [
         "ILexEntry",
@@ -745,6 +745,18 @@
         "IText",
         "ITsString"
       ]
+    },
+    "ParserAvailability": {
+      "category": "general",
+      "method_count": 0,
+      "methods": {},
+      "wraps_interfaces": []
+    },
+    "ParserOperations": {
+      "category": "general",
+      "method_count": 7,
+      "methods": {},
+      "wraps_interfaces": []
     },
     "PersonOperations": {
       "category": "notebook",
@@ -1072,7 +1084,7 @@
     },
     "TextOperations": {
       "category": "texts",
-      "method_count": 23,
+      "method_count": 24,
       "methods": {},
       "wraps_interfaces": [
         "ICmFolderFactory",

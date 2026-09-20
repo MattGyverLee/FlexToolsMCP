@@ -601,6 +601,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nowner = project.Allomorphs.GetOwningEntry(allomorphs[0])\nprint(project.LexEntry.GetHeadword(owner))\n            run\n\n# Round trip: GetAll walks entry -> allomorphs; this walks\n# allomorph -> entry.\nfor allomorph in project.Allomorphs.GetAll():\n    owner = project.Allomorphs.GetOwningEntry(allomorph)\n    if owner is None:\n        continue\n    form = project.Allomorphs.GetForm(allomorph)\n    print(f\"{form} -> {project.LexEntry.GetHeadword(owner)}\")\n            run -> run\n            ran -> run",
+        "description": "Get the lexical entry that owns this allomorph.",
+        "method": "GetOwningEntry",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allo = list(project.Allomorphs.GetAll(entry))[0]\nprops = project.Allomorphs.GetSyncableProperties(allo)\nprint(props['Form'])  # MultiString\n            {'en': 'run', 'fr': 'courir'}\nprint(props['IsAbstract'])  # Boolean\n            True",
         "description": "Get all syncable properties of an allomorph for comparison.",
         "method": "GetSyncableProperties",
@@ -821,6 +830,15 @@
       },
       {
         "class": "TextOperations",
+        "code": "text = list(project.Texts.GetAll())[0]\ngenres = project.Texts.GetGenres(text)\nfor genre in genres:\n    print(genre.Name.BestAnalysisAlternative.Text)\n            Narrative\nif not genres:\n    print(\"No genre assigned\")",
+        "description": "Get every genre assigned to a text.",
+        "method": "GetGenres",
+        "object_type": "IText",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "TextOperations",
         "code": "text = list(project.Texts.GetAll())[0]\nis_translated = project.Texts.GetIsTranslated(text)\nif is_translated:\n    print(\"Text translation is complete\")\nelse:\n    print(\"Text translation is incomplete\")",
         "description": "Check if a text's translation is marked as complete.",
         "method": "GetIsTranslated",
@@ -862,15 +880,6 @@
         "method": "GetSyncableProperties",
         "object_type": "IText",
         "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "TextOperations",
-        "code": "text = list(project.Texts.GetAll())[0]\n\n# Set genre to first available genre\ngenre_list = project.PossibilityLists.FindList(\"Text Genres\")\nitems = project.PossibilityLists.GetItems(genre_list) if genre_list else []\nif items:\n    project.Texts.SetGenre(text, items[0])\n\n# Clear genre\nproject.Texts.SetGenre(text, None)\n\n        See Also:\n            GetGenre, Create",
-        "description": "Set the genre of a text.",
-        "method": "SetGenre",
-        "object_type": "IText",
-        "operation": "update",
         "source": "docstring"
       }
     ],
@@ -2286,6 +2295,15 @@
       },
       {
         "class": "AllomorphOperations",
+        "code": "entry = project.LexEntry.Find(\"run\")\nallomorphs = project.Allomorphs.GetAll(entry)\nowner = project.Allomorphs.GetOwningEntry(allomorphs[0])\nprint(project.LexEntry.GetHeadword(owner))\n            run\n\n# Round trip: GetAll walks entry -> allomorphs; this walks\n# allomorph -> entry.\nfor allomorph in project.Allomorphs.GetAll():\n    owner = project.Allomorphs.GetOwningEntry(allomorph)\n    if owner is None:\n        continue\n    form = project.Allomorphs.GetForm(allomorph)\n    print(f\"{form} -> {project.LexEntry.GetHeadword(owner)}\")\n            run -> run\n            ran -> run",
+        "description": "Get the lexical entry that owns this allomorph.",
+        "method": "GetOwningEntry",
+        "object_type": "IMoForm",
+        "operation": "read",
+        "source": "docstring"
+      },
+      {
+        "class": "AllomorphOperations",
         "code": "allomorphOps = AllomorphOperations(project)\nentry = project.LexiconAllEntries()[0]\nallomorphs = list(allomorphOps.GetAll(entry))\nif allomorphs:\n    envs = allomorphOps.GetPhoneEnv(allomorphs[0])\n    for env in envs:\n        wsHandle = project.GetDefaultAnalysisWSHandle()\n        name = ITsString(env.Name.get_String(wsHandle)).Text\n        print(f\"Environment: {name}\")\n            Environment: After voiceless consonant",
         "description": "Get the phonological environments for an allomorph.",
         "method": "GetPhoneEnv",
@@ -2433,15 +2451,6 @@
         "code": "# Find by name\nitem = project.Anthropology.Find(\"Marriage Customs\")\nif item:\n    code = project.Anthropology.GetAnthroCode(item)\n    print(f\"Found item with code: {code}\")\n            Found item with code: 586\n\n# Handle not found\nitem = project.Anthropology.Find(\"Nonexistent Item\")\nif not item:\n    print(\"Item not found\")\n            Item not found",
         "description": "Find an anthropology item by its name.",
         "method": "Find",
-        "object_type": "general",
-        "operation": "read",
-        "source": "docstring"
-      },
-      {
-        "class": "AnthropologyOperations",
-        "code": "# Get a category from the categories list\nanthro_list = project.PossibilityLists.FindList(\"Anthropology Categories\")\nif anthro_list:\n    category = project.PossibilityLists.GetItems(anthro_list)[0]\n    items = project.Anthropology.FindByCategory(category)\n    for item in items:\n        name = project.Anthropology.GetName(item)\n        print(f\"Item: {name}\")",
-        "description": "Find all anthropology items in a specific category.",
-        "method": "FindByCategory",
         "object_type": "general",
         "operation": "read",
         "source": "docstring"
@@ -3386,7 +3395,7 @@
       "reorder",
       "merge"
     ],
-    "total_patterns": 1168,
-    "unique_patterns": 115
+    "total_patterns": 1177,
+    "unique_patterns": 116
   }
 }

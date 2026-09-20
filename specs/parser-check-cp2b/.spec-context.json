@@ -214,6 +214,78 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-20T00:40:52.312Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:01:50.755Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:04:10.517Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:06:24.005Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:11:07.026Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:13:47.724Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:18:42.117Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:24:19.581Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:38:00.059Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T01:38:00.327Z"
     }
   ],
   "context": "Continuation of specs/parser-check-cp2 (CP2a, complete 31/31). This feature covers the two never-planned parts of CP2: CP2a-bridge (FR-011, this repo's dependency floor and bundled index) and CP2b (US2/US3/US4, FR-012..FR-040 -- flextools_try_word, flextools_parse_status, the morph resolver and the run machinery). Authoritative requirement text stays in specs/parser-check-cp2/spec.md; this feature's spec.md is a scoping document.",
@@ -268,6 +340,21 @@
       "decision": "server/parse/__init__.py exports nothing and imports none of its own submodules.",
       "why": "The package spans two processes. A convenience re-export would be a server-process import of worker_main by the back door, defeating R-02 and the one-worker-per-project ownership the package exists to express.",
       "rejected": "A conventional facade __init__ re-exporting the public names."
+    },
+    {
+      "decision": "ensure_grammar asks IsUpToDate() but never calls Reload() on a parse path",
+      "why": "the facade already confirms currency and reloads on every parse; calling Reload() would be a second currency path (the sibling of the one spec.md Delta 2 forbids) and would discard a grammar the facade was about to load, paying the most expensive step twice",
+      "rejected": "calling Reload() on first use, which ground-truth showed produces a byte-identical trace"
+    },
+    {
+      "decision": "worker channel is ASCII-only on the wire plus UTF-8 stdio in the child",
+      "why": "Windows stdio defaulted to cp1252 and silently replaced non-ASCII; IndonesianHC-Complete is written in IPA so this corrupted every word",
+      "rejected": "relying on the default console encoding"
+    },
+    {
+      "decision": "T059/T060 done early, out of Phase 6 order",
+      "why": "the CP1 boundary test went red the moment T026 landed (exactly as research.md R-06 predicted); leaving the suite red through Phases 3-5 would mask new failures",
+      "rejected": "deferring to Phase 6 as scheduled"
     }
   ],
   "expectations": [
@@ -288,6 +375,10 @@
     },
     {
       "note": "BLOCKS T021/T022 AS WRITTEN: subprocess_helpers.run_script_async is one-shot -- it calls process.communicate() (waits for exit) with stdin=DEVNULL, so it cannot host a long-lived worker speaking line-delimited JSON on stdin/stdout. T022 says to launch through the existing run_script_async FAMILY and to tear down via _kill_process_tree. Reading that as a sibling launcher in the same module, sharing _kill_process_tree and the start_new_session process-group discipline, is the only way to satisfy both halves; calling run_script_async literally is impossible. Needs confirmation before the worker is built.",
+      "step": "implement"
+    },
+    {
+      "note": "T066 (E-D, the one live WRITE) remains NOT RUN and must not be run unattended; FR-043 stays half discharged",
       "step": "implement"
     }
   ],
@@ -742,7 +833,7 @@
   },
   "size": "oversized",
   "classification": "campaign -- full crew cycle, not the CLAUDE.md fast path",
-  "currentTask": "T020",
+  "currentTask": "T060",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -879,6 +970,75 @@
       "files": [
         "tests/test_parse_record.py"
       ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "Clean-venv check of the published pyflexicon 4.9.0: floor resolves it, pip metadata and live module both read 4.9.0, repo suite 1843 passed/8 skipped/0 failed",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Long-lived parse worker: line-delimited JSON on stdin/stdout, reader thread + ParseQueue so cancel lands at a word boundary, one held-grammar slot, idle timeout releases the project, stub backend (real facade is T026)",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Server side of the worker channel: ParseWorkerClient routes out-of-order responses by request_id, WorkerPool enforces one worker per project, teardown kills the tree via _kill_process_tree; added spawn_module_async as the long-lived sibling of run_script_async",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/subprocess_helpers.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Run lifecycle: single execution path (FR-026), grace window as a wait_for on the run's own done-event so it reports without cancelling or slowing (FR-028/SC-010), cancel_requested + cooperative cancel, RunFailure pointing at diagnostics not retry (FR-034)",
+      "files": [
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/worker_client.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "tests/test_parse_runner.py -- 18 tests: window reports not executes (behavioural + timing + structural), stages, FR-034 no-retry guidance, cooperative cancel; mutation-verified RED before green",
+      "files": [
+        "tests/test_parse_runner.py",
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "tests/test_parse_worker_lifetime.py -- 15 tests against REAL child processes: idle release, stdin-EOF exit, graceful drain without losing accepted work, _kill_process_tree reaping an uncooperative worker (issue #57), pool one-per-project/release/replace/reap, and the every-request-answered invariant",
+      "files": [
+        "tests/test_parse_worker_lifetime.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/parse/worker_main.py"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Worker pointed at the real flexicon.ParserOperations facade: check_active_parser as preflight (first statement, before the grammar so it still runs on held-grammar reuse), GetAvailability() called not inferred, XML calls bound POSITIONALLY, Reload/IsUpToDate for the one held-grammar slot, writeEnabled=False",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py"
+      ]
+    },
+    "T059": {
+      "status": "DONE",
+      "did": "Amended tests/test_cp1_boundary.py: scope narrowed in writing to the CP1 surface, narrow parse_operation allowlist for the worker only (construction still forbidden there), allowlist pinned by TestTheParseAllowlistIsPinned including a non-vacuity check",
+      "files": [
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T060": {
+      "status": "DONE",
+      "did": "Added TestNoParserExecutionOutsideTheParsePackage -- AST check that no handler reaches the parser facade and parse operations are confined to server/parse/ (FR-026 structural half)",
+      "files": [
+        "tests/test_cp1_boundary.py"
+      ]
     }
   },
   "verified": [
@@ -909,7 +1069,28 @@
       "command": "python -m pytest tests/test_parse_stages.py tests/test_parse_priority_queue.py tests/test_parse_record.py -q",
       "result": "49 + 21 + 32 = 102 passed, 0 failed",
       "warnings": []
+    },
+    {
+      "what": "Phase 2 checkpoint: bridge, accessors, one execution path",
+      "command": "python -m pytest -q",
+      "result": "1886 passed, 8 skipped, 0 failed, 36 subtests passed",
+      "warnings": [
+        "23 pre-existing ast.Str DeprecationWarning in flexicon_analyzer.py:211, unrelated"
+      ]
+    },
+    {
+      "what": "T009 published pyflexicon 4.9.0 installs and the suite passes against it",
+      "command": "clean venv: pip install pyflexicon>=4.9.0,<5 ; python -m pytest -q",
+      "result": "pyflexicon-4.9.0 installed; pip metadata and live module both 4.9.0; 1843 passed, 8 skipped, 0 failed"
+    },
+    {
+      "what": "T026 real facade LIVE against IndonesianHC-Complete, read-only",
+      "command": "worker_client against IndonesianHC-Complete and Sena 3",
+      "result": "held grammar 0.86s->0.05s with no reload; parsed true/false both observed; IPA round-trip exact, 0 U+FFFD; Sena 3 refused parser_engine_mismatch with 0 parses",
+      "warnings": [
+        "makan does not parse in this project -- its phoneme inventory is IPA; that is project data, not a defect"
+      ]
     }
   ],
-  "last_action": "Phase 1 + bridge + R-08 + machinery foundations done: 19/68 tasks, 102 new tests green, both repo suites clean. Blocked at T021/T022 pending the run_script_async one-shot finding."
+  "last_action": "Phase 2 complete (T009, T021-T026, plus T059/T060 pulled forward); suite 1886 passed; next is T027 (US2)"
 }

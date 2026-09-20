@@ -1,9 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-T026: the CP1 boundary regression -- CP1 detects, scans and reports, but
-never constructs a parser, never loads a grammar, never parses a word, and
-never infers parseability from database state (SPEC 3.1).
+T026: the CP1 boundary regression -- **the CP1 surface** detects, scans and
+reports, but never constructs a parser, never loads a grammar, never parses
+a word, and never infers parseability from database state (SPEC 3.1).
+
+SCOPE, NARROWED AT CP2b (research.md R-06). This file used to be a
+statement about the whole repository, and that reading was correct while
+the repository parsed nothing. CP2b is the checkpoint where the assistant
+reaches the parser, so the repository-wide reading is now false -- by
+design, not by accident. The guarantee is therefore restated as one about
+the **CP1 diagnostic surface**: detection, health and the grammar scan
+still never parse.
+
+That is the guarantee CP2b makes easiest to break and the one worth
+keeping. A health check that quietly started parsing would need a grammar,
+would become slow, and would report parseability it inferred rather than
+measured -- which is the whole failure the CP1 boundary was drawn against.
+
+The file was **amended, never weakened**. The scan still walks the entire
+``src/flextoolsmcp/server/**`` tree by ``rglob``; nothing is skipped. One
+violation kind (``parse_operation``) is allowed in one file (the long-lived
+parse worker), that allowlist is pinned by its own test class, and parser
+*construction* remains forbidden everywhere including there. Deleting the
+file instead would have discarded the diagnostic-path guarantee entirely.
 
 Two checks, deliberately combinable rather than one unfalsifiable "no code
 path ever does X" assertion:
@@ -500,16 +520,68 @@ class TestTreeDiscoveryIsNotVacuous:
         assert all(p.exists() for p in cp1_module_files())
 
 
+#: The ONLY files permitted to call a parse operation (CP2b, research.md
+#: R-06). One entry: the long-lived parse worker.
+#:
+#: WHY THIS EXISTS AT ALL. Before CP2b this repository parsed no words, so
+#: "no parse operation anywhere in the tree" was both true and the whole
+#: point. CP2b is the checkpoint where the assistant reaches the parser, so
+#: that statement stops being true of the repository -- but it must stay
+#: true of the **CP1 diagnostic surface**, which is the guarantee CP2b makes
+#: easiest to break: a health check that quietly started parsing would be
+#: slow, would need a grammar, and would report parseability it inferred
+#: rather than measured.
+#:
+#: SO THE FILE IS AMENDED, NEVER WEAKENED. The scan still walks the whole
+#: tree by ``rglob``; no file is skipped. What is narrowed is exactly one
+#: violation *kind* in exactly one *file*: ``parse_operation`` in the
+#: worker. Construction violations -- ``HCParser(...)``, reflective
+#: instantiation -- remain forbidden there too, because the worker reaches
+#: the parser through flexicon's facade and constructs nothing itself. A
+#: blanket per-file exemption would have thrown that away silently.
+#:
+#: The allowlist is pinned by ``TestTheParseAllowlistIsPinned`` below, so
+#: widening it means editing a test that says why -- the same control CP2a's
+#: QC gate imposed on ``NON_CONTRACT_PREFIXES``, and the reason a future
+#: handler cannot quietly append itself here.
+CP2B_PARSE_OPERATION_ALLOWLIST = frozenset(
+    {"src/flextoolsmcp/server/parse/worker_main.py"}
+)
+
+#: The package that owns parser execution (FR-026, "one run mechanism").
+CP2B_PARSE_PACKAGE = "src/flextoolsmcp/server/parse/"
+
+
+def _is_parse_operation_allowed(rel_path: str) -> bool:
+    return rel_path.replace("\\", "/") in CP2B_PARSE_OPERATION_ALLOWLIST
+
+
+def scan_with_cp2b_allowlist(source: str, rel_path: str) -> List[Violation]:
+    """``scan_source_for_construction`` with CP2b's narrow exception applied.
+
+    Drops ``parse_operation`` violations for an allowlisted file and nothing
+    else. Every other kind, and every other file, is reported unchanged.
+    """
+    violations = scan_source_for_construction(source, rel_path)
+    if not _is_parse_operation_allowed(rel_path):
+        return violations
+    return [v for v in violations if v[0] != "parse_operation"]
+
+
 class TestStaticNoParserConstructionAnywhereInTheTree:
-    """(a) -- no literal or computed ``HCParser(`` construction, tree-wide."""
+    """(a) -- no literal or computed ``HCParser(`` construction, tree-wide.
+
+    Since CP2b, also: no parse operation anywhere except the one allowlisted
+    worker module. Construction remains forbidden everywhere, including
+    there.
+    """
 
     @pytest.mark.parametrize(
         "path", server_tree_files(), ids=lambda p: _rel(p).replace("\\", "/")
     )
     def test_module_constructs_no_parser(self, path: Path):
-        violations = scan_source_for_construction(
-            path.read_text(encoding="utf-8"), _rel(path)
-        )
+        rel = _rel(path)
+        violations = scan_with_cp2b_allowlist(path.read_text(encoding="utf-8"), rel)
         assert violations == [], "\n".join(repr(v) for v in violations)
 
     def test_whole_tree_reports_zero_violations(self):
@@ -517,10 +589,124 @@ class TestStaticNoParserConstructionAnywhereInTheTree:
         is the single assertion the boundary is actually stated as."""
         all_violations: List[Violation] = []
         for path in server_tree_files():
+            rel = _rel(path)
             all_violations.extend(
-                scan_source_for_construction(path.read_text(encoding="utf-8"), _rel(path))
+                scan_with_cp2b_allowlist(path.read_text(encoding="utf-8"), rel)
             )
         assert all_violations == [], "\n".join(repr(v) for v in all_violations)
+
+    def test_the_worker_still_constructs_no_parser_itself(self):
+        """The allowlist buys `parse_operation`, not construction.
+
+        The worker reaches the parser through flexicon's facade, which
+        constructs `HCParser` inside flexicon -- outside this tree. If the
+        worker ever constructs one directly, that is a boundary crossing
+        the allowlist deliberately does not cover.
+        """
+        worker = REPO_ROOT / "src/flextoolsmcp/server/parse/worker_main.py"
+        assert worker.exists(), "the allowlisted worker module is missing"
+
+        violations = scan_source_for_construction(
+            worker.read_text(encoding="utf-8"), _rel(worker)
+        )
+        construction = [v for v in violations if v[0] != "parse_operation"]
+        assert construction == [], "\n".join(repr(v) for v in construction)
+
+
+class TestTheParseAllowlistIsPinned:
+    """Widening the allowlist must mean editing a test, not appending a line.
+
+    This is the control that keeps the amendment from decaying into a
+    general exemption. Without it, a future module that started parsing
+    could be added to the allowlist in one line and nothing would notice.
+    """
+
+    def test_the_allowlist_is_exactly_the_worker(self):
+        assert CP2B_PARSE_OPERATION_ALLOWLIST == frozenset(
+            {"src/flextoolsmcp/server/parse/worker_main.py"}
+        ), (
+            "The parse-operation allowlist changed. It is meant to hold "
+            "exactly one entry -- the long-lived parse worker. Adding a "
+            "second means some other module now parses words, which is "
+            "either a second execution path (FR-026 forbids one) or the "
+            "CP1 diagnostic surface starting to parse (the guarantee this "
+            "file exists to protect). Justify it here or revert it."
+        )
+
+    def test_every_allowlisted_file_exists(self):
+        """A stale entry silently exempts nothing and hides a moved file."""
+        for rel in CP2B_PARSE_OPERATION_ALLOWLIST:
+            assert (REPO_ROOT / rel).exists(), f"allowlisted file missing: {rel}"
+
+    def test_every_allowlisted_file_lives_in_the_parse_package(self):
+        """FR-026: parser execution belongs to one package."""
+        for rel in CP2B_PARSE_OPERATION_ALLOWLIST:
+            assert rel.startswith(CP2B_PARSE_PACKAGE), (
+                f"{rel} parses words but lives outside {CP2B_PARSE_PACKAGE}"
+            )
+
+    def test_the_allowlist_actually_suppresses_something(self):
+        """A vacuous allowlist would pass this file while protecting nothing.
+
+        The worker really must contain parse operations; if it stopped
+        doing so the allowlist would be dead weight and this test says so
+        rather than letting it sit there looking meaningful.
+        """
+        worker = REPO_ROOT / "src/flextoolsmcp/server/parse/worker_main.py"
+        raw = scan_source_for_construction(
+            worker.read_text(encoding="utf-8"), _rel(worker)
+        )
+        assert any(v[0] == "parse_operation" for v in raw), (
+            "the worker contains no parse operations, so the allowlist "
+            "entry for it is exempting nothing"
+        )
+
+
+class TestNoParserExecutionOutsideTheParsePackage:
+    """FR-026's structural half: one mechanism, in one package (T060).
+
+    The behavioural half -- that a single word is a run like any other --
+    lives in `tests/test_parse_runner.py`. This is the half that survives a
+    refactor: a handler that reached the facade directly would be a second
+    execution path no matter how it behaved, and it would look perfectly
+    reasonable in review.
+    """
+
+    def test_no_handler_reaches_the_parser_facade(self):
+        handlers_dir = SERVER_ROOT / "handlers"
+        offenders: List[Violation] = []
+        for path in _python_files(handlers_dir):
+            offenders.extend(
+                v
+                for v in scan_source_for_construction(
+                    path.read_text(encoding="utf-8"), _rel(path)
+                )
+                if v[0] == "parse_operation"
+            )
+        assert offenders == [], (
+            "a handler reaches the parser facade directly. All parser "
+            "execution goes through the run mechanism in "
+            f"{CP2B_PARSE_PACKAGE} (FR-026):\n"
+            + "\n".join(repr(v) for v in offenders)
+        )
+
+    def test_parse_operations_in_the_tree_are_confined_to_the_parse_package(self):
+        outside: List[str] = []
+        for path in server_tree_files():
+            rel = _rel(path).replace("\\", "/")
+            if rel.startswith(CP2B_PARSE_PACKAGE):
+                continue
+            if any(
+                v[0] == "parse_operation"
+                for v in scan_source_for_construction(
+                    path.read_text(encoding="utf-8"), rel
+                )
+            ):
+                outside.append(rel)
+        assert outside == [], (
+            "these modules parse words outside "
+            f"{CP2B_PARSE_PACKAGE}: {outside}"
+        )
 
 
 class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:

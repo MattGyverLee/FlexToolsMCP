@@ -129,3 +129,61 @@ async def run_script_async(
             "stderr": str(e),
             "timeout": False,
         }
+
+
+async def spawn_module_async(
+    module_import_path: str,
+    args: Optional[list] = None,
+    env: Optional[Dict[str, str]] = None,
+) -> asyncio.subprocess.Process:
+    """Launch a **long-lived** child module with pipes held open.
+
+    The long-lived sibling of ``run_script_async``, and deliberately in this
+    module rather than in the caller's: it is the same execution mechanism
+    (plain CPython via ``sys.executable``, same POSIX ``start_new_session``
+    so ``_kill_process_tree`` can reach grandchildren), differing only in
+    that the caller keeps talking to the child instead of awaiting one
+    result.  Putting it here is what keeps ``_kill_process_tree`` the single
+    teardown path for every process this server starts (issue #57); a caller
+    rolling its own ``create_subprocess_exec`` would be a second execution
+    mechanism with its own, weaker, cleanup story.
+
+    The module is addressed by **dotted import path** (``python -m <path>``),
+    the same way ``run_scan_module`` addresses its scan modules.
+
+    Unlike ``run_script_async`` this does NOT wait, time out, or read the
+    child's output: lifetime and protocol belong to the caller, which for the
+    parse worker is ``server/parse/worker_client.py``.  That caller is
+    responsible for calling ``_kill_process_tree(proc.pid)`` on teardown --
+    a long-lived pythonnet child holding a ``.fwdata`` lock is exactly the
+    known failure issue #57 exists for, and a graceful shutdown request is
+    not a substitute for it.
+
+    Args:
+        module_import_path: dotted path, e.g.
+            "flextoolsmcp.server.parse.worker_main".
+        args: additional argv passed after the module path.
+        env: optional environment for the child.
+
+    Returns:
+        The running ``asyncio.subprocess.Process``, with stdin/stdout/stderr
+        all piped.
+
+    Raises:
+        OSError: if the child cannot be spawned.
+    """
+    extra_kwargs: Dict[str, Any] = {}
+    if sys.platform != "win32":
+        extra_kwargs["start_new_session"] = True
+
+    return await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        module_import_path,
+        *(args or []),
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env=env,
+        **extra_kwargs,
+    )

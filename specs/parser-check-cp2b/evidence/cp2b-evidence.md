@@ -202,14 +202,77 @@ bridge and untouched by it.
 
 ### T009 -- published distribution installs (SEPARATE EVIDENCE LINE)
 
-_Not yet run._ This session cannot perform it: `pyflexicon 4.9.0` is
-published but is **not installed in this environment** and will not be within
-this session -- `flexicon` resolves to the working tree at 4.9.0 while pip
-metadata reads 4.8.0 (escalation E-C, research.md R-01).
+**RUN, and green.** The research note (R-01) assumed this session could not
+perform this check, because `pyflexicon 4.9.0` is not installed in the
+working environment and the maintainer stated it would not be. That
+assumption was tested rather than inherited: the published distribution is
+on PyPI and reachable, so the check was performed in a **clean virtual
+environment** built for it, leaving the working environment untouched.
 
-**It must never be rounded into T005's green.** T005 proves the declared
-floor, the resolved version and the bundled artifacts agree *in this tree*.
-It does not prove the published distribution installs anywhere.
+Environment: a fresh `python -m venv` on CPython 3.12.7, no system site
+packages, outside the repository tree.
+
+**1. The floor resolves the published distribution.**
+
+```
+python -m pip install "pyflexicon>=4.9.0,<5"
+```
+
+```
+Successfully installed cffi-2.1.1 clr_loader-0.3.1 pycparser-3.0
+                       pyflexicon-4.9.0 pythonnet-3.1.0
+```
+
+**2. The live module reports 4.9.0, and so does the distribution metadata.**
+
+```
+python -c "import flexicon; print(flexicon.version)"     ->  4.9.0
+python -m pip show pyflexicon                            ->  Version: 4.9.0
+python -c "import importlib.metadata as m; print(m.version('pyflexicon'))"
+                                                         ->  4.9.0
+flexicon.__file__  ->  <venv>/Lib/site-packages/flexicon/__init__.py
+```
+
+This is the part that could not be shown in the working tree. There,
+`flexicon` resolves to the path-installed `4.9.0` working tree while pip
+metadata reads `4.8.0` -- the divergence R-01 records, and the reason the
+equality test deliberately does not compare against `importlib.metadata`.
+In a clean install **both sources agree at 4.9.0**, exactly as R-01
+predicted they would, and `__file__` confirms the code under test came from
+the published wheel rather than from the sibling working tree.
+
+**3. The repository suite passes against the published distribution.**
+
+```
+python -m pytest -q
+```
+
+**Result: 1843 passed, 8 skipped, 0 failed, 36 subtests passed, 23 warnings,
+in 64.57s.**
+
+No failures, so there are no pre-existing failures to name as pre-existing.
+The 8 skips and the 23 `ast.Str` `DeprecationWarning`s are the same
+pre-existing ones T008 recorded, unchanged by the environment. The count is
+higher than T008's 1737 because T016, T018 and T020 added test files between
+the two runs; it is not a different selection of the same suite.
+
+`tests/conftest.py` prepends `src/` to `sys.path`, so the code under test is
+this working tree while `flexicon` resolves from the venv's published
+`4.9.0`. That separation is what makes this a test of the published
+distribution rather than a second run of T008.
+
+**What this does and does not discharge.** It closes the one thing T005
+could not: that the published `4.9.0` distribution installs under the
+declared floor and satisfies the suite. It is recorded here on its own
+evidence line and **is not rounded into T005's green** -- T005 proves the
+declared floor, the resolved version and the bundled artifacts agree *in
+this tree*, which remains a separate claim.
+
+**Not shown by this run.** The venv has no FieldWorks and no live project,
+so every FLEx-dependent test skipped or was never selected here exactly as
+it is in the working environment. This run proves the distribution installs
+and the offline suite passes against it; it proves nothing about live LCM
+behaviour, which is T065/T066's business.
 
 ---
 
@@ -289,6 +352,122 @@ pre-existing `DeprecationWarning`s for the `GramCatOperations` alias
 ## Run machinery
 
 _Not yet run._
+
+---
+
+### T024 -- the grace window REPORTS, shown by mutation
+
+`tests/test_parse_runner.py` -- 18 passed.
+
+FR-028 and SC-010 are the requirements most likely to pass on paper while
+being broken in code, because the wrong implementation (hand a timeout to
+the work) reads almost the same as the right one (wait on the work's own
+completion signal). A green test proves nothing about that on its own, so
+the same discipline T006 applied to the floor test was applied here: the
+defect was introduced deliberately and the suite was observed catching it.
+
+**Mutation applied** -- the grace window made to execute rather than report:
+
+```python
+try:
+    await asyncio.wait_for(handle.done.wait(), timeout=window)
+except asyncio.TimeoutError:
+    handle.cancel_requested = True
+    if handle.task is not None:
+        handle.task.cancel()
+```
+
+**Observed RED, 3 of 18:**
+
+```
+FAILED tests/test_parse_runner.py::test_closing_the_window_cancels_zero_runs
+FAILED tests/test_parse_runner.py::test_the_window_can_be_overridden_per_run
+FAILED tests/test_parse_runner.py::test_cancelling_stops_the_run_and_keeps_partial_results
+3 failed, 15 passed in 2.10s
+```
+
+The mutation was then reverted and the suite re-run: **18 passed**.
+
+The headline assertion (`test_closing_the_window_cancels_zero_runs`) is
+among the three, so SC-010's "cancels 0 runs" is demonstrated to be
+detected rather than merely asserted. The file also carries a **structural**
+assertion -- `test_no_window_or_deadline_is_ever_passed_downstream` -- which
+the behavioural tests cannot substitute for: a deadline threaded downstream
+but set generously would keep the behavioural tests green while the window
+had quietly become executing again.
+
+---
+
+### T026 -- the real facade, verified LIVE (read-only)
+
+`IndonesianHC-Complete`, opened `writeEnabled=False`. No writes of any kind.
+
+This is recorded in full because the offline suite was green **before** this
+run and three real defects survived it. CP2a's lesson was precisely that a
+green offline suite and four green structural ratchets coexisted with a
+silent wrong answer for a whole checkpoint; the live run is what closes
+that gap, so what it found is evidence, not incidental.
+
+**Defect 1 -- the engine gate was bound to the wrong object.**
+`check_active_parser` reads `project.MorphologicalDataOA`, which lives on
+the LCM language project, not on flexicon's `FLExProject` wrapper. The
+first live call raised:
+
+```
+AttributeError: 'FLExProject' object has no attribute 'MorphologicalDataOA'
+```
+
+CP1 shipped that helper with **no production caller**, so which object it
+expects had never been exercised. Fixed to `self._project.lp`, the idiom
+flexicon uses throughout. This one matters beyond the crash: bound to the
+wrong object the gate fails *identically* for an HC project and an XAmple
+one, so the engine refusal would have been untestable.
+
+**Defect 2 -- a second currency path, forbidden and harmful.**
+`ensure_grammar` originally called `Reload()` on first use. The facade's own
+documentation states that every parse already confirms currency and reloads
+a stale grammar, and that `Reload()` is unconditional. So the call was a
+second currency path alongside the facade's -- the sibling of the
+restriction-clearing path spec.md Delta 2 forbids -- and it discarded and
+rebuilt a grammar the facade was about to load correctly anyway, paying the
+most expensive step in the run twice.
+
+Confirmed against ground truth (flexicon directly, no worker): the trace for
+a word is **byte-identical with and without** an explicit `Reload()`, and
+`IsUpToDate()` already reads `True` before any call. `IsUpToDate()` is now
+asked as a *question*, to report `loading_grammar`, never as a trigger.
+
+**Defect 3 -- stdio encoding silently corrupted non-ASCII.**
+On Windows the worker's stdout defaulted to the console codepage (cp1252),
+so a trace containing an en dash came back carrying `U+FFFD`. `IndonesianHC-
+Complete` is written in **IPA** (`mɑnis`, `ŋeoŋ`, `d͡ʒɑhit`), so this was not
+an edge case -- it was every word. For a tool whose subject is minority-
+language orthographies, a stdio layer that mangles non-Latin text is a
+correctness bug. Fixed on both sides: `ensure_ascii=True` on the wire plus
+UTF-8 stdio in the child and `PYTHONIOENCODING=utf-8` in its environment.
+
+**Observed after the fixes:**
+
+| Check | Observed |
+|---|---|
+| `GetAvailability()` | `available=True`, `version=9.3.10` -- asked, not inferred from `CAPABILITIES` |
+| First word (`mɑnis`) | `parsed: true`, `analysis_count: 1`, **0.86s**, stages `loading_grammar` -> `parsing` |
+| Second word (`pukul`) | `parsed: true`, `analysis_count: 1`, **0.05s**, stage `parsing` only, `loading_grammar` **absent** |
+| Held grammar | confirmed: the second call did not reload (FR-042, SC-014's current half) |
+| Non-parsing word | `parsed: false`, `analysis_count: 0` -- so the positive result is not a constant |
+| Non-ASCII round-trip | exact for all 5 IPA words; **0** `U+FFFD` in a 2864-character trace |
+| `explain` trace | real structure: `<Analysis><Morph id="4708" type="root"><Form>mɑnis</Form>` |
+| Engine gate (`Sena 3`, XAmple) | refused `parser_engine_mismatch`, `configured_engine: 'XAmple'`, `supported_engines: ['HC']`, non-empty hint -- **0 parses run** |
+
+**A note on `makan`.** The obvious Indonesian test word does **not** parse in
+this project, and that is the project's data, not a defect: its phoneme
+inventory is IPA, so `makan` contains undefined phonemes (`'a'` is `ɑ`
+there). The parser says so itself. Recorded because it is exactly the
+observation that would otherwise be misread as a broken parser.
+
+**Not shown by this run.** Everything requiring a live *write* -- FR-043's
+stale half, where a model change invalidates a held grammar. That is E-D /
+T066 and it is still **not run**.
 
 ---
 

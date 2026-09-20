@@ -616,6 +616,10 @@ def test_cast_property_set_unprotected():
         f"Cast-alias property write must NOT be certified readonly, got: {cert}"
     assert len(cert["unprotected_liblcm_calls"]) > 0, \
         f"Should detect cast-alias property write as unprotected LibLCM mutation, got: {cert}"
+    assert cert["unprotected_liblcm_calls"][0]["method"] == \
+        "ILexSense.MorphoSyntaxAnalysisRA.PartOfSpeechRA=", cert
+    assert compute_is_mutating_script(cert, detect_cud_operations(code)) is True, \
+        "Cast-alias property write must also mark the script mutating"
 
     print("[OK] Cast-alias property write detected as mutation (#8)")
 

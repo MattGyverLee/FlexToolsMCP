@@ -239,6 +239,35 @@ def _available_projects_payload() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _probe_undoable_capability() -> bool:
+    """Best-effort preflight probe for flexicon's "per-operation-uow" mode.
+
+    Mirrors the OpenProject-time probe in the generated runner template
+    (issue #144): the one-line ``getattr(..., frozenset())`` form flexicon's
+    own docstring prescribes for this consumer. Used here only to choose
+    which variant of the nested_unit_of_work rejection message to show --
+    the actual OpenProject() call happens in the subprocess, not here, so
+    this is advisory (e.g. a mismatched flexicon install between the server
+    process and the subprocess's venv would only affect message wording,
+    never the gate's correctness -- the gate itself is unconditional
+    regardless of mode, see the module comment above detect_nested_unit_of_work).
+    """
+    try:
+        import flexicon  # type: ignore
+    except Exception:  # noqa: BLE001 -- see below; do not narrow to ImportError
+        # Deliberately broad. `import flexicon` runs
+        # FLExGlobals.InitialiseFWGlobals() at import time, which raises a
+        # BARE Exception ("64bit FieldWorks 9 not found") on any host without
+        # a FieldWorks install -- a headless CI runner, or a Windows box with
+        # pyflexicon installed but no FLEx. That is not an ImportError, so an
+        # `except ImportError` here lets it escape and takes down a caller
+        # that only wanted to pick message wording. Same reasoning as
+        # tests/test_issue84_project_lexsense_accessor.py::_require_live_flexicon.
+        return False
+    _caps = getattr(flexicon, "CAPABILITIES", frozenset())
+    return "per-operation-uow" in _caps
+
+
 def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     """Validate that the requested API mode libraries are properly installed.
 
@@ -248,15 +277,24 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
     Returns:
         (is_valid, error_message)
     """
+    # Both probes below catch the broad Exception on purpose. flexicon and
+    # flexlibs each run FLExGlobals.InitialiseFWGlobals() at import time,
+    # which raises a bare Exception ("64bit FieldWorks 9 not found") rather
+    # than ImportError when FieldWorks is absent. An installed-but-
+    # uninitializable library is exactly the "this mode is unusable here"
+    # case this function exists to report, so it must come back as a clean
+    # (False, reason) and never as a traceback out of a validation call.
     if api_mode == "flexicon":
         try:
             import flexicon  # type: ignore
-            # Check version is available (flexicon uses 'version' not '__version__')
-            if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-                return False, "flexicon missing version info"
-            return True, ""
         except ImportError as e:
             return False, f"flexicon not found: {e}"
+        except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
+            return False, f"flexicon installed but not initializable: {e}"
+        # Check version is available (flexicon uses 'version' not '__version__')
+        if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
+            return False, "flexicon missing version info"
+        return True, ""
 
     elif api_mode == "flexlibs_stable":
         try:
@@ -264,6 +302,8 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
             return True, ""
         except ImportError as e:
             return False, f"flexlibs not found: {e}"
+        except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
+            return False, f"flexlibs installed but not initializable: {e}"
 
     elif api_mode == "liblcm":
         # LibLCM is optional, validated at runtime
@@ -2939,23 +2979,31 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
 
-    # Nested-UnitOfWork check (issue #92 follow-up): CP1 hardcoded
-    # undoable=False at the generated OpenProject() call, so a write-enabled
-    # run now always has ONE non-undoable UnitOfWork open for the whole
-    # session (opened once at OpenProject(), closed once at CloseProject()).
-    # A script that opens its OWN raw UnitOfWork on top of that --
+    # Nested-UnitOfWork check (issue #92 follow-up, re-derived for issue
+    # #144): a script that opens its OWN raw UnitOfWork --
     # UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper or a bare
-    # IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a
-    # second task inside the runner's own; liblcm rolls back the
-    # already-open task first, discarding the whole run's writes, before it
-    # throws. Only meaningful when write_enabled: flexicon's OpenProject()
-    # only opens that UnitOfWork when writeEnabled=True (undoable=False is
-    # unconditional per CP1), so a read-only run has no open UnitOfWork to
-    # nest into. An `if modifyAllowed:` guard does NOT fix this -- the
-    # nesting collision happens regardless of guard state once the code
-    # actually executes -- so this fires unconditionally on the construct,
-    # not just on unprotected occurrences of it (see detect_cud_operations
-    # below for the separate protected-vs-unprotected write-safety concern).
+    # IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- always risks
+    # nesting inside a task the runner or flexicon already has open;
+    # liblcm rolls back the already-open task first, discarding writes,
+    # before it throws. The gate stays construct-based and UNCONDITIONAL --
+    # a script cannot know at the call site whether it is executing inside
+    # flexicon's own per-operation wrapper -- but WHAT it is nesting into
+    # depends on the OpenProject()-time capability probe (issue #144):
+    #   - Legacy (no "per-operation-uow" capability, or flexicon <=4.3.0):
+    #     OpenProject() opens ONE non-undoable UnitOfWork for the whole
+    #     session (opened once at OpenProject(), closed once at
+    #     CloseProject()); a raw helper nests inside THAT.
+    #   - Capable builds (undoable=True chosen): OpenProject() opens no
+    #     session-long envelope; instead flexicon wraps EACH mutating call
+    #     in its own named unit of work (FLExProject.py), and a raw helper
+    #     executing while one of those is open nests inside IT instead.
+    # Only meaningful when write_enabled: in both modes, a read-only run
+    # opens no UnitOfWork at all, so there is nothing to nest into. An
+    # `if modifyAllowed:` guard does NOT fix this -- the nesting collision
+    # happens regardless of guard state once the code actually executes --
+    # so this fires unconditionally on the construct, not just on
+    # unprotected occurrences of it (see detect_cud_operations below for
+    # the separate protected-vs-unprotected write-safety concern).
     if write_enabled:
         nested_uow_check = detect_nested_unit_of_work(code, code_tree)
         if nested_uow_check["has_nested_uow_risk"]:
@@ -2965,20 +3013,35 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 "nested_unit_of_work",
                 f"constructs={[c.get('construct') for c in constructs[:5]]}",
             )
+            _is_per_op_uow = _probe_undoable_capability()
+            if _is_per_op_uow:
+                _nested_uow_message = (
+                    "Code opens its own raw liblcm UnitOfWork. flexicon already "
+                    "wraps each mutation in its own named unit of work; a raw "
+                    "helper call executing while one of those is open nests "
+                    "inside it and will discard that operation's writes before "
+                    "the error is raised."
+                )
+            else:
+                _nested_uow_message = (
+                    "Code opens its own raw liblcm UnitOfWork, which nests inside "
+                    "the runner's already-open non-undoable task and will discard "
+                    "this run's writes."
+                )
             return _attach_assistance_if_loop(
                 error_response(
                     "nested_unit_of_work",
-                    "Code opens its own raw liblcm UnitOfWork, which nests inside "
-                    "the runner's already-open non-undoable task and will discard "
-                    "this run's writes.",
+                    _nested_uow_message,
                     constructs=constructs,
                     next_steps=[
                         "1. Drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
                         "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
-                        "the runner already opens a UnitOfWork for the whole run.",
+                        "there is already a unit of work open around this mutation "
+                        "(the runner's session task, or flexicon's own per-operation "
+                        "task, depending on the flexicon build).",
                         "2. Just perform the mutation directly (guarded by "
-                        "`if modifyAllowed:` as usual); it will be captured by the "
-                        "runner's own UnitOfWork.",
+                        "`if modifyAllowed:` as usual); it will be captured by that "
+                        "already-open unit of work.",
                         "3. If you need FLEx Ctrl+Z grouping for this specific change, "
                         "use `project.UndoableOperation(label)` / `project.Transaction(label)` "
                         "instead of the raw liblcm helper -- those join an already-open "
@@ -3960,12 +4023,22 @@ def run_module():
         # Open project
         project = FLExProject()
         try:
-            # Hardcoded False: flexicon's undoable=True path skips
-            # BeginNonUndoableTask() and opens no UnitOfWork, which makes every
-            # multi-mutation method and simple setter raise (see CP1 / issue
-            # #92). undoable=False is the only path that actually persists
-            # writes.
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False, ui=_lcm_ui)
+            # Issue #144: CP1 / issue #92's premise (undoable=True opens no
+            # envelope and every mutating call raises) is false on flexicon
+            # builds that advertise the "per-operation-uow" capability: under
+            # undoable=True, OpenProject() itself opens no session-long task
+            # BECAUSE each mutation opens its own named task instead
+            # (FLExProject.py's `writeEnabled and self._undoable` branch) --
+            # nothing raises. Probe for that capability using the exact
+            # one-line form flexicon's own docstring prescribes for this
+            # consumer (flexicon/__init__.py). On flexicon <=4.3.0
+            # CAPABILITIES is undefined, getattr yields frozenset(), and
+            # _undoable is False -- byte-identical to the old hardcoded
+            # behaviour.
+            import flexicon
+            _CAPS = getattr(flexicon, "CAPABILITIES", frozenset())
+            _undoable = "per-operation-uow" in _CAPS
+            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["messages"] = report.messages
@@ -4267,9 +4340,26 @@ MODULE_CODE = {code}
             from server.project_access import probe_project_access, build_access_remedy
             from server.project_discovery import check_project_locked
         _access = None
-        if needs_lock:
+        _probe_access = needs_lock or (not write_enabled)
+        if _probe_access:
             _access = probe_project_access(project_name)
         _live_fw_peer = _access is not None and _access.verdict == "open_shared"
+        _shared_mode_read_back = None
+        if (not write_enabled) and _access is not None and _access.verdict == "open_shared":
+            _shared_mode_read_back = {
+                "verdict": "open_shared",
+                "sharing_enabled": True,
+                "holder_pid": _access.holder.pid if _access.holder else None,
+                "holder_process": _access.holder.process_name if _access.holder else None,
+                "note": (
+                    "This read was opened as a fresh non-master peer while FLEx is "
+                    "the shared-mode master. A fresh read-only session shows the "
+                    "last master flush and may read pre-write state even when a peer "
+                    "write already committed to the shared commit log. Do not treat "
+                    "this read-back as proof a write was lost, and do not retry a "
+                    "write solely based on this result."
+                ),
+            }
 
         # Issue #55 (Rung 3): enforce `confirmed` on mutating writes. Runs
         # BEFORE the project-lock probe / subprocess launch below so an
@@ -4552,6 +4642,8 @@ MODULE_CODE = {code}
         # FLEx peer / over a stale lock rather than against an idle project.
         if _shared_mode is not None:
             execution_result["shared_mode"] = _shared_mode
+        if _shared_mode_read_back is not None:
+            execution_result["shared_mode_read_back"] = _shared_mode_read_back
 
         # Include write certification result
         execution_result["write_certification"] = {

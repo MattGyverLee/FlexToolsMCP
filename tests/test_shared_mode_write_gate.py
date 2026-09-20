@@ -289,11 +289,7 @@ class TestReadOnlyUnaffected:
         fires -- exploring a project while FLEx holds it exclusively keeps
         working."""
         _stub_env(monkeypatch, tmp_path, is_cud=False)
-
-        def _boom_probe(name):
-            raise AssertionError("the probe must not run for a read-only script")
-
-        monkeypatch.setattr(project_access, "probe_project_access", _boom_probe)
+        _stub_probe(monkeypatch, _access("open_exclusive", sharing=False))
         monkeypatch.setattr(execution_mod, "run_script_async", _fake_run_script_async_ok)
         monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)
 
@@ -306,6 +302,28 @@ class TestReadOnlyUnaffected:
         })))
         assert data.get("error_code") is None
         assert "shared_mode" not in data
+        assert "shared_mode_read_back" not in data
+
+    def test_read_only_open_shared_surfaces_read_back_advisory(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path, is_cud=False)
+        _stub_probe(monkeypatch, _access("open_shared", sharing=True))
+        monkeypatch.setattr(execution_mod, "run_script_async", _fake_run_script_async_ok)
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", _boom_lock)
+
+        data = _parse(asyncio.run(execution_mod.handle_run_module({
+            "code": "entries = project.LexEntry.GetAll()\n",
+            "project_name": "TestProj_ro_shared",
+            "write_enabled": False,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        })))
+        assert data.get("error_code") is None
+        advisory = data["shared_mode_read_back"]
+        assert advisory["verdict"] == "open_shared"
+        assert advisory["sharing_enabled"] is True
+        assert advisory["holder_pid"] == 68436
+        assert advisory["holder_process"] == "FieldWorks"
+        assert "Do not treat this read-back as proof a write was lost" in advisory["note"]
 
 
 class TestBackupHonesty:

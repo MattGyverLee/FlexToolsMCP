@@ -258,11 +258,19 @@ def validate_server_state() -> dict:
             "Pattern tracker not initialized (pattern analysis will be unavailable)"
         ))
 
-    # Issue #57 (C): surface stale lock warnings detected at startup.
-    # The api_index stores them as startup_lock_warnings (set in server.main()).
-    startup_lock_warnings = getattr(api_index, "startup_lock_warnings", [])
-    for lock_msg in startup_lock_warnings:
-        issues.append(("warning", lock_msg))
+    # Issue #145: dropped the startup-lock-warnings block that used to live
+    # here (it replayed the frozen api_index.startup_lock_warnings snapshot,
+    # same as the flextools_health bug). validate_server_state() is a
+    # preflight check of the server's own module/state initialization, run
+    # on every code execution, not a lock diagnostic -- re-sweeping the
+    # filesystem here on every run would add cost with no corresponding
+    # value, since lock warnings are non-fatal (they don't affect
+    # is_healthy) and stale locks are irrelevant to whether the server's
+    # own state is ready to execute code. flextools_health (see
+    # server/handlers/diagnostic_health.py) is the single, always-fresh
+    # source of truth for lock warnings; keeping only one caller of
+    # sweep_stale_locks() in the response path means the two can no longer
+    # disagree.
 
     return {
         "is_healthy": len([i for i in issues if i[0] == "error"]) == 0,
@@ -490,34 +498,50 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
 
 
 # ============================================================
-# Nested-UnitOfWork detection (issue #92 follow-up)
+# Nested-UnitOfWork detection (issue #92 follow-up; re-derived for #144)
 # ============================================================
 #
 # CP1 (issue #92) hardcoded `undoable=False` at the generated OpenProject()
-# call so flexicon takes the working BeginNonUndoableTask() path (see
-# handlers/execution.py's generated run_module() body). That means a
-# write-enabled run now always has ONE non-undoable UnitOfWork open for the
-# whole session -- opened once at OpenProject(), closed once at
-# CloseProject() (flexicon's FLExProject.py: `writeEnabled and not
-# _undoable` branch calls `MainCacheAccessor.BeginNonUndoableTask()`/
-# `EndNonUndoableTask()`). A user script that opens its OWN raw UnitOfWork
-# on top of that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper
-# (constructor or static .Do*() calls), or a bare
-# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
-# task inside the runner's own. liblcm does not merge tasks opened this
-# way (only flexicon's OWN Transaction()/UndoableOperation() context
-# managers check ActionHandlerAccessor.CurrentDepth and join instead of
-# nesting -- see flexicon's transaction.py / undoable_operation.py). A
-# second raw BeginUndoTask/BeginNonUndoableTask call rolls back the
-# ALREADY-OPEN unit of work first, before it throws (UndoStack.cs), which
-# discards every mutation the runner's own outer task was holding, for the
-# whole run -- silently, if the script also swallows the exception.
+# call on the premise that flexicon's `undoable=True` path opened no
+# UnitOfWork and every mutating call raised. That premise is false on
+# flexicon builds advertising the "per-operation-uow" capability (see
+# handlers/execution.py's `_probe_undoable_capability()` / issue #144):
+# under `undoable=True`, `OpenProject()` opens no session-long envelope
+# BECAUSE each mutation opens its own named task instead
+# (flexicon's FLExProject.py: `writeEnabled and self._undoable` branch) --
+# nothing raises. On flexicon <=4.3.0 (no capability token), the legacy
+# path still holds: `writeEnabled and not _undoable` calls
+# `MainCacheAccessor.BeginNonUndoableTask()` once at OpenProject() and
+# `EndNonUndoableTask()` once at CloseProject(), giving ONE non-undoable
+# UnitOfWork open for the whole session.
 #
-# This gate fires ONLY on write-enabled runs. flexicon's OpenProject() only
-# calls BeginNonUndoableTask() when writeEnabled=True and undoable=False
-# (which is now unconditional per CP1); a read-only run opens no
-# UnitOfWork at all, so there is nothing open to nest into and no
-# rollback-and-discard risk -- see FLExProject.py's OpenProject() body.
+# Either way, a user script that opens its OWN raw UnitOfWork --
+# UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper (constructor or
+# static .Do*() calls), or a bare
+# IActionHandler.BeginUndoTask()/BeginNonUndoableTask() -- nests a second
+# task inside whichever one is already open: the runner's session-long
+# task in legacy mode, or flexicon's own per-operation task in capable
+# mode. liblcm does not merge tasks opened this way (only flexicon's OWN
+# Transaction()/UndoableOperation() context managers check
+# ActionHandlerAccessor.CurrentDepth and join instead of nesting -- see
+# flexicon's transaction.py / undoable_operation.py). A second raw
+# BeginUndoTask/BeginNonUndoableTask call rolls back the ALREADY-OPEN unit
+# of work first, before it throws (UndoStack.cs), which discards whatever
+# that outer task was holding -- the whole run's writes in legacy mode, or
+# just that one operation's writes in capable mode -- silently, if the
+# script also swallows the exception.
+#
+# The gate itself stays construct-based and UNCONDITIONAL regardless of
+# mode: a script cannot reliably know at the call site whether it is
+# executing inside flexicon's per-operation wrapper, so it fires on the
+# construct either way. Only the user-facing explanation is
+# mode-conditional (see handlers/execution.py's nested_unit_of_work
+# message).
+#
+# This gate fires ONLY on write-enabled runs. In both modes, a read-only
+# run opens no UnitOfWork at all, so there is nothing open to nest into
+# and no rollback-and-discard risk -- see FLExProject.py's OpenProject()
+# body.
 
 _NESTED_UOW_HELPER_NAMES = ("UndoableUnitOfWorkHelper", "NonUndoableUnitOfWorkHelper")
 _NESTED_UOW_RAW_METHODS = ("BeginUndoTask", "BeginNonUndoableTask")
@@ -2868,37 +2892,89 @@ def _indexed_operations_class_names(api_index: Optional[Any]) -> Set[str]:
     }
 
 
+def _iter_property_write_targets(
+    tree: ast.AST,
+) -> Iterator[Tuple[Union[ast.Assign, ast.AugAssign, ast.AnnAssign], ast.AST]]:
+    """Yield every assignment target that could be a raw property write."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                yield node, target
+        elif isinstance(node, ast.AugAssign):
+            yield node, node.target
+        elif isinstance(node, ast.AnnAssign):
+            yield node, node.target
+
+
+def _typed_property_write_target(
+    target: ast.AST, cast_aliases: Dict[str, str]
+) -> Optional[Tuple[str, str, str]]:
+    """Return (interface, chain, context_expr) for a typed raw-LCM property write.
+
+    Recognized typed roots:
+      - cast aliases:        `s = ILexSense(x)` then `s.Gloss = ...`
+      - inline casts:        `ILexSense(x).Gloss = ...`
+      - subscripts rooted in either of the above:
+                             `ILexEntry(e).SensesOS[0].Gloss = ...`
+    """
+    current = target
+    attr_chain: List[str] = []
+    while True:
+        if isinstance(current, ast.Attribute):
+            attr_chain.append(current.attr)
+            current = current.value
+            continue
+        if isinstance(current, ast.Subscript):
+            current = current.value
+            continue
+        break
+
+    if not attr_chain:
+        return None
+
+    interface: Optional[str] = None
+    if isinstance(current, ast.Name) and current.id in cast_aliases:
+        interface = cast_aliases[current.id]
+    elif isinstance(current, ast.Call):
+        interface = _direct_cast_call_interface(current)
+
+    if not interface:
+        return None
+
+    chain_str = '.'.join(reversed(attr_chain))
+    try:
+        context_expr = ast.unparse(target)
+    except Exception:
+        context_expr = chain_str
+    return interface, chain_str, context_expr
+
+
 def _find_cast_alias_property_writes(
-    assigns: List[ast.Assign], cast_aliases: Dict[str, str]
+    tree: ast.AST, cast_aliases: Dict[str, str]
 ) -> List[Dict[str, Any]]:
-    """Find property assignments rooted at a cast-alias variable.
+    """Find typed raw-LCM property writes invisible to line-based regexes.
 
     Detects:
         s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos
-        s_typed.Gloss = new_value
+        IFsClosedValue(t).FeatureRA = None
+        ILexEntry(e).SensesOS[0].Gloss = "x"
 
     Returns mutation dicts compatible with find_liblcm_mutations() output.
     """
     mutations: List[Dict[str, Any]] = []
-    for node in assigns:
-        for target in node.targets:
-            current = target
-            attr_chain: List[str] = []
-            while isinstance(current, ast.Attribute):
-                attr_chain.append(current.attr)
-                current = current.value
-            if not attr_chain or not isinstance(current, ast.Name):
-                continue
-            if current.id not in cast_aliases:
-                continue
-            interface = cast_aliases[current.id]
-            chain_str = '.'.join(reversed(attr_chain))
-            mutations.append({
-                'method': f'{interface}.{chain_str}=',
-                'line': node.lineno,
-                'category': 'Update',
-                'context': f'{current.id}.{chain_str} = ...',
-            })
+    for node, target in _iter_property_write_targets(tree):
+        if not isinstance(target, ast.Attribute):
+            continue
+        resolved = _typed_property_write_target(target, cast_aliases)
+        if resolved is None:
+            continue
+        interface, chain_str, context_expr = resolved
+        mutations.append({
+            'method': f'{interface}.{chain_str}=',
+            'line': node.lineno,
+            'category': 'Update',
+            'context': f'{context_expr} = ...',
+        })
     return mutations
 
 
@@ -3692,9 +3768,10 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     if tree is not None:
         ast_assigns, ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Cycle 2 / Finding B: `ast_assigns + ast_bindings` widens facade/alias
-        # resolution to AnnAssign/NamedExpr/For/withitem binding forms.
-        # `_find_cast_alias_property_writes` below (Step 4b) deliberately still
-        # gets the unwidened `ast_assigns` -- see `_collect_assign_call_nodes`.
+        # resolution to AnnAssign/NamedExpr/For/withitem binding forms. Step 4b's
+        # raw-property-write scan reuses the alias map built from the same union,
+        # but walks the whole tree itself because inline-cast writes are not
+        # represented by an assignment alias at all.
         facade_names = _resolve_facade_names(ast_assigns + ast_bindings, api_index)
         operations_aliases, cast_aliases = _resolve_alias_maps(
             ast_assigns + ast_bindings, facade_names, accessor_to_ops
@@ -3935,13 +4012,15 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Step 4: Detect raw LibLCM mutations and check if they're protected
     liblcm_mutations = find_liblcm_mutations(code, facade_names)
 
-    # Step 4b: AST-based cast-alias property writes (#8). Catches:
+    # Step 4b: AST-based typed raw-property writes (#8, #104). Catches:
     #     s_typed = ILexSense(sense)
     #     s_typed.MorphoSyntaxAnalysisRA.PartOfSpeechRA = pos    # <- invisible to regex
-    # Reuses cast_aliases + ast_assigns built once at Step 1b.
-    if cast_aliases:
+    #     IFsClosedValue(t).FeatureRA = None                     # <- inline cast
+    # Reuses cast_aliases built once at Step 1b; the helper walks the whole tree
+    # so inline-cast / subscript-rooted writes are seen too.
+    if tree is not None:
         liblcm_mutations.extend(
-            _find_cast_alias_property_writes(ast_assigns, cast_aliases)
+            _find_cast_alias_property_writes(tree, cast_aliases)
         )
 
     # protected_ranges already calculated above in Step 2

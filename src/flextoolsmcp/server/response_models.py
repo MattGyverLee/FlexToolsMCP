@@ -263,13 +263,18 @@ class InvalidApiChainDetail(BaseModel):
 
 
 class NestedUnitOfWorkDetail(BaseModel):
-    """Detail payload for nested_unit_of_work rejections (issue #92 follow-up).
+    """Detail payload for nested_unit_of_work rejections (issue #92 follow-up,
+    re-derived for issue #144).
 
     Fires when write-enabled code opens its own raw liblcm UnitOfWork
     (UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper, or a bare
     IActionHandler.BeginUndoTask()/BeginNonUndoableTask() call), which would
-    nest inside the runner's already-open non-undoable task and discard the
-    whole run's writes. See validators.detect_nested_unit_of_work().
+    nest inside whichever unit of work is already open at that point --
+    the runner's session-long non-undoable task on flexicon builds without
+    the "per-operation-uow" capability, or flexicon's own per-operation
+    task on builds that have it -- and discard the writes it was holding
+    (the whole run's, or just that one operation's, respectively). See
+    validators.detect_nested_unit_of_work().
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"

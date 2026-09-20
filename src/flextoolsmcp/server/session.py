@@ -73,10 +73,17 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "wrapper entirely and submit the body as a bare snippet."
     ),
     "nested_unit_of_work": (
+        # Re-scoped for issue #144: what's already open around the mutation
+        # is the runner's session-long task on older flexicon, or
+        # flexicon's own per-operation task on builds with the
+        # "per-operation-uow" capability -- either way, opening a second
+        # raw one nests and rolls back.
         "drop the UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper "
         "wrapper (or the raw BeginUndoTask/BeginNonUndoableTask call) -- "
-        "the runner already has a UnitOfWork open for the whole run. Just "
-        "perform the mutation directly under `if modifyAllowed:`; use "
+        "there is already a unit of work open around this mutation (the "
+        "runner's session task, or flexicon's own per-operation task, "
+        "depending on the flexicon build). Just perform the mutation "
+        "directly under `if modifyAllowed:`; use "
         "project.UndoableOperation()/project.Transaction() instead if you "
         "need FLEx Ctrl+Z grouping."
     ),

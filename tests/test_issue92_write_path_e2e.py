@@ -17,10 +17,17 @@ stubs ``run_script_async``, so nothing ever caught this: 27
 
 CP1 fixed this by hardcoding ``undoable=False`` at the generated
 ``OpenProject`` call and by demoting ``success`` whenever the run reported
-any ``report.Error()``. This test is the one that would have caught the
-original regression: it drives the REAL ``flextools_run_module`` handler
-(not a stub) against a real FieldWorks project, sets a gloss, closes the
-project, reopens it, and asserts the write actually reached disk.
+any ``report.Error()``. Issue #144 re-derived CP1's premise: it does not
+hold on flexicon builds that advertise the "per-operation-uow" capability
+(``getattr(flexicon, "CAPABILITIES", frozenset())``), where ``undoable=True``
+opens no session envelope but persists writes correctly because each
+mutation opens its own named task instead. The generated runner now probes
+that capability rather than hardcoding ``False``, so this test exercises
+whichever mode the installed flexicon actually chooses -- it is the one
+that would have caught the original regression either way: it drives the
+REAL ``flextools_run_module`` handler (not a stub) against a real
+FieldWorks project, sets a gloss, closes the project, reopens it, and
+asserts the write actually reached disk.
 
 This is a live, mutating test. It is SKIPPED BY DEFAULT (no scratch
 project on the machine running the suite has any business being touched

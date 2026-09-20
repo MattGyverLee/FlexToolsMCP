@@ -513,15 +513,116 @@ _Not yet run._
 
 _Not yet run._
 
-### T066 -- E-D, THE ONE LIVE WRITE
+### T066 -- E-D, THE ONE LIVE WRITE (RUN, and green)
 
-_Not yet run._ **Requires a present human's authorisation and a backed-up or
-copied project.** An unattended run must not perform it and must report
-status `needs_human`.
+**Authorised by the maintainer in session, 2026-09-19, present and watching.**
 
-If it is not run, what stays unproven is: the automatic reload path firing
-when the model genuinely changes underneath a held grammar. **FR-043 and
-SC-015 must not be shown green without it.**
+**Target: `CP2b-ED-Throwaway`, a COPY made for this run.** The spec requires
+"a backed-up or copied project, never an installed project relied on for
+anything else", so rather than pick an existing project that looked
+disposable, the source `IndonesianHC-Complete` was copied and only the copy
+was ever opened writable. The source's `.fwdata` mtime is unchanged
+(2024-07-30). The FLEx GUI was not running.
+
+#### The sequence
+
+| Step | Observed |
+|---|---|
+| active parser | `HC` |
+| 1. parse `mɑnis` (cold) | 1 analysis, **0.672s** -- the grammar loads |
+| 2. parse again (held) | 1 analysis, **0.002s** -- held, ~300x faster |
+| 3. `IsUpToDate()` before the write | **True** |
+| 4. **THE WRITE** | `LexEntry.Create("zzed214757")` -> hvo **12337** |
+| 5. `IsUpToDate()` after the write | **False** <- the held grammar went stale |
+| 6. parse `mɑnis` again | 1 analysis, 0.018s |
+| 7. `IsUpToDate()` after that parse | **True** <- the facade reloaded during the call |
+| 8. parse again (held) | 1 analysis, 0.004s |
+| 9. new entry visible in the lexicon | **True** |
+| close | clean |
+
+**FR-043's stale half is discharged.** A live model change made underneath a
+held grammar flips currency to stale, and the next parse reloads before
+parsing rather than serving from the discarded grammar.
+
+**That the reload precedes the parse is structural, not inferred.**
+`ParserOperations.ParseWord` is three lines:
+
+```python
+handle = self._CurrentHandle()          # confirms currency, reloads if stale
+self._ClearAnyRestriction(handle, word)
+return handle.ParseWord(word)           # only then does it parse
+```
+
+and `_CurrentHandle` reloads as **reset then update, two steps in that
+order** (SC-014's shape):
+
+```python
+handle = self._parser
+if confirm_currency and not handle.IsUpToDate():
+    handle.Reset()
+    handle.Update()
+```
+
+**Stated honestly: step 6 took 0.018s, not a fresh 0.672s.** The reload was
+*incremental* -- HC updated the held grammar rather than rebuilding it from
+nothing. So the timing alone does **not** prove a reload happened. What
+proves it is the currency transition **False -> True across that single
+call**, with nothing else running in between, plus the call order above.
+Recorded this way rather than as "the second parse paid the reload cost",
+which the numbers would not support.
+
+#### A blocker found on the way, and the workaround
+
+E-D could not be run at all until a flexicon limitation was worked around,
+and it is worth recording because it is **flexicon's own documented
+contingency firing for the first time**.
+
+Two modes, neither of which works alone:
+
+* `undoable=False` (what flexicon's own live tests use for writes) holds a
+  session-long **write** lock. `HCParser.LoadParser()` needs a **read** lock,
+  so parsing is impossible:
+  `System.Threading.LockRecursionException: A read lock may not be acquired
+  with the write lock held in this mode.`
+* `undoable=True` (per-operation units of work) parses fine, but the write
+  dies ending its unit of work:
+  `System.NullReferenceException at SynchronizeInvokeExtensions.Invoke(...)
+  at UnitOfWorkService.SendPropChangedNotifications(...)`.
+
+That second failure is predicted verbatim by `headless_ui.py`'s own
+docstring:
+
+> CONTINGENCY (cycle-1 domain audit, issue #285): `None` here is
+> dereferenced unguarded at exactly two liblcm sites --
+> `UnitOfWorkService.SendPropChangedNotifications` ... Both are no-ops for
+> flexicon TODAY only because (1) nothing in the current Operations surface
+> calls `AddNotification` to register an `IVwNotifyChange` subscriber ... If
+> a future feature adds a change-watcher, re-check both call sites before
+> assuming `None` is still safe here.
+
+**A loaded HC parser IS that change-watcher** -- watching the model is
+exactly how `IsUpToDate()` knows it has gone stale. So the condition the
+contingency named has arrived, and it arrived precisely at FR-043.
+
+**Workaround used:** a subclass of `HeadlessLcmUI` that keeps every one of
+its safe decisions but returns a real `ISynchronizeInvoke` (`ThreadHelper`,
+the same one `FwLcmUI` marshals through) instead of `None`. No dialogs, no
+silent discard, no hang.
+
+**This belongs upstream in flexicon, not here.** FlexToolsMCP's worker opens
+projects **read-only**, so it never ends a unit of work and never reaches
+either failure -- CP2b is unaffected and needs no change. But any caller
+that writes while a grammar is held hits this, and today the only way
+through is to supply a UI flexicon does not ship. Recommend filing against
+`flexicon` issue #285.
+
+#### Cleanup
+
+`CP2b-ED-Throwaway` still exists, carrying the junk entry `zzed214757`, so
+the run can be inspected or reproduced. It is a copy and nothing depends on
+it; delete it whenever.
+
+---
 
 ### T067 -- full suite
 

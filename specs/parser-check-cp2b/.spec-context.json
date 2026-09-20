@@ -286,6 +286,14 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-20T01:38:00.327Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T066",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-20T02:49:06.307Z"
     }
   ],
   "context": "Continuation of specs/parser-check-cp2 (CP2a, complete 31/31). This feature covers the two never-planned parts of CP2: CP2a-bridge (FR-011, this repo's dependency floor and bundled index) and CP2b (US2/US3/US4, FR-012..FR-040 -- flextools_try_word, flextools_parse_status, the morph resolver and the run machinery). Authoritative requirement text stays in specs/parser-check-cp2/spec.md; this feature's spec.md is a scoping document.",
@@ -379,6 +387,10 @@
     },
     {
       "note": "T066 (E-D, the one live WRITE) remains NOT RUN and must not be run unattended; FR-043 stays half discharged",
+      "step": "implement"
+    },
+    {
+      "note": "flexicon HeadlessLcmUI.SynchronizeInvoke returns None and liblcm dereferences it unguarded in SendPropChangedNotifications; a loaded HC parser is the change-watcher its issue-285 contingency warned about, so any headless WRITE while a grammar is held crashes. FlexToolsMCP is unaffected (worker opens read-only) but this should be filed upstream on flexicon.",
       "step": "implement"
     }
   ],
@@ -833,7 +845,7 @@
   },
   "size": "oversized",
   "classification": "campaign -- full crew cycle, not the CLAUDE.md fast path",
-  "currentTask": "T060",
+  "currentTask": "T066",
   "task_summaries": {
     "T001": {
       "status": "DONE",
@@ -1039,6 +1051,13 @@
       "files": [
         "tests/test_cp1_boundary.py"
       ]
+    },
+    "T066": {
+      "status": "DONE",
+      "did": "E-D live write RUN on CP2b-ED-Throwaway (a copy, maintainer-authorised, present): IsUpToDate True->False across a live LexEntry.Create under a held grammar, next parse reloaded (reset-then-update) before parsing, False->True across that call. FR-043 stale half discharged",
+      "files": [
+        "specs/parser-check-cp2b/evidence/cp2b-evidence.md"
+      ]
     }
   },
   "verified": [
@@ -1090,7 +1109,15 @@
       "warnings": [
         "makan does not parse in this project -- its phoneme inventory is IPA; that is project data, not a defect"
       ]
+    },
+    {
+      "what": "T066 / E-D the one live write -- FR-043 stale half, SC-015",
+      "command": "flexicon facade against CP2b-ED-Throwaway (copy), writeEnabled=True, maintainer present",
+      "result": "IsUpToDate True before write, False after LexEntry.Create under a held grammar, True again after the next parse; reload is reset-then-update and precedes ParseWord structurally",
+      "warnings": [
+        "step 6 took 0.018s not a full 0.672s reload -- the reload was incremental, so timing alone does not prove it; the currency transition and call order do"
+      ]
     }
   ],
-  "last_action": "Phase 2 complete (T009, T021-T026, plus T059/T060 pulled forward); suite 1886 passed; next is T027 (US2)"
+  "last_action": "T066/E-D run and green; FR-043 fully discharged; next is T027 (US2)"
 }

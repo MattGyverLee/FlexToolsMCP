@@ -59,8 +59,17 @@ Responses (stdout):
     {"type": "ready",     "protocol": 1, "project": str}
     {"type": "stage",     "run_id": str, "stage": "loading_grammar"|"parsing"}
     {"type": "result",    "request_id": str, "run_id": str, "wordform": str,
-                          "index_in_run": int, "parse": {...}|null,
+                          "index_in_run": int, "parse": {...},
                           "trace_xml": str|null}
+
+    `parse` is never null as of CP2b's honesty-gap fix: every level derives
+    it from the same document, and its keys tell the caller which question
+    was asked and answered (`_summarize_trace`, below).
+
+      plain / explain -> {"parsed": bool, "analysis_count": int}
+      restricted       -> {"hypothesis_held": bool, "restricted_analysis_count": int}
+      any level, on <Error> -> {"parse_error": str} instead of the above --
+        the parse threw, so nothing about it parsing or not is asserted.
     {"type": "cancelled", "run_id": str, "words_completed": int}
     {"type": "error",     "request_id": str|null, "run_id": str|null,
                           "error_code": str|null, "detail": {...}|null,
@@ -725,11 +734,24 @@ class _RealBackend(_ParseBackend):
                     "an unrestricted parse (FR-019)."
                 )
             trace = parser.TraceWordXml(wordform, list(restricted_to))
-            return {"parse": None, "trace_xml": _as_text(trace)}
+            summary = _summarize_trace(trace)
+            # A restriction is a pre-parse narrowing (HCParser.cs:186-199,
+            # 211), so its survivors answer "does my restriction still admit
+            # an analysis" -- never "does this word parse". Renamed here,
+            # at the one place that already knows which question this call
+            # asked, so every consumer downstream (the inline response AND
+            # the parse_status summary) receives a self-describing entry
+            # rather than having to re-derive the level to interpret it.
+            if "parse_error" not in summary:
+                summary = {
+                    "hypothesis_held": summary["parsed"],
+                    "restricted_analysis_count": summary["analysis_count"],
+                }
+            return {"parse": summary, "trace_xml": _as_text(trace)}
 
         if level == "explain":
             trace = parser.TraceWordXml(wordform, None)
-            return {"parse": None, "trace_xml": _as_text(trace)}
+            return {"parse": _summarize_trace(trace), "trace_xml": _as_text(trace)}
 
         # plain
         result = parser.ParseWord(wordform)
@@ -783,6 +805,88 @@ def _summarize_plain(result: Any) -> dict[str, Any]:
                 count = sum(1 for _ in analyses)
 
     return {"parsed": int(count) > 0, "analysis_count": int(count)}
+
+
+def _summarize_trace(trace: Any) -> dict[str, Any]:
+    """Derive the same parsed/analysis_count facts `_summarize_plain`
+    reports, straight from the trace `XDocument` -- BEFORE `_as_text`
+    discards its structure.
+
+    DERIVE, DO NOT RE-PARSE. `TraceWordXml` and `ParseWordXml` are the same
+    C# method underneath (`HCParser.cs:120-131`): both build one
+    `<Wordform>` document (root, `:207`) and append an `<Analysis>` child
+    per surviving analysis (`:213-215`) *independently of the tracing
+    flag*. The `<Trace>` sibling (`:217-218`) that `tracing=True` adds holds
+    only explored/rejected paths -- they are never promoted into
+    `<Analysis>`. So `len(root.Elements("Analysis"))` is not an estimate of
+    what `ParseWord`'s own `Analyses.Count` would report; it is the same
+    count, because `:104-113` applies the identical `GetMorphs` filter to
+    build both. Counting it here is therefore never a second parse.
+
+    THE <Error> CASE IS BLOCKING, and is checked FIRST. `ParseToXml` catches
+    an exception and appends an `<Error>` child to `<Wordform>` *instead of*
+    any `<Analysis>` (`HCParser.cs:219-222`). Zero `<Analysis>` is therefore
+    ambiguous on its own: it means either "genuinely did not parse" or "the
+    parse threw", and those are not the same fact. Reporting `parsed: False`
+    for a document that actually holds `<Error>` would assert something
+    false -- a worse defect than the silence it replaces, because today
+    explain reports nothing about a thrown parse; a derived `False` would
+    report a definite negative that never happened. So this returns
+    `{"parse_error": str}` alone, with neither `parsed` nor `analysis_count`
+    riding along -- the caller must not be able to mistake "the parse threw"
+    for "the parse failed".
+
+    ONE NO-ARGUMENT `Elements()` PASS, MATCHED BY `.Name.LocalName`.
+    `XContainer.Element(XName)` / `.Elements(XName)` do not accept a bare
+    `str` under pythonnet in this environment -- there is no implicit
+    `str -> XName` conversion for that overload, so `root.Element("Error")`
+    raised `TypeError: No method matches given arguments for
+    XContainer.Element: (<class 'str'>)` on every live call (cycle 3
+    verification). The no-arg `Elements()` overload (`IEnumerable<XElement>
+    Elements()`) has no such binding problem, so this walks the children
+    once, comparing each child's `.Name.LocalName` to the two names this
+    function cares about, and counts/detects both in that single pass.
+    Neither `XName` nor `System.Xml.Linq` needs importing into the worker
+    for this, and no bare string is left behind for the next call site to
+    reintroduce. <Error> still wins over <Analysis> when both are somehow
+    present -- checked after the full walk, so the order children arrive in
+    cannot flip the precedence.
+
+    Returns:
+        `{"parsed": bool, "analysis_count": int}` when the document has no
+        `<Error>` (whether or not it has any `<Analysis>`), or
+        `{"parse_error": str}` alone when it does, or when the document has
+        no root at all (see below).
+    """
+    root = getattr(trace, "Root", None)
+    if root is None:
+        # A document we could not read is not a word that did not parse --
+        # that is Delta 6's own stated principle, applied here. Silently
+        # reporting `parsed: False` would invent the very fact absence was
+        # supposed to avoid inventing: it would tell the caller the word
+        # was tried and failed, when in truth nothing was ever established
+        # about it at all. An unreadable document is indeterminate, and
+        # `parse_error` is the outcome this function already has for "this
+        # response asserts nothing about whether the word parses".
+        return {"parse_error": "the trace document has no root element"}
+
+    error_element = None
+    analysis_count = 0
+    for child in root.Elements():
+        name = getattr(getattr(child, "Name", None), "LocalName", None)
+        if name == "Error":
+            if error_element is None:
+                error_element = child
+        elif name == "Analysis":
+            analysis_count += 1
+
+    if error_element is not None:
+        text = getattr(error_element, "Value", None)
+        if not text:
+            text = str(error_element)
+        return {"parse_error": str(text)}
+
+    return {"parsed": analysis_count > 0, "analysis_count": analysis_count}
 
 
 class _SpecView:

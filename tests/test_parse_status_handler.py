@@ -109,6 +109,84 @@ async def test_a_completed_run_reports_ok_with_its_summary(runner):
     )
 
 
+async def test_a_completed_explain_runs_summary_reports_nonzero_parsed(
+    tmp_path, monkeypatch
+):
+    """The NEW HIGH sibling QC found: before this fix, `entry["parse"]` was
+    `None` for every explain/restricted entry (`worker_main.py`'s
+    `BackendFacade.parse()` returned `{"parse": None, ...}` for both), so
+    `_result_summary` read `parse.get("parsed")` against an always-empty
+    dict and reported `parsed: 0` on ANY completed explain/restricted run
+    -- indistinguishable from "every word failed to parse" even when every
+    word held. This pins the fix: a successful explain run's summary must
+    report the words that parsed, not zero.
+    """
+    monkeypatch.setattr(
+        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+    )
+    worker = RecordingWorker(trace_outcome="success")
+    instance = ParseRunner(
+        pool=Pool(worker), record_dir=tmp_path / "runs", grace_window=30.0
+    )
+    parse_handler.set_runner(instance)
+    try:
+        handle = await instance.start_run(
+            project_name="P", wordforms=["makan", "pukul"], level="explain"
+        )
+        assert handle.stage is RunStage.COMPLETED
+
+        payload = await status(handle.run_id)
+    finally:
+        parse_handler.set_runner(None)
+
+    summary = payload["result_summary"]
+    assert summary["words"] == 2
+    assert summary["parsed"] == 2, (
+        "both words held under explain; reporting 0 here is the exact "
+        "defect this test exists to catch"
+    )
+    assert summary["hypotheses_held"] == 0, (
+        "explain never carries hypothesis_held -- that question was never "
+        "asked at this level"
+    )
+
+
+async def test_a_completed_restricted_runs_summary_counts_hypotheses_held(
+    tmp_path, monkeypatch
+):
+    """The `restricted` counterpart: its entries carry `hypothesis_held`,
+    never `parsed`, so the summary must count them under their own key
+    rather than conflating -- or silently dropping -- them into `parsed`.
+    """
+    monkeypatch.setattr(
+        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+    )
+    worker = RecordingWorker(trace_outcome="success")
+    instance = ParseRunner(
+        pool=Pool(worker), record_dir=tmp_path / "runs", grace_window=30.0
+    )
+    parse_handler.set_runner(instance)
+    try:
+        handle = await instance.start_run(
+            project_name="P",
+            wordforms=["makan"],
+            level="restricted",
+            restricted_to=(5001,),
+        )
+        assert handle.stage is RunStage.COMPLETED
+
+        payload = await status(handle.run_id)
+    finally:
+        parse_handler.set_runner(None)
+
+    summary = payload["result_summary"]
+    assert summary["hypotheses_held"] == 1
+    assert summary["parsed"] == 0, (
+        "restricted's entries never carry `parsed`, so it must not be "
+        "credited here either"
+    )
+
+
 async def test_a_failed_run_reports_ok_and_carries_its_failure(runner, tmp_path):
     """The run failed. The question did not.
 

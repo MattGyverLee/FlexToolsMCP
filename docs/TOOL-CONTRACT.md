@@ -252,6 +252,53 @@ ultimately rejects or proceeds with a warning.
 
 ---
 
+## Parser diagnostic-level result fields (`flextools_try_word`, `flextools_parse_status`)
+
+`flextools_try_word`'s `explain` and `restricted` levels, and
+`flextools_parse_status`'s `result_summary`, carry additional success
+fields reporting outcome, not only trace availability. Additive only --
+this did **not** add an error code and did **not** move the count above
+(`:69`); `tool-responses/1.0` is unchanged, following the same
+additive-optional pattern as `update_notice` / `workspace_notice` /
+`diagnostic_report` / `inherited_from` below.
+
+**`flextools_try_word`, per level:**
+
+| Level | Fields | Notes |
+|---|---|---|
+| `plain` | `parsed` (bool), `analysis_count` (int) | unchanged |
+| `explain` | `parsed` (bool), `analysis_count` (int) | derived from the trace document's own `<Analysis>` children -- identical to, not an approximation of, `ParseWord`'s own count |
+| `restricted` | `hypothesis_held` (bool), `restricted_analysis_count` (int) | **never** `parsed`/`analysis_count` -- a restricted trace answers "does my restriction still admit an analysis," never "does this word parse at all," and those names are reserved for the unrestricted question -- the keys are absent from the object entirely, never present and set to false |
+
+**The `parse_error` case (`explain` / `restricted` only).** If HermitCrab's
+own tracing failed, the trace document carries `<Error>` instead of any
+`<Analysis>`; the same applies if the trace document has no `Root` at all
+and so cannot be inspected for either. The response then reports
+`parse_error` (a message string) and emits **neither** of the pair above --
+a zero-`<Analysis>` document does not distinguish "no analysis" from "the
+parse itself errored," so neither field would be honest. `parse_error`
+**replaces** both pairs rather than joining them: the object carries
+`parse_error` alone, never alongside an absent-but-implied `parsed` or
+`hypothesis_held`. `trace_available`/`trace_path` are still reported if a
+trace file was written before the error. This is a deliberate asymmetry
+with `plain`, where the underlying exception propagates and the request
+fails outright instead of succeeding with a `parse_error` field.
+
+**`flextools_parse_status`, `result_summary`:**
+
+| Field | Counts |
+|---|---|
+| `parsed` | entries carrying a `parsed` key (`plain`/`explain`) where it is `true` -- never incremented for `restricted` entries, which do not carry this key |
+| `hypotheses_held` | `restricted` entries whose `hypothesis_held` is `true` |
+
+One integer is not allowed to stand for two different questions: a batch of
+`restricted` runs previously reported `result_summary.parsed: 0`
+unconditionally, indistinguishable from every word failing to parse. A
+`parse_error` entry counts toward neither `parsed` nor `hypotheses_held` --
+it answers neither question.
+
+---
+
 ## Inherited member fields (`get_object_api`, `resolve_property`)
 
 `get_object_api` and `resolve_property` responses may carry additional

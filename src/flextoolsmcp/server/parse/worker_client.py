@@ -254,12 +254,67 @@ class ParseWorkerClient:
     # -- the channel ------------------------------------------------------
 
     async def _read_message(self) -> Optional[dict[str, Any]]:
-        """One protocol line, or None at EOF. Malformed lines are skipped."""
+        """One protocol line, or None at EOF. Malformed lines are skipped.
+
+        An oversize line -- `asyncio.LimitOverrunError`, a `ValueError`
+        subclass, raised by `readline()` when a line exceeds the stream's
+        `limit` (see `subprocess_helpers._STREAM_LIMIT_BYTES`) -- is also
+        handled here rather than left to kill the read loop. Confirmed
+        live (cycle 5 verification, `Claude-Swahili`'s `mtu` at
+        `level='explain'`) before that ceiling was raised, and still
+        reachable after: any trace bigger even than the raised ceiling
+        hits the same path.
+
+        NO MANUAL BYTE-DRAINING IS DONE, and this is deliberate rather
+        than an oversight. CPython's own `StreamReader.readline()`
+        already discards the line that overflowed *before* raising (see
+        `asyncio/streams.py`): either the offending line plus its
+        separator is removed, or -- when the separator has not even
+        arrived yet, which is this bug's actual shape -- the whole
+        buffer is cleared. Either way the NEXT `readline()` call resumes
+        cleanly from real data; a probe reproducing the exact "Separator
+        is not found" message confirmed this empirically (a still-too-
+        long remainder can raise once or twice more before the tail
+        finally fits, then normal lines resume). Retrying is therefore
+        sufficient to resynchronize the byte stream.
+
+        What retrying CANNOT do is recover the lost message's meaning:
+        the request_id was inside the JSON this discarded, so there is no
+        way to know which pending request's answer just vanished -- and
+        with several words in flight (a batch, an interleaved urgent
+        word) it is not necessarily only one. Guessing would risk
+        resolving the wrong future with the wrong result, which is a
+        silent protocol violation, not a fix. So every request pending
+        AT THIS MOMENT is failed loudly instead (`_fail_pending`) and the
+        loop continues: the specific word(s) affected get a clear error,
+        every OTHER already-answered word is unaffected, and -- unlike
+        the previous behaviour of ending the read loop entirely -- the
+        channel keeps working for every request submitted afterward.
+        """
         proc = self._proc
         if proc is None or proc.stdout is None:
             return None
         while True:
-            raw = await proc.stdout.readline()
+            try:
+                raw = await proc.stdout.readline()
+            except ValueError as exc:
+                _log.warning(
+                    "Parse worker for %r sent a line too large for the "
+                    "channel; failing %d pending request(s) and "
+                    "resynchronizing: %s",
+                    self.project_name,
+                    len(self._pending),
+                    exc,
+                )
+                self._fail_pending(
+                    WorkerError(
+                        f"Parse worker for {self.project_name!r} sent a "
+                        f"response too large for the channel; that "
+                        f"request's result was lost, but the worker is "
+                        f"still running."
+                    )
+                )
+                continue
             if not raw:
                 return None
             text = raw.decode("utf-8", errors="replace").strip()

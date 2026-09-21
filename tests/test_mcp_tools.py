@@ -562,13 +562,20 @@ class TestToolOutcomeLogging(TestCase):
 
     def _capture(self, tool, args, initialized=False):
         import logging as _logging
+        import sys as _sys
         srv = _get_srv()
-        # call_tool logs through the module-level `operations_logger`; make sure
-        # one exists and capture what it emits.
-        ops = srv.operations_logger
+        # call_tool resolves the logger at call time via kernel's accessor, so
+        # a stand-in must be installed on the KERNEL module -- not on server.py.
+        # (Setting srv.operations_logger is what this helper used to do; it
+        # manufactured a binding production never had, which is how the suite
+        # stayed green while every dispatcher log site was a no-op in the
+        # shipped server. See test_cross_session_logging.py for the guard.)
+        _kernel = _sys.modules[srv.get_operations_logger.__module__]
+        _prev_ops = _kernel.operations_logger
+        ops = srv.get_operations_logger()
         if ops is None:
             ops = _logging.getLogger("flextoolsmcp.operations")
-            srv.operations_logger = ops
+            _kernel.operations_logger = ops
         records = []
 
         class _Capture(_logging.Handler):
@@ -590,6 +597,7 @@ class TestToolOutcomeLogging(TestCase):
             srv.session_state.initialized = prev_init
             ops.removeHandler(h)
             ops.setLevel(prev_level)
+            _kernel.operations_logger = _prev_ops
         return records
 
     def test_blocked_tool_leaves_a_warning_trace(self):
@@ -630,8 +638,11 @@ class TestToolOutcomeLogging(TestCase):
             def emit(self, record):
                 records.append((record.levelno, record.getMessage()))
 
-        ops = srv.operations_logger or _logging.getLogger("flextoolsmcp.operations")
-        srv.operations_logger = ops
+        import sys as _sys
+        _kernel = _sys.modules[srv.get_operations_logger.__module__]
+        _prev_ops = _kernel.operations_logger
+        ops = srv.get_operations_logger() or _logging.getLogger("flextoolsmcp.operations")
+        _kernel.operations_logger = ops
         h = _Capture(); ops.addHandler(h); ops.setLevel(_logging.DEBUG)
         prev_init = srv.session_state.initialized
         srv.session_state.initialized = True
@@ -643,6 +654,7 @@ class TestToolOutcomeLogging(TestCase):
             srv.get_tool_handler = orig
             srv.session_state.initialized = prev_init
             ops.removeHandler(h)
+            _kernel.operations_logger = _prev_ops
 
         err = [(lvl, m) for lvl, m in records if "[TOOL ERROR]" in m]
         self.assertTrue(err, f"expected a [TOOL ERROR] trace: {[m for _, m in records]}")

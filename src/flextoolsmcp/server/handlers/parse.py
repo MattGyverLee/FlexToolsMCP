@@ -462,7 +462,24 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
     # already warm. On agreement -- a word that parsed -- nothing is
     # offered, for the same reason FR-025 forbids congratulating a correct
     # hypothesis.
-    if level != "restricted" and not result.get("parsed", False):
+    #
+    # Gated on the PRESENCE of `parsed`, not its truthiness with a falsy
+    # default. `restricted` never carries `parsed` at all (it answers a
+    # different question -- see `_inline_response`), and `parse_error` means
+    # the parse threw rather than failed, so neither is a "word did not
+    # parse" fact this assist may act on. `result.get("parsed", False)`
+    # used to stand in for "did this parse fail", but that default fires
+    # just as readily when `parsed` was never set -- which was exactly
+    # `explain`'s case before this fix, and is exactly the defect class
+    # this whole file is being corrected for: a missing key must never
+    # read as a definite negative.
+    is_definite_parse_failure = (
+        level in ("plain", "explain")
+        and "parsed" in result
+        and result["parsed"] is False
+        and "parse_error" not in result
+    )
+    if is_definite_parse_failure:
         proposal = await _propose_decomposition(project_name, word)
         if proposal is not None:
             result["proposed_decomposition"] = proposal
@@ -512,7 +529,7 @@ def _overflow_response(
 
 def _inline_response(
     handle, word: str, level: str, project_name: str, restricted_to
-) -> List[TextContent]:
+) -> Dict[str, Any]:
     """The run finished inside the window: the complete answer, in one call.
 
     Trace payloads are reported by PATH, never inlined. A trace runs to tens
@@ -541,6 +558,38 @@ def _inline_response(
         if trace_path is not None:
             result["trace_path"] = str(handle.record.root / trace_path)
             result["trace_bytes"] = _trace_bytes(handle, trace_path)
+
+        # The three-way outcome (worker_main.py `_summarize_trace`), copied
+        # over by NAME rather than defaulted, so a missing key stays
+        # missing instead of reading as a fact nobody established.
+        #
+        #   explain    -> `parsed` + `analysis_count` -- the same
+        #                 unrestricted question `plain` asks, and the count
+        #                 is provably identical (both filter through the
+        #                 same GetMorphs, HCParser.cs:104-113/213-215).
+        #   restricted -> `hypothesis_held` + `restricted_analysis_count`,
+        #                 NEVER `parsed`. A restriction narrows the search
+        #                 before the parse runs (HCParser.cs:186-199,211),
+        #                 so its survivors answer "does my restriction
+        #                 still admit an analysis" -- never "does this word
+        #                 parse" -- and reusing `parsed`'s vocabulary would
+        #                 let a caller compare a restricted `False` against
+        #                 a genuine unrestricted failure as the same fact.
+        #   either level, on <Error> -> `parse_error` alone. The trace
+        #                 threw; this response explains nothing about
+        #                 whether the word parses, so it asserts neither of
+        #                 the pairs above.
+        if "parse_error" in parse:
+            result["parse_error"] = parse["parse_error"]
+        elif level == "explain":
+            result["parsed"] = bool(parse.get("parsed"))
+            result["analysis_count"] = int(parse.get("analysis_count") or 0)
+        elif level == "restricted":
+            result["hypothesis_held"] = bool(parse.get("hypothesis_held"))
+            result["restricted_analysis_count"] = int(
+                parse.get("restricted_analysis_count") or 0
+            )
+
         if level == "restricted":
             # Echoed so the caller can see exactly what was traced. It is
             # what they gave, resolved -- never widened, never reordered
@@ -774,6 +823,23 @@ def _level_guidance(level: str, result: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     if level == "explain":
+        # On <Error> the trace threw, so this response explains nothing
+        # about the word either way -- `explains_failure` is omitted
+        # entirely rather than set to a value in either direction, the same
+        # "presence of the key is the fact" discipline as the guard in
+        # `handle_flextools_try_word` (FR-013/FR-025 do not apply to a
+        # question this response never actually answered).
+        if "parse_error" in result:
+            return {"next_step": None}
+
+        # A SUCCESSFUL explain, mirroring the plain branch above: nothing
+        # to diagnose, so no rungs and no failure-flavoured guidance. Before
+        # this fix `parsed` was never set for explain, so this branch was
+        # unreachable and every explain response -- including one for a
+        # word that parsed -- got the failure guidance below (FR-025).
+        if result.get("parsed"):
+            return {"explains_failure": False, "next_step": None}
+
         return {
             "explains_failure": True,
             "guidance": (
@@ -784,8 +850,23 @@ def _level_guidance(level: str, result: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     # restricted: the caller already had a hypothesis and used the right
-    # level for it. There is nothing to steer them toward, so nothing is
-    # emitted.
+    # level for it, so `next_step` is None in every case -- there is
+    # nowhere else to steer them. `explains_failure` is NOT unconditional
+    # though: this is the same defect class as the explain branch above,
+    # five lines away, and gets the same success gate.
+    if "parse_error" in result:
+        # The trace threw; this response explains nothing about the
+        # hypothesis either way -- omit the flag entirely, same as explain.
+        return {"next_step": None}
+
+    if result.get("hypothesis_held"):
+        # A held hypothesis is agreement, not a failure to diagnose.
+        # FR-025 and contracts/tools.md:97 forbid commentary on it, the
+        # same as a successful plain/explain above.
+        return {"explains_failure": False, "next_step": None}
+
+    # The hypothesis did not hold. The trace ran and reports why, so this
+    # response DOES explain the failure -- unchanged from before this fix.
     return {"explains_failure": True, "next_step": None}
 
 
@@ -884,18 +965,36 @@ def _result_summary(handle) -> Dict[str, Any]:
     Counts and paths, never the traces themselves: a single trace runs to
     tens or hundreds of kilobytes, and a completed batch of four thousand
     words would not fit in a response at all (data-model.md section 5).
+
+    TWO QUESTIONS, TWO COUNTERS. `plain`/`explain` entries carry `parsed`;
+    `restricted` entries carry `hypothesis_held` instead, never `parsed`
+    (worker_main.py's `BackendFacade.parse()` renames it there, at the one
+    place that already knows which question that run's level asked). Before
+    this fix, every entry's `parse` was `{}` for `explain`/`restricted`
+    (the worker returned `{"parse": None, ...}` for both), so
+    `parse.get("parsed")` was always falsy and a poll on ANY completed
+    explain/restricted run reported `parsed: 0` unconditionally --
+    indistinguishable from "every word failed to parse". Counting each
+    question separately, over the entries that actually carry its key,
+    is what keeps a `restricted` run's held hypotheses from being
+    conflated with -- or silently erased by -- an unrestricted `parsed`
+    count that was never asked about them.
     """
     parsed = 0
+    hypotheses_held = 0
     traced = 0
     for entry in handle.results:
         parse = entry.get("parse") or {}
         if parse.get("parsed"):
             parsed += 1
+        if parse.get("hypothesis_held"):
+            hypotheses_held += 1
         if entry.get("trace_path"):
             traced += 1
     return {
         "words": len(handle.results),
         "parsed": parsed,
+        "hypotheses_held": hypotheses_held,
         "traces_written": traced,
         "record_dir": str(handle.record.root),
     }

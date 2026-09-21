@@ -687,6 +687,94 @@ scale project and its figures belong to the scenarios in T053.
 
 ---
 
+### Pattern audit -- "truth-test on a key a code path never sets" (Delta 6)
+
+**Run.** `sweep-pattern` skill, `Explore` agent (cycle 1,
+`specs/parser-check-cp2b/reviews/cycle1-qc-pattern-audit.md`). This is a
+gate, not a courtesy: T042 above records that CP2a's QC gate blocked on a
+**missing** pattern audit and that a repeat is not acceptable (CLAUDE.md).
+The two known instances (`parse.py:465`, `parse.py:776-784`) both trace to
+the same root cause -- `_inline_response`'s `explain`/`restricted` branch
+never wrote `result["parsed"]` -- so every `.get("parsed", ...)` /
+`.get(<omitted key>, ...)` truth-test in the parse subsystem was swept for
+the same shape.
+
+Quoted verbatim, the audit's conclusion (its section 3):
+
+> 11 sites inspected, 3 defects (2 previously known -- parse.py:465 and
+> parse.py:776-784, both rooted in `_inline_response` never setting
+> `result["parsed"]` outside `level == "plain"` -- plus 1 new sibling at
+> parse.py:891-892 where `_result_summary` inherits the same missing-key
+> shape from `worker_main.py`'s `BackendFacade.parse()` and silently reports
+> `parsed: 0` for every completed explain/restricted run), 8 sites confirmed
+> by-design (worker-side messages that always populate the key on every
+> branch, or fallbacks whose empty/false default matches rather than
+> inverts the omitted case).
+
+All three defects are closed by Delta 6 (spec.md): `_inline_response` now
+populates `hypothesis_held`/`restricted_analysis_count` (never `parsed`) on
+the `restricted` branch and `parsed`/`analysis_count` on the `explain`
+branch; `_level_guidance`'s `explain` branch gates on the now-populated key
+instead of returning `explains_failure: True` unconditionally; and
+`_result_summary` counts `parsed` only over entries that carry that key,
+adding a separate `hypotheses_held` count rather than letting one integer
+answer two different questions. The 8 by-design sites required no change.
+
+### LESSON -- a green mock suite is not a verified one for this call path
+
+**The numbers.** The cycle-2 mock suite reported 2016 passed / 6 skipped / 0
+failed (71 deselected). The cycle-3 regression run of the same command
+(`python -m pytest -m "not requires_flex" --continue-on-collection-errors
+-q`) reported the identical 2016 passed / 6 skipped / 0 failed -- no drift.
+Against that unchanged green baseline, cycle 3's LIVE verification
+(`specs/parser-check-cp2b/reviews/cycle3-verification.md`) on
+`IndonesianHC-Complete` found that **every** `explain` and `restricted`
+call raised, unconditionally: `TypeError: No method matches given
+arguments for XContainer.Element: (<class 'str'>)` (the underlying CLR
+message: `'str' value cannot be converted to System.Xml.Linq.XName`) at
+`worker_main.py:852`, on both a parsing word (`pukul`) and a non-parsing
+one (`meŋ`).
+
+**This is not a footnote; it is the lesson.** Explore flagged this exact
+seam in cycle 1 (`specs/parser-check-cp2b/reviews/cycle1-explore-tests.md`)
+as a CLR-overload-resolution risk on a `str` argument bound to an
+`XName`-typed parameter. QC's cycle-1/cycle-2 pattern audit re-flagged it as
+P2. It shipped anyway, and the mock suite reported 0 failed both before and
+after. A Python mock built with a matching method name (`Element`,
+`Elements`) has no way to reproduce a pythonnet overload-binding failure --
+the mock accepts the string happily; only the real `System.Xml.Linq`
+binding, which does not apply an implicit `str -> XName` conversion for
+this overload in this environment, rejects it. **A green mock suite proves
+the change did not regress anything the mock can see. It does not prove the
+change works against the live call path it targets, and this checkpoint's
+own numbers -- 2016/6/0, twice, either side of a live-breaking defect --
+are the demonstration, not an aside.**
+
+### State -- the empirical equality check is BLOCKED, not passed
+
+Delta 6's derivation claim (`<Analysis>`-child count == `ParseResult
+.Analyses.Count`, `HCParser.cs:104-113,213-215`) has two kinds of support,
+and as of this evidence pass only one has actually run:
+
+- **Source reading -- done.** `HCParser.cs:104-113` and `:213-215` apply
+  the identical `GetMorphs` filter regardless of the `tracing` flag; this
+  is what spec.md Delta 6 currently rests on, and it is a valid reading of
+  the source.
+- **Live measurement -- BLOCKED, not passed.** The actual test (plain
+  `analysis_count` == explain `analysis_count` for the same word,
+  `IndonesianHC-Complete` / `pukul`) could not be checked: cycle-3
+  verification's step 5 recorded `plain` returning `analysis_count: 1`
+  (cold and warm) while `explain` raised the `XName` `TypeError` above
+  before returning any count at all. There is no result to compare `plain`
+  against, in either direction -- not a pass, not a fail, blocked.
+
+A re-run is scheduled once the `XName` binding fix lands. **Until that
+re-run returns a result, Delta 6's derivation claim rests on source
+reading alone** and should be described that way -- as read, not as
+measured -- rather than implying the live cross-check already confirmed it.
+
+---
+
 ## US3 -- the morph resolver
 
 ### T042 -- pattern audit (CLR collection-parameter binding)

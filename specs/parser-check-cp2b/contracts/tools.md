@@ -119,6 +119,49 @@ emits.
 Inside the grace window, a complete result. Outside it, a bare `run_id`. See the
 run contract below.
 
+**Per-level result fields (spec.md Delta 6).** All three levels derive their
+result fields from the single call already made -- never a second facade
+call:
+
+| Level | Success fields | Notes |
+|---|---|---|
+| `plain` | `parsed` (bool), `analysis_count` (int) | unchanged, already shipped |
+| `explain` | `parsed` (bool), `analysis_count` (int), `trace_available`, `trace_path`, `trace_bytes` | the count is derived from the trace document's `<Analysis>` children, which is provably identical to `ParseWord`'s own count, not an approximation of it |
+| `restricted` | `hypothesis_held` (bool), `restricted_analysis_count` (int), `trace_available`, `trace_path`, `trace_bytes`, `restricted_to` | **never** `parsed`/`analysis_count` -- these names are reserved for "does this word parse at all," and a restricted trace answers a narrower question ("does my restriction still admit an analysis") -- the keys are absent from the object entirely, never present and set to false |
+
+**The `<Error>` case, for `explain` and `restricted` only.** If the trace
+document carries `<Error>` instead of any `<Analysis>` (HermitCrab caught an
+exception while tracing), or if the trace document has no `Root` at all and
+so cannot be inspected for either, the response reports `parse_error` (a
+message string) and emits **neither** `parsed`/`analysis_count` nor
+`hypothesis_held`/`restricted_analysis_count` -- a zero-`<Analysis>` document
+is ambiguous between "no analysis" and "the parse itself errored," and
+neither field is honest to report in that state. `parse_error` **replaces**
+both pairs rather than joining them: the object carries `parse_error` alone,
+never `parse_error` alongside an absent-but-implied `parsed` or
+`hypothesis_held`. The trace file, if written before the error, is still
+reported via `trace_available`/`trace_path`. This is a deliberate asymmetry
+with `plain`, where the underlying exception propagates and the request
+fails outright rather than succeeding with a `parse_error` field -- the
+diagnostic levels' trace is already on disk and useful by the time tracing
+errors, so the request succeeded even though the parse did not.
+
+**`explains_failure` and `next_step`, per level.** `plain` always reports
+`explains_failure: False` -- it never explains, so the flag cannot honestly
+claim otherwise regardless of whether the word parsed. `explain` reports
+`explains_failure: False` with no rungs when `parsed` is true,
+`explains_failure: True` with rungs toward `restricted` and a lexicon lookup
+when it is false, and omits the key entirely on `parse_error` -- the trace
+threw, so this response answers no question about the word either way.
+`restricted` follows the same split for its own question, closed in cycle 4
+rather than left as the unconditional `explains_failure: True` it shipped
+with: `explains_failure: False` with no rungs when `hypothesis_held` is
+true, unchanged `explains_failure: True` with no rungs when it is false
+(the caller already committed to a level matched to their hypothesis, so
+there is nothing new to suggest either way), and the key omitted on
+`parse_error`, the same "presence of the key is the fact" discipline as
+`explain`.
+
 ### Refusals
 
 | Code | When |
@@ -159,8 +202,31 @@ A cancelled run reports `words_completed` and the stage it was in when cancelled
 | `stage` | one of the seven |
 | `words_completed` / `words_total` | |
 | `interleaved_by` | the run currently occupying the worker, or null -- what makes SC-009's "progress accounts for the interleave" observable rather than asserted |
-| `result_summary` | on `completed` |
+| `result_summary` | on `completed` -- see the table below |
 | `failure` | on `failed` -- message, stage at failure, and `next_step` |
+
+**`result_summary` (spec.md Delta 6).** `parsed` and `hypotheses_held` count
+two different questions and neither substitutes for the other:
+
+| Field | Counts |
+|---|---|
+| `words` | every word in the run, regardless of level or outcome |
+| `parsed` | entries carrying a `parsed` key (`plain` and `explain` results) where it is `true` -- **never** incremented for a `restricted` entry, which does not carry this key at all |
+| `hypotheses_held` | `restricted` entries whose `hypothesis_held` is `true` -- the count `parsed` cannot honestly report for a restricted run, because a restricted trace never answers "does this word parse at all" |
+| `traces_written` | entries with a `trace_path` (`explain`/`restricted`, never `plain`) |
+| `record_dir` | unchanged |
+
+Before this delta, `_result_summary` tested `parse.get("parsed")` against a
+key `explain`/`restricted` results never wrote, so every completed
+`explain`/`restricted` run reported `parsed: 0` unconditionally --
+indistinguishable from "every word failed," even when the traces on disk
+showed successful analyses.
+
+An entry carrying `parse_error` counts toward `words` (and toward
+`traces_written` if a trace file was written before the error) but toward
+**neither** `parsed` nor `hypotheses_held` -- it answers neither question,
+the same replaces-rather-than-joins reading `parse_error` gets at the
+single-word level above.
 
 ---
 
@@ -197,3 +263,26 @@ our rationale, and our runner must not copy it.
 | `server/tool_definitions.py` | two `ToolDef` entries with their input models and `READ_ONLY_SAFE` annotation |
 
 Additive throughout -- the contract stays at `tool-responses/1.0`.
+
+### Which of the four rows Delta 6 touches
+
+Delta 6 (the diagnostic levels reporting their result -- `hypothesis_held`,
+`restricted_analysis_count`, `parse_error`, `hypotheses_held`) adds
+**success-payload fields only**. It raises no new error code and removes or
+renames nothing, so the contract stays at `tool-responses/1.0` -- this is the
+same additive-optional posture the base contract already uses for
+`update_notice`, `workspace_notice`, `diagnostic_report`, and
+`inherited_from`.
+
+| Artifact | Delta 6 touches it? | Why |
+|---|---|---|
+| `docs/TOOL-CONTRACT.md` | **yes** | new subsection documenting the per-level fields and the `parse_error` case; the error-code count at `:69` does **not** move -- no new code |
+| `CHANGELOG.md` | **yes** | one entry under **"Tool contract"**, the convention already used for additive codes |
+| `server/response_models.py` | **yes** | the `explain`/`restricted` result models and the `result_summary` model gain fields; still `extra="forbid"` throughout |
+| `server/tool_definitions.py` | **no** | no new input argument on either tool -- only response fields change. Touch only if a `ToolDef` description string becomes inaccurate (SPEC 10 truthfulness), not as a required change |
+
+(Delta 7's narrow analysis signature is spec-only this spurt and touches
+none of the four rows yet -- when it is built, it follows the same pattern:
+a `response_models.py` addition, a `CHANGELOG.md` entry, a `TOOL-CONTRACT.md`
+subsection, and no `tool_definitions.py` change, because it adds no input
+either.)

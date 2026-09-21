@@ -432,6 +432,81 @@ async def test_a_dead_worker_fails_waiting_callers_rather_than_hanging(client):
     )
 
 
+async def test_a_response_larger_than_the_default_stream_limit_survives():
+    """Regression for cycle 5 verification: a response line past
+    asyncio's 64 KiB default stream limit must not kill the channel.
+
+    Drives the REAL channel end to end -- a real spawned worker process,
+    a real OS pipe, real `readline()` -- rather than any stand-in for the
+    stream. A mock cannot raise `asyncio.LimitOverrunError`, which is
+    exactly the trap this feature's tests already fell into once
+    (cycle 5's `explain` crash was found live, not by any prior unit
+    test). The stub's wordform is echoed into the response twice
+    (top-level `wordform` and `analyses[0]["morphs"]`), so a long
+    wordform alone -- no live project needed -- produces a real oversize
+    line without the worker doing anything special.
+
+    `contracts/tools.md` documents "tens or hundreds of kilobytes" as the
+    NORMAL trace size, so 200,000 ASCII characters (comfortably past the
+    old 64 KiB default, comfortably under the new 64 MiB ceiling) is the
+    realistic case, not a pathological one.
+    """
+    huge_word = "a" * 200_000
+    client = ParseWorkerClient("Big Line Project", stub=True)
+    await client.start()
+    try:
+        result = await asyncio.wait_for(
+            client.parse_word(request_id="big", run_id="R", wordform=huge_word),
+            timeout=30,
+        )
+        assert result["wordform"] == huge_word, "the oversize line arrived truncated"
+        assert result["parse"]["stub"] is True
+    finally:
+        await client.aclose()
+
+
+async def test_an_overflow_fails_only_the_pending_requests_and_the_channel_survives(
+    monkeypatch,
+):
+    """FIX 2: an overflow past the (lowered, for this test) ceiling fails
+    the request(s) in flight, but does not end the read loop.
+
+    The ceiling is lowered rather than the payload made enormous, so the
+    test stays fast: `subprocess_helpers._STREAM_LIMIT_BYTES` is read at
+    call time inside `spawn_module_async`, so patching it before
+    `client.start()` changes the limit the real spawned process's stdout
+    stream is given, without touching production sizing.
+    """
+    from flextoolsmcp.server import subprocess_helpers as sh
+
+    monkeypatch.setattr(sh, "_STREAM_LIMIT_BYTES", 4096)
+
+    client = ParseWorkerClient("Overflow Project", stub=True)
+    await client.start()
+    try:
+        oversize_word = "a" * 20_000
+        with pytest.raises(wc.WorkerError):
+            await asyncio.wait_for(
+                client.parse_word(
+                    request_id="big", run_id="R", wordform=oversize_word
+                ),
+                timeout=30,
+            )
+
+        # The worker process itself was never touched -- only the pending
+        # future was failed.
+        assert client.is_running(), "the overflow killed the worker process"
+
+        # And the channel keeps answering requests submitted afterward.
+        result = await asyncio.wait_for(
+            client.parse_word(request_id="ok", run_id="R", wordform="short"),
+            timeout=30,
+        )
+        assert result["wordform"] == "short"
+    finally:
+        await client.aclose()
+
+
 async def test_stub_worker_opens_no_project_and_constructs_no_parser(client):
     """The stub is an honest stand-in: real lifetime, no FieldWorks.
 

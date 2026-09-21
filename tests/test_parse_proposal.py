@@ -259,12 +259,23 @@ async def test_agreement_produces_no_commentary(wired):
     A tool that congratulates every correct guess teaches the caller to
     skim the field where the real warnings live -- so the absence here is
     protecting the signal elsewhere, not saving bytes.
+
+    NARROWED (CP2b): before this fix, `wired`'s default worker returned
+    `parse: None` for every non-plain level, so this test's "agreement"
+    was never actually represented -- the assertions below passed for a
+    restriction that held a hypothesis exactly as readily as one that
+    didn't, because none of them read `hypothesis_held` at all. Configured
+    explicitly here so "agreement" means what the docstring says.
     """
+    wired.trace_outcome = "success"
+
     payload = await call(
         word="makan", level="restricted", morphs=[{"headword": "makan"}]
     )
 
     assert payload["status"] == "ok"
+    assert payload["hypothesis_held"] is True, "this is the agreement case"
+    assert "parsed" not in payload
     assert payload["next_step"] is None, (
         "the caller used the right level with a hypothesis that resolved; "
         "there is nothing to steer them toward"

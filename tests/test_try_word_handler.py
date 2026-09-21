@@ -113,7 +113,15 @@ class RecordingWorker:
     wrong result nobody inspects.
     """
 
-    def __init__(self, *, fail_with=None, resolutions=None, index_ready=True) -> None:
+    def __init__(
+        self,
+        *,
+        fail_with=None,
+        resolutions=None,
+        index_ready=True,
+        trace_outcome="failure",
+        trace_analysis_count=1,
+    ) -> None:
         self.calls: list[dict] = []
         self.fail_with = fail_with
         #: Resolve requests, recorded separately from parses. The separation
@@ -127,6 +135,17 @@ class RecordingWorker:
         #: Whether this worker's lexicon index is already built. False is
         #: the cold-start case the proposal assist must decline to warm.
         self.index_ready = index_ready
+        #: What `explain`/`restricted` should report, mirroring the real
+        #: worker's three-way outcome (worker_main.py `_summarize_trace` /
+        #: `BackendFacade.parse()`): "failure" (no <Analysis>, no <Error>),
+        #: "success" (one or more <Analysis>), or "error" (<Error> present,
+        #: so the response carries `parse_error` and neither `parsed` nor
+        #: `hypothesis_held`). Defaults to "failure" -- the shape most of
+        #: this file's tests are actually about -- so tests that need
+        #: `success`/`error` say so explicitly, either at construction or
+        #: by setting `worker.trace_outcome` before the call.
+        self.trace_outcome = trace_outcome
+        self.trace_analysis_count = trace_analysis_count
 
     def listen_to_run(self, run_id, listener):
         pass
@@ -149,10 +168,27 @@ class RecordingWorker:
                 "parse": {"parsed": False, "analysis_count": 0},
                 "trace_xml": None,
             }
-        return {
-            "parse": None,
-            "trace_xml": f"<trace word='{word}' level='{level}'/>",
-        }
+
+        trace_xml = f"<trace word='{word}' level='{level}'/>"
+        if self.trace_outcome == "error":
+            parse = {"parse_error": f"the parser threw while tracing {word!r}"}
+        elif self.trace_outcome == "success":
+            if level == "restricted":
+                parse = {
+                    "hypothesis_held": True,
+                    "restricted_analysis_count": self.trace_analysis_count,
+                }
+            else:
+                parse = {
+                    "parsed": True,
+                    "analysis_count": self.trace_analysis_count,
+                }
+        else:
+            if level == "restricted":
+                parse = {"hypothesis_held": False, "restricted_analysis_count": 0}
+            else:
+                parse = {"parsed": False, "analysis_count": 0}
+        return {"parse": parse, "trace_xml": trace_xml}
 
     async def resolve_morphs(
         self, *, request_id, run_id, morphs, only_if_indexed=False, timeout=120.0
@@ -469,7 +505,16 @@ async def test_a_successful_plain_parse_offers_nothing(wired, worker):
     assert payload["explains_failure"] is False
 
 
-async def test_the_explaining_levels_say_they_explain(wired):
+async def test_the_explaining_levels_say_they_explain_on_failure(wired):
+    """NARROWED (CP2b): this used to assert `explains_failure is True` for
+    both levels with no success/failure distinction at all -- which passed
+    even though `explain`'s success gate did not exist yet, because
+    `parsed` was never set for `explain` and the branch always fell through
+    to failure guidance. The default `RecordingWorker` now genuinely
+    represents the failure case (no <Analysis>, no <Error>), so this test
+    is about that case specifically; the success case gets its own test
+    below.
+    """
     for level, morphs in (("explain", None), ("restricted", [{"msa_hvo": 5001}])):
         kwargs = {"word": "makan", "level": level}
         if morphs is not None:
@@ -477,6 +522,102 @@ async def test_the_explaining_levels_say_they_explain(wired):
         payload = await call(**kwargs)
         assert payload["explains_failure"] is True, level
         assert payload["trace_available"] is True, level
+
+
+async def test_explain_on_a_successful_parse_offers_nothing(wired, worker):
+    """FR-025, at explain: agreement gets no commentary either.
+
+    Before this fix `parsed` was never set for `explain`, so this branch
+    was unreachable and every explain response -- including a successful
+    one -- got failure-flavoured guidance and a decomposition proposal.
+    """
+    worker.trace_outcome = "success"
+    worker.trace_analysis_count = 2
+
+    payload = await call(word="makan", level="explain")
+
+    assert payload["parsed"] is True
+    assert payload["analysis_count"] == 2
+    assert payload["explains_failure"] is False
+    assert payload["next_step"] is None
+    assert "guidance" not in payload
+    assert "proposed_decomposition" not in payload
+
+
+async def test_explain_on_a_parser_error_names_neither_outcome(wired, worker):
+    """The <Error> case is BLOCKING, not a silent `parsed: False`.
+
+    A thrown parse is not the same fact as a word that genuinely did not
+    parse; asserting `parsed: False` for it would be a false definite
+    negative, worse than reporting nothing.
+    """
+    worker.trace_outcome = "error"
+
+    payload = await call(word="makan", level="explain")
+
+    assert payload["parse_error"]
+    assert "parsed" not in payload
+    assert "analysis_count" not in payload
+    assert "proposed_decomposition" not in payload
+    assert "explains_failure" not in payload
+
+
+async def test_restricted_on_a_parser_error_names_neither_outcome(wired, worker):
+    worker.trace_outcome = "error"
+
+    payload = await call(
+        word="makan", level="restricted", morphs=[{"msa_hvo": 5001}]
+    )
+
+    assert payload["parse_error"]
+    assert "hypothesis_held" not in payload
+    assert "restricted_analysis_count" not in payload
+    assert "parsed" not in payload
+    assert "proposed_decomposition" not in payload
+    assert "explains_failure" not in payload, (
+        "the trace threw; this response explains nothing about the "
+        "hypothesis either way, the same as explain's parse_error case"
+    )
+    assert payload["next_step"] is None
+
+
+async def test_restricted_never_carries_parsed_even_on_a_held_hypothesis(
+    wired, worker
+):
+    """The contract from cycle 1: restricted answers a different question,
+    and must never be spelled with `plain`'s vocabulary -- asserted as an
+    absence, because the failure mode is a key that quietly reappears.
+    """
+    worker.trace_outcome = "success"
+    worker.trace_analysis_count = 4
+
+    payload = await call(
+        word="makan", level="restricted", morphs=[{"msa_hvo": 5001}]
+    )
+
+    assert payload["hypothesis_held"] is True
+    assert payload["restricted_analysis_count"] == 4
+    assert "parsed" not in payload
+    assert "analysis_count" not in payload
+
+
+async def test_restricted_on_a_held_hypothesis_offers_no_commentary(wired, worker):
+    """FR-025/contracts/tools.md:97, at restricted: a held hypothesis is
+    agreement, and agreement gets no commentary -- the same success gate
+    `explain` already had, applied to the sibling branch five lines away
+    (`_level_guidance`'s restricted case previously hardcoded
+    `explains_failure: True` regardless of outcome).
+    """
+    worker.trace_outcome = "success"
+    worker.trace_analysis_count = 1
+
+    payload = await call(
+        word="makan", level="restricted", morphs=[{"msa_hvo": 5001}]
+    )
+
+    assert payload["hypothesis_held"] is True
+    assert payload["explains_failure"] is False
+    assert payload["next_step"] is None
 
 
 async def test_a_trace_is_reported_by_path_never_inlined(wired):
@@ -530,8 +671,13 @@ async def test_the_restricted_rung_shows_how_morphs_are_written(wired):
 
 
 async def test_explain_steers_back_toward_restricted(wired):
+    """NARROWED (CP2b): the default worker is the FAILURE case, and this
+    guidance is now gated on that (a successful explain drops the rungs
+    entirely -- see `test_explain_on_a_successful_parse_offers_nothing`).
+    """
     payload = await call(word="makan", level="explain")
 
+    assert payload["explains_failure"] is True, "this is the failure case"
     assert payload["next_step"][0]["args"]["level"] == "restricted"
 
 
@@ -1083,12 +1229,23 @@ async def test_no_proposal_is_offered_when_the_word_parsed(wired, worker):
 
 
 async def test_no_proposal_is_offered_when_the_caller_already_gave_one(wired):
-    """At `restricted` the caller has a hypothesis. Proposing one is noise."""
+    """At `restricted` the caller has a hypothesis. Proposing one is noise.
+
+    NARROWED (CP2b): this used to pass only because the old guard's
+    `level != "restricted"` half excluded restricted unconditionally,
+    regardless of `parsed` -- a key restricted never carried anyway, even
+    before this fix, since `parse` was `None` for the fake worker's
+    non-plain levels. Now that `restricted` carries `hypothesis_held`
+    instead, `"parsed" not in payload` pins the actual contract (FR-021's
+    "no proposal at restricted" AND the naming contract from cycle 1) in
+    one assertion, rather than the guard's exclusion alone.
+    """
     payload = await call(
         word="pukul", level="restricted", morphs=[{"msa_hvo": 5001}]
     )
 
     assert "proposed_decomposition" not in payload
+    assert "parsed" not in payload
 
 
 async def test_no_proposal_is_offered_from_a_cold_index(tmp_path, monkeypatch):

@@ -34,6 +34,26 @@ count in `docs/TOOL-CONTRACT.md` goes from 22 to 25.
 `parser_engine_mismatch` and `parser_core_missing` get their first live
 callers here, which is what CP1 said would happen at CP2.
 
+`flextools_try_word`'s `explain` and `restricted` levels now report their
+outcome instead of only their trace. `explain` gains `parsed` /
+`analysis_count`, derived from the trace document's own `<Analysis>`
+children rather than a second parser call -- provably identical to
+`ParseWord`'s own count, not an approximation of it. `restricted` gains
+`hypothesis_held` / `restricted_analysis_count` instead -- deliberately
+different names, because a restricted trace answers "does my restriction
+still admit an analysis," never "does this word parse at all," and reusing
+`parsed`/`analysis_count` there would let a caller compare a restricted
+`false` against a genuine unrestricted failure as though they meant the
+same thing. Either level may instead report `parse_error` when HermitCrab's
+own tracing failed, in which case neither success field is emitted -- a
+zero-`<Analysis>` document does not distinguish "no analysis" from "the
+parse itself errored," so nothing honest could be said either way.
+`flextools_parse_status`'s `result_summary` gains a matching
+`hypotheses_held` count alongside `parsed`, so a batch of `restricted` runs
+is no longer folded into (and indistinguishable from) an all-failed
+`parsed: 0`. All additive: `tool-responses/1.0` does not move and no
+existing field changes shape.
+
 Two notes on shapes that are easy to get backwards. `parse_morph_unresolved`
 has **exactly five keys in a fixed order** -- `morph`, `position`,
 `resolved_to`, `candidates`, `hint` -- and a request that raises it runs

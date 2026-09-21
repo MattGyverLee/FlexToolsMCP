@@ -228,3 +228,65 @@ def test_migrate_legacy_session_logs(tmp_path):
 
     # Idempotent: a second run moves nothing.
     assert migrate_legacy_session_logs(log_root) == []
+
+
+# ---------------------------------------------------------------------------
+# The emitter, not just the plumbing.
+#
+# The tests above verify that a [TOOL CALL] record, once logged, survives
+# rotation -- they call logger.info() by hand. They never drive
+# server.call_tool(), so they stayed green while the dispatcher emitted
+# nothing at all: server.py did `from .server.kernel import operations_logger`,
+# binding the pre-init None, while kernel.init_operations_logger() rebound
+# only kernel's own global. Every [TOOL CALL] / [TOOL ARGS] / [AUTO-INIT] /
+# [BLOCKED] / [VALIDATION ERROR] site in server.py was a no-op in production;
+# the only such lines in the shipped operations.log came from tests that
+# patch the name directly. This pins the emitter itself.
+# ---------------------------------------------------------------------------
+
+def test_call_tool_actually_emits_tool_call_records(isolated_logger, monkeypatch):
+    """server.call_tool() must log through the LIVE kernel logger.
+
+    Regression guard for the stale from-import: resolving the logger at
+    import time captures None forever, silently killing the dispatcher's
+    entire log trail.
+    """
+    import asyncio
+    import sys
+
+    import flextoolsmcp.server as server_pkg
+
+    logger, log_dir = isolated_logger
+
+    # server.py binds `flextoolsmcp.server.kernel`, while the fixture (and
+    # most of the suite) reaches the kernel as top-level `server.kernel`.
+    # Those are two distinct module objects with independent globals, so
+    # patching one leaves the other's operations_logger at None. The logger
+    # itself is a singleton (logging.getLogger by name), so the fixture's
+    # handlers -> tmp_path apply either way; only the module global differs.
+    # Stamp every loaded copy so the test asserts on the dispatcher, not on
+    # which import spelling happened to win.
+    _ = server_pkg.call_tool  # force the package's lazy load of server.py
+    kernels = [m for n, m in sys.modules.items()
+               if n.endswith("server.kernel") or n == "kernel"]
+    assert kernels, "no kernel module loaded"
+    for k in kernels:
+        monkeypatch.setattr(k, "operations_logger", logger, raising=False)
+
+    # An unknown tool is the cheapest complete path through the dispatcher:
+    # it logs [TOOL CALL] + [TOOL ARGS], then returns at the routing check
+    # without touching a session, an index or a project.
+    asyncio.run(server_pkg.call_tool("flextools_nonexistent_tool", {"probe": 1}))
+
+    for h in logger.handlers:
+        h.flush()
+
+    contents = _read(log_dir / "operations.log")
+    assert "[TOOL CALL] flextools_nonexistent_tool" in contents, (
+        "server.call_tool() emitted no [TOOL CALL] record -- the dispatcher "
+        f"is not logging through the live kernel logger. Contents:\n{contents}"
+    )
+    assert '"probe": 1' in contents, (
+        "[TOOL ARGS] did not capture the raw arguments -- without this the "
+        f"log cannot answer 'what did the caller actually send?'. Contents:\n{contents}"
+    )

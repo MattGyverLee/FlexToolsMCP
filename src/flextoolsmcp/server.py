@@ -61,7 +61,7 @@ _mcp_import_done = _time_module.time()
 _local_imports_begin = _time_module.time()
 if __package__:
     from .server.kernel import (
-        operations_logger,
+        get_operations_logger,
         session_state,
     )
     from .server.tool_definitions import TOOLS as TOOL_DEFINITIONS
@@ -75,7 +75,7 @@ if __package__:
     from .server.startup_notices import record_index_refresh_failure
 else:
     from server.kernel import (
-        operations_logger,
+        get_operations_logger,
         session_state,
     )
     from server.tool_definitions import TOOLS as TOOL_DEFINITIONS
@@ -92,16 +92,19 @@ _local_imports_done = _time_module.time()
 # Safe logging helper that works even before initialization
 def _log_info(msg: str) -> None:
     """Log info message, safely handling None logger during early init."""
+    operations_logger = get_operations_logger()
     if operations_logger:
         operations_logger.info(msg)
 
 def _log_error(msg: str) -> None:
     """Log error message, safely handling None logger during early init."""
+    operations_logger = get_operations_logger()
     if operations_logger:
         operations_logger.error(msg)
 
 def _log_warning(msg: str) -> None:
     """Log warning message, safely handling None logger during early init."""
+    operations_logger = get_operations_logger()
     if operations_logger:
         operations_logger.warning(msg)
 
@@ -852,6 +855,7 @@ _SESSION_INDEPENDENT_TOOLS = frozenset({
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
+    operations_logger = get_operations_logger()
     # Log tool invocation (with safety check for early init).
     # [TOOL CALL] and [TOOL ARGS] are both INFO so they survive the default
     # log-level cutoff and reach operations.log across sessions (issue #19).

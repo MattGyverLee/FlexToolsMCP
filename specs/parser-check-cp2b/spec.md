@@ -167,6 +167,146 @@ A1.6 shows the facade reloads before parsing when currency reads false. What is
 **not** proven live is the automatic path firing when the model genuinely changes
 underneath a held grammar. That link is covered only against a stubbed currency read.
 
+### Delta 6 -- the diagnostic levels report their result, not just their trace
+
+`explain` and `restricted` were silent about outcome. `worker_main.py`'s
+`BackendFacade.parse()` returns `{"parse": None, ...}` for both branches
+(`:728` restricted, `:732` explain), so `handlers/parse.py`'s
+`_inline_response` else-branch (`:538-554`, concretely `:539-543`) had nothing
+to report but `trace_available` / `trace_path` / `trace_bytes`. A caller at a
+diagnostic level could not tell success from failure without opening the trace
+file itself.
+
+**The fix derives the answer from the trace document already in hand, for a
+document we can read -- no second parser call.** A trace that has no `Root`
+at all cannot be read, so nothing is derived from it; that case is not an
+exception to the derivation claim, it is the boundary of it, and it is
+covered on its own terms below. `TraceWordXml` and `ParseWordXml` are the same C# method
+(`HCParser.cs:120-131`): both build one `<Wordform>` document from
+`m_morpher.ParseWord(...)` and append an `<Analysis>` child per surviving
+analysis (`:213-215`), independently of the `tracing` flag. `<Trace>`
+(`:217-218`) is a separate sibling holding only the rejected paths that
+tracing adds; those are never promoted into `<Analysis>`. `HCParser.cs:104-113`
+shows the non-XML `ParseWord` applies the identical `GetMorphs` filter, so
+counting `<Analysis>` children on the trace document does not approximate
+`ParseResult.Analyses.Count` -- it **equals** it. `FormatHCTrace.xsl:194`
+corroborates that FieldWorks itself already treats `/Wordform/Analysis` as the
+success marker.
+
+`explain` reports `parsed` and `analysis_count`, derived this way, alongside
+the trace fields already shipped.
+
+**`restricted` reports different field names, and that is not cosmetic.**
+`ParseToXml` installs `LexEntrySelector`/`RuleSelector` from
+`selectTraceMorphs` **before** calling `ParseWord` (`HCParser.cs:186-199,211`)
+-- a real narrowing of the search space, not a post-hoc filter on trace
+output. The `<Analysis>` survivors of a restricted trace answer "does my
+restriction still admit an analysis", never "does this word parse at all".
+Naming that count `parsed`/`analysis_count` -- the names `plain` uses for the
+unrestricted question -- would let a caller compare a restricted `false`
+against a genuine unrestricted failure as though they meant the same thing.
+**`restricted` therefore reports `hypothesis_held: bool` and
+`restricted_analysis_count: int`, and never `parsed`.**
+
+**The `<Error>` case is a contract, stated plainly.** `ParseToXml` catches
+exceptions during tracing and appends `<Error>` instead of any `<Analysis>`
+(`HCParser.cs:219-222`), so a zero-`<Analysis>` document is ambiguous between
+"genuinely no analysis" and "the parse itself errored". A document carrying
+`<Error>` reports `parse_error` and emits **neither** `parsed` **nor**
+`hypothesis_held` -- there is nothing honest to say about either question.
+This is a deliberate asymmetry with the `plain` level, where `ParseWord`
+propagates the exception and the request fails outright: the diagnostic
+levels have already written the trace to disk by the time the error occurs,
+and that trace remains useful, so the *request* succeeded even though the
+*parse* did not.
+
+**A document with no `Root` at all joins the `<Error>` case rather than
+being folded into "zero `<Analysis>`".** `_summarize_trace` previously
+treated a rootless trace the same as a document with a `Root` but no
+`<Analysis>` children, returning `{"parsed": False, "analysis_count": 0}` --
+a manufactured answer, not a derived one, because a document that cannot be
+read offers nothing to count in the first place. As of cycle 4 this branch
+reports `parse_error` instead, the same as an `<Error>` element: both are
+"the parse produced nothing this response can honestly call parsed or not,"
+and both emit **neither** `parsed` **nor** `hypothesis_held`. This closes
+alongside the `<Error>` fix rather than after it, because the defect is the
+same one -- asserting a negative the document does not support -- reached
+by a different route.
+
+**Two defects this closes, and one it was found alongside.** `parse.py:465`'s
+guard -- `if level != "restricted" and not result.get("parsed", False):` --
+read a key the `explain`/`restricted` branch of `_inline_response` never
+wrote, so it was always true and `_propose_decomposition` fired the
+"proposed, unverified" assist on every explain call, including successful
+ones -- against `contracts/tools.md:97` ("Agreement produces no commentary")
+and FR-025. `parse.py:776-784`'s `_level_guidance` explain branch had the same
+root cause: no gate existed, so it returned `explains_failure: True`
+unconditionally, for successful and failed explain calls alike. Found
+alongside these: a new HIGH sibling at `parse.py:891-892`, where
+`_result_summary`'s loop tested `parse.get("parsed")` against the same
+never-populated key, so **every** completed `explain`/`restricted` run polled
+through `flextools_parse_status` reported `result_summary.parsed: 0` --
+indistinguishable from "every word failed to parse," even when the traces on
+disk showed successful analyses. `_result_summary` now counts `parsed` only
+over entries that actually carry that key (`plain` results), and adds a
+separate `hypotheses_held` count for `restricted` results. One integer is not
+allowed to stand for two different questions.
+
+**A fourth instance, closed this cycle rather than deferred.**
+`_level_guidance`'s `restricted` branch (`parse.py:852-855`) had the
+identical shape, one level up: it returned `explains_failure: True`
+unconditionally, written before `hypothesis_held` existed to gate on and
+never revisited once it did. The lead ruled this closes now, not later. The
+branch reads the now-populated key: a held hypothesis reports
+`explains_failure: False` with no rungs -- the caller's restriction
+succeeded, there is nothing to steer them toward. A hypothesis that did not
+hold is unchanged (`explains_failure: True`, still no rungs -- the caller
+already committed to a level appropriate to their hypothesis, so nothing
+new to suggest). A `parse_error` claims neither: `explains_failure` is
+omitted entirely, the same "presence of the key is the fact" discipline
+already applied to the `explain` branch immediately above.
+
+### Delta 7 -- a narrow analysis signature, inline only (spec only; not built this spurt)
+
+Nobody implements this delta in the current cycle; it is recorded so the
+shape is pinned before anyone does. It answers the cycle 1 archivist review's
+part B: CP2b may serialize what a single already-completed `ParseWord` call
+holds; it may not persist or accumulate anything across calls.
+
+**Shape, reused verbatim.** If and when the plain level's `parse` block
+carries a per-analysis signature, it is `CP3-SPEC.md` section 6.2's durable
+signature, unchanged: the **ordered sequence of `(MorphRA.Hvo, MsaRA.Hvo)`
+pairs**, carried alongside the rendered morph form and MSA label for each
+pair (`CP3-SPEC.md:395-402`). This is `MatchesIWfiAnalysis`'s own predicate
+(`ParseResult.cs:102-133`) expressed durably, not a second serialization
+invented for this checkpoint. Reusing it here rather than inventing a
+CP2b-flavoured shape is what keeps the signature CP3's diff (Part D, section
+6) reads out of `results.jsonl` tomorrow identical to the one CP2b would hand
+back inline today -- one definition, not two that drift apart.
+
+**Computed from the call already made, nothing more.** The signature would be
+built from the single `ParseWord` call's live result before it is discarded
+-- the same object `_summarize_plain` (`worker_main.py:754-785`) already
+reduces to a count. No second facade call, no caching, no cross-call
+accumulation.
+
+**What stays out, explicitly.** No persistence and no queryable-after-the-fact
+half -- browsable by run_id, across many words, after the call has returned --
+and none of CP3 Part E's synthesis on top of a signature: no tier
+(`CP3-SPEC.md` section 7.2's `IsComplete` join), no affirmed/indeterminate
+provenance split (section 7.3), no candidate pairing or promotion-only ranking
+(section 7.4). CP2b, if it ever ships this, reports "the parser said X"; "and
+the human agreed/disagreed" stays CP3's synthesis.
+
+**Why the boundary is drawn here, not moved.** The persistent, queryable-
+across-runs half of the original ask is already owned by CP3 Parts B/C --
+`run.json`, `results.jsonl`, and `flextools_parse_log` as the read surface
+(`CP3-SPEC.md` sections 4.2-4.4, 9). A second CP2b-owned persistence
+mechanism for single words would duplicate that artifact under a different
+name, which is exactly the "second execution model" `CP3-SPEC.md:33-37`
+already forbids CP3 itself from growing -- one layer up, in storage rather
+than execution.
+
 ---
 
 ## Success Criteria

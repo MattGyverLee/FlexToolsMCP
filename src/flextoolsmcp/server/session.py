@@ -49,14 +49,20 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         # Issue #53: the rejection payload now inlines available_projects
         # (from the same safe enumeration flextools_list_projects uses) --
         # pick directly from that list instead of making a separate call.
-        "pick one of available_projects in this payload and pass it as "
-        "project_name to flextools_start (or directly to flextools_run_module)."
+        # Issue #170: point at flextools_start as the durable fix (it now
+        # adopts the resolved project unconditionally per issue #168), while
+        # still naming the direct-to-this-call path as a working shortcut.
+        "pick one of available_projects in this payload and call "
+        "flextools_start with it as project_name -- that's the durable fix. "
+        "Passing project_name directly to the failing call works too, but "
+        "start with flextools_start."
     ),
     "project_name_required": (
         # Issue #53: same self-healing payload -- available_projects is
         # already attached to this rejection.
         "pick one of available_projects in this payload and pass it as "
-        "project_name."
+        "project_name -- either to flextools_start now, or directly to "
+        "this call."
     ),
     "syntax_error": (
         "the Python is malformed. Read the line number in the error and "

@@ -2848,7 +2848,18 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             hint=_resolve_err["hint"],
             session=session_state.summary(),
         )
-    if resolved and resolved != project_name:
+    if resolved:
+        # Issue #168: adopt unconditionally, not only on a spelling fix --
+        # capture the PREVIOUS session project before overwriting so a
+        # genuine A->B change (issue #169's guardrail) can be logged below.
+        _prev_project_name = getattr(session_state, "project_name", "") or ""
+        if _prev_project_name and resolved != _prev_project_name:
+            _adopt_logger = get_operations_logger()
+            if _adopt_logger:
+                _adopt_logger.info(
+                    f"[PROJECT-ADOPTED] flextools_run_module: session project "
+                    f"changed '{_prev_project_name}' -> '{resolved}'"
+                )
         # Update session so subsequent calls (and the op log) use the canonical name.
         session_state.project_name = resolved
         project_name = resolved

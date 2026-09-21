@@ -103,6 +103,29 @@ class TestAssistanceHintsPointToAvailableProjects:
             # appear; the payload itself now carries the answer.
             assert "call flextools_list_projects" not in hint.lower()
 
+    def test_project_not_open_hint_no_longer_mentions_run_module_parenthetical(self):
+        """Issue #170: the old '(or directly to flextools_run_module)'
+        parenthetical is gone -- replaced by an explicit flextools_start-first
+        recommendation with the direct-call path spelled out as prose."""
+        hint = _ASSISTANCE_HINTS_BY_ERROR_CODE["project_not_open"]
+        assert "(or directly to flextools_run_module)" not in hint
+
+    def test_project_name_required_hint_now_mentions_flextools_start(self):
+        """Issue #170: project_name_required now also points at
+        flextools_start, not just 'pass it as project_name' in isolation."""
+        hint = _ASSISTANCE_HINTS_BY_ERROR_CODE["project_name_required"]
+        assert "flextools_start" in hint
+
+    def test_project_not_open_hint_mentions_flextools_start_before_per_op_phrasing(self):
+        """Issue #170: flextools_start is the durable fix and must be named
+        before the per-op ('directly to the failing call') phrasing."""
+        hint = _ASSISTANCE_HINTS_BY_ERROR_CODE["project_not_open"]
+        start_idx = hint.find("flextools_start")
+        assert start_idx != -1
+        per_op_idx = hint.find("directly to the failing call")
+        assert per_op_idx != -1
+        assert start_idx < per_op_idx
+
 
 # ---------------------------------------------------------------------------
 # execution._available_projects_payload()

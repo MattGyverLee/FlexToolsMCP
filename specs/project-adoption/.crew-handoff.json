@@ -1,0 +1,37 @@
+{
+  "feature": "project-adoption",
+  "issues": [168, 169, 170],
+  "status": "feature_complete",
+  "last_cycle": 2,
+  "spurts_completed": 2,
+  "tasks_done": [
+    "T1 unconditional adoption at execution.py:2851",
+    "T2 unconditional adoption at grammar_health.py:258",
+    "T3 unconditional adoption at parse.py:_resolve_project",
+    "T4 reworded project_not_open / project_name_required hints (session.py)",
+    "T5 regression + adoption test coverage (test_project_discovery.py, test_issue53_cold_start.py)"
+  ],
+  "gates": {
+    "verification": "GREEN -- 2105 passed, 8 skipped, 0 failed",
+    "required_subset": "84 passed",
+    "live_smoke": "PASS -- real FieldWorks 'Target' project, read-only, entry_count=15318, write_enabled False throughout",
+    "invariants": "a/b/c/d all PASS with direct evidence",
+    "scope_audit": "clean -- admin.py:507 and server.py cold-start configure() untouched"
+  },
+  "deferred": [
+    {
+      "id": "P2-guardrail-2",
+      "summary": "Domain guardrail #2: success-path adoption note on the response envelope",
+      "disposition": "file as a NEW issue; needs a field-placement decision and risks a tool-responses/1.0 touch"
+    },
+    {
+      "id": "P2-suite-hygiene",
+      "summary": "test_parse_status_handler.py order-dependent failure reported by a peer session, not reproduced here, not caused by this diff",
+      "disposition": "file as a separate suite-hygiene issue"
+    }
+  ],
+  "next_checkpoint": "user stages and pushes",
+  "next_entry": "AFTER the peer session's two commits land: re-verify execution.py and parse.py each show exactly one hunk, then path-stage the 6 files + specs/project-adoption/, commit with the three closes trailers, and push.",
+  "blocked_on_peer": true,
+  "updated": "2026-09-20"
+}

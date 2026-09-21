@@ -155,6 +155,19 @@ class FakeIMoForm:
     emptiness predicate under test is `form in (None, "", "***")` -- read
     directly off LCM on this path, which does **not** get Flexicon's
     Operations-layer `"***"` -> `""` normalization (CLAUDE.md, tasks.md T033).
+
+    # KNOWN SIMPLIFICATION: this stub models `.Form` as an already-resolved
+    # `str`/`None`, i.e. it stands in for the value *after* writing-system
+    # resolution has already happened. A live `IMoForm.Form` is an
+    # `IMultiUnicode` object, not a `str` -- it must be resolved to a plain
+    # string at a named writing system (vernacular default for forms; see
+    # data-model.md's cross-cutting rule 2) before any emptiness predicate is
+    # applied to it. Because this fixture skips straight to the resolved
+    # value, tests built against it cannot catch a defect where the caller
+    # forgets that resolution step and compares the raw multistring object
+    # instead -- exactly the defect that shipped here. Left as-is for this
+    # checkpoint; scheduled to be revisited when the fixture is upgraded to
+    # model the unresolved `IMultiUnicode` shape.
     """
 
     Form: Optional[str]

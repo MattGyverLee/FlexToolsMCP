@@ -102,9 +102,18 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
-# Shared, pure-Python helpers. No LCM/pythonnet import anywhere below this
-# line until the first ``_scan_*`` function -- these must stay importable
-# with no FieldWorks/pythonnet present (tests/test_grammar_scan_checks.py).
+# Shared, pure-Python helpers. This module must stay IMPORTABLE with no
+# FieldWorks/pythonnet present (tests/test_grammar_scan_checks.py) -- no
+# ``from SIL.LCModel...`` at module top level anywhere below this line.
+# Two helpers below (``_resolve_multistring_best_effort``, ``_read_ws``) do
+# take a live multistring object and, on that branch only, a
+# function-scoped ``from SIL.LCModel...`` -- exactly the same "local, not
+# top-of-file" discipline every ``_scan_*`` function already follows (see
+# "why LCM imports are local" in the module docstring), each wrapped in its
+# own ``try/except`` so a missing pythonnet install falls back rather than
+# raising. Calling either helper with a plain ``str``/``None`` -- what
+# every existing test in this file passes -- never touches that import at
+# all.
 # ---------------------------------------------------------------------------
 
 def is_empty_form(form) -> bool:
@@ -115,6 +124,15 @@ def is_empty_form(form) -> bool:
     the literal string "***", not "" or ``None`` alone; testing only
     ``form in (None, "")`` silently undercounts every one of them.
 
+    This predicate takes a plain ``str`` (or ``None``) -- it is NEVER handed
+    a raw ``IMultiUnicode``/``IMultiString`` directly. "A real empty field
+    surfaces as the literal string '***'" is true only of a string already
+    read AT A SPECIFIC WRITING SYSTEM (``ITsString(field.get_String(ws)).Text``)
+    -- a live multistring object itself is never ``in (None, "", "***")``
+    under Python's ``in``/``==``. That resolution step is ``_read_ws``'s job
+    (below); every caller of this predicate passes it an already-resolved
+    string.
+
     Not used by T019's own three rows (2, 4, 9 -- none reads a form field),
     but established here for T034 (rows 1, 6, 7a all read ``IMoForm``-family
     multistring fields) so it does not need reinventing per row.
@@ -122,12 +140,132 @@ def is_empty_form(form) -> bool:
     return form in (None, "", "***")
 
 
-def is_zero_surface_form(form) -> bool:
+def _resolve_multistring_best_effort(value):
+    """The no-context fallback ``is_zero_surface_form`` uses when it is
+    called with no ``resolve`` callable (every existing caller, including
+    every T015 test -- see that predicate's own docstring).
+
+    - Already a ``str`` (or ``None``): returned as-is. T002's fixtures model
+      ``.Form`` this way, so this keeps every existing predicate test
+      passing unchanged, with no LCM import touched at all.
+    - A live LCM multistring: resolved via ``.BestVernacularAnalysisAlternative``,
+      the one multistring read that needs no explicit WS handle
+      (flexicon's own ``FLExProject.py`` precedent, e.g. its
+      ``BuildGotoURL``-adjacent text helpers) -- "best-effort" precisely
+      because it is LCM's own generic pick, not the project's actual default
+      vernacular/analysis. A ``_scan_*`` function that HAS a project instead
+      passes an explicit ``resolve`` bound to ``_read_ws`` and never falls
+      through to this helper.
+    - Anything else, or any exception along the way: ``""`` -- this helper
+      must never raise, and the ``from SIL.LCModel...`` import below is
+      function-scoped so importing this module stays safe with no
+      pythonnet/FieldWorks present (this module's own "why LCM imports are
+      local" note).
+    """
+    if value is None or isinstance(value, str):
+        return value if value is not None else ""
+    try:
+        from SIL.LCModel.Core.KernelInterfaces import ITsString
+
+        text = ITsString(value.BestVernacularAnalysisAlternative).Text
+        return text if text is not None else ""
+    except Exception:
+        return ""
+
+
+def _ws_handles(project, override=None):
+    """Resolve ``(vernacular_handle, analysis_handle)`` once per scan --
+    the seam that closes the CP1 "focus by default on default analysis and
+    default vernacular, as these are the ones the parser uses" directive.
+
+    ``override``, when given, is returned verbatim instead of resolving the
+    project's own defaults: ``run_grammar_scan``'s own ``ws`` parameter
+    threads through to here, so a future caller can pin non-default writing
+    systems without this module growing a second resolution path.
+
+    Never raises: either handle that cannot be resolved (fresh/blank
+    project, WS factory not yet warmed, etc.) comes back ``None`` instead,
+    and ``_read_ws`` treats a ``None`` handle as "fall back to
+    ``project.BestStr``", never as a crash.
+    """
+    if override is not None:
+        return override
+    try:
+        vernacular = project.GetDefaultVernacularWSHandle()
+    except Exception:
+        vernacular = None
+    try:
+        analysis = project.GetDefaultAnalysisWSHandle()
+    except Exception:
+        analysis = None
+    return vernacular, analysis
+
+
+def _read_ws(project, field, ws_handle) -> str:
+    """Resolve one multistring ``field`` to a plain ``str`` at
+    ``ws_handle``, the one seam every multistring read in this module goes
+    through before comparison or before reaching ``_found_object``.
+
+    Never raises and never returns a non-``str``:
+
+    - ``field`` is ``None`` -> ``""``.
+    - ``field`` is already a ``str`` (T002's fixtures, or any caller that
+      already resolved it) -> returned as-is.
+    - Otherwise, a live ``IMultiUnicode``/``IMultiString``: read at
+      ``ws_handle`` via ``ITsString(field.get_String(ws_handle)).Text``
+      (flexicon's own ``FLExProject.py`` idiom, e.g. its stem-form and
+      audio-path readers) -- ``None``/failure maps to ``""``.
+    - ``ws_handle`` is ``None``, or the read above fails for any reason
+      (including no pythonnet present -- exercised by this module's own
+      unit tests, which run with no ``SIL.LCModel``): fall back to
+      ``project.BestStr(field)``.
+    - If even that fails or returns a non-``str``: ``""``.
+
+    The ``from SIL.LCModel...`` import is function-scoped, taken only on
+    the live-multistring branch, so importing this module (and calling this
+    function on ``None``/``str`` input) stays safe with no pythonnet/
+    FieldWorks present.
+    """
+    if field is None:
+        return ""
+    if isinstance(field, str):
+        return field
+    if ws_handle is not None:
+        try:
+            from SIL.LCModel.Core.KernelInterfaces import ITsString
+
+            text = ITsString(field.get_String(ws_handle)).Text
+            if text is not None:
+                return text
+        except Exception:
+            pass
+    try:
+        best = project.BestStr(field)
+        if isinstance(best, str):
+            return best
+    except Exception:
+        pass
+    return ""
+
+
+def is_zero_surface_form(form, resolve=None) -> bool:
     """Row 1 predicate (data-model.md row 1; SPEC 9.5.4 row 1): a zero-surface
     ``IMoForm``, tested via ``is_empty_form`` on the form's own ``.Form``
-    ``IMultiUnicode`` field -- the same "***"/""/None emptiness rule, just
-    applied to the whole ``IMoForm`` object rather than a bare string so
-    callers can pass the LCM object straight through.
+    field, RESOLVED TO A STRING FIRST -- the same "***"/""/None emptiness
+    rule, just applied after the writing-system read a live ``.Form`` needs
+    (see ``is_empty_form``'s own docstring: a raw multistring object is
+    never ``in (None, "", "***")``, so skipping this resolution step is
+    exactly how a genuinely empty form went uncounted before this seam
+    existed).
+
+    ``resolve``, an optional ``(multistring_field) -> str`` callable, is the
+    no-signature-change escape hatch: every existing caller (including
+    every T015 test, which calls this with one positional argument against
+    T002's plain-``str``-``.Form`` fixtures) keeps working via
+    ``_resolve_multistring_best_effort`` as the default. A ``_scan_*``
+    function that HAS a project passes ``resolve=lambda f: _read_ws(project,
+    f, vernacular_handle)`` instead, so it reads at the project's own
+    default vernacular WS rather than LCM's generic "best" pick.
 
     **Unconditional at CP1** (T034/T033, contracts/flextools_grammar_health.md
     "Row 1's `measured` wording is deliberately unconditional at CP1"): this
@@ -138,7 +276,8 @@ def is_zero_surface_form(form) -> bool:
     tasked flexicon-first under S9) -- every zero-surface ``IMoForm`` is
     counted regardless of where, or whether, it is reachable.
     """
-    return is_empty_form(getattr(form, "Form", None))
+    resolver = resolve if resolve is not None else _resolve_multistring_best_effort
+    return is_empty_form(resolver(getattr(form, "Form", None)))
 
 
 def is_optional_slot(slot) -> bool:
@@ -200,10 +339,22 @@ def skipped_check(check_id: str) -> Dict[str, str]:
 DEFAULT_OBJECT_CAP = 20
 
 
-def _found_object(project, obj, label: str) -> Dict[str, Any]:
+def _found_object(project, obj, label) -> Dict[str, Any]:
     """Build one ``FoundObject``-shaped plain dict (data-model.md
     `FoundObject`) -- never the pydantic model itself (this module cannot
     import ``server.models``; T020 revalidates through it).
+
+    DEFENSE IN DEPTH (the crash this seam exists to make structurally
+    impossible): every ``_scan_*`` row is expected to hand this a
+    ``label`` already resolved to a ``str`` via ``_read_ws``, but if a
+    future row -- or a bug in an existing one -- passes a raw
+    ``IMultiUnicode``/``IMultiString`` instead, that object is never
+    ``in (None, "", "***")`` and would otherwise sail straight into the
+    finding dict and detonate at ``json.dumps`` (the exact shipped bug).
+    So a non-``str`` ``label`` is coerced here, one last time, via
+    ``project.BestStr`` -- and, failing that, ``""`` -- before it ever
+    reaches the returned dict. After this, no non-``str`` label can leave
+    this function under any circumstances.
 
     ``goto_url`` is best-effort: ``project.BuildGotoURL(obj)``
     (data-model.md's own prescribed call) currently only special-cases
@@ -216,6 +367,12 @@ def _found_object(project, obj, label: str) -> Dict[str, Any]:
     ``goto_url`` is ``None`` (the field is `Optional[str]`) rather than
     failing the whole scan.
     """
+    if not isinstance(label, str):
+        try:
+            resolved = project.BestStr(label)
+        except Exception:
+            resolved = None
+        label = resolved if isinstance(resolved, str) else ""
     try:
         goto_url = project.BuildGotoURL(obj)
     except Exception:
@@ -262,7 +419,7 @@ def _emit(
 # "zero-surface-morph-repeatable", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_zero_surface_morph_repeatable(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+def _scan_zero_surface_morph_repeatable(project, ws=None) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 1 / data-model.md row 1.
 
     LCM predicate (T033/data-model.md): ``is_zero_surface_form(form)`` over
@@ -284,18 +441,28 @@ def _scan_zero_surface_morph_repeatable(project) -> Tuple[int, str, Optional[str
 
     Cast: none (T033's cast_example) -- ``IMoForm.Form`` is a direct
     property and ``ObjectsIn`` already yields ``IMoForm``-typed objects.
+
+    ``.Form`` is an ``IMultiUnicode``, resolved at the project's default
+    VERNACULAR writing system (the user's own directive: "focus by default
+    on default analysis and default vernacular, as these are the ones the
+    parser uses") via the ``_ws_handles``/``_read_ws`` seam -- never
+    compared or handed to ``_found_object`` while still a raw multistring
+    object.
     """
     from SIL.LCModel import IMoFormRepository
+
+    vernacular_handle, _ = _ws_handles(project, ws)
+    resolve = lambda field: _read_ws(project, field, vernacular_handle)  # noqa: E731
 
     count = 0
     suspects: List[Dict[str, Any]] = []
     for form in project.ObjectsIn(IMoFormRepository):
-        if is_zero_surface_form(form):
+        if is_zero_surface_form(form, resolve=resolve):
             count += 1
-            # The form is empty by definition here, so its own .Form value
-            # is None/""/"***" -- _found_object normalizes all three to ""
-            # rather than this row hand-rolling the same check again.
-            suspects.append(_found_object(project, form, form.Form))
+            # The form is empty by definition here, so its resolved .Form
+            # value is None/""/"***" -- _found_object normalizes all three
+            # to "" rather than this row hand-rolling the same check again.
+            suspects.append(_found_object(project, form, resolve(form.Form)))
 
     measured = "{} allomorphs have an empty surface form".format(count)
     evidence_basis = "425x"  # PanGloss's own measured factor for row 1 (data-model.md row 1).
@@ -510,7 +677,7 @@ def _scan_unbounded_quantifier(project) -> Tuple[int, str, Optional[str], List[D
 # NOT routed to checks_skipped.
 # ---------------------------------------------------------------------------
 
-def _scan_rule_product_morph_phon(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+def _scan_rule_product_morph_phon(project, ws=None) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 5 / data-model.md row 5.
 
     LCM predicate (T033): ``IMoAffixProcess`` count x (``IPhRegularRule`` +
@@ -550,14 +717,19 @@ def _scan_rule_product_morph_phon(project) -> Tuple[int, str, Optional[str], Lis
         IPhRegularRuleRepository,
     )
 
+    vernacular_handle, _ = _ws_handles(project, ws)
+
     suspects: List[Dict[str, Any]] = []
 
     affix_process_count = 0
     for affix_process in project.ObjectsIn(IMoAffixProcessRepository):
         affix_process_count += 1
         # IMoAffixProcess is an IMoForm, so .Form is its label source --
-        # same read rows 1/6 use. _found_object normalizes ""/"***"/None.
-        suspects.append(_found_object(project, affix_process, affix_process.Form))
+        # same read rows 1/6 use, resolved at the default vernacular WS via
+        # _read_ws before it ever reaches _found_object.
+        suspects.append(
+            _found_object(project, affix_process, _read_ws(project, affix_process.Form, vernacular_handle))
+        )
 
     phonological_rule_count = 0
     for repository in (IPhRegularRuleRepository, IPhMetathesisRuleRepository):
@@ -577,7 +749,7 @@ def _scan_rule_product_morph_phon(project) -> Tuple[int, str, Optional[str], Lis
 # "partial-morpheme-incomplete-form", not gated on T016).
 # ---------------------------------------------------------------------------
 
-def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+def _scan_partial_morpheme_incomplete_form(project, ws=None) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 6 / data-model.md row 6.
 
     LCM predicate (T033, research D4): ``IMoForm.IsComplete == False`` --
@@ -590,16 +762,19 @@ def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, Optional[
     module docstring), not a shared iteration with row 1's scan.
 
     Cast: none (T033's cast_example) -- ``IMoForm.IsComplete`` is a direct
-    property.
+    property. ``.Form`` (the label source) is resolved at the default
+    vernacular WS via ``_read_ws`` -- same seam as row 1.
     """
     from SIL.LCModel import IMoFormRepository
+
+    vernacular_handle, _ = _ws_handles(project, ws)
 
     count = 0
     suspects: List[Dict[str, Any]] = []
     for form in project.ObjectsIn(IMoFormRepository):
         if not form.IsComplete:
             count += 1
-            suspects.append(_found_object(project, form, form.Form))
+            suspects.append(_found_object(project, form, _read_ws(project, form.Form, vernacular_handle)))
 
     measured = "{} morphs are incomplete".format(count)
     evidence_basis = "hc-partial-morpheme"
@@ -612,7 +787,7 @@ def _scan_partial_morpheme_incomplete_form(project) -> Tuple[int, str, Optional[
 # T016 despite sharing row 7 with the gated 7b half below).
 # ---------------------------------------------------------------------------
 
-def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
+def _scan_stem_allomorph_stem_name_restriction(project, ws=None) -> Tuple[int, str, Optional[str], List[Dict[str, Any]]]:
     """SPEC 9.5.4 row 7 (first half) / data-model.md row 7a.
 
     LCM predicate (T033, research D4 -- VERIFIED, not part of D9's gate):
@@ -624,9 +799,13 @@ def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, Optio
     Cast: ``IMoStemAllomorph(obj).StemNameRA`` (T033's cast_example),
     applied unconditionally even though ``ObjectsIn`` already yields
     ``IMoStemAllomorph``-typed objects -- same reasoning as rows 2/4/9's
-    own cast-applied-unconditionally precedent.
+    own cast-applied-unconditionally precedent. ``.Form`` (the label
+    source) is resolved at the default vernacular WS via ``_read_ws`` --
+    same seam as rows 1/5/6.
     """
     from SIL.LCModel import IMoStemAllomorph, IMoStemAllomorphRepository
+
+    vernacular_handle, _ = _ws_handles(project, ws)
 
     count = 0
     suspects: List[Dict[str, Any]] = []
@@ -634,7 +813,7 @@ def _scan_stem_allomorph_stem_name_restriction(project) -> Tuple[int, str, Optio
         sa = IMoStemAllomorph(allomorph)
         if sa.StemNameRA is not None:
             count += 1
-            suspects.append(_found_object(project, sa, sa.Form))
+            suspects.append(_found_object(project, sa, _read_ws(project, sa.Form, vernacular_handle)))
 
     measured = "{} stem allomorphs are restricted to a stem name".format(count)
     evidence_basis = None
@@ -901,10 +1080,21 @@ def _scan_optional_template_slot_branching(project) -> Tuple[int, str, Optional[
 # report.Result(run_grammar_scan(project)).
 # ---------------------------------------------------------------------------
 
-def run_grammar_scan(project) -> Dict[str, Any]:
+def run_grammar_scan(project, ws=None) -> Dict[str, Any]:
     """Run every implemented SPEC 9.5.4 check against ``project`` and
     return a plain, JSON-serializable dict -- never a pydantic model (see
     module docstring).
+
+    ``ws``, an optional ``(vernacular_handle, analysis_handle)`` pair,
+    overrides the default writing systems every multistring read in rows
+    1/5/6/7a resolves at (via ``_ws_handles``/``_read_ws``). ``None`` (the
+    default) means "use the project's own default vernacular/analysis" --
+    the user's own directive that these are the two writing systems the
+    parser uses. This module's callable-with-one-argument contract holds
+    unchanged: T030's fixed "module code" calls
+    ``run_grammar_scan(project)``, and this parameter is not wired to any
+    tool-level input this cycle -- it exists so a future caller can pin
+    non-default writing systems without a second resolution path.
 
     Structural fixed-order guarantee (data-model.md: "Findings are grouped
     by check_id and never ordered by count"; SPEC S7/D7): ``findings`` is
@@ -930,7 +1120,7 @@ def run_grammar_scan(project) -> Dict[str, Any]:
     checks_skipped: List[Dict[str, str]] = []
     findings: List[Dict[str, Any]] = []
 
-    count, measured, evidence_basis, objects = _scan_zero_surface_morph_repeatable(project)
+    count, measured, evidence_basis, objects = _scan_zero_surface_morph_repeatable(project, ws=ws)
     _emit(checks_run, findings, "zero-surface-morph-repeatable", 1, count, measured, evidence_basis, objects)
 
     count, measured, evidence_basis, objects = _scan_representation_variant_product(project)
@@ -952,13 +1142,13 @@ def run_grammar_scan(project) -> Dict[str, Any]:
     # and research D9 records IMoAffixProcess and IPhMetathesisRule as
     # CONFIRMED -- written here as a normal check, not routed to
     # checks_skipped.
-    count, measured, evidence_basis, objects = _scan_rule_product_morph_phon(project)
+    count, measured, evidence_basis, objects = _scan_rule_product_morph_phon(project, ws=ws)
     _emit(checks_run, findings, "rule-product-morph-phon", 5, count, measured, evidence_basis, objects)
 
-    count, measured, evidence_basis, objects = _scan_partial_morpheme_incomplete_form(project)
+    count, measured, evidence_basis, objects = _scan_partial_morpheme_incomplete_form(project, ws=ws)
     _emit(checks_run, findings, "partial-morpheme-incomplete-form", 6, count, measured, evidence_basis, objects)
 
-    count, measured, evidence_basis, objects = _scan_stem_allomorph_stem_name_restriction(project)
+    count, measured, evidence_basis, objects = _scan_stem_allomorph_stem_name_restriction(project, ws=ws)
     _emit(checks_run, findings, "stem-allomorph-stem-name-restriction", 7, count, measured, evidence_basis, objects)
 
     # Row 7b, "multiple-allomorphs-per-entry": CONFIRMED by research D9

@@ -292,7 +292,9 @@ RUNTIME_PRIMER = {
     "namespace_helpers": {
         "description": "These helpers are pre-injected into the execution namespace. No import required.",
         "available": [
-            "is_empty_multistring(text) -> bool  # True for None, '', or '***'",
+            "is_empty_multistring(text) -> bool  # True for None, '', or '***'; "
+            "also accepts a raw multistring object (resolves .Text, then "
+            "BestAnalysisAlternative.Text, then BestVernacularAlternative.Text)",
             "FLEX_EMPTY_PLACEHOLDER  # the literal '***' constant",
             "find_writing_system(project, query) -> ws_handle | None  # substring search by name/tag",
             "list_writing_systems(project) -> [{'name', 'tag'}, ...]",

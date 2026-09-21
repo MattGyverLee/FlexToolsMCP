@@ -53,6 +53,18 @@ known flexicon read gap (research D5, tasked flexicon-first under S9). CP1 count
 every zero-surface `IMoForm` regardless of position, so `measured` must not claim
 slot-conditioning until that walk lands. The conditioned phrasing returns at CP2.
 
+**Reaching a nonzero `count` for row 1 (and row 6, which reads the same
+`IMoForm.Form` field) additionally requires the emptiness predicate to run
+over a writing-system-resolved plain string, never the raw `IMultiUnicode`
+object** (`data-model.md`'s cross-cutting rule 2). Before that resolution
+step, comparing the raw multistring object to `None`/`""`/`"***"` is
+unconditionally `False`, so the `count: 3` in the example above was
+structurally unreachable -- the check ran, but could only ever report zero,
+independent of the project's actual data. This is a distinct requirement
+from the `label` resolution rule below: this one is about the *predicate*
+that produces `count`; the one below is about what `objects[]` serializes.
+Both must resolve at a named WS; neither substitutes for the other.
+
 ### Forbidden in the response
 
 Enforced by test, not convention (SPEC 9.5.3, 9.5.7, D7):
@@ -67,6 +79,16 @@ Enforced by test, not convention (SPEC 9.5.3, 9.5.7, D7):
   describe a finding. A G4 finding names a **suspect**.
 - **Never derived from wordforms or analyses.** The scan reads grammar objects only
   (SPEC 3.1). Reading `IWfiAnalysis` from this tool is a bug, not an optimization.
+
+### `label` is always a plain string
+
+Every `label` in `objects[]` is resolved to a `str` before it ever reaches the
+response -- never a raw LCM multistring. Forms (`IMoForm.Form` and friends) resolve
+at the project's default VERNACULAR writing system; gloss/category-or-analysis-side
+names resolve at the default ANALYSIS writing system -- the user's own directive
+that these are the two writing systems the parser actually uses. A field that
+cannot be resolved (missing WS factory, resolution failure, etc.) surfaces as `""`,
+never a crash and never the raw object.
 
 ### `checks_skipped`
 

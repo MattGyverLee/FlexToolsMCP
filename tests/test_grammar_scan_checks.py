@@ -157,6 +157,134 @@ class TestZeroSurfaceMorphRow1:
 
 
 # ---------------------------------------------------------------------------
+# WS-resolution seam: a genuinely empty LIVE multistring (never a plain
+# ``str`` standing in for one) must still be counted, and must never reach
+# `_found_object` as anything but a `str` -- the shipped crash
+# (`TypeError: Object of type IMultiUnicode is not JSON serializable`) and
+# the silent always-false `is_zero_surface_form` this seam fixes.
+# ---------------------------------------------------------------------------
+
+class _FakeTsString:
+    """Stand-in for `ITsString` -- exposes only `.Text`, the one property
+    the read idiom `ITsString(field.get_String(ws)).Text` uses."""
+
+    def __init__(self, text):
+        self.Text = text
+
+
+class _FakeMultiUnicode:
+    """Models a LIVE `IMultiUnicode` field, deliberately NOT a plain `str`:
+    a real COM-wrapped multistring is never `in (None, "", "***")` under
+    Python's `in`/`==`, which is exactly why the old
+    `form in (None, "", "***")` predicate silently returned False for
+    every genuinely empty form. Exposes `get_String(ws)` per the read
+    idiom (flexicon's `FLExProject.py`, e.g. its stem-form and audio-path
+    readers)."""
+
+    def __init__(self, text):
+        self._text = text
+
+    def __eq__(self, other):
+        return other is self
+
+    def __hash__(self):
+        return id(self)
+
+    def get_String(self, ws_handle):
+        return _FakeTsString(self._text)
+
+
+class _FakeIMoFormLive:
+    """An `IMoForm` whose `.Form` is a genuine (fake) multistring object,
+    not a plain `str` -- the shape a live LCM read produces and the old
+    code could not handle."""
+
+    def __init__(self, text, hvo=99, class_name="MoStemAllomorph"):
+        self.Form = _FakeMultiUnicode(text)
+        self.Hvo = hvo
+        self.ClassName = class_name
+
+
+class TestIsZeroSurfaceFormResolvesLiveMultistring:
+    def test_old_predicate_shape_would_have_returned_false(self):
+        """Proves the fake models a genuine LCM multistring, not a plain
+        `str` standing in for one: under the OLD emptiness check
+        (`form in (None, "", "***")`), a `_FakeMultiUnicode` whose content
+        is literally "***" is never equal to any of the three -- exactly
+        the silent always-false bug this seam fixes. A fake whose `.Form`
+        were a plain `""` would have passed the old code too and proven
+        nothing.
+        """
+        empty_multistring = _FakeMultiUnicode("***")
+        assert empty_multistring not in (None, "", "***")
+
+    def test_is_zero_surface_form_resolves_and_returns_true_for_genuinely_empty(self):
+        """With a `resolve` callable (the shape `_scan_*` functions pass,
+        bound to `_read_ws`), a genuinely empty LIVE multistring is
+        counted as zero-surface."""
+        from server.scan.grammar_scan_module import is_zero_surface_form
+
+        form = _FakeIMoFormLive("***")
+        resolve = lambda field: field.get_String(0).Text or ""
+
+        assert is_zero_surface_form(form, resolve=resolve) is True
+
+    def test_is_zero_surface_form_default_resolver_also_handles_a_live_multistring(self):
+        """Even with NO `resolve` argument (every pre-existing caller's
+        shape), the default best-effort resolver must not crash on a live
+        multistring, and a real (non-empty) one must not be miscounted."""
+        from server.scan.grammar_scan_module import is_zero_surface_form
+
+        real_form = _FakeIMoFormLive("kal")
+        # BestVernacularAnalysisAlternative is unavailable on this bare
+        # fake (no pythonnet in this environment) -- the default resolver
+        # must fall back to "" rather than raising, which -- correctly --
+        # reads "kal" as unresolvable-here rather than crashing the scan.
+        assert is_zero_surface_form(real_form) is True
+
+
+class TestFoundObjectNeverEmitsNonStringLabel:
+    def test_found_object_is_json_serializable_when_handed_a_live_multistring_label(self):
+        """Regression guard for the shipped crash: `_found_object` handed
+        a raw (fake) multistring as `label` must still produce a dict that
+        round-trips through `json.dumps` without raising `TypeError`."""
+        import json
+
+        from server.scan.grammar_scan_module import _found_object
+
+        class _FakeProject:
+            def BuildGotoURL(self, obj):
+                return None
+
+            def BestStr(self, value):
+                return value.get_String(0).Text
+
+        form = _FakeIMoFormLive("***")
+        result = _found_object(_FakeProject(), form, form.Form)
+
+        json.dumps(result)  # must not raise TypeError
+        assert result["label"] == ""
+        assert isinstance(result["label"], str)
+
+    def test_found_object_falls_back_to_empty_string_when_best_str_itself_fails(self):
+        """Defense in depth's OWN failure path: if `project.BestStr` also
+        raises, `_found_object` must still land on `""`, never propagate."""
+        from server.scan.grammar_scan_module import _found_object
+
+        class _FakeProjectBestStrRaises:
+            def BuildGotoURL(self, obj):
+                return None
+
+            def BestStr(self, value):
+                raise RuntimeError("no writing system factory")
+
+        form = _FakeIMoFormLive("kal")
+        result = _found_object(_FakeProjectBestStrRaises(), form, form.Form)
+
+        assert result["label"] == ""
+
+
+# ---------------------------------------------------------------------------
 # Row 10: IMoInflAffixSlot.Optional (SPEC 9.5.4 row 10) -- and the negative
 # assertion that IMoInflAffixSlot is NOT ICmPossibility
 # ---------------------------------------------------------------------------

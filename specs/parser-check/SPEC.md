@@ -1438,6 +1438,16 @@ Three implementation notes:
   user's direction ("rules assigned to stratum X"), never "stratum X owns rules",
   and the absence of a collection on `IMoStratum` is not evidence that strata are
   unordered or unassigned.
+- **This table has no writing-system column, but rows 1, 2 and 6 -- plus the
+  `objects[]` label sites in rows 5 and 7a -- read an `IMultiUnicode`/
+  `IMultiString` field directly off LCM.** Any row that does must resolve
+  that field to a plain `str` at a named writing system *before* comparing
+  or serializing it (`data-model.md`'s cross-cutting rule 2 states the
+  resolve-then-compare order in full). Skipping this step does not make the
+  check merely wrong -- it makes the check's predicate unconditionally
+  `False`, so it silently reports zero regardless of the project's actual
+  data. A future row that touches another multistring field is not exempt
+  from this note.
 
 #### 9.5.5 Instrument 1's home: `flextools_grammar_health`
 

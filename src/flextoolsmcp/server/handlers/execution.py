@@ -4065,10 +4065,48 @@ def run_module():
         FLEX_EMPTY_PLACEHOLDER = "***"
 
         def is_empty_multistring(text):
+            """Return True if `text` represents an empty/unset FLEx multistring.
+
+            Accepts EITHER an already-resolved Python str (e.g. from a
+            flexicon Operations method like GetGloss()/GetDefinition()) OR a
+            raw LCM multistring/tsstring object obtained via direct C# field
+            access (e.g. `sense.Gloss`, `form.Form`). A non-str input is
+            resolved to text via, in order: `.Text` (ITsString), then
+            `.BestAnalysisAlternative.Text`, then
+            `.BestVernacularAlternative.Text` (IMultiUnicode / IMultiString).
+            Each resolution attempt is independently guarded so it can never
+            raise; if none of them yields a str, this falls back to
+            str(text) rather than raising, because this helper is injected
+            into user scripts and must never be the thing that crashes them.
+
+            True for None, "" , or "***" (after resolution and whitespace
+            stripping).
+            """
             if text is None:
                 return True
             if not isinstance(text, str):
-                text = str(text)
+                resolved = None
+                try:
+                    candidate = text.Text
+                    if isinstance(candidate, str):
+                        resolved = candidate
+                except Exception:
+                    pass
+                if resolved is None:
+                    try:
+                        candidate = text.BestAnalysisAlternative.Text
+                        if isinstance(candidate, str):
+                            resolved = candidate
+                    except Exception:
+                        pass
+                if resolved is None:
+                    try:
+                        candidate = text.BestVernacularAlternative.Text
+                        if isinstance(candidate, str):
+                            resolved = candidate
+                    except Exception:
+                        pass
+                text = resolved if resolved is not None else str(text)
             text = text.strip()
             return text == "" or text == FLEX_EMPTY_PLACEHOLDER
 

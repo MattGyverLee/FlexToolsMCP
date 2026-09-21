@@ -164,18 +164,47 @@ LCM object -- there is no Operations-layer wrapper on this path (research D1:
 the scan module is pure LCM, run through the generated-module subprocess, not
 through flexicon's Operations classes). So a real empty field surfaces as the
 literal string `"***"`, not `""`, and a check that tests only
-`form in (None, "")` will silently miss every one of them. **The predicate
-every row that reads a form must use is exactly:**
+`form in (None, "")` will silently miss every one of them.
+
+**Resolve to a plain string at a named writing system before that check runs.**
+`IMoForm.Form` -- and every other field this table reads that is typed
+`IMultiUnicode`/`IMultiString` -- is an **object**, not a `str`. A pythonnet
+multistring is never `==` to `None`, `""`, or `"***"`, so calling the
+predicate below directly on the raw object is unconditionally `False` and the
+check can never fire; it will run, return a count, and that count will always
+be zero, regardless of the project's actual data. Resolve the field to a
+plain string at a **named** writing system first, then apply the predicate to
+the resolved string, never to the raw object:
+
+- **Forms/representations** (`IMoForm.Form` and anything else that models a
+  written form) resolve at the project's default **vernacular** writing
+  system.
+- **Glosses, names, and abbreviations** resolve at the project's default
+  **analysis** writing system.
+
+The raw `IMultiUnicode`/`IMultiString` object is never compared directly
+against `None`/`""`/`"***"`, and it is never serialized directly into a
+response -- see `contracts/flextools_grammar_health.md`'s "`label` is always
+a plain string" rule, which states the same requirement for the output side.
+`docs/FLEXTOOLS-STYLE-GUIDE.md:150-160` already shows the correct idiom for
+this repo (resolve at a named WS via `.AnalysisDefaultWritingSystem.Text` --
+or the vernacular equivalent -- *then* compare the resulting `str` to the
+placeholder); this rule requires that same resolve-then-compare order here.
+
+**The predicate every row applies to that resolved string is exactly:**
 
 ```python
 def is_empty_form(form) -> bool:
     return form in (None, "", "***")
 ```
 
-T015's regression guard exists precisely for this: a stub `IMoForm.Form ==
-"***"` must be counted as zero-surface, not skipped. Getting this wrong is the
-single most likely way this table's rows ship silently broken -- the check
-would run, return a count, and simply undercount every affected project.
+`form` here is already a plain `str` -- the output of the WS-resolution step
+above, never the raw `IMultiUnicode`/`IMultiString` object. T015's regression
+guard exists precisely for this: a stub `IMoForm.Form == "***"` must be
+counted as zero-surface, not skipped. Getting this wrong is the single most
+likely way this table's rows ship silently broken -- the check would run,
+return a count, and simply undercount every affected project (or, absent the
+WS-resolution step, undercount *unconditionally*, at zero, forever).
 
 **3. `OrderNumber` is comparable only within one stratum-pair grouping.**
 `IPhSegmentRule.OrderNumber` (row 8) is not a grammar-wide ordinal. Each rule
@@ -252,6 +281,18 @@ because rows 3/5/8 are exactly where it applies.
 | 8 | `unordered-rule-application-stratum-pair` | T035 | No (corrected mapping, T027) | `IPhSegmentRule(obj).OrderNumber` / `.InitialStratumRA` / `.FinalStratumRA` (only if the receiver is `ICmObject`; direct on `IPhRegularRule`/`IPhMetathesisRule` receivers) |
 | 9 | `duplicate-feature-bundle` | T019 | No | `IPhPhoneme(obj).FeaturesOA` (only if the receiver is `ICmObject`; `IPhPhonemeRepository.AllInstances()` is already typed `IPhPhoneme`) |
 | 10 | `optional-template-slot-branching` | T034 | No | none -- `IMoInflAffixSlot.Optional`/`.Affixes` are direct properties; **never** `ICmPossibility(obj).Name` (cross-cutting rule 6) |
+
+**WS-resolution note.** This table intentionally has no separate
+writing-system column -- the resolution step belongs to cross-cutting rule 2
+above, not to each row. But rows 1, 2 and 6, plus the `objects[]` label sites
+in rows 5 and 7a, are the rows that actually read an `IMultiUnicode`/
+`IMultiString` field off LCM (a form, a gloss, a name, or an abbreviation).
+**Any of those must be resolved to a plain `str` at a named writing system
+before it is compared or serialized** -- never the raw multistring object.
+Row 11, if one is ever added to this table, is not exempt: the same note
+applies to any new row that touches a multistring field, or it will
+reproduce the same silently-unreachable-predicate bug that motivated this
+note.
 
 **Per-row predicate and `measured` wording (CP1 scope).** `measured` states a
 fact, never a verdict (SPEC 8.4, D7) -- no "invalid"/"wrong"/"broken". Rows are

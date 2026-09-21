@@ -161,6 +161,11 @@ if gloss_text == "***":  # Must check for "***"
     gloss = ""
 ```
 
+See "Helper Functions" below (`is_empty_multistring`) for a helper that
+covers all three of these shapes -- including the raw C# multistring
+object itself (e.g. `sense.Gloss`, not just `sense.Gloss...Text`) -- in
+one call, without you resolving `.Text` yourself first.
+
 ### 6. Error Handling Pattern
 
 ```python
@@ -262,11 +267,22 @@ The MCP runner injects these into the execution namespace before running your co
 > ⚠️ **Scope warning:** these helpers exist only inside the MCP runner subprocess. If you save your code as a FlexTools module file (`.py` in the FlexTools modules folder), the helpers are NOT there when FlexTools loads the file — inline your own copies, or stick to standard flexicon calls.
 
 ```python
-# Empty-multistring detection (covers None, "", and "***")
+# Empty-multistring detection (covers None, "", and "***").
+# Accepts an already-resolved str (Flexicon-style) ...
+gloss = project.Senses.GetGloss(sense)
 if is_empty_multistring(gloss):
     report.Warning("Gloss is empty")
 
-# The literal "***" placeholder constant for direct comparisons
+# ... OR a raw C# multistring object straight off the LCM object, with NO
+# .Text extraction needed first -- is_empty_multistring resolves it via
+# .Text, then .BestAnalysisAlternative.Text, then
+# .BestVernacularAlternative.Text (see "Multistring Handling" above).
+if is_empty_multistring(sense.Gloss):
+    report.Warning("Gloss is empty")
+
+# The literal "***" placeholder constant for direct comparisons once you
+# already have a resolved str in hand (e.g. after `.Text`):
+raw_text = sense.Gloss.AnalysisDefaultWritingSystem.Text
 if raw_text == FLEX_EMPTY_PLACEHOLDER:
     raw_text = ""
 

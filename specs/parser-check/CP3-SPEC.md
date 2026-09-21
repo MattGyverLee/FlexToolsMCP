@@ -4,8 +4,8 @@
 restate it. Section references like "9.3.1" point there unless marked local.
 **Scope:** SPEC 15, CP3 row.
 **Status:** draft, not reviewed by the crew, not started.
-**Predecessor:** CP2. **CP2 is not finished** -- see section 2, which is a real
-gate rather than a formality.
+**Predecessor:** CP2. **CP2 is complete** as of `e5afbfd` -- the entry gate
+of section 2 has lifted. One non-blocking maintainer action remains (A2).
 **Writes:** none. CP3 is entirely `READ_ONLY_SAFE` in effect; filing arrives at
 CP4. Section 4.1 explains why one CP3 tool nevertheless ships carrying CP4's
 annotation.
@@ -55,30 +55,32 @@ should fail review on that ground alone.
 
 ---
 
-## 2. Entry gate -- CP2 is half done, and this half is load-bearing
+## 2. Entry gate -- CP2 is complete; the gate has lifted
 
-**CP2a is complete; CP2b has not started.** The summary "CP1 and CP2 are done" is
-true of CP1 and of CP2's flexicon half only. What remains is not cleanup -- it is
-both MCP tools CP3 is built on top of.
+**This section originally read "CP2 is half done, and this half is load-bearing."**
+That was accurate when written on 2026-09-19. It is no longer. CP2b landed the
+next day and CP1+CP2+CP2b merged to `main` at `e5afbfd`. The original text is
+preserved in git (`git show f5393e1:specs/parser-check/CP3-SPEC.md`); it is
+corrected here rather than left standing, because a confident, dated,
+table-formatted claim that `flextools_try_word` does not exist is exactly the
+kind of thing a reader believes.
 
-Verified 2026-09-19 against the working trees:
+Verified 2026-09-20 against `main` at `e5afbfd`:
 
 | Item | CP2 ref | State |
 |---|---|---|
 | A1 flexicon `project.Parser` facade + 3 read gaps | 3.1-3.2 | **Done.** `flexicon/code/Parser/ParserOperations.py`, merged at `bc65a7b` |
-| A2 flexicon 4.9.0 release cut | 3.5 | **Cut, not tagged.** Release commit `296f3b5`; tagging is a maintainer act (escalation E-C) |
+| A2 flexicon 4.9.0 release cut | 3.5 | **Cut, still not tagged.** Release commit `296f3b5`. Tagging is a maintainer act (escalation E-C) and is the one item still open. **Does not block CP3** -- the floor and the bundled index already agree at 4.9.0 |
 | A3 evidence artifact (tiers A1-A3) | 3.3 | **Done.** `specs/parser-check-cp2/evidence/` |
-| A4 MCP bridge | 2 | **NOT DONE.** `pyproject.toml:54` and `requirements.txt:21` still pin `pyflexicon>=4.8.0,<5`; the bundled index is still `flexicon_api_v4.8.0.json` / `flexicon_lcm_bridge_v4.8.0.json`. Deferred to CP2b with `needs_human` (escalation E-D) |
-| B `flextools_try_word` | 4 | **NOT STARTED** |
-| C job runner + `flextools_parse_status` | 5 | **NOT STARTED** |
+| A4 MCP bridge | 2 | **Done.** `0a152f6` raised the floor to `pyflexicon>=4.9.0,<5` in both `pyproject.toml` and `requirements.txt`, and moved the bundled index to `flexicon_api_v4.9.0.json` / `flexicon_lcm_bridge_v4.9.0.json`. Shipped **with** the floor/index-equality test the hazard below demanded: `tests/test_flexicon_index_floor.py` (283 lines) |
+| B `flextools_try_word` | 4 | **Done.** All three trace levels (`plain`, `restricted`, `explain`) and the morph-spec -> MSA-HVO resolver. Verified live against `Claude-Swahili` and `Tlachichilco Tepehua-NT Noparse` |
+| C job runner + `flextools_parse_status` | 5 | **Done.** Seven run stages, the grace window, cancellation, incremental run records |
 
-**Consequences for CP3, stated plainly:**
+**Consequences for CP3, restated:**
 
-1. **CP3 cannot start implementation.** A, B, D, E and F all call the runner or
-   the facade. This document is written now so that CP2b is built against a known
-   consumer rather than guessed at -- that is its whole value before the gate
-   lifts.
-2. **One CP2 open question is already answered and should be closed rather than
+1. **CP3 can start.** The runner and the facade that A, B, D, E and F all call
+   are shipped and green (2070 passed, 8 skipped at `e5afbfd`). Phase 0 may open.
+2. **One CP2 open question is answered and should be closed rather than
    re-litigated.** CP2's open question 2 asked how much of `ParseResult` crosses
    into Python, and noted that 9.3.1 and 11 need LCM **object identity**, not
    strings. The shipped facade answers it: `ParserOperations.ParseWord` returns
@@ -86,17 +88,23 @@ Verified 2026-09-19 against the working trees:
    `IMoForm` / `IMoMorphSynAnalysis` / `ILexEntryInflType`, while `ParseWordXml`
    and `TraceWordXml` return documents in which those objects survive only as
    integer identifiers. **CP3's G3 and diff bind to `ParseWord`, never to the
-   XML**, and that is now a fact about shipped code rather than a request.
-3. **The floor/index mismatch in A4 is a CP3 hazard, not only a CP2 chore.**
-   CLAUDE.md records the 2.10.0 incident -- an index built at 4.5.2 shipped
-   against a `>=4.3.0` floor. CP3 generates modules that call `project.Parser`;
-   if the index does not know the facade exists, every generated CP3 module is
-   written against an API the index cannot describe. A4 ships with a
-   floor/index-equality test or CP3 inherits the same class of failure.
+   XML**, and that is a fact about shipped code rather than a request.
+3. **The floor/index hazard is closed, and must stay closed.** CLAUDE.md records
+   the 2.10.0 incident -- an index built at 4.5.2 shipped against a `>=4.3.0`
+   floor. CP3 generates modules that call `project.Parser`; an index that does
+   not know the facade exists would leave every generated CP3 module written
+   against an API the index cannot describe. A4 shipped the equality test that
+   prevents recurrence. **Do not weaken or skip
+   `tests/test_flexicon_index_floor.py` to land a CP3 change.**
 
-**Recommended sequencing:** finish CP2b (A4 -> B -> C) and only then open CP3's
-Phase 0. Do not interleave -- CP3's Phase 0 is live verification, and live
-verification against a half-built runner produces evidence about nothing.
+**Sequencing.** The original recommendation -- finish CP2b, then open CP3's
+Phase 0, and do not interleave -- has been satisfied in that order. Phase 0 is
+live verification and now has a fully built runner to verify against.
+
+**Remaining checkpoints are defined outside this spec.** CP4, CP5 and CP6 live
+in GitHub issues #165, #166 and #167 under the `parser-check CP4-CP6` milestone,
+because this spec tree is repeatedly closed and pruned. CP3 itself remains
+specced here.
 
 ---
 

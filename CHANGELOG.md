@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`reset_session()` rebinding orphaned handler references (#171).** Session reset
+  now mutates the existing `SessionState` singleton via `SessionState.reset()` so
+  every module that imported `session_state` at load time observes the reset. The
+  shared `reset_session_state` pytest fixture imports the canonical kernel helper
+  (`flextoolsmcp.server.kernel`) instead of the legacy top-level `server` alias,
+  which loaded a duplicate kernel module.
+
 ### Governance
 
 The project now has a written constitution at `.specify/memory/constitution.md`

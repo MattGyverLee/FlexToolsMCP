@@ -338,6 +338,16 @@ class SessionState:
         # but this session hasn't verified it applies to the current state.
         self.backed_up_projects = set()
 
+    def reset(self) -> None:
+        """Reset all session fields to defaults without replacing the object.
+
+        Mutates in place so every module that bound ``session_state`` at import
+        time observes the reset (issue #171).
+        """
+        fresh = SessionState()
+        for name in self.__dataclass_fields__:
+            object.__setattr__(self, name, getattr(fresh, name))
+
     def record_validated_api(self, entity: str) -> None:
         """Record an API that was validated via get_object_api."""
         self.validated_apis.add(entity)

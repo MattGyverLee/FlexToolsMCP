@@ -318,6 +318,124 @@ def multistring_safe(project, sense, field_name):
         return ""
 ```
 
+### 9. Ensure-or-Create Catalog Lookups (Bulk Imports)
+
+When a bulk-import script depends on catalog items (POS categories,
+possibility-list entries) and the user's intent says missing categories
+should be created ("use the catalog if the project doesn't have a needed
+category"), **ensure them up front** instead of hard-failing every row.
+Issue #161: a closed-class import guarded each of its 69 rows with
+`if p is None: raise RuntimeError(...)` against `project.POS.Find(name)`
+and never created anything, so the whole batch produced zero entries.
+
+Rules:
+
+- Collect the distinct catalog names first; ensure each one once, before
+  the per-row loop. Never `Find` + `raise` inside the row loop as the
+  only path.
+- Every creation is a write: guard it with `if modifyAllowed:` and report
+  the preview branch (`"(Would create POS 'X')"`). In preview mode the
+  per-row loop must skip gracefully, not crash on the still-missing POS.
+- `POSOperations.Create` requires BOTH `name` and `abbreviation`
+  (`Create(name, abbreviation, catalogSourceId=None)`); it raises if
+  either is empty or a POS with that name already exists. Always supply
+  the abbreviation from an explicit map. If a name has no mapped
+  abbreviation, report that row as failed and continue with the rest --
+  do not abort the batch.
+- `POSOperations.Find(name)` is case-insensitive and returns `None` when
+  missing; `POSOperations.Exists(name)` is the cheap pre-check. A
+  Find-then-Create can still lose a race (another path created the name
+  first), so catch the already-exists failure and re-`Find`.
+- A per-row miss after the ensure pass is a per-row `report.Error` +
+  `continue`, never a `raise` that aborts the batch. Emit a batch
+  summary (`planned / created / reused / failed`) so a 0-created run is
+  obvious.
+
+```python
+# Explicit abbreviation map -- Create() needs one, so do not invent it
+# silently per row. Fill this in from the user's data or ask the user.
+POS_ABBREVS = {
+    "Personal pronoun": "PersPro",
+    "Interrogative pronoun": "IntPro",
+    "Conjunction": "Conj",
+}
+
+def ensure_pos(project, report, name, abbrev, modifyAllowed, stats):
+    """Find-or-create one POS category. Returns the POS or None."""
+    existing = project.POS.Find(name)
+    if existing is not None:
+        stats["reused"] += 1
+        return existing
+    if not abbrev:
+        report.Error(f"No abbreviation mapped for POS '{name}' -- skipping")
+        stats["failed"] += 1
+        return None
+    if not modifyAllowed:
+        report.Warning(f"POS '{name}' not found (would create with abbr '{abbrev}')")
+        stats["failed"] += 1
+        return None
+    try:
+        pos = project.POS.Create(name, abbrev)
+        report.Info(f"Created POS '{name}' ({abbrev})")
+        stats["created"] += 1
+        return pos
+    except Exception as e:
+        # Already-exists race: someone created it between Find and Create.
+        retry = project.POS.Find(name)
+        if retry is not None:
+            stats["reused"] += 1
+            return retry
+        report.Error(f"Could not create POS '{name}': {e}")
+        stats["failed"] += 1
+        return None
+
+def Main(project, report, modifyAllowed):
+    rows = [...]  # (form, gloss, pos_name) tuples to import
+    stats = {"planned": len(rows), "created": 0, "reused": 0, "failed": 0}
+
+    # 1. Ensure each distinct POS once, before touching any row.
+    pos_cache = {}
+    for pos_name in sorted({r[2] for r in rows}):
+        pos_cache[pos_name] = ensure_pos(
+            project, report, pos_name, POS_ABBREVS.get(pos_name),
+            modifyAllowed, stats)
+
+    # 2. Per-row loop: a miss here fails ONE row, never the batch.
+    for form, gloss, pos_name in rows:
+        try:
+            pos = pos_cache.get(pos_name) or project.POS.Find(pos_name)
+            if pos is None:
+                report.Error(f"FAILED {form}: POS not found: {pos_name}")
+                stats["failed"] += 1
+                continue
+            if modifyAllowed:
+                # ... create entry/sense, SetPartOfSpeech(sense, pos) ...
+                report.Info(f"Imported {form} ({pos_name})")
+            else:
+                report.Info(f"(Would import {form} as {pos_name})")
+        except Exception as e:
+            report.Error(f"FAILED {form}: {e}")
+
+    report.Info(
+        f"batch=closed planned={stats['planned']} "
+        f"created={stats['created']} reused={stats['reused']} "
+        f"failed={stats['failed']}")
+```
+
+Anti-pattern (what #161 triaged -- do not generate this):
+
+```python
+# WRONG -- fails all 69 rows identically, creates nothing, ignores the
+# user's "create the missing category" instruction.
+p = project.POS.Find(pos_name)
+if p is None:
+    raise RuntimeError(f"POS not found: {pos_name}")
+```
+
+The same shape applies to other catalog/possibility-list lookups: Find
+(or Exists) first, create once under `if modifyAllowed:`, tolerate the
+already-exists race with a re-Find, and keep per-row failures per-row.
+
 ---
 
 ## Best Practices Summary
@@ -335,6 +453,7 @@ def multistring_safe(project, sense, field_name):
 - ✓ Test on actual FieldWorks projects (read-only first)
 - ✓ Document why you chose a specific flavor
 - ✓ Use the unified module approach with Main() for all code
+- ✓ Pre-ensure catalog dependencies (POS, possibility lists) once before a bulk-import loop when intent says to create them (section 9)
 
 ### DON'T ✗
 
@@ -350,6 +469,7 @@ def multistring_safe(project, sense, field_name):
 - ✗ Generate code without using templates
 - ✗ Use parameter name `modify` - it's `modifyAllowed`
 - ✗ Maintain separate operation vs module versions (causes divergence)
+- ✗ Guard bulk-import rows with `if missing: raise` when the user asked to create missing catalog entries -- ensure-or-create up front instead (section 9, issue #161)
 
 ---
 

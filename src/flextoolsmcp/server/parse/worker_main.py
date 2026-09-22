@@ -505,16 +505,39 @@ class _RealBackend(_ParseBackend):
                 "back to the WinForms FwLcmUI."
             )
 
+        # Issue #159: the `ui=` kwarg only exists on flexicon >=4.4.0
+        # OpenProject(). A stray older build (mismatched venv) rejects it
+        # with TypeError at the session's very first action. Probe the
+        # INSTALLED signature in THIS process -- a server-side probe would
+        # describe the server's flexicon, not this worker's.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         FLExInitialize()
         self._initialized = True
 
         project = FLExProject()
-        project.OpenProject(
-            projectName=self._project_name,
-            writeEnabled=False,
-            undoable=False,
-            ui=lcm_ui,
-        )
+        if _openproject_accepts_ui:
+            project.OpenProject(
+                projectName=self._project_name,
+                writeEnabled=False,
+                undoable=False,
+                ui=lcm_ui,
+            )
+        else:
+            _log(
+                "this flexicon build's OpenProject() does not accept the "
+                "ui= argument; opening with this build's default LCM UI "
+                "instead (issue #159)."
+            )
+            project.OpenProject(
+                projectName=self._project_name,
+                writeEnabled=False,
+                undoable=False,
+            )
         self._project = project
 
     def release(self) -> None:

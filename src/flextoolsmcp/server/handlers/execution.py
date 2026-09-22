@@ -4043,6 +4043,22 @@ def run_module():
 
         FLExInitialize()
 
+        # Issue #159: the `ui=` kwarg only exists on flexicon builds >=4.4.0
+        # (OpenProject(..., ui=None)); on older builds passing it -- even as
+        # ui=None -- raises TypeError and kills the session's very first
+        # operation ("got an unexpected keyword argument 'ui'"). Probe the
+        # INSTALLED signature in THIS process, not in the server process: the
+        # subprocess venv can hold a different flexicon than the server's, so
+        # a server-side probe could approve a kwarg that fails here. Broad
+        # except so any introspection failure (uninspectable method, no
+        # flexicon) degrades to omitting `ui=` -- matching this repo's
+        # graceful-degrade-with-visible-warning convention for flexicon skew.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         # Open project
         project = FLExProject()
         try:
@@ -4061,7 +4077,15 @@ def run_module():
             import flexicon
             _CAPS = getattr(flexicon, "CAPABILITIES", frozenset())
             _undoable = "per-operation-uow" in _CAPS
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
+            if _openproject_accepts_ui:
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["messages"] = report.messages
@@ -5155,17 +5179,39 @@ def run_scan():
         FLExInitialize()
         project = FLExProject()
 
+        # Issue #159: `ui=` only exists on flexicon >=4.4.0 OpenProject();
+        # a stray older build (mismatched venv) rejects it with TypeError.
+        # Probe the INSTALLED signature here, in this subprocess -- a
+        # server-side probe could approve a kwarg a different venv rejects.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         try:
             # undoable=False: see handle_run_module's runner for why (issue
             # #92 -- undoable=True skips BeginNonUndoableTask() and opens no
             # UnitOfWork). CP1 scans never write, but the same OpenProject
             # convention is reused here for consistency, not novelty.
-            project.OpenProject(
-                projectName=PROJECT_NAME,
-                writeEnabled=WRITE_ENABLED,
-                undoable=False,
-                ui=_lcm_ui,
-            )
+            if _openproject_accepts_ui:
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                    ui=_lcm_ui,
+                )
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                )
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["error_type"] = "ProjectOpenError"

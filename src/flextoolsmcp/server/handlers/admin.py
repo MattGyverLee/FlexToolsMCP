@@ -848,6 +848,7 @@ async def handle_get_module_template(args: dict) -> list[TextContent]:
                 "Section 1: Choose the Right Flavor",
                 "Section 7: Write Permission Checking - CRITICAL (if modifyAllowed:)",
                 "Section 8: Helper Functions",
+                "Section 9: Ensure-or-Create Catalog Lookups (bulk imports: Find once, create under if modifyAllowed:, never per-row raise)",
                 "Pattern: Always check modifyAllowed before ANY write"
             ]
         },

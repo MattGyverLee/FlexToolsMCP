@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Governance
+
+The project now has a written constitution at `.specify/memory/constitution.md`
+(v1.0.0, ratified 2026-02-05). Nothing in it is new policy: it records rules the
+repository already enforces in CI config, pre-commit hooks, runtime write gates,
+and the `.specify/extensions.yml` pipeline hooks, which until now existed only
+as scattered enforcement with no single statement of intent. Seven principles --
+safety-first write path (non-negotiable), discovery over memory, self-contained
+regenerable extraction, append-only versioned contracts, errors that teach, one
+module/one source of truth, and Windows-first with no cross-platform shims --
+plus sections on platform and dependency constraints, the two specification
+tiers, the blocking review gates, and amendment procedure.
+
+The three spec-kit templates were updated in the same pass so the document is
+load-bearing rather than decorative: `plan-template.md`'s Constitution Check
+placeholder becomes eight explicit per-principle checks, `spec-template.md`
+gains Tier and write-path header fields, and `tasks-template.md` gains a gate
+obligations block covering pattern audit, live-LCM verification, and
+CHANGELOG/index/golden regeneration.
+
 ### Tool contract
 
 Four new error codes land in `docs/TOOL-CONTRACT.md`: `parser_engine_mismatch`

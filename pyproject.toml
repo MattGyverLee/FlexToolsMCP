@@ -153,6 +153,9 @@ select = ["B", "E4", "E7", "E9", "F"]
 # script) try/except import blocks; ruff counts those blocks as code, so the
 # later import trips E402. The ordering is required by the dual-import pattern.
 "src/flextoolsmcp/server/handlers/execution.py" = ["E402"]
+# pre.py is an orphan root snapshot of execution.py (kept consistent for #159
+# diffs); same dual-import E402 pattern applies.
+"pre.py" = ["E402"]
 # Test modules favor readable intent over these style rules: lambda stubs
 # (E731), single-letter loop vars (E741), sys.path setup before imports (E402),
 # compact setup one-liners (E702), and scratch/scaffolding locals (F841).

@@ -8,6 +8,16 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+**Tier**: Full | Lightweight - per `.specify/memory/constitution.md` v1.0.0.
+Full tier is REQUIRED for write-path work, multi-checkpoint campaigns, and
+anything crossing a published contract; it carries `plan.md` + `tasks.md` and
+the supporting artifacts. Lightweight tier is a single spec file for read-only
+or contained changes. When genuinely in doubt, choose Full.
+
+**Touches a write path?**: Yes | No - if Yes, this spec MUST carry a live-LCM
+verification obligation through to tasks, and "it is only a one-liner" does not
+waive it.
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--

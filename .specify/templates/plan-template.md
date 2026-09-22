@@ -40,7 +40,35 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+*Source: `.specify/memory/constitution.md` v1.0.0. Answer each; any NO needs an
+entry in Complexity Tracking below.*
+
+- [ ] **I. Safety-First Write Path** - Does this feature touch a write path? If
+      yes: read-only default preserved, `if modifyAllowed:` guard, pre-write
+      backup, explicit confirmation, dry-run rehearsal, and no unattended
+      destructive write. No convenience flag relaxes a write-safety or casting
+      check.
+- [ ] **II. Discovery Over Memory** - Any API surface this plan relies on is
+      reachable through the indexes, not assumed from memory. Cross-flavor gaps
+      are declared, not silently absent.
+- [ ] **III. Self-Contained, Regenerable Extraction** - Extractor or index
+      changes stay static-analysis-only, regenerate in one all-or-nothing pass,
+      and write to the user overlay rather than the installed package.
+- [ ] **IV. Append-Only Versioned Contracts** - Response keys and error codes are
+      added, never removed or renamed, within the current contract major. Any
+      deprecation names its removal version and dual-emits until then. CHANGELOG
+      entry planned.
+- [ ] **V. Errors That Teach** - Every new refusal carries a stable error code
+      plus actionable guidance, and every new operation is observable through
+      both the prose and structured log paths.
+- [ ] **VI. One Module, One Source of Truth** - No parallel copy of an existing
+      operation. Added complexity is justified here or removed.
+- [ ] **VII. Windows-First, No Cross-Platform Shims** - No shim hides a real
+      incompatibility; the suite still runs without a live FieldWorks install;
+      console output is plain ASCII.
+- [ ] **Gate obligations scheduled** - This plan names the tests proving each
+      requirement; a shaped bug carries a pattern-audit task; write-path work
+      carries a live-LCM verification task with pre/post field evidence.
 
 ## Project Structure
 

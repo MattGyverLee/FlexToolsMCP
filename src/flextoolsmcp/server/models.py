@@ -41,9 +41,11 @@ class FlexToolsStartInput(BaseModel):
     """Initialize a FlexTools MCP session."""
     api_mode: Literal["flexicon", "flexlibs_stable", "liblcm"] = Field(
         default=API_MODES_DEFAULT,
-        description="API mode - REQUIRED: 'flexicon' (recommended, ~1400 methods), "
-                    "'flexlibs_stable' (legacy ~71 methods), 'liblcm' (raw C# API). "
-                    "The deprecated value 'flexlibs2' is accepted as an alias for 'flexicon'."
+        description="Documentation and preflight context: 'flexicon' (recommended, "
+                    "~1400 indexed methods), 'flexlibs_stable' (legacy ~71 methods), "
+                    "'liblcm' (raw C# API). flextools_run_module always executes with "
+                    "flexicon imports regardless of this value (issue #164). The deprecated "
+                    "value 'flexlibs2' is accepted as an alias for 'flexicon'."
     )
     _normalize_api_mode = field_validator("api_mode", mode="before")(_normalize_mode)
     task: Optional[str] = Field(

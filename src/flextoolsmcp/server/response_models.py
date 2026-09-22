@@ -254,6 +254,15 @@ class WrongLibraryImportsDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class InvalidApiModeDetail(BaseModel):
+    """Detail payload for invalid_api_mode rejections (issue #164)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["invalid_api_mode"] = "invalid_api_mode"
+    allowed_modes: List[str] = Field(default_factory=list)
+    received: Optional[Any] = None
+    hint: Optional[str] = None
+
+
 class InvalidApiChainDetail(BaseModel):
     """Detail payload for invalid_api_chain rejections."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -522,7 +531,7 @@ class ParseJobCancelledDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 25 per-code detail models
+# Discriminated union over all 26 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -536,6 +545,7 @@ AnyDetail = Union[
     UndefinedVariablesDetail,
     MissingImportsDetail,
     WrongLibraryImportsDetail,
+    InvalidApiModeDetail,
     InvalidApiChainDetail,
     NestedUnitOfWorkDetail,
     ProjectLockedDetail,

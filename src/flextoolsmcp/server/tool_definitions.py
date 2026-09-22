@@ -97,7 +97,8 @@ TOOLS: dict[str, ToolDef] = {
         name="flextools_start",
         description="""[WORKFLOW - BEGIN HERE] Initialize the FlexTools MCP session.
 
-REQUIRED: Sets api_mode to determine which API (flexicon, flexlibs_stable, or liblcm) to use.
+REQUIRED: Sets api_mode for API discovery and preflight (flexicon, flexlibs_stable, or liblcm).
+Execution note: flextools_run_module always runs with flexicon imports regardless of api_mode (#164).
 OPTIONAL: task description for initial API discovery, project_name for operations, etc.
 
 After calling flextools_start():

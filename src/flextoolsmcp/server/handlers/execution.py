@@ -55,6 +55,11 @@ try:
 except ImportError:
     from server import skeleton_storage
 
+try:
+    from ..constants import EXECUTION_API_MODE
+except ImportError:
+    from server.constants import EXECUTION_API_MODE
+
 # Import validators with fallback
 try:
     from ..validators import (
@@ -3751,6 +3756,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Build warnings
     warnings = []
+    if api_mode != EXECUTION_API_MODE:
+        warnings.append(
+            f"[api_mode] Session api_mode is {api_mode!r}, but flextools_run_module "
+            f"executes with {EXECUTION_API_MODE!r} imports. Write flexicon-compatible "
+            "code for execution; use your selected mode when searching APIs and "
+            "matching imports in preflight."
+        )
     if write_enabled:
         warnings.extend([
             "*** WRITE MODE ENABLED ***",

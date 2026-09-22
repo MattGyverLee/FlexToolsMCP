@@ -11,7 +11,7 @@ import re
 import logging
 import uuid
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Deque, Tuple
 
@@ -208,6 +208,18 @@ class SessionState:
     recent_op_signals: Deque[Tuple[datetime, Optional[str], int]] = field(
         default_factory=lambda: deque(maxlen=5)
     )
+
+    def reset(self) -> None:
+        """Reset all session fields to defaults without replacing the object.
+
+        Every module that imported ``session_state`` at load time keeps the
+        same object identity; only field values change. Used by
+        ``kernel.reset_session()`` for test isolation.
+        """
+        fresh = SessionState()
+        for f in fields(self):
+            setattr(self, f.name, getattr(fresh, f.name))
+        logger.info("Session state reset to defaults")
 
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool).

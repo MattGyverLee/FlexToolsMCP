@@ -70,11 +70,28 @@ def _parse(resp_list):
 
 @pytest.fixture(autouse=True)
 def _fresh_session():
-    admin_mod.session_state = session_mod.SessionState()
-    execution_mod.session_state = admin_mod.session_state
-    yield
-    admin_mod.session_state = session_mod.SessionState()
-    execution_mod.session_state = admin_mod.session_state
+    """Clear the shared SessionState in place.
+
+    Do not rebind ``admin_mod`` / ``execution_mod`` ``session_state`` to new
+    objects. Handlers (and kernel) keep their import-time reference to the
+    singleton; rebinding only these two creates dualism that poisons later
+    tests (project adoption asserts on an empty sibling object; cold
+    ``run_module`` can skip ``project_name_required``).
+    """
+    from flextoolsmcp.server import kernel as kernel_mod
+
+    shared = kernel_mod.session_state
+    admin_mod.session_state = shared
+    execution_mod.session_state = shared
+
+    snapshot = dict(shared.__dict__)
+    shared.__dict__.clear()
+    shared.__dict__.update(session_mod.SessionState().__dict__)
+    try:
+        yield
+    finally:
+        shared.__dict__.clear()
+        shared.__dict__.update(snapshot)
 
 
 @pytest.fixture(autouse=True)

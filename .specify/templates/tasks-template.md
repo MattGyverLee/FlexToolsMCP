@@ -158,6 +158,19 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 
+**Constitution gate obligations** (`.specify/memory/constitution.md` v1.0.0) -
+include the ones that apply; omission is a blocking review finding, not a
+default:
+
+- [ ] TXXX Pattern audit for any shaped bug fixed here (sibling occurrences via
+      the sweep-pattern skill; findings go in the commit body). One-offs need an
+      explicit "N/A (one-off)" justification, not silence.
+- [ ] TXXX Live-LCM verification for any write-path change: pre/post field
+      values from a real database, scratch project with prefixed test objects.
+      A mock-only pass is not verification.
+- [ ] TXXX CHANGELOG entry; regenerated index diff if an extractor changed;
+      regenerated golden files if a payload shape changed.
+
 ---
 
 ## Dependencies & Execution Order

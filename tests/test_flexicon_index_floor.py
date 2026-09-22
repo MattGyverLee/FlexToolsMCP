@@ -59,10 +59,14 @@ Run with:
 
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 import pytest
+
+try:  # py3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - py3.10 CI matrix
+    tomllib = None
 
 REPO_ROOT = Path(__file__).parent.parent
 INDEX_DIR = REPO_ROOT / "src" / "flextoolsmcp" / "index"
@@ -119,11 +123,15 @@ def _floor_from(text: str, source: str) -> str:
 
 
 def _pyproject_floor() -> str:
-    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    for dep in data.get("project", {}).get("dependencies", []):
-        if "pyflexicon" in dep:
-            return _floor_from(dep, "pyproject.toml")
-    pytest.fail("No 'pyflexicon' entry in pyproject.toml [project].dependencies")
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    if tomllib is not None:
+        data = tomllib.loads(text)
+        for dep in data.get("project", {}).get("dependencies", []):
+            if "pyflexicon" in dep:
+                return _floor_from(dep, "pyproject.toml")
+        pytest.fail("No 'pyflexicon' entry in pyproject.toml [project].dependencies")
+    # py3.10: stdlib has no tomllib; the floor regex is enough.
+    return _floor_from(text, "pyproject.toml")
 
 
 def _requirements_floor() -> str:

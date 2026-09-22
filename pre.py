@@ -3935,6 +3935,20 @@ def run_module():
 
         FLExInitialize()
 
+        # Issue #159: the `ui=` kwarg only exists on flexicon builds >=4.4.0
+        # (OpenProject(..., ui=None)); on older builds passing it -- even as
+        # ui=None -- raises TypeError and kills the session's very first
+        # operation. Probe the INSTALLED signature in THIS process, not in
+        # the server process: the two venvs can hold different flexicon
+        # versions, so a server-side probe could approve a kwarg that fails
+        # here. Broad except so any introspection failure degrades to
+        # omitting `ui=` (graceful-degrade-with-visible-warning convention).
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         # Open project
         project = FLExProject()
         try:
@@ -3943,7 +3957,15 @@ def run_module():
             # multi-mutation method and simple setter raise (see CP1 / issue
             # #92). undoable=False is the only path that actually persists
             # writes.
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False, ui=_lcm_ui)
+            if _openproject_accepts_ui:
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False, ui=_lcm_ui)
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=False)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["messages"] = report.messages
@@ -4980,17 +5002,39 @@ def run_scan():
         FLExInitialize()
         project = FLExProject()
 
+        # Issue #159: `ui=` only exists on flexicon >=4.4.0 OpenProject();
+        # a stray older build (mismatched venv) rejects it with TypeError.
+        # Probe the INSTALLED signature here, in this subprocess -- a
+        # server-side probe could approve a kwarg a different venv rejects.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         try:
             # undoable=False: see handle_run_module's runner for why (issue
             # #92 -- undoable=True skips BeginNonUndoableTask() and opens no
             # UnitOfWork). CP1 scans never write, but the same OpenProject
             # convention is reused here for consistency, not novelty.
-            project.OpenProject(
-                projectName=PROJECT_NAME,
-                writeEnabled=WRITE_ENABLED,
-                undoable=False,
-                ui=_lcm_ui,
-            )
+            if _openproject_accepts_ui:
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                    ui=_lcm_ui,
+                )
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                )
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["error_type"] = "ProjectOpenError"

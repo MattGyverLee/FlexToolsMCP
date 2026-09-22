@@ -83,7 +83,7 @@ next touches ``fixtures/parser_check.py``.
 """
 
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import FrozenSet, Optional
 
 import pytest
@@ -102,6 +102,26 @@ from fixtures.parser_check import (  # noqa: E402
     HCPARSER_MEMBERS,
     MISSING_PROCESS_PARSE_PARSER_CORE,
 )
+
+
+def _fixture_path(windows_path: str) -> Path:
+    """Map a Windows-style FieldWorks fixture path onto a host Path.
+
+    FakeParserCoreLocation stores paths like
+    ``C:\\Program Files\\SIL\\FieldWorks 8\\ParserCore.dll``. On POSIX,
+    ``Path(that).parent`` collapses to ``'.'``, so foreign-vs-same install
+    fixtures become indistinguishable and Linux CI asserts nonsense. Remap
+    onto ``/fw/<drive>/...`` so ``.parent`` preserves install identity on
+    every host while leaving the fixture strings themselves unchanged.
+    """
+    pure = PureWindowsPath(windows_path)
+    drive = (pure.drive or "X").rstrip(":")
+    return Path("/fw") / drive / Path(*pure.parts[1:])
+
+
+def _fixture_parents_differ(a: str, b: str) -> bool:
+    """True when two Windows fixture paths live in different install dirs."""
+    return PureWindowsPath(a).parent != PureWindowsPath(b).parent
 
 
 # ---------------------------------------------------------------------------
@@ -135,8 +155,8 @@ def _install_fake_probe_location(
     See the module docstring for why each seam name was chosen and why
     each is patched in two places.
     """
-    parser_core_path = Path(location.parser_core_dir)
-    lcmodel_path = Path(location.lcmodel_dir)
+    parser_core_path = _fixture_path(location.parser_core_dir)
+    lcmodel_path = _fixture_path(location.lcmodel_dir)
     members = found_members if found_members is not None else location.members
 
     def fake_get_resolved_fieldworks_dir(search_paths=None):
@@ -206,9 +226,10 @@ class TestForeignInstallSignal:
     branch from the member-completeness branch (T002's own design)."""
 
     def test_foreign_install_yields_signal(self, monkeypatch):
-        assert Path(FOREIGN_DIRECTORY_PARSER_CORE.parser_core_dir).parent != Path(
-            FOREIGN_DIRECTORY_PARSER_CORE.lcmodel_dir
-        ).parent
+        assert _fixture_parents_differ(
+            FOREIGN_DIRECTORY_PARSER_CORE.parser_core_dir,
+            FOREIGN_DIRECTORY_PARSER_CORE.lcmodel_dir,
+        )
         _install_fake_probe_location(monkeypatch, FOREIGN_DIRECTORY_PARSER_CORE)
 
         result = probe_parser_core(COMPLETE_PARSER_CORE_MEMBERS)
@@ -218,9 +239,10 @@ class TestForeignInstallSignal:
         assert result.expected_path is not None
 
     def test_same_install_does_not_yield_foreign_install(self, monkeypatch):
-        assert Path(COMPLETE_SAME_INSTALL_PARSER_CORE.parser_core_dir).parent == Path(
-            COMPLETE_SAME_INSTALL_PARSER_CORE.lcmodel_dir
-        ).parent
+        assert not _fixture_parents_differ(
+            COMPLETE_SAME_INSTALL_PARSER_CORE.parser_core_dir,
+            COMPLETE_SAME_INSTALL_PARSER_CORE.lcmodel_dir,
+        )
         _install_fake_probe_location(monkeypatch, COMPLETE_SAME_INSTALL_PARSER_CORE)
 
         result = probe_parser_core(COMPLETE_PARSER_CORE_MEMBERS)

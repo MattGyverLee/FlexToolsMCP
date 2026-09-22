@@ -12,9 +12,12 @@ premise: it is false on flexicon builds advertising the
 handlers/execution.py). Under `undoable=True` on those builds,
 `OpenProject()` opens no session-long envelope BECAUSE each mutation opens
 its own named task instead (flexicon's FLExProject.py); nothing raises. On
-flexicon <=4.3.0 (no capability token), the legacy path still holds: one
+builds without the capability token the legacy path still holds: one
 non-undoable UnitOfWork is opened once at OpenProject() and closed once at
-CloseProject().
+CloseProject(). Under the declared pyflexicon floor that branch is
+unreachable; it remains as defence-in-depth for unsupported installs and
+is surfaced on the run_module response via `undoable` /
+`timestamps_updated` (issue #153) so the degradation is never silent.
 
 Either way, a script that opens its OWN raw liblcm UnitOfWork on top of
 that -- UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper (constructor
@@ -339,7 +342,11 @@ class _FakeFlexiconModuleWithCapability:
 
 
 class _FakeFlexiconModuleWithoutCapability:
-    """Simulates flexicon <=4.3.0: no CAPABILITIES attribute at all."""
+    """Simulates a capability-less flexicon build: no CAPABILITIES at all.
+
+    Under the declared pyflexicon floor this is an unsupported install;
+    the probe still returns False as defence-in-depth (issue #153).
+    """
 
 
 @contextlib.contextmanager
@@ -385,9 +392,9 @@ class TestCapabilityProbe:
         assert execution_mod._probe_undoable_capability() is True
 
     def test_probe_false_on_capability_less_build(self, monkeypatch):
-        """Simulated flexicon <=4.3.0 build: CAPABILITIES is undefined, so
+        """Capability-less build: CAPABILITIES is undefined, so
         getattr(..., frozenset()) yields an empty set and the probe is
-        False -- the legacy floor is preserved byte-for-byte."""
+        False -- the legacy defence-in-depth floor (issue #153)."""
         import sys
         monkeypatch.setitem(sys.modules, "flexicon", _FakeFlexiconModuleWithoutCapability())
         assert execution_mod._probe_undoable_capability() is False
@@ -498,3 +505,116 @@ class TestModeConditionalMessage:
         assert data["error_code"] == "nested_unit_of_work"
         assert "own named unit of work" in data["message"]
         assert "already-open non-undoable task" not in data["message"]
+
+
+# ---------------------------------------------------------------------------
+# Issue #153: surface the resolved OpenProject mode on the run_module response.
+# ---------------------------------------------------------------------------
+
+class TestIssue153UndoableVisibility:
+    """Defence-in-depth fallback must not be silent: the runner template
+    writes `undoable` / `timestamps_updated` onto the result JSON, and those
+    keys survive into the MCP response envelope."""
+
+    def test_generated_runner_writes_mode_flags(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path, is_cud=False)
+        captured = {}
+
+        async def _capture(path, timeout_seconds):
+            with open(path, encoding="utf-8") as f:
+                captured["script"] = f.read()
+            return await _fake_run_script_async_ok(path, timeout_seconds)
+
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", lambda *a, **k: _FakeLock())
+        monkeypatch.setattr(execution_mod, "run_script_async", _capture)
+
+        args = {
+            "code": "report.Info('hi')\n",
+            "project_name": "TestProj_153_script",
+            "write_enabled": False,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        asyncio.run(execution_mod.handle_run_module(args))
+        script = captured["script"]
+        assert 'result["undoable"] = _undoable' in script
+        assert 'result["timestamps_updated"] = _undoable' in script
+        assert "issue #153" in script
+        assert "does not advertise CAPABILITIES" in script
+
+    def test_false_mode_flags_survive_into_response(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path, is_cud=False)
+
+        async def _legacy_mode_payload(path, timeout_seconds):
+            payload = {
+                "success": True,
+                "summary": {"info_count": 0, "warning_count": 1, "error_count": 0},
+                "messages": [
+                    {
+                        "type": "Warning",
+                        "message": (
+                            "OpenProject chose undoable=False: this flexicon "
+                            "build does not advertise CAPABILITIES "
+                            "'per-operation-uow'."
+                        ),
+                    }
+                ],
+                "undoable": False,
+                "timestamps_updated": False,
+            }
+            return {
+                "stdout": "===FLEXTOOLS_RESULT_JSON===" + json.dumps(payload),
+                "stderr": "",
+                "timeout": False,
+                "returncode": 0,
+            }
+
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", lambda *a, **k: _FakeLock())
+        monkeypatch.setattr(execution_mod, "run_script_async", _legacy_mode_payload)
+
+        args = {
+            "code": "report.Info('hi')\n",
+            "project_name": "TestProj_153_false",
+            "write_enabled": False,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        data = _parse(result)
+        assert data.get("success") is True
+        assert data["undoable"] is False
+        assert data["timestamps_updated"] is False
+
+    def test_true_mode_flags_survive_into_response(self, monkeypatch, tmp_path):
+        _stub_env(monkeypatch, tmp_path, is_cud=False)
+
+        async def _capable_mode_payload(path, timeout_seconds):
+            payload = {
+                "success": True,
+                "summary": {"info_count": 0, "warning_count": 0, "error_count": 0},
+                "messages": [],
+                "undoable": True,
+                "timestamps_updated": True,
+            }
+            return {
+                "stdout": "===FLEXTOOLS_RESULT_JSON===" + json.dumps(payload),
+                "stderr": "",
+                "timeout": False,
+                "returncode": 0,
+            }
+
+        monkeypatch.setattr(execution_mod, "get_project_write_lock", lambda *a, **k: _FakeLock())
+        monkeypatch.setattr(execution_mod, "run_script_async", _capable_mode_payload)
+
+        args = {
+            "code": "report.Info('hi')\n",
+            "project_name": "TestProj_153_true",
+            "write_enabled": False,
+            "skip_api_check": True,
+            "skip_module_check": True,
+        }
+        result = asyncio.run(execution_mod.handle_run_module(args))
+        data = _parse(result)
+        assert data.get("success") is True
+        assert data["undoable"] is True
+        assert data["timestamps_updated"] is True

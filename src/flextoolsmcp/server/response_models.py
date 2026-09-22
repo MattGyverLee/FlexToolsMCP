@@ -271,10 +271,12 @@ class NestedUnitOfWorkDetail(BaseModel):
     IActionHandler.BeginUndoTask()/BeginNonUndoableTask() call), which would
     nest inside whichever unit of work is already open at that point --
     the runner's session-long non-undoable task on flexicon builds without
-    the "per-operation-uow" capability, or flexicon's own per-operation
-    task on builds that have it -- and discard the writes it was holding
-    (the whole run's, or just that one operation's, respectively). See
-    validators.detect_nested_unit_of_work().
+    the "per-operation-uow" capability (defence-in-depth for unsupported
+    installs under the declared pyflexicon floor; surfaced via
+    run_module's `undoable` / `timestamps_updated` flags -- issue #153),
+    or flexicon's own per-operation task on builds that have it -- and
+    discard the writes it was holding (the whole run's, or just that one
+    operation's, respectively). See validators.detect_nested_unit_of_work().
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"

@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 25 codes below |
+| `error_code` | string | one of the 26 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -106,6 +106,7 @@ authoritative. All detail fields are optional unless noted.
 | `undefined_variables` | `undefined_vars` (list), `guidance` |
 | `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` |
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
+| `invalid_api_mode` | `allowed_modes` (required list), `received`, `hint` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
 | `nested_unit_of_work` | `constructs` (list), `guidance` |
 | `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |

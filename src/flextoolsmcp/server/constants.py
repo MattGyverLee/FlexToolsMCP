@@ -92,6 +92,10 @@ PROJECT_ACCESSOR_ALIASES = {
 # and execution handlers to ensure consistent validation.
 API_MODES = ("flexicon", "flexlibs_stable", "liblcm")
 API_MODES_DEFAULT = "flexicon"
+# Issue #164: run_module codegen always imports flexicon; other api_mode values
+# steer documentation search and preflight only until mode-conditional codegen
+# returns (#163).
+EXECUTION_API_MODE = "flexicon"
 
 # Deprecated api_mode aliases -> canonical value. `flexlibs2` was the previous
 # name for flexicon (pip install pyflexicon); callers passing the old value are

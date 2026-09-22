@@ -63,6 +63,11 @@ try:
 except (ImportError, ValueError):
     from server.diagnostic import transports as _transports
 
+try:
+    from ..constants import API_MODES, API_MODES_DEFAULT, EXECUTION_API_MODE, normalize_api_mode
+except ImportError:
+    from server.constants import API_MODES, API_MODES_DEFAULT, EXECUTION_API_MODE, normalize_api_mode
+
 # Import kernel dependencies with fallback support
 json_response, session_state, get_log_dir, get_api_index = safe_import_kernel_deps()
 rotate_logging_to_session, _ = safe_import_logging_helpers()
@@ -156,6 +161,22 @@ MODE_GUIDANCE = {
         "note": "Low-level access - requires understanding of LCM suffixes (OS/OC/OA/RS/RC/RA)"
     }
 }
+
+_EXECUTION_API_MODE_NOTE = (
+    "flextools_run_module always executes with flexicon imports regardless of "
+    "api_mode. Use flexlibs_stable or liblcm here to steer API discovery "
+    "(search_by_capability, get_object_api) and preflight import checks; write "
+    "flexicon-compatible code for execution."
+)
+
+
+def _build_mode_info(api_mode: str) -> dict:
+    """Return mode guidance plus an explicit execution seam (issue #164)."""
+    info = dict(MODE_GUIDANCE[api_mode])
+    info["selected_api_mode"] = api_mode
+    info["execution_api_mode"] = EXECUTION_API_MODE
+    info["execution_note"] = _EXECUTION_API_MODE_NOTE
+    return info
 
 # Runtime invariants - true for both lightweight ops (bare snippets) and full
 # FlexTools modules. Emitted in start()'s response so the assistant sees these
@@ -483,7 +504,22 @@ async def handle_start(args: dict) -> list[TextContent]:
     - Available writing systems and their language tags
     - Number of entries in the project
     """
-    api_mode = args.get(KEY_API_MODE, "flexicon")
+    raw_api_mode = args.get(KEY_API_MODE, API_MODES_DEFAULT)
+    api_mode = normalize_api_mode(raw_api_mode)
+    if api_mode not in API_MODES:
+        return error_response(
+            "invalid_api_mode",
+            f"Unknown api_mode {raw_api_mode!r}. "
+            f"Choose one of: {', '.join(API_MODES)}.",
+            hint=(
+                "Use api_mode='flexicon' for execution. flexlibs_stable and "
+                "liblcm affect API discovery and preflight only until "
+                "mode-conditional execution returns (#163)."
+            ),
+            allowed_modes=list(API_MODES),
+            received=raw_api_mode,
+            session=session_state.summary(),
+        )
     # Note: Pydantic model uses 'project_name', not 'project'
     project_name = args.get("project_name") or args.get(KEY_PROJECT) or ""
     # Diagnostic-report feature (spec section 4): verbatim human request text,
@@ -594,11 +630,17 @@ async def handle_start(args: dict) -> list[TextContent]:
         ]
     }
 
-    result[KEY_MODE_INFO] = MODE_GUIDANCE.get(api_mode, MODE_GUIDANCE["flexicon"])
+    result[KEY_MODE_INFO] = _build_mode_info(api_mode)
     result["runtime_primer"] = RUNTIME_PRIMER
 
     # Warnings
     warnings = []
+    if api_mode != EXECUTION_API_MODE:
+        warnings.append(
+            f"api_mode={api_mode!r} sets documentation/preflight context only; "
+            f"flextools_run_module executes with {EXECUTION_API_MODE!r}. "
+            "Write flexicon-compatible code for execution."
+        )
 
     # Workspace sanity first: if cwd is a library/MCP source checkout, every
     # later instruction in this response competes with a tempting pile of

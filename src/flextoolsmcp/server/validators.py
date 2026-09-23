@@ -3578,6 +3578,8 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
 
     Detects:
     - if modifyAllowed: blocks (FLExTools standard parameter)
+    - Early-return guard: ``if not modifyAllowed: ...; return`` then code below
+      in the same block (issue #139)
     - with project.modifyEnabled: blocks
     - with self.project.modifyEnabled: blocks
     - if project.writeEnabled: blocks
@@ -3600,6 +3602,14 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
         return protected  # Can't parse, assume no protection
 
     class ProtectionFinder(ast.NodeVisitor):
+        def visit_Module(self, node):
+            self._register_early_return_guard_tails(node.body)
+            self.generic_visit(node)
+
+        def visit_FunctionDef(self, node):
+            self._register_early_return_guard_tails(node.body)
+            self.generic_visit(node)
+
         def visit_With(self, node):
             """Find 'with project.modifyEnabled:' blocks."""
             for item in node.items:
@@ -3612,6 +3622,25 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
                     break
 
             self.generic_visit(node)
+
+        def _register_early_return_guard_tails(self, body: list) -> None:
+            """Mark statements after an early-return modify guard as protected."""
+            for idx, stmt in enumerate(body):
+                if not isinstance(stmt, ast.If):
+                    continue
+                if not self._is_early_return_modify_guard(stmt):
+                    continue
+                tail = body[idx + 1:]
+                if not tail:
+                    continue
+                start_line = tail[0].lineno
+                end_line = tail[-1].end_lineno or start_line
+                protected.append((start_line, end_line))
+
+        def _is_early_return_modify_guard(self, if_node: ast.If) -> bool:
+            if not self._is_write_disabled_check(if_node.test):
+                return False
+            return any(isinstance(s, ast.Return) for s in if_node.body)
 
         def visit_If(self, node):
             """Find 'if modifyAllowed:' or 'if project.writeEnabled:' blocks."""
@@ -3675,6 +3704,41 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
                     if isinstance(comp, ast.Name):
                         if comp.id == 'modifyAllowed':
                             return True
+            return False
+
+        def _is_write_disabled_check(self, node):
+            """Negated write guard: ``if not modifyAllowed:`` / ``== False`` forms."""
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                return self._is_write_enabled_check(node.operand)
+            if isinstance(node, ast.Compare) and len(node.ops) == 1:
+                if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
+                    return False
+                false_val = {False, 0}
+                if (
+                    isinstance(node.left, ast.Name)
+                    and node.left.id == 'modifyAllowed'
+                    and node.comparators
+                    and isinstance(node.comparators[0], ast.Constant)
+                    and node.comparators[0].value in false_val
+                ):
+                    return True
+                if (
+                    isinstance(node.left, ast.Constant)
+                    and node.left.value in false_val
+                    and node.comparators
+                    and isinstance(node.comparators[0], ast.Name)
+                    and node.comparators[0].id == 'modifyAllowed'
+                ):
+                    return True
+                if isinstance(node.left, ast.Attribute):
+                    if (
+                        node.left.attr == 'writeEnabled'
+                        and _is_project_receiver(node.left.value)
+                        and node.comparators
+                        and isinstance(node.comparators[0], ast.Constant)
+                        and node.comparators[0].value in false_val
+                    ):
+                        return True
             return False
 
     finder = ProtectionFinder()

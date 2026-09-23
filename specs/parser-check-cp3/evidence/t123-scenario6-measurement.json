@@ -1,0 +1,60 @@
+{
+  "project": "IndonesianHC-Complete",
+  "generous": {
+    "wordform": "pukul",
+    "bound_seconds": 300.0,
+    "elapsed_seconds": 0.578,
+    "exceeded_bound": false,
+    "missed_fast_path_by": null,
+    "outcome": "completed",
+    "fast_path_window_seconds": 5.0,
+    "run_id": "92cb939a47172ebc273fab5b3bff1e5b",
+    "stage_at_end": "completed",
+    "parse": {
+      "parsed": true,
+      "analysis_count": 1
+    },
+    "parser_parameters": {
+      "stored": true,
+      "parseable": true,
+      "active_parser": "HC",
+      "hc": {
+        "DelReapps": "0",
+        "NotOnClitics": "true",
+        "NoDefaultCompounding": "true",
+        "AcceptUnspecifiedGraphemes": "false"
+      }
+    },
+    "measured": "Wall-clock seconds from submission, in a worker of its own: loading the grammar and parsing this one word. The engine exposes no step or node count, so none is reported."
+  },
+  "tight": {
+    "wordform": "pukul",
+    "bound_seconds": 1.0,
+    "elapsed_seconds": 0.585,
+    "exceeded_bound": false,
+    "missed_fast_path_by": null,
+    "outcome": "completed",
+    "fast_path_window_seconds": 5.0,
+    "run_id": "3ade89c31fccd07a276225f4ac6c529f",
+    "stage_at_end": "completed",
+    "parse": {
+      "parsed": true,
+      "analysis_count": 1
+    },
+    "parser_parameters": {
+      "stored": true,
+      "parseable": true,
+      "active_parser": "HC",
+      "hc": {
+        "DelReapps": "0",
+        "NotOnClitics": "true",
+        "NoDefaultCompounding": "true",
+        "AcceptUnspecifiedGraphemes": "false"
+      }
+    },
+    "measured": "Wall-clock seconds from submission, in a worker of its own: loading the grammar and parsing this one word. The engine exposes no step or node count, so none is reported."
+  },
+  "tight_finding": "One word ('pukul') took 0.58 seconds including a cold grammar load, inside the 5-second fast-path window.",
+  "tight_next_step": [],
+  "recorded_at": "2026-09-23T04:10:14.970175+00:00"
+}

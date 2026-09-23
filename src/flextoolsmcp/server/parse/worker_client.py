@@ -59,6 +59,8 @@ from typing import Any, Callable, Optional
 from ..subprocess_helpers import _kill_process_tree, spawn_module_async
 
 __all__ = [
+    "MEASUREMENT_ROLE",
+    "SHARED_ROLE",
     "WORKER_MODULE_PATH",
     "WorkerError",
     "WorkerStartupError",
@@ -71,6 +73,14 @@ _log = logging.getLogger(__name__)
 #: The child, addressed by dotted path and NEVER imported. `run_scan_module`
 #: addresses `scan/grammar_scan_module.py` the same way.
 WORKER_MODULE_PATH = "flextoolsmcp.server.parse.worker_main"
+
+#: The pool's two keys per project (FR-051, R-05). Every run lands in the
+#: SHARED worker -- one grammar, interleaving at word boundaries -- except the
+#: bounded single-word measurement, which gets a worker of its own because
+#: its bound is enforced by killing that worker's process tree, and a shared
+#: worker would take any running batch down with it.
+SHARED_ROLE = "shared"
+MEASUREMENT_ROLE = "measurement"
 
 #: How long to wait for the worker's `ready` handshake before giving up.
 #: Generous: the child pays a full interpreter start plus a pythonnet import.
@@ -251,6 +261,34 @@ class ParseWorkerClient:
             WorkerError(f"Parse worker for {self.project_name!r} was shut down.")
         )
 
+    async def terminate(self) -> None:
+        """Kill the process tree NOW -- no polite `shutdown` first.
+
+        The bounded measurement's enforcement (FR-052, D-4). `aclose` asks
+        and then waits, which is right for teardown and wrong for a bound: a
+        worker inside a parse is not reading its stdin, so the polite half
+        would only add its own timeout to the bound being enforced. There is
+        no in-parse alternative -- the engine takes no cancellation token,
+        timeout or step budget, and a cooperative cancel lands at the next
+        word boundary, which for a one-word parse is after the parse.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        proc, self._proc = self._proc, None
+        if proc is not None and proc.returncode is None:
+            _kill_process_tree(proc.pid)
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(proc.wait(), timeout=5)
+        for task in (self._reader_task, self._stderr_task):
+            if task is not None:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+        self._fail_pending(
+            WorkerError(f"Parse worker for {self.project_name!r} was terminated.")
+        )
+
     # -- the channel ------------------------------------------------------
 
     async def _read_message(self) -> Optional[dict[str, Any]]:
@@ -355,7 +393,9 @@ class ParseWorkerClient:
     def _dispatch(self, message: dict[str, Any]) -> None:
         kind = message.get("type")
 
-        if kind in ("result", "resolved", "error"):
+        if kind in (
+            "result", "resolved", "error", "engine", "scope_resolved", "parser_parameters",
+        ):
             request_id = message.get("request_id")
             future = self._pending.pop(request_id, None) if request_id else None
             if future is not None and not future.done():
@@ -374,7 +414,7 @@ class ParseWorkerClient:
                 )
             return
 
-        if kind in ("stage", "cancelled", "interleaved"):
+        if kind in ("stage", "cancelled", "interleaved", "engine_changed", "load_baseline"):
             listener = self._run_listeners.get(message.get("run_id") or "")
             if listener is not None:
                 try:
@@ -447,6 +487,8 @@ class ParseWorkerClient:
         restricted_to: Optional[tuple] = None,
         priority: int = 1,
         index_in_run: int = 0,
+        vernacular_ws: Optional[str] = None,
+        engine_at_submission: Optional[str] = None,
     ) -> dict[str, Any]:
         """Submit one word and await its result.
 
@@ -454,31 +496,99 @@ class ParseWorkerClient:
         difference between `None` (unrestricted) and an empty sequence
         (which the worker refuses). Normalising the two here would be
         precisely the silent widening FR-019 forbids -- see spec.md Delta 2.
+
+        `engine_at_submission` is set only for a batch word, whose engine
+        gate already ran once at submission (FR-024). The two CP3 keys are
+        sent only when set, so a CP2b request is byte-for-byte unchanged.
         """
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
         self._pending[request_id] = future
 
+        message: dict[str, Any] = {
+            "type": "parse",
+            "request_id": request_id,
+            "run_id": run_id,
+            "wordform": wordform,
+            "level": level,
+            "restricted_to": (
+                list(restricted_to) if restricted_to is not None else None
+            ),
+            "priority": int(priority),
+            "index_in_run": int(index_in_run),
+        }
+        if vernacular_ws is not None:
+            message["vernacular_ws"] = vernacular_ws
+        if engine_at_submission is not None:
+            message["engine_at_submission"] = engine_at_submission
+
         try:
-            await self._send(
-                {
-                    "type": "parse",
-                    "request_id": request_id,
-                    "run_id": run_id,
-                    "wordform": wordform,
-                    "level": level,
-                    "restricted_to": (
-                        list(restricted_to) if restricted_to is not None else None
-                    ),
-                    "priority": int(priority),
-                    "index_in_run": int(index_in_run),
-                }
-            )
+            await self._send(message)
         except Exception:
             self._pending.pop(request_id, None)
             raise
 
         return await future
+
+    async def _request(self, message: dict[str, Any], timeout: float) -> dict[str, Any]:
+        """Send one request that carries a `request_id` and await its answer."""
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        request_id = message["request_id"]
+        self._pending[request_id] = future
+        try:
+            await self._send(message)
+        except Exception:
+            self._pending.pop(request_id, None)
+            raise
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        finally:
+            self._pending.pop(request_id, None)
+
+    async def check_engine(self, *, request_id: str, timeout: float = 60.0) -> str:
+        """Run the engine gate and return the engine that passed (FR-024).
+
+        A mismatch arrives as a `WorkerError` carrying the
+        `parser_engine_mismatch` detail unchanged, exactly as it does for a
+        single word.
+        """
+        answer = await self._request(
+            {"type": "engine_check", "request_id": request_id}, timeout
+        )
+        return str(answer.get("engine") or "")
+
+    async def parser_parameters(
+        self, *, request_id: str, timeout: float = 60.0
+    ) -> Optional[dict[str, Any]]:
+        """The project's stored parser parameters, READ (FR-055).
+
+        Context for a slow parse, never a lever: nothing on this path writes
+        them, because that would be a project-data write and CP3 has none.
+        None when the worker could not read them.
+        """
+        answer = await self._request(
+            {"type": "parser_parameters", "request_id": request_id}, timeout
+        )
+        parameters = answer.get("parameters")
+        return dict(parameters) if isinstance(parameters, dict) else None
+
+    async def resolve_scope(
+        self, *, request_id: str, scope: dict[str, Any], timeout: float = 300.0
+    ) -> dict[str, Any]:
+        """Resolve a scope in the worker, where the project is open (US1).
+
+        Generous timeout: an all-texts scope on a large project reads every
+        text's unique wordforms. No parse runs.
+        """
+        answer = await self._request(
+            {"type": "resolve_scope", "request_id": request_id, "scope": scope}, timeout
+        )
+        resolved = dict(answer.get("resolved") or {})
+        # The one project-state probe rides with the resolution (FR-004); the
+        # handler pops it before validating the resolved scope.
+        resolved["project_state"] = answer.get("project_state")
+        return resolved
 
     async def cancel_run(self, run_id: str) -> None:
         """Ask the worker to stop a run at its next word boundary.
@@ -607,58 +717,91 @@ def _error_from(message: dict[str, Any]) -> Exception:
 
 
 class WorkerPool:
-    """One worker per project, and the teardown that reaps all of them.
+    """One shared worker per project, and the teardown that reaps all of them.
 
     The pool exists so that "one worker per project" is a property of the
     system rather than a convention each call site is trusted to follow,
     and so server shutdown has a single place to reap from. FR-042's
     release-on-project-switch is implemented here as the plainest possible
     thing: switching projects ends the process that held the old grammar.
+
+    TWO KEYS PER PROJECT (CP3, FR-051, R-05). Workers are keyed by
+    `(project, role)`. Every run uses `SHARED_ROLE`; the bounded measurement
+    alone uses `MEASUREMENT_ROLE`, so killing it at its bound cannot take a
+    batch on the same project with it. The measurement worker is terminated
+    or released as soon as its one word is done -- it never becomes a second
+    long-lived grammar holder.
     """
 
     def __init__(self, *, stub: bool = False, parse_delay: float = 0.0) -> None:
-        self._workers: dict[str, ParseWorkerClient] = {}
+        self._workers: dict[tuple[str, str], ParseWorkerClient] = {}
         self._lock = asyncio.Lock()
         self._stub = stub
         self._parse_delay = parse_delay
 
-    async def get(self, project_name: str) -> ParseWorkerClient:
-        """The worker for this project, started if necessary.
+    async def get(
+        self, project_name: str, *, role: str = SHARED_ROLE
+    ) -> ParseWorkerClient:
+        """The worker for this project and role, started if necessary.
 
         A worker found dead is replaced rather than returned. The common
         cause is its own idle timeout, which is ordinary and not an error:
         the project was released because nobody was using it.
         """
+        key = (project_name, role)
         async with self._lock:
-            existing = self._workers.get(project_name)
+            existing = self._workers.get(key)
             if existing is not None:
                 if existing.is_running():
                     return existing
-                self._workers.pop(project_name, None)
+                self._workers.pop(key, None)
                 await existing.aclose()
 
             worker = ParseWorkerClient(
                 project_name, stub=self._stub, parse_delay=self._parse_delay
             )
             await worker.start()
-            self._workers[project_name] = worker
+            self._workers[key] = worker
             return worker
 
-    def peek(self, project_name: str) -> Optional[ParseWorkerClient]:
+    def peek(
+        self, project_name: str, *, role: str = SHARED_ROLE
+    ) -> Optional[ParseWorkerClient]:
         """The worker for this project if one exists, without starting one.
 
         For callers that only want to tidy up after themselves -- dropping
         a run listener, say. Starting a worker as a side effect of cleanup
         would open a project nobody asked for.
         """
-        return self._workers.get(project_name)
+        return self._workers.get((project_name, role))
 
-    async def release(self, project_name: str) -> None:
-        """End the worker for one project, dropping its held grammar."""
+    async def release(self, project_name: str, *, role: Optional[str] = None) -> None:
+        """End this project's worker(s), dropping the held grammar.
+
+        With no `role`, every worker for the project goes -- a project switch
+        releases the project, not one of its keys.
+        """
         async with self._lock:
-            worker = self._workers.pop(project_name, None)
-        if worker is not None:
+            keys = [
+                key for key in self._workers
+                if key[0] == project_name and (role is None or key[1] == role)
+            ]
+            workers = [self._workers.pop(key) for key in keys]
+        for worker in workers:
             await worker.aclose()
+
+    async def terminate(self, project_name: str, *, role: str) -> bool:
+        """Kill one worker's process tree immediately (FR-052).
+
+        Returns whether there was a worker to kill. Only the bounded
+        measurement calls this, and only on its own role.
+        """
+        async with self._lock:
+            worker = self._workers.pop((project_name, role), None)
+        if worker is None:
+            return False
+        await worker.terminate()
+        return True
 
     async def aclose(self) -> None:
         """Reap every worker. Called on server shutdown.
@@ -675,4 +818,13 @@ class WorkerPool:
                 await worker.aclose()
 
     def active_projects(self) -> list[str]:
-        return [name for name, w in self._workers.items() if w.is_running()]
+        """Projects with a running worker, each named once."""
+        names: list[str] = []
+        for (name, _role), worker in self._workers.items():
+            if worker.is_running() and name not in names:
+                names.append(name)
+        return names
+
+    def active_workers(self) -> list[tuple[str, str]]:
+        """`(project, role)` for every running worker."""
+        return [key for key, worker in self._workers.items() if worker.is_running()]

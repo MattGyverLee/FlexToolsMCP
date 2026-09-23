@@ -551,25 +551,39 @@ sequences this at CP2.
 ~/.flextoolsmcp/parse/
   config-cache/<project>/<cache_key>/{hc-config.xml, key.json}   # managed, invalidatable
   sandboxes/<project>/<name>/hc-config.xml                        # USER-OWNED, never touched
-  runs/<project>/<run_id>/
-      run.json  words.txt  hc-script.txt  hc-output.txt
-      hc-stdout.txt  generate-config.log  trace.txt
+
+~/.flextoolsmcp/parse-runs/<run_id>/        # as shipped (CP2b + CP3)
+  meta.json        # the durable run record, rewritten whole on stage change
+  results.jsonl    # one line per completed word, appended and flushed
+  words.txt        # a batch's resolved word list (CP3)
+  traces/<n>.xml   # trace payloads, out of line, only where one was taken
 ```
 
-`run_id` is `<UTC yyyymmddTHHMMSSZ>-<8 hex>`. Retention: newest 20 runs per
-project (mirrors `backup.py::_prune_old_backups`).
+*Corrected at CP3 (D-6).* This listing used to name `run.json`, a flat
+`trace.txt` and four sandbox files (`hc-script.txt`, `hc-output.txt`,
+`hc-stdout.txt`, `generate-config.log`) under `runs/<project>/`. The listing was
+wrong, not the shipped files: CP4 and CP5 both read the artifact as shipped, so
+the spec follows it rather than the other way round. The sandbox spine's files
+are CP5's and arrive with it; `flextools_parse_log` reports those sections as
+typed not-applicable until then. The project is recorded in `meta.json`, not in
+the path. Override the directory with `FLEXTOOLSMCP_PARSE_RECORD_DIR`.
+
+`run_id` is **32 lowercase hex** (`secrets.token_hex(16)`) and carries no
+timestamp, so nothing may order runs by name. Retention: newest 20 runs per
+project **by the creation time recorded in `meta.json`** -- not by name and not
+by modification time (`server/parse/retention.py`).
 
 **Prior art inside FieldWorks.** `Src\LexText\ParserCore\ParserReport.cs`
 already defines a parser run report -- `NumWords`, `NumParseErrors`,
 `NumZeroParses`, `TotalParseTime`, `TotalAnalyses`, plus
 `TotalUserApprovedAnalysesMissing`, `TotalUserDisapprovedAnalyses` and
 `TotalUserNoOpinionAnalyses` (`:51-86`), accumulated per word (`:317-359`). The
-last three overlap the oracle of 9.3 directly. Align `run.json`'s field names and
+last three overlap the oracle of 9.3 directly. Align `meta.json`'s field names and
 semantics with it where they coincide rather than inventing parallel ones, and
 where we deliberately differ -- the tiering of 9.3.1 has no counterpart there --
 say so. Note its counters are per word; nothing in it is per rule or per morpheme.
 
-`run.json` is the job's durable state, not only its summary: it carries the
+`meta.json` is the job's durable state, not only its summary: it carries the
 current state, `words_completed` / `words_total`, `engine_at_submission` (5.6),
 and on a terminal failure the reason. It is written incrementally so a job that
 dies mid-run still describes itself (5.6).
@@ -678,7 +692,7 @@ Accepted values are exactly `"XAmple"` and `"HC"`, case-sensitive
 `ParserParameters` XML parse failure (`OverridesLing_MoClasses.cs:4213`), so a
 corrupt value reads as XAmple and we refuse with `parser_engine_mismatch` --
 fail-safe, never silently HC. For a batch job (`flextools_parse_text`) the check
-fires once, at submission: `engine_at_submission` is recorded in `run.json`
+fires once, at submission: `engine_at_submission` is recorded in `meta.json`
 (5.5). If `ActiveParser` differs at completion, the run summary reports the
 divergence as a **warning**, not a refusal -- the results are internally
 consistent and were filed under the agent GUID chosen at submission, and 3.2's
@@ -1327,6 +1341,24 @@ disable safe final-template pruning").
 > FieldWorks install directory we load from. If it is public in the installed
 > version, those three lints are free -- no port, no reimplementation. Verify at
 > CP1 alongside the capability probe.
+
+**Status of the three lints (re-probed at CP3, 2026-09-22, FR-062): still
+deferred.** Probed against the installed engine rather than inherited from
+CP2's verdict: `SIL.Machine.Morphology.HermitCrab.dll` and `SIL.Machine.dll`
+in `C:\Program Files\SIL\FieldWorks 9` are both **3.8.2**
+(`3.8.2+76e65e7e51`). Reflection over all 158 types of the HermitCrab
+assembly and all 788 of `SIL.Machine` finds no `GrammarHealthChecker` and no
+type whose name suggests health checking or linting, and no DLL in the install
+directory contains the string `GrammarHealth` at all. The checker is absent,
+not private, so there is nothing public to fold into
+`scan/grammar_scan_module.py`. Folding the lints in would mean writing all
+three from scratch against the grammar data -- the independent-correctness
+risk CP2's D5 declined -- inside a read-only checkpoint whose grammar scan
+already ships a dozen checks. **Deferred to CP4**, where the question must be
+re-probed again against whatever engine version is installed then; a
+FieldWorks release carrying a newer `SIL.Machine` may change the answer, and
+a checkpoint that inherits this verdict instead of re-probing it is the drift
+this paragraph exists to prevent.
 
 **The single most transferable idea is the net-shape screen.** It inspects a
 compiled FST statically -- `O(states + arcs)`, no word applied -- and asserts
@@ -2234,12 +2266,42 @@ the first checkpoint with nothing blocking it.
     database-state-as-proxy trap one layer down: an empty result would mean "not
     tokenized", not "no words", and CP3's scoping must not read it as the
     latter. Verify before CP3 relies on the count.
+    **STILL OPEN after a live probe 2026-09-22** (CP3 T008; evidence in
+    `specs/parser-check-cp3/live-note-fr001-fr003.md`). The designated
+    correctness project `IndonesianHC-Complete` cannot settle it: it holds two
+    texts and both are fully tokenized (1 paragraph, 1 segment, 38 analysis
+    slots each), so the discriminating pair is simply not present. A
+    never-tokenized text cannot be manufactured inside CP3 either -- creating
+    or opening one is a project write and CP3 ships no write path (FR-063).
+    **CP3 does not rely on the count**: FR-002 was written to survive this
+    outcome, asking for a conservative refusal -- structure present, no unique
+    wordforms resolved -- that asserts neither "never tokenized" nor "no
+    words", and that does not reuse `parse_scope_empty`. To close this, probe a
+    project that carries a text never opened in interlinear and compare it
+    against one whose content is genuinely empty.
 12. **Can a segment assignment arrive without a human act?** (9.3.4). FLEx
     propagates guessed analyses through interlinear text; if an analysis can
     reach `AnalysesRS` by being offered and not overruled, part of the
     indeterminate population is weaker than tacit. Verify before CP3 leans on
     the affirmed/indeterminate split. Does not affect the reporting rule, which
     already declines to characterise individual analyses.
+    **ANSWERED 2026-09-22 -- yes, for analyses** (CP3 T009; evidence in
+    `specs/parser-check-cp3/live-note-fr001-fr003.md`). A complete read-only
+    traversal of `IndonesianHC-Complete` found **76 of 77** analyses carrying an
+    `ICmAgentEvaluation` and **no** human evaluation at all (`approval_status`
+    1); none carried neither. An analysis therefore reaches the record by
+    parser action alone, with no human act. The indeterminate population is
+    real and is essentially the whole project -- which is also why FR-040's
+    wording discipline matters: calling it "unreviewed" would mislabel 99% of
+    this project.
+    **The narrower half stays open.** These 76 are analyses on wordforms; the
+    question as written asks about an analysis reaching `AnalysesRS` -- a
+    *segment* assignment -- by being offered and not overruled. That is neither
+    demonstrated nor excluded by this probe, and CP3 does not lean on it. A
+    `ReferringObjects` read returned 0 segment-referenced parser-only analyses,
+    but a zero read that way cannot be distinguished from "not reachable
+    through the wrapper" and is deliberately **not** recorded as a finding;
+    FR-050's projection gets a join written for the purpose (CP3 T091) instead.
 
 ---
 

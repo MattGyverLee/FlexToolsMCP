@@ -1,0 +1,39 @@
+{
+  "project": "Malay Parsing-20230810withHC",
+  "run_id": "27da0795cdc72a1395645c41edc580d7",
+  "words_submitted": 262,
+  "scale_note": "whole lexicon (the largest scope the project offers); killed at ~2/3",
+  "words_total": 262,
+  "words_completed": 175,
+  "readable_lines": 175,
+  "killed_at_word": 175,
+  "final_stage": "failed",
+  "grammar_loads": 1,
+  "urgent_word_seconds": 0.102,
+  "urgent_status": "ok",
+  "urgent_stage": "completed",
+  "mid_run_status": {
+    "stage": "parsing",
+    "words_completed": 52,
+    "interleaved_by": null
+  },
+  "counters": {
+    "NumWords": 175,
+    "NumParseErrors": 1,
+    "NumZeroParses": 10,
+    "TotalParseTime": 942,
+    "TotalAnalyses": 175,
+    "TotalUserApprovedAnalysesMissing": 0,
+    "TotalUserDisapprovedAnalyses": 0,
+    "TotalUserNoOpinionAnalyses": 174
+  },
+  "report_keys": [
+    "clusters",
+    "oracle",
+    "projections",
+    "signals",
+    "words",
+    "words_total"
+  ],
+  "recorded_at": "2026-09-23T04:10:30.488228+00:00"
+}

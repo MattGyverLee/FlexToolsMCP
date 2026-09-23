@@ -1002,6 +1002,9 @@ def detect_interface_attribute_typos(
     Only fires for receivers with a STATICALLY KNOWN interface:
       - an inline cast call: `ILexDb(x).EntriesOC`
       - a Name previously bound by a cast alias: `lexdb = ILexDb(x); lexdb.EntriesOC`
+      - a for-loop target with a non-polymorphic ``element_type`` from the
+        flexicon index (issue #127), e.g. ``for s in project.LexEntry.
+        GetSenses(entry): s.Glosss``
     Untyped receivers (`obj.EntriesOC` with no cast in scope) are left alone --
     there's no interface to check the attribute against, and flagging one
     would require the same return-type inference the casting gate
@@ -1027,7 +1030,13 @@ def detect_interface_attribute_typos(
         return result
 
     assigns, _, bindings = _collect_assign_call_nodes(code_tree)
-    _, cast_aliases = _resolve_alias_maps(assigns + bindings)
+    facade_names = _resolve_facade_names(assigns + bindings, api_index)
+    operations_aliases, cast_aliases = _resolve_alias_maps(
+        assigns + bindings, facade_names, _accessor_to_ops_map(api_index)
+    )
+    loop_element_types = _build_loop_element_types(
+        code_tree, api_index, operations_aliases, facade_names
+    )
     # Issue #97 Bug 2: cast_aliases above is a single whole-function dict, so
     # mutually exclusive if/elif/else branches that cast the SAME variable
     # name to different interfaces collapse onto whichever branch assigned
@@ -1079,6 +1088,13 @@ def detect_interface_attribute_typos(
             fid = node.value.func.id
             if len(fid) >= 2 and fid[0] == "I" and fid[1].isupper():
                 resolved_interfaces = [fid]
+
+        # Issue #127: loop targets with a non-polymorphic element_type are as
+        # statically typed as an explicit cast (e.g. GetSenses -> ILexSense).
+        if not resolved_interfaces and isinstance(node.value, ast.Name):
+            _loop_binding = loop_element_types.get((node.lineno, node.value.id))
+            if _loop_binding is not None and not _loop_binding[1]:
+                resolved_interfaces = [_loop_binding[0]]
 
         if not resolved_interfaces:
             continue
@@ -1488,6 +1504,92 @@ def _first_reassignment_line(
                     if best is None or node.lineno < best:
                         best = node.lineno
     return best
+
+
+def _build_loop_element_types(
+    tree: ast.AST,
+    api_index: Optional[Any],
+    operations_aliases: Dict[str, str],
+    facade_names: Set[str],
+    *,
+    casting_index: Optional[Dict[str, Any]] = None,
+) -> Dict[Tuple[int, str], Tuple[str, bool]]:
+    """(line_num, var_name) -> (element_type, is_polymorphic) for for-loop targets.
+
+    Shared by ``detect_casting_needs`` (issue #121) and
+    ``detect_interface_attribute_typos`` (issue #127).
+    """
+    loop_element_types: Dict[Tuple[int, str], Tuple[str, bool]] = {}
+
+    def _bind_loop_target(
+        target: ast.AST,
+        start_line: int,
+        end_line: int,
+        elem_type: str,
+        poly: bool,
+        body: Optional[List[ast.stmt]] = None,
+    ) -> None:
+        if not isinstance(target, ast.Name):
+            return
+        if body:
+            _reassign_line = _first_reassignment_line(body, target.id, start_line)
+            if _reassign_line is not None:
+                end_line = min(end_line, _reassign_line - 1)
+        for _ln in range(start_line, end_line + 1):
+            loop_element_types[(_ln, target.id)] = (elem_type, poly)
+
+    if api_index is not None:
+        _accessor_to_ops = _accessor_to_ops_map(api_index)
+
+        def _bind_from_call(
+            target: ast.AST,
+            call_node: ast.AST,
+            start: int,
+            end: int,
+            body: Optional[List[ast.stmt]] = None,
+        ) -> None:
+            if not isinstance(call_node, ast.Call) or not isinstance(call_node.func, ast.Attribute):
+                return
+            ops_class = _resolve_receiver_ops_class(
+                call_node.func.value,
+                _accessor_to_ops,
+                operations_aliases,
+                facade_names,
+            )
+            if not ops_class:
+                return
+            found = _method_element_type(api_index, ops_class, call_node.func.attr)
+            if found is None:
+                return
+            elem_type, poly = found
+            _bind_loop_target(target, start, end, elem_type, poly, body=body)
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.For) and node.body:
+                end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
+                _bind_from_call(node.target, node.iter, node.lineno, end_line, body=node.body)
+            elif isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+                end_line = node.end_lineno or node.lineno
+                if node.generators:
+                    gen = node.generators[0]
+                    _bind_from_call(gen.target, gen.iter, node.lineno, end_line)
+
+    if casting_index and isinstance(casting_index, dict):
+        _poly_collections = casting_index.get("polymorphic_collections") or {}
+        if _poly_collections:
+            for node in ast.walk(tree):
+                if not (isinstance(node, ast.For) and isinstance(node.iter, ast.Attribute)):
+                    continue
+                _info = _poly_collections.get(node.iter.attr)
+                if not _info:
+                    continue
+                _base_type = _info.get("base_type")
+                if not _base_type or not node.body:
+                    continue
+                _end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
+                _bind_loop_target(node.target, node.lineno, _end_line, _base_type, True, body=node.body)
+
+    return loop_element_types
 
 
 def detect_candidate_entities(
@@ -5126,108 +5228,13 @@ def detect_casting_needs(
                 continue
             multistring_headed_segments.setdefault(inner.lineno, set()).add(inner.attr)
 
-        # Issue #121 (b): bind for-loop (and simple comprehension) targets
-        # that iterate a flexicon Operations method's return value, or a
-        # known LCM polymorphic-collection property, to the element type the
-        # method/property actually yields -- when the (optional) index
-        # carries that information. This is dataflow in the OPPOSITE
-        # direction from `line_var_cast_types` above: a cast alias means
-        # "this var IS this interface, so access defined on it is safe"; a
-        # polymorphic element_type means "this var is only WEAKLY typed as
-        # this interface, so access NOT defined on it is unsafe, and passing
-        # it to an operation that expects a MORE SPECIFIC interface is
-        # unsafe too." Kept in its own dict (never merged into
-        # line_var_cast_types) so the two senses can never be silently
-        # conflated by a future edit.
-        def _bind_loop_target(
-            target: ast.AST,
-            start_line: int,
-            end_line: int,
-            elem_type: str,
-            poly: bool,
-            body: Optional[List[ast.stmt]] = None,
-        ) -> None:
-            if not isinstance(target, ast.Name):
-                # Tuple targets (`for a, b in ...`) are a known limitation:
-                # we'd need to know WHICH element of the tuple corresponds
-                # to the polymorphic value, which the method record doesn't
-                # currently encode. Skip rather than guess.
-                return
-            # Issue #121 remediation (defect 2): cap the bound range at the
-            # first reassignment of this name within the loop body -- see
-            # `_first_reassignment_line`'s docstring for the full rationale.
-            # `body=None` (comprehensions -- no assignment statements are
-            # possible inside a comprehension expression) leaves end_line
-            # untouched.
-            if body:
-                _reassign_line = _first_reassignment_line(body, target.id, start_line)
-                if _reassign_line is not None:
-                    end_line = min(end_line, _reassign_line - 1)
-            for _ln in range(start_line, end_line + 1):
-                loop_element_types[(_ln, target.id)] = (elem_type, poly)
-
-        if api_index is not None:
-            _accessor_to_ops = _accessor_to_ops_map(api_index)
-
-            def _bind_from_call(
-                target: ast.AST,
-                call_node: ast.AST,
-                start: int,
-                end: int,
-                body: Optional[List[ast.stmt]] = None,
-            ) -> None:
-                if not isinstance(call_node, ast.Call) or not isinstance(call_node.func, ast.Attribute):
-                    return
-                ops_class = _resolve_receiver_ops_class(
-                    call_node.func.value,
-                    _accessor_to_ops,
-                    operations_aliases,
-                    facade_names,
-                )
-                if not ops_class:
-                    return
-                found = _method_element_type(api_index, ops_class, call_node.func.attr)
-                if found is None:
-                    return
-                elem_type, poly = found
-                _bind_loop_target(target, start, end, elem_type, poly, body=body)
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.For) and node.body:
-                    end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
-                    _bind_from_call(node.target, node.iter, node.lineno, end_line, body=node.body)
-                elif isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
-                    # Cheap comprehension cover: only the FIRST `for` clause
-                    # of the comprehension is bound (the common case);
-                    # nested/chained `for`s in one comprehension are a known
-                    # limitation left unhandled rather than special-cased.
-                    end_line = node.end_lineno or node.lineno
-                    if node.generators:
-                        gen = node.generators[0]
-                        _bind_from_call(gen.target, gen.iter, node.lineno, end_line)
-
-        # Issue #121 (f): this data was previously read and discarded
-        # (`casting_index.get("polymorphic_collections", {})` with no use of
-        # the result). Wire it into the SAME loop-target dataflow above --
-        # `for x in obj.SomePolyCollection:` binds `x` to the collection's
-        # `base_type`, polymorphic=True, exactly like the flexicon-method
-        # case. This is a genuinely different source (LCM property chains,
-        # not flexicon Operations methods) so it's kept as its own small
-        # walk rather than folded into `_bind_from_call` above.
-        if casting_index and isinstance(casting_index, dict):
-            _poly_collections = casting_index.get("polymorphic_collections") or {}
-            if _poly_collections:
-                for node in ast.walk(tree):
-                    if not (isinstance(node, ast.For) and isinstance(node.iter, ast.Attribute)):
-                        continue
-                    _info = _poly_collections.get(node.iter.attr)
-                    if not _info:
-                        continue
-                    _base_type = _info.get("base_type")
-                    if not _base_type or not node.body:
-                        continue
-                    _end_line = node.end_lineno or node.body[-1].end_lineno or node.body[-1].lineno
-                    _bind_loop_target(node.target, node.lineno, _end_line, _base_type, True, body=node.body)
+        loop_element_types = _build_loop_element_types(
+            tree,
+            api_index,
+            operations_aliases,
+            facade_names,
+            casting_index=casting_index,
+        )
 
     def _receiver_ifaces_for(ln: int, var: str) -> Set[str]:
         """Interfaces PROVEN safe for `var` at line `ln`: the existing

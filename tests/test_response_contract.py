@@ -494,7 +494,7 @@ class TestParserCheckCP2bCodes:
         expected = [name for name in model.model_fields if name != "error_code"]
         positions = [detail_cell.find(f"`{name}`") for name in expected]
         assert -1 not in positions, (
-            f"{code}'s row omits {[n for n, p in zip(expected, positions) if p < 0]}"
+            f"{code}'s row omits {[n for n, p in zip(expected, positions, strict=True) if p < 0]}"
         )
         assert positions == sorted(positions), (
             f"{code}'s row lists its fields out of the model's order {expected}"

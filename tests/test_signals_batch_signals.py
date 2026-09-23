@@ -15,7 +15,6 @@ Run with:
     python -m pytest tests/test_signals_batch_signals.py -q
 """
 
-import json
 import re
 import sys
 from pathlib import Path

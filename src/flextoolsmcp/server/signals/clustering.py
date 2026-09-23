@@ -97,13 +97,13 @@ class DrillDownBudget:
 def _roots(analysis: Dict[str, Any]) -> List[str]:
     kinds = analysis.get("morph_kinds") or []
     entries = analysis.get("entry_guids") or []
-    return [e for e, k in zip(entries, kinds) if k == "stem" and e]
+    return [e for e, k in zip(entries, kinds, strict=False) if k == "stem" and e]
 
 
 def _categories(analysis: Dict[str, Any]) -> List[str]:
     kinds = analysis.get("morph_kinds") or []
     labels = analysis.get("category_labels") or []
-    return [c for c, k in zip(labels, kinds) if k == "stem" and c]
+    return [c for c, k in zip(labels, kinds, strict=False) if k == "stem" and c]
 
 
 def suspect_words(

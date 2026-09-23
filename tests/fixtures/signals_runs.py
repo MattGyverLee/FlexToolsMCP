@@ -11,7 +11,7 @@ fields `worker_main._structured_analysis` and `_human_analyses` record).
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def parser_analysis(tag, *, glosses=None, kinds=None, entries=None, cats=None, forms=None):

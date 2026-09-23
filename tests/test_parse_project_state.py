@@ -150,7 +150,7 @@ class FakeProject:
         else:
             groups = per_wordform
         wordforms = [FakeWordform("w" + str(i)) for i in range(len(groups))]
-        by_wordform = dict(zip(wordforms, groups))
+        by_wordform = dict(zip(wordforms, groups, strict=True))
         self.Wordforms = FakeWordformOps(wordforms)
         self.WfiAnalyses = FakeWfiAnalysisOps(by_wordform)
 

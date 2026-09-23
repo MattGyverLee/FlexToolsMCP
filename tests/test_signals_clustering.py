@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -77,7 +78,7 @@ def test_the_schema_enforces_the_same_range():
     ParseLogInput(run_id="x", drill_down_cap=10)
     ParseLogInput(run_id="x", drill_down_cap=20)
     for bad in (9, 21):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ParseLogInput(run_id="x", drill_down_cap=bad)
 
 

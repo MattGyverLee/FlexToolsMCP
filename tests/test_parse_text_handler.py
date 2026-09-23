@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -271,14 +272,14 @@ def test_the_filing_argument_is_absent_from_the_schema():
 
 
 def test_a_guessed_filing_argument_is_refused_not_ignored():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ParseTextInput(scope_kind="all_texts", file_results=True)
 
 
 def test_scope_kind_and_value_are_validated_together():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ParseTextInput(scope_kind="genre")
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ParseTextInput(scope_kind="all_texts", scope_value="x")
 
 

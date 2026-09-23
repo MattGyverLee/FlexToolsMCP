@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 """Pytest configuration and shared fixtures."""
 
+import os
 import sys
+import tempfile
 from pathlib import Path
+
 import pytest
 
 # Add src and src/flextoolsmcp to path (shared across all tests).
@@ -15,6 +18,17 @@ if src_path not in sys.path:
     sys.path.insert(0, src_path)
 if pkg_path not in sys.path:
     sys.path.insert(0, pkg_path)
+
+
+def pytest_configure(config):
+    """Isolate logging for the whole test run (issue #173).
+
+    Must run before any test module imports ``kernel.setup_logging``.
+    """
+    if os.environ.get("FLEXTOOLSMCP_LOG_DIR"):
+        return
+    isolated = tempfile.mkdtemp(prefix="flextoolsmcp_pytest_logs_")
+    os.environ["FLEXTOOLSMCP_LOG_DIR"] = isolated
 
 
 @pytest.fixture

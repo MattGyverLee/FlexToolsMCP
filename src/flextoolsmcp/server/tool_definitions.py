@@ -47,6 +47,7 @@ from .models import (
     ParseStatusInput,
     ParseTextInput,
     ParseLogInput,
+    ParseDiffInput,
 )
 
 
@@ -546,6 +547,37 @@ Sections -- exactly these seven:
 
 The only refusal is parse_run_not_found, which names the runs that do exist.""",
         input_model=ParseLogInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_diff": ToolDef(
+        name="flextools_parse_diff",
+        description="""[PARSE] Did my grammar edit help? -- compare two batch runs word by word.
+
+Read-only, and it never touches the parser or the project: both runs are read from
+their records on disk. Parse a scope, edit the grammar, parse the same scope again,
+then compare the two run_ids.
+
+Every word lands in exactly one of four buckets, decided by WHICH analyses it gets,
+never by how many:
+- fixed -- no analyses before, some after.
+- broken -- some before, none after.
+- changed -- parses in both, but the analyses differ. A word going from one analysis
+  to seven is changed: it still parses, and the grammar got looser.
+- unchanged -- the same analyses in both.
+
+Words whose analyses look identical but are built from different lexicon entries are
+reported separately as identity changes -- the lexicon changed, the parse did not.
+
+Refuses with parse_scope_mismatch, naming the fields that differ, when the two runs did
+not parse the same scope (a different genre, a limit, another engine or writing
+system); pass force=true to compare only the words both runs share. A grammar change
+never causes a refusal -- it is what the comparison measures.
+
+If FieldWorks has the project open, the result is marked shared_mode_unverifiable and
+a no-change result becomes no_change_unverifiable: an edit may not be saved to disk
+yet. Save or close the project in FieldWorks and parse again.""",
+        input_model=ParseDiffInput,
         annotations=READ_ONLY_SAFE,
     ),
 

@@ -941,6 +941,24 @@ class ParseLogInput(BaseModel):
     )
 
 
+class ParseDiffInput(BaseModel):
+    """Compare two batch runs (parser-check CP3, US4; FR-012, FR-030).
+
+    Read-only, and it never touches the engine (FR-024): both runs are read
+    from their records on disk.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    baseline_run_id: str = Field(description="The earlier run -- usually the one "
+                                             "before your grammar edit.")
+    current_run_id: str = Field(description="The later run -- usually the one after it.")
+    force: bool = Field(
+        default=False,
+        description="Compare even though the two runs' scopes differ. The comparison "
+                    "then covers only the words both runs share, and says so."
+    )
+
+
 class ResolvedScope(BaseModel):
     """A scope after resolution: a definite, ordered word list (data-model.md s.2).
 

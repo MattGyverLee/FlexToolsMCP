@@ -1385,6 +1385,66 @@ def summarize_trace_xml(xml: str) -> Optional[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# flextools_parse_diff (CP3, US4)
+# ---------------------------------------------------------------------------
+
+
+def _probe_access(project_name: Optional[str]):
+    """The shared-mode probe (FR-034, R-06). Never fails the comparison.
+
+    Reads a lock file's metadata only; it opens no project and does not
+    touch the engine, which is why FR-024 permits it here.
+    """
+    if not project_name:
+        return None
+    try:
+        try:
+            from ..project_access import probe_project_access
+        except (ImportError, ValueError):
+            from server.project_access import probe_project_access
+        return probe_project_access(project_name)
+    except Exception:  # noqa: BLE001 -- an unknown access state is not a failure
+        return None
+
+
+async def handle_flextools_parse_diff(args: dict) -> List[TextContent]:
+    """Compare two runs: fixed, broken, changed, unchanged (FR-030).
+
+    Read-only. Reads two run records; never reaches a worker or the engine
+    check (FR-024).
+    """
+    from ..parse.diff import RunNotComparable, compare_runs
+    from ..parse.fingerprint import ScopeMismatch
+
+    baseline_id = str(args.get("baseline_run_id") or "")
+    current_id = str(args.get("current_run_id") or "")
+    force = bool(args.get("force"))
+
+    baseline = _log_record(baseline_id)
+    if baseline is None:
+        return _run_not_found(baseline_id)
+    current = _log_record(current_id)
+    if current is None:
+        return _run_not_found(current_id)
+
+    current_meta = current.read_meta()
+    access = _probe_access(current_meta.project_name if current_meta else None)
+
+    try:
+        comparison = compare_runs(baseline, current, force=force, access=access)
+    except ScopeMismatch as refused:
+        detail = dict(refused.detail)
+        detail.pop("error_code", None)
+        return error_response("parse_scope_mismatch", detail.get("hint") or str(refused), **detail)
+    except RunNotComparable as exc:
+        return error_response("runtime_error", str(exc), reason="not_a_batch_run")
+
+    result: Dict[str, Any] = {"status": "ok"}
+    result.update(comparison.to_dict())
+    return json_response(build_response_with_context(result))
+
+
+# ---------------------------------------------------------------------------
 # flextools_parse_status
 # ---------------------------------------------------------------------------
 

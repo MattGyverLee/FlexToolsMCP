@@ -98,6 +98,7 @@ EXPECTED_TOOL_NAMES = [
     # (FR-025, D-1) -- so it is in DESTRUCTIVE_TOOLS below, not READ_ONLY.
     "flextools_parse_text",
     "flextools_parse_log",
+    "flextools_parse_diff",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)
@@ -126,6 +127,7 @@ READ_ONLY_TOOLS = [
     "flextools_try_word",
     "flextools_parse_status",
     "flextools_parse_log",
+    "flextools_parse_diff",
 ]
 
 # Tools that should be marked destructiveHint=True

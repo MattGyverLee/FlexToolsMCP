@@ -39,6 +39,7 @@ from .models import (
     ParseStatusInput,
     ParseTextInput,
     ParseLogInput,
+    ParseDiffInput,
 )
 
 # ============================================================
@@ -95,6 +96,7 @@ TOOL_PARSE_STATUS = "flextools_parse_status"
 # Parse tools (parser-check CP3)
 TOOL_PARSE_TEXT = "flextools_parse_text"
 TOOL_PARSE_LOG = "flextools_parse_log"
+TOOL_PARSE_DIFF = "flextools_parse_diff"
 
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
@@ -124,6 +126,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_PARSE_STATUS,
     TOOL_PARSE_TEXT,
     TOOL_PARSE_LOG,
+    TOOL_PARSE_DIFF,
 ])
 
 # Import all handler functions
@@ -176,6 +179,7 @@ def _import_handlers():
             handle_flextools_parse_status,
             handle_flextools_parse_text,
             handle_flextools_parse_log,
+            handle_flextools_parse_diff,
         )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
@@ -224,6 +228,7 @@ def _import_handlers():
             handle_flextools_parse_status,
             handle_flextools_parse_text,
             handle_flextools_parse_log,
+            handle_flextools_parse_diff,
         )
 
     return {
@@ -253,6 +258,7 @@ def _import_handlers():
         "handle_flextools_parse_status": handle_flextools_parse_status,
         "handle_flextools_parse_text": handle_flextools_parse_text,
         "handle_flextools_parse_log": handle_flextools_parse_log,
+        "handle_flextools_parse_diff": handle_flextools_parse_diff,
     }
 
 
@@ -283,6 +289,7 @@ handle_flextools_try_word = _handlers["handle_flextools_try_word"]
 handle_flextools_parse_status = _handlers["handle_flextools_parse_status"]
 handle_flextools_parse_text = _handlers["handle_flextools_parse_text"]
 handle_flextools_parse_log = _handlers["handle_flextools_parse_log"]
+handle_flextools_parse_diff = _handlers["handle_flextools_parse_diff"]
 
 
 # Type alias for tool handlers
@@ -344,6 +351,7 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Parse tools (parser-check CP3)
     TOOL_PARSE_TEXT: (handle_flextools_parse_text, ParseTextInput),
     TOOL_PARSE_LOG: (handle_flextools_parse_log, ParseLogInput),
+    TOOL_PARSE_DIFF: (handle_flextools_parse_diff, ParseDiffInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

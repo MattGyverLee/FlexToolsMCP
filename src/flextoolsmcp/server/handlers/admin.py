@@ -567,15 +567,13 @@ async def handle_start(args: dict) -> list[TextContent]:
         _resolve_inherited_flag("write_enabled", args, user_provided, same_project)
     )
 
-    # Build API versions dict from current APIIndex (more Pythonic)
-    api_versions = {}
-    if get_api_index():
-        if get_api_index().liblcm_version:
-            api_versions["liblcm"] = get_api_index().liblcm_version
-        if get_api_index().flexicon_version:
-            api_versions["flexicon"] = get_api_index().flexicon_version
-        if get_api_index().flexlibs_stable_version:
-            api_versions["flexlibs_stable"] = get_api_index().flexlibs_stable_version
+    # Installed vs index-loaded snapshot (issue #149) -- not APIIndex.*_version,
+    # which is the index file label and misreports under fallback_latest.
+    try:
+        from .diagnostic_health import build_session_api_versions
+    except ImportError:
+        from server.handlers.diagnostic_health import build_session_api_versions
+    api_versions = build_session_api_versions()
 
     # Let configure() own session identity.  Passing project_name lets it
     # detect genuine project changes (new session boundary) vs re-starts on

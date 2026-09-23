@@ -175,6 +175,16 @@ def _build_libraries_block(index_dir: Path) -> Dict[str, Dict[str, Any]]:
     return libraries
 
 
+def build_session_api_versions() -> Dict[str, Dict[str, Any]]:
+    """Installed vs index-loaded versions for session state (issue #149).
+
+    Uses the same ``compute_library_match`` path as ``flextools_health`` so
+    ``fallback_latest`` is explicit instead of replaying index-file versions
+    as if they were the installed library.
+    """
+    return _build_libraries_block(get_index_dir())
+
+
 def _build_fieldworks_block() -> Dict[str, Any]:
     """FieldWorks install detection + on-disk LibLCM version (server.py doesn't
     have this loaded into the CLR until a project is open, so we read the DLL

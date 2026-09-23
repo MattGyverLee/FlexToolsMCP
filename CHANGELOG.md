@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **`flextools_start` `api_versions` misreported index-file versions as installed
+  libraries under `fallback_latest`** ([#149](https://github.com/MattGyverLee/FlexToolsMCP/issues/149)).
+  Session state and the start response now carry the same
+  `{installed, index_loaded, match}` snapshot as `flextools_health`.
 - **`reset_session()` rebinding orphaned handler references (#171).** Session reset
   now mutates the existing `SessionState` singleton via `SessionState.reset()` so
   every module that imported `session_state` at load time observes the reset. The

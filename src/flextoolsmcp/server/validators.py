@@ -509,11 +509,15 @@ def detect_partial_module_structure(code: str, code_tree: Optional[ast.AST] = No
 # under `undoable=True`, `OpenProject()` opens no session-long envelope
 # BECAUSE each mutation opens its own named task instead
 # (flexicon's FLExProject.py: `writeEnabled and self._undoable` branch) --
-# nothing raises. On flexicon <=4.3.0 (no capability token), the legacy
-# path still holds: `writeEnabled and not _undoable` calls
+# nothing raises. On builds without the capability token (CAPABILITIES
+# missing or lacking "per-operation-uow"), the legacy path still holds:
+# `writeEnabled and not _undoable` calls
 # `MainCacheAccessor.BeginNonUndoableTask()` once at OpenProject() and
 # `EndNonUndoableTask()` once at CloseProject(), giving ONE non-undoable
-# UnitOfWork open for the whole session.
+# UnitOfWork open for the whole session. Under the declared pyflexicon
+# floor that branch is unreachable; it remains as defence-in-depth for
+# unsupported installs and is surfaced on the run_module response
+# (issue #153) so the degradation is never silent.
 #
 # Either way, a user script that opens its OWN raw UnitOfWork --
 # UndoableUnitOfWorkHelper / NonUndoableUnitOfWorkHelper (constructor or

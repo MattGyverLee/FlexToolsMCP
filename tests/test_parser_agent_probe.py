@@ -158,10 +158,17 @@ def _get_real_key_not_found_exception_type():
     """Return the real .NET ``System.Collections.Generic.KeyNotFoundException``
     type via pythonnet, skipping (not erroring) if no CLR runtime is
     available. See module docstring's "Fidelity choice" note for why a
-    plain Python stand-in is not used instead."""
-    clr = pytest.importorskip(
-        "clr", reason="requires pythonnet's CLR bridge to construct the real .NET KeyNotFoundException"
-    )
+    plain Python stand-in is not used instead.
+
+    ``pytest.importorskip("clr")`` is not enough: pythonnet is installed on
+    Linux CI (hard dependency), so the import succeeds at the package level
+    but then raises ``RuntimeError: Could not find libmono`` when it tries
+    to create a default .NET runtime. Catch that here and skip cleanly.
+    """
+    try:
+        import clr  # type: ignore
+    except Exception as exc:  # ImportError *or* RuntimeError (no mono/coreclr)
+        pytest.skip(f"CLR runtime unavailable: {exc}")
     try:
         clr.AddReference("mscorlib")
         from System.Collections.Generic import KeyNotFoundException

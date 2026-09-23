@@ -186,6 +186,22 @@ These fields are defined in `RunModuleSuccess` (`response_models.py`) with
 aliases matching the key strings above. The `_inline_discovery` alias uses the
 `KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
 
+### UoW mode flags (issue #153)
+
+Every executed `run_module` response whose runner reached the OpenProject-time
+capability probe also carries:
+
+| Key | Type | Description |
+|---|---|---|
+| `undoable` | bool | The `OpenProject(undoable=...)` mode the runner actually chose after probing `flexicon.CAPABILITIES` for `"per-operation-uow"`. |
+| `timestamps_updated` | bool | Whether DateModified stamping is active for mutations in this session. Same value as `undoable` today (stamping rides the undoable path). |
+
+Under the declared `pyflexicon` floor both are `true`. A `false` value means
+an unsupported install silently would have degraded to the legacy
+non-undoable session envelope; the flags (and a `report.Warning`) make that
+defence-in-depth fallback visible instead of silent. Absent only when the
+subprocess never reached the probe (e.g. failed before OpenProject setup).
+
 ---
 
 ## Read-only casting severity downgrade (`run_module`, issue #40 B-1)

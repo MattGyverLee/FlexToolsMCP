@@ -777,12 +777,18 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
 
 
 def reset_session() -> None:
-    """Reset session state for a new session.
+    """Reset session state for tests and tooling.
 
-    Called by the 'start' tool to begin a new session.
+    Mutates the existing ``SessionState`` in place so every module that
+    imported ``session_state`` at load time observes the reset. Production
+    session boundaries go through ``SessionState.configure()``, not this
+    function (see issue #171).
     """
     global session_state
-    session_state = SessionState()
+    if session_state is None:
+        session_state = SessionState()
+    else:
+        session_state.reset()
     if operations_logger:
         operations_logger.info("Session state reset")
 

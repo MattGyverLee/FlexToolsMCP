@@ -317,11 +317,40 @@ class TestPreflightIsWiredIn(unittest.TestCase):
 
 class TestPreflightFailurePaths(unittest.TestCase):
 
+    def test_fieldworks_missing_is_not_reported_as_missing_package(self):
+        """Issue #132: pyflexicon installed but FieldWorks absent.
+
+        That failure is a bare Exception at import time, not ImportError. The
+        pre-flight must not send the user to ``pip install pyflexicon``.
+        """
+        ns = _load_namespace()
+        ns["_flexicon"] = None
+        ns["FLExProject"] = None
+        ns["_FLEXICON_IMPORT_ERROR"] = None
+        ns["_FLEXICON_LOAD_ERROR"] = "64bit FieldWorks 9 not found"
+
+        report = _FakeReport()
+        result = ns["_flexicon_preflight"](report)
+
+        self.assertFalse(result)
+        text = report.text
+        self.assertIn("64bit FieldWorks 9 not found", text)
+        self.assertIn("FieldWorks", text)
+        self.assertNotIn(
+            "pip install pyflexicon", text,
+            "The package is installed; pip is the wrong remedy. Got:\n%s" % text,
+        )
+        self.assertNotIn(
+            "which is not installed", text,
+            "Must not claim flexicon is missing. Got:\n%s" % text,
+        )
+
     def test_t4_2a_not_installed_names_the_install_command_and_quotes_the_error(self):
         ns = _load_namespace()
         ns["_flexicon"] = None
         ns["FLExProject"] = None
         ns["_FLEXICON_IMPORT_ERROR"] = "No module named 'flexicon'"
+        ns["_FLEXICON_LOAD_ERROR"] = None
 
         report = _FakeReport()
         result = ns["_flexicon_preflight"](report)
@@ -442,12 +471,20 @@ class TestPreflightFailurePaths(unittest.TestCase):
         package_try = head.index("try:\n    import flexicon as _flexicon\n")
         symbol_import = head.index("from flexicon import (")
         handler = head.index("except ImportError as _import_error:")
+        load_handler = head.index("except Exception as _load_error:")
         self.assertLess(
             handler, symbol_import,
             "The missing-package handler must close BEFORE the `from flexicon "
             "import (...)` list, or a bad name lands in it again.",
         )
+        self.assertLess(load_handler, symbol_import)
         self.assertLess(package_try, handler)
+
+    def test_template_captures_non_importerror_on_package_import(self):
+        """Structural guard for issue #132."""
+        src = _template_source()
+        self.assertIn("_FLEXICON_LOAD_ERROR", src)
+        self.assertIn("except Exception as _load_error:", src)
 
     def test_t4_2b_too_old_names_the_upgrade_command_and_the_version_found(self):
         ns = _load_namespace()

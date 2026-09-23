@@ -802,7 +802,7 @@ is unverified and FR-033 specifies the fallback.
 
 ### D-3 -- The scope fingerprint's field set
 
-**Decision**: the seven fields of FR-010, with grammar state deliberately excluded and the
+**Decision**: the eight fields of FR-010, with grammar state deliberately excluded and the
 load-error baseline carried *beside* the fingerprint rather than inside it. Requirements FR-010,
 FR-011, FR-023.
 

@@ -73,7 +73,14 @@ Persisted as `words.txt`, one word per line, UTF-8, NFC, in resolved order.
 ## 3. ScopeFingerprint
 
 The durable description of a resolved scope, sufficient to decide whether two
-runs are comparable. Exactly seven fields (FR-010, D-3):
+runs are comparable. Exactly eight fields (FR-010, D-3):
+
+> **Count corrected during implementation (T012/T020).** This section, the
+> Key design decisions entry in `spec.md`, and tasks T020/T027 all said
+> "seven" while every field *list* -- here, in FR-010, and in both tasks --
+> named the same eight. The miscount reads `limit` and `truncated` as one
+> item; FR-010 spells them as "the limit and truncation flag". The
+> enumeration is authoritative and is unchanged; only the count moved.
 
 | Field | Type | Why it is in |
 |---|---|---|

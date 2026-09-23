@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
+  For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
+  ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute
+  typos the same way as explicit cast aliases.
 - **`unprotected_writes` rejected the early-return guard idiom** ([#139](https://github.com/MattGyverLee/FlexToolsMCP/issues/139)).
   ``if not modifyAllowed: ...; return`` followed by writes is now treated as
   equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection

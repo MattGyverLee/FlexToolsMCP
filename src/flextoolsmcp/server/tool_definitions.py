@@ -45,6 +45,7 @@ from .models import (
     GrammarHealthInput,
     TryWordInput,
     ParseStatusInput,
+    ParseTextInput,
 )
 
 
@@ -518,6 +519,54 @@ urgent single word does not look stalled.
 The only refusal is parse_run_not_found, which names the handles that do exist.""",
         input_model=ParseStatusInput,
         annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_text": ToolDef(
+        name="flextools_parse_text",
+        description="""[PARSE] In-process batch spine -- parse a corpus scope; filing results into the project is not yet reachable.
+
+Resolves a scope (all texts, a genre, one text, or an explicit word list) to a
+definite, de-duplicated word list -- ordered by descending occurrence, then
+alphabetically, with any limit applied after ordering -- and parses every word
+on the project's HermitCrab grammar as a background batch. Returns a run_id at
+once; poll it with flextools_parse_status.
+
+WHY THIS TOOL IS MARKED DESTRUCTIVE. It is annotated at its designed maximum
+capability, which includes filing parser analyses into the project. That
+capability ships in a later release and is NOT reachable today: there is no
+argument that enables it, the project is opened read-only, and nothing on this
+path writes to FieldWorks. The annotation is set now so it never has to change.
+
+What the run leaves behind, readable without reopening the project: the word
+list, one result line per word written as each word completes (a run killed at
+word 4,000 leaves 4,000 readable), and a run record carrying the scope
+fingerprint, the engine at submission, and the host parser report's counters.
+The fingerprint decides whether two runs may be compared; it deliberately says
+nothing about the grammar, because a grammar edit is what a comparison measures.
+
+Single words from flextools_try_word overtake a running batch at its next word
+and use the same loaded grammar; the batch resumes where it was, and its status
+names the run it is waiting on.
+
+Refuses with parser_engine_mismatch before anything else happens when the project's
+active parser is not HermitCrab; with parse_scope_empty when nothing matched; and
+with parse_scope_ambiguous when a genre or text name matched more than one, naming
+every candidate. Genre and text names are matched in the default analysis writing
+system. Nothing parses in any refused case.""",
+        input_model=ParseTextInput,
+        # D-1 / FR-025: the designed maximum capability, from the first
+        # release, UNCHANGED at CP4. A capability annotation is cached by
+        # hosts and read by calling models, so flipping it later would be a
+        # caller-visible contract event for a tool whose name did not change.
+        # CP3 ships no write path at all; the description's first line says
+        # filing is not yet reachable. Recorded as "not overturned" in
+        # specs/parser-check-cp3/plan.md, "Open maintainer decision".
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=False,
+        ),
     ),
 
     "flextools_get_wrapper_dependencies": ToolDef(

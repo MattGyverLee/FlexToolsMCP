@@ -565,3 +565,18 @@ def test_scope_module_does_not_call_the_first_genre_only_read():
     assert "GetGenre(" not in source, (
         "GetGenre returns only the FIRST genre (FR-006). Use GetGenres."
     )
+
+
+def test_a_texts_durable_id_is_its_guid_and_never_its_session_hvo():
+    """What the fingerprint records for a text (issue #103)."""
+    from flextoolsmcp.server.parse.scope import _durable_id
+
+    class WithGuid:
+        Hvo = 5
+        Guid = "ABCD-1234"
+
+    class WithoutGuid:
+        Hvo = 5
+
+    assert _durable_id(WithGuid()) == "abcd-1234"
+    assert _durable_id(WithoutGuid()) == "5"

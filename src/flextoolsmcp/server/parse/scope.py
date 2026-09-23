@@ -102,6 +102,19 @@ def _hvo(obj: Any) -> int:
     return int(obj.Hvo)
 
 
+def _durable_id(obj: Any) -> str:
+    """A text's GUID, lowercased; its hvo as text only if it has no GUID.
+
+    The GUID is what the fingerprint records: hvos are renumbered on every
+    cache load (issue #103), so an hvo-keyed fingerprint would make a
+    baseline from yesterday's session refuse to compare with today's. The
+    hvo fallback exists for objects that carry no GUID (test doubles); it is
+    never mixed with GUIDs from a real project, which always has them.
+    """
+    guid = getattr(obj, "Guid", None)
+    return str(guid).lower() if guid is not None else str(_hvo(obj))
+
+
 def _ws_tag(pair: Any, fallback: str) -> str:
     """First element of a flexicon ``(language-tag, name)`` pair."""
     try:
@@ -378,6 +391,7 @@ def resolve_scope(project: Any, scope: ParseScope) -> ResolvedScope:
         scope_kind=scope.kind,
         scope_value=scope_value,
         text_ids=[_hvo(t) for t in texts],
+        text_guids=[_durable_id(t) for t in texts],
         words=words,
         count_before_limit=total,
         limit=scope.limit,

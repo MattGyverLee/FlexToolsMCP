@@ -37,6 +37,7 @@ from .models import (
     GrammarHealthInput,
     TryWordInput,
     ParseStatusInput,
+    ParseTextInput,
 )
 
 # ============================================================
@@ -90,6 +91,9 @@ TOOL_GRAMMAR_HEALTH = "flextools_grammar_health"
 TOOL_TRY_WORD = "flextools_try_word"
 TOOL_PARSE_STATUS = "flextools_parse_status"
 
+# Parse tools (parser-check CP3)
+TOOL_PARSE_TEXT = "flextools_parse_text"
+
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
@@ -116,6 +120,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_GRAMMAR_HEALTH,
     TOOL_TRY_WORD,
     TOOL_PARSE_STATUS,
+    TOOL_PARSE_TEXT,
 ])
 
 # Import all handler functions
@@ -166,6 +171,7 @@ def _import_handlers():
         from .handlers.parse import (
             handle_flextools_try_word,
             handle_flextools_parse_status,
+            handle_flextools_parse_text,
         )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
@@ -212,6 +218,7 @@ def _import_handlers():
         from server.handlers.parse import (
             handle_flextools_try_word,
             handle_flextools_parse_status,
+            handle_flextools_parse_text,
         )
 
     return {
@@ -239,6 +246,7 @@ def _import_handlers():
         "handle_flextools_grammar_health": handle_flextools_grammar_health,
         "handle_flextools_try_word": handle_flextools_try_word,
         "handle_flextools_parse_status": handle_flextools_parse_status,
+        "handle_flextools_parse_text": handle_flextools_parse_text,
     }
 
 
@@ -267,6 +275,7 @@ handle_flextools_health = _handlers["handle_flextools_health"]
 handle_flextools_grammar_health = _handlers["handle_flextools_grammar_health"]
 handle_flextools_try_word = _handlers["handle_flextools_try_word"]
 handle_flextools_parse_status = _handlers["handle_flextools_parse_status"]
+handle_flextools_parse_text = _handlers["handle_flextools_parse_text"]
 
 
 # Type alias for tool handlers
@@ -324,6 +333,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     # Parse tools (parser-check CP2b)
     TOOL_TRY_WORD: (handle_flextools_try_word, TryWordInput),
     TOOL_PARSE_STATUS: (handle_flextools_parse_status, ParseStatusInput),
+
+    # Parse tools (parser-check CP3)
+    TOOL_PARSE_TEXT: (handle_flextools_parse_text, ParseTextInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

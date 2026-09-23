@@ -12,7 +12,21 @@ LAYOUT, following `server/skeleton_storage.py` (R-07):
     <record dir>/<run_id>/
         meta.json        # the Run's current state, REWRITTEN on stage change
         results.jsonl    # one line per completed word, APPENDED and flushed
+        words.txt        # the resolved word list (CP3) -- written once, at creation
         traces/<n>.xml   # trace payloads, out of line
+
+This is the frozen artifact contract CP4 and CP5 read
+(specs/parser-check-cp3/contracts/artifact.md). `words.txt` is the only file
+CP3 added; nothing else is created, and in particular no sandbox-spine file is
+written or created empty (FR-015) -- that spine is CP5's.
+
+WHY THE HOST COUNTERS LIVE HERE. `HostCounters` is computed from nothing but
+the result lines this module already holds, so a run's counters are a pure
+function of its own record: a reader that recomputes them from
+`results.jsonl` gets the same numbers the run wrote, with no project open.
+The two counters whose meaning deliberately differs from the host
+application's are stated in `meta.json` itself (`counter_divergences`), not
+only in the specification -- a reader of the artifact never sees the spec.
 
 WHY meta IS REWRITTEN AND results ARE APPENDED. `meta.json` is current
 state; `results.jsonl` is history. Folding the two into one appended file
@@ -54,16 +68,21 @@ import json
 import os
 import re
 import secrets
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Any, Iterator, Optional
+from typing import Any, Iterable, Iterator, Optional
 
 from .stages import RunStage
 
 __all__ = [
     "RunRecord",
+    "RunMeta",
+    "HostCounters",
+    "HOST_COUNTER_NAMES",
+    "COUNTER_DIVERGENCES",
     "RecordSizeExceeded",
     "InvalidRunId",
     "get_record_dir",
@@ -78,6 +97,7 @@ _RECORDS_SUBDIR = "parse-runs"
 
 _META_FILENAME = "meta.json"
 _RESULTS_FILENAME = "results.jsonl"
+_WORDS_FILENAME = "words.txt"
 _TRACES_DIRNAME = "traces"
 
 #: Default cap on a single run's on-disk footprint. Generous enough that a
@@ -165,6 +185,142 @@ def list_run_ids() -> list[str]:
     return [p.name for p in entries]
 
 
+# ---------------------------------------------------------------------------
+# The host application's parser-report counters (CP3, FR-017..FR-019)
+# ---------------------------------------------------------------------------
+
+#: The eight names, VERBATIM from the host application's `ParserReport`
+#: (FieldWorks `ParserCore/ParserReport.cs`) and from contracts/tools.md
+#: section 4. Transcribed, not re-derived.
+HOST_COUNTER_NAMES: tuple[str, ...] = (
+    "NumWords",
+    "NumParseErrors",
+    "NumZeroParses",
+    "TotalParseTime",
+    "TotalAnalyses",
+    "TotalUserApprovedAnalysesMissing",
+    "TotalUserDisapprovedAnalyses",
+    "TotalUserNoOpinionAnalyses",
+)
+
+#: The two deliberate divergences from the host's semantics, stated IN THE
+#: ARTIFACT (FR-017). Each line names the counter it qualifies first, so a
+#: reader can find the qualification from the name.
+COUNTER_DIVERGENCES: tuple[str, ...] = (
+    "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved "
+    "analyses (every morph bundle present and complete) that the parser did "
+    "not produce. The host application counts every human-approved analysis; "
+    "an analysis that records a meaning but no decomposition, or one whose "
+    "morphs are not all linked, has no morphology the parser could have "
+    "produced, so counting it as 'missing' would report a gap in the human "
+    "record as a parser failure.",
+    "TotalUserNoOpinionAnalyses: the number of parser analyses that match no "
+    "stored human opinion. It is NOT a count of unreviewed analyses: a human "
+    "may have seen an analysis and recorded nothing, and approval is recorded "
+    "for anything left in use in a text, so absence of an opinion says nothing "
+    "about whether a person looked. What human review established is reported "
+    "as the affirmed/indeterminate split of human approvals, never by this "
+    "counter.",
+)
+
+
+@dataclass
+class HostCounters:
+    """The host's eight counters, computed from a run's own result lines.
+
+    SEMANTICS FOLLOW `ParseReport(IWfiWordform, ParseResult)` exactly, word
+    by word, with the two stated divergences:
+
+      * NumParseErrors -- words whose parse reported an error message.
+      * NumZeroParses  -- words with zero analyses (an error word counts here
+                          too, as it does in the host: its analysis list is
+                          empty).
+      * TotalParseTime -- milliseconds, summed.
+      * TotalUserDisapprovedAnalyses -- parser analyses matching a human
+        analysis the human disapproved. Matching is signature equality, the
+        durable form of the host's `MatchesIWfiAnalysis`.
+      * TotalUserApprovedAnalysesMissing -- see COUNTER_DIVERGENCES[0].
+      * TotalUserNoOpinionAnalyses -- see COUNTER_DIVERGENCES[1].
+
+    Result lines that carry no `analyses` key -- a CP2b single-word run, or a
+    word the run recorded as a per-word error -- contribute to NumWords and
+    NumParseErrors only. Nothing about them is guessed.
+    """
+
+    NumWords: int = 0
+    NumParseErrors: int = 0
+    NumZeroParses: int = 0
+    TotalParseTime: int = 0
+    TotalAnalyses: int = 0
+    TotalUserApprovedAnalysesMissing: int = 0
+    TotalUserDisapprovedAnalyses: int = 0
+    TotalUserNoOpinionAnalyses: int = 0
+
+    def to_dict(self) -> dict[str, int]:
+        return {name: getattr(self, name) for name in HOST_COUNTER_NAMES}
+
+    @classmethod
+    def from_results(cls, results: Iterable[dict[str, Any]]) -> "HostCounters":
+        counters = cls()
+        for line in results:
+            counters._add(line)
+        return counters
+
+    def _add(self, line: dict[str, Any]) -> None:
+        self.NumWords += 1
+        parse = line.get("parse") or {}
+        if line.get("error") is not None or parse.get("error_message"):
+            self.NumParseErrors += 1
+        analyses = parse.get("analyses")
+        if analyses is None:
+            return
+        self.TotalParseTime += int(parse.get("parse_time_ms") or 0)
+        self.TotalAnalyses += len(analyses)
+        if not analyses:
+            self.NumZeroParses += 1
+
+        human = parse.get("human_analyses") or []
+        produced = {_signature_key(a) for a in analyses}
+
+        for record in human:
+            if (
+                record.get("opinion") == "approves"
+                and _fully_linked(record)
+                and _signature_key(record) not in produced
+            ):
+                self.TotalUserApprovedAnalysesMissing += 1
+
+        for analysis in analyses:
+            key = _signature_key(analysis)
+            opinion = "noopinion"
+            for record in human:
+                if _signature_key(record) != key:
+                    continue
+                if record.get("opinion") == "disapproves":
+                    opinion = "disapproves"
+                elif record.get("opinion") == "approves" and opinion != "disapproves":
+                    opinion = "approves"
+            if opinion == "disapproves":
+                self.TotalUserDisapprovedAnalyses += 1
+            elif opinion == "noopinion":
+                self.TotalUserNoOpinionAnalyses += 1
+
+
+def _signature_key(analysis: dict[str, Any]) -> tuple:
+    """The durable signature as a hashable key: ordered identifier triples."""
+    return tuple(tuple(triple) for triple in analysis.get("signature") or ())
+
+
+def _fully_linked(record: dict[str, Any]) -> bool:
+    """A human analysis the parser could have produced (FR-018).
+
+    From the public per-bundle completeness flag plus the bundle count, as
+    the worker recorded them -- never a reimplemented predicate (FR-038).
+    """
+    count = int(record.get("bundle_count") or 0)
+    return count > 0 and int(record.get("complete_bundle_count") or 0) == count
+
+
 @dataclass
 class RunMeta:
     """The Run's current state. Rewritten whole on every stage change."""
@@ -182,6 +338,29 @@ class RunMeta:
     interleaved_by: Optional[str] = None
     failure: Optional[dict[str, Any]] = None
     stage_at_cancel: Optional[str] = None
+
+    # -- CP3 additions (contracts/artifact.md section 3). Additive only:
+    # every field above is unchanged, and a CP2b record reads back with
+    # these at their defaults.
+
+    #: The eight-field `ScopeFingerprint.to_dict()`. None for a single-word
+    #: run, which has no scope.
+    scope_fingerprint: Optional[dict[str, Any]] = None
+    #: The engine recorded when the run was submitted. Results are labelled
+    #: with this one even if the project's active parser changes later.
+    engine_at_submission: Optional[str] = None
+    #: A WARNING, never a refusal (FR-024): the active parser changed while
+    #: the run was going.
+    engine_changed_midjob: bool = False
+    #: Captured at this server's own grammar load, keyed to the fingerprint
+    #: and stored BESIDE it, never inside it (FR-023, D-3).
+    load_error_baseline: Optional[dict[str, Any]] = None
+    #: `HostCounters.to_dict()`, refreshed as the run progresses.
+    counters: Optional[dict[str, int]] = None
+    #: The divergence statements, in the artifact itself (FR-017).
+    counter_divergences: Optional[list[str]] = None
+    #: Relative path of the word list inside the run directory.
+    words_path: Optional[str] = None
 
 
 class RunRecord:
@@ -222,6 +401,10 @@ class RunRecord:
     def traces_dir(self) -> Path:
         return self._root / _TRACES_DIRNAME
 
+    @property
+    def words_path(self) -> Path:
+        return self._root / _WORDS_FILENAME
+
     # -- lifecycle --------------------------------------------------------
 
     @classmethod
@@ -232,16 +415,35 @@ class RunRecord:
         words_total: int = 0,
         max_bytes: Optional[int] = None,
         record_dir: Optional[Path] = None,
+        words: Optional[list[str]] = None,
+        scope_fingerprint: Optional[dict[str, Any]] = None,
+        engine_at_submission: Optional[str] = None,
     ) -> "RunRecord":
-        """Mint a run id and open its record at stage `starting`."""
+        """Mint a run id and open its record at stage `starting`.
+
+        `words` -- a batch's resolved word list -- is written to `words.txt`
+        BEFORE the first `meta.json`, so a record whose meta names a word list
+        always has one. A single-word run passes none and gets no file: an
+        empty `words.txt` would read as "this run resolved to no words".
+        """
         record = cls(new_run_id(), max_bytes=max_bytes, record_dir=record_dir)
         record._root.mkdir(parents=True, exist_ok=True)
+        words_path = None
+        if words is not None:
+            record.write_words(words)
+            words_path = _WORDS_FILENAME
+        batch = scope_fingerprint is not None
         record.write_meta(
             RunMeta(
                 run_id=record.run_id,
                 stage=RunStage.STARTING.value,
                 project_name=project_name,
                 words_total=words_total,
+                scope_fingerprint=scope_fingerprint,
+                engine_at_submission=engine_at_submission,
+                counters=HostCounters().to_dict() if batch else None,
+                counter_divergences=list(COUNTER_DIVERGENCES) if batch else None,
+                words_path=words_path,
             )
         )
         return record
@@ -329,6 +531,38 @@ class RunRecord:
 
     def result_count(self) -> int:
         return sum(1 for _ in self.iter_results())
+
+    # -- the word list ----------------------------------------------------
+
+    def write_words(self, words: Iterable[str]) -> None:
+        """Write `words.txt`: UTF-8, NFC, one word per line, in given order.
+
+        Order is the resolved order (descending occurrence, then
+        alphabetical, truncated after ordering -- scope.py), and it is kept
+        exactly: a reader comparing two runs by position relies on it.
+        A word containing a line break would silently become two words, so
+        it is refused rather than written.
+        """
+        lines = []
+        for word in words:
+            text = unicodedata.normalize("NFC", str(word))
+            if "\n" in text or "\r" in text:
+                raise ValueError(f"A word may not contain a line break: {text!r}")
+            lines.append(text)
+        payload = "".join(line + "\n" for line in lines)
+        with _WRITE_LOCK:
+            self._root.mkdir(parents=True, exist_ok=True)
+            with open(self.words_path, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+    def read_words(self) -> Optional[list[str]]:
+        """The word list, or None when this run has none (a single word)."""
+        if not self.words_path.is_file():
+            return None
+        text = self.words_path.read_text(encoding="utf-8")
+        return [line for line in text.split("\n") if line]
 
     # -- traces -----------------------------------------------------------
 

@@ -205,3 +205,31 @@ def test_fingerprint_module_mentions_no_grammar_reader():
     source = Path(fp_mod.__file__).read_text(encoding="utf-8")
     for reader in ("HCParser", "GetGrammar", "PhonologicalData", "MorphologicalData"):
         assert reader not in source
+
+
+# ---------------------------------------------------------------------------
+# Durable text identity (issue #103): the fingerprint records GUIDs, so a
+# cache reload that renumbers hvos does not make two runs incomparable
+# ---------------------------------------------------------------------------
+
+
+def test_the_fingerprint_records_text_guids_not_session_hvos():
+    today = _fp(text_ids=[10, 11], text_guids=["guid-b", "guid-a"])
+    tomorrow = _fp(text_ids=[512, 513], text_guids=["guid-a", "guid-b"])
+    assert today == tomorrow, "renumbered hvos must not break comparability"
+    assert today.text_ids == ("guid-a", "guid-b")
+
+
+def test_different_texts_are_still_a_difference():
+    fields = differing_fields(
+        _fp(text_guids=["guid-a"]), _fp(text_guids=["guid-a", "guid-c"])
+    )
+    assert fields == ["text_ids"]
+
+
+def test_a_fingerprint_round_trips_through_meta_json_with_guids():
+    import json
+
+    original = _fp(text_guids=["guid-b", "guid-a"])
+    restored = ScopeFingerprint.from_dict(json.loads(json.dumps(original.to_dict())))
+    assert restored == original

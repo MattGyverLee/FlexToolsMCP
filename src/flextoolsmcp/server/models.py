@@ -847,6 +847,60 @@ class ParseScope(BaseModel):
         return self
 
 
+class ParseTextInput(BaseModel):
+    """Submit a batch parse over a resolved scope (parser-check CP3, US2).
+
+    Scope kind and value, an optional word limit, an optional writing system,
+    an optional project name -- and NOTHING ELSE. In particular there is no
+    argument that files results into the project: that argument is absent
+    from the schema until the code implementing it ships at CP4 (FR-025,
+    D-1). `extra="forbid"` is what makes "absent" enforceable -- a caller who
+    guesses at a `file` or `write` flag is refused, not silently ignored.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    scope_kind: Literal["all_texts", "genre", "text", "words"] = Field(
+        description="all_texts: every text. genre: texts carrying a genre (name or "
+                    "abbreviation, any of a text's genres). text: one text, by name "
+                    "or id. words: an explicit word list."
+    )
+    scope_value: Optional[Any] = Field(
+        default=None,
+        description="The genre string, the text name or id, or the list of words. "
+                    "Omit for all_texts."
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Parse at most this many words, keeping the most frequent "
+                    "(applied after ordering)."
+    )
+    vernacular_ws: Optional[str] = Field(
+        default=None,
+        description="Language tag of the vernacular writing system to read words "
+                    "in. Defaults to the project's default vernacular writing system."
+    )
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project. Uses the session value if set "
+                    "by start()."
+    )
+
+    @model_validator(mode="after")
+    def _scope_is_valid(self) -> "ParseTextInput":
+        """Validate kind/value together at the tool boundary, via ParseScope."""
+        self.to_scope()
+        return self
+
+    def to_scope(self) -> ParseScope:
+        return ParseScope(
+            kind=self.scope_kind,
+            value=self.scope_value,
+            limit=self.limit,
+            vernacular_ws=self.vernacular_ws,
+        )
+
+
 class ResolvedScope(BaseModel):
     """A scope after resolution: a definite, ordered word list (data-model.md s.2).
 
@@ -869,7 +923,14 @@ class ResolvedScope(BaseModel):
 
     scope_kind: str
     scope_value: Optional[Any] = None
+    #: Session-scoped handles (hvos), for addressing a text in THIS session
+    #: -- e.g. `kind="text", value="<id>"`. Not durable: liblcm renumbers
+    #: hvos on every cache load (issue #103).
     text_ids: List[int] = Field(default_factory=list)
+    #: The same texts' GUIDs, in the same order. Durable, and what the scope
+    #: fingerprint records, so a comparison across two sessions does not
+    #: refuse merely because the cache was reloaded in between.
+    text_guids: List[str] = Field(default_factory=list)
     words: List[str] = Field(default_factory=list)
     count_before_limit: int = 0
     limit: Optional[int] = None

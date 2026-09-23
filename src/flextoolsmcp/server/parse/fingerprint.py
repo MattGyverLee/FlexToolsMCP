@@ -18,6 +18,13 @@ is stored BESIDE the fingerprint in the run record, keyed to it, never inside
 it. `build_fingerprint` takes a resolved scope and an engine name and nothing
 else, so there is no parameter through which grammar state could arrive.
 
+`text_ids` HOLDS THE TEXTS' GUIDS, not their hvos. An hvo is a session-scoped
+handle that liblcm renumbers on every cache load (issue #103); a fingerprint
+keyed on hvos would refuse to compare a baseline with the run after it
+whenever the parse worker had been restarted in between -- which its idle
+timeout makes routine. The field keeps its data-model name; its values are
+the durable identity (`ResolvedScope.text_guids`).
+
 `word_count` is the de-duplicated count BEFORE any limit, so a truncated run
 over a corpus is recognisably that corpus -- the `limit` and `truncated`
 fields then say why the two are still not comparable.
@@ -45,7 +52,7 @@ class ScopeFingerprint:
 
     scope_kind: str
     scope_value: Any
-    text_ids: Tuple[int, ...]
+    text_ids: Tuple[str, ...]
     word_count: int
     limit: Optional[int]
     truncated: bool
@@ -68,7 +75,7 @@ class ScopeFingerprint:
         return cls(
             scope_kind=data["scope_kind"],
             scope_value=_freeze(data.get("scope_value")),
-            text_ids=tuple(sorted(int(t) for t in data.get("text_ids") or ())),
+            text_ids=tuple(sorted(str(t) for t in data.get("text_ids") or ())),
             word_count=int(data["word_count"]),
             limit=data.get("limit"),
             truncated=bool(data["truncated"]),
@@ -88,16 +95,33 @@ def _freeze(value: Any) -> Any:
 def build_fingerprint(resolved: Any, engine: str) -> ScopeFingerprint:
     """The fingerprint of a `ResolvedScope`, recorded with the engine at
     submission. Takes nothing that describes the grammar (FR-011)."""
+    durable = getattr(resolved, "text_guids", None) or [str(t) for t in resolved.text_ids]
     return ScopeFingerprint(
         scope_kind=resolved.scope_kind,
         scope_value=_freeze(resolved.scope_value),
-        text_ids=tuple(sorted(int(t) for t in resolved.text_ids)),
+        text_ids=tuple(sorted(str(t) for t in durable)),
         word_count=int(resolved.count_before_limit),
         limit=resolved.limit,
         truncated=bool(resolved.truncated),
         engine=str(engine),
         vernacular_ws=str(resolved.vernacular_ws),
     )
+
+
+def fingerprint_key(fingerprint: Dict[str, Any]) -> str:
+    """A stable short key for a fingerprint dict (FR-023).
+
+    What the load-error baseline is keyed to. A hash of the canonical JSON,
+    so two runs with equal fingerprints carry equal keys and CP4 can find the
+    baseline that belongs to a scope without comparing eight fields by hand.
+    The baseline is stored BESIDE the fingerprint under this key; nothing
+    about it enters the fingerprint (D-3).
+    """
+    import hashlib
+    import json
+
+    canonical = json.dumps(fingerprint, sort_keys=True, ensure_ascii=True, default=list)
+    return hashlib.sha256(canonical.encode("ascii")).hexdigest()[:16]
 
 
 def differing_fields(baseline: ScopeFingerprint, current: ScopeFingerprint) -> List[str]:

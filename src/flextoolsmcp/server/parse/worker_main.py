@@ -54,6 +54,21 @@ Requests (stdin):
     {"type": "ping"}
     {"type": "shutdown"}
 
+  CP3 additions (additive; protocol stays 1):
+
+    {"type": "parse", ..., "level": "batch", "vernacular_ws": str,
+     "engine_at_submission": str}
+        -- one word of a batch. `engine_at_submission` says the engine gate
+           already ran, ONCE, at submission (FR-024); this word therefore
+           observes the active engine rather than re-running the gate, and a
+           change is reported as `engine_changed`, never as a refusal.
+    {"type": "engine_check", "request_id": str}
+        -- the engine gate on its own, before any scope is resolved or any
+           parse is queued. It is the batch handler's first project-touching
+           statement (FR-024).
+    {"type": "resolve_scope", "request_id": str, "scope": {...}}
+        -- scope resolution (US1). No parse: it reads texts and wordforms.
+
 Responses (stdout):
 
     {"type": "ready",     "protocol": 1, "project": str}
@@ -68,8 +83,17 @@ Responses (stdout):
 
       plain / explain -> {"parsed": bool, "analysis_count": int}
       restricted       -> {"hypothesis_held": bool, "restricted_analysis_count": int}
+      batch            -> {"parsed", "analysis_count", "analyses": [...],
+                           "human_analyses": [...], "error_message",
+                           "parse_time_ms"} -- from the TYPED structured
+                           result, never the document (FR-035, R-11)
       any level, on <Error> -> {"parse_error": str} instead of the above --
         the parse threw, so nothing about it parsing or not is asserted.
+    {"type": "engine",        "request_id": str, "engine": str}
+    {"type": "scope_resolved", "request_id": str, "resolved": {...}}
+    {"type": "engine_changed", "run_id": str, "engine_at_submission": str,
+                               "engine_now": str|null}
+    {"type": "load_baseline",  "run_id": str, "baseline": {...}}
     {"type": "cancelled", "run_id": str, "words_completed": int}
     {"type": "error",     "request_id": str|null, "run_id": str|null,
                           "error_code": str|null, "detail": {...}|null,
@@ -282,6 +306,8 @@ class _ParseBackend:
         wordform: str,
         level: str,
         restricted_to: Optional[tuple[int, ...]],
+        *,
+        vernacular_ws: Optional[str] = None,
     ) -> dict[str, Any]:
         """Parse one word. Returns `{"parse": ..., "trace_xml": ...}`."""
         raise NotImplementedError
@@ -293,6 +319,33 @@ class _ParseBackend:
         into a cache, and the rows cross no process boundary carrying one.
         """
         raise NotImplementedError
+
+    def active_engine(self) -> Optional[str]:
+        """The project's active parser, READ -- not gated (CP3, FR-024).
+
+        The gate (`preflight`) refuses; this only reports. A batch runs the
+        gate once, at submission, and from then on its words observe the
+        engine through this read so a mid-job change becomes a warning on the
+        run rather than a refusal of the words still queued.
+        """
+        return None
+
+    def resolve_scope(self, scope: dict[str, Any]) -> dict[str, Any]:
+        """Resolve a `ParseScope` dump to a `ResolvedScope` dump (US1).
+
+        Raises `scope.ScopeRefusal` (carrying its `detail`) for the two
+        scope refusals, which `_report_exception` marshals unchanged.
+        """
+        raise NotImplementedError
+
+    def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
+        """The grammar load errors of a load that began at `load_started`.
+
+        Called after the parse that paid for a grammar load. Returns None
+        when this backend cannot establish them; the baseline then records
+        that it was not captured, rather than recording zero errors (FR-023).
+        """
+        return None
 
     def release(self) -> None:
         """Drop the held grammar and any project handle."""
@@ -312,12 +365,24 @@ class _StubBackend(_ParseBackend):
     takes non-zero time so a boundary exists to interleave at.
     """
 
+    #: The stub's corpus for `resolve_scope(all_texts)`. Fixed, so a test can
+    #: assert the resolved order: descending occurrence, then alphabetical.
+    STUB_CORPUS: dict[str, int] = {"pukul": 3, "kirim": 3, "kosong": 1, "memukul": 2}
+
     def __init__(self, *, parse_seconds: float = 0.0) -> None:
         self._loaded = False
         self._parse_seconds = parse_seconds
         #: Counts every load. A test asserts this is exactly 1 across a
         #: batch and an interleaving urgent word (SC-009).
         self.load_count = 0
+        #: What `active_engine()` reports. A test flips it mid-batch to
+        #: exercise FR-024's warning-not-refusal path.
+        self.engine = "HC"
+        #: Per-word overrides for the batch level: word -> list of analysis
+        #: dicts, and word -> list of human-analysis dicts. Absent words get
+        #: the deterministic default below.
+        self.analyses_by_word: dict[str, list] = {}
+        self.human_by_word: dict[str, list] = {}
 
     def ensure_grammar(self, run_id: str) -> bool:
         if self._loaded:
@@ -331,6 +396,8 @@ class _StubBackend(_ParseBackend):
         wordform: str,
         level: str,
         restricted_to: Optional[tuple[int, ...]],
+        *,
+        vernacular_ws: Optional[str] = None,
     ) -> dict[str, Any]:
         if self._parse_seconds:
             time.sleep(self._parse_seconds)
@@ -347,6 +414,9 @@ class _StubBackend(_ParseBackend):
                 "(parse_morph_unresolved), never a widening to an "
                 "unrestricted parse (FR-019)."
             )
+
+        if level == "batch":
+            return {"parse": self._batch_parse(wordform), "trace_xml": None}
 
         analyses = [
             {
@@ -389,6 +459,88 @@ class _StubBackend(_ParseBackend):
             {"headword": "kosong", "entry_hvo": 104,
              "senses": ["empty"], "msa_hvos": []},
         ]
+
+    def _batch_parse(self, wordform: str) -> dict[str, Any]:
+        """A batch-level result, shaped exactly like `_RealBackend`'s.
+
+        Default: one analysis per word whose signature is derived from the
+        word, so two runs over the same words compare `unchanged` and a test
+        that overrides one word's analyses sees exactly that word move.
+        """
+        if wordform in self.analyses_by_word:
+            analyses = list(self.analyses_by_word[wordform])
+        else:
+            analyses = [
+                {
+                    "signature": [[f"stub-form:{wordform}", f"stub-msa:{wordform}", None]],
+                    "rendered_morphs": [wordform],
+                    "category_labels": ["stub"],
+                    "has_guessed_form": False,
+                }
+            ]
+        return {
+            "parsed": len(analyses) > 0,
+            "analysis_count": len(analyses),
+            "analyses": analyses,
+            "human_analyses": list(self.human_by_word.get(wordform, [])),
+            "error_message": None,
+            "parse_time_ms": 0,
+        }
+
+    def active_engine(self) -> Optional[str]:
+        return self.engine
+
+    def resolve_scope(self, scope: dict[str, Any]) -> dict[str, Any]:
+        """`words` and `all_texts` only; the stub has no genres or texts.
+
+        Goes through the real ordering helper so the stub cannot disagree
+        with production about order-then-truncate (FR-009).
+        """
+        from .scope import ScopeRefusal, _order_and_limit, _nfc
+
+        kind = scope.get("kind")
+        limit = scope.get("limit")
+        if kind == "words":
+            counts: dict[str, int] = {}
+            for word in scope.get("value") or []:
+                form = _nfc(word)
+                if form:
+                    counts[form] = counts.get(form, 0) + 1
+            value = sorted(counts)
+            text_ids: list[int] = []
+        elif kind == "all_texts":
+            counts = dict(self.STUB_CORPUS)
+            value = None
+            text_ids = [1]
+        else:
+            raise ScopeRefusal(
+                {
+                    "error_code": "parse_scope_empty",
+                    "scope": dict(scope),
+                    "matched_texts": [],
+                    "hint": (
+                        "The stub backend holds no genres or named texts; use "
+                        "kind='words' or kind='all_texts'."
+                    ),
+                }
+            )
+        words, total, truncated = _order_and_limit(counts, limit)
+        return {
+            "scope_kind": kind,
+            "scope_value": value,
+            "text_ids": text_ids,
+            "words": words,
+            "count_before_limit": total,
+            "limit": limit,
+            "truncated": truncated,
+            "vernacular_ws": scope.get("vernacular_ws") or "stub-vern",
+            "never_tokenized_text_ids": [],
+            "unreadable_wordform_count": 0,
+            "notes": [],
+        }
+
+    def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
+        return {"captured": True, "source": "stub", "errors": []}
 
     def release(self) -> None:
         self._loaded = False
@@ -709,6 +861,8 @@ class _RealBackend(_ParseBackend):
         wordform: str,
         level: str,
         restricted_to: Optional[tuple[int, ...]],
+        *,
+        vernacular_ws: Optional[str] = None,
     ) -> dict[str, Any]:
         """Map the three levels onto the three calls (FR-012).
 
@@ -753,9 +907,212 @@ class _RealBackend(_ParseBackend):
             trace = parser.TraceWordXml(wordform, None)
             return {"parse": _summarize_trace(trace), "trace_xml": _as_text(trace)}
 
+        if level == "batch":
+            return {"parse": self._batch_parse(wordform, vernacular_ws), "trace_xml": None}
+
         # plain
         result = parser.ParseWord(wordform)
         return {"parse": _summarize_plain(result), "trace_xml": None}
+
+    # -- CP3: the batch level ---------------------------------------------
+
+    def active_engine(self) -> Optional[str]:
+        """`ActiveParser`, read off the language project -- `.lp`, for the
+        reason `preflight` spells out. A read, never a gate."""
+        try:
+            return str(self._project.lp.MorphologicalDataOA.ActiveParser)
+        except Exception as exc:  # noqa: BLE001 -- a report, not a gate
+            _log(f"ActiveParser unreadable: {exc}")
+            return None
+
+    def resolve_scope(self, scope: dict[str, Any]) -> dict[str, Any]:
+        """US1's resolver, run where the project is open.
+
+        Imports the server's scope model here, lazily and only for this
+        call: resolution needs `ParseScope`'s validation, and running it in
+        the server would need an open project there, which is the thing
+        R-02 forbids. The parse path never pays for this import.
+        """
+        from ..models import ParseScope
+        from .scope import resolve_scope
+
+        return resolve_scope(self._project, ParseScope(**scope)).model_dump()
+
+    def _ws_handle(self, vernacular_ws: Optional[str]) -> int:
+        """The explicit handle words are read and rendered in (live note)."""
+        if vernacular_ws:
+            handle = self._project.WSHandle(vernacular_ws)
+            if handle is not None:
+                return int(handle)
+        return int(self._project.GetDefaultVernacularWSHandle())
+
+    def _wordform_index(self, ws: int) -> dict[str, Any]:
+        """NFC form -> wordform at `ws`, built once per writing system.
+
+        `Wordforms.Find` walks every wordform on every call; a batch of ten
+        thousand words would make that ten thousand full walks. Built lazily
+        on the first batch word and held for the worker's life, like the
+        lexicon index.
+        """
+        cache = getattr(self, "_wordforms_by_ws", None)
+        if cache is None:
+            cache = self._wordforms_by_ws = {}
+        if ws not in cache:
+            import unicodedata
+
+            index: dict[str, Any] = {}
+            for wordform in self._project.Wordforms.GetAll():
+                try:
+                    form = self._project.Wordforms.GetForm(wordform, ws)
+                except Exception:  # noqa: BLE001
+                    continue
+                form = unicodedata.normalize("NFC", str(form or "")).strip()
+                if form:
+                    index.setdefault(form, wordform)
+            cache[ws] = index
+        return cache[ws]
+
+    def _batch_parse(self, wordform: str, vernacular_ws: Optional[str]) -> dict[str, Any]:
+        """`ParseWord` -> plain data, from the TYPED result (FR-035, R-11).
+
+        `ParseWord` returns a `ParseResult` whose analyses hold LIVE
+        `IMoForm` / `IMoMorphSynAnalysis` / `ILexEntryInflType` references
+        (`ParseResult.cs`). They are read here, in the process that owns the
+        cache, and reduced to identifiers and rendered text before anything
+        crosses the channel (FR-021). The document-returning calls keep only
+        integer ids and are not used.
+
+        IDENTIFIERS ARE GUIDS, NOT HVOS. An hvo is a session-scoped handle
+        that liblcm renumbers on every cache load (issue #103), so an
+        hvo-triple signature recorded today would fail to match the same
+        analysis tomorrow and every word would read as `changed`. The object
+        GUID is the identity the host's own `ParseMorph.GetHashCode` uses,
+        and it persists in the project file.
+
+        The wordform's HUMAN analyses are read beside the parse, because the
+        host's counters (`ParseReport`) are defined against them and the
+        artifact must be reportable without reopening the project.
+        """
+        ws = self._ws_handle(vernacular_ws)
+        parser = self._project.Parser
+
+        started = time.perf_counter()
+        result = parser.ParseWord(wordform)
+        elapsed_ms = int(round((time.perf_counter() - started) * 1000))
+
+        analyses = []
+        for analysis in _clr_list(getattr(result, "Analyses", None)):
+            analyses.append(_structured_analysis(analysis, ws))
+
+        error = getattr(result, "ErrorMessage", None)
+        return {
+            "parsed": len(analyses) > 0,
+            "analysis_count": len(analyses),
+            "analyses": analyses,
+            "human_analyses": self._human_analyses(wordform, ws),
+            "error_message": str(error) if error else None,
+            "parse_time_ms": elapsed_ms,
+        }
+
+    def _human_analyses(self, wordform: str, ws: int) -> list[dict[str, Any]]:
+        """The stored analyses on this wordform, as plain facts.
+
+        `opinion` is the HUMAN opinion from `GetApprovalStatus` (human
+        evaluations only; 2 approves, 0 disapproves, 1 none recorded). The
+        bundle count and the count of bundles whose public `IsComplete` is
+        true are recorded as read -- the tier is derived from them later and
+        the host's internal fully-formed predicate is never reimplemented
+        (FR-038).
+        """
+        import unicodedata
+
+        form = unicodedata.normalize("NFC", wordform).strip()
+        target = self._wordform_index(ws).get(form)
+        if target is None:
+            return []
+        project = self._project
+        records: list[dict[str, Any]] = []
+        try:
+            stored = list(project.WfiAnalyses.GetAll(target))
+        except Exception as exc:  # noqa: BLE001
+            _log(f"analyses unreadable for {form!r}: {exc}")
+            return []
+        for analysis in stored:
+            try:
+                status = int(project.WfiAnalyses.GetApprovalStatus(analysis))
+            except Exception:  # noqa: BLE001
+                status = None
+            opinion = {2: "approves", 0: "disapproves", 1: "noopinion"}.get(status, "unreadable")
+            bundles = _clr_list(getattr(analysis, "MorphBundlesOS", None))
+            signature = []
+            rendered = []
+            complete = 0
+            for bundle in bundles:
+                signature.append(
+                    [
+                        _guid(getattr(bundle, "MorphRA", None)),
+                        _guid(getattr(bundle, "MsaRA", None)),
+                        _guid(getattr(bundle, "InflTypeRA", None)),
+                    ]
+                )
+                rendered.append(_multi_text(getattr(bundle, "Form", None), ws))
+                try:
+                    if bool(bundle.IsComplete):
+                        complete += 1
+                except Exception:  # noqa: BLE001
+                    pass
+            records.append(
+                {
+                    "analysis_guid": _guid(analysis),
+                    "opinion": opinion,
+                    "bundle_count": len(bundles),
+                    "complete_bundle_count": complete,
+                    "signature": signature,
+                    "rendered_morphs": rendered,
+                }
+            )
+        return records
+
+    def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
+        """Read the load-error file OUR load just wrote (FR-023).
+
+        HermitCrab's loader writes `<project>HCLoadErrors.xml` into the temp
+        directory on every grammar load (`HCParser.cs:154`). The host's copy
+        of that file is provenance-blind -- whichever process loaded last
+        wrote it -- which is why the parent spec rejects it as CP4's
+        baseline. The baseline here is ours because of WHEN it is read: right
+        after the parse that paid for this worker's own load, and only if the
+        file's modification time is not older than that load's start. A file
+        older than our load was written by someone else and is NOT recorded.
+
+        `Hvo` children are dropped: they are session-scoped handles (issue
+        #103) and would make two baselines of an unchanged grammar differ.
+        """
+        import tempfile
+        import xml.etree.ElementTree as ET
+
+        path = os.path.join(tempfile.gettempdir(), f"{self._project_name}HCLoadErrors.xml")
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            return {"captured": False, "source": path, "errors": [],
+                    "reason": "the grammar load wrote no load-error file"}
+        if mtime + 1.0 < load_started:
+            return {"captured": False, "source": path, "errors": [],
+                    "reason": "the load-error file predates this worker's grammar load"}
+        try:
+            root = ET.parse(path).getroot()
+        except (ET.ParseError, OSError) as exc:
+            return {"captured": False, "source": path, "errors": [],
+                    "reason": f"the load-error file could not be read: {exc}"}
+        errors = []
+        for element in root:
+            entry: dict[str, Any] = {"type": element.get("type")}
+            for child in element:
+                if child.tag != "Hvo":
+                    entry[child.tag] = child.text
+            errors.append(entry)
+        return {"captured": True, "source": path, "errors": errors}
 
 
 def _as_text(value: Any) -> Optional[str]:
@@ -889,6 +1246,112 @@ def _summarize_trace(trace: Any) -> dict[str, Any]:
     return {"parsed": analysis_count > 0, "analysis_count": analysis_count}
 
 
+# ---------------------------------------------------------------------------
+# CP3: reducing the typed structured result to plain data (FR-021, FR-035)
+# ---------------------------------------------------------------------------
+
+
+def _clr_list(collection: Any) -> list:
+    """A CLR collection (or None) as a Python list. Never raises."""
+    if collection is None:
+        return []
+    try:
+        return list(collection)
+    except TypeError:
+        return []
+
+
+def _guid(obj: Any) -> Optional[str]:
+    """An LCM object's GUID as a lowercase string, or None for a null ref.
+
+    The durable identity (see `_RealBackend._batch_parse`). A null reference
+    stays None rather than becoming "" -- a triple whose inflection type is
+    absent is a different triple from one whose inflection type is unknown.
+    """
+    if obj is None:
+        return None
+    guid = getattr(obj, "Guid", None)
+    if guid is None:
+        return None
+    return str(guid).lower()
+
+
+def _multi_text(multi: Any, ws: int) -> str:
+    """One alternative of a multistring at an EXPLICIT writing system.
+
+    Never `BestVernacularAlternative` and never the default: the live note
+    for US1 records a whole text whose forms read back empty at the default
+    writing system (the #36/#39/#40 class). Missing is "", not "***".
+    """
+    if multi is None:
+        return ""
+    try:
+        text = multi.get_String(ws).Text
+    except Exception:  # noqa: BLE001
+        return ""
+    if not text or text == "***":
+        return ""
+    return str(text)
+
+
+def _msa_label(msa: Any) -> str:
+    """A short category label for a morph's MSA, best-effort.
+
+    Rendered text only, carried so a report is legible without reopening the
+    project (FR-031). Nothing compares on it except the FR-033 fallback, and
+    that fallback states its own ambiguity.
+    """
+    if msa is None:
+        return ""
+    for name in ("InterlinearAbbr", "ShortName"):
+        try:
+            value = getattr(msa, name, None)
+        except Exception:  # noqa: BLE001
+            value = None
+        if value:
+            text = getattr(value, "Text", value)
+            if text and str(text) != "***":
+                return str(text)
+    return ""
+
+
+def _structured_analysis(analysis: Any, ws: int) -> dict[str, Any]:
+    """One `ParseAnalysis` as an AnalysisRecord (data-model.md section 6).
+
+    `signature` is the ordered (form, MSA, inflection type) GUID triples --
+    the host's `MatchesIWfiAnalysis` predicate made durable (D-2). The
+    inflection type is the third component, not an optional extra: without
+    it two analyses differing only in inflection type collapse into one.
+
+    `has_guessed_form` is the honest residue (FR-031a): where a morph carries
+    a guessed surface string, the host predicate also requires that string to
+    match one of the bundle's writing-system alternatives, and a serialized
+    signature cannot reproduce that comparison.
+    """
+    signature = []
+    rendered = []
+    labels = []
+    guessed = False
+    for morph in _clr_list(getattr(analysis, "Morphs", None)):
+        form = getattr(morph, "Form", None)
+        msa = getattr(morph, "Msa", None)
+        infl = getattr(morph, "InflType", None)
+        guess = getattr(morph, "GuessedString", None)
+        signature.append([_guid(form), _guid(msa), _guid(infl)])
+        if guess is not None:
+            guessed = True
+            rendered.append(str(guess))
+        else:
+            rendered.append(_multi_text(getattr(form, "Form", None), ws))
+        labels.append(_msa_label(msa))
+    return {
+        "signature": signature,
+        "rendered_morphs": rendered,
+        "category_labels": labels,
+        "has_guessed_form": guessed,
+    }
+
+
 class _SpecView:
     """A `MorphSpec` as it arrives over the channel: a plain dict.
 
@@ -978,6 +1441,19 @@ class ParseWorker:
         self._cancel_reported: set[str] = set()
         self._deadline = time.monotonic() + self._idle_timeout
         self._exit_reason = "shutdown"
+        #: CP3 control requests (`engine_check`, `resolve_scope`) parked by
+        #: the reader thread. Both touch the project, so -- like resolves --
+        #: they are answered on the main loop at a word boundary.
+        self._control_pending: list[dict[str, Any]] = []
+        #: Runs already told the active engine changed under them. Reported
+        #: once per run: the warning is about the run, not about each word.
+        self._engine_change_reported: set[str] = set()
+        #: The load-error baseline of this worker's most recent grammar load,
+        #: and the runs it has been sent to (FR-023). ONE held grammar, so
+        #: ONE current baseline: an interleaving word uses the same grammar
+        #: and the same baseline (FR-027).
+        self._load_baseline: Optional[dict[str, Any]] = None
+        self._baseline_sent: set[str] = set()
 
     # -- inbound ----------------------------------------------------------
 
@@ -1016,6 +1492,10 @@ class ParseWorker:
             # explicable.
             with self._resolve_lock:
                 self._resolve_pending.append(message)
+        elif kind in ("engine_check", "resolve_scope"):
+            # Main loop, for the same one-thread-owns-the-project reason.
+            with self._resolve_lock:
+                self._control_pending.append(message)
         elif kind == "assemblies":
             # A diagnostic, not part of the parse path. It exists so
             # `HCParser_DoesNotLoadXCore` can read the loaded-assembly list
@@ -1078,6 +1558,8 @@ class ParseWorker:
         self._pending_meta[(word.run_id, word.index_in_run)] = {
             "request_id": message.get("request_id"),
             "level": str(message.get("level") or "plain"),
+            "vernacular_ws": message.get("vernacular_ws"),
+            "engine_at_submission": message.get("engine_at_submission"),
         }
         self._queue.enqueue(word)
 
@@ -1111,6 +1593,7 @@ class ParseWorker:
             # Answered at a word boundary, like everything else that is not
             # a parse. One word of latency, never more.
             self._drain_resolves()
+            self._drain_controls()
 
             word = self._queue.dequeue()
 
@@ -1217,6 +1700,45 @@ class ParseWorker:
             except Exception as exc:  # noqa: BLE001 -- marshalled below
                 self._report_exception(exc, request_id, message.get("run_id"))
 
+    def _drain_controls(self) -> None:
+        """Answer parked `engine_check` / `resolve_scope` requests (CP3).
+
+        `engine_check` IS the gate: `preflight()` and nothing else, then the
+        engine it passed. The batch handler sends it before anything else it
+        asks this worker for, which is what makes FR-024's "first statement
+        of the batch handler, before any parser is constructed" true of the
+        process that would construct one.
+
+        `resolve_scope` also runs the gate first. It reads texts, not the
+        parser area, but a project this tool will refuse to parse should not
+        be quietly surveyed -- the same reasoning as `_drain_resolves`.
+        """
+        with self._resolve_lock:
+            pending, self._control_pending = self._control_pending, []
+        for message in pending:
+            request_id = message.get("request_id")
+            try:
+                self._backend.preflight()
+                if message.get("type") == "engine_check":
+                    self._emit(
+                        {
+                            "type": "engine",
+                            "request_id": request_id,
+                            "engine": self._backend.active_engine() or "HC",
+                        }
+                    )
+                else:
+                    resolved = self._backend.resolve_scope(dict(message.get("scope") or {}))
+                    self._emit(
+                        {
+                            "type": "scope_resolved",
+                            "request_id": request_id,
+                            "resolved": resolved,
+                        }
+                    )
+            except Exception as exc:  # noqa: BLE001 -- marshalled below
+                self._report_exception(exc, request_id, None)
+
     def _drain_cancellations(self) -> None:
         """Report every run cancelled since the last word boundary.
 
@@ -1279,7 +1801,7 @@ class ParseWorker:
         self._note_interleave(word)
 
         try:
-            self._before_parse(word)
+            load_started = self._before_parse(word, meta)
         except Exception as exc:  # noqa: BLE001 -- marshalled, see below
             self._report_exception(exc, meta.get("request_id"), word.run_id)
             return
@@ -1294,11 +1816,28 @@ class ParseWorker:
 
         try:
             outcome = self._backend.parse(
-                word.wordform, meta.get("level", "plain"), word.restricted_to
+                word.wordform,
+                meta.get("level", "plain"),
+                word.restricted_to,
+                vernacular_ws=meta.get("vernacular_ws"),
             )
         except Exception as exc:  # noqa: BLE001
             self._report_exception(exc, meta.get("request_id"), word.run_id)
             return
+
+        if load_started is not None:
+            # This parse paid for the grammar load, so the load-error file
+            # on disk is now ours (FR-023). Read it once, here, and hold it
+            # as the one current baseline beside the one held grammar.
+            try:
+                self._load_baseline = self._backend.load_error_baseline(load_started)
+            except Exception as exc:  # noqa: BLE001 -- a baseline must not fail a word
+                self._load_baseline = {
+                    "captured": False, "errors": [],
+                    "reason": f"{type(exc).__name__}: {exc}",
+                }
+        if meta.get("engine_at_submission") is not None:
+            self._send_baseline_once(word.run_id)
 
         self._completed[word.run_id] = self._completed.get(word.run_id, 0) + 1
         self._emit(
@@ -1313,7 +1852,9 @@ class ParseWorker:
             }
         )
 
-    def _before_parse(self, word: QueuedWord) -> None:
+    def _before_parse(
+        self, word: QueuedWord, meta: Optional[dict[str, Any]] = None
+    ) -> Optional[float]:
         """The engine gate, THEN the grammar. The order is the requirement.
 
         `preflight()` is the first statement, before anything touches the
@@ -1323,9 +1864,25 @@ class ParseWorker:
         the load, the gate would silently stop running from the second word
         onwards, which is precisely when a user is most likely to have
         flipped the active parser.
-        """
-        self._backend.preflight()
 
+        A BATCH WORD IS THE ONE EXCEPTION, and it is FR-024's own: for a
+        batch the gate fires once, at submission (`engine_check`), and an
+        engine change mid-job is a warning on the run, not a refusal. So a
+        word carrying `engine_at_submission` observes the engine instead of
+        gating on it. Every other word -- `try_word`'s, an interleaving one
+        -- still runs the gate first.
+
+        Returns the wall-clock time a grammar load began, or None when the
+        held grammar was reused. The caller reads the load-error baseline
+        only after a parse that actually paid for a load.
+        """
+        engine_at_submission = (meta or {}).get("engine_at_submission")
+        if engine_at_submission is None:
+            self._backend.preflight()
+        else:
+            self._observe_engine(word.run_id, engine_at_submission)
+
+        load_started = time.time()
         loaded = self._backend.ensure_grammar(word.run_id)
         if loaded:
             self._emit(
@@ -1341,6 +1898,45 @@ class ParseWorker:
                 "run_id": word.run_id,
                 "stage": RunStage.PARSING.value,
             }
+        )
+        return load_started if loaded else None
+
+    def _observe_engine(self, run_id: str, engine_at_submission: str) -> None:
+        """Warn a batch, once, if the active engine is not the one it began on.
+
+        A read, not the gate: nothing here raises, and the word goes on to
+        be parsed. The results stay labelled with the submission engine,
+        which is the one the run was admitted under (FR-024).
+        """
+        if run_id in self._engine_change_reported:
+            return
+        engine_now = self._backend.active_engine()
+        if engine_now is None or engine_now == engine_at_submission:
+            return
+        self._engine_change_reported.add(run_id)
+        self._emit(
+            {
+                "type": "engine_changed",
+                "run_id": run_id,
+                "engine_at_submission": engine_at_submission,
+                "engine_now": engine_now,
+            }
+        )
+
+    def _send_baseline_once(self, run_id: str) -> None:
+        """Hand a batch the current load-error baseline, once.
+
+        A batch that begins on a warm worker paid no load of its own; the
+        baseline it records is that of the grammar it is actually parsing
+        with, which is the held one (FR-027). Recording nothing would leave
+        CP4's gate with no baseline to compare against for exactly the runs
+        that were cheapest to start.
+        """
+        if run_id in self._baseline_sent or self._load_baseline is None:
+            return
+        self._baseline_sent.add(run_id)
+        self._emit(
+            {"type": "load_baseline", "run_id": run_id, "baseline": self._load_baseline}
         )
 
     # -- outbound helpers -------------------------------------------------

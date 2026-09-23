@@ -86,7 +86,7 @@ runs are comparable. Exactly eight fields (FR-010, D-3):
 |---|---|---|
 | `scope_kind` | `str` | |
 | `scope_value` | `str \| list[str] \| None` | |
-| `text_ids` | `list[int]` | a text added to a genre must show as a difference |
+| `text_ids` | `list[str]` | a text added to a genre must show as a difference. **Text GUIDs** (reconciled at T053): hvos are renumbered per cache load (issue #103) |
 | `word_count` | `int` | de-duplicated, **before** any limit |
 | `limit` | `int \| None` | a truncated run is not comparable to a full one |
 | `truncated` | `bool` | |
@@ -118,7 +118,7 @@ are unchanged. CP3 adds:
 | `scope_fingerprint` | `ScopeFingerprint` | FR-010, FR-016 |
 | `engine_at_submission` | `str` | FR-016, FR-024 |
 | `engine_changed_midjob` | `bool` | a **warning** on the summary, never a refusal (FR-024) |
-| `load_error_baseline` | `list[dict]` | FR-023 -- captured at *our* grammar load, for CP4's gate |
+| `load_error_baseline` | `dict` | FR-023 -- captured at *our* grammar load, for CP4's gate. `{captured, source, errors, reason?, scope_fingerprint_key}` (reconciled at T053; see contracts/artifact.md s.3) |
 | `counters` | `HostCounters` | FR-017 |
 | `counter_divergences` | `list[str]` | FR-017 -- stated **in the artifact**, not only in the spec |
 | `words_path` | `str` | `words.txt` |
@@ -159,14 +159,21 @@ One JSON object per line, appended and flushed as each word completes (FR-020).
 `iter_results` already skips a malformed trailing line -- so a run that dies at
 word four thousand leaves four thousand usable results.
 
+> **Reconciled at T053.** The shipped line keeps CP2b's shape -- `index`,
+> `wordform`, `parse`, optional `trace_path` -- and carries the fields below
+> inside `parse` (`parse.analysis_count`, `parse.analyses`, plus
+> `parse.human_analyses`, `parse.error_message`, `parse.parse_time_ms`). A
+> per-word failure is `"parse": null` with a top-level `error`. The frozen
+> shape, with an example, is contracts/artifact.md section 4.
+
 | Field | Type | Notes |
 |---|---|---|
 | `wordform` | `str` | NFC |
-| `index_in_run` | `int` | |
-| `analysis_count` | `int` | |
-| `analyses` | `list[AnalysisRecord]` | |
-| `trace_index` | `int \| None` | pointer into `traces/<n>.xml`, only where a drill-down was taken |
-| `error` | `dict \| None` | per-word failure that did not kill the run |
+| `index` | `int` | position in the run (the draft's `index_in_run`) |
+| `parse.analysis_count` | `int` | |
+| `parse.analyses` | `list[AnalysisRecord]` | |
+| `trace_path` | `str`, optional | `traces/<n>.xml`, only where a drill-down was taken |
+| `error` | `dict`, optional | per-word failure that did not kill the run |
 
 ---
 
@@ -176,7 +183,7 @@ The identity of an analysis in a form that survives the project being closed.
 
 | Field | Type | Notes |
 |---|---|---|
-| `signature` | `list[[int, int, int \| null]]` | ordered (morph-form id, morph-syntax-analysis id, inflection-type id) triples |
+| `signature` | `list[[str \| null, str \| null, str \| null]]` | ordered (morph-form, morph-syntax-analysis, inflection-type) triples of **lowercase GUID strings** (reconciled at T053: an hvo is session-scoped, issue #103; the GUID is the identity the host's own `ParseMorph.GetHashCode` uses) |
 | `rendered_morphs` | `list[str]` | so a report renders without reopening the project |
 | `category_labels` | `list[str]` | |
 | `has_guessed_form` | `bool` | FR-031a |

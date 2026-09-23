@@ -355,7 +355,7 @@ class ParseWorkerClient:
     def _dispatch(self, message: dict[str, Any]) -> None:
         kind = message.get("type")
 
-        if kind in ("result", "resolved", "error"):
+        if kind in ("result", "resolved", "error", "engine", "scope_resolved"):
             request_id = message.get("request_id")
             future = self._pending.pop(request_id, None) if request_id else None
             if future is not None and not future.done():
@@ -374,7 +374,7 @@ class ParseWorkerClient:
                 )
             return
 
-        if kind in ("stage", "cancelled", "interleaved"):
+        if kind in ("stage", "cancelled", "interleaved", "engine_changed", "load_baseline"):
             listener = self._run_listeners.get(message.get("run_id") or "")
             if listener is not None:
                 try:
@@ -447,6 +447,8 @@ class ParseWorkerClient:
         restricted_to: Optional[tuple] = None,
         priority: int = 1,
         index_in_run: int = 0,
+        vernacular_ws: Optional[str] = None,
+        engine_at_submission: Optional[str] = None,
     ) -> dict[str, Any]:
         """Submit one word and await its result.
 
@@ -454,31 +456,80 @@ class ParseWorkerClient:
         difference between `None` (unrestricted) and an empty sequence
         (which the worker refuses). Normalising the two here would be
         precisely the silent widening FR-019 forbids -- see spec.md Delta 2.
+
+        `engine_at_submission` is set only for a batch word, whose engine
+        gate already ran once at submission (FR-024). The two CP3 keys are
+        sent only when set, so a CP2b request is byte-for-byte unchanged.
         """
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
         self._pending[request_id] = future
 
+        message: dict[str, Any] = {
+            "type": "parse",
+            "request_id": request_id,
+            "run_id": run_id,
+            "wordform": wordform,
+            "level": level,
+            "restricted_to": (
+                list(restricted_to) if restricted_to is not None else None
+            ),
+            "priority": int(priority),
+            "index_in_run": int(index_in_run),
+        }
+        if vernacular_ws is not None:
+            message["vernacular_ws"] = vernacular_ws
+        if engine_at_submission is not None:
+            message["engine_at_submission"] = engine_at_submission
+
         try:
-            await self._send(
-                {
-                    "type": "parse",
-                    "request_id": request_id,
-                    "run_id": run_id,
-                    "wordform": wordform,
-                    "level": level,
-                    "restricted_to": (
-                        list(restricted_to) if restricted_to is not None else None
-                    ),
-                    "priority": int(priority),
-                    "index_in_run": int(index_in_run),
-                }
-            )
+            await self._send(message)
         except Exception:
             self._pending.pop(request_id, None)
             raise
 
         return await future
+
+    async def _request(self, message: dict[str, Any], timeout: float) -> dict[str, Any]:
+        """Send one request that carries a `request_id` and await its answer."""
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        request_id = message["request_id"]
+        self._pending[request_id] = future
+        try:
+            await self._send(message)
+        except Exception:
+            self._pending.pop(request_id, None)
+            raise
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        finally:
+            self._pending.pop(request_id, None)
+
+    async def check_engine(self, *, request_id: str, timeout: float = 60.0) -> str:
+        """Run the engine gate and return the engine that passed (FR-024).
+
+        A mismatch arrives as a `WorkerError` carrying the
+        `parser_engine_mismatch` detail unchanged, exactly as it does for a
+        single word.
+        """
+        answer = await self._request(
+            {"type": "engine_check", "request_id": request_id}, timeout
+        )
+        return str(answer.get("engine") or "")
+
+    async def resolve_scope(
+        self, *, request_id: str, scope: dict[str, Any], timeout: float = 300.0
+    ) -> dict[str, Any]:
+        """Resolve a scope in the worker, where the project is open (US1).
+
+        Generous timeout: an all-texts scope on a large project reads every
+        text's unique wordforms. No parse runs.
+        """
+        answer = await self._request(
+            {"type": "resolve_scope", "request_id": request_id, "scope": scope}, timeout
+        )
+        return dict(answer.get("resolved") or {})
 
     async def cancel_run(self, run_id: str) -> None:
         """Ask the worker to stop a run at its next word boundary.

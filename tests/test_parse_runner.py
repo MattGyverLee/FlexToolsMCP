@@ -520,3 +520,217 @@ async def test_every_run_is_reachable_by_its_handle(record_dir):
     known = runner.known_run_ids()
     assert first.run_id in known and second.run_id in known
     assert runner.get("f" * 32) is None
+
+
+# ---------------------------------------------------------------------------
+# CP3 (T036) -- a batch plus an interleaving single word: ONE grammar load,
+# and the batch resumes at its next word with its position intact
+# (FR-027, SC-005, SC-006). Driven against the REAL `ParseWorker` main loop
+# with the stub backend, in-process: the property lives in the worker's
+# queue and held grammar, so a fake worker could not exhibit it.
+# ---------------------------------------------------------------------------
+
+
+def _drive_worker_with_interleave(batch_words, urgent_after_index):
+    """Run a batch through ParseWorker; inject an urgent word mid-batch.
+
+    The urgent word is injected from the emit callback the moment the
+    batch's `urgent_after_index` result is emitted -- which is inside the
+    main loop, between two words, i.e. exactly at a word boundary.
+    """
+    from flextoolsmcp.server.parse.priority import Priority
+    from flextoolsmcp.server.parse.worker_main import ParseWorker, _StubBackend
+
+    backend = _StubBackend()
+    emitted = []
+    worker_ref = {}
+
+    def emit(message):
+        emitted.append(message)
+        if (
+            message.get("type") == "result"
+            and message.get("run_id") == "batch"
+            and message.get("index_in_run") == urgent_after_index
+        ):
+            worker_ref["w"].handle_message({
+                "type": "parse", "request_id": "urgent-0", "run_id": "urgent",
+                "wordform": "segera", "level": "plain",
+                "priority": int(Priority.TRY_A_WORD), "index_in_run": 0,
+            })
+
+    worker = ParseWorker("P", backend=backend, idle_timeout=5, emit=emit)
+    worker_ref["w"] = worker
+    for index, word in enumerate(batch_words):
+        worker.handle_message({
+            "type": "parse", "request_id": f"batch-{index}", "run_id": "batch",
+            "wordform": word, "level": "batch", "priority": int(Priority.LOW),
+            "index_in_run": index, "engine_at_submission": "HC",
+        })
+    worker._draining.set()
+    worker.run()
+    return backend, emitted
+
+
+def test_a_batch_and_an_interleaving_word_load_the_grammar_exactly_once():
+    backend, emitted = _drive_worker_with_interleave(["a", "b", "c", "d", "e"], 1)
+    assert backend.load_count == 1, "the interleaving word must reuse the held grammar"
+    loads = [m for m in emitted if m.get("stage") == RunStage.LOADING_GRAMMAR.value]
+    assert [m["run_id"] for m in loads] == ["batch"], loads
+
+
+def test_the_batch_resumes_at_its_next_word_with_position_intact():
+    _, emitted = _drive_worker_with_interleave(["a", "b", "c", "d", "e"], 1)
+    results = [(m["run_id"], m.get("index_in_run")) for m in emitted if m["type"] == "result"]
+    assert results == [
+        ("batch", 0), ("batch", 1),
+        ("urgent", 0),                      # at the boundary after word 1
+        ("batch", 2), ("batch", 3), ("batch", 4),
+    ], results
+
+
+def test_the_batch_words_carry_the_structured_result():
+    _, emitted = _drive_worker_with_interleave(["a", "b"], 0)
+    batch = [m for m in emitted if m["type"] == "result" and m["run_id"] == "batch"]
+    for message in batch:
+        parse = message["parse"]
+        assert parse["analyses"] and "signature" in parse["analyses"][0]
+        assert "human_analyses" in parse and "parse_time_ms" in parse
+
+
+def test_a_batch_gets_its_load_error_baseline_once():
+    _, emitted = _drive_worker_with_interleave(["a", "b", "c"], 0)
+    baselines = [m for m in emitted if m["type"] == "load_baseline"]
+    assert [m["run_id"] for m in baselines] == ["batch"]
+    assert baselines[0]["baseline"]["captured"] is True
+    # Sent before the result it rides with, so the run has it on completion.
+    first_result = next(i for i, m in enumerate(emitted) if m["type"] == "result")
+    assert emitted.index(baselines[0]) < first_result
+
+
+# ---------------------------------------------------------------------------
+# CP3 (T044) -- the engine gate fires once, at submission; a change mid-job
+# is a WARNING, not a refusal (FR-024)
+# ---------------------------------------------------------------------------
+
+
+def test_a_batch_word_observes_the_engine_instead_of_gating_on_it():
+    from flextoolsmcp.server.parse.priority import Priority
+    from flextoolsmcp.server.parse.worker_main import ParseWorker, _StubBackend
+
+    class Gated(_StubBackend):
+        gate_calls = 0
+
+        def preflight(self):
+            Gated.gate_calls += 1
+
+    backend = Gated()
+    emitted = []
+
+    def emit(message):
+        emitted.append(message)
+        if message.get("type") == "result" and message.get("index_in_run") == 0:
+            backend.engine = "XAmple"       # the user flips the active parser
+
+    worker = ParseWorker("P", backend=backend, idle_timeout=5, emit=emit)
+    for index, word in enumerate(["a", "b", "c"]):
+        worker.handle_message({
+            "type": "parse", "request_id": f"r{index}", "run_id": "batch",
+            "wordform": word, "level": "batch", "priority": int(Priority.LOW),
+            "index_in_run": index, "engine_at_submission": "HC",
+        })
+    worker._draining.set()
+    worker.run()
+
+    assert Gated.gate_calls == 0, "a batch word must not re-run the submission gate"
+    results = [m for m in emitted if m["type"] == "result"]
+    assert len(results) == 3, "the batch carried on after the engine changed"
+    changes = [m for m in emitted if m["type"] == "engine_changed"]
+    assert len(changes) == 1
+    assert changes[0]["engine_at_submission"] == "HC"
+    assert changes[0]["engine_now"] == "XAmple"
+
+
+async def test_the_runner_records_an_engine_change_as_a_warning(record_dir):
+    from flextoolsmcp.server.parse.priority import Priority
+
+    class Flipping(FakeWorker):
+        async def parse_word(self, **kwargs):
+            if kwargs["index_in_run"] == 1:
+                self.listeners[kwargs["run_id"]]({
+                    "type": "engine_changed", "run_id": kwargs["run_id"],
+                    "engine_at_submission": "HC", "engine_now": "XAmple",
+                })
+            return await super().parse_word(**kwargs)
+
+    runner = make_runner(Flipping(), record_dir, grace_window=5.0)
+    handle = await runner.start_run(
+        project_name="P", wordforms=["a", "b", "c"], level="batch",
+        priority=Priority.LOW, scope_fingerprint={"scope_kind": "words"},
+        engine_at_submission="HC",
+    )
+    await asyncio.wait_for(handle.done.wait(), timeout=5)
+
+    assert handle.stage is RunStage.COMPLETED, "a warning, never a refusal"
+    assert handle.engine_changed_midjob is True
+    meta = handle.record.read_meta()
+    assert meta.engine_changed_midjob is True
+    assert meta.engine_at_submission == "HC"
+
+
+# ---------------------------------------------------------------------------
+# CP3 (T047) -- reported batch progress accounts for an interleave (FR-026)
+# ---------------------------------------------------------------------------
+
+
+async def test_a_batch_displaced_by_a_single_word_says_who_it_waits_on(record_dir):
+    from flextoolsmcp.server.parse.priority import Priority
+
+    gate = asyncio.Event()
+
+    class Held(FakeWorker):
+        async def parse_word(self, **kwargs):
+            if kwargs["wordform"] == "segera":
+                await gate.wait()           # the single word takes a while
+            return await super().parse_word(**kwargs)
+
+    worker = Held(delay=0.01)
+    runner = make_runner(worker, record_dir, grace_window=0.01)
+    batch = await runner.start_run(
+        project_name="P", wordforms=[f"w{i}" for i in range(50)], level="batch",
+        priority=Priority.LOW, scope_fingerprint={"scope_kind": "words"},
+        engine_at_submission="HC",
+    )
+
+    single = await runner.start_run(project_name="P", wordforms=["segera"], grace_window=0.01)
+    assert batch.interleaved_by == single.run_id
+    assert batch.record.read_meta().interleaved_by == single.run_id
+
+    gate.set()
+    await asyncio.wait_for(single.done.wait(), timeout=5)
+    assert batch.interleaved_by is None, "a stale marker would say it is still waiting"
+    await runner.cancel_run(batch.run_id)
+    await asyncio.wait_for(batch.done.wait(), timeout=5)
+
+
+async def test_a_single_word_is_not_displaced_by_a_batch(record_dir):
+    from flextoolsmcp.server.parse.priority import Priority
+
+    runner = make_runner(FakeWorker(delay=0.05), record_dir, grace_window=0.01)
+    single = await runner.start_run(project_name="P", wordforms=["a", "b"])
+    batch = await runner.start_run(
+        project_name="P", wordforms=["x"], level="batch", priority=Priority.LOW,
+        scope_fingerprint={"scope_kind": "words"}, engine_at_submission="HC",
+    )
+    assert single.interleaved_by is None
+    await asyncio.wait_for(asyncio.gather(single.done.wait(), batch.done.wait()), timeout=5)
+
+
+async def test_every_run_enters_through_one_item_per_wordform(record_dir):
+    """FR-014: the batch is a call site of the one queue, not a second model."""
+    import inspect
+
+    from flextoolsmcp.server.parse import runner as runner_module
+
+    source = inspect.getsource(runner_module.ParseRunner._execute_run)
+    assert "enqueue_run(" in source
+    assert "dequeue()" in source

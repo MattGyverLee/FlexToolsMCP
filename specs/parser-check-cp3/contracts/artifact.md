@@ -7,6 +7,26 @@ artifact without reopening the FieldWorks project, so a shape chosen loosely
 here is migrated twice later. It is frozen at the end of the plan's Phase 2,
 before anything that consumes it is written.
 
+> **FROZEN -- 2026-09-22, at T053.** Reconciled line by line against the
+> shipped `server/parse/record.py`, `runner.py` and `worker_main.py`. From
+> here, changes are **additive only** (section 9). Three places where the
+> shipped shape differs from the Phase 1 draft are called out inline as
+> *Reconciled*; each is a deliberate implementation decision recorded in
+> `.spec-context.json`, not drift:
+>
+> 1. **Identifiers are GUID strings, not integers** -- in the analysis
+>    signature (section 4) and in the fingerprint's `text_ids` (section 3).
+>    An hvo is a session-scoped handle that liblcm renumbers on every cache
+>    load (issue #103); a durable artifact keyed on hvos would misreport
+>    every word as `changed`, and refuse every comparison, after any worker
+>    restart.
+> 2. **`results.jsonl` keeps CP2b's line shape** and carries the batch fields
+>    inside `parse` (section 4), rather than flattening them to the draft's
+>    top-level keys. One line shape for every run; additive for CP2b readers.
+> 3. **`load_error_baseline` is an object, not a bare list** (section 3), so
+>    it can say *that* it was not captured, and why, instead of recording
+>    zero errors.
+
 ---
 
 ## 1. Layout
@@ -74,10 +94,23 @@ whole state or the other, never a half-written file.
 `counter_divergences`, `words_path`.
 
 Field meanings are in [`../data-model.md`](../data-model.md) sections 3 and 4.
+As shipped (`record.RunMeta`):
 
-**Written incrementally** (FR-016), not only at completion. A run that dies
-during grammar loading and never reaches a first word still states its terminal
-state and the stage it died in.
+| Field | Shape | Present on |
+|---|---|---|
+| `scope_fingerprint` | the eight-field object of data-model section 3; `text_ids` are text **GUID strings**, sorted (*Reconciled*, item 1) | batch runs; `null` on a single-word run |
+| `engine_at_submission` | string, e.g. `"HC"` -- the engine that passed the gate at submission | batch runs |
+| `engine_changed_midjob` | bool; `true` is a **warning**, never a refusal (FR-024) | always (`false` by default) |
+| `load_error_baseline` | `{"captured": bool, "source": str, "errors": [{"type": str, ...}], "reason"?: str, "scope_fingerprint_key": str}` (*Reconciled*, item 3). `errors` are the HermitCrab loader's `<LoadError>` entries with their child elements, **`Hvo` children dropped** (session-scoped). `scope_fingerprint_key` is `fingerprint.fingerprint_key(scope_fingerprint)`: the baseline sits **beside** the fingerprint, keyed to it, never inside it (FR-023, D-3) | batch runs, once the first word is parsed |
+| `counters` | object of exactly the eight host names (section 4 of `contracts/tools.md`) -> int | batch runs |
+| `counter_divergences` | list of two strings, each beginning `"<CounterName>:"` | batch runs |
+| `words_path` | `"words.txt"` | batch runs; `null` otherwise |
+
+**Written incrementally** (FR-016), not only at completion: progress and
+counters are rewritten after **every** word, not only on a stage change. A run
+that dies during grammar loading and never reaches a first word still states its
+terminal state and the stage it died in, and a run killed at word four thousand
+says `words_completed: 4000`.
 
 **Terminal failure** carries exactly one of `out_of_memory | crashed |
 cancelled`.
@@ -103,14 +136,67 @@ leave a partial final line; everything before it stays valid.
 readers must do the same.** Raising would throw away the results the record
 exists to preserve.
 
-Line shape: [`../data-model.md`](../data-model.md) section 5.
+Line shape, as shipped (*Reconciled*, item 2) -- CP2b's line, with a batch
+run's structured result inside `parse`:
+
+```json
+{
+  "index": 0,
+  "wordform": "membuat",
+  "parse": {
+    "parsed": true,
+    "analysis_count": 1,
+    "analyses": [
+      {
+        "signature": [["<form guid>", "<msa guid>", null]],
+        "rendered_morphs": ["mem", "buat"],
+        "category_labels": ["v", "v"],
+        "has_guessed_form": false
+      }
+    ],
+    "human_analyses": [
+      {
+        "analysis_guid": "<guid>",
+        "opinion": "approves | disapproves | noopinion | unreadable",
+        "bundle_count": 2,
+        "complete_bundle_count": 2,
+        "signature": [["<form guid>", "<msa guid>", null]],
+        "rendered_morphs": ["mem", "buat"]
+      }
+    ],
+    "error_message": null,
+    "parse_time_ms": 12
+  },
+  "trace_path": "traces/0.xml"
+}
+```
+
+- `signature` is the ordered (morph-form, morph-syntax-analysis,
+  inflection-type) triples, each a **lowercase GUID string** or `null` for an
+  absent reference (*Reconciled*, item 1). Read from the parser's typed
+  structured result, never its document form (FR-035).
+- `has_guessed_form` is per analysis (FR-031a).
+- `human_analyses` are the wordform's stored analyses, read beside the parse.
+  `opinion` is the **human** opinion only. `bundle_count` and
+  `complete_bundle_count` (bundles whose public `IsComplete` is true) are the
+  raw facts the completeness tier is derived from (FR-038); the tier itself is
+  not stored.
+- `trace_path` is present only where a drill-down wrote a trace.
+- A word that failed without ending the run carries `"parse": null` and
+  `"error": {"message": str, "error_type": str}` instead.
+- A single-word (CP2b) run's `parse` carries only its level's keys
+  (`parsed`/`analysis_count`, `hypothesis_held`/..., or `parse_error`) -- no
+  `analyses`. Readers must not assume `analyses` exists.
 
 ---
 
 ## 5. `words.txt`
 
 The resolved word list. UTF-8, NFC, one word per line, in resolved order
-(descending occurrence, then alphabetical, truncated after ordering).
+(descending occurrence, then alphabetical, truncated after ordering). Every
+line, including the last, ends in `\n`; no BOM. Written once, at run creation,
+**before** the first `meta.json`, so a meta that names it always has it. Absent
+(never empty) on a single-word run.
 
 **The only genuinely net-new file at CP3.** The source document also calls
 `results.jsonl` net-new; it is not -- it shipped with CP2b. The word list is

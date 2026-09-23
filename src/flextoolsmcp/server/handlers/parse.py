@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-flextools_try_word and flextools_parse_status (parser-check CP2b).
+flextools_try_word and flextools_parse_status (parser-check CP2b), and
+flextools_parse_text (parser-check CP3, US2).
 
 Authority: specs/parser-check-cp2b/contracts/tools.md (levels, ordering
 guarantees, refusal table, the run contract), specs/parser-check-cp2/spec.md
@@ -29,6 +30,15 @@ WHAT THIS MODULE DOES NOT DO, and why that is the point:
     no second synchronous path; a "just this once" direct call here is
     exactly how a second one appears.
 
+THE BATCH'S ENGINE CHECK IS DIFFERENT, AND DELIBERATELY SO (FR-024). For
+`flextools_parse_text` the gate fires ONCE, at submission, as the handler's
+first project-touching statement -- `runner.check_engine`, which asks the
+worker to run `check_active_parser` and nothing else -- before the scope is
+resolved and before any word is queued. From then on the batch's words
+observe the engine rather than gate on it, so a user flipping the active
+parser mid-batch gets a warning on the run, not a batch that dies at word
+four thousand.
+
 THE GRACE WINDOW IS A REPORTING BOUNDARY, NOT A TIMEOUT (FR-028, SC-010).
 `ParseRunner.start_run` returns when the run finishes *or* when the window
 closes, whichever comes first. This handler tells the two apart with
@@ -43,7 +53,8 @@ from typing import Any, Dict, List, Optional
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
-from ..models import MorphSpec
+from ..models import MorphSpec, ParseTextInput, ResolvedScope
+from ..parse.fingerprint import build_fingerprint
 from ..parse.priority import Priority
 from ..parse.runner import ParseRunner
 from ..parse.stages import RunStage
@@ -886,6 +897,189 @@ def _level_guidance(level: str, result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# flextools_parse_text (CP3, US2)
+# ---------------------------------------------------------------------------
+
+#: Carried on every parse_text response. Plain words, because the tool's
+#: annotation says destructive and a caller deserves to know why that is not
+#: what this call just did (FR-025, D-1).
+FILING_NOT_REACHABLE = (
+    "Nothing was written to the project. Filing parser results into "
+    "FieldWorks is this tool's designed capability but is not reachable in "
+    "this release: there is no argument that enables it."
+)
+
+
+def _worker_error_response(exc: Exception) -> List[TextContent]:
+    """Re-emit a worker refusal under its own code, detail unchanged (R-03)."""
+    error_code = getattr(exc, "error_code", None)
+    if error_code:
+        detail = dict(getattr(exc, "detail", None) or {})
+        detail.pop("error_code", None)
+        message = detail.pop("message", None) or detail.get("hint") or str(exc)
+        return error_response(error_code, message, **detail)
+    return error_response("runtime_error", str(exc), error_type=type(exc).__name__)
+
+
+async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
+    """Submit a batch parse over a resolved scope (FR-014, FR-024, FR-025).
+
+    ORDER, and why each step is where it is:
+
+      1. Arguments and project name -- pure validation, touches nothing.
+      2. THE ENGINE GATE -- the first project-touching statement (FR-024).
+         Nothing about the scope is read and nothing is queued before it.
+      3. Scope resolution -- in the worker, which is where the project is
+         open. `parse_scope_empty` / `parse_scope_ambiguous` refuse here,
+         with nothing parsed.
+      4. The fingerprint -- the resolved scope plus the engine that passed
+         step 2. Nothing describing the grammar (FR-011).
+      5. The run -- `ParseRunner.start_run` at `Priority.LOW`, the existing
+         runner's lower-priority path. No second execution model (FR-014).
+
+    A scope that resolves to NO WORDS is not `parse_scope_empty` when texts
+    matched: a text with paragraphs but no wordforms may simply never have
+    been opened for interlinear work (FR-002), so the response says what was
+    observed, starts no run, and does not claim the text is empty.
+    """
+    # Already validated at the dispatch boundary; rebuilt here for the typed
+    # scope. `ParseTextInput` validates kind and value together.
+    request = ParseTextInput(**args)
+    scope = request.to_scope()
+
+    project_name, project_error = _resolve_project(request.project_name)
+    if not project_name:
+        return project_error or error_response(
+            "project_name_required",
+            "No project specified. Either set project_name in start() or "
+            "provide it directly.",
+        )
+
+    runner = get_runner()
+
+    # (2) FR-024 -- the gate, once, at submission, before anything else is
+    # asked of the project.
+    try:
+        engine = await runner.check_engine(project_name)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    # (3) Resolution. Parses nothing.
+    try:
+        resolved = ResolvedScope(
+            **await runner.resolve_scope(project_name, scope.model_dump())
+        )
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    scope_block = {
+        "kind": resolved.scope_kind,
+        "value": resolved.scope_value,
+        "text_ids": resolved.text_ids,
+        "words_resolved": resolved.count_before_limit,
+        "limit": resolved.limit,
+        "truncated": resolved.truncated,
+        "vernacular_ws": resolved.vernacular_ws,
+    }
+
+    if not resolved.words:
+        # FR-002: not parse_scope_empty, and no claim that the texts are
+        # empty. Only what was observed.
+        result: Dict[str, Any] = {
+            "status": "ok",
+            "project": project_name,
+            "run_id": None,
+            "run_started": False,
+            "scope": scope_block,
+            "never_tokenized_text_ids": resolved.never_tokenized_text_ids,
+            "unreadable_wordform_count": resolved.unreadable_wordform_count,
+            "notes": resolved.notes or [
+                "The selected texts yielded no words to parse, so no run was "
+                "started."
+            ],
+            "filing": FILING_NOT_REACHABLE,
+            "next_step": None,
+        }
+        return json_response(build_response_with_context(result))
+
+    # (4) The fingerprint.
+    fingerprint = build_fingerprint(resolved, engine)
+
+    # (5) The run -- the one runner, at its lower-priority path.
+    try:
+        handle = await runner.start_run(
+            project_name=project_name,
+            wordforms=list(resolved.words),
+            level="batch",
+            priority=Priority.LOW,
+            scope_fingerprint=fingerprint.to_dict(),
+            engine_at_submission=engine,
+            vernacular_ws=resolved.vernacular_ws,
+        )
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    result = {
+        "status": "ok",
+        "project": project_name,
+        "run_id": handle.run_id,
+        "run_started": True,
+        "stage": handle.stage.value,
+        "words_completed": handle.words_completed,
+        "words_total": handle.words_total,
+        "scope": scope_block,
+        "scope_fingerprint": fingerprint.to_dict(),
+        "engine_at_submission": engine,
+        "record_dir": str(handle.record.root),
+        "notes": resolved.notes,
+        "filing": FILING_NOT_REACHABLE,
+    }
+    if handle.is_terminal:
+        if handle.stage is RunStage.FAILED and handle.failure is not None:
+            result["failure"] = handle.failure.to_dict()
+        else:
+            result["result_summary"] = _result_summary(handle)
+        result.update(_batch_block(handle))
+        result["next_step"] = _status_next_step(handle)
+    else:
+        result["note"] = (
+            "The batch is running in the background and was not slowed or "
+            "limited by this call returning. Poll the run for progress; single "
+            "words you try meanwhile go ahead of it and it resumes where it was."
+        )
+        result["next_step"] = _status_next_step(handle)
+    return json_response(build_response_with_context(result))
+
+
+def _batch_block(handle) -> Dict[str, Any]:
+    """What a batch run adds to a status or submission response."""
+    if not getattr(handle, "is_batch", False):
+        return {}
+    block: Dict[str, Any] = {
+        "scope_fingerprint": handle.scope_fingerprint,
+        "engine_at_submission": handle.engine_at_submission,
+        "engine_changed_midjob": handle.engine_changed_midjob,
+    }
+    if handle.counters is not None:
+        from ..parse.record import COUNTER_DIVERGENCES
+
+        block["counters"] = handle.counters.to_dict()
+        block["counter_divergences"] = list(COUNTER_DIVERGENCES)
+    warnings: List[str] = []
+    if handle.engine_changed_midjob:
+        # FR-024: a warning on the summary, never a refusal.
+        warnings.append(
+            f"The project's active parser changed while this batch was running "
+            f"(submitted on {handle.engine_at_submission!r}, now "
+            f"{handle.engine_now!r}). The batch carried on and its results are "
+            f"labelled with the engine it was submitted on."
+        )
+    if warnings:
+        block["warnings"] = warnings
+    return block
+
+
+# ---------------------------------------------------------------------------
 # flextools_parse_status
 # ---------------------------------------------------------------------------
 
@@ -933,8 +1127,8 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
             available_runs=available,
             hint=(
                 "Handles are issued by flextools_try_word when a parse "
-                "outlives the grace window, and they live as long as this "
-                "server process does. "
+                "outlives the grace window, and by flextools_parse_text for "
+                "every batch; they live as long as this server process does. "
                 + (
                     f"Runs this server knows about: {', '.join(available)}."
                     if available
@@ -957,6 +1151,17 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
         # (data-model.md section 1).
         "interleaved_by": handle.interleaved_by,
     }
+
+    # CP3: a batch's fingerprint, engine, counters and warnings. Empty for a
+    # single-word run, so CP2b's response is unchanged.
+    result.update(_batch_block(handle))
+    if handle.interleaved_by:
+        # FR-026: progress that has paused says why, rather than stalling.
+        result["progress_note"] = (
+            f"Paused behind run {handle.interleaved_by}, a more urgent request "
+            f"on the same grammar. This run resumes at its next word with its "
+            f"position intact; {handle.words_pending} word(s) remain."
+        )
 
     if handle.stage is RunStage.COMPLETED:
         result["result_summary"] = _result_summary(handle)

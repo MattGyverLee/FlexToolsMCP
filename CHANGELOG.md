@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
+  Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
+  `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current
+  FieldWorks stacks.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

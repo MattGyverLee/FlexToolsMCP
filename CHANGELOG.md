@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Unhandled tool handler exceptions bypassed the structured error envelope**
+  ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
+  now catches handler failures and returns `internal_error` with
+  `error_type` / `traceback` / `tool` detail; the traceback is also logged via
+  `operations_logger`.
 - **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
   ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
   innermost traceback frame is inside the flexicon package, `run_module` now

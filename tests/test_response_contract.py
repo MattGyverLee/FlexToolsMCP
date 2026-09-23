@@ -420,7 +420,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_thirty_one(self):
+    def test_the_documented_error_code_count_is_thirty_two(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -433,9 +433,8 @@ class TestParserCheckCP2bCodes:
         from flextoolsmcp.server.response_models import AnyDetail
 
         union_size = len(typing.get_args(AnyDetail))
-        # 26 on main (CP2b + invalid_api_mode from #164); CP3 adds five
-        # additively (FR-059) -> 31.
-        assert union_size == 31, f"the detail union holds {union_size} models"
+        # 31 through CP3; #89 adds internal_error -> 32.
+        assert union_size == 32, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

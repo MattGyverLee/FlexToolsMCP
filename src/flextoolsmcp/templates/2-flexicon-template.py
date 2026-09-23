@@ -30,10 +30,15 @@ DATE:
 # ============================================================================
 # This prevents FLExTools's default flexlibs (stable version) from being used
 #
-# The import is guarded so that a missing pyflexicon becomes a readable message
-# from _flexicon_preflight() below, instead of an ImportError traceback thrown
-# before Main() is ever reached. FlexTools shows that traceback with no remedy
-# and no hint that the module itself is fine.
+# The import is guarded so that a broken flexicon environment becomes a readable
+# message from _flexicon_preflight() below, instead of a traceback thrown before
+# Main() is ever reached. FlexTools shows that traceback with no remedy and no
+# hint that the module itself is fine.
+#
+# pyflexicon can raise a bare Exception (not ImportError) when FieldWorks is
+# absent -- "64bit FieldWorks 9 not found" is the common case. That is a third
+# failure class from "package not installed" and from "wrong name in the import
+# list below", so it is captured separately.
 #
 # The two imports are guarded SEPARATELY on purpose. `except ImportError`
 # cannot tell "no such package" from "no such name in the package", so a single
@@ -42,6 +47,7 @@ DATE:
 # already have, while insisting the module needed no editing when the import
 # list was the only thing that did.
 _FLEXICON_IMPORT_ERROR = None
+_FLEXICON_LOAD_ERROR = None
 _FLEXICON_SYMBOL_ERROR = None
 
 try:
@@ -49,6 +55,9 @@ try:
 except ImportError as _import_error:
     _flexicon = None
     _FLEXICON_IMPORT_ERROR = str(_import_error)
+except Exception as _load_error:
+    _flexicon = None
+    _FLEXICON_LOAD_ERROR = str(_load_error)
 
 FLExProject = None
 if _flexicon is not None:
@@ -78,7 +87,9 @@ if _flexicon is not None:
 # uses, and neither one reads as an environment problem on its own:
 #
 #   1. pyflexicon is not installed at all -> ImportError at load time.
-#   2. pyflexicon is installed but predates FLExProject.FromOpenProject()
+#   2. pyflexicon is installed but FieldWorks is missing -> Exception at load
+#      time (flexicon's own check; not an ImportError).
+#   3. pyflexicon is installed but predates FLExProject.FromOpenProject()
 #      -> the module imports cleanly and then dies on the first line of Main()
 #         with "type object 'FLExProject' has no attribute 'FromOpenProject'".
 #
@@ -218,6 +229,21 @@ def _flexicon_preflight(report):
     """
     try:
         if _flexicon is None:
+            if _FLEXICON_LOAD_ERROR is not None:
+                _report_preflight_error(report, [
+                    "[ERROR] pyflexicon is installed but flexicon did not load in",
+                    "[ERROR] the Python environment FlexTools is using.",
+                    "[ERROR]",
+                    "[ERROR]   import failed with: %s" % (_FLEXICON_LOAD_ERROR,),
+                    "[ERROR]",
+                    "[ERROR] This usually means FieldWorks is not installed (or not",
+                    "[ERROR] visible to this Python). Install or repair FieldWorks,",
+                    "[ERROR] then restart FlexTools and try again.",
+                    "[ERROR]",
+                    "[ERROR] The module itself is fine -- nothing here needs editing.",
+                ])
+                return False
+
             _report_preflight_error(report, [
                 "[ERROR] This module needs flexicon, which is not installed in",
                 "[ERROR] the Python environment FlexTools is using.",

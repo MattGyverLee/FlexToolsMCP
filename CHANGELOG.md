@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Flexicon template pre-flight missed FieldWorks-less import failures** ([#132](https://github.com/MattGyverLee/FlexToolsMCP/issues/132)).
+  When ``import flexicon`` raises a non-``ImportError`` (typical when pyflexicon
+  is installed but FieldWorks is not), the template now captures it separately
+  and reports a FieldWorks-oriented diagnostic instead of a load-time traceback
+  or a misleading ``pip install pyflexicon`` message.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

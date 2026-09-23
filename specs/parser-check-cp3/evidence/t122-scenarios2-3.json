@@ -1,0 +1,63 @@
+{
+  "project": "IndonesianHC-Complete",
+  "run_id": "a029eb26aa4b86085572a2a698d0c9ca",
+  "words_total": 38,
+  "words_completed": 38,
+  "grammar_loads": 1,
+  "batch_was_running_when_urgent_word_sent": true,
+  "urgent_word_seconds": 0.06,
+  "urgent_word_stage": "completed",
+  "files": [
+    "meta.json",
+    "results.jsonl",
+    "words.txt"
+  ],
+  "section_status": {
+    "summary": "ok",
+    "config_generation": "ok",
+    "hc_stdout": "ok",
+    "hc_output": "ok",
+    "trace": "ok",
+    "words": "ok",
+    "results": "ok"
+  },
+  "sandbox_sections": {
+    "config_generation": {
+      "applicable": false,
+      "spine": null,
+      "checkpoint": null,
+      "note": "This section holds the HermitCrab configuration generated from the project for a sandboxed run. This run used the in_process spine, where the parser runs inside the worker and no such file exists, so the section is not applicable -- it is not empty. The sandbox spine that produces it arrives at CP5."
+    },
+    "hc_stdout": {
+      "applicable": false,
+      "spine": null,
+      "checkpoint": null,
+      "note": "This section holds the standard output of a sandboxed HermitCrab process. This run used the in_process spine, where the parser runs inside the worker and no such file exists, so the section is not applicable -- it is not empty. The sandbox spine that produces it arrives at CP5."
+    },
+    "hc_output": {
+      "applicable": false,
+      "spine": null,
+      "checkpoint": null,
+      "note": "This section holds the output file a sandboxed HermitCrab process writes. This run used the in_process spine, where the parser runs inside the worker and no such file exists, so the section is not applicable -- it is not empty. The sandbox spine that produces it arrives at CP5."
+    }
+  },
+  "summary_report_keys": [
+    "clusters",
+    "oracle",
+    "projections",
+    "signals",
+    "words",
+    "words_total"
+  ],
+  "counters": {
+    "NumWords": 38,
+    "NumParseErrors": 0,
+    "NumZeroParses": 0,
+    "TotalParseTime": 546,
+    "TotalAnalyses": 38,
+    "TotalUserApprovedAnalysesMissing": 0,
+    "TotalUserDisapprovedAnalyses": 0,
+    "TotalUserNoOpinionAnalyses": 38
+  },
+  "recorded_at": "2026-09-23T04:09:37.789254+00:00"
+}

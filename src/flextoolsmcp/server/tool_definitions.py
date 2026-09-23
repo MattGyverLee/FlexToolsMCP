@@ -45,6 +45,9 @@ from .models import (
     GrammarHealthInput,
     TryWordInput,
     ParseStatusInput,
+    ParseTextInput,
+    ParseLogInput,
+    ParseDiffInput,
 )
 
 
@@ -488,7 +491,15 @@ when the parser is not available on this machine, and parse_morph_unresolved whe
 piece of a decomposition does not resolve -- in which case NO parse runs.
 
 If the parse outlives the 5-second reporting window you get a run_id instead of a
-result. The parse is still running: poll it with flextools_parse_status.""",
+result. The parse is still running: poll it with flextools_parse_status.
+
+MEASURING A SLOW GRAMMAR: pass bound_seconds (1-600, level='plain') to run the word
+to completion in a worker of its own and stop it at the bound. You get wall-clock
+seconds and whether the fast-path window was missed -- never an engine step count,
+which does not exist. A word stopped at the bound is a result ("this grammar did not
+finish one word in N seconds"), not an error, and it proposes the static grammar
+scan (flextools_grammar_health) before any trace. A measurement never shares a
+worker with a running batch.""",
         input_model=TryWordInput,
         annotations=READ_ONLY_SAFE,
     ),
@@ -522,6 +533,119 @@ urgent single word does not look stalled.
 The only refusal is parse_run_not_found, which names the handles that do exist.""",
         input_model=ParseStatusInput,
         annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_log": ToolDef(
+        name="flextools_parse_log",
+        description="""[PARSE] Read a parse run back -- one section of its record, from disk.
+
+Read-only, and it never touches the parser or the project: every section is read
+from the run's record on disk, so a run from an earlier server session is as
+readable as one still going. Takes the run_id from flextools_parse_text or
+flextools_try_word.
+
+Sections -- exactly these seven:
+- summary -- stage, progress, scope fingerprint, engine at submission, the host
+  parser-report counters and what two of them deliberately mean differently.
+  For a batch run it also carries the report: five corpus signals, each with the
+  reason it may be a false alarm; the human-analysis oracle in its mandated
+  wording; candidate pairings (suggestions, never filed); words clustered with
+  one to three representatives each to trace; and the deletion and duplicate
+  projections (information only -- nothing acts on them). Pass drill_down_cap
+  (10-20) once per session to bound how many words the report recommends
+  tracing. Nothing is ever traced automatically.
+- words -- the resolved word list, paged (offset, limit).
+- results -- one line per completed word, paged. A run that was killed still has
+  every word it completed.
+- trace -- a drill-down trace (trace_index). Where the trace can be read, one line
+  names the most frequent rejection and where it first occurred; where it cannot,
+  it is returned raw and labelled raw, with no explanation invented.
+- config_generation, hc_stdout, hc_output -- these belong to the sandboxed spine,
+  which is not in this release. They come back as not applicable to this run's
+  spine, naming the checkpoint that fills them -- never as an empty section.
+
+The only refusal is parse_run_not_found, which names the runs that do exist.""",
+        input_model=ParseLogInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_diff": ToolDef(
+        name="flextools_parse_diff",
+        description="""[PARSE] Did my grammar edit help? -- compare two batch runs word by word.
+
+Read-only, and it never touches the parser or the project: both runs are read from
+their records on disk. Parse a scope, edit the grammar, parse the same scope again,
+then compare the two run_ids.
+
+Every word lands in exactly one of four buckets, decided by WHICH analyses it gets,
+never by how many:
+- fixed -- no analyses before, some after.
+- broken -- some before, none after.
+- changed -- parses in both, but the analyses differ. A word going from one analysis
+  to seven is changed: it still parses, and the grammar got looser.
+- unchanged -- the same analyses in both.
+
+Words whose analyses look identical but are built from different lexicon entries are
+reported separately as identity changes -- the lexicon changed, the parse did not.
+
+Refuses with parse_scope_mismatch, naming the fields that differ, when the two runs did
+not parse the same scope (a different genre, a limit, another engine or writing
+system); pass force=true to compare only the words both runs share. A grammar change
+never causes a refusal -- it is what the comparison measures.
+
+If FieldWorks has the project open, the result is marked shared_mode_unverifiable and
+a no-change result becomes no_change_unverifiable: an edit may not be saved to disk
+yet. Save or close the project in FieldWorks and parse again.""",
+        input_model=ParseDiffInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_text": ToolDef(
+        name="flextools_parse_text",
+        description="""[PARSE] In-process batch spine -- parse a corpus scope; filing results into the project is not yet reachable.
+
+Resolves a scope (all texts, a genre, one text, or an explicit word list) to a
+definite, de-duplicated word list -- ordered by descending occurrence, then
+alphabetically, with any limit applied after ordering -- and parses every word
+on the project's HermitCrab grammar as a background batch. Returns a run_id at
+once; poll it with flextools_parse_status.
+
+WHY THIS TOOL IS MARKED DESTRUCTIVE. It is annotated at its designed maximum
+capability, which includes filing parser analyses into the project. That
+capability ships in a later release and is NOT reachable today: there is no
+argument that enables it, the project is opened read-only, and nothing on this
+path writes to FieldWorks. The annotation is set now so it never has to change.
+
+What the run leaves behind, readable without reopening the project: the word
+list, one result line per word written as each word completes (a run killed at
+word 4,000 leaves 4,000 readable), and a run record carrying the scope
+fingerprint, the engine at submission, and the host parser report's counters.
+The fingerprint decides whether two runs may be compared; it deliberately says
+nothing about the grammar, because a grammar edit is what a comparison measures.
+
+Single words from flextools_try_word overtake a running batch at its next word
+and use the same loaded grammar; the batch resumes where it was, and its status
+names the run it is waiting on.
+
+Refuses with parser_engine_mismatch before anything else happens when the project's
+active parser is not HermitCrab; with parse_scope_empty when nothing matched; and
+with parse_scope_ambiguous when a genre or text name matched more than one, naming
+every candidate. Genre and text names are matched in the default analysis writing
+system. Nothing parses in any refused case.""",
+        input_model=ParseTextInput,
+        # D-1 / FR-025: the designed maximum capability, from the first
+        # release, UNCHANGED at CP4. A capability annotation is cached by
+        # hosts and read by calling models, so flipping it later would be a
+        # caller-visible contract event for a tool whose name did not change.
+        # CP3 ships no write path at all; the description's first line says
+        # filing is not yet reachable. Recorded as "not overturned" in
+        # specs/parser-check-cp3/plan.md, "Open maintainer decision".
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=False,
+        ),
     ),
 
     "flextools_get_wrapper_dependencies": ToolDef(

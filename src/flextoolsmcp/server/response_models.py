@@ -7,10 +7,12 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 25 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
-  + hvo_literal_write_risk + 4 parser-check CP1 codes
+- 31 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
-  parse_job_cancelled)
+  parse_job_cancelled
+  + 5 parser-check CP3 codes: parse_scope_empty, parse_scope_ambiguous,
+  parse_scope_mismatch, parser_timeout, parser_job_failed)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -531,7 +533,131 @@ class ParseJobCancelledDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 26 per-code detail models
+# parser-check CP3 -- five additive refusal codes
+#
+# Field ORDER below is transcribed from specs/parser-check-cp3/contracts/
+# tools.md section 2 and is asserted byte-for-byte by
+# tests/test_parser_error_models.py. A reordered model must fail that test:
+# the order is what a caller reads a refusal in, and reordering it is a
+# silent presentation change to a contract that claims to be additive.
+#
+# All five are ADDITIVE. No existing code changed shape and the contract
+# version stays tool-responses/1.0 (FR-059).
+# ---------------------------------------------------------------------------
+
+class ParseScopeEmptyDetail(BaseModel):
+    """Detail payload for parse_scope_empty rejections (parser-check CP3).
+
+    Raised when a scope resolves to no texts at all -- a genre nothing is
+    tagged with, or a named text that is not there.
+
+    NOT RAISED FOR A NEVER-TOKENIZED TEXT (FR-002). A text with structure but
+    no unique wordforms is a different situation with a different remedy, and
+    it gets its own conservative wording rather than this code. The
+    distinction matters because this code's wording asserts that nothing
+    matched, and a text that matched but has not been through interlinear
+    work did match. Collapsing the two would tell a linguist their text is
+    empty when it is merely untokenized.
+
+    ``matched_texts`` is what makes the refusal actionable: told only that
+    the scope is empty, a caller cannot tell a misspelled genre from a genre
+    that exists and is simply unused.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_scope_empty"] = "parse_scope_empty"
+    scope: Dict[str, Any]
+    matched_texts: List[str] = Field(default_factory=list)
+    hint: str
+
+
+class ParseScopeAmbiguousDetail(BaseModel):
+    """Detail payload for parse_scope_ambiguous rejections (parser-check CP3).
+
+    Raised when a genre string matches more than one genre (FR-007).
+
+    ``candidates`` carries EVERY candidate, not the first two or a truncated
+    sample. Matching runs case-insensitively against both the genre name and
+    its abbreviation, so the collisions that reach here are usually ones the
+    caller cannot predict from what they typed -- naming only some of them
+    leaves the caller guessing at the rest.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_scope_ambiguous"] = "parse_scope_ambiguous"
+    scope: Dict[str, Any]
+    requested: str
+    candidates: List[str] = Field(default_factory=list)
+
+
+class ParseScopeMismatchDetail(BaseModel):
+    """Detail payload for parse_scope_mismatch rejections (parser-check CP3).
+
+    Raised when two runs being compared do not describe the same scope
+    (FR-012). Comparing them anyway would report grammar changes that are
+    really corpus changes.
+
+    ``differing_fields`` names which of the fingerprint's eight fields
+    disagree. Without it the refusal is unactionable -- a caller cannot tell
+    "you added a text to that genre" from "you ran these against different
+    engines", and those have opposite remedies.
+
+    The refusal is overridable. A forced comparison runs on the INTERSECTION
+    only and says so in its own output; that is a property of the forced
+    path, not of this model.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_scope_mismatch"] = "parse_scope_mismatch"
+    baseline_fingerprint: Dict[str, Any]
+    current_fingerprint: Dict[str, Any]
+    differing_fields: List[str] = Field(default_factory=list)
+    hint: str
+
+
+class ParserTimeoutDetail(BaseModel):
+    """Detail payload for parser_timeout rejections (parser-check CP3).
+
+    ``words_completed`` rides on the refusal for the same reason it rides on
+    ParseJobCancelledDetail: the partial results survive (FR-020), and a
+    caller told only "timed out" has no way to know that 400 of their 500
+    words are sitting readable on disk. ``run_id`` is how they reach them.
+
+    A BOUNDED MEASUREMENT DOES NOT USE THIS CODE. A measurement that hits its
+    bound is a terminal *result* carrying a wall-clock number
+    (``outcome: "terminated_at_bound"``, FR-054) -- finding out that the
+    grammar is slow is the measurement succeeding, not failing.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_timeout"] = "parser_timeout"
+    timeout_seconds: float
+    words_completed: int
+    run_id: str
+    hint: str
+
+
+class ParserJobFailedDetail(BaseModel):
+    """Detail payload for parser_job_failed rejections (parser-check CP3).
+
+    ``failure`` is a CLOSED enum -- ``out_of_memory | crashed | cancelled`` --
+    and its members are kept distinct because the remedies differ: out of
+    memory means cut the scope, crashed means look at the log, cancelled
+    means it was asked to stop and nothing is wrong.
+
+    ``words_completed`` against ``words_total`` is the pair that says how much
+    of the work survived; either number alone is not interpretable.
+    ``log_path`` is carried so the caller does not have to reconstruct where
+    the run wrote -- a run directory is named by an opaque 32-hex handle.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_job_failed"] = "parser_job_failed"
+    state_at_failure: str
+    failure: Literal["out_of_memory", "crashed", "cancelled"]
+    words_completed: int
+    words_total: int
+    run_id: str
+    log_path: str
+
+
+# ---------------------------------------------------------------------------
+# Discriminated union over all 31 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -561,6 +687,11 @@ AnyDetail = Union[
     ParseMorphUnresolvedDetail,
     ParseRunNotFoundDetail,
     ParseJobCancelledDetail,
+    ParseScopeEmptyDetail,
+    ParseScopeAmbiguousDetail,
+    ParseScopeMismatchDetail,
+    ParserTimeoutDetail,
+    ParserJobFailedDetail,
 ]
 
 
@@ -603,7 +734,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              22 known codes, plus any per-code detail fields.
+              31 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

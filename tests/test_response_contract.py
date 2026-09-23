@@ -420,7 +420,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_twenty_six(self):
+    def test_the_documented_error_code_count_is_thirty_one(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -433,7 +433,9 @@ class TestParserCheckCP2bCodes:
         from flextoolsmcp.server.response_models import AnyDetail
 
         union_size = len(typing.get_args(AnyDetail))
-        assert union_size == 26, f"the detail union holds {union_size} models"
+        # 26 on main (CP2b + invalid_api_mode from #164); CP3 adds five
+        # additively (FR-059) -> 31.
+        assert union_size == 31, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
@@ -457,6 +459,47 @@ class TestParserCheckCP2bCodes:
         assert f"`{code}`" in doc, (
             f"{code} is emitted but undocumented; FR-037 requires a row"
         )
+
+    @pytest.mark.parametrize(
+        "code, model_name",
+        [
+            ("parse_scope_empty", "ParseScopeEmptyDetail"),
+            ("parse_scope_ambiguous", "ParseScopeAmbiguousDetail"),
+            ("parse_scope_mismatch", "ParseScopeMismatchDetail"),
+            ("parser_timeout", "ParserTimeoutDetail"),
+            ("parser_job_failed", "ParserJobFailedDetail"),
+        ],
+    )
+    def test_each_cp3_row_lists_its_fields_in_the_models_order(self, code, model_name):
+        """FR-060: the CP3 rows are transcribed, field order included.
+
+        CP2's field-order divergence happened during transcription, so the
+        doc row is checked against the model rather than trusted.
+        """
+        from pathlib import Path
+
+        from flextoolsmcp.server import response_models
+
+        doc = (
+            Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
+        ).read_text(encoding="utf-8")
+        row = next(
+            (line for line in doc.splitlines() if line.startswith(f"| `{code}` |")),
+            None,
+        )
+        assert row is not None, f"{code} has no row in TOOL-CONTRACT.md"
+        # Everything after the code cell: the row escapes pipes inside enums.
+        detail_cell = row[len(f"| `{code}` |"):]
+        model = getattr(response_models, model_name)
+        expected = [name for name in model.model_fields if name != "error_code"]
+        positions = [detail_cell.find(f"`{name}`") for name in expected]
+        assert -1 not in positions, (
+            f"{code}'s row omits {[n for n, p in zip(expected, positions) if p < 0]}"
+        )
+        assert positions == sorted(positions), (
+            f"{code}'s row lists its fields out of the model's order {expected}"
+        )
+        assert "In this order" in detail_cell, "the row does not say its order is fixed"
 
     def test_the_contract_version_did_not_move(self):
         """Additive throughout: three codes, same contract version."""

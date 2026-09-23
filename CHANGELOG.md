@@ -102,6 +102,22 @@ has **exactly five keys in a fixed order** -- `morph`, `position`,
 a successful query returning `status: "ok"` with what survived, because the
 run's death is a fact about the run rather than a fault in the request.
 
+Five further error codes land at CP3, alongside `flextools_parse_text`,
+`flextools_parse_log` and `flextools_parse_diff`: `parse_scope_empty` (a scope
+resolved to no texts -- carrying what did match), `parse_scope_ambiguous` (a
+genre string matched more than one genre -- carrying every candidate),
+`parse_scope_mismatch` (two runs being compared describe different scopes --
+carrying both fingerprints and the fields that differ), `parser_timeout` and
+`parser_job_failed` (closed `failure` enum: `out_of_memory | crashed |
+cancelled`). Each detail model forbids extra fields and its field order is
+pinned by test. Additive once more: `tool-responses/1.0` is unchanged, no
+existing code changes shape, and the hand-maintained count in
+`docs/TOOL-CONTRACT.md` goes from 26 to 31 (main already held 26 after
+`invalid_api_mode` from #164; CP3 adds five on top). `flextools_try_word` also gains an
+optional `bound_seconds` (plain level only) for the bounded single-word
+measurement; a measurement stopped at its bound is a successful response, not
+`parser_timeout`.
+
 ## [2.12.0] - 2026-09-10
 
 ### flexicon 4.8.0 is the new minimum

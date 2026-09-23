@@ -737,6 +737,30 @@ class TryWordInput(BaseModel):
         description="Name of the FieldWorks project whose worker parses this word. "
                     "Uses the session value if set by start()."
     )
+    bound_seconds: Optional[float] = Field(
+        default=None, ge=1.0, le=600.0,
+        description="Measure this word instead of just parsing it: run it to "
+                    "completion in a worker of its own, stopped at this many "
+                    "seconds. Reports wall-clock time, and a word stopped at the "
+                    "bound is a result, not an error. level='plain' only."
+    )
+
+    @model_validator(mode="after")
+    def _bound_only_on_plain(self) -> "TryWordInput":
+        """The measurement asks "how long does ONE word take", nothing else.
+
+        A trace level would measure the tracer as well as the grammar, and a
+        restricted one a narrowed search -- neither is the cost of the
+        grammar on this word. Refused rather than ignored, for the reason
+        `morphs` is.
+        """
+        if self.bound_seconds is not None and self.level != "plain":
+            raise ValueError(
+                "bound_seconds measures one word at level='plain'; you passed "
+                "level=" + repr(self.level) + ". A trace would time the tracer "
+                "as well as the grammar. Use level='plain' to measure."
+            )
+        return self
 
     @model_validator(mode="after")
     def _morphs_match_level(self) -> "TryWordInput":
@@ -781,3 +805,229 @@ class ParseStatusInput(BaseModel):
     run_id: str = Field(
         description="The handle returned when a parse outlived the grace window."
     )
+
+
+# ============================================================
+# Parse scope (parser-check CP3, US1; data-model.md sections 1-2)
+# ============================================================
+
+class ParseScope(BaseModel):
+    """What the caller asked to parse, before resolution (data-model.md s.1).
+
+    Declared here rather than in `server/parse/scope.py` for the same reason
+    `MorphSpec` is: it is the shape a caller writes, validated at the tool
+    boundary before any resolver runs, and `models.py` must not import the
+    parse package.
+
+    `limit` truncates AFTER ordering (FR-009). A limit applied first would
+    make two runs over the same corpus in a different source order resolve
+    to different words -- and therefore not be comparable.
+
+    `vernacular_ws` names the writing system the words are read in. It is
+    optional and defaults to the project's default vernacular writing system,
+    but it is always resolved to an EXPLICIT one and recorded: on
+    IndonesianHC-Complete every wordform of one text reads back as "" at the
+    default vernacular WS while being perfectly present in another
+    (specs/parser-check-cp3/live-note-fr001-fr003.md). The field is how a
+    caller reaches that text at all.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["all_texts", "genre", "text", "words"] = Field(
+        description="all_texts: every text in the project. genre: texts tagged "
+                    "with a genre (by name or abbreviation, any of a text's "
+                    "genres). text: one text, by name or id. words: an explicit "
+                    "word list."
+    )
+    value: Optional[Any] = Field(
+        default=None,
+        description="The genre string, the text name or id, or the list of words. "
+                    "Omit for all_texts."
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Keep at most this many words. Applied after ordering by "
+                    "descending occurrence then alphabetically."
+    )
+    vernacular_ws: Optional[str] = Field(
+        default=None,
+        description="Language tag of the vernacular writing system to read words "
+                    "in. Defaults to the project's default vernacular writing system."
+    )
+
+    @model_validator(mode="after")
+    def _value_matches_kind(self) -> "ParseScope":
+        if self.kind == "all_texts":
+            if self.value is not None:
+                raise ValueError("kind='all_texts' takes no value.")
+        elif self.kind in ("genre", "text"):
+            if self.value is None or str(self.value).strip() == "":
+                raise ValueError(f"kind={self.kind!r} needs a non-empty value.")
+            self.value = str(self.value).strip()
+        else:  # words
+            if not isinstance(self.value, list) or not self.value:
+                raise ValueError("kind='words' needs a non-empty list of words.")
+            if not all(isinstance(w, str) for w in self.value):
+                raise ValueError("kind='words' takes a list of strings.")
+        return self
+
+
+class ParseTextInput(BaseModel):
+    """Submit a batch parse over a resolved scope (parser-check CP3, US2).
+
+    Scope kind and value, an optional word limit, an optional writing system,
+    an optional project name -- and NOTHING ELSE. In particular there is no
+    argument that files results into the project: that argument is absent
+    from the schema until the code implementing it ships at CP4 (FR-025,
+    D-1). `extra="forbid"` is what makes "absent" enforceable -- a caller who
+    guesses at a `file` or `write` flag is refused, not silently ignored.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    scope_kind: Literal["all_texts", "genre", "text", "words"] = Field(
+        description="all_texts: every text. genre: texts carrying a genre (name or "
+                    "abbreviation, any of a text's genres). text: one text, by name "
+                    "or id. words: an explicit word list."
+    )
+    scope_value: Optional[Any] = Field(
+        default=None,
+        description="The genre string, the text name or id, or the list of words. "
+                    "Omit for all_texts."
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Parse at most this many words, keeping the most frequent "
+                    "(applied after ordering)."
+    )
+    vernacular_ws: Optional[str] = Field(
+        default=None,
+        description="Language tag of the vernacular writing system to read words "
+                    "in. Defaults to the project's default vernacular writing system."
+    )
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project. Uses the session value if set "
+                    "by start()."
+    )
+
+    @model_validator(mode="after")
+    def _scope_is_valid(self) -> "ParseTextInput":
+        """Validate kind/value together at the tool boundary, via ParseScope."""
+        self.to_scope()
+        return self
+
+    def to_scope(self) -> ParseScope:
+        return ParseScope(
+            kind=self.scope_kind,
+            value=self.scope_value,
+            limit=self.limit,
+            vernacular_ws=self.vernacular_ws,
+        )
+
+
+#: The seven log sections, verbatim from contracts/tools.md section 1.
+PARSE_LOG_SECTIONS = (
+    "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+)
+
+
+class ParseLogInput(BaseModel):
+    """Read a parse run back from its artifact (parser-check CP3, US3; FR-028).
+
+    Read-only, and it never touches the engine (FR-024): every section is
+    served from the run directory on disk, so a run from an earlier server
+    process is as readable as one from this one.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(description="The run's handle, as flextools_parse_text or "
+                                    "flextools_try_word returned it.")
+    section: Literal[
+        "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+    ] = Field(
+        default="summary",
+        description="summary: stage, progress, fingerprint, counters, and for a batch run "
+                    "the report (signals, oracle, pairings, clusters, projections). words: the resolved "
+                    "word list. results: one line per completed word. trace: a drill-down "
+                    "trace (pass trace_index). config_generation / hc_stdout / hc_output "
+                    "belong to the sandbox spine and are reported as not applicable to "
+                    "in-process runs."
+    )
+    offset: int = Field(default=0, ge=0, description="First item to return (words, results).")
+    limit: int = Field(default=50, ge=1, le=500, description="Items per page (words, results).")
+    trace_index: Optional[int] = Field(
+        default=None, ge=0,
+        description="Which word's trace to read (its index in the run). Defaults to the "
+                    "first trace the run holds."
+    )
+    max_trace_chars: int = Field(
+        default=20000, ge=1000, le=200000,
+        description="Cap on how much of a raw trace is returned inline."
+    )
+    drill_down_cap: Optional[int] = Field(
+        default=None, ge=10, le=20,
+        description="Your drill-down cap for this session: how many words, from 10 to "
+                    "20, the batch report may recommend tracing in total. Chosen once "
+                    "per session; nothing is ever traced automatically (summary of a "
+                    "batch run only)."
+    )
+
+
+class ParseDiffInput(BaseModel):
+    """Compare two batch runs (parser-check CP3, US4; FR-012, FR-030).
+
+    Read-only, and it never touches the engine (FR-024): both runs are read
+    from their records on disk.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    baseline_run_id: str = Field(description="The earlier run -- usually the one "
+                                             "before your grammar edit.")
+    current_run_id: str = Field(description="The later run -- usually the one after it.")
+    force: bool = Field(
+        default=False,
+        description="Compare even though the two runs' scopes differ. The comparison "
+                    "then covers only the words both runs share, and says so."
+    )
+
+
+class ResolvedScope(BaseModel):
+    """A scope after resolution: a definite, ordered word list (data-model.md s.2).
+
+    `count_before_limit` is the de-duplicated count BEFORE truncation, and is
+    what the fingerprint records as `word_count` -- a truncated run and a full
+    one over the same corpus must be recognisably the same corpus.
+
+    `never_tokenized_text_ids` carries the FR-002 distinguishing read: texts
+    with structure but no unique wordforms. Not an assertion that those texts
+    contain no words -- that has not been shown (FR-001 is open).
+
+    `unreadable_wordform_count` counts wordforms present in a selected text
+    whose form is empty at `vernacular_ws`. They are skipped, never emitted as
+    "" -- after NFC de-duplication a text of such wordforms would otherwise
+    become one empty "word", indistinguishable from a real one-word text.
+
+    Carries no live data-model object (FR-021): identifiers and text only.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    scope_kind: str
+    scope_value: Optional[Any] = None
+    #: Session-scoped handles (hvos), for addressing a text in THIS session
+    #: -- e.g. `kind="text", value="<id>"`. Not durable: liblcm renumbers
+    #: hvos on every cache load (issue #103).
+    text_ids: List[int] = Field(default_factory=list)
+    #: The same texts' GUIDs, in the same order. Durable, and what the scope
+    #: fingerprint records, so a comparison across two sessions does not
+    #: refuse merely because the cache was reloaded in between.
+    text_guids: List[str] = Field(default_factory=list)
+    words: List[str] = Field(default_factory=list)
+    count_before_limit: int = 0
+    limit: Optional[int] = None
+    truncated: bool = False
+    vernacular_ws: str
+    never_tokenized_text_ids: List[int] = Field(default_factory=list)
+    unreadable_wordform_count: int = 0
+    notes: List[str] = Field(default_factory=list)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-flextools_try_word and flextools_parse_status (parser-check CP2b).
+flextools_try_word and flextools_parse_status (parser-check CP2b), and
+flextools_parse_text (parser-check CP3, US2).
 
 Authority: specs/parser-check-cp2b/contracts/tools.md (levels, ordering
 guarantees, refusal table, the run contract), specs/parser-check-cp2/spec.md
@@ -29,6 +30,15 @@ WHAT THIS MODULE DOES NOT DO, and why that is the point:
     no second synchronous path; a "just this once" direct call here is
     exactly how a second one appears.
 
+THE BATCH'S ENGINE CHECK IS DIFFERENT, AND DELIBERATELY SO (FR-024). For
+`flextools_parse_text` the gate fires ONCE, at submission, as the handler's
+first project-touching statement -- `runner.check_engine`, which asks the
+worker to run `check_active_parser` and nothing else -- before the scope is
+resolved and before any word is queued. From then on the batch's words
+observe the engine rather than gate on it, so a user flipping the active
+parser mid-batch gets a warning on the run, not a batch that dies at word
+four thousand.
+
 THE GRACE WINDOW IS A REPORTING BOUNDARY, NOT A TIMEOUT (FR-028, SC-010).
 `ParseRunner.start_run` returns when the run finishes *or* when the window
 closes, whichever comes first. This handler tells the two apart with
@@ -37,13 +47,20 @@ left going, untouched, and the caller gets a handle to poll. Nothing on this
 path cancels a run, shortens one, or passes a deadline downstream.
 """
 
+import time
 import uuid
 from typing import Any, Dict, List, Optional
 
 from mcp.types import TextContent
 
 from ._import_helper import safe_import_kernel_deps
-from ..models import MorphSpec
+from ..models import MorphSpec, ParseTextInput, ResolvedScope
+from ..parse.fingerprint import build_fingerprint
+from ..parse.measure import (
+    DEFAULT_BOUND_SECONDS,
+    MeasurementFailed,
+    measure_word,
+)
 from ..parse.priority import Priority
 from ..parse.runner import ParseRunner
 from ..parse.stages import RunStage
@@ -136,6 +153,107 @@ def _rung(
         "rationale": rationale,
         "est_cost": est_cost,
     }
+
+
+# ---------------------------------------------------------------------------
+# Next-step proposals (CP3, US6; FR-056, FR-057; data-model.md section 14)
+# ---------------------------------------------------------------------------
+#
+# The same rung shape as every other `next_step` -- `args` is the proposal's
+# directly usable arguments and `est_cost` its mandatory cost estimate, where
+# "unbounded" is a legitimate value. One shape, so SC-019's sweep over every
+# response the feature can emit is one sweep.
+#
+# THE GRAMMAR SCAN FIRES ON EXACTLY FOUR CONDITIONS (FR-056): a single word
+# that misses the fast-path window; a batch that enters grammar loading and
+# stays there; a terminal failure; a bounded measurement that exceeds its
+# bound. Never on a request answered inline, and never on every response --
+# a suggestion seen on success and failure alike teaches nothing on failure.
+#
+# Where a trace and the static scan are both candidates, the scan comes
+# FIRST: it costs no parse time and may make the trace unnecessary (FR-057).
+# No proposal names a filing step -- at CP3 every session is read-only.
+
+
+def _grammar_scan_rung(project_name: Optional[str]) -> Dict[str, Any]:
+    """The static grammar scan: CP1's instrument, finally given a caller."""
+    return _rung(
+        action="Scan this project's grammar for path-multiplying properties.",
+        tool="flextools_grammar_health",
+        args={"project_name": project_name},
+        rationale=(
+            "A static scan that runs no parse. It names the grammar properties "
+            "that multiply the search space -- the usual reason a load or a "
+            "parse is slow enough to notice -- and is cheaper than any trace "
+            "it may make unnecessary."
+        ),
+        est_cost="seconds to a minute",
+    )
+
+
+def _measurement_rung(
+    project_name: Optional[str], word: str, bound_seconds: float = DEFAULT_BOUND_SECONDS
+) -> Dict[str, Any]:
+    """Spend one word finding out whether the grammar is the problem."""
+    return _rung(
+        action="Measure one word to completion under a hard time bound.",
+        tool="flextools_try_word",
+        args={
+            "word": word,
+            "level": "plain",
+            "bound_seconds": bound_seconds,
+            "project_name": project_name,
+        },
+        rationale=(
+            "Runs this one word in a worker of its own and stops it at the "
+            "bound. A grammar that cannot finish one short word will not "
+            "finish a corpus, and finding that out costs one word, not one "
+            "night. Blowing the bound is reported as the finding, not an error."
+        ),
+        est_cost=f"at most {bound_seconds:g} seconds",
+    )
+
+
+def _trace_after_scan_rung(project_name: Optional[str], word: str) -> Dict[str, Any]:
+    """The full trace, proposed only AFTER the scan (FR-057)."""
+    return _rung(
+        action="If the scan names nothing, trace this word at the explaining level.",
+        tool="flextools_try_word",
+        args={"word": word, "level": "explain", "project_name": project_name},
+        rationale=(
+            "The parser's own trace, with no hypothesis to narrow it. On a "
+            "grammar that has just failed to finish one word it may not "
+            "finish either, which is why the static scan comes first."
+        ),
+        est_cost="unbounded",
+    )
+
+
+def _read_run_rung(run_id: str, why: str) -> Dict[str, Any]:
+    """Read a run back from disk (FR-058: `flextools_parse_log` now exists)."""
+    return _rung(
+        action="Read this run's record back.",
+        tool="flextools_parse_log",
+        args={"run_id": run_id, "section": "summary"},
+        rationale=why,
+        est_cost="instant",
+    )
+
+
+def _stuck_loading(handle) -> bool:
+    """A batch that entered grammar loading and has stayed there (FR-056).
+
+    "Stayed" means longer than the fast-path window: a load that outlives the
+    window a single word is answered in is a load worth a static look.
+    """
+    if not getattr(handle, "is_batch", False):
+        return False
+    if handle.stage is not RunStage.LOADING_GRAMMAR:
+        return False
+    entered = getattr(handle, "stage_entered_at", None)
+    if entered is None:
+        return False
+    return (time.monotonic() - entered) > get_runner().grace_window
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +524,12 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
             "provide it directly.",
         )
 
+    bound_seconds = args.get("bound_seconds")
+    if bound_seconds is not None:
+        # US6: the bounded single-word measurement. `TryWordInput` has
+        # already refused it on any level but plain.
+        return await _measurement_response(project_name, word, float(bound_seconds))
+
     restricted_to: Optional[tuple] = None
     if level == "restricted":
         morphs = [
@@ -459,16 +583,7 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
         return _overflow_response(handle, word, level, project_name)
 
     if handle.stage is RunStage.FAILED and handle.failure is not None:
-        refusal = _refusal_from_failure(handle.failure)
-        if refusal is not None:
-            return refusal
-        return error_response(
-            "runtime_error",
-            handle.failure.message,
-            error_type=handle.failure.error_type,
-            stage_at_failure=handle.failure.stage_at_failure,
-            next_step=handle.failure.next_step,
-        )
+        return _failed_run_response(handle)
 
     result = _inline_response(handle, word, level, project_name, restricted_to)
 
@@ -499,6 +614,66 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
         if proposal is not None:
             result["proposed_decomposition"] = proposal
 
+    return json_response(build_response_with_context(result))
+
+
+def _failed_run_response(handle) -> List[TextContent]:
+    """A single-word run that FAILED: its refusal, or the failure itself.
+
+    A terminal failure is one of FR-056's four triggers, so a plain failure
+    carries the structured failure rungs -- the static scan first -- as its
+    top-level `next_step`. Additive: the run record's own `failure.next_step`
+    prose, which `flextools_parse_status` reports, is unchanged in shape.
+    """
+    refusal = _refusal_from_failure(handle.failure)
+    if refusal is not None:
+        return refusal
+    return error_response(
+        "runtime_error",
+        handle.failure.message,
+        error_type=handle.failure.error_type,
+        stage_at_failure=handle.failure.stage_at_failure,
+        next_step=_failure_rungs(handle),
+    )
+
+
+async def _measurement_response(
+    project_name: str, word: str, bound_seconds: float
+) -> List[TextContent]:
+    """The bounded measurement's response (FR-051..FR-056).
+
+    Terminating at the bound is a SUCCESSFUL response carrying its
+    measurement (FR-054), and it is the fourth of FR-056's triggers: the
+    static scan, then the trace. A measurement that finished inside the bound
+    carries no proposal -- there is nothing to route.
+    """
+    runner = get_runner()
+    try:
+        measurement = await measure_word(
+            runner,
+            project_name=project_name,
+            wordform=word,
+            bound_seconds=bound_seconds,
+        )
+    except MeasurementFailed as failed:
+        return _failed_run_response(failed.handle)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "project": project_name,
+        "word": word,
+        "level": "plain",
+        "measurement": measurement.to_dict(),
+        "finding": measurement.finding,
+        "next_step": None,
+    }
+    if measurement.exceeded_bound:
+        result["next_step"] = [
+            _grammar_scan_rung(project_name),
+            _trace_after_scan_rung(project_name, word),
+        ]
     return json_response(build_response_with_context(result))
 
 
@@ -536,7 +711,9 @@ def _overflow_response(
                     "from slow parsing."
                 ),
                 est_cost="instant",
-            )
+            ),
+            # FR-056: a single word that missed the fast-path window.
+            _grammar_scan_rung(project_name),
         ],
     }
     return json_response(build_response_with_context(result))
@@ -886,6 +1063,592 @@ def _level_guidance(level: str, result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# flextools_parse_text (CP3, US2)
+# ---------------------------------------------------------------------------
+
+#: Carried on every parse_text response. Plain words, because the tool's
+#: annotation says destructive and a caller deserves to know why that is not
+#: what this call just did (FR-025, D-1).
+FILING_NOT_REACHABLE = (
+    "Nothing was written to the project. Filing parser results into "
+    "FieldWorks is this tool's designed capability but is not reachable in "
+    "this release: there is no argument that enables it."
+)
+
+
+def _worker_error_response(exc: Exception) -> List[TextContent]:
+    """Re-emit a worker refusal under its own code, detail unchanged (R-03)."""
+    error_code = getattr(exc, "error_code", None)
+    if error_code:
+        detail = dict(getattr(exc, "detail", None) or {})
+        detail.pop("error_code", None)
+        message = detail.pop("message", None) or detail.get("hint") or str(exc)
+        return error_response(error_code, message, **detail)
+    return error_response("runtime_error", str(exc), error_type=type(exc).__name__)
+
+
+async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
+    """Submit a batch parse over a resolved scope (FR-014, FR-024, FR-025).
+
+    ORDER, and why each step is where it is:
+
+      1. Arguments and project name -- pure validation, touches nothing.
+      2. THE ENGINE GATE -- the first project-touching statement (FR-024).
+         Nothing about the scope is read and nothing is queued before it.
+      3. Scope resolution -- in the worker, which is where the project is
+         open. `parse_scope_empty` / `parse_scope_ambiguous` refuse here,
+         with nothing parsed.
+      4. The fingerprint -- the resolved scope plus the engine that passed
+         step 2. Nothing describing the grammar (FR-011).
+      5. The run -- `ParseRunner.start_run` at `Priority.LOW`, the existing
+         runner's lower-priority path. No second execution model (FR-014).
+
+    A scope that resolves to NO WORDS is not `parse_scope_empty` when texts
+    matched: a text with paragraphs but no wordforms may simply never have
+    been opened for interlinear work (FR-002), so the response says what was
+    observed, starts no run, and does not claim the text is empty.
+    """
+    # Already validated at the dispatch boundary; rebuilt here for the typed
+    # scope. `ParseTextInput` validates kind and value together.
+    request = ParseTextInput(**args)
+    scope = request.to_scope()
+
+    project_name, project_error = _resolve_project(request.project_name)
+    if not project_name:
+        return project_error or error_response(
+            "project_name_required",
+            "No project specified. Either set project_name in start() or "
+            "provide it directly.",
+        )
+
+    runner = get_runner()
+
+    # (2) FR-024 -- the gate, once, at submission, before anything else is
+    # asked of the project.
+    try:
+        engine = await runner.check_engine(project_name)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    # (3) Resolution. Parses nothing.
+    try:
+        raw = dict(await runner.resolve_scope(project_name, scope.model_dump()))
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+    # The one project-state probe (FR-004) rides with the resolution; it is
+    # the oracle's precondition and is recorded on the run.
+    project_state = raw.pop("project_state", None)
+    resolved = ResolvedScope(**raw)
+
+    scope_block = {
+        "kind": resolved.scope_kind,
+        "value": resolved.scope_value,
+        "text_ids": resolved.text_ids,
+        "words_resolved": resolved.count_before_limit,
+        "limit": resolved.limit,
+        "truncated": resolved.truncated,
+        "vernacular_ws": resolved.vernacular_ws,
+    }
+
+    if not resolved.words:
+        # FR-002: not parse_scope_empty, and no claim that the texts are
+        # empty. Only what was observed.
+        result: Dict[str, Any] = {
+            "status": "ok",
+            "project": project_name,
+            "run_id": None,
+            "run_started": False,
+            "scope": scope_block,
+            "never_tokenized_text_ids": resolved.never_tokenized_text_ids,
+            "unreadable_wordform_count": resolved.unreadable_wordform_count,
+            "notes": resolved.notes or [
+                "The selected texts yielded no words to parse, so no run was "
+                "started."
+            ],
+            "filing": FILING_NOT_REACHABLE,
+            "next_step": None,
+        }
+        return json_response(build_response_with_context(result))
+
+    # (4) The fingerprint.
+    fingerprint = build_fingerprint(resolved, engine)
+
+    # (5) The run -- the one runner, at its lower-priority path.
+    try:
+        handle = await runner.start_run(
+            project_name=project_name,
+            wordforms=list(resolved.words),
+            level="batch",
+            priority=Priority.LOW,
+            scope_fingerprint=fingerprint.to_dict(),
+            engine_at_submission=engine,
+            vernacular_ws=resolved.vernacular_ws,
+            project_state=project_state,
+        )
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    result = {
+        "status": "ok",
+        "project": project_name,
+        "run_id": handle.run_id,
+        "run_started": True,
+        "stage": handle.stage.value,
+        "words_completed": handle.words_completed,
+        "words_total": handle.words_total,
+        "scope": scope_block,
+        "scope_fingerprint": fingerprint.to_dict(),
+        "engine_at_submission": engine,
+        "record_dir": str(handle.record.root),
+        "notes": resolved.notes,
+        "filing": FILING_NOT_REACHABLE,
+    }
+    if handle.is_terminal:
+        if handle.stage is RunStage.FAILED and handle.failure is not None:
+            result["failure"] = handle.failure.to_dict()
+        else:
+            result["result_summary"] = _result_summary(handle)
+        result.update(_batch_block(handle))
+        result["next_step"] = _status_next_step(handle)
+    else:
+        result["note"] = (
+            "The batch is running in the background and was not slowed or "
+            "limited by this call returning. Poll the run for progress; single "
+            "words you try meanwhile go ahead of it and it resumes where it was."
+        )
+        result["next_step"] = _status_next_step(handle)
+    return json_response(build_response_with_context(result))
+
+
+def _batch_block(handle) -> Dict[str, Any]:
+    """What a batch run adds to a status or submission response."""
+    if not getattr(handle, "is_batch", False):
+        return {}
+    block: Dict[str, Any] = {
+        "scope_fingerprint": handle.scope_fingerprint,
+        "engine_at_submission": handle.engine_at_submission,
+        "engine_changed_midjob": handle.engine_changed_midjob,
+    }
+    if handle.counters is not None:
+        from ..parse.record import COUNTER_DIVERGENCES
+
+        block["counters"] = handle.counters.to_dict()
+        block["counter_divergences"] = list(COUNTER_DIVERGENCES)
+    warnings: List[str] = []
+    if handle.engine_changed_midjob:
+        # FR-024: a warning on the summary, never a refusal.
+        warnings.append(
+            f"The project's active parser changed while this batch was running "
+            f"(submitted on {handle.engine_at_submission!r}, now "
+            f"{handle.engine_now!r}). The batch carried on and its results are "
+            f"labelled with the engine it was submitted on."
+        )
+    if warnings:
+        block["warnings"] = warnings
+    return block
+
+
+# ---------------------------------------------------------------------------
+# flextools_parse_log (CP3, US3)
+# ---------------------------------------------------------------------------
+#
+# READS THE ARTIFACT, NEVER THE ENGINE (FR-024). Nothing in this section
+# reaches a worker, a project or a parser: every section is served from the
+# run directory on disk. That is also what makes a run from an earlier server
+# process as readable as a live one -- the artifact is the thing CP4 and CP5
+# read, so it is the thing this tool reads too.
+#
+# NO SECTION IS EVER EMPTY (FR-028, SC-007). An empty section reads as
+# "nothing happened", which for a sandbox-spine section is false (it was
+# never run) and for a real section may be false too (the run died before
+# its first word). Every response therefore says what it is: real content,
+# a typed not-applicable naming the spine and the checkpoint that fills it,
+# or an explicit statement of why there is nothing to show.
+# ---------------------------------------------------------------------------
+
+#: The spine this checkpoint runs. Named in every not-applicable response.
+IN_PROCESS_SPINE = "in_process"
+
+#: The three sandbox-spine sections: what each would hold, and who fills it.
+_SANDBOX_SECTIONS: Dict[str, str] = {
+    "config_generation": "the HermitCrab configuration generated from the project for a sandboxed run",
+    "hc_stdout": "the standard output of a sandboxed HermitCrab process",
+    "hc_output": "the output file a sandboxed HermitCrab process writes",
+}
+SANDBOX_SPINE = "sandbox"
+SANDBOX_CHECKPOINT = "CP5"
+
+
+def _not_applicable(section: str, run_id: str) -> Dict[str, Any]:
+    """The typed not-applicable response for a sandbox section (FR-028)."""
+    return {
+        "status": "ok",
+        "run_id": run_id,
+        "section": section,
+        "applicable": False,
+        "reason": "not_applicable_for_this_spine",
+        "run_spine": IN_PROCESS_SPINE,
+        "section_spine": SANDBOX_SPINE,
+        "filled_by": SANDBOX_CHECKPOINT,
+        "note": (
+            f"This section holds {_SANDBOX_SECTIONS[section]}. This run used "
+            f"the {IN_PROCESS_SPINE} spine, where the parser runs inside the "
+            f"worker and no such file exists, so the section is not "
+            f"applicable -- it is not empty. The {SANDBOX_SPINE} spine that "
+            f"produces it arrives at {SANDBOX_CHECKPOINT}."
+        ),
+    }
+
+
+def _log_record(run_id: str):
+    """The run's on-disk record, or None if no such run exists."""
+    from ..parse.record import RunRecord, is_valid_run_id
+
+    if not is_valid_run_id(run_id):
+        return None
+    runner = _runner
+    record_dir = runner.record_dir if runner is not None else None
+    record = RunRecord(run_id, record_dir=record_dir)
+    return record if record.exists() else None
+
+
+def _run_not_found(run_id: str) -> List[TextContent]:
+    from ..parse.record import list_run_ids
+
+    runner = _runner
+    known = list(runner.known_run_ids()) if runner is not None else []
+    record_dir = runner.record_dir if runner is not None else None
+    on_disk = [r for r in list_run_ids(record_dir) if r not in known]
+    available = known + on_disk[:20]
+    return error_response(
+        "parse_run_not_found",
+        f"No parse run with handle {run_id!r}.",
+        run_id=run_id,
+        available_runs=available,
+        hint=(
+            "Run handles are issued by flextools_parse_text and "
+            "flextools_try_word, and their records stay on disk (the newest 20 "
+            "per project). "
+            + (f"Runs with records: {', '.join(available)}." if available
+               else "No run records exist yet.")
+        ),
+    )
+
+
+def _page(items: List[Any], offset: int, limit: int) -> Dict[str, Any]:
+    page = items[offset:offset + limit]
+    return {
+        "total": len(items),
+        "offset": offset,
+        "returned": len(page),
+        "items": page,
+        "next_offset": offset + len(page) if offset + len(page) < len(items) else None,
+    }
+
+
+def _empty_note(meta, what: str) -> str:
+    """Why a real section has nothing to show -- never left unexplained."""
+    if meta is None:
+        return f"No {what} are recorded for this run."
+    stage = meta.stage
+    if meta.failure:
+        where = (meta.failure or {}).get("stage_at_failure") or stage
+        return (
+            f"No {what} are recorded: the run failed during {where!r} before "
+            f"completing a word."
+        )
+    if stage in ("starting", "loading_grammar"):
+        return f"No {what} yet: the run is still in {stage!r}."
+    return f"No {what} are recorded for this run (stage {stage!r})."
+
+
+# The session's drill-down budget (FR-047, SC-016). A user-chosen figure in
+# 10-20, set once by the first report request that names one; later requests
+# read the same budget, so a session cannot be walked past its cap by asking
+# again. Nothing traces automatically -- the budget bounds what the report
+# RECOMMENDS, and every trace remains one flextools_try_word call for one word.
+_drill_down: Optional["DrillDownBudget"] = None  # noqa: F821
+
+
+def _drill_down_budget(cap: Optional[int]):
+    """The session's budget, created on the first request that names a cap."""
+    global _drill_down
+    if _drill_down is None and cap is not None:
+        from ..signals.clustering import DrillDownBudget
+
+        _drill_down = DrillDownBudget(int(cap))
+    return _drill_down
+
+
+def reset_drill_down() -> None:
+    """Forget the session's drill-down budget (tests; a new session)."""
+    global _drill_down
+    _drill_down = None
+
+
+async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
+    """Serve one section of a run's artifact (FR-028, FR-029).
+
+    Read-only. Starts nothing and never calls the engine check (FR-024).
+    """
+    run_id = str(args.get("run_id") or "")
+    section = str(args.get("section") or "summary")
+    offset = int(args.get("offset") or 0)
+    limit = int(args.get("limit") or 50)
+
+    if section in _SANDBOX_SECTIONS:
+        # Answered for any existing run: whether the section applies is a
+        # fact about the spine, not about how far the run got.
+        record = _log_record(run_id)
+        if record is None:
+            return _run_not_found(run_id)
+        return json_response(build_response_with_context(_not_applicable(section, run_id)))
+
+    record = _log_record(run_id)
+    if record is None:
+        return _run_not_found(run_id)
+    meta = record.read_meta()
+
+    result: Dict[str, Any] = {"status": "ok", "run_id": run_id, "section": section,
+                              "applicable": True}
+
+    if section == "summary":
+        from dataclasses import asdict
+
+        summary = asdict(meta) if meta is not None else {}
+        summary["results_recorded"] = record.result_count()
+        summary["traces_recorded"] = sorted(_trace_indices(record))
+        summary["run_spine"] = IN_PROCESS_SPINE
+        if meta is not None and meta.words_path is not None:
+            # A batch run: the US5 report, computed from the artifact alone.
+            from ..signals.report import build_report
+
+            summary["report"] = build_report(
+                record.iter_results(),
+                meta.project_state,
+                budget=_drill_down_budget(args.get("drill_down_cap")),
+                offset=offset,
+                limit=limit,
+            )
+        if summary.get("engine_changed_midjob"):
+            summary["warnings"] = [
+                "The project's active parser changed while this run was going. "
+                "Its results are labelled with the engine it was submitted on."
+            ]
+        result["content"] = summary
+
+    elif section == "words":
+        words = record.read_words()
+        source = "words.txt"
+        if words is None:
+            # A single-word run writes no word list (an empty one would read
+            # as "resolved to nothing"); its words are its result lines.
+            words = [line.get("wordform") for line in record.iter_results()]
+            source = "results.jsonl (this run has no resolved word list)"
+        result["source"] = source
+        result.update(_page(words, offset, limit))
+        if not words:
+            result["note"] = _empty_note(meta, "words")
+
+    elif section == "results":
+        lines = list(record.iter_results())
+        result.update(_page(lines, offset, limit))
+        if not lines:
+            result["note"] = _empty_note(meta, "results")
+
+    else:  # trace
+        result.update(_trace_section(record, args, meta))
+
+    return json_response(build_response_with_context(result))
+
+
+def _trace_indices(record) -> List[int]:
+    if not record.traces_dir.is_dir():
+        return []
+    indices = []
+    for path in record.traces_dir.glob("*.xml"):
+        if path.stem.isdigit():
+            indices.append(int(path.stem))
+    return indices
+
+
+def _trace_section(record, args: dict, meta) -> Dict[str, Any]:
+    """One trace: a one-line reading if it parses, the raw slice if not (FR-029)."""
+    available = sorted(_trace_indices(record))
+    if not available:
+        return {
+            "available_traces": [],
+            "note": (
+                "No trace was recorded for this run. Traces are written only "
+                "where a drill-down was taken; a batch is never traced in bulk."
+            ),
+        }
+    index = args.get("trace_index")
+    if index is None:
+        index = available[0]
+    index = int(index)
+    if index not in available:
+        return {
+            "available_traces": available,
+            "trace_index": index,
+            "note": f"No trace was recorded for word {index}. Traces exist for: {available}.",
+        }
+    xml = record.read_trace(index) or ""
+    cap = int(args.get("max_trace_chars") or 20000)
+    out: Dict[str, Any] = {"available_traces": available, "trace_index": index,
+                           "trace_path": f"traces/{index}.xml",
+                           "trace_chars": len(xml)}
+    reading = summarize_trace_xml(xml)
+    if reading is None:
+        # FR-029: returned raw, labelled raw, nothing invented about it.
+        out["format"] = "raw"
+        out["raw"] = xml[:cap]
+        out["raw_truncated"] = len(xml) > cap
+        out["note"] = (
+            "This trace could not be read as a parser trace document, so it is "
+            "returned exactly as recorded and labelled raw. No explanation is "
+            "offered for output this tool could not read."
+        )
+    else:
+        out["format"] = "parsed"
+        out.update(reading)
+    return out
+
+
+def summarize_trace_xml(xml: str) -> Optional[Dict[str, Any]]:
+    """A one-line reading of a HermitCrab trace, or None if it is unreadable.
+
+    Reads only what the trace states (FwXmlTraceManager.cs): `FailureReason`
+    elements and their `type`, the rule element beside each one, and the
+    `ParseCompleteTrace` successes. It names the most frequent rejection and
+    where it first occurred; it does not guess at a cause the trace does not
+    record. A document that is not XML, or not a trace, returns None and the
+    caller labels it raw (FR-029).
+    """
+    import xml.etree.ElementTree as ET
+    from collections import Counter
+
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return None
+    traces = [e for e in root.iter() if e.tag.endswith("Trace")]
+    if not traces and root.tag != "Wordform":
+        return None
+
+    parent = {child: node for node in root.iter() for child in node}
+    reasons = []
+    for element in root.iter("FailureReason"):
+        owner = parent.get(element)
+        rule = None
+        if owner is not None:
+            for sibling in owner:
+                if sibling.tag.endswith("Rule") and (sibling.text or "").strip():
+                    rule = sibling.text.strip()
+                    break
+        reasons.append({
+            "type": element.get("type") or "unspecified",
+            "stage": owner.tag if owner is not None else None,
+            "rule": rule,
+        })
+    successes = sum(
+        1 for e in root.iter("ParseCompleteTrace") if (e.get("success") or "").lower() == "true"
+    )
+    analyses = sum(1 for e in root if e.tag == "Analysis")
+
+    if not reasons:
+        line = (
+            f"The trace records {successes} successful parse path(s) and no "
+            f"rejection reason."
+        )
+        return {"summary_line": line, "rejections": 0, "successful_paths": successes,
+                "analyses": analyses, "rejections_by_type": {}}
+
+    counts = Counter(r["type"] for r in reasons)
+    top_type, top_count = counts.most_common(1)[0]
+    first = next(r for r in reasons if r["type"] == top_type)
+    where = []
+    if first["rule"]:
+        where.append(f"rule {first['rule']!r}")
+    if first["stage"]:
+        where.append(first["stage"])
+    line = (
+        f"The trace records {len(reasons)} rejection(s); the most frequent is "
+        f"'{top_type}' ({top_count})"
+        + (f", first at {' in '.join(where)}" if where else "")
+        + "."
+    )
+    return {
+        "summary_line": line,
+        "rejections": len(reasons),
+        "rejections_by_type": dict(counts),
+        "first_of_most_frequent": first,
+        "successful_paths": successes,
+        "analyses": analyses,
+    }
+
+
+# ---------------------------------------------------------------------------
+# flextools_parse_diff (CP3, US4)
+# ---------------------------------------------------------------------------
+
+
+def _probe_access(project_name: Optional[str]):
+    """The shared-mode probe (FR-034, R-06). Never fails the comparison.
+
+    Reads a lock file's metadata only; it opens no project and does not
+    touch the engine, which is why FR-024 permits it here.
+    """
+    if not project_name:
+        return None
+    try:
+        try:
+            from ..project_access import probe_project_access
+        except (ImportError, ValueError):
+            from server.project_access import probe_project_access
+        return probe_project_access(project_name)
+    except Exception:  # noqa: BLE001 -- an unknown access state is not a failure
+        return None
+
+
+async def handle_flextools_parse_diff(args: dict) -> List[TextContent]:
+    """Compare two runs: fixed, broken, changed, unchanged (FR-030).
+
+    Read-only. Reads two run records; never reaches a worker or the engine
+    check (FR-024).
+    """
+    from ..parse.diff import RunNotComparable, compare_runs
+    from ..parse.fingerprint import ScopeMismatch
+
+    baseline_id = str(args.get("baseline_run_id") or "")
+    current_id = str(args.get("current_run_id") or "")
+    force = bool(args.get("force"))
+
+    baseline = _log_record(baseline_id)
+    if baseline is None:
+        return _run_not_found(baseline_id)
+    current = _log_record(current_id)
+    if current is None:
+        return _run_not_found(current_id)
+
+    current_meta = current.read_meta()
+    access = _probe_access(current_meta.project_name if current_meta else None)
+
+    try:
+        comparison = compare_runs(baseline, current, force=force, access=access)
+    except ScopeMismatch as refused:
+        detail = dict(refused.detail)
+        detail.pop("error_code", None)
+        return error_response("parse_scope_mismatch", detail.get("hint") or str(refused), **detail)
+    except RunNotComparable as exc:
+        return error_response("runtime_error", str(exc), reason="not_a_batch_run")
+
+    result: Dict[str, Any] = {"status": "ok"}
+    result.update(comparison.to_dict())
+    return json_response(build_response_with_context(result))
+
+
+# ---------------------------------------------------------------------------
 # flextools_parse_status
 # ---------------------------------------------------------------------------
 
@@ -933,8 +1696,8 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
             available_runs=available,
             hint=(
                 "Handles are issued by flextools_try_word when a parse "
-                "outlives the grace window, and they live as long as this "
-                "server process does. "
+                "outlives the grace window, and by flextools_parse_text for "
+                "every batch; they live as long as this server process does. "
                 + (
                     f"Runs this server knows about: {', '.join(available)}."
                     if available
@@ -957,6 +1720,17 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
         # (data-model.md section 1).
         "interleaved_by": handle.interleaved_by,
     }
+
+    # CP3: a batch's fingerprint, engine, counters and warnings. Empty for a
+    # single-word run, so CP2b's response is unchanged.
+    result.update(_batch_block(handle))
+    if handle.interleaved_by:
+        # FR-026: progress that has paused says why, rather than stalling.
+        result["progress_note"] = (
+            f"Paused behind run {handle.interleaved_by}, a more urgent request "
+            f"on the same grammar. This run resumes at its next word with its "
+            f"position intact; {handle.words_pending} word(s) remain."
+        )
 
     if handle.stage is RunStage.COMPLETED:
         result["result_summary"] = _result_summary(handle)
@@ -1015,45 +1789,57 @@ def _result_summary(handle) -> Dict[str, Any]:
     }
 
 
+def _failure_rungs(handle) -> List[Dict[str, Any]]:
+    """A FAILED run's rungs: the instruments, never a retry (FR-034).
+
+    The static scan comes first (FR-057): it runs no parse, and the
+    commonest failure -- memory exhausted while loading the grammar -- is the
+    one it speaks to. No rung names `flextools_try_word`: repeating the run
+    repeats the step that exhausted it. Words that completed before the
+    failure are readable, and CP3 ships the tool that reads them (FR-058).
+    """
+    rungs = [
+        _grammar_scan_rung(handle.project_name),
+        _rung(
+            action="Check the environment and the project's grammar.",
+            tool="flextools_health",
+            args={"verbose": True},
+            rationale=(
+                "A run that died while loading the grammar has usually "
+                "exhausted memory. Repeating it repeats the step that "
+                "exhausted it; the diagnostics say what the project needs."
+            ),
+            est_cost="seconds",
+        ),
+    ]
+    if handle.words_completed > 0:
+        rungs.append(
+            _read_run_rung(
+                handle.run_id,
+                f"{handle.words_completed} word(s) completed before the "
+                f"failure; their results were written as they were produced.",
+            )
+        )
+    return rungs
+
+
 def _status_next_step(handle) -> Optional[List[Dict[str, Any]]]:
     """What to do next, or nothing when there is nothing useful to say.
 
-    A still-running run gets "poll again". A FAILED run gets the diagnostic
-    instruments and never a retry: the commonest failure is memory
-    exhausted while loading the grammar, and repeating the run repeats the
-    step that exhausted it (FR-034).
+    A still-running run gets "poll again" -- plus the static scan when it is
+    a batch that entered grammar loading and has stayed there (FR-056). A
+    FAILED run gets the diagnostic instruments and never a retry (FR-034).
 
-    A completed or cancelled run gets `None`. There is nothing to advise --
-    the results are where the response says they are.
+    FR-058's revisit: a cancelled run with partial results, and a completed
+    BATCH, point at `flextools_parse_log` -- rows that had no tool to name
+    before CP3 shipped one. A completed single word still gets `None`: its
+    answer is already in the response.
     """
     if handle.stage is RunStage.FAILED:
-        return [
-            _rung(
-                action="Check the environment and the project's grammar.",
-                tool="flextools_health",
-                args={"verbose": True},
-                rationale=(
-                    "A run that died while loading the grammar has usually "
-                    "exhausted memory. Repeating it repeats the step that "
-                    "exhausted it; the diagnostics say what the project needs."
-                ),
-                est_cost="seconds",
-            ),
-            _rung(
-                action="Scan this project's grammar for path-multiplying properties.",
-                tool="flextools_grammar_health",
-                args={"project_name": handle.project_name},
-                rationale=(
-                    "Static scan, no parse. It names the grammar properties "
-                    "that multiply the search space, which is what makes a "
-                    "load expensive enough to fail."
-                ),
-                est_cost="seconds to a minute",
-            ),
-        ]
+        return _failure_rungs(handle)
 
     if not handle.is_terminal:
-        return [
+        rungs = [
             _rung(
                 action="Poll again for this run.",
                 tool="flextools_parse_status",
@@ -1065,6 +1851,26 @@ def _status_next_step(handle) -> Optional[List[Dict[str, Any]]]:
                 est_cost="instant",
             )
         ]
+        if _stuck_loading(handle):
+            rungs.append(_grammar_scan_rung(handle.project_name))
+        return rungs
+
+    if handle.stage is RunStage.CANCELLED and handle.words_completed > 0:
+        return [
+            _read_run_rung(
+                handle.run_id,
+                f"{handle.words_completed} word(s) completed before the cancel "
+                f"and are on disk.",
+            )
+        ]
+
+    if handle.stage is RunStage.COMPLETED and getattr(handle, "is_batch", False):
+        return [
+            _read_run_rung(
+                handle.run_id,
+                "The batch report -- signals, the oracle, clusters to trace -- "
+                "is in this run's summary section.",
+            )
+        ]
 
     return None
-

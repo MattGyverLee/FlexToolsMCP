@@ -62,7 +62,11 @@ def build_report(
     limit: int = 50,
 ) -> Dict[str, Any]:
     """The whole US5 report. Per-analysis and per-word lists are paged."""
-    lines = [l for l in results if (l.get("parse") or {}).get("analyses") is not None]
+    lines = [
+        line
+        for line in results
+        if (line.get("parse") or {}).get("analyses") is not None
+    ]
     signals = batch_signals(lines)
     oracle = build_oracle(lines, project_state)
     if "analyses" in oracle:
@@ -70,7 +74,9 @@ def build_report(
         oracle["analyses_total"] = len(oracle["analyses"])
         oracle["analyses_offset"] = offset
         oracle["analyses"] = page
-    words: List[Dict[str, Any]] = [w for w in (_word_findings(l) for l in lines) if w]
+    words: List[Dict[str, Any]] = [
+        w for w in (_word_findings(line) for line in lines) if w
+    ]
     return {
         "signals": signals,
         "oracle": oracle,

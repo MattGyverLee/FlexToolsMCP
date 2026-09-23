@@ -84,13 +84,15 @@ def _roots(analysis: Dict[str, Any]) -> List[Optional[str]]:
     """The entry GUIDs of the analysis's stem morphs."""
     kinds = analysis.get("morph_kinds") or []
     entries = analysis.get("entry_guids") or []
-    return [e for e, k in zip(entries, kinds) if k == "stem"]
+    return [e for e, k in zip(entries, kinds, strict=False) if k == "stem"]
 
 
 def _stem_categories(analysis: Dict[str, Any]) -> tuple:
     kinds = analysis.get("morph_kinds") or []
     labels = analysis.get("category_labels") or []
-    return tuple(label for label, k in zip(labels, kinds) if k == "stem" and label)
+    return tuple(
+        label for label, k in zip(labels, kinds, strict=False) if k == "stem" and label
+    )
 
 
 def _signal(signal_id: str, observations: List[Dict[str, Any]], **extra: Any) -> Dict[str, Any]:
@@ -132,15 +134,23 @@ def batch_signals(
     baseline_results: Optional[Iterable[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """All five signals over one batch's `results.jsonl` lines."""
-    lines = [l for l in results if (l.get("parse") or {}).get("analyses") is not None]
-    all_analyses = [a for l in lines for a in _analyses(l)]
+    lines = [
+        line
+        for line in results
+        if (line.get("parse") or {}).get("analyses") is not None
+    ]
+    all_analyses = [a for line in lines for a in _analyses(line)]
     signals: List[Dict[str, Any]] = []
 
     # 1. Analyses per word -- a worklist, most analyses first, ties in run order.
     per_word = [
-        {"wordform": l.get("wordform"), "index": l.get("index"), "analysis_count": len(_analyses(l))}
-        for l in lines
-        if len(_analyses(l)) > 1
+        {
+            "wordform": line.get("wordform"),
+            "index": line.get("index"),
+            "analysis_count": len(_analyses(line)),
+        }
+        for line in lines
+        if len(_analyses(line)) > 1
     ]
     per_word.sort(key=lambda o: (-o["analysis_count"], o["index"] if o["index"] is not None else 0))
     signals.append(_signal("analyses_per_word", per_word))
@@ -150,11 +160,11 @@ def batch_signals(
         signals.append(_not_computable("root_entry_disagreement", "entry_guids"))
     else:
         observations = []
-        for l in lines:
-            roots = sorted({r for a in _analyses(l) for r in _roots(a) if r})
+        for line in lines:
+            roots = sorted({r for a in _analyses(line) for r in _roots(a) if r})
             if len(roots) > 1:
                 observations.append(
-                    {"wordform": l.get("wordform"), "root_entry_guids": roots}
+                    {"wordform": line.get("wordform"), "root_entry_guids": roots}
                 )
         signals.append(_signal("root_entry_disagreement", observations))
 
@@ -163,13 +173,13 @@ def batch_signals(
         signals.append(_not_computable("root_as_affix_stack", "morph_kinds"))
     else:
         observations = []
-        for l in lines:
-            for position, a in enumerate(_analyses(l)):
+        for line in lines:
+            for position, a in enumerate(_analyses(line)):
                 kinds = a.get("morph_kinds") or []
                 if kinds and all(k == "affix" for k in kinds):
                     observations.append(
                         {
-                            "wordform": l.get("wordform"),
+                            "wordform": line.get("wordform"),
                             "analysis_position": position,
                             "rendered_morphs": list(a.get("rendered_morphs") or []),
                         }
@@ -181,10 +191,14 @@ def batch_signals(
         signals.append(_not_computable("incompatible_categories", "morph_kinds"))
     else:
         observations = []
-        for l in lines:
-            categories = sorted({c for a in _analyses(l) for c in _stem_categories(a)})
+        for line in lines:
+            categories = sorted(
+                {c for a in _analyses(line) for c in _stem_categories(a)}
+            )
             if len(categories) > 1:
-                observations.append({"wordform": l.get("wordform"), "categories": categories})
+                observations.append(
+                    {"wordform": line.get("wordform"), "categories": categories}
+                )
         signals.append(_signal("incompatible_categories", observations))
 
     # 5. The distribution -- beside the baseline's when one is given.

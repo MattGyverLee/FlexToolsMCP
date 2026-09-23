@@ -154,7 +154,7 @@ def test_the_server_sends_the_worker_no_write():
     sent = set()
     for node in ast.walk(_tree(client)):
         if isinstance(node, ast.Dict):
-            for key, value in zip(node.keys, node.values):
+            for key, value in zip(node.keys, node.values, strict=True):
                 if (
                     isinstance(key, ast.Constant) and key.value == "type"
                     and isinstance(value, ast.Constant)

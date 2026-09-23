@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
+  tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
+  `pytest_configure`, with a regression test guarding against silent lapse.
+
 ### Governance
 
 The project now has a written constitution at `.specify/memory/constitution.md`

@@ -901,6 +901,46 @@ class ParseTextInput(BaseModel):
         )
 
 
+#: The seven log sections, verbatim from contracts/tools.md section 1.
+PARSE_LOG_SECTIONS = (
+    "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+)
+
+
+class ParseLogInput(BaseModel):
+    """Read a parse run back from its artifact (parser-check CP3, US3; FR-028).
+
+    Read-only, and it never touches the engine (FR-024): every section is
+    served from the run directory on disk, so a run from an earlier server
+    process is as readable as one from this one.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(description="The run's handle, as flextools_parse_text or "
+                                    "flextools_try_word returned it.")
+    section: Literal[
+        "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+    ] = Field(
+        default="summary",
+        description="summary: stage, progress, fingerprint, counters. words: the resolved "
+                    "word list. results: one line per completed word. trace: a drill-down "
+                    "trace (pass trace_index). config_generation / hc_stdout / hc_output "
+                    "belong to the sandbox spine and are reported as not applicable to "
+                    "in-process runs."
+    )
+    offset: int = Field(default=0, ge=0, description="First item to return (words, results).")
+    limit: int = Field(default=50, ge=1, le=500, description="Items per page (words, results).")
+    trace_index: Optional[int] = Field(
+        default=None, ge=0,
+        description="Which word's trace to read (its index in the run). Defaults to the "
+                    "first trace the run holds."
+    )
+    max_trace_chars: int = Field(
+        default=20000, ge=1000, le=200000,
+        description="Cap on how much of a raw trace is returned inline."
+    )
+
+
 class ResolvedScope(BaseModel):
     """A scope after resolution: a definite, ordered word list (data-model.md s.2).
 

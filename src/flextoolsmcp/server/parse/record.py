@@ -169,15 +169,18 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def list_run_ids() -> list[str]:
+def list_run_ids(record_dir: Optional[Path] = None) -> list[str]:
     """Every run id with a record on disk, newest first.
 
     Backs `parse_run_not_found`'s "and here are the handles that do exist"
     (FR-035), which is why it tolerates a missing directory rather than
     raising -- being asked about a run before any run has happened is a
     perfectly ordinary thing for a caller to do.
+
+    Ordered by mtime, which is right for naming handles and WRONG for
+    retention -- see `retention.py`, which orders by recorded creation time.
     """
-    root = get_record_dir()
+    root = record_dir or get_record_dir()
     if not root.is_dir():
         return []
     entries = [p for p in root.iterdir() if p.is_dir() and is_valid_run_id(p.name)]

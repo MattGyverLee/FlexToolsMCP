@@ -143,17 +143,17 @@ Single Python package. Server code under `src/flextoolsmcp/`, tests at `tests/`,
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T054 [P] [US3] Write `tests/test_parse_log_sections.py` asserting the seven section names exactly -- `summary | config_generation | hc_stdout | hc_output | trace | words | results` -- and that **0 sections return empty content** (FR-028, SC-007).
-- [ ] T055 [P] [US3] Extend `tests/test_parse_log_sections.py` so each of `config_generation`, `hc_stdout`, `hc_output` returns a typed not-applicable response **naming the spine and the checkpoint that will fill it** (FR-028).
-- [ ] T056 [P] [US3] Extend `tests/test_parse_log_sections.py` so an unparseable trace returns the **raw slice explicitly labelled raw**, with no invented explanation (FR-029).
-- [ ] T057 [P] [US3] Assert in `tests/test_parse_log_sections.py` that the log tool never calls the parser-engine capability check -- it reads prior artifacts and never touches the engine (FR-024).
+- [x] T054 [P] [US3] Write `tests/test_parse_log_sections.py` asserting the seven section names exactly -- `summary | config_generation | hc_stdout | hc_output | trace | words | results` -- and that **0 sections return empty content** (FR-028, SC-007).
+- [x] T055 [P] [US3] Extend `tests/test_parse_log_sections.py` so each of `config_generation`, `hc_stdout`, `hc_output` returns a typed not-applicable response **naming the spine and the checkpoint that will fill it** (FR-028).
+- [x] T056 [P] [US3] Extend `tests/test_parse_log_sections.py` so an unparseable trace returns the **raw slice explicitly labelled raw**, with no invented explanation (FR-029).
+- [x] T057 [P] [US3] Assert in `tests/test_parse_log_sections.py` that the log tool never calls the parser-engine capability check -- it reads prior artifacts and never touches the engine (FR-024).
 
 ### Implementation for User Story 3
 
-- [ ] T058 [US3] Implement the `flextools_parse_log` handler in `src/flextoolsmcp/server/handlers/parse.py`, serving `summary`, `words`, `results` and `trace` with real, paged content for in-process runs (FR-028).
-- [ ] T059 [US3] Implement the typed not-applicable-for-this-spine response for `config_generation`, `hc_stdout` and `hc_output` in `src/flextoolsmcp/server/handlers/parse.py`, naming the spine and the checkpoint that will fill it. Never return an empty section -- an empty section reads as "nothing happened" (FR-028).
-- [ ] T060 [US3] Implement one-line blocking rule/stage naming for a parseable trace, and the raw-and-labelled fallback for one that is not, in `src/flextoolsmcp/server/handlers/parse.py` (FR-029).
-- [ ] T061 [US3] Add the `flextools_parse_log` input model to `src/flextoolsmcp/server/models.py`, register it in `src/flextoolsmcp/server/tool_definitions.py`, and route it in `src/flextoolsmcp/server/dispatch.py`.
+- [x] T058 [US3] Implement the `flextools_parse_log` handler in `src/flextoolsmcp/server/handlers/parse.py`, serving `summary`, `words`, `results` and `trace` with real, paged content for in-process runs (FR-028).
+- [x] T059 [US3] Implement the typed not-applicable-for-this-spine response for `config_generation`, `hc_stdout` and `hc_output` in `src/flextoolsmcp/server/handlers/parse.py`, naming the spine and the checkpoint that will fill it. Never return an empty section -- an empty section reads as "nothing happened" (FR-028).
+- [x] T060 [US3] Implement one-line blocking rule/stage naming for a parseable trace, and the raw-and-labelled fallback for one that is not, in `src/flextoolsmcp/server/handlers/parse.py` (FR-029).
+- [x] T061 [US3] Add the `flextools_parse_log` input model to `src/flextoolsmcp/server/models.py`, register it in `src/flextoolsmcp/server/tool_definitions.py`, and route it in `src/flextoolsmcp/server/dispatch.py`.
 
 **Checkpoint**: SC-007 green. Every section of a run is readable or explicitly inapplicable.
 

@@ -291,6 +291,16 @@ class ParseRunner:
         return self._grace_window
 
     @property
+    def record_dir(self):
+        """Where this runner's records live, for the artifact readers.
+
+        None means the default (`record.get_record_dir()`). The log and diff
+        tools read the artifact through this rather than through a handle, so
+        a run from an earlier server process is as readable as a live one.
+        """
+        return self._record_dir
+
+    @property
     def pool(self):
         """The worker pool. Exposed for the one caller that needs a worker
         WITHOUT starting a run: the morph resolver, which must reach the

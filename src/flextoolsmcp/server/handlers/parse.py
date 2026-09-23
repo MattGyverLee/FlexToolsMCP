@@ -1080,6 +1080,311 @@ def _batch_block(handle) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# flextools_parse_log (CP3, US3)
+# ---------------------------------------------------------------------------
+#
+# READS THE ARTIFACT, NEVER THE ENGINE (FR-024). Nothing in this section
+# reaches a worker, a project or a parser: every section is served from the
+# run directory on disk. That is also what makes a run from an earlier server
+# process as readable as a live one -- the artifact is the thing CP4 and CP5
+# read, so it is the thing this tool reads too.
+#
+# NO SECTION IS EVER EMPTY (FR-028, SC-007). An empty section reads as
+# "nothing happened", which for a sandbox-spine section is false (it was
+# never run) and for a real section may be false too (the run died before
+# its first word). Every response therefore says what it is: real content,
+# a typed not-applicable naming the spine and the checkpoint that fills it,
+# or an explicit statement of why there is nothing to show.
+# ---------------------------------------------------------------------------
+
+#: The spine this checkpoint runs. Named in every not-applicable response.
+IN_PROCESS_SPINE = "in_process"
+
+#: The three sandbox-spine sections: what each would hold, and who fills it.
+_SANDBOX_SECTIONS: Dict[str, str] = {
+    "config_generation": "the HermitCrab configuration generated from the project for a sandboxed run",
+    "hc_stdout": "the standard output of a sandboxed HermitCrab process",
+    "hc_output": "the output file a sandboxed HermitCrab process writes",
+}
+SANDBOX_SPINE = "sandbox"
+SANDBOX_CHECKPOINT = "CP5"
+
+
+def _not_applicable(section: str, run_id: str) -> Dict[str, Any]:
+    """The typed not-applicable response for a sandbox section (FR-028)."""
+    return {
+        "status": "ok",
+        "run_id": run_id,
+        "section": section,
+        "applicable": False,
+        "reason": "not_applicable_for_this_spine",
+        "run_spine": IN_PROCESS_SPINE,
+        "section_spine": SANDBOX_SPINE,
+        "filled_by": SANDBOX_CHECKPOINT,
+        "note": (
+            f"This section holds {_SANDBOX_SECTIONS[section]}. This run used "
+            f"the {IN_PROCESS_SPINE} spine, where the parser runs inside the "
+            f"worker and no such file exists, so the section is not "
+            f"applicable -- it is not empty. The {SANDBOX_SPINE} spine that "
+            f"produces it arrives at {SANDBOX_CHECKPOINT}."
+        ),
+    }
+
+
+def _log_record(run_id: str):
+    """The run's on-disk record, or None if no such run exists."""
+    from ..parse.record import RunRecord, is_valid_run_id
+
+    if not is_valid_run_id(run_id):
+        return None
+    runner = _runner
+    record_dir = runner.record_dir if runner is not None else None
+    record = RunRecord(run_id, record_dir=record_dir)
+    return record if record.exists() else None
+
+
+def _run_not_found(run_id: str) -> List[TextContent]:
+    from ..parse.record import list_run_ids
+
+    runner = _runner
+    known = list(runner.known_run_ids()) if runner is not None else []
+    record_dir = runner.record_dir if runner is not None else None
+    on_disk = [r for r in list_run_ids(record_dir) if r not in known]
+    available = known + on_disk[:20]
+    return error_response(
+        "parse_run_not_found",
+        f"No parse run with handle {run_id!r}.",
+        run_id=run_id,
+        available_runs=available,
+        hint=(
+            "Run handles are issued by flextools_parse_text and "
+            "flextools_try_word, and their records stay on disk (the newest 20 "
+            "per project). "
+            + (f"Runs with records: {', '.join(available)}." if available
+               else "No run records exist yet.")
+        ),
+    )
+
+
+def _page(items: List[Any], offset: int, limit: int) -> Dict[str, Any]:
+    page = items[offset:offset + limit]
+    return {
+        "total": len(items),
+        "offset": offset,
+        "returned": len(page),
+        "items": page,
+        "next_offset": offset + len(page) if offset + len(page) < len(items) else None,
+    }
+
+
+def _empty_note(meta, what: str) -> str:
+    """Why a real section has nothing to show -- never left unexplained."""
+    if meta is None:
+        return f"No {what} are recorded for this run."
+    stage = meta.stage
+    if meta.failure:
+        where = (meta.failure or {}).get("stage_at_failure") or stage
+        return (
+            f"No {what} are recorded: the run failed during {where!r} before "
+            f"completing a word."
+        )
+    if stage in ("starting", "loading_grammar"):
+        return f"No {what} yet: the run is still in {stage!r}."
+    return f"No {what} are recorded for this run (stage {stage!r})."
+
+
+async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
+    """Serve one section of a run's artifact (FR-028, FR-029).
+
+    Read-only. Starts nothing and never calls the engine check (FR-024).
+    """
+    run_id = str(args.get("run_id") or "")
+    section = str(args.get("section") or "summary")
+    offset = int(args.get("offset") or 0)
+    limit = int(args.get("limit") or 50)
+
+    if section in _SANDBOX_SECTIONS:
+        # Answered for any existing run: whether the section applies is a
+        # fact about the spine, not about how far the run got.
+        record = _log_record(run_id)
+        if record is None:
+            return _run_not_found(run_id)
+        return json_response(build_response_with_context(_not_applicable(section, run_id)))
+
+    record = _log_record(run_id)
+    if record is None:
+        return _run_not_found(run_id)
+    meta = record.read_meta()
+
+    result: Dict[str, Any] = {"status": "ok", "run_id": run_id, "section": section,
+                              "applicable": True}
+
+    if section == "summary":
+        from dataclasses import asdict
+
+        summary = asdict(meta) if meta is not None else {}
+        summary["results_recorded"] = record.result_count()
+        summary["traces_recorded"] = sorted(_trace_indices(record))
+        summary["run_spine"] = IN_PROCESS_SPINE
+        if summary.get("engine_changed_midjob"):
+            summary["warnings"] = [
+                "The project's active parser changed while this run was going. "
+                "Its results are labelled with the engine it was submitted on."
+            ]
+        result["content"] = summary
+
+    elif section == "words":
+        words = record.read_words()
+        source = "words.txt"
+        if words is None:
+            # A single-word run writes no word list (an empty one would read
+            # as "resolved to nothing"); its words are its result lines.
+            words = [line.get("wordform") for line in record.iter_results()]
+            source = "results.jsonl (this run has no resolved word list)"
+        result["source"] = source
+        result.update(_page(words, offset, limit))
+        if not words:
+            result["note"] = _empty_note(meta, "words")
+
+    elif section == "results":
+        lines = list(record.iter_results())
+        result.update(_page(lines, offset, limit))
+        if not lines:
+            result["note"] = _empty_note(meta, "results")
+
+    else:  # trace
+        result.update(_trace_section(record, args, meta))
+
+    return json_response(build_response_with_context(result))
+
+
+def _trace_indices(record) -> List[int]:
+    if not record.traces_dir.is_dir():
+        return []
+    indices = []
+    for path in record.traces_dir.glob("*.xml"):
+        if path.stem.isdigit():
+            indices.append(int(path.stem))
+    return indices
+
+
+def _trace_section(record, args: dict, meta) -> Dict[str, Any]:
+    """One trace: a one-line reading if it parses, the raw slice if not (FR-029)."""
+    available = sorted(_trace_indices(record))
+    if not available:
+        return {
+            "available_traces": [],
+            "note": (
+                "No trace was recorded for this run. Traces are written only "
+                "where a drill-down was taken; a batch is never traced in bulk."
+            ),
+        }
+    index = args.get("trace_index")
+    if index is None:
+        index = available[0]
+    index = int(index)
+    if index not in available:
+        return {
+            "available_traces": available,
+            "trace_index": index,
+            "note": f"No trace was recorded for word {index}. Traces exist for: {available}.",
+        }
+    xml = record.read_trace(index) or ""
+    cap = int(args.get("max_trace_chars") or 20000)
+    out: Dict[str, Any] = {"available_traces": available, "trace_index": index,
+                           "trace_path": f"traces/{index}.xml",
+                           "trace_chars": len(xml)}
+    reading = summarize_trace_xml(xml)
+    if reading is None:
+        # FR-029: returned raw, labelled raw, nothing invented about it.
+        out["format"] = "raw"
+        out["raw"] = xml[:cap]
+        out["raw_truncated"] = len(xml) > cap
+        out["note"] = (
+            "This trace could not be read as a parser trace document, so it is "
+            "returned exactly as recorded and labelled raw. No explanation is "
+            "offered for output this tool could not read."
+        )
+    else:
+        out["format"] = "parsed"
+        out.update(reading)
+    return out
+
+
+def summarize_trace_xml(xml: str) -> Optional[Dict[str, Any]]:
+    """A one-line reading of a HermitCrab trace, or None if it is unreadable.
+
+    Reads only what the trace states (FwXmlTraceManager.cs): `FailureReason`
+    elements and their `type`, the rule element beside each one, and the
+    `ParseCompleteTrace` successes. It names the most frequent rejection and
+    where it first occurred; it does not guess at a cause the trace does not
+    record. A document that is not XML, or not a trace, returns None and the
+    caller labels it raw (FR-029).
+    """
+    import xml.etree.ElementTree as ET
+    from collections import Counter
+
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return None
+    traces = [e for e in root.iter() if e.tag.endswith("Trace")]
+    if not traces and root.tag != "Wordform":
+        return None
+
+    parent = {child: node for node in root.iter() for child in node}
+    reasons = []
+    for element in root.iter("FailureReason"):
+        owner = parent.get(element)
+        rule = None
+        if owner is not None:
+            for sibling in owner:
+                if sibling.tag.endswith("Rule") and (sibling.text or "").strip():
+                    rule = sibling.text.strip()
+                    break
+        reasons.append({
+            "type": element.get("type") or "unspecified",
+            "stage": owner.tag if owner is not None else None,
+            "rule": rule,
+        })
+    successes = sum(
+        1 for e in root.iter("ParseCompleteTrace") if (e.get("success") or "").lower() == "true"
+    )
+    analyses = sum(1 for e in root if e.tag == "Analysis")
+
+    if not reasons:
+        line = (
+            f"The trace records {successes} successful parse path(s) and no "
+            f"rejection reason."
+        )
+        return {"summary_line": line, "rejections": 0, "successful_paths": successes,
+                "analyses": analyses, "rejections_by_type": {}}
+
+    counts = Counter(r["type"] for r in reasons)
+    top_type, top_count = counts.most_common(1)[0]
+    first = next(r for r in reasons if r["type"] == top_type)
+    where = []
+    if first["rule"]:
+        where.append(f"rule {first['rule']!r}")
+    if first["stage"]:
+        where.append(first["stage"])
+    line = (
+        f"The trace records {len(reasons)} rejection(s); the most frequent is "
+        f"'{top_type}' ({top_count})"
+        + (f", first at {' in '.join(where)}" if where else "")
+        + "."
+    )
+    return {
+        "summary_line": line,
+        "rejections": len(reasons),
+        "rejections_by_type": dict(counts),
+        "first_of_most_frequent": first,
+        "successful_paths": successes,
+        "analyses": analyses,
+    }
+
+
+# ---------------------------------------------------------------------------
 # flextools_parse_status
 # ---------------------------------------------------------------------------
 

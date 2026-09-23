@@ -46,6 +46,7 @@ from .models import (
     TryWordInput,
     ParseStatusInput,
     ParseTextInput,
+    ParseLogInput,
 )
 
 
@@ -518,6 +519,33 @@ urgent single word does not look stalled.
 
 The only refusal is parse_run_not_found, which names the handles that do exist.""",
         input_model=ParseStatusInput,
+        annotations=READ_ONLY_SAFE,
+    ),
+
+    "flextools_parse_log": ToolDef(
+        name="flextools_parse_log",
+        description="""[PARSE] Read a parse run back -- one section of its record, from disk.
+
+Read-only, and it never touches the parser or the project: every section is read
+from the run's record on disk, so a run from an earlier server session is as
+readable as one still going. Takes the run_id from flextools_parse_text or
+flextools_try_word.
+
+Sections -- exactly these seven:
+- summary -- stage, progress, scope fingerprint, engine at submission, the host
+  parser-report counters and what two of them deliberately mean differently.
+- words -- the resolved word list, paged (offset, limit).
+- results -- one line per completed word, paged. A run that was killed still has
+  every word it completed.
+- trace -- a drill-down trace (trace_index). Where the trace can be read, one line
+  names the most frequent rejection and where it first occurred; where it cannot,
+  it is returned raw and labelled raw, with no explanation invented.
+- config_generation, hc_stdout, hc_output -- these belong to the sandboxed spine,
+  which is not in this release. They come back as not applicable to this run's
+  spine, naming the checkpoint that fills them -- never as an empty section.
+
+The only refusal is parse_run_not_found, which names the runs that do exist.""",
+        input_model=ParseLogInput,
         annotations=READ_ONLY_SAFE,
     ),
 

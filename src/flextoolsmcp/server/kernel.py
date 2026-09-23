@@ -87,10 +87,11 @@ _ENV_LOG_DIR = "FLEXTOOLSMCP_LOG_DIR"
 
 
 def get_log_dir() -> Path:
-    """Get the log directory path (~/.flextoolsmcp/logs/).
+    """Get the log directory path (~/.flextoolsmcp/logs/ by default).
 
-    Override with the ``FLEXTOOLSMCP_LOG_DIR`` environment variable (used by
-    the test suite to avoid writing into the user's real log tree).
+    Override with the ``FLEXTOOLSMCP_LOG_DIR`` environment variable (absolute
+    path). Pytest sets this for the whole suite so test runs do not write into
+    the user's real log tree (issue #173).
     """
     override = os.environ.get(_ENV_LOG_DIR)
     if override:

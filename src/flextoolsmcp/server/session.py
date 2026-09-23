@@ -11,7 +11,7 @@ import re
 import logging
 import uuid
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Deque, Tuple
 
@@ -209,6 +209,18 @@ class SessionState:
         default_factory=lambda: deque(maxlen=5)
     )
 
+    def reset(self) -> None:
+        """Reset all session fields to defaults without replacing the object.
+
+        Every module that imported ``session_state`` at load time keeps the
+        same object identity; only field values change. Used by
+        ``kernel.reset_session()`` for test isolation.
+        """
+        fresh = SessionState()
+        for f in fields(self):
+            setattr(self, f.name, getattr(fresh, f.name))
+        logger.info("Session state reset to defaults")
+
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool).
 
@@ -305,8 +317,17 @@ class SessionState:
         mode_info += f", write={self.write_enabled}"
         mode_info += f", session_id={self.session_id[:8]}..."
         if self.api_versions:
-            versions_str = ", ".join(f"{k}={v}" for k, v in sorted(self.api_versions.items()))
-            mode_info += f", versions={{{versions_str}}}"
+            parts: List[str] = []
+            for lib, status in sorted(self.api_versions.items()):
+                if isinstance(status, dict):
+                    parts.append(
+                        f"{lib} installed={status.get('installed') or '?'} "
+                        f"index={status.get('index_loaded') or '?'} "
+                        f"match={status.get('match', '?')}"
+                    )
+                else:
+                    parts.append(f"{lib}={status}")
+            mode_info += f", versions={{{'; '.join(parts)}}}"
         logger.info(f"Session configured: {mode_info}")
 
     def record_discovered_api(self, entity: str, method: str) -> None:
@@ -402,8 +423,10 @@ class SessionState:
             "project_name": self.project_name or "(not set)",
             "write_enabled": self.write_enabled,
             "initialized": self.initialized,
-            "discovered_api_count": len(self.discovered_apis)
+            "discovered_api_count": len(self.discovered_apis),
         }
+        if self.api_versions:
+            result["api_versions"] = self.api_versions
         return result
 
     # ===== Feature 3: Session History =====

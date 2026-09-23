@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 30 codes below |
+| `error_code` | string | one of the 31 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -106,6 +106,7 @@ authoritative. All detail fields are optional unless noted.
 | `undefined_variables` | `undefined_vars` (list), `guidance` |
 | `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` |
 | `wrong_library_imports` | `wrong_imports` (list), `api_mode`, `affected_symbols` (list), `guidance` |
+| `invalid_api_mode` | `allowed_modes` (required list), `received`, `hint` |
 | `invalid_api_chain` | `issues` (list), `guidance` |
 | `nested_unit_of_work` | `constructs` (list), `guidance` |
 | `hvo_literal_write_risk` | `findings` (list), `next_steps` (list) -- issue #103; write-enabled runs only, a bare integer literal reached an `*_or_hvo` parameter (see `validators.detect_hvo_literal_args`) |
@@ -189,6 +190,22 @@ include the following optional fields when read-only auto-discovery occurred
 These fields are defined in `RunModuleSuccess` (`response_models.py`) with
 aliases matching the key strings above. The `_inline_discovery` alias uses the
 `KEY_INLINE_DISCOVERY = "_inline_discovery"` constant from `response_keys.py`.
+
+### UoW mode flags (issue #153)
+
+Every executed `run_module` response whose runner reached the OpenProject-time
+capability probe also carries:
+
+| Key | Type | Description |
+|---|---|---|
+| `undoable` | bool | The `OpenProject(undoable=...)` mode the runner actually chose after probing `flexicon.CAPABILITIES` for `"per-operation-uow"`. |
+| `timestamps_updated` | bool | Whether DateModified stamping is active for mutations in this session. Same value as `undoable` today (stamping rides the undoable path). |
+
+Under the declared `pyflexicon` floor both are `true`. A `false` value means
+an unsupported install silently would have degraded to the legacy
+non-undoable session envelope; the flags (and a `report.Warning`) make that
+defence-in-depth fallback visible instead of silent. Absent only when the
+subprocess never reached the probe (e.g. failed before OpenProject setup).
 
 ---
 

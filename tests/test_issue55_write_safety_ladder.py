@@ -12,10 +12,11 @@ than fixed -- see CHANGELOG.md. Issue #144 re-derived that premise as
 false on flexicon builds advertising the "per-operation-uow" capability
 (under `undoable=True` there, each mutation opens and persists its own
 named task -- nothing is missing). The generated runner now probes for
-that capability instead of hardcoding `undoable=False`; on capability-less
-(<=4.3.0) builds it still resolves to `False`, so this rung's original
-removal rationale still applies unchanged there. Rungs 2 and 3 below are
-independent of which mode the probe picks.
+that capability instead of hardcoding `undoable=False`; on a
+capability-less (unsupported) build it still resolves to `False`, so this
+rung's original removal rationale still applies there, and the resolved
+mode is surfaced on the run_module response (issue #153). Rungs 2 and 3
+below are independent of which mode the probe picks.
 
 Covers each remaining rung's acceptance criteria:
 - Rung 2: perform_pre_write_backup() creates/retains/opts-out/skips-on-low-disk;

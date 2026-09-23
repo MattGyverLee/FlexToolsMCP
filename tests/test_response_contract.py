@@ -40,6 +40,7 @@ from flextoolsmcp.server.response_models import (
     UndefinedVariablesDetail,
     MissingImportsDetail,
     WrongLibraryImportsDetail,
+    InvalidApiModeDetail,
     InvalidApiChainDetail,
     ProjectLockedDetail,
     ProjectDriveUnavailableDetail,
@@ -208,6 +209,7 @@ ALL_ERROR_CODES = [
     ("undefined_variables", dict(undefined_vars=["BAR"])),
     ("missing_imports", dict(missing_imports=["LexEntryOperations"], api_mode="flexicon")),
     ("wrong_library_imports", dict(wrong_imports=["flexlibs"], api_mode="flexicon", affected_symbols=["LexOps"])),
+    ("invalid_api_mode", dict(allowed_modes=["flexicon", "flexlibs_stable", "liblcm"], received="bogus")),
     ("invalid_api_chain", dict(issues=[], guidance="Fix chain")),
     ("nested_unit_of_work", dict(constructs=[{"construct": "UndoableUnitOfWorkHelper(...)", "line": 3}])),
     ("project_locked", dict(
@@ -288,6 +290,7 @@ DETAIL_MODEL_MAP = {
     "undefined_variables": UndefinedVariablesDetail,
     "missing_imports": MissingImportsDetail,
     "wrong_library_imports": WrongLibraryImportsDetail,
+    "invalid_api_mode": InvalidApiModeDetail,
     "invalid_api_chain": InvalidApiChainDetail,
     "project_locked": ProjectLockedDetail,
     "project_drive_unavailable": ProjectDriveUnavailableDetail,
@@ -417,7 +420,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_thirty(self):
+    def test_the_documented_error_code_count_is_thirty_one(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -430,8 +433,9 @@ class TestParserCheckCP2bCodes:
         from flextoolsmcp.server.response_models import AnyDetail
 
         union_size = len(typing.get_args(AnyDetail))
-        # 25 through CP2b; CP3 adds five, additively (FR-059).
-        assert union_size == 30, f"the detail union holds {union_size} models"
+        # 26 on main (CP2b + invalid_api_mode from #164); CP3 adds five
+        # additively (FR-059) -> 31.
+        assert union_size == 31, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"

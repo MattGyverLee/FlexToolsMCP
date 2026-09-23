@@ -13,7 +13,12 @@ from functools import lru_cache
 
 import pytest
 
-from server.validators import certify_script_readonly, detect_cud_operations, compute_is_mutating_script
+from server.validators import (
+    build_write_certification_payload,
+    certify_script_readonly,
+    detect_cud_operations,
+    compute_is_mutating_script,
+)
 
 # All tests in this module load the Flexicon API index from the on-disk index
 # directory.  That file ships inside the installed wheel (src/flextoolsmcp/index/)
@@ -411,6 +416,26 @@ def test_project_accessor_setgloss_protected():
     )
 
     print("[OK] Protected project.Senses.SetGloss() certified clean and recorded")
+
+
+def test_write_certification_payload_surfaces_guarded_mutations():
+    """Issue #131: run_module's write_certification must not drop protected_* hits."""
+    api_index = load_api_index()
+    code = """
+    def Main(project, report, modifyAllowed):
+        if modifyAllowed:
+            project.CustomFields.CreateField("LexEntry", "Probe131", "String")
+        else:
+            report.Info("(Would create field)")
+    """
+    cert = certify_script_readonly(code, api_index)
+    cud_info = detect_cud_operations(code)
+    payload = build_write_certification_payload(cert, cud_info)
+
+    assert payload["is_certified_readonly"] is True
+    assert payload["mutating_calls_detected"] == []
+    assert any(p["method"] == "CreateField" for p in payload["protected_calls"])
+    assert payload["performs_writes"] is True
 
 
 def test_protected_wrapper_call_tracked_in_protected_calls():

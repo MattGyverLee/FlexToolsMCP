@@ -55,6 +55,11 @@ try:
 except ImportError:
     from server import skeleton_storage
 
+try:
+    from ..constants import EXECUTION_API_MODE
+except ImportError:
+    from server.constants import EXECUTION_API_MODE
+
 # Import validators with fallback
 try:
     from ..validators import (
@@ -69,7 +74,8 @@ try:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
+        build_writeability_payload, build_write_certification_payload,
+        compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 except ImportError:
@@ -84,7 +90,8 @@ except ImportError:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
+        build_writeability_payload, build_write_certification_payload,
+        compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 
@@ -3000,10 +3007,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # a script cannot know at the call site whether it is executing inside
     # flexicon's own per-operation wrapper -- but WHAT it is nesting into
     # depends on the OpenProject()-time capability probe (issue #144):
-    #   - Legacy (no "per-operation-uow" capability, or flexicon <=4.3.0):
-    #     OpenProject() opens ONE non-undoable UnitOfWork for the whole
-    #     session (opened once at OpenProject(), closed once at
-    #     CloseProject()); a raw helper nests inside THAT.
+    #   - Legacy (no "per-operation-uow" in CAPABILITIES): OpenProject()
+    #     opens ONE non-undoable UnitOfWork for the whole session (opened
+    #     once at OpenProject(), closed once at CloseProject()); a raw
+    #     helper nests inside THAT. Under the declared pyflexicon floor
+    #     this branch is unreachable; it remains as defence-in-depth for
+    #     unsupported installs and is surfaced on the run_module response
+    #     (issue #153) so the degradation is never silent.
     #   - Capable builds (undoable=True chosen): OpenProject() opens no
     #     session-long envelope; instead flexicon wraps EACH mutating call
     #     in its own named unit of work (FLExProject.py), and a raw helper
@@ -3748,6 +3758,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
 
     # Build warnings
     warnings = []
+    if api_mode != EXECUTION_API_MODE:
+        warnings.append(
+            f"[api_mode] Session api_mode is {api_mode!r}, but flextools_run_module "
+            f"executes with {EXECUTION_API_MODE!r} imports. Write flexicon-compatible "
+            "code for execution; use your selected mode when searching APIs and "
+            "matching imports in preflight."
+        )
     if write_enabled:
         warnings.extend([
             "*** WRITE MODE ENABLED ***",
@@ -4031,6 +4048,22 @@ def run_module():
 
         FLExInitialize()
 
+        # Issue #159: the `ui=` kwarg only exists on flexicon builds >=4.4.0
+        # (OpenProject(..., ui=None)); on older builds passing it -- even as
+        # ui=None -- raises TypeError and kills the session's very first
+        # operation ("got an unexpected keyword argument 'ui'"). Probe the
+        # INSTALLED signature in THIS process, not in the server process: the
+        # subprocess venv can hold a different flexicon than the server's, so
+        # a server-side probe could approve a kwarg that fails here. Broad
+        # except so any introspection failure (uninspectable method, no
+        # flexicon) degrades to omitting `ui=` -- matching this repo's
+        # graceful-degrade-with-visible-warning convention for flexicon skew.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         # Open project
         project = FLExProject()
         try:
@@ -4042,14 +4075,41 @@ def run_module():
             # (FLExProject.py's `writeEnabled and self._undoable` branch) --
             # nothing raises. Probe for that capability using the exact
             # one-line form flexicon's own docstring prescribes for this
-            # consumer (flexicon/__init__.py). On flexicon <=4.3.0
-            # CAPABILITIES is undefined, getattr yields frozenset(), and
-            # _undoable is False -- byte-identical to the old hardcoded
-            # behaviour.
+            # consumer (flexicon/__init__.py).
+            #
+            # When CAPABILITIES is missing or lacks the token, _undoable is
+            # False -- byte-identical to the old hardcoded behaviour. Under
+            # the declared pyflexicon floor that branch is unreachable; it
+            # remains as defence-in-depth for unsupported installs. Issue
+            # #153: surface the resolved mode on the result so a silent
+            # non-undoable degradation cannot hide behind a successful run.
             import flexicon
             _CAPS = getattr(flexicon, "CAPABILITIES", frozenset())
             _undoable = "per-operation-uow" in _CAPS
-            project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
+            # Issue #153: machine-readable mode flags. timestamps_updated
+            # tracks DateModified stamping, which rides the same undoable
+            # path (absent under the legacy session envelope).
+            result["undoable"] = _undoable
+            result["timestamps_updated"] = _undoable
+            if not _undoable:
+                report.Warning(
+                    "OpenProject chose undoable=False: this flexicon build "
+                    "does not advertise CAPABILITIES 'per-operation-uow'. "
+                    "DateModified will not be stamped and mid-operation "
+                    "exceptions will not roll back. Supported installs "
+                    "(the declared pyflexicon floor) always advertise this "
+                    "capability; this fallback is defence-in-depth for "
+                    "unsupported installs (issue #153)."
+                )
+            if _openproject_accepts_ui:
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable)
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["messages"] = report.messages
@@ -4694,12 +4754,10 @@ MODULE_CODE = {code}
         if _shared_mode_read_back is not None:
             execution_result["shared_mode_read_back"] = _shared_mode_read_back
 
-        # Include write certification result
-        execution_result["write_certification"] = {
-            "is_certified_readonly": cert["is_certified_readonly"],
-            "confidence": cert["confidence"],
-            "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
-        }
+        # Include write certification result (issue #131: surface guarded hits too)
+        execution_result["write_certification"] = build_write_certification_payload(
+            cert, cud_info
+        )
 
         # Issues #23 + #27: when the subprocess failed inside OpenProject
         # (path missing, share offline, project locked), enrich the response
@@ -5143,17 +5201,39 @@ def run_scan():
         FLExInitialize()
         project = FLExProject()
 
+        # Issue #159: `ui=` only exists on flexicon >=4.4.0 OpenProject();
+        # a stray older build (mismatched venv) rejects it with TypeError.
+        # Probe the INSTALLED signature here, in this subprocess -- a
+        # server-side probe could approve a kwarg a different venv rejects.
+        try:
+            import inspect
+            _openproject_accepts_ui = "ui" in inspect.signature(FLExProject.OpenProject).parameters
+        except Exception:
+            _openproject_accepts_ui = False
+
         try:
             # undoable=False: see handle_run_module's runner for why (issue
             # #92 -- undoable=True skips BeginNonUndoableTask() and opens no
             # UnitOfWork). CP1 scans never write, but the same OpenProject
             # convention is reused here for consistency, not novelty.
-            project.OpenProject(
-                projectName=PROJECT_NAME,
-                writeEnabled=WRITE_ENABLED,
-                undoable=False,
-                ui=_lcm_ui,
-            )
+            if _openproject_accepts_ui:
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                    ui=_lcm_ui,
+                )
+            else:
+                report.Warning(
+                    "this flexicon build's OpenProject() does not accept the "
+                    "ui= argument; opening with this build's default LCM UI "
+                    "instead (issue #159)."
+                )
+                project.OpenProject(
+                    projectName=PROJECT_NAME,
+                    writeEnabled=WRITE_ENABLED,
+                    undoable=False,
+                )
         except Exception as e:
             result["error"] = "Failed to open project '{}': {}".format(PROJECT_NAME, str(e))
             result["error_type"] = "ProjectOpenError"

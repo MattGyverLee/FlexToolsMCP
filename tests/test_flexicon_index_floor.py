@@ -59,7 +59,6 @@ Run with:
 
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -119,11 +118,10 @@ def _floor_from(text: str, source: str) -> str:
 
 
 def _pyproject_floor() -> str:
-    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    for dep in data.get("project", {}).get("dependencies", []):
-        if "pyflexicon" in dep:
-            return _floor_from(dep, "pyproject.toml")
-    pytest.fail("No 'pyflexicon' entry in pyproject.toml [project].dependencies")
+    # Regex over the file text (same as requirements.txt) -- avoids tomllib,
+    # which is stdlib only on 3.11+ and is not a declared dep for py3.10 CI.
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    return _floor_from(text, "pyproject.toml")
 
 
 def _requirements_floor() -> str:

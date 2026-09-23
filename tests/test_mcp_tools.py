@@ -283,10 +283,25 @@ class TestWorkflowGates(TestCase):
     def setUp(self):
         """Reset session state to uninitialized before EACH test -- auto-init
         (#53) mutates it in place, so per-class-only reset would leak
-        initialized=True into later tests in this class."""
-        from server.session import SessionState  # type: ignore
+        initialized=True into later tests in this class.
+
+        Must mutate the shared kernel SessionState (issue #171) and keep
+        server.py / handler bindings on that same object. Rebinding only
+        ``srv.session_state = SessionState()`` orphans handler from-imports
+        and lets project_name leak into later cold-start assertions.
+        """
+        from server.kernel import (  # type: ignore
+            reset_session,
+            session_state as kernel_session_state,
+        )
+        from server.handlers import admin as admin_mod  # type: ignore
+        from server.handlers import execution as execution_mod  # type: ignore
+
+        reset_session()
         srv = _get_srv()
-        srv.session_state = SessionState()  # type: ignore
+        srv.session_state = kernel_session_state  # type: ignore
+        admin_mod.session_state = kernel_session_state
+        execution_mod.session_state = kernel_session_state
 
     def _parse_response(self, result):
         """Parse TextContent list into JSON."""

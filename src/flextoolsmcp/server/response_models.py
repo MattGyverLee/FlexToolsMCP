@@ -7,8 +7,8 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 30 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
-  + hvo_literal_write_risk + 4 parser-check CP1 codes
+- 31 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+  + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
   + 5 parser-check CP3 codes: parse_scope_empty, parse_scope_ambiguous,
@@ -256,6 +256,15 @@ class WrongLibraryImportsDetail(BaseModel):
     guidance: Optional[str] = None
 
 
+class InvalidApiModeDetail(BaseModel):
+    """Detail payload for invalid_api_mode rejections (issue #164)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["invalid_api_mode"] = "invalid_api_mode"
+    allowed_modes: List[str] = Field(default_factory=list)
+    received: Optional[Any] = None
+    hint: Optional[str] = None
+
+
 class InvalidApiChainDetail(BaseModel):
     """Detail payload for invalid_api_chain rejections."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -273,10 +282,12 @@ class NestedUnitOfWorkDetail(BaseModel):
     IActionHandler.BeginUndoTask()/BeginNonUndoableTask() call), which would
     nest inside whichever unit of work is already open at that point --
     the runner's session-long non-undoable task on flexicon builds without
-    the "per-operation-uow" capability, or flexicon's own per-operation
-    task on builds that have it -- and discard the writes it was holding
-    (the whole run's, or just that one operation's, respectively). See
-    validators.detect_nested_unit_of_work().
+    the "per-operation-uow" capability (defence-in-depth for unsupported
+    installs under the declared pyflexicon floor; surfaced via
+    run_module's `undoable` / `timestamps_updated` flags -- issue #153),
+    or flexicon's own per-operation task on builds that have it -- and
+    discard the writes it was holding (the whole run's, or just that one
+    operation's, respectively). See validators.detect_nested_unit_of_work().
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     error_code: Literal["nested_unit_of_work"] = "nested_unit_of_work"
@@ -646,7 +657,7 @@ class ParserJobFailedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 30 per-code detail models
+# Discriminated union over all 31 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -660,6 +671,7 @@ AnyDetail = Union[
     UndefinedVariablesDetail,
     MissingImportsDetail,
     WrongLibraryImportsDetail,
+    InvalidApiModeDetail,
     InvalidApiChainDetail,
     NestedUnitOfWorkDetail,
     ProjectLockedDetail,
@@ -722,7 +734,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              30 known codes, plus any per-code detail fields.
+              31 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

@@ -2,6 +2,42 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`flextools_start` `api_versions` misreported index-file versions as installed
+  libraries under `fallback_latest`** ([#149](https://github.com/MattGyverLee/FlexToolsMCP/issues/149)).
+  Session state and the start response now carry the same
+  `{installed, index_loaded, match}` snapshot as `flextools_health`.
+- **`reset_session()` rebinding orphaned handler references (#171).** Session reset
+  now mutates the existing `SessionState` singleton via `SessionState.reset()` so
+  every module that imported `session_state` at load time observes the reset. The
+  shared `reset_session_state` pytest fixture imports the canonical kernel helper
+  (`flextoolsmcp.server.kernel`) instead of the legacy top-level `server` alias,
+  which loaded a duplicate kernel module.
+- **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
+  tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
+  `pytest_configure`, with a regression test guarding against silent lapse.
+
+### Governance
+
+The project now has a written constitution at `.specify/memory/constitution.md`
+(v1.0.0, ratified 2026-02-05). Nothing in it is new policy: it records rules the
+repository already enforces in CI config, pre-commit hooks, runtime write gates,
+and the `.specify/extensions.yml` pipeline hooks, which until now existed only
+as scattered enforcement with no single statement of intent. Seven principles --
+safety-first write path (non-negotiable), discovery over memory, self-contained
+regenerable extraction, append-only versioned contracts, errors that teach, one
+module/one source of truth, and Windows-first with no cross-platform shims --
+plus sections on platform and dependency constraints, the two specification
+tiers, the blocking review gates, and amendment procedure.
+
+The three spec-kit templates were updated in the same pass so the document is
+load-bearing rather than decorative: `plan-template.md`'s Constitution Check
+placeholder becomes eight explicit per-principle checks, `spec-template.md`
+gains Tier and write-path header fields, and `tasks-template.md` gains a gate
+obligations block covering pattern audit, live-LCM verification, and
+CHANGELOG/index/golden regeneration.
+
 ### Tool contract
 
 Four new error codes land in `docs/TOOL-CONTRACT.md`: `parser_engine_mismatch`
@@ -72,7 +108,8 @@ carrying both fingerprints and the fields that differ), `parser_timeout` and
 cancelled`). Each detail model forbids extra fields and its field order is
 pinned by test. Additive once more: `tool-responses/1.0` is unchanged, no
 existing code changes shape, and the hand-maintained count in
-`docs/TOOL-CONTRACT.md` goes from 25 to 30. `flextools_try_word` also gains an
+`docs/TOOL-CONTRACT.md` goes from 26 to 31 (main already held 26 after
+`invalid_api_mode` from #164; CP3 adds five on top). `flextools_try_word` also gains an
 optional `bound_seconds` (plain level only) for the bounded single-word
 measurement; a measurement stopped at its bound is a successful response, not
 `parser_timeout`.

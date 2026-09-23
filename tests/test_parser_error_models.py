@@ -468,11 +468,12 @@ class TestCP3IsPurelyAdditive:
             "would make it a breaking change, which it is not."
         )
 
-    def test_union_carries_all_thirty_codes(self):
+    def test_union_carries_all_thirty_one_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 30, (
-            "expected 30 detail models after CP3's five additions, found "
+        assert len(members) == 31, (
+            "expected 31 detail models after CP3's five additions on top of "
+            "main's 26 (incl. invalid_api_mode), found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():

@@ -237,9 +237,13 @@ async def test_closing_the_window_slows_zero_runs(record_dir):
     stamps = worker.timestamps
     gaps = [b - a for a, b in zip(stamps, stamps[1:], strict=False)]
     assert gaps, "expected several words"
-    # Deliberately loose. A real stall would be ~grace_window or a whole
-    # scheduler tick; this catches that without pinning CI to a stopwatch.
-    assert max(gaps) < 0.5, (
+    # Bound is deliberately loose relative to grace_window (0.02s). A real
+    # stall would be ~grace_window or a whole scheduler pause of seconds; CI
+    # hosts routinely spike a single gap past 0.5s under load without any
+    # grace-window throttle (seen as 0.516s on py3.10 windows). Keep enough
+    # headroom that OS noise cannot fail SC-010 while a multi-second hang
+    # still fails loudly.
+    assert max(gaps) < 2.0, (
         f"a {max(gaps):.3f}s gap appeared between words -- the grace window "
         f"must not throttle the run (SC-010)"
     )

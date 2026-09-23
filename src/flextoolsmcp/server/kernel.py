@@ -13,6 +13,7 @@ Manages:
 
 import json
 import logging
+import os
 import logging.handlers
 import re
 import time
@@ -82,12 +83,21 @@ def _ensure_flexicon() -> Tuple[Optional[object], Optional[str]]:
 
 # ===== Logging Setup =====
 
-def get_log_dir() -> Path:
-    """Get the log directory path (~/.flextoolsmcp/logs/).
+_ENV_LOG_DIR = "FLEXTOOLSMCP_LOG_DIR"
 
-    Respects config if available (will be integrated in Feature 2).
+
+def get_log_dir() -> Path:
+    """Get the log directory path (~/.flextoolsmcp/logs/ by default).
+
+    Override with the ``FLEXTOOLSMCP_LOG_DIR`` environment variable (absolute
+    path). Pytest sets this for the whole suite so test runs do not write into
+    the user's real log tree (issue #173).
     """
-    log_dir = Path.home() / ".flextoolsmcp" / "logs"
+    override = os.environ.get(_ENV_LOG_DIR)
+    if override:
+        log_dir = Path(override)
+    else:
+        log_dir = Path.home() / ".flextoolsmcp" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir
 
@@ -777,12 +787,18 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
 
 
 def reset_session() -> None:
-    """Reset session state for a new session.
+    """Reset session state for tests and tooling.
 
-    Called by the 'start' tool to begin a new session.
+    Mutates the existing ``SessionState`` in place so every module that
+    imported ``session_state`` at load time observes the reset. Production
+    session boundaries go through ``SessionState.configure()``, not this
+    function (see issue #171).
     """
     global session_state
-    session_state = SessionState()
+    if session_state is None:
+        session_state = SessionState()
+    else:
+        session_state.reset()
     if operations_logger:
         operations_logger.info("Session state reset")
 

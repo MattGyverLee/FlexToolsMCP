@@ -74,7 +74,8 @@ try:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
+        build_writeability_payload, build_write_certification_payload,
+        compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 except ImportError:
@@ -89,7 +90,8 @@ except ImportError:
         detect_interface_attribute_typos,
         _collect_all_imported_names, _accessor_to_ops_map,
         annotate_properties_with_casting, build_casting_notes,
-        build_writeability_payload, compute_is_mutating_script, detect_nested_unit_of_work,
+        build_writeability_payload, build_write_certification_payload,
+        compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
     )
 
@@ -4752,12 +4754,10 @@ MODULE_CODE = {code}
         if _shared_mode_read_back is not None:
             execution_result["shared_mode_read_back"] = _shared_mode_read_back
 
-        # Include write certification result
-        execution_result["write_certification"] = {
-            "is_certified_readonly": cert["is_certified_readonly"],
-            "confidence": cert["confidence"],
-            "mutating_calls_detected": [m for m in cert["mutating_calls"] if m.get("is_mutating")],
-        }
+        # Include write certification result (issue #131: surface guarded hits too)
+        execution_result["write_certification"] = build_write_certification_payload(
+            cert, cud_info
+        )
 
         # Issues #23 + #27: when the subprocess failed inside OpenProject
         # (path missing, share offline, project locked), enrich the response

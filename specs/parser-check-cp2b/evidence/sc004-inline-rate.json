@@ -7,7 +7,7 @@
   "inline_rate": 1.0,
   "required_rate": 0.95,
   "overflowed_words": [],
-  "seconds_fastest": 0.046,
-  "seconds_median": 0.047,
-  "seconds_slowest": 0.063
+  "seconds_fastest": 0.0489,
+  "seconds_median": 0.0522,
+  "seconds_slowest": 0.0637
 }

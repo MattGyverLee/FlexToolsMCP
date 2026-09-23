@@ -3089,8 +3089,22 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
         )
+        # Issue #95: return the structured TOOL-CONTRACT rejection (status,
+        # error_code, _contract, message) with the same fix guidance the log
+        # already records -- not a legacy ad-hoc dict whose ``error`` string
+        # collides with the nested deprecated shape.
         return _attach_assistance_if_loop(
-            [TextContent(type="text", text=json.dumps(guidance, indent=2))],
+            error_response(
+                "unprotected_writes",
+                guidance["message"],
+                mutations_found=guidance.get("mutations_found"),
+                why=guidance.get("why"),
+                fix_pattern=guidance.get("fix_pattern"),
+                templates_to_review=guidance.get("templates_to_review"),
+                next_steps=guidance.get("next_steps"),
+                mutating_calls=mutating[:20],
+                op_id=op_id,
+            ),
             error_code="unprotected_writes",
             code_size_bytes=_code_size_bytes,
         )

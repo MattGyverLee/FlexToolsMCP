@@ -322,6 +322,7 @@ class TestPreflightFailurePaths(unittest.TestCase):
         ns["_flexicon"] = None
         ns["FLExProject"] = None
         ns["_FLEXICON_IMPORT_ERROR"] = "No module named 'flexicon'"
+        ns["_FLEXICON_LOAD_ERROR"] = None
 
         report = _FakeReport()
         result = ns["_flexicon_preflight"](report)
@@ -341,6 +342,77 @@ class TestPreflightFailurePaths(unittest.TestCase):
             "No module named 'flexicon'", text,
             "The captured ImportError text must be quoted, so the user can "
             "tell a missing package from a broken one. Got:\n%s" % text,
+        )
+
+    def test_installed_but_load_failed_quotes_error_without_pip_install(self):
+        """Issue #132: FieldWorks-less flexicon raises bare Exception at import."""
+        ns = _load_namespace()
+        ns["_flexicon"] = None
+        ns["FLExProject"] = None
+        ns["_FLEXICON_IMPORT_ERROR"] = None
+        ns["_FLEXICON_LOAD_ERROR"] = "64bit FieldWorks 9 not found"
+
+        report = _FakeReport()
+        result = ns["_flexicon_preflight"](report)
+
+        self.assertFalse(result)
+        text = report.text
+        self.assertIn(
+            "64bit FieldWorks 9 not found", text,
+            "The load failure must be quoted. Got:\n%s" % text,
+        )
+        self.assertIn(
+            "did not load", text,
+            "Must distinguish installed-but-broken from missing package. Got:\n%s"
+            % text,
+        )
+        self.assertNotIn(
+            "pip install pyflexicon", text,
+            "pyflexicon is present; pip install is the wrong remedy. Got:\n%s"
+            % text,
+        )
+
+    def test_load_failure_at_import_is_caught_without_stub(self):
+        """The template guard must catch non-ImportError import failures (#132)."""
+        import importlib.util
+
+        src = _template_source()
+        head = src.split("def _flexicon_installed_version", 1)[0]
+        self.assertIn("except Exception as _load_error:", head)
+        self.assertIn("_FLEXICON_LOAD_ERROR", head)
+
+        class _ExplodingLoader:
+            def create_module(self, spec):
+                return None
+
+            def exec_module(self, module):
+                raise RuntimeError("flexicon import exploded")
+
+        class _FlexiconFinder:
+            def find_spec(self, fullname, path, target=None):
+                if fullname == "flexicon":
+                    return importlib.util.spec_from_loader(
+                        "flexicon", _ExplodingLoader()
+                    )
+                return None
+
+        saved = sys.modules.get("flexicon")
+        sys.modules.pop("flexicon", None)
+        finder = _FlexiconFinder()
+        sys.meta_path.insert(0, finder)
+        ns = {"__name__": "_flexicon_load_guard_under_test"}
+        try:
+            exec(compile(src, "2-flexicon-template.py", "exec"), ns)
+        finally:
+            sys.meta_path.remove(finder)
+            sys.modules.pop("flexicon", None)
+            if saved is not None:
+                sys.modules["flexicon"] = saved
+
+        self.assertIsNone(ns.get("_flexicon"))
+        self.assertIsNone(ns.get("_FLEXICON_IMPORT_ERROR"))
+        self.assertEqual(
+            "flexicon import exploded", ns.get("_FLEXICON_LOAD_ERROR"),
         )
 
     def test_a_bad_symbol_is_not_reported_as_a_missing_package(self):
@@ -441,13 +513,16 @@ class TestPreflightFailurePaths(unittest.TestCase):
         self.assertIn("try:\n    import flexicon as _flexicon\n", head)
         package_try = head.index("try:\n    import flexicon as _flexicon\n")
         symbol_import = head.index("from flexicon import (")
-        handler = head.index("except ImportError as _import_error:")
+        import_error_handler = head.index("except ImportError as _import_error:")
+        load_error_handler = head.index("except Exception as _load_error:")
         self.assertLess(
-            handler, symbol_import,
+            import_error_handler, symbol_import,
             "The missing-package handler must close BEFORE the `from flexicon "
             "import (...)` list, or a bad name lands in it again.",
         )
-        self.assertLess(package_try, handler)
+        self.assertLess(load_error_handler, symbol_import)
+        self.assertLess(package_try, import_error_handler)
+        self.assertLess(import_error_handler, load_error_handler)
 
     def test_t4_2b_too_old_names_the_upgrade_command_and_the_version_found(self):
         ns = _load_namespace()

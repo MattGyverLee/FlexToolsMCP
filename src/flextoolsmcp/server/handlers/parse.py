@@ -966,11 +966,13 @@ async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
 
     # (3) Resolution. Parses nothing.
     try:
-        resolved = ResolvedScope(
-            **await runner.resolve_scope(project_name, scope.model_dump())
-        )
+        raw = dict(await runner.resolve_scope(project_name, scope.model_dump()))
     except WorkerError as exc:
         return _worker_error_response(exc)
+    # The one project-state probe (FR-004) rides with the resolution; it is
+    # the oracle's precondition and is recorded on the run.
+    project_state = raw.pop("project_state", None)
+    resolved = ResolvedScope(**raw)
 
     scope_block = {
         "kind": resolved.scope_kind,
@@ -1015,6 +1017,7 @@ async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
             scope_fingerprint=fingerprint.to_dict(),
             engine_at_submission=engine,
             vernacular_ws=resolved.vernacular_ws,
+            project_state=project_state,
         )
     except WorkerError as exc:
         return _worker_error_response(exc)
@@ -1193,6 +1196,30 @@ def _empty_note(meta, what: str) -> str:
     return f"No {what} are recorded for this run (stage {stage!r})."
 
 
+# The session's drill-down budget (FR-047, SC-016). A user-chosen figure in
+# 10-20, set once by the first report request that names one; later requests
+# read the same budget, so a session cannot be walked past its cap by asking
+# again. Nothing traces automatically -- the budget bounds what the report
+# RECOMMENDS, and every trace remains one flextools_try_word call for one word.
+_drill_down: Optional["DrillDownBudget"] = None  # noqa: F821
+
+
+def _drill_down_budget(cap: Optional[int]):
+    """The session's budget, created on the first request that names a cap."""
+    global _drill_down
+    if _drill_down is None and cap is not None:
+        from ..signals.clustering import DrillDownBudget
+
+        _drill_down = DrillDownBudget(int(cap))
+    return _drill_down
+
+
+def reset_drill_down() -> None:
+    """Forget the session's drill-down budget (tests; a new session)."""
+    global _drill_down
+    _drill_down = None
+
+
 async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
     """Serve one section of a run's artifact (FR-028, FR-029).
 
@@ -1226,6 +1253,17 @@ async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
         summary["results_recorded"] = record.result_count()
         summary["traces_recorded"] = sorted(_trace_indices(record))
         summary["run_spine"] = IN_PROCESS_SPINE
+        if meta is not None and meta.words_path is not None:
+            # A batch run: the US5 report, computed from the artifact alone.
+            from ..signals.report import build_report
+
+            summary["report"] = build_report(
+                record.iter_results(),
+                meta.project_state,
+                budget=_drill_down_budget(args.get("drill_down_cap")),
+                offset=offset,
+                limit=limit,
+            )
         if summary.get("engine_changed_midjob"):
             summary["warnings"] = [
                 "The project's active parser changed while this run was going. "

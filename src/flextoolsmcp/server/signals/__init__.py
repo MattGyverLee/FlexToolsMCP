@@ -40,4 +40,6 @@ The modules:
     attribution.py    side-by-side rule-chain attribution (FR-049)
     projections.py    deletion and duplicate projections -- computed,
                       reported, acted on by nothing (FR-050)
+    report.py         assembles the above into the batch report that
+                      flextools_parse_log serves in a batch run's summary
 """

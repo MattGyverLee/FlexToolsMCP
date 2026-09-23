@@ -535,6 +535,13 @@ flextools_try_word.
 Sections -- exactly these seven:
 - summary -- stage, progress, scope fingerprint, engine at submission, the host
   parser-report counters and what two of them deliberately mean differently.
+  For a batch run it also carries the report: five corpus signals, each with the
+  reason it may be a false alarm; the human-analysis oracle in its mandated
+  wording; candidate pairings (suggestions, never filed); words clustered with
+  one to three representatives each to trace; and the deletion and duplicate
+  projections (information only -- nothing acts on them). Pass drill_down_cap
+  (10-20) once per session to bound how many words the report recommends
+  tracing. Nothing is ever traced automatically.
 - words -- the resolved word list, paged (offset, limit).
 - results -- one line per completed word, paged. A run that was killed still has
   every word it completed.

@@ -434,6 +434,7 @@ class ParseRunner:
         scope_fingerprint: Optional[dict[str, Any]] = None,
         engine_at_submission: Optional[str] = None,
         vernacular_ws: Optional[str] = None,
+        project_state: Optional[dict[str, Any]] = None,
     ) -> RunHandle:
         """Start a run and wait out the grace window. THE only entry point.
 
@@ -465,6 +466,7 @@ class ParseRunner:
             words=list(wordforms) if batch else None,
             scope_fingerprint=scope_fingerprint,
             engine_at_submission=engine_at_submission,
+            project_state=project_state,
         )
         handle = RunHandle(
             run_id=record.run_id,

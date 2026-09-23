@@ -529,7 +529,11 @@ class ParseWorkerClient:
         answer = await self._request(
             {"type": "resolve_scope", "request_id": request_id, "scope": scope}, timeout
         )
-        return dict(answer.get("resolved") or {})
+        resolved = dict(answer.get("resolved") or {})
+        # The one project-state probe rides with the resolution (FR-004); the
+        # handler pops it before validating the resolved scope.
+        resolved["project_state"] = answer.get("project_state")
+        return resolved
 
     async def cancel_run(self, run_id: str) -> None:
         """Ask the worker to stop a run at its next word boundary.

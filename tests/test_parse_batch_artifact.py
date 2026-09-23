@@ -291,12 +291,20 @@ def test_the_structured_result_is_reduced_to_identifiers_and_text():
 
     record = _structured_analysis(analysis, ws=1)
 
-    assert record == {
+    frozen = {"signature", "rendered_morphs", "category_labels", "has_guessed_form"}
+    assert {k: record[k] for k in frozen} == {
         "signature": [["aaaa-1", "bbbb-2", "cccc-3"]],
         "rendered_morphs": ["pukul"],
         "category_labels": ["v"],
         "has_guessed_form": False,
     }
+    # US5's additive fields (contracts/artifact.md section 4; section 9 rule 1).
+    # The double has no owner, morph type or analysis WS, so each is the
+    # honest empty value, never a guess.
+    assert set(record) - frozen == {"entry_guids", "morph_kinds", "morph_glosses"}
+    assert record["entry_guids"] == [None]
+    assert record["morph_kinds"] == ["unknown"]
+    assert record["morph_glosses"] == [""]
     json.dumps(record)  # nothing un-serializable survived
 
 

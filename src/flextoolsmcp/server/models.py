@@ -922,7 +922,8 @@ class ParseLogInput(BaseModel):
         "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
     ] = Field(
         default="summary",
-        description="summary: stage, progress, fingerprint, counters. words: the resolved "
+        description="summary: stage, progress, fingerprint, counters, and for a batch run "
+                    "the report (signals, oracle, pairings, clusters, projections). words: the resolved "
                     "word list. results: one line per completed word. trace: a drill-down "
                     "trace (pass trace_index). config_generation / hc_stdout / hc_output "
                     "belong to the sandbox spine and are reported as not applicable to "
@@ -938,6 +939,13 @@ class ParseLogInput(BaseModel):
     max_trace_chars: int = Field(
         default=20000, ge=1000, le=200000,
         description="Cap on how much of a raw trace is returned inline."
+    )
+    drill_down_cap: Optional[int] = Field(
+        default=None, ge=10, le=20,
+        description="Your drill-down cap for this session: how many words, from 10 to "
+                    "20, the batch report may recommend tracing in total. Chosen once "
+                    "per session; nothing is ever traced automatically (summary of a "
+                    "batch run only)."
     )
 
 

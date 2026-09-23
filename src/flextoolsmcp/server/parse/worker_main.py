@@ -338,6 +338,10 @@ class _ParseBackend:
         """
         raise NotImplementedError
 
+    def project_state(self) -> Optional[dict[str, Any]]:
+        """`ProjectParseState.to_dict()` from the one probe, or None."""
+        return None
+
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
         """The grammar load errors of a load that began at `load_started`.
 
@@ -541,6 +545,15 @@ class _StubBackend(_ParseBackend):
 
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
         return {"captured": True, "source": "stub", "errors": []}
+
+    #: What `project_state()` reports; a test may replace it.
+    stub_project_state: dict[str, Any] = {
+        "parser_has_ever_run": True, "analyses_total": 0, "parser_created_analyses": 1,
+        "human_opinion_analyses": 0, "indeterminate_analyses": 0, "truncated": False,
+    }
+
+    def project_state(self) -> Optional[dict[str, Any]]:
+        return dict(self.stub_project_state)
 
     def release(self) -> None:
         self._loaded = False
@@ -994,6 +1007,7 @@ class _RealBackend(_ParseBackend):
         artifact must be reportable without reopening the project.
         """
         ws = self._ws_handle(vernacular_ws)
+        analysis_ws = self._analysis_ws()
         parser = self._project.Parser
 
         started = time.perf_counter()
@@ -1002,7 +1016,7 @@ class _RealBackend(_ParseBackend):
 
         analyses = []
         for analysis in _clr_list(getattr(result, "Analyses", None)):
-            analyses.append(_structured_analysis(analysis, ws))
+            analyses.append(_structured_analysis(analysis, ws, analysis_ws))
 
         error = getattr(result, "ErrorMessage", None)
         return {
@@ -1061,17 +1075,133 @@ class _RealBackend(_ParseBackend):
                         complete += 1
                 except Exception:  # noqa: BLE001
                     pass
+            analysis_guid = _guid(analysis)
+            evaluator, evaluated_at, parser_evaluated = self._evaluation_facts(analysis)
             records.append(
                 {
-                    "analysis_guid": _guid(analysis),
+                    "analysis_guid": analysis_guid,
                     "opinion": opinion,
                     "bundle_count": len(bundles),
                     "complete_bundle_count": complete,
                     "signature": signature,
                     "rendered_morphs": rendered,
+                    # CP3 US5 additions (additive): what the oracle and the
+                    # projections need, recorded as read.
+                    "gloss": self._analysis_gloss(analysis),
+                    "category_label": self._analysis_category(analysis),
+                    "parser_evaluated": parser_evaluated,
+                    "evaluator": evaluator,
+                    "evaluated_at": evaluated_at,
+                    "in_segment": self._segment_occurrence().contains(analysis_guid),
                 }
             )
         return records
+
+    # -- CP3 US5: facts the oracle reads ----------------------------------
+
+    def _analysis_ws(self) -> Optional[int]:
+        try:
+            return int(self._project.GetDefaultAnalysisWSHandle())
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _analysis_gloss(self, analysis: Any) -> str:
+        """The first word gloss (`IWfiGloss.Form`) at the analysis WS."""
+        ws = self._analysis_ws()
+        if ws is None:
+            return ""
+        for gloss in _clr_list(getattr(analysis, "MeaningsOC", None)):
+            text = _multi_text(getattr(gloss, "Form", None), ws)
+            if text:
+                return text
+        return ""
+
+    def _analysis_category(self, analysis: Any) -> str:
+        ws = self._analysis_ws()
+        category = getattr(analysis, "CategoryRA", None)
+        if category is None or ws is None:
+            return ""
+        return _multi_text(getattr(category, "Abbreviation", None), ws)
+
+    def _evaluation_facts(self, analysis: Any) -> tuple:
+        """(human evaluator name, human evaluation date, parser evaluated?).
+
+        The evaluator is the evaluation's owning agent. `Owner` is typed as
+        base `ICmObject`, which has no `Name`, so it is cast to `ICmAgent`
+        before the read (the #32/#97/#98 class). Unreadable facts are None,
+        never a guess.
+        """
+        evaluator = None
+        evaluated_at = None
+        parser_evaluated = False
+        ws = self._analysis_ws()
+        for evaluation in _clr_list(getattr(analysis, "EvaluationsRC", None)):
+            try:
+                human = bool(getattr(evaluation, "Human", False))
+            except Exception:  # noqa: BLE001
+                continue
+            if not human:
+                parser_evaluated = True
+                continue
+            if evaluator is None:
+                agent = getattr(evaluation, "Owner", None)
+                try:
+                    from SIL.LCModel import ICmAgent  # type: ignore[import-not-found]
+
+                    agent = ICmAgent(agent)
+                except Exception:  # noqa: BLE001
+                    pass
+                name = _multi_text(getattr(agent, "Name", None), ws) if ws is not None else ""
+                evaluator = name or None
+                stamp = getattr(evaluation, "DateCreated", None)
+                evaluated_at = str(stamp) if stamp is not None else None
+        return evaluator, evaluated_at, parser_evaluated
+
+    def _segment_occurrence(self):
+        """The ONE segment-occurrence join (FR-043), built once per worker.
+
+        The traversal (texts -> paragraphs -> segments) lives here because it
+        needs the open project; the join itself -- which analyses a segment
+        references, resolving a gloss to its owning analysis -- is
+        `signals.oracle.segment_occurrence`, the implementation CP4's
+        deletion projection reuses. Built lazily on the first stored analysis
+        a batch reads and held for the worker's life.
+        """
+        cached = getattr(self, "_occurrence", None)
+        if cached is None:
+            from ..signals.oracle import segment_occurrence
+
+            try:
+                cached = segment_occurrence(self._iter_segments())
+            except Exception as exc:  # noqa: BLE001 -- unknown, never "none"
+                _log(f"segment-occurrence join failed: {exc}")
+                cached = segment_occurrence(None)
+            self._occurrence = cached
+        return cached
+
+    def _iter_segments(self):
+        """Every segment of every text. Paragraphs are cast to `IStTxtPara`:
+        `ParagraphsOS` is typed as base `IStPara`, which has no `SegmentsOS`."""
+        try:
+            from SIL.LCModel import IStTxtPara  # type: ignore[import-not-found]
+        except Exception:  # noqa: BLE001
+            IStTxtPara = None  # noqa: N806
+        for text in self._project.Texts.GetAll():
+            contents = getattr(text, "ContentsOA", None)
+            for para in _clr_list(getattr(contents, "ParagraphsOS", None)):
+                if IStTxtPara is not None:
+                    try:
+                        para = IStTxtPara(para)
+                    except Exception:  # noqa: BLE001 -- not a text paragraph
+                        continue
+                for segment in _clr_list(getattr(para, "SegmentsOS", None)):
+                    yield segment
+
+    def project_state(self) -> dict[str, Any]:
+        """The ONE project-state probe (FR-004), for the oracle precondition."""
+        from .project_state import probe_project_state
+
+        return probe_project_state(self._project).to_dict()
 
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
         """Read the load-error file OUR load just wrote (FR-023).
@@ -1315,7 +1445,47 @@ def _msa_label(msa: Any) -> str:
     return ""
 
 
-def _structured_analysis(analysis: Any, ws: int) -> dict[str, Any]:
+def _morph_kind(form: Any) -> str:
+    """'stem', 'affix' or 'unknown', from the form's morph type flags."""
+    morph_type = getattr(form, "MorphTypeRA", None)
+    if morph_type is None:
+        return "unknown"
+    try:
+        if bool(getattr(morph_type, "IsAffixType", False)):
+            return "affix"
+        if bool(getattr(morph_type, "IsStemType", False)):
+            return "stem"
+    except Exception:  # noqa: BLE001
+        pass
+    return "unknown"
+
+
+def _sense_gloss(entry: Any, msa: Any, analysis_ws: Optional[int]) -> str:
+    """The gloss of the entry's sense that carries this MSA, best-effort.
+
+    What a composed gloss is built from (SPEC 9.3.2). The entry arrives as
+    the form's `Owner`, typed as base `ICmObject` -- `AllSenses` is not on
+    that interface, so it is cast to `ILexEntry` first (the #32/#97/#98
+    class: an unguarded member read on a base-typed `.Owner`).
+    """
+    if entry is None or msa is None or analysis_ws is None:
+        return ""
+    try:
+        from SIL.LCModel import ILexEntry  # type: ignore[import-not-found]
+
+        entry = ILexEntry(entry)
+    except Exception:  # noqa: BLE001 -- not an entry, or no CLR (a test double)
+        pass
+    msa_guid = _guid(msa)
+    for sense in _clr_list(getattr(entry, "AllSenses", None)):
+        if _guid(getattr(sense, "MorphoSyntaxAnalysisRA", None)) == msa_guid:
+            return _multi_text(getattr(sense, "Gloss", None), analysis_ws)
+    return ""
+
+
+def _structured_analysis(
+    analysis: Any, ws: int, analysis_ws: Optional[int] = None
+) -> dict[str, Any]:
     """One `ParseAnalysis` as an AnalysisRecord (data-model.md section 6).
 
     `signature` is the ordered (form, MSA, inflection type) GUID triples --
@@ -1331,6 +1501,9 @@ def _structured_analysis(analysis: Any, ws: int) -> dict[str, Any]:
     signature = []
     rendered = []
     labels = []
+    entries = []
+    kinds = []
+    glosses = []
     guessed = False
     for morph in _clr_list(getattr(analysis, "Morphs", None)):
         form = getattr(morph, "Form", None)
@@ -1344,11 +1517,22 @@ def _structured_analysis(analysis: Any, ws: int) -> dict[str, Any]:
         else:
             rendered.append(_multi_text(getattr(form, "Form", None), ws))
         labels.append(_msa_label(msa))
+        # CP3 US5 additions (additive to the frozen line shape): what the
+        # batch signals need without reopening the project -- the owning
+        # entry (root-entry disagreement), the morph kind (a root analysed
+        # as affixes) and the sense gloss (the composed gloss, SPEC 9.3.2).
+        owner = getattr(form, "Owner", None)
+        entries.append(_guid(owner))
+        kinds.append(_morph_kind(form))
+        glosses.append(_sense_gloss(owner, msa, analysis_ws))
     return {
         "signature": signature,
         "rendered_morphs": rendered,
         "category_labels": labels,
         "has_guessed_form": guessed,
+        "entry_guids": entries,
+        "morph_kinds": kinds,
+        "morph_glosses": glosses,
     }
 
 
@@ -1729,11 +1913,20 @@ class ParseWorker:
                     )
                 else:
                     resolved = self._backend.resolve_scope(dict(message.get("scope") or {}))
+                    try:
+                        # The one probe (FR-004), read at submission: the
+                        # oracle's precondition. A batch writes nothing, so
+                        # the state cannot change under the run.
+                        state = self._backend.project_state()
+                    except Exception as exc:  # noqa: BLE001 -- unknown, not absent
+                        _log(f"project-state probe failed: {exc}")
+                        state = None
                     self._emit(
                         {
                             "type": "scope_resolved",
                             "request_id": request_id,
                             "resolved": resolved,
+                            "project_state": state,
                         }
                     )
             except Exception as exc:  # noqa: BLE001 -- marshalled below

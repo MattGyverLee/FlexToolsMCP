@@ -91,7 +91,7 @@ whole state or the other, never a half-written file.
 
 **CP3 additions**: `scope_fingerprint`, `engine_at_submission`,
 `engine_changed_midjob`, `load_error_baseline`, `counters`,
-`counter_divergences`, `words_path`.
+`counter_divergences`, `words_path`, `project_state`.
 
 Field meanings are in [`../data-model.md`](../data-model.md) sections 3 and 4.
 As shipped (`record.RunMeta`):
@@ -105,6 +105,7 @@ As shipped (`record.RunMeta`):
 | `counters` | object of exactly the eight host names (section 4 of `contracts/tools.md`) -> int | batch runs |
 | `counter_divergences` | list of two strings, each beginning `"<CounterName>:"` | batch runs |
 | `words_path` | `"words.txt"` | batch runs; `null` otherwise |
+| `project_state` | `ProjectParseState.to_dict()` from the ONE probe (`parse/project_state.py`, FR-004), read at submission: `parser_has_ever_run`, `analyses_total`, `parser_created_analyses`, `human_opinion_analyses`, `indeterminate_analyses`, `truncated`. The oracle's precondition (FR-041). *Added additively after the freeze, at US5 (section 9, rule 1).* | batch runs; `null` if the probe could not run |
 
 **Written incrementally** (FR-016), not only at completion: progress and
 counters are rewritten after **every** word, not only on a stage change. A run
@@ -181,6 +182,20 @@ run's structured result inside `parse`:
   `complete_bundle_count` (bundles whose public `IsComplete` is true) are the
   raw facts the completeness tier is derived from (FR-038); the tier itself is
   not stored.
+- *Added additively after the freeze, at US5 (section 9, rule 1).* Each
+  `analyses[i]` also carries `entry_guids` (the owning entry of each morph's
+  form, lowercase GUID or `null`), `morph_kinds` (`"stem" | "affix" |
+  "unknown"` per morph, from the morph type's public flags) and
+  `morph_glosses` (the gloss of the sense carrying each morph's MSA, at the
+  default analysis writing system; `""` where none). Each `human_analyses[i]`
+  also carries `gloss` (the first word gloss), `category_label`,
+  `parser_evaluated` (bool), `evaluator` and `evaluated_at` (the first human
+  evaluation's agent name and date, `null` where unreadable), and
+  `in_segment` (`true | false | null` -- `null` when the segment-occurrence
+  join could not be built; never collapsed to `false`). These are what the
+  batch signals, the oracle and the projections read (`server/signals/`).
+  A run recorded before them reports the dependent signals as not
+  computable.
 - `trace_path` is present only where a drill-down wrote a trace.
 - A word that failed without ending the run carries `"parse": null` and
   `"error": {"message": str, "error_type": str}` instead.

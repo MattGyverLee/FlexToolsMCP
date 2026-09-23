@@ -364,6 +364,11 @@ class RunMeta:
     counter_divergences: Optional[list[str]] = None
     #: Relative path of the word list inside the run directory.
     words_path: Optional[str] = None
+    #: `ProjectParseState.to_dict()` from the ONE probe (FR-004), read at
+    #: submission. The oracle's precondition (FR-041): a batch report on a
+    #: project the parser has never run against reports the oracle absent.
+    #: Added after the T053 freeze, additively (contracts/artifact.md s.9).
+    project_state: Optional[dict[str, Any]] = None
 
 
 class RunRecord:
@@ -421,6 +426,7 @@ class RunRecord:
         words: Optional[list[str]] = None,
         scope_fingerprint: Optional[dict[str, Any]] = None,
         engine_at_submission: Optional[str] = None,
+        project_state: Optional[dict[str, Any]] = None,
     ) -> "RunRecord":
         """Mint a run id and open its record at stage `starting`.
 
@@ -447,6 +453,7 @@ class RunRecord:
                 counters=HostCounters().to_dict() if batch else None,
                 counter_divergences=list(COUNTER_DIVERGENCES) if batch else None,
                 words_path=words_path,
+                project_state=project_state,
             )
         )
         return record

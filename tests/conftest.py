@@ -3,6 +3,7 @@
 """Pytest configuration and shared fixtures."""
 
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -19,16 +20,28 @@ if src_path not in sys.path:
 if pkg_path not in sys.path:
     sys.path.insert(0, pkg_path)
 
+# Issue #173: isolate logs for the whole suite before any test module imports
+# flextoolsmcp.server.kernel (several test files import kernel at collection time).
+_PYTEST_LOG_DIR: Path | None = None
+
 
 def pytest_configure(config):
     """Isolate logging for the whole test run (issue #173).
 
     Must run before any test module imports ``kernel.setup_logging``.
     """
+    global _PYTEST_LOG_DIR
     if os.environ.get("FLEXTOOLSMCP_LOG_DIR"):
         return
-    isolated = tempfile.mkdtemp(prefix="flextoolsmcp_pytest_logs_")
-    os.environ["FLEXTOOLSMCP_LOG_DIR"] = isolated
+    _PYTEST_LOG_DIR = Path(tempfile.mkdtemp(prefix="flextoolsmcp_pytest_logs_"))
+    os.environ["FLEXTOOLSMCP_LOG_DIR"] = str(_PYTEST_LOG_DIR)
+
+
+def pytest_unconfigure(config):
+    global _PYTEST_LOG_DIR
+    if _PYTEST_LOG_DIR is not None and _PYTEST_LOG_DIR.exists():
+        shutil.rmtree(_PYTEST_LOG_DIR, ignore_errors=True)
+    _PYTEST_LOG_DIR = None
 
 
 @pytest.fixture

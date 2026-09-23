@@ -4,9 +4,18 @@
 
 ### Fixed
 
+<<<<<<< HEAD
+- **`reset_session()` rebinding orphaned handler references (#171).** Session reset
+  now mutates the existing `SessionState` singleton via `SessionState.reset()` so
+  every module that imported `session_state` at load time observes the reset. The
+  shared `reset_session_state` pytest fixture imports the canonical kernel helper
+  (`flextoolsmcp.server.kernel`) instead of the legacy top-level `server` alias,
+  which loaded a duplicate kernel module.
+=======
 - **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
   tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
   `pytest_configure`, with a regression test guarding against silent lapse.
+>>>>>>> origin/main
 
 ### Governance
 

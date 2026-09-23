@@ -1,34 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Issue #171: reset_session() must mutate, not rebind, session_state."""
+"""Regression tests for issue #171: reset_session() must mutate, not rebind."""
 
-from server.handlers import catalog as catalog_handler
-from server.kernel import reset_session, session_state as kernel_session_state
-
-
-def test_reset_session_mutates_handler_import_reference():
-    """Handler modules import session_state at load time; reset must reach them."""
-    catalog_handler.session_state.project_name = "leak-test-project"
-    catalog_handler.session_state.record_discovered_api("LexEntry", "GetAll")
-
-    before_id = id(catalog_handler.session_state)
-    assert before_id == id(kernel_session_state)
-
-    reset_session()
-
-    assert id(catalog_handler.session_state) == before_id
-    assert id(kernel_session_state) == before_id
-    assert catalog_handler.session_state.project_name == ""
-    assert catalog_handler.session_state.get_discovered_apis() == set()
+import flextoolsmcp.server.handlers.execution as exec_mod
+from flextoolsmcp.server.kernel import reset_session, session_state as kernel_session_state
 
 
-def test_reset_session_state_fixture_clears_handler_import(reset_session_state):
-    """conftest reset_session_state must reset the object handlers actually use."""
-    assert catalog_handler.session_state.project_name == ""
-    catalog_handler.session_state.project_name = "during-test"
-    catalog_handler.session_state.record_validated_api("VariantOperations")
+class TestResetSessionMutatesSingleton:
+    """reset_session() must clear state visible through handler import bindings."""
 
-    reset_session()
+    def test_reset_clears_state_on_handler_reference(self):
+        before_id = id(exec_mod.session_state)
+        assert exec_mod.session_state is kernel_session_state
 
-    assert catalog_handler.session_state.project_name == ""
-    assert catalog_handler.session_state.validated_apis == set()
+        exec_mod.session_state.project_name = "LeakTestProject"
+        exec_mod.session_state.initialized = True
+        exec_mod.session_state.record_validated_api("LexEntryOperations")
+
+        reset_session()
+
+        assert id(exec_mod.session_state) == before_id
+        assert exec_mod.session_state is kernel_session_state
+        assert exec_mod.session_state.project_name == ""
+        assert exec_mod.session_state.initialized is False
+        assert exec_mod.session_state.validated_apis == set()
+
+    def test_reset_session_state_fixture_pattern(self):
+        """Mirrors tests/conftest.py reset_session_state fixture import path."""
+        from flextoolsmcp.server.kernel import reset_session as fixture_reset
+
+        exec_mod.session_state.project_name = "FixtureLeak"
+        fixture_reset()
+        assert exec_mod.session_state.project_name == ""
+        assert fixture_reset is reset_session

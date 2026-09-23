@@ -170,6 +170,7 @@ def _get_real_key_not_found_exception_type():
     except Exception as exc:  # ImportError *or* RuntimeError (no mono/coreclr)
         pytest.skip(f"CLR runtime unavailable: {exc}")
     try:
+        import clr  # type: ignore
         clr.AddReference("mscorlib")
         from System.Collections.Generic import KeyNotFoundException
     except Exception as exc:  # pragma: no cover - environment-dependent

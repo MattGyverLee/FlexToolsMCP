@@ -124,7 +124,7 @@ themselves are perfectly present and countable.
 **Why this matters to US1.** A scope resolution that reads forms at the default
 writing system would report this text as 38 words of empty string -- and after
 NFC de-duplication (FR-009), as a *single* empty word. That is not a crash and
-not a refusal; it is a silently wrong word list, and it would be indisturguishable
+not a refusal; it is a silently wrong word list, and it would be indistinguishable
 downstream from a text that genuinely resolved to one word.
 
 **Consequences, to be honoured in Phase 3:**

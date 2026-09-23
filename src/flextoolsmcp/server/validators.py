@@ -3713,7 +3713,8 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
             if isinstance(node, ast.Compare) and len(node.ops) == 1:
                 if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
                     return False
-                false_val = {False, 0}
+                # Tuple (not set): False == 0 so {False, 0} is B033-duplicate.
+                false_val = (False, 0)
                 if (
                     isinstance(node.left, ast.Name)
                     and node.left.id == 'modifyAllowed'

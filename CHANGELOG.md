@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **`flextools_run_module` success responses omitted `_contract` / `status`**
+  ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
+  execution results (success, runtime failure, timeout, and temp-file errors)
+  now pass through ``build_response_with_context`` so they match
+  ``docs/TOOL-CONTRACT.md``.
 - **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
   ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
   innermost traceback frame is inside the flexicon package, `run_module` now

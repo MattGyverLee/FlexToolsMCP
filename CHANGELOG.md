@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
+  ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
+  innermost traceback frame is inside the flexicon package, `run_module` now
+  reports `WrapperInternalError` with upstream-oriented guidance instead of
+  advising a cast/resubmit loop the user cannot satisfy.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

@@ -2,9 +2,31 @@
 # -*- coding: utf-8 -*-
 """Pytest configuration and shared fixtures."""
 
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 import pytest
+
+# Issue #173: isolate logs for the whole suite before any test module imports
+# flextoolsmcp.server.kernel (several test files import kernel at collection time).
+_PYTEST_LOG_DIR: Path | None = None
+
+
+def pytest_configure(config):
+    global _PYTEST_LOG_DIR
+    if os.environ.get("FLEXTOOLSMCP_LOG_DIR"):
+        return
+    _PYTEST_LOG_DIR = Path(tempfile.mkdtemp(prefix="flextoolsmcp_pytest_logs_"))
+    os.environ["FLEXTOOLSMCP_LOG_DIR"] = str(_PYTEST_LOG_DIR)
+
+
+def pytest_unconfigure(config):
+    global _PYTEST_LOG_DIR
+    if _PYTEST_LOG_DIR is not None and _PYTEST_LOG_DIR.exists():
+        shutil.rmtree(_PYTEST_LOG_DIR, ignore_errors=True)
+    _PYTEST_LOG_DIR = None
 
 # Add src and src/flextoolsmcp to path (shared across all tests).
 # Tests import both `from flextoolsmcp.xxx` (package form) and

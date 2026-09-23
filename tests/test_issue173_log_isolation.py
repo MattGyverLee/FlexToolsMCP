@@ -3,8 +3,6 @@
 import os
 from pathlib import Path
 
-import pytest
-
 from flextoolsmcp.server.kernel import _ENV_LOG_DIR, get_log_dir
 
 

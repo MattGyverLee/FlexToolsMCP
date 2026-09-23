@@ -55,6 +55,11 @@ from mcp.types import TextContent
 from ._import_helper import safe_import_kernel_deps
 from ..models import MorphSpec, ParseTextInput, ResolvedScope
 from ..parse.fingerprint import build_fingerprint
+from ..parse.measure import (
+    DEFAULT_BOUND_SECONDS,
+    MeasurementFailed,
+    measure_word,
+)
 from ..parse.priority import Priority
 from ..parse.runner import ParseRunner
 from ..parse.stages import RunStage
@@ -147,6 +152,109 @@ def _rung(
         "rationale": rationale,
         "est_cost": est_cost,
     }
+
+
+# ---------------------------------------------------------------------------
+# Next-step proposals (CP3, US6; FR-056, FR-057; data-model.md section 14)
+# ---------------------------------------------------------------------------
+#
+# The same rung shape as every other `next_step` -- `args` is the proposal's
+# directly usable arguments and `est_cost` its mandatory cost estimate, where
+# "unbounded" is a legitimate value. One shape, so SC-019's sweep over every
+# response the feature can emit is one sweep.
+#
+# THE GRAMMAR SCAN FIRES ON EXACTLY FOUR CONDITIONS (FR-056): a single word
+# that misses the fast-path window; a batch that enters grammar loading and
+# stays there; a terminal failure; a bounded measurement that exceeds its
+# bound. Never on a request answered inline, and never on every response --
+# a suggestion seen on success and failure alike teaches nothing on failure.
+#
+# Where a trace and the static scan are both candidates, the scan comes
+# FIRST: it costs no parse time and may make the trace unnecessary (FR-057).
+# No proposal names a filing step -- at CP3 every session is read-only.
+
+
+def _grammar_scan_rung(project_name: Optional[str]) -> Dict[str, Any]:
+    """The static grammar scan: CP1's instrument, finally given a caller."""
+    return _rung(
+        action="Scan this project's grammar for path-multiplying properties.",
+        tool="flextools_grammar_health",
+        args={"project_name": project_name},
+        rationale=(
+            "A static scan that runs no parse. It names the grammar properties "
+            "that multiply the search space -- the usual reason a load or a "
+            "parse is slow enough to notice -- and is cheaper than any trace "
+            "it may make unnecessary."
+        ),
+        est_cost="seconds to a minute",
+    )
+
+
+def _measurement_rung(
+    project_name: Optional[str], word: str, bound_seconds: float = DEFAULT_BOUND_SECONDS
+) -> Dict[str, Any]:
+    """Spend one word finding out whether the grammar is the problem."""
+    return _rung(
+        action="Measure one word to completion under a hard time bound.",
+        tool="flextools_try_word",
+        args={
+            "word": word,
+            "level": "plain",
+            "bound_seconds": bound_seconds,
+            "project_name": project_name,
+        },
+        rationale=(
+            "Runs this one word in a worker of its own and stops it at the "
+            "bound. A grammar that cannot finish one short word will not "
+            "finish a corpus, and finding that out costs one word, not one "
+            "night. Blowing the bound is reported as the finding, not an error."
+        ),
+        est_cost=f"at most {bound_seconds:g} seconds",
+    )
+
+
+def _trace_after_scan_rung(project_name: Optional[str], word: str) -> Dict[str, Any]:
+    """The full trace, proposed only AFTER the scan (FR-057)."""
+    return _rung(
+        action="If the scan names nothing, trace this word at the explaining level.",
+        tool="flextools_try_word",
+        args={"word": word, "level": "explain", "project_name": project_name},
+        rationale=(
+            "The parser's own trace, with no hypothesis to narrow it. On a "
+            "grammar that has just failed to finish one word it may not "
+            "finish either, which is why the static scan comes first."
+        ),
+        est_cost="unbounded",
+    )
+
+
+def _read_run_rung(run_id: str, why: str) -> Dict[str, Any]:
+    """Read a run back from disk (FR-058: `flextools_parse_log` now exists)."""
+    return _rung(
+        action="Read this run's record back.",
+        tool="flextools_parse_log",
+        args={"run_id": run_id, "section": "summary"},
+        rationale=why,
+        est_cost="instant",
+    )
+
+
+def _stuck_loading(handle) -> bool:
+    """A batch that entered grammar loading and has stayed there (FR-056).
+
+    "Stayed" means longer than the fast-path window: a load that outlives the
+    window a single word is answered in is a load worth a static look.
+    """
+    if not getattr(handle, "is_batch", False):
+        return False
+    if handle.stage is not RunStage.LOADING_GRAMMAR:
+        return False
+    import time
+
+    entered = getattr(handle, "stage_entered_at", None)
+    if entered is None:
+        return False
+    return (time.monotonic() - entered) > get_runner().grace_window
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +525,12 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
             "provide it directly.",
         )
 
+    bound_seconds = args.get("bound_seconds")
+    if bound_seconds is not None:
+        # US6: the bounded single-word measurement. `TryWordInput` has
+        # already refused it on any level but plain.
+        return await _measurement_response(project_name, word, float(bound_seconds))
+
     restricted_to: Optional[tuple] = None
     if level == "restricted":
         morphs = [
@@ -470,16 +584,7 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
         return _overflow_response(handle, word, level, project_name)
 
     if handle.stage is RunStage.FAILED and handle.failure is not None:
-        refusal = _refusal_from_failure(handle.failure)
-        if refusal is not None:
-            return refusal
-        return error_response(
-            "runtime_error",
-            handle.failure.message,
-            error_type=handle.failure.error_type,
-            stage_at_failure=handle.failure.stage_at_failure,
-            next_step=handle.failure.next_step,
-        )
+        return _failed_run_response(handle)
 
     result = _inline_response(handle, word, level, project_name, restricted_to)
 
@@ -510,6 +615,65 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
         if proposal is not None:
             result["proposed_decomposition"] = proposal
 
+    return json_response(build_response_with_context(result))
+
+
+def _failed_run_response(handle) -> List[TextContent]:
+    """A single-word run that FAILED: its refusal, or the failure itself.
+
+    A terminal failure is one of FR-056's four triggers, so a plain failure
+    carries the structured failure rungs -- the static scan first -- rather
+    than the run record's prose.
+    """
+    refusal = _refusal_from_failure(handle.failure)
+    if refusal is not None:
+        return refusal
+    return error_response(
+        "runtime_error",
+        handle.failure.message,
+        error_type=handle.failure.error_type,
+        stage_at_failure=handle.failure.stage_at_failure,
+        next_step=_failure_rungs(handle),
+    )
+
+
+async def _measurement_response(
+    project_name: str, word: str, bound_seconds: float
+) -> List[TextContent]:
+    """The bounded measurement's response (FR-051..FR-056).
+
+    Terminating at the bound is a SUCCESSFUL response carrying its
+    measurement (FR-054), and it is the fourth of FR-056's triggers: the
+    static scan, then the trace. A measurement that finished inside the bound
+    carries no proposal -- there is nothing to route.
+    """
+    runner = get_runner()
+    try:
+        measurement = await measure_word(
+            runner,
+            project_name=project_name,
+            wordform=word,
+            bound_seconds=bound_seconds,
+        )
+    except MeasurementFailed as failed:
+        return _failed_run_response(failed.handle)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "project": project_name,
+        "word": word,
+        "level": "plain",
+        "measurement": measurement.to_dict(),
+        "finding": measurement.finding,
+        "next_step": None,
+    }
+    if measurement.exceeded_bound:
+        result["next_step"] = [
+            _grammar_scan_rung(project_name),
+            _trace_after_scan_rung(project_name, word),
+        ]
     return json_response(build_response_with_context(result))
 
 
@@ -547,7 +711,9 @@ def _overflow_response(
                     "from slow parsing."
                 ),
                 est_cost="instant",
-            )
+            ),
+            # FR-056: a single word that missed the fast-path window.
+            _grammar_scan_rung(project_name),
         ],
     }
     return json_response(build_response_with_context(result))
@@ -1623,45 +1789,57 @@ def _result_summary(handle) -> Dict[str, Any]:
     }
 
 
+def _failure_rungs(handle) -> List[Dict[str, Any]]:
+    """A FAILED run's rungs: the instruments, never a retry (FR-034).
+
+    The static scan comes first (FR-057): it runs no parse, and the
+    commonest failure -- memory exhausted while loading the grammar -- is the
+    one it speaks to. No rung names `flextools_try_word`: repeating the run
+    repeats the step that exhausted it. Words that completed before the
+    failure are readable, and CP3 ships the tool that reads them (FR-058).
+    """
+    rungs = [
+        _grammar_scan_rung(handle.project_name),
+        _rung(
+            action="Check the environment and the project's grammar.",
+            tool="flextools_health",
+            args={"verbose": True},
+            rationale=(
+                "A run that died while loading the grammar has usually "
+                "exhausted memory. Repeating it repeats the step that "
+                "exhausted it; the diagnostics say what the project needs."
+            ),
+            est_cost="seconds",
+        ),
+    ]
+    if handle.words_completed > 0:
+        rungs.append(
+            _read_run_rung(
+                handle.run_id,
+                f"{handle.words_completed} word(s) completed before the "
+                f"failure; their results were written as they were produced.",
+            )
+        )
+    return rungs
+
+
 def _status_next_step(handle) -> Optional[List[Dict[str, Any]]]:
     """What to do next, or nothing when there is nothing useful to say.
 
-    A still-running run gets "poll again". A FAILED run gets the diagnostic
-    instruments and never a retry: the commonest failure is memory
-    exhausted while loading the grammar, and repeating the run repeats the
-    step that exhausted it (FR-034).
+    A still-running run gets "poll again" -- plus the static scan when it is
+    a batch that entered grammar loading and has stayed there (FR-056). A
+    FAILED run gets the diagnostic instruments and never a retry (FR-034).
 
-    A completed or cancelled run gets `None`. There is nothing to advise --
-    the results are where the response says they are.
+    FR-058's revisit: a cancelled run with partial results, and a completed
+    BATCH, point at `flextools_parse_log` -- rows that had no tool to name
+    before CP3 shipped one. A completed single word still gets `None`: its
+    answer is already in the response.
     """
     if handle.stage is RunStage.FAILED:
-        return [
-            _rung(
-                action="Check the environment and the project's grammar.",
-                tool="flextools_health",
-                args={"verbose": True},
-                rationale=(
-                    "A run that died while loading the grammar has usually "
-                    "exhausted memory. Repeating it repeats the step that "
-                    "exhausted it; the diagnostics say what the project needs."
-                ),
-                est_cost="seconds",
-            ),
-            _rung(
-                action="Scan this project's grammar for path-multiplying properties.",
-                tool="flextools_grammar_health",
-                args={"project_name": handle.project_name},
-                rationale=(
-                    "Static scan, no parse. It names the grammar properties "
-                    "that multiply the search space, which is what makes a "
-                    "load expensive enough to fail."
-                ),
-                est_cost="seconds to a minute",
-            ),
-        ]
+        return _failure_rungs(handle)
 
     if not handle.is_terminal:
-        return [
+        rungs = [
             _rung(
                 action="Poll again for this run.",
                 tool="flextools_parse_status",
@@ -1673,6 +1851,26 @@ def _status_next_step(handle) -> Optional[List[Dict[str, Any]]]:
                 est_cost="instant",
             )
         ]
+        if _stuck_loading(handle):
+            rungs.append(_grammar_scan_rung(handle.project_name))
+        return rungs
+
+    if handle.stage is RunStage.CANCELLED and handle.words_completed > 0:
+        return [
+            _read_run_rung(
+                handle.run_id,
+                f"{handle.words_completed} word(s) completed before the cancel "
+                f"and are on disk.",
+            )
+        ]
+
+    if handle.stage is RunStage.COMPLETED and getattr(handle, "is_batch", False):
+        return [
+            _read_run_rung(
+                handle.run_id,
+                "The batch report -- signals, the oracle, clusters to trace -- "
+                "is in this run's summary section.",
+            )
+        ]
 
     return None
-

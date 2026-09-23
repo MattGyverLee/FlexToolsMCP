@@ -348,3 +348,335 @@ async def test_sc006_zeros_across_a_batch_of_hypotheses(wired):
         f"not traced exactly as given"
     )
     assert judgements == [], f"{len(judgements)} confidence figures: {judgements}"
+
+
+
+# ===========================================================================
+# CP3, US6 -- next-step proposals (FR-056, FR-057, FR-058; SC-018, SC-019)
+# ===========================================================================
+#
+# The grammar-scan proposal fires on EXACTLY four conditions: a single word
+# that misses the fast-path window; a batch that enters grammar loading and
+# stays there; a terminal failure; a bounded measurement that exceeds its
+# bound. These tests pin both halves -- it fires there, and nowhere else --
+# and then sweep every response shape this feature can emit for the three
+# proposal invariants: the tool exists, the cost estimate is present, and the
+# arguments validate against that tool's own input model as given.
+
+import asyncio  # noqa: E402
+import time  # noqa: E402
+
+from flextoolsmcp.server.parse.priority import Priority  # noqa: E402
+from flextoolsmcp.server.parse.stages import RunStage  # noqa: E402
+from flextoolsmcp.server.parse.worker_client import WorkerError  # noqa: E402
+from flextoolsmcp.server.tool_definitions import TOOLS  # noqa: E402
+
+_SCAN = "flextools_grammar_health"
+
+_BATCH_FINGERPRINT = {
+    "scope_kind": "words", "scope_value": ["a", "b"], "text_ids": [], "word_count": 2,
+    "limit": None, "truncated": False, "engine": "HC", "vernacular_ws": "id",
+}
+
+
+def _rungs(payload):
+    return list(payload.get("next_step") or [])
+
+
+def _scan_count(payload):
+    return sum(1 for rung in _rungs(payload) if rung["tool"] == _SCAN)
+
+
+class HeldWorker(RecordingWorker):
+    """A worker whose parse does not return until released -- a slow word."""
+
+    def __init__(self):
+        super().__init__()
+        self.release = asyncio.Event()
+
+    async def parse_word(self, **kwargs):
+        await self.release.wait()
+        return await super().parse_word(**kwargs)
+
+    async def cancel_run(self, run_id):
+        self.release.set()
+
+
+@pytest.fixture
+def make_runner(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        parse_handler, "_resolve_project", lambda name: (name or "P", None)
+    )
+    made = []
+
+    def make(worker, grace_window=30.0):
+        runner = ParseRunner(
+            pool=Pool(worker), record_dir=tmp_path / f"runs{len(made)}",
+            grace_window=grace_window,
+        )
+        parse_handler.set_runner(runner)
+        made.append(runner)
+        return runner
+
+    yield make
+    parse_handler.set_runner(None)
+
+
+async def _status(run_id):
+    response = await parse_handler.handle_flextools_parse_status({"run_id": run_id})
+    return json.loads(response[0].text)
+
+
+# ---------------------------------------------------------------------------
+# T103 -- SC-018: inline gets 0 scan proposals; a missed window gets exactly 1
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"word": "makan", "level": "plain"},
+        {"word": "makan", "level": "explain"},
+        {"word": "makan", "level": "restricted", "morphs": [{"msa_hvo": 5001}]},
+    ],
+)
+async def test_a_word_answered_inline_carries_no_scan_proposal(make_runner, kwargs):
+    make_runner(RecordingWorker())
+    payload = await call(**kwargs)
+
+    assert payload["status"] == "ok"
+    assert "run_id" in payload and payload.get("stage") == "completed"
+    assert _scan_count(payload) == 0, (
+        f"an inline answer carried a grammar-scan proposal: {_rungs(payload)}"
+    )
+
+
+async def test_a_word_that_misses_the_window_carries_exactly_one_scan_proposal(make_runner):
+    worker = HeldWorker()
+    make_runner(worker, grace_window=0.05)
+    try:
+        payload = await call(word="makan", level="plain")
+    finally:
+        worker.release.set()
+
+    assert payload.get("stage") != "completed", "the word was answered inline"
+    assert _scan_count(payload) == 1, _rungs(payload)
+    scan = next(r for r in _rungs(payload) if r["tool"] == _SCAN)
+    assert scan["args"] == {"project_name": "P"}
+
+
+async def test_a_successful_completed_word_polled_later_carries_no_scan(make_runner):
+    runner = make_runner(RecordingWorker())
+    handle = await runner.start_run(project_name="P", wordforms=["makan"])
+    assert _scan_count(await _status(handle.run_id)) == 0
+
+
+async def test_a_batch_that_stays_in_grammar_loading_gets_the_scan(make_runner):
+    """Trigger 2. "Stayed" is measured: past the fast-path window in the stage."""
+    worker = HeldWorker()
+    runner = make_runner(worker, grace_window=0.05)
+    try:
+        handle = await runner.start_run(
+            project_name="P", wordforms=["a", "b"], level="batch",
+            priority=Priority.LOW, scope_fingerprint=_BATCH_FINGERPRINT,
+            engine_at_submission="HC", vernacular_ws="id",
+        )
+        handle.stage = RunStage.LOADING_GRAMMAR
+
+        handle.stage_entered_at = time.monotonic()
+        assert _scan_count(await _status(handle.run_id)) == 0, (
+            "a load that has only just begun is not a load that stayed"
+        )
+
+        handle.stage_entered_at = time.monotonic() - 60
+        payload = await _status(handle.run_id)
+        assert _scan_count(payload) == 1, _rungs(payload)
+        assert _rungs(payload)[0]["tool"] == "flextools_parse_status"
+    finally:
+        worker.release.set()
+
+
+async def test_a_single_word_run_polled_while_loading_is_not_a_batch_trigger(make_runner):
+    """Trigger 2 names a BATCH. A single word's trigger was its overflow."""
+    worker = HeldWorker()
+    runner = make_runner(worker, grace_window=0.05)
+    try:
+        handle = await runner.start_run(project_name="P", wordforms=["a"])
+        handle.stage = RunStage.LOADING_GRAMMAR
+        handle.stage_entered_at = time.monotonic() - 60
+        assert _scan_count(await _status(handle.run_id)) == 0
+    finally:
+        worker.release.set()
+
+
+async def test_a_terminal_failure_carries_the_scan(make_runner):
+    """Trigger 3, on both surfaces: the word's own error and a status poll."""
+    runner = make_runner(RecordingWorker(fail_with=WorkerError("out of memory")))
+    payload = await call(word="makan", level="plain")
+
+    assert payload["status"] == "error"
+    assert _scan_count(payload) == 1, _rungs(payload)
+    run_id = next(iter(runner.known_run_ids()))
+    assert _scan_count(await _status(run_id)) == 1
+
+
+# ---------------------------------------------------------------------------
+# T104 -- SC-019: across every response, 0 nonexistent tools, 0 missing costs
+# ---------------------------------------------------------------------------
+
+
+async def _every_response(make_runner, tmp_path):
+    """One response of every shape this feature emits a `next_step` in."""
+    payloads = []
+
+    make_runner(RecordingWorker())
+    payloads.append(await call(word="makan", level="plain"))          # failed plain
+    payloads.append(await call(word="makan", level="explain"))        # traced
+    payloads.append(
+        await call(word="makan", level="restricted", morphs=[{"msa_hvo": 5001}])
+    )
+
+    worker = HeldWorker()
+    runner = make_runner(worker, grace_window=0.05)
+    payloads.append(await call(word="makan", level="plain"))          # overflow
+    running = await runner.start_run(
+        project_name="P", wordforms=["a", "b"], level="batch", priority=Priority.LOW,
+        scope_fingerprint=_BATCH_FINGERPRINT, engine_at_submission="HC",
+        vernacular_ws="id",
+    )
+    payloads.append(await _status(running.run_id))                   # running
+    running.stage = RunStage.LOADING_GRAMMAR
+    running.stage_entered_at = time.monotonic() - 60
+    payloads.append(await _status(running.run_id))                   # stuck loading
+    running.stage = RunStage.PARSING
+    await runner.cancel_run(running.run_id)
+    worker.release.set()
+    await asyncio.wait_for(running.done.wait(), timeout=10)
+    payloads.append(await _status(running.run_id))                   # cancelled
+
+    runner = make_runner(RecordingWorker())
+    batch = await runner.start_run(
+        project_name="P", wordforms=["a", "b"], level="batch", priority=Priority.LOW,
+        scope_fingerprint=_BATCH_FINGERPRINT, engine_at_submission="HC",
+        vernacular_ws="id",
+    )
+    payloads.append(await _status(batch.run_id))                     # completed batch
+
+    runner = make_runner(RecordingWorker(fail_with=WorkerError("out of memory")))
+    payloads.append(await call(word="makan", level="plain"))          # failed word
+    payloads.append(await _status(next(iter(runner.known_run_ids()))))  # failed poll
+
+    payloads.append(await _terminated_measurement(tmp_path))       # bound blown
+    return payloads
+
+
+async def _terminated_measurement(tmp_path):
+    """A real measurement, killed at its bound, through the handler."""
+    from test_parse_measure import RolePool
+
+    runner = ParseRunner(
+        pool=RolePool(shared_delay=0.0, measurement_delay=60.0),
+        record_dir=tmp_path / "measured", grace_window=0.5,
+    )
+    parse_handler.set_runner(runner)
+    try:
+        return await call(word="pukul", level="plain", bound_seconds=1.0)
+    finally:
+        await runner.aclose()
+
+
+def _args_problem(rung):
+    """Why this rung's args are not directly usable, or None."""
+    tool = TOOLS.get(rung["tool"])
+    if tool is None:
+        return "names a tool that does not exist"
+    model = getattr(tool, "input_model", None)
+    if model is None:
+        return None
+    try:
+        model(**(rung["args"] or {}))
+    except Exception as exc:  # noqa: BLE001
+        return f"args do not validate as given: {exc}"
+    return None
+
+
+async def test_every_proposal_names_a_real_tool_with_a_cost_and_usable_args(
+    make_runner, tmp_path
+):
+    payloads = await _every_response(make_runner, tmp_path)
+    rungs = [rung for payload in payloads for rung in _rungs(payload)]
+    assert len(rungs) >= 12, "the sweep did not reach the responses it claims to"
+
+    nonexistent = [r["tool"] for r in rungs if r["tool"] not in TOOLS]
+    assert nonexistent == [], f"{len(nonexistent)} proposals name no real tool: {nonexistent}"
+
+    uncosted = [r for r in rungs if not (isinstance(r.get("est_cost"), str) and r["est_cost"])]
+    assert uncosted == [], f"{len(uncosted)} proposals carry no cost estimate: {uncosted}"
+
+    unusable = [(r["tool"], _args_problem(r)) for r in rungs if _args_problem(r)]
+    assert unusable == [], f"proposals the caller would have to reconstruct: {unusable}"
+
+
+async def test_no_proposal_names_a_filing_step(make_runner, tmp_path):
+    """Unreachable at CP3 in every session: every session is read-only."""
+    payloads = await _every_response(make_runner, tmp_path)
+    for rung in (r for p in payloads for r in _rungs(p)):
+        text = json.dumps(
+            {"tool": rung["tool"], "action": rung["action"], "args": rung["args"]}
+        ).lower()
+        for banned in ("filing", "file_", "write_enabled", "modify"):
+            assert banned not in text, f"a proposal reaches for a filing step: {rung}"
+
+
+async def test_the_measurement_proposed_on_a_failure_is_never_a_retry(make_runner):
+    """FR-034 still holds: a failed run is never told to run the word again."""
+    make_runner(RecordingWorker(fail_with=WorkerError("out of memory")))
+    payload = await call(word="makan", level="plain")
+    assert "flextools_try_word" not in [r["tool"] for r in _rungs(payload)]
+
+
+# ---------------------------------------------------------------------------
+# T105 -- FR-057: the static scan before the trace
+# ---------------------------------------------------------------------------
+
+
+async def test_the_static_scan_is_proposed_before_the_trace(make_runner, tmp_path):
+    payload = await _terminated_measurement(tmp_path)
+
+    tools = [(r["tool"], (r["args"] or {}).get("level")) for r in _rungs(payload)]
+    assert (_SCAN, None) in tools, tools
+    traces = [
+        i for i, (tool, level) in enumerate(tools)
+        if tool == "flextools_try_word" and level in ("explain", "restricted")
+    ]
+    assert traces, f"no trace was a candidate, so the order was not tested: {tools}"
+    assert tools.index((_SCAN, None)) < min(traces), (
+        f"the trace is proposed before the cheaper static scan: {tools}"
+    )
+    trace = _rungs(payload)[min(traces)]
+    assert trace["est_cost"] == "unbounded", (
+        "a trace on a grammar that just failed to finish one word is unbounded"
+    )
+
+
+async def test_on_a_failure_the_scan_comes_first(make_runner):
+    make_runner(RecordingWorker(fail_with=WorkerError("out of memory")))
+    payload = await call(word="makan", level="plain")
+    assert _rungs(payload)[0]["tool"] == _SCAN
+
+
+async def test_a_measurement_inside_its_bound_proposes_nothing(make_runner, tmp_path):
+    """The known-fast grammar: a measurement that finished routes nowhere."""
+    from test_parse_measure import RolePool
+
+    runner = ParseRunner(
+        pool=RolePool(shared_delay=0.0, measurement_delay=0.0),
+        record_dir=tmp_path / "fast", grace_window=30.0,
+    )
+    parse_handler.set_runner(runner)
+    try:
+        payload = await call(word="pukul", level="plain", bound_seconds=30)
+    finally:
+        await runner.aclose()
+    assert payload["measurement"]["outcome"] == "completed"
+    assert payload["next_step"] is None

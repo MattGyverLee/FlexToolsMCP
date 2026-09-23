@@ -73,6 +73,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -87,7 +88,7 @@ from .stages import (
     can_transition,
     is_terminal,
 )
-from .worker_client import WorkerError, WorkerPool
+from .worker_client import MEASUREMENT_ROLE, SHARED_ROLE, WorkerError, WorkerPool
 
 __all__ = [
     "DEFAULT_GRACE_WINDOW_SECONDS",
@@ -95,6 +96,8 @@ __all__ = [
     "RunHandle",
     "RunAlreadyTerminal",
     "ParseRunner",
+    "MEASUREMENT_ROLE",
+    "SHARED_ROLE",
 ]
 
 _log = logging.getLogger(__name__)
@@ -107,11 +110,15 @@ _ENV_GRACE_WINDOW = "FLEXTOOLSMCP_PARSE_GRACE_WINDOW"
 
 #: What a failed run points a caller at. Named instruments, never "retry"
 #: (FR-034).
+#:
+#: FR-058's revisit: the words a failed run completed are readable with
+#: flextools_parse_log, which CP3 ships -- so the guidance now says so.
 _FAILURE_NEXT_STEP = (
-    "Run flextools_health for the environment and flextools_grammar_health "
-    "for this project's grammar. A run that failed while loading the grammar "
-    "has usually exhausted memory, and repeating the run repeats the step "
-    "that exhausted it -- the diagnostics say what the project needs."
+    "Run flextools_grammar_health for this project's grammar and "
+    "flextools_health for the environment. A run that failed while loading "
+    "the grammar has usually exhausted memory, and repeating the run repeats "
+    "the step that exhausted it -- the diagnostics say what the project needs. "
+    "Words completed before the failure are readable with flextools_parse_log."
 )
 
 
@@ -213,6 +220,18 @@ class RunHandle:
     #: Runs this one has displaced on the same worker, for FR-026's
     #: progress accounting. Cleared when this run ends.
     displacing: list[str] = field(default_factory=list)
+
+    # -- CP3 (US6) --------------------------------------------------------
+
+    #: Which of the project's pool keys this run's worker lives under.
+    #: `SHARED_ROLE` for every run but the bounded measurement, which runs
+    #: alone under `MEASUREMENT_ROLE` so that killing it at its bound cannot
+    #: take a batch with it (FR-051, R-05).
+    worker_role: str = SHARED_ROLE
+    #: `time.monotonic()` when the run entered its current stage. What lets
+    #: "a batch that entered grammar loading and STAYED there" be a
+    #: measured fact rather than a guess (FR-056).
+    stage_entered_at: float = field(default_factory=time.monotonic)
 
     @property
     def is_terminal(self) -> bool:
@@ -348,6 +367,8 @@ class ParseRunner:
         """
         if stage is not handle.stage and not can_transition(handle.stage, stage):
             raise InvalidStageTransition(handle.stage, stage)
+        if stage is not handle.stage:
+            handle.stage_entered_at = time.monotonic()
         handle.stage = stage
         for key, value in updates.items():
             setattr(handle, key, value)
@@ -404,6 +425,9 @@ class ParseRunner:
                 other is handle
                 or other.is_terminal
                 or other.project_name != handle.project_name
+                # A run in another worker does not share this one's word
+                # boundaries: the bounded measurement never pauses a batch.
+                or other.worker_role != handle.worker_role
                 or int(other.priority) <= int(handle.priority)
             ):
                 continue
@@ -435,6 +459,7 @@ class ParseRunner:
         engine_at_submission: Optional[str] = None,
         vernacular_ws: Optional[str] = None,
         project_state: Optional[dict[str, Any]] = None,
+        worker_role: str = SHARED_ROLE,
     ) -> RunHandle:
         """Start a run and wait out the grace window. THE only entry point.
 
@@ -455,6 +480,12 @@ class ParseRunner:
         gate once and resolved the scope. The word list is written to
         `words.txt` before the first `meta.json` (record.py), and retention
         runs here, at creation, over this project's other runs (FR-022).
+
+        The BOUNDED MEASUREMENT is this same call too (US6): one word, at
+        `TRY_A_WORD`, under `worker_role=MEASUREMENT_ROLE`, with the bound as
+        its window. What happens when the window closes is the measurement's
+        business (`measure.py`), not this method's -- here it still only
+        stops waiting.
         """
         window = grace_window if grace_window is not None else self._grace_window
         batch = scope_fingerprint is not None
@@ -479,6 +510,7 @@ class ParseRunner:
             engine_at_submission=engine_at_submission,
             vernacular_ws=vernacular_ws,
             counters=HostCounters() if batch else None,
+            worker_role=worker_role,
         )
         self._runs[handle.run_id] = handle
         self._displace(handle)
@@ -526,7 +558,7 @@ class ParseRunner:
         from one still running.
         """
         try:
-            worker = await self._pool.get(handle.project_name)
+            worker = await self._worker_for(handle)
             worker.listen_to_run(handle.run_id, lambda m: self._on_run_message(handle, m))
 
             # THE STAGE IS NOT ANNOUNCED FROM HERE. It used to be: this line
@@ -665,7 +697,7 @@ class ParseRunner:
             # Drop the run listener so a long-lived worker does not
             # accumulate one closure per run it has ever served.
             with contextlib.suppress(Exception):
-                existing = self._pool.peek(handle.project_name)
+                existing = self._peek_worker(handle)
                 if existing is not None:
                     existing.stop_listening(handle.run_id)
 
@@ -809,9 +841,61 @@ class ParseRunner:
             # boundary; the one in flight finishes (FR-032).
             handle.queue.cancel_run(run_id)
         with contextlib.suppress(WorkerError, Exception):
-            worker = await self._pool.get(handle.project_name)
+            worker = await self._worker_for(handle)
             await worker.cancel_run(run_id)
         return handle
+
+    async def terminate_run(self, run_id: str, *, wait: float = 10.0) -> Optional[RunHandle]:
+        """Kill a MEASUREMENT run's worker outright (FR-052, D-4).
+
+        Cooperative cancellation cannot bound a one-word parse: it lands at
+        the next word boundary, which is after the parse. So the run is
+        marked cancel-requested -- which is what makes it end `cancelled`
+        rather than `failed` when its in-flight word comes back as a dead
+        worker -- and then its worker's process tree is killed.
+
+        Refused for any run in the shared worker. That worker may be holding
+        a batch, and this method is the one place that could take it down;
+        the refusal makes "the measurement never kills a batch" a property of
+        the runner rather than of its callers (FR-051).
+        """
+        handle = self._runs.get(run_id)
+        if handle is None:
+            return None
+        if handle.worker_role == SHARED_ROLE:
+            raise ValueError(
+                f"Run {run_id} is in the shared worker; only a measurement run "
+                f"may be terminated (FR-051)."
+            )
+        if handle.is_terminal:
+            return handle
+        handle.cancel_requested = True
+        if handle.queue is not None:
+            handle.queue.cancel_run(run_id)
+        with contextlib.suppress(Exception):
+            await self._pool.terminate(handle.project_name, role=handle.worker_role)
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.shield(handle.done.wait()), timeout=wait)
+        return handle
+
+    async def release_worker(self, project_name: str, *, role: str) -> None:
+        """End one of a project's workers. The measurement's cleanup."""
+        with contextlib.suppress(Exception):
+            await self._pool.release(project_name, role=role)
+
+    async def worker(self, project_name: str, *, role: str = SHARED_ROLE):
+        """The worker for a project and role, started if necessary."""
+        if role == SHARED_ROLE:
+            return await self._pool.get(project_name)
+        return await self._pool.get(project_name, role=role)
+
+    async def _worker_for(self, handle: RunHandle):
+        return await self.worker(handle.project_name, role=handle.worker_role)
+
+    def _peek_worker(self, handle: RunHandle):
+        if handle.worker_role == SHARED_ROLE:
+            return self._pool.peek(handle.project_name)
+        return self._pool.peek(handle.project_name, role=handle.worker_role)
 
     async def aclose(self) -> None:
         """Reap every worker. The runs' records are already on disk."""

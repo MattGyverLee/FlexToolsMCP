@@ -68,6 +68,9 @@ Requests (stdin):
            statement (FR-024).
     {"type": "resolve_scope", "request_id": str, "scope": {...}}
         -- scope resolution (US1). No parse: it reads texts and wordforms.
+    {"type": "parser_parameters", "request_id": str}
+        -- the stored parser parameters, READ as context for a slow parse
+           (US6, FR-055). Never written: CP3 has no project-data write.
 
 Responses (stdout):
 
@@ -91,6 +94,7 @@ Responses (stdout):
         the parse threw, so nothing about it parsing or not is asserted.
     {"type": "engine",        "request_id": str, "engine": str}
     {"type": "scope_resolved", "request_id": str, "resolved": {...}}
+    {"type": "parser_parameters", "request_id": str, "parameters": {...}|null}
     {"type": "engine_changed", "run_id": str, "engine_at_submission": str,
                                "engine_now": str|null}
     {"type": "load_baseline",  "run_id": str, "baseline": {...}}
@@ -342,6 +346,14 @@ class _ParseBackend:
         """`ProjectParseState.to_dict()` from the one probe, or None."""
         return None
 
+    def parser_parameters(self) -> Optional[dict[str, Any]]:
+        """The stored parser parameters, summarised, or None (FR-055).
+
+        A READ. The measurement reports them as context for a slow parse;
+        nothing on any CP3 path writes them.
+        """
+        return None
+
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
         """The grammar load errors of a load that began at `load_started`.
 
@@ -554,6 +566,19 @@ class _StubBackend(_ParseBackend):
 
     def project_state(self) -> Optional[dict[str, Any]]:
         return dict(self.stub_project_state)
+
+    #: What `parser_parameters()` summarises: a minimal stored-parameters
+    #: document, run through the same summariser the real backend uses.
+    STUB_PARSER_PARAMETERS = (
+        "<ParserParameters><ActiveParser>HC</ActiveParser>"
+        "<HC><GuessRoots>false</GuessRoots><MaxCompoundRules>4</MaxCompoundRules></HC>"
+        "</ParserParameters>"
+    )
+
+    def parser_parameters(self) -> Optional[dict[str, Any]]:
+        from .measure import summarize_parser_parameters
+
+        return summarize_parser_parameters(self.STUB_PARSER_PARAMETERS)
 
     def release(self) -> None:
         self._loaded = False
@@ -1203,6 +1228,22 @@ class _RealBackend(_ParseBackend):
 
         return probe_project_state(self._project).to_dict()
 
+    def parser_parameters(self) -> Optional[dict[str, Any]]:
+        """`MorphologicalDataOA.ParserParameters`, read and summarised.
+
+        A plain string property holding the stored parameters document. Read
+        through `.lp`, as `active_engine` is; never assigned anywhere in this
+        package (FR-055, FR-063).
+        """
+        from .measure import summarize_parser_parameters
+
+        try:
+            raw = self._project.lp.MorphologicalDataOA.ParserParameters
+        except Exception as exc:  # noqa: BLE001 -- context, not a gate
+            _log(f"ParserParameters unreadable: {exc}")
+            return None
+        return summarize_parser_parameters(None if raw is None else str(raw))
+
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
         """Read the load-error file OUR load just wrote (FR-023).
 
@@ -1676,7 +1717,7 @@ class ParseWorker:
             # explicable.
             with self._resolve_lock:
                 self._resolve_pending.append(message)
-        elif kind in ("engine_check", "resolve_scope"):
+        elif kind in ("engine_check", "resolve_scope", "parser_parameters"):
             # Main loop, for the same one-thread-owns-the-project reason.
             with self._resolve_lock:
                 self._control_pending.append(message)
@@ -1909,6 +1950,14 @@ class ParseWorker:
                             "type": "engine",
                             "request_id": request_id,
                             "engine": self._backend.active_engine() or "HC",
+                        }
+                    )
+                elif message.get("type") == "parser_parameters":
+                    self._emit(
+                        {
+                            "type": "parser_parameters",
+                            "request_id": request_id,
+                            "parameters": self._backend.parser_parameters(),
                         }
                     )
                 else:

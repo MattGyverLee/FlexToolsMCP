@@ -735,6 +735,30 @@ class TryWordInput(BaseModel):
         description="Name of the FieldWorks project whose worker parses this word. "
                     "Uses the session value if set by start()."
     )
+    bound_seconds: Optional[float] = Field(
+        default=None, ge=1.0, le=600.0,
+        description="Measure this word instead of just parsing it: run it to "
+                    "completion in a worker of its own, stopped at this many "
+                    "seconds. Reports wall-clock time, and a word stopped at the "
+                    "bound is a result, not an error. level='plain' only."
+    )
+
+    @model_validator(mode="after")
+    def _bound_only_on_plain(self) -> "TryWordInput":
+        """The measurement asks "how long does ONE word take", nothing else.
+
+        A trace level would measure the tracer as well as the grammar, and a
+        restricted one a narrowed search -- neither is the cost of the
+        grammar on this word. Refused rather than ignored, for the reason
+        `morphs` is.
+        """
+        if self.bound_seconds is not None and self.level != "plain":
+            raise ValueError(
+                "bound_seconds measures one word at level='plain'; you passed "
+                "level=" + repr(self.level) + ". A trace would time the tracer "
+                "as well as the grammar. Use level='plain' to measure."
+            )
+        return self
 
     @model_validator(mode="after")
     def _morphs_match_level(self) -> "TryWordInput":

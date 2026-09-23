@@ -487,7 +487,15 @@ when the parser is not available on this machine, and parse_morph_unresolved whe
 piece of a decomposition does not resolve -- in which case NO parse runs.
 
 If the parse outlives the 5-second reporting window you get a run_id instead of a
-result. The parse is still running: poll it with flextools_parse_status.""",
+result. The parse is still running: poll it with flextools_parse_status.
+
+MEASURING A SLOW GRAMMAR: pass bound_seconds (1-600, level='plain') to run the word
+to completion in a worker of its own and stop it at the bound. You get wall-clock
+seconds and whether the fast-path window was missed -- never an engine step count,
+which does not exist. A word stopped at the bound is a result ("this grammar did not
+finish one word in N seconds"), not an error, and it proposes the static grammar
+scan (flextools_grammar_health) before any trace. A measurement never shares a
+worker with a running batch.""",
         input_model=TryWordInput,
         annotations=READ_ONLY_SAFE,
     ),

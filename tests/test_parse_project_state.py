@@ -71,10 +71,16 @@ class FakeAnalysis:
 
 
 class FakeWfiAnalysisOps:
-    """Reads answer from the fixture; every write raises."""
+    """Reads answer from the fixture; every write raises.
 
-    def __init__(self, analyses):
-        self._analyses = list(analyses)
+    GetAll takes a WORDFORM, matching flexicon: there is no project-wide
+    analysis enumeration, and `GetAll()` with no argument raises TypeError on
+    the real API. A live run caught the probe calling it bare, so the double
+    reproduces the real arity rather than the convenient one.
+    """
+
+    def __init__(self, by_wordform):
+        self._by_wordform = by_wordform
         self.get_all_calls = 0
         for name in WRITE_METHODS:
             setattr(self, name, self._refuse(name))
@@ -87,9 +93,9 @@ class FakeWfiAnalysisOps:
             )
         return _raise
 
-    def GetAll(self):
+    def GetAll(self, wordform_or_hvo):
         self.get_all_calls += 1
-        return list(self._analyses)
+        return list(self._by_wordform[wordform_or_hvo])
 
     def GetHumanEvaluation(self, analysis):
         if analysis.human_raises:
@@ -112,9 +118,45 @@ class FakeWfiAnalysisOps:
         return analysis.machine is not None
 
 
+class FakeWordform:
+    def __init__(self, label):
+        self.label = label
+
+    def __repr__(self):
+        return "FakeWordform(" + self.label + ")"
+
+
+class FakeWordformOps:
+    def __init__(self, wordforms):
+        self._wordforms = list(wordforms)
+        self.get_all_calls = 0
+
+    def GetAll(self):
+        self.get_all_calls += 1
+        return list(self._wordforms)
+
+
 class FakeProject:
-    def __init__(self, analyses):
-        self.WfiAnalysis = FakeWfiAnalysisOps(analyses)
+    """A project whose analyses hang off wordforms, as the real one does.
+
+    `FakeProject([a, b, c])` puts every analysis under a single wordform,
+    which is what most tests below want. `FakeProject.spread([...])` puts one
+    analysis per wordform, so the traversal itself is exercised.
+    """
+
+    def __init__(self, analyses, per_wordform=None):
+        if per_wordform is None:
+            groups = [list(analyses)] if analyses else []
+        else:
+            groups = per_wordform
+        wordforms = [FakeWordform("w" + str(i)) for i in range(len(groups))]
+        by_wordform = dict(zip(wordforms, groups))
+        self.Wordforms = FakeWordformOps(wordforms)
+        self.WfiAnalyses = FakeWfiAnalysisOps(by_wordform)
+
+    @classmethod
+    def spread(cls, analyses):
+        return cls(None, per_wordform=[[a] for a in analyses])
 
 
 def human(n=1):
@@ -149,13 +191,41 @@ class TestProbePerformsNoProjectWrite:
         # would make the test above pass for the wrong reason.
         project = FakeProject([human(1)])
         with pytest.raises(ProjectWriteAttempted):
-            project.WfiAnalysis.ApproveAnalysis(object())
+            project.WfiAnalyses.ApproveAnalysis(object())
 
     @pytest.mark.parametrize("name", WRITE_METHODS)
     def test_every_write_method_is_armed_on_the_double(self, name):
         project = FakeProject([])
         with pytest.raises(ProjectWriteAttempted):
-            getattr(project.WfiAnalysis, name)()
+            getattr(project.WfiAnalyses, name)()
+
+    def test_probe_never_calls_getall_without_a_wordform(self):
+        # The live-caught bug, pinned. flexicon's
+        # WfiAnalysisOperations.GetAll(wordform_or_hvo) is per-wordform;
+        # calling it bare raises TypeError. An earlier draft of the probe did
+        # exactly that, and only a live run found it -- a double with a
+        # convenient nullary GetAll would have hidden it forever.
+        project = FakeProject.spread([machine(1), machine(2)])
+        with pytest.raises(TypeError):
+            project.WfiAnalyses.GetAll()
+        state = probe_project_state(project)
+        assert state.analyses_total == 2
+
+    def test_traversal_visits_every_wordform(self):
+        project = FakeProject.spread([human(1), machine(1), no_opinion()])
+        state = probe_project_state(project)
+        assert state.analyses_total == 3
+        assert project.Wordforms.get_all_calls == 1
+        assert project.WfiAnalyses.get_all_calls == 3
+
+    def test_a_wordform_whose_analyses_cannot_be_read_is_skipped(self):
+        # One unreadable wordform must not make the rest of the project
+        # unreportable.
+        project = FakeProject.spread([machine(1), machine(2)])
+        broken = FakeWordform("broken")
+        project.Wordforms._wordforms.insert(0, broken)
+        state = probe_project_state(project)
+        assert state.analyses_total == 2
 
     def test_an_unreadable_evaluation_does_not_provoke_a_write(self):
         # The tempting "repair" for an unreadable record is to re-evaluate it.
@@ -277,11 +347,11 @@ class TestThreeConsumersShareOneProbe:
     def test_one_probe_result_serves_all_three(self):
         project = FakeProject([human(1), machine(1)])
         state = probe_project_state(project)
-        before = project.WfiAnalysis.get_all_calls
+        before = project.WfiAnalyses.get_all_calls
         for consumer in THREE_CONSUMERS:
             consumer(state)
         # No consumer traversed the project again.
-        assert project.WfiAnalysis.get_all_calls == before == 1
+        assert project.WfiAnalyses.get_all_calls == before == 1
 
     def test_never_parsed_project_drives_all_three_consistently(self):
         state = probe_project_state(FakeProject([human(1)]))

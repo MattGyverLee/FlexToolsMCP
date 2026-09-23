@@ -2234,12 +2234,42 @@ the first checkpoint with nothing blocking it.
     database-state-as-proxy trap one layer down: an empty result would mean "not
     tokenized", not "no words", and CP3's scoping must not read it as the
     latter. Verify before CP3 relies on the count.
+    **STILL OPEN after a live probe 2026-09-22** (CP3 T008; evidence in
+    `specs/parser-check-cp3/live-note-fr001-fr003.md`). The designated
+    correctness project `IndonesianHC-Complete` cannot settle it: it holds two
+    texts and both are fully tokenized (1 paragraph, 1 segment, 38 analysis
+    slots each), so the discriminating pair is simply not present. A
+    never-tokenized text cannot be manufactured inside CP3 either -- creating
+    or opening one is a project write and CP3 ships no write path (FR-063).
+    **CP3 does not rely on the count**: FR-002 was written to survive this
+    outcome, asking for a conservative refusal -- structure present, no unique
+    wordforms resolved -- that asserts neither "never tokenized" nor "no
+    words", and that does not reuse `parse_scope_empty`. To close this, probe a
+    project that carries a text never opened in interlinear and compare it
+    against one whose content is genuinely empty.
 12. **Can a segment assignment arrive without a human act?** (9.3.4). FLEx
     propagates guessed analyses through interlinear text; if an analysis can
     reach `AnalysesRS` by being offered and not overruled, part of the
     indeterminate population is weaker than tacit. Verify before CP3 leans on
     the affirmed/indeterminate split. Does not affect the reporting rule, which
     already declines to characterise individual analyses.
+    **ANSWERED 2026-09-22 -- yes, for analyses** (CP3 T009; evidence in
+    `specs/parser-check-cp3/live-note-fr001-fr003.md`). A complete read-only
+    traversal of `IndonesianHC-Complete` found **76 of 77** analyses carrying an
+    `ICmAgentEvaluation` and **no** human evaluation at all (`approval_status`
+    1); none carried neither. An analysis therefore reaches the record by
+    parser action alone, with no human act. The indeterminate population is
+    real and is essentially the whole project -- which is also why FR-040's
+    wording discipline matters: calling it "unreviewed" would mislabel 99% of
+    this project.
+    **The narrower half stays open.** These 76 are analyses on wordforms; the
+    question as written asks about an analysis reaching `AnalysesRS` -- a
+    *segment* assignment -- by being offered and not overruled. That is neither
+    demonstrated nor excluded by this probe, and CP3 does not lean on it. A
+    `ReferringObjects` read returned 0 segment-referenced parser-only analyses,
+    but a zero read that way cannot be distinguished from "not reachable
+    through the wrapper" and is deliberately **not** recorded as a finding;
+    FR-050's projection gets a join written for the purpose (CP3 T091) instead.
 
 ---
 

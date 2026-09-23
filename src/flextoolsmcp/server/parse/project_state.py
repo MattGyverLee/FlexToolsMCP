@@ -104,8 +104,8 @@ def _has_human_opinion(project: Any, analysis: Any) -> bool:
     docstring on why an unreadable evaluation is not counted as machine-made.
     """
     for reader in (
-        lambda: project.WfiAnalysis.GetHumanEvaluation(analysis) is not None,
-        lambda: bool(project.WfiAnalysis.IsHumanApproved(analysis)),
+        lambda: project.WfiAnalyses.GetHumanEvaluation(analysis) is not None,
+        lambda: bool(project.WfiAnalyses.IsHumanApproved(analysis)),
     ):
         try:
             return bool(reader())
@@ -117,14 +117,39 @@ def _has_human_opinion(project: Any, analysis: Any) -> bool:
 def _has_machine_opinion(project: Any, analysis: Any) -> bool:
     """True when the parser (a computer agent) evaluated this analysis."""
     for reader in (
-        lambda: project.WfiAnalysis.GetAgentEvaluation(analysis) is not None,
-        lambda: bool(project.WfiAnalysis.IsComputerApproved(analysis)),
+        lambda: project.WfiAnalyses.GetAgentEvaluation(analysis) is not None,
+        lambda: bool(project.WfiAnalyses.IsComputerApproved(analysis)),
     ):
         try:
             return bool(reader())
         except Exception:
             continue
     raise _Unreadable()
+
+
+def _iter_analyses(project: Any):
+    """Every analysis in the project, wordform by wordform.
+
+    THERE IS NO PROJECT-WIDE ANALYSIS ENUMERATION. `WfiAnalysisOperations.
+    GetAll` takes a wordform and returns that wordform's analyses --
+    `GetAll()` with no argument raises TypeError. That is not obvious from
+    the name, and an earlier draft of this probe called it bare; the live run
+    that caught it is why this helper exists rather than an inline loop.
+
+    Analyses are yielded lazily so `probe_project_state`'s limit stops the
+    traversal rather than trimming a list that was already fully built.
+    """
+    for wordform in project.Wordforms.GetAll():
+        try:
+            analyses = project.WfiAnalyses.GetAll(wordform)
+        except Exception:
+            # A wordform whose analyses cannot be read contributes nothing.
+            # It is not an error for the probe: the counts it produces are
+            # about analyses, and one unreadable wordform does not make the
+            # rest of the project unreportable.
+            continue
+        for analysis in analyses:
+            yield analysis
 
 
 def probe_project_state(
@@ -152,7 +177,7 @@ def probe_project_state(
     indeterminate = 0
     truncated = False
 
-    for analysis in project.WfiAnalysis.GetAll():
+    for analysis in _iter_analyses(project):
         if limit is not None and analyses_total >= limit:
             truncated = True
             break

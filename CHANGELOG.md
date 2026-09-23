@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **`unprotected_writes` rejected the early-return guard idiom** ([#139](https://github.com/MattGyverLee/FlexToolsMCP/issues/139)).
+  ``if not modifyAllowed: ...; return`` followed by writes is now treated as
+  equivalent to ``if modifyAllowed: ... else: ...`` for line-level protection
+  in ``find_protected_ranges`` / ``certify_script_readonly``.
 - **`flextools_start` `api_versions` misreported index-file versions as installed
   libraries under `fallback_latest`** ([#149](https://github.com/MattGyverLee/FlexToolsMCP/issues/149)).
   Session state and the start response now carry the same

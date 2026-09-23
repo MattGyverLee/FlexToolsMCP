@@ -777,12 +777,18 @@ def initialize_kernel() -> Tuple[bool, Optional[str]]:
 
 
 def reset_session() -> None:
-    """Reset session state to defaults for test isolation.
+    """Reset session state for tests and tooling.
 
-    Mutates the existing singleton in place. Production session boundaries
-    go through ``SessionState.configure()`` (flextools_start), not this helper.
+    Mutates the existing ``SessionState`` in place so every module that
+    imported ``session_state`` at load time observes the reset. Production
+    session boundaries go through ``SessionState.configure()``, not this
+    function (see issue #171).
     """
-    session_state.reset()
+    global session_state
+    if session_state is None:
+        session_state = SessionState()
+    else:
+        session_state.reset()
     if operations_logger:
         operations_logger.info("Session state reset")
 

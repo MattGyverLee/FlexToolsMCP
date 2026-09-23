@@ -276,23 +276,23 @@ class TestWorkflowGates(TestCase):
         (#53) mutates it in place, so per-class-only reset would leak
         initialized=True into later tests in this class.
 
-        Must clear the shared kernel/execution singleton in place. Rebinding
-        only the importlib-loaded ``srv.session_state`` leaves
-        ``handle_run_module`` reading a sibling object -- e.g. the prior
-        cold-with-name test leaves ``NoSuchProjectForTesting`` there, and
-        cold-without-name then skips ``project_name_required``.
+        Must mutate the shared kernel SessionState (issue #171) and keep
+        server.py / handler bindings on that same object. Rebinding only
+        ``srv.session_state = SessionState()`` orphans handler from-imports
+        and lets project_name leak into later cold-start assertions.
         """
-        from server.session import SessionState  # type: ignore
-        from server.kernel import session_state as kernel_state  # type: ignore
+        from server.kernel import (  # type: ignore
+            reset_session,
+            session_state as kernel_session_state,
+        )
         from server.handlers import admin as admin_mod  # type: ignore
         from server.handlers import execution as execution_mod  # type: ignore
 
+        reset_session()
         srv = _get_srv()
-        srv.session_state = kernel_state  # type: ignore
-        admin_mod.session_state = kernel_state
-        execution_mod.session_state = kernel_state
-        kernel_state.__dict__.clear()
-        kernel_state.__dict__.update(SessionState().__dict__)
+        srv.session_state = kernel_session_state  # type: ignore
+        admin_mod.session_state = kernel_session_state
+        execution_mod.session_state = kernel_session_state
 
     def _parse_response(self, result):
         """Parse TextContent list into JSON."""

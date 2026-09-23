@@ -160,11 +160,15 @@ def _get_real_key_not_found_exception_type():
     available. See module docstring's "Fidelity choice" note for why a
     plain Python stand-in is not used instead.
 
-    ``pytest.importorskip("clr")`` is not enough: pythonnet is pip-installed
-    on Linux CI, so the import succeeds, then fails later with RuntimeError
-    ("Could not find libmono") when the runtime is actually initialized.
-    Catch any Exception around the CLR bootstrap and skip.
+    ``pytest.importorskip("clr")`` is not enough: pythonnet is installed on
+    Linux CI (hard dependency), so the import succeeds at the package level
+    but then raises ``RuntimeError: Could not find libmono`` when it tries
+    to create a default .NET runtime. Catch that here and skip cleanly.
     """
+    try:
+        import clr  # type: ignore
+    except Exception as exc:  # ImportError *or* RuntimeError (no mono/coreclr)
+        pytest.skip(f"CLR runtime unavailable: {exc}")
     try:
         import clr  # type: ignore
         clr.AddReference("mscorlib")

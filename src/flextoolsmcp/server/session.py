@@ -11,7 +11,7 @@ import re
 import logging
 import uuid
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Deque, Tuple
 
@@ -209,6 +209,18 @@ class SessionState:
         default_factory=lambda: deque(maxlen=5)
     )
 
+    def reset(self) -> None:
+        """Reset all session fields to defaults without replacing the object.
+
+        Every module that imported ``session_state`` at load time keeps the
+        same object identity; only field values change. Used by
+        ``kernel.reset_session()`` for test isolation.
+        """
+        fresh = SessionState()
+        for f in fields(self):
+            setattr(self, f.name, getattr(fresh, f.name))
+        logger.info("Session state reset to defaults")
+
     def configure(self, **kwargs) -> None:
         """Configure session settings (called by start tool).
 
@@ -337,16 +349,6 @@ class SessionState:
         # yet" for any project -- the prior session's backup is still on disk,
         # but this session hasn't verified it applies to the current state.
         self.backed_up_projects = set()
-
-    def reset(self) -> None:
-        """Reset all session fields to defaults without replacing the object.
-
-        Mutates in place so every module that bound ``session_state`` at import
-        time observes the reset (issue #171).
-        """
-        fresh = SessionState()
-        for name in self.__dataclass_fields__:
-            object.__setattr__(self, name, getattr(fresh, name))
 
     def record_validated_api(self, entity: str) -> None:
         """Record an API that was validated via get_object_api."""

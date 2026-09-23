@@ -3005,10 +3005,13 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # a script cannot know at the call site whether it is executing inside
     # flexicon's own per-operation wrapper -- but WHAT it is nesting into
     # depends on the OpenProject()-time capability probe (issue #144):
-    #   - Legacy (no "per-operation-uow" capability, or flexicon <=4.3.0):
-    #     OpenProject() opens ONE non-undoable UnitOfWork for the whole
-    #     session (opened once at OpenProject(), closed once at
-    #     CloseProject()); a raw helper nests inside THAT.
+    #   - Legacy (no "per-operation-uow" in CAPABILITIES): OpenProject()
+    #     opens ONE non-undoable UnitOfWork for the whole session (opened
+    #     once at OpenProject(), closed once at CloseProject()); a raw
+    #     helper nests inside THAT. Under the declared pyflexicon floor
+    #     this branch is unreachable; it remains as defence-in-depth for
+    #     unsupported installs and is surfaced on the run_module response
+    #     (issue #153) so the degradation is never silent.
     #   - Capable builds (undoable=True chosen): OpenProject() opens no
     #     session-long envelope; instead flexicon wraps EACH mutating call
     #     in its own named unit of work (FLExProject.py), and a raw helper
@@ -4070,13 +4073,32 @@ def run_module():
             # (FLExProject.py's `writeEnabled and self._undoable` branch) --
             # nothing raises. Probe for that capability using the exact
             # one-line form flexicon's own docstring prescribes for this
-            # consumer (flexicon/__init__.py). On flexicon <=4.3.0
-            # CAPABILITIES is undefined, getattr yields frozenset(), and
-            # _undoable is False -- byte-identical to the old hardcoded
-            # behaviour.
+            # consumer (flexicon/__init__.py).
+            #
+            # When CAPABILITIES is missing or lacks the token, _undoable is
+            # False -- byte-identical to the old hardcoded behaviour. Under
+            # the declared pyflexicon floor that branch is unreachable; it
+            # remains as defence-in-depth for unsupported installs. Issue
+            # #153: surface the resolved mode on the result so a silent
+            # non-undoable degradation cannot hide behind a successful run.
             import flexicon
             _CAPS = getattr(flexicon, "CAPABILITIES", frozenset())
             _undoable = "per-operation-uow" in _CAPS
+            # Issue #153: machine-readable mode flags. timestamps_updated
+            # tracks DateModified stamping, which rides the same undoable
+            # path (absent under the legacy session envelope).
+            result["undoable"] = _undoable
+            result["timestamps_updated"] = _undoable
+            if not _undoable:
+                report.Warning(
+                    "OpenProject chose undoable=False: this flexicon build "
+                    "does not advertise CAPABILITIES 'per-operation-uow'. "
+                    "DateModified will not be stamped and mid-operation "
+                    "exceptions will not roll back. Supported installs "
+                    "(the declared pyflexicon floor) always advertise this "
+                    "capability; this fallback is defence-in-depth for "
+                    "unsupported installs (issue #153)."
+                )
             if _openproject_accepts_ui:
                 project.OpenProject(projectName=PROJECT_NAME, writeEnabled=WRITE_ENABLED, undoable=_undoable, ui=_lcm_ui)
             else:

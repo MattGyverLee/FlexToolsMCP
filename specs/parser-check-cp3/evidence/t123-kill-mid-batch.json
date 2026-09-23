@@ -1,0 +1,16 @@
+{
+  "project": "IndonesianHC-Complete",
+  "run_id": "c92e538b5eb17dfbb49f4cdb5e34ca62",
+  "words_total": 38,
+  "words_completed": 6,
+  "readable_lines": 6,
+  "failure": {
+    "message": "Parse worker for 'IndonesianHC-Complete' is not running.",
+    "stage_at_failure": "parsing",
+    "error_type": "WorkerError",
+    "next_step": "Run flextools_grammar_health for this project's grammar and flextools_health for the environment. A run that failed while loading the grammar has usually exhausted memory, and repeating the run repeats the step that exhausted it -- the diagnostics say what the project needs. Words completed before the failure are readable with flextools_parse_log.",
+    "error_code": null,
+    "detail": null
+  },
+  "recorded_at": "2026-09-23T04:09:41.118547+00:00"
+}

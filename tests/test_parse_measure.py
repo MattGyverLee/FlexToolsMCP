@@ -377,3 +377,21 @@ async def test_the_real_pool_keys_workers_by_project_and_role():
         assert shared.is_running(), "terminating one key reached the other"
     finally:
         await pool.aclose()
+
+
+async def test_two_measurements_on_one_project_each_get_their_own_bound(wired):
+    """One measurement key per project, so concurrent measurements are
+    serialised: the first one's kill never lands on the second one's word,
+    and both come back as results rather than a bare worker error."""
+    pool = RolePool(shared_delay=0.0, measurement_delay=60.0)
+    runner = wired(pool)
+    try:
+        first, second = await asyncio.gather(
+            measure_word(runner, project_name="P", wordform="pukul", bound_seconds=1.0),
+            measure_word(runner, project_name="P", wordform="kirim", bound_seconds=1.0),
+        )
+    finally:
+        await runner.aclose()
+    assert first.outcome == second.outcome == "terminated_at_bound"
+    assert first.run_id != second.run_id
+    assert first.elapsed_seconds >= 1.0 and second.elapsed_seconds >= 1.0

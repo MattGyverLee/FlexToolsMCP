@@ -47,6 +47,7 @@ left going, untouched, and the caller gets a handle to poll. Nothing on this
 path cancels a run, shortens one, or passes a deadline downstream.
 """
 
+import time
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -249,8 +250,6 @@ def _stuck_loading(handle) -> bool:
         return False
     if handle.stage is not RunStage.LOADING_GRAMMAR:
         return False
-    import time
-
     entered = getattr(handle, "stage_entered_at", None)
     if entered is None:
         return False
@@ -622,8 +621,9 @@ def _failed_run_response(handle) -> List[TextContent]:
     """A single-word run that FAILED: its refusal, or the failure itself.
 
     A terminal failure is one of FR-056's four triggers, so a plain failure
-    carries the structured failure rungs -- the static scan first -- rather
-    than the run record's prose.
+    carries the structured failure rungs -- the static scan first -- as its
+    top-level `next_step`. Additive: the run record's own `failure.next_step`
+    prose, which `flextools_parse_status` reports, is unchanged in shape.
     """
     refusal = _refusal_from_failure(handle.failure)
     if refusal is not None:

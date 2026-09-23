@@ -1,0 +1,65 @@
+{
+  "project": "IndonesianHC-Complete",
+  "limited": {
+    "scope_kind": "all_texts",
+    "scope_value": null,
+    "text_ids": [
+      7179,
+      11711
+    ],
+    "text_guids": [
+      "9cc3d221-8e0a-47ad-8874-08f2465798e3",
+      "fd77716a-9600-4058-ade0-1c9dcdfd3842"
+    ],
+    "words": [
+      "mejɑkin",
+      "melɑtih",
+      "membuɑt",
+      "membɑt͡ʃɑ",
+      "memukul",
+      "memɑdɑn",
+      "memɑnis",
+      "memɑsɑk",
+      "mendeŋɑɾ",
+      "mendɑlɑm"
+    ],
+    "count_before_limit": 38,
+    "limit": 10,
+    "truncated": true,
+    "vernacular_ws": "id-fonipa",
+    "never_tokenized_text_ids": [],
+    "unreadable_wordform_count": 38,
+    "notes": [
+      "38 wordform(s) in the selected texts have no form in the writing system 'id-fonipa' and were left out rather than read as empty. If the texts are written in another vernacular writing system, pass its language tag as vernacular_ws."
+    ]
+  },
+  "full_word_count": 38,
+  "missing_genre_refusal": {
+    "_contract": "tool-responses/1.0",
+    "status": "error",
+    "error_code": "parse_scope_empty",
+    "message": "No genre on any text matches 'zz-no-such-genre' by name or abbreviation. Matching ran against the default analysis writing system (en); if genre names are entered in another writing system -- for example because FieldWorks runs in a localized interface -- they will not match here. A genre that exists but is assigned to no text also does not match.",
+    "scope": {
+      "kind": "genre",
+      "value": "zz-no-such-genre",
+      "limit": null,
+      "vernacular_ws": null
+    },
+    "matched_texts": [],
+    "hint": "No genre on any text matches 'zz-no-such-genre' by name or abbreviation. Matching ran against the default analysis writing system (en); if genre names are entered in another writing system -- for example because FieldWorks runs in a localized interface -- they will not match here. A genre that exists but is assigned to no text also does not match.",
+    "error": {
+      "code": "parse_scope_empty",
+      "message": "No genre on any text matches 'zz-no-such-genre' by name or abbreviation. Matching ran against the default analysis writing system (en); if genre names are entered in another writing system -- for example because FieldWorks runs in a localized interface -- they will not match here. A genre that exists but is assigned to no text also does not match.",
+      "scope": {
+        "kind": "genre",
+        "value": "zz-no-such-genre",
+        "limit": null,
+        "vernacular_ws": null
+      },
+      "matched_texts": [],
+      "hint": "No genre on any text matches 'zz-no-such-genre' by name or abbreviation. Matching ran against the default analysis writing system (en); if genre names are entered in another writing system -- for example because FieldWorks runs in a localized interface -- they will not match here. A genre that exists but is assigned to no text also does not match."
+    }
+  },
+  "not_live_reachable": "the project has no genres; SC-001 and the ambiguity refusal are proven offline (tests/test_parse_scope.py)",
+  "recorded_at": "2026-09-23T04:09:29.849872+00:00"
+}

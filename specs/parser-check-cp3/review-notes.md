@@ -102,3 +102,35 @@ context.
 **Verdict**: no retention sibling in code. One adjacent class -- lexicographic
 sort of version strings to pick "latest" -- at three sites outside CP3; recorded
 for an issue rather than fixed here, since none of them is on a CP3 path.
+
+## T119 -- multistring / `ITsString` field access (the #36/#39/#40 class)
+
+**The shape**: reading a multistring through `Best*Alternative` or the
+default writing system (reads back `"***"`, or empty for a text entered in
+another WS), or treating an `ITsString` / `IMultiUnicode` as a Python string.
+The live note for US1 already records the consequence on this project class: a
+whole text whose forms read back empty at the default writing system.
+
+**Method**: every multistring read on a CP3 path, read in context --
+`grep` for `Best(Analysis|Vernacular)Alternative`, `get_String`, `.Text`,
+`"***"`, `Abbreviation`, `ShortName`, `InterlinearAbbr` over
+`server/parse/` and `server/signals/`, plus the flexicon wrappers those sites
+call (read from the installed `flexicon` 4.9 source, not assumed).
+
+### Siblings
+
+| Location | What | Confidence | Disposition |
+|---|---|---|---|
+| `server/parse/scope.py:214-215` | Genre name and abbreviation via `PossibilityLists.GetItemName/GetItemAbbreviation(genre, ws)` at the default ANALYSIS handle | None (sound) | The wrappers read `ITsString(item.Name.get_String(ws)).Text or ""` (`PossibilityListOperations.py:903,975`) -- explicit WS, never `Best*`, so unset is `None`/`""`, never `"***"`; `_nfc` collapses `None`. The localized-interface miss is FR-008's, and the empty refusal names the WS it matched in. |
+| `server/parse/scope.py:252,255` | Text name via `Texts.GetName(t, ws)` | None | Same wrapper pattern (`TextOperations.py:598`). |
+| `server/parse/scope.py:321` (`_collect`) | Wordform form via `Wordforms.GetForm(wordform, ws)` at the explicit vernacular handle | None | `WordformOperations.py:331`, explicit WS. `ws` comes from `_vernacular`, which refuses an unknown tag rather than falling back. |
+| `server/parse/scope.py:127-144` (`_vernacular`) | The vernacular handle | None | Explicit tag -> `WSHandle`, or the default VERNACULAR handle (never analysis). Recorded in the fingerprint. |
+| `server/parse/worker_main.py:979-985` (`_ws_handle`) | Batch words' handle from the recorded `vernacular_ws` | **Low** | An unknown tag falls back to the default vernacular handle silently, where `scope._vernacular` refuses. Unreachable in practice -- the tag reaching the worker is the one `_vernacular` already validated at resolution -- but it is the same decision made two ways. Left; noted for CP4, which re-reads runs. |
+| `server/parse/worker_main.py:1452-1466` (`_multi_text`) | Every `rendered_morphs` form, human-analysis gloss, sense gloss and category abbreviation | None | The one helper for all of them: `multi.get_String(ws).Text` at an explicit handle, `"***"` and `None` mapped to `""`. Its docstring cites this class. |
+| `server/parse/worker_main.py:1469-1486` (`_msa_label`) | `category_labels` from the MSA's `InterlinearAbbr` then `ShortName` | Low | Both are C# `string` properties, not multistrings; `getattr(value, "Text", value)` also tolerates an `ITsString`, and `"***"` is rejected. Best-effort by design: the label is display text, compared only by the FR-033 fallback, which states its own ambiguity. If `InterlinearAbbr` is not on the base `IMoMorphSynAnalysis` interface pythonnet yields nothing and `ShortName` (on `ICmObject`) answers -- degraded wording, never a wrong comparison. |
+| `server/parse/worker_main.py:1552` | A guessed morph renders `str(morph.GuessedString)` | None | A C# `string`, not a multistring. |
+| `server/parse/signature.py:134-135` | `rendered_morphs` / `category_labels` read back from the artifact | None | Already plain strings on the record; `str()` over JSON values. No LCM access. |
+
+**Verdict**: no multistring sibling on a CP3 path. Every read goes through an
+explicit writing system with the placeholder collapsed. One Low-confidence
+inconsistency (`_ws_handle`'s silent fallback) recorded, not changed.

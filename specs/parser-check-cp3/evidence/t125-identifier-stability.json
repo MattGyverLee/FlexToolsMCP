@@ -1,0 +1,44 @@
+{
+  "project": "IndonesianHC-Complete",
+  "sessions": [
+    "08767297987875041bda3c07070406ce",
+    "75f4a941aaf0e622a539629fdfa4451b"
+  ],
+  "words": 38,
+  "words_with_analyses": 38,
+  "signature_sets_differing": [],
+  "verdict": "stable",
+  "same_scope_diff": {
+    "status": "ok",
+    "verdict": "no_change",
+    "comparison_mode": "identifier",
+    "counts": {
+      "fixed": 0,
+      "broken": 0,
+      "changed": 0,
+      "unchanged": 38
+    },
+    "identity_change_count": 0
+  },
+  "mismatch_refusal": {
+    "error_code": "parse_scope_mismatch",
+    "differing_fields": [
+      "limit",
+      "truncated"
+    ]
+  },
+  "forced": {
+    "status": "ok",
+    "forced": true,
+    "counts": {
+      "fixed": 0,
+      "broken": 0,
+      "changed": 0,
+      "unchanged": 5
+    },
+    "notes": [
+      "These runs do not describe the same scope. The comparison was forced, so it covers only the intersection -- words present in both runs. Words in only one run are not reported as fixed or broken."
+    ]
+  },
+  "recorded_at": "2026-09-23T04:10:03.089900+00:00"
+}

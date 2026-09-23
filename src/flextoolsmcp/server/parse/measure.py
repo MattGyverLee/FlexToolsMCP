@@ -44,6 +44,7 @@ the word at all.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import time
 import uuid
@@ -78,6 +79,12 @@ OUTCOME_TERMINATED = "terminated_at_bound"
 
 #: How much of an unparseable parameters document is echoed back.
 _RAW_PARAMETERS_CAP = 2000
+
+#: One measurement at a time per project. The pool has ONE measurement key
+#: per project, so two concurrent measurements would share a worker and the
+#: first one's bound would kill the second one's word. Serialising them keeps
+#: every kill aimed at exactly the word it bounds.
+_MEASURING: dict[str, asyncio.Lock] = {}
 
 
 class MeasurementFailed(Exception):
@@ -243,9 +250,20 @@ async def measure_word(
             f"{MAX_BOUND_SECONDS:g}; got {bound:g}."
         )
 
-    # Start the measurement's OWN worker first, so the clock charges the
-    # grammar and the word, not the interpreter and the project open.
-    worker = await runner.worker(project_name, role=MEASUREMENT_ROLE)
+    lock = _MEASURING.setdefault(project_name, asyncio.Lock())
+    async with lock:
+        return await _measure_alone(runner, project_name, wordform, bound, clock)
+
+
+async def _measure_alone(runner, project_name, wordform, bound, clock):
+    """One measurement, with the project's measurement worker to itself."""
+    try:
+        # Start the measurement's OWN worker first, so the clock charges the
+        # grammar and the word, not the interpreter and the project open.
+        worker = await runner.worker(project_name, role=MEASUREMENT_ROLE)
+    except BaseException:
+        await runner.release_worker(project_name, role=MEASUREMENT_ROLE)
+        raise
 
     parameters: Optional[dict[str, Any]] = None
     with contextlib.suppress(Exception):

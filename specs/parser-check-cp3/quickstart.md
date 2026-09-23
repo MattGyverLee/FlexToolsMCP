@@ -321,3 +321,49 @@ pytest tests/ -q
   *only* failure when the suite is re-run at T126.
 
 **Baseline for T126**: any failure beyond this one is CP3's.
+
+### 2026-09-22 -- T122-T125 live verification (read-only)
+
+`pytest tests/test_parse_live_cp3.py -q` -- **8 passed**. Evidence under
+`specs/parser-check-cp3/evidence/` (`t122-*`, `t123-*`, `t124-scale`,
+`t125-identifier-stability`).
+
+| Scenario | Project | Result |
+|---|---|---|
+| 1 -- scope resolution | IndonesianHC-Complete | Order-then-truncate deterministic across two resolutions (SC-002); a missing genre refuses `parse_scope_empty` naming the analysis WS. |
+| 2 -- batch + urgent word | IndonesianHC-Complete | 38-word batch completed; an urgent word sent mid-batch answered inline in 0.1 s; **1** grammar load across both (SC-005, SC-006); directory holds only `meta.json`, `results.jsonl`, `words.txt`. |
+| 3 -- every section | IndonesianHC-Complete | All seven sections `ok` and non-empty; the three sandbox sections typed not-applicable naming CP5 (SC-007). |
+| kill mid-batch | IndonesianHC-Complete | Worker tree killed at word 6: run `failed`, **6/6** completed words readable (SC-004). |
+| cancel | IndonesianHC-Complete | Stops at a word boundary; partials retained; status points at `flextools_parse_log`. |
+| scope mismatch | IndonesianHC-Complete | Refused naming `limit`, `truncated`; forced compares the intersection. |
+| identifier stability (T125) | IndonesianHC-Complete | **Stable**: 38/38 identical GUID-triple signatures across a close/reopen; identifier mode now authoritative. |
+| 6 -- measurement | IndonesianHC-Complete | Generous and 1-second bounds both completed (0.55 s including a cold grammar load). |
+| scale (T124) | Malay Parsing-20230810withHC | Whole-lexicon batch (262 words), urgent word inline in 0.05 s, 1 grammar load, killed at 175 with 175/175 readable. |
+
+**Not verifiable here, and why**
+
+- **Genre scenarios (SC-001 second genre, ambiguity refusal)**: neither
+  designated project carries any genre. Proven offline
+  (`tests/test_parse_scope.py`); adding a genre would be a project write.
+- **Scale as specified ("a few thousand words", kill at ~4000)**: the scale
+  project holds 262 lexemes and three short texts. The whole lexicon was the
+  largest honest scope.
+- **A live `terminated_at_bound`**: no available grammar is slow -- this one
+  loads and parses a word in 0.55 s. The terminated path is proven against real
+  killed stub workers (`tests/test_parse_measure.py`).
+- **Needs a human in FieldWorks** (project edits outside this server, which
+  CP3 must not make): SC-009 break-then-revert, SC-010's delete-and-recreate
+  morph, and FR-034's shared-mode staleness with the project open in
+  FieldWorks.
+
+### 2026-09-22 -- T126 full suite: GREEN against the T002 baseline
+
+```
+pytest tests/ -q
+1 failed, 2598 passed, 9 skipped, 23 warnings, 36 subtests passed in 361.79s
+pytest tests/ -k "floor or index_equality" -q   -> 10 passed (unweakened)
+pytest tests/test_parser_no_xcore.py -q          -> 4 passed
+```
+
+The one failure is the inherited `Sena 3` one recorded at T002 (the local
+project file will not open). No other failure, so nothing here is CP3's.

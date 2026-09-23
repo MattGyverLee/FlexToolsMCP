@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 25 codes below |
+| `error_code` | string | one of the 30 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -121,6 +121,11 @@ authoritative. All detail fields are optional unless noted.
 | `parse_morph_unresolved` | **Exactly five keys, in this order**: `morph`, `position` (0-based index in the decomposition), `resolved_to` (required; `none` \| `ambiguous` \| `no_msa`), `candidates` (required list of `{headword, sense, msa_hvo, entry_hvo}` -- **`msa_hvo: null` IS the `no_msa` signal**), `hint` (required string). The three `resolved_to` values are kept distinct because they call for three different actions: fix the spelling, pick the homograph, or add an analysis to the entry. **No parse runs** for a request that raises this. |
 | `parse_run_not_found` | `run_id` (required string), `available_runs` (required list -- the handles that DO exist, named rather than counted), `hint` (required string). The only refusal `flextools_parse_status` issues. |
 | `parse_job_cancelled` | `run_id` (required string), `words_completed` (required int -- the partial results are readable), `state_at_cancel` (required string), `hint` (required string). Raised when something tries to **act** on a run that has already ended. **Not** raised by `flextools_parse_status`: asking about a terminal run is a successful query. |
+| `parse_scope_empty` | **In this order**: `scope` (required object -- the scope as given), `matched_texts` (list -- what DID match, so a misspelled genre is told apart from an unused one), `hint` (required string). Raised by `flextools_parse_text` when a scope resolves to no texts. **Not** reused for a never-tokenized text: a text with structure but no unique wordforms gets its own conservative wording, and the response does not assert it has no words. |
+| `parse_scope_ambiguous` | **In this order**: `scope` (required object), `requested` (required string -- the genre as typed), `candidates` (list -- EVERY matching genre, never a sample). Matching is case-insensitive over genre name and abbreviation, so the collisions are often ones the caller could not predict. |
+| `parse_scope_mismatch` | **In this order**: `baseline_fingerprint` (required object), `current_fingerprint` (required object), `differing_fields` (list -- which fingerprint fields disagree), `hint` (required string). Raised by `flextools_parse_diff` when two runs do not describe the same scope. Overridable: a forced comparison covers the intersection only and says so. |
+| `parser_timeout` | **In this order**: `timeout_seconds` (required number), `words_completed` (required int -- the partial results survive), `run_id` (required string), `hint` (required string). **Not** used by the bounded measurement: a measurement stopped at its bound is a successful result (`outcome: "terminated_at_bound"`), not this refusal. |
+| `parser_job_failed` | **In this order**: `state_at_failure` (required string), `failure` (required; `out_of_memory` \| `crashed` \| `cancelled` -- kept distinct because the remedies differ), `words_completed` (required int), `words_total` (required int), `run_id` (required string), `log_path` (required string). |
 
 ---
 

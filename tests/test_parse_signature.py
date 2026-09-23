@@ -19,6 +19,7 @@ Run with:
     python -m pytest tests/test_parse_signature.py -q
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -119,11 +120,20 @@ def test_identical_analyses_are_unchanged_and_not_an_identity_change(mode):
 # ---------------------------------------------------------------------------
 
 
-def test_the_fallback_is_in_force_until_stability_is_confirmed(monkeypatch):
+def test_the_fallback_is_in_force_unless_stability_is_confirmed(monkeypatch):
+    """Identifier mode only on "confirmed" -- recorded by the live T125 run,
+    and only with its evidence on disk -- and the fallback otherwise."""
     monkeypatch.delenv("FLEXTOOLSMCP_IDENTIFIER_STABILITY", raising=False)
-    assert sig.IDENTIFIER_STABILITY != "confirmed", (
-        "identifier stability is recorded as confirmed only by the live T125 run"
+    assert sig.IDENTIFIER_STABILITY == "confirmed"
+    evidence = (
+        Path(__file__).parent.parent / "specs" / "parser-check-cp3" / "evidence"
+        / "t125-identifier-stability.json"
     )
+    assert json.loads(evidence.read_text(encoding="utf-8"))["verdict"] == "stable", (
+        "the verdict is recorded as confirmed without the live evidence behind it"
+    )
+    assert sig.signature_mode() == ID
+    monkeypatch.setenv("FLEXTOOLSMCP_IDENTIFIER_STABILITY", "unverified")
     assert sig.signature_mode() == FALLBACK
     monkeypatch.setenv("FLEXTOOLSMCP_IDENTIFIER_STABILITY", "confirmed")
     assert sig.signature_mode() == ID

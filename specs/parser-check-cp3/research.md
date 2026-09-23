@@ -323,6 +323,6 @@ serialized equivalent, so a comparison touching a guessed-form analysis reports
 |---|---|---|
 | FR-001 -- never-tokenized vs empty text | live question | Task 1; conservative wording ships regardless (FR-002) |
 | FR-003 -- analysis without a human act | live question | Task 2; gates one sentence, not the split |
-| Identifier stability across sessions | unverified assumption | live verification; FR-033 fallback if disproved |
+| Identifier stability across sessions | **CONFIRMED live (T125, 2026-09-22)** | On `IndonesianHC-Complete`, all 38 words of the all-texts scope produced identical (form, MSA, inflection-type) GUID triples in two sessions with the worker released -- the project closed and reopened -- between them; the diff reported 38 unchanged, 0 identity changes. `signature.IDENTIFIER_STABILITY` is now `"confirmed"`, so identifier mode is authoritative and the FR-033 fallback is not activated. Evidence: `evidence/t125-identifier-stability.json`. Scope of the claim: one project, one close/reopen; `FLEXTOOLSMCP_IDENTIFIER_STABILITY=disproved` restores the fallback. |
 | D-1 -- destructive annotation | maintainer decision | adopted; overturning before implementation costs nothing |
 | `pyflexicon` 4.9.0 tag | maintainer act | non-blocking; floor and bundled index already agree |

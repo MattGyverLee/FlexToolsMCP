@@ -399,37 +399,48 @@ async def _assert_urgent_overtakes(client):
     assert len(seen) == len(set(seen)) == 11, f"words repeated or lost: {seen}"
 
 
-async def test_a_dead_worker_fails_waiting_callers_rather_than_hanging(client):
+async def test_a_dead_worker_fails_waiting_callers_rather_than_hanging():
     """A worker that dies mid-flight must not leave callers awaiting forever.
 
     One never-resolved future per outstanding word is one tool call that
     never returns, which is strictly worse than a loud failure.
-    """
-    # Enough words that plenty are still queued when the worker dies. A
-    # single word is not enough: the stub answers it before the kill lands,
-    # and the test would then assert nothing.
-    pending = [
-        asyncio.create_task(
-            client.parse_word(
-                request_id=f"orphan{i}", run_id="R", wordform=f"w{i}", index_in_run=i
-            )
-        )
-        for i in range(400)
-    ]
-    await asyncio.sleep(0.05)
-    _kill_process_tree(client.pid)
 
-    # The assertion is as much about `wait_for` NOT timing out as about the
-    # exception type: a hang is the defect, and a hang here fails as a
-    # timeout rather than as a wrong answer.
-    outcomes = await asyncio.wait_for(
-        asyncio.gather(*pending, return_exceptions=True), timeout=30
+    Uses parse_delay so the stub cannot drain the queue before the kill
+    lands (zero-delay stub on a fast CI runner answered all 400 words in
+    <50ms and left this assertion vacuous).
+    """
+    client = ParseWorkerClient(
+        "Lifetime Test Project", stub=True, parse_delay=1.0
     )
-    failed = [o for o in outcomes if isinstance(o, BaseException)]
-    assert failed, "killing the worker left every caller waiting on a dead process"
-    assert all(isinstance(o, wc.WorkerError) for o in failed), (
-        f"unexpected failure types: {sorted({type(o).__name__ for o in failed})}"
-    )
+    await client.start()
+    try:
+        # Enough words that plenty are still queued when the worker dies. A
+        # single word is not enough: even with delay, one in-flight reply can
+        # race the kill, and the test would then assert nothing.
+        pending = [
+            asyncio.create_task(
+                client.parse_word(
+                    request_id=f"orphan{i}", run_id="R", wordform=f"w{i}", index_in_run=i
+                )
+            )
+            for i in range(40)
+        ]
+        await asyncio.sleep(0.05)
+        _kill_process_tree(client.pid)
+
+        # The assertion is as much about `wait_for` NOT timing out as about the
+        # exception type: a hang is the defect, and a hang here fails as a
+        # timeout rather than as a wrong answer.
+        outcomes = await asyncio.wait_for(
+            asyncio.gather(*pending, return_exceptions=True), timeout=30
+        )
+        failed = [o for o in outcomes if isinstance(o, BaseException)]
+        assert failed, "killing the worker left every caller waiting on a dead process"
+        assert all(isinstance(o, wc.WorkerError) for o in failed), (
+            f"unexpected failure types: {sorted({type(o).__name__ for o in failed})}"
+        )
+    finally:
+        await client.aclose()
 
 
 async def test_a_response_larger_than_the_default_stream_limit_survives():

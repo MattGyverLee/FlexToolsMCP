@@ -100,3 +100,45 @@ resolved -- and stops there.
 opened in interlinear, and compare `IStText.UniqueWordforms()` and the segment
 count against a text whose content is genuinely empty. Until then the register
 entry stays open with this note attached.
+
+---
+
+## Incidental live finding -- `vernacular_ws` is load-bearing, not decorative
+
+Recorded here because it was observed on the same run and it changes how T021,
+T025 and T027 must be written.
+
+Probing `IStText.UniqueWordforms()` on both texts of `IndonesianHC-Complete`
+(confirmed present, returning `HashSet[IWfiWordform]`, 38 wordforms each):
+
+| Text | `UniqueWordforms().Count` | `GetForm(wf)` at the default WS |
+|---|---|---|
+| Verbalizer IPA | 38 | real forms -- `membuɑt`, `mendɑlɑm`, ... |
+| Verbalizer Ortho | 38 | **`""` -- every one empty** |
+
+`WordformOperations.GetForm(wordform_or_hvo, wsHandle=None)` defaults to *a*
+vernacular writing system. The Ortho text's wordforms are not stored in that
+one, so every form reads back as the empty string while the wordform objects
+themselves are perfectly present and countable.
+
+**Why this matters to US1.** A scope resolution that reads forms at the default
+writing system would report this text as 38 words of empty string -- and after
+NFC de-duplication (FR-009), as a *single* empty word. That is not a crash and
+not a refusal; it is a silently wrong word list, and it would be indisturguishable
+downstream from a text that genuinely resolved to one word.
+
+**Consequences, to be honoured in Phase 3:**
+
+- T021 must resolve wordform surface forms at an **explicit** writing system,
+  never the implicit default, and must skip-and-record rather than emit empty
+  strings into the word list.
+- T027's `vernacular_ws` fingerprint field is doing real work: two runs over
+  the same texts at different writing systems genuinely are not comparable,
+  and this project demonstrates the case rather than merely motivating it.
+- T119's multistring / `ITsString` pattern audit has a concrete live example
+  to anchor on, and this is the same class as the standing #36/#39/#40 issues
+  and as the recent `grammar-health` fix that resolves multistrings at a named
+  writing system (commit `b896633`).
+
+This was not predicted by the plan. It is the second thing the live run caught
+that no double would have.

@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- **`collect_inherited_members` memo could survive LibLCM index reload** ([#150](https://github.com/MattGyverLee/FlexToolsMCP/issues/150)).
+  Cache keys now use ``APIIndex.liblcm_entities_epoch`` (bumped on each load)
+  instead of ``id(entities)`` alone, and the memo is cleared when LibLCM reloads.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

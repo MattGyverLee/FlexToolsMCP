@@ -779,3 +779,102 @@ class ParseStatusInput(BaseModel):
     run_id: str = Field(
         description="The handle returned when a parse outlived the grace window."
     )
+
+
+# ============================================================
+# Parse scope (parser-check CP3, US1; data-model.md sections 1-2)
+# ============================================================
+
+class ParseScope(BaseModel):
+    """What the caller asked to parse, before resolution (data-model.md s.1).
+
+    Declared here rather than in `server/parse/scope.py` for the same reason
+    `MorphSpec` is: it is the shape a caller writes, validated at the tool
+    boundary before any resolver runs, and `models.py` must not import the
+    parse package.
+
+    `limit` truncates AFTER ordering (FR-009). A limit applied first would
+    make two runs over the same corpus in a different source order resolve
+    to different words -- and therefore not be comparable.
+
+    `vernacular_ws` names the writing system the words are read in. It is
+    optional and defaults to the project's default vernacular writing system,
+    but it is always resolved to an EXPLICIT one and recorded: on
+    IndonesianHC-Complete every wordform of one text reads back as "" at the
+    default vernacular WS while being perfectly present in another
+    (specs/parser-check-cp3/live-note-fr001-fr003.md). The field is how a
+    caller reaches that text at all.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["all_texts", "genre", "text", "words"] = Field(
+        description="all_texts: every text in the project. genre: texts tagged "
+                    "with a genre (by name or abbreviation, any of a text's "
+                    "genres). text: one text, by name or id. words: an explicit "
+                    "word list."
+    )
+    value: Optional[Any] = Field(
+        default=None,
+        description="The genre string, the text name or id, or the list of words. "
+                    "Omit for all_texts."
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Keep at most this many words. Applied after ordering by "
+                    "descending occurrence then alphabetically."
+    )
+    vernacular_ws: Optional[str] = Field(
+        default=None,
+        description="Language tag of the vernacular writing system to read words "
+                    "in. Defaults to the project's default vernacular writing system."
+    )
+
+    @model_validator(mode="after")
+    def _value_matches_kind(self) -> "ParseScope":
+        if self.kind == "all_texts":
+            if self.value is not None:
+                raise ValueError("kind='all_texts' takes no value.")
+        elif self.kind in ("genre", "text"):
+            if self.value is None or str(self.value).strip() == "":
+                raise ValueError(f"kind={self.kind!r} needs a non-empty value.")
+            self.value = str(self.value).strip()
+        else:  # words
+            if not isinstance(self.value, list) or not self.value:
+                raise ValueError("kind='words' needs a non-empty list of words.")
+            if not all(isinstance(w, str) for w in self.value):
+                raise ValueError("kind='words' takes a list of strings.")
+        return self
+
+
+class ResolvedScope(BaseModel):
+    """A scope after resolution: a definite, ordered word list (data-model.md s.2).
+
+    `count_before_limit` is the de-duplicated count BEFORE truncation, and is
+    what the fingerprint records as `word_count` -- a truncated run and a full
+    one over the same corpus must be recognisably the same corpus.
+
+    `never_tokenized_text_ids` carries the FR-002 distinguishing read: texts
+    with structure but no unique wordforms. Not an assertion that those texts
+    contain no words -- that has not been shown (FR-001 is open).
+
+    `unreadable_wordform_count` counts wordforms present in a selected text
+    whose form is empty at `vernacular_ws`. They are skipped, never emitted as
+    "" -- after NFC de-duplication a text of such wordforms would otherwise
+    become one empty "word", indistinguishable from a real one-word text.
+
+    Carries no live data-model object (FR-021): identifiers and text only.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    scope_kind: str
+    scope_value: Optional[Any] = None
+    text_ids: List[int] = Field(default_factory=list)
+    words: List[str] = Field(default_factory=list)
+    count_before_limit: int = 0
+    limit: Optional[int] = None
+    truncated: bool = False
+    vernacular_ws: str
+    never_tokenized_text_ids: List[int] = Field(default_factory=list)
+    unreadable_wordform_count: int = 0
+    notes: List[str] = Field(default_factory=list)

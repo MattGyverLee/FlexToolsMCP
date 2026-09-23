@@ -13,6 +13,7 @@ Manages:
 
 import json
 import logging
+import os
 import logging.handlers
 import re
 import time
@@ -83,11 +84,17 @@ def _ensure_flexicon() -> Tuple[Optional[object], Optional[str]]:
 # ===== Logging Setup =====
 
 def get_log_dir() -> Path:
-    """Get the log directory path (~/.flextoolsmcp/logs/).
+    """Get the log directory path (~/.flextoolsmcp/logs/ by default).
 
-    Respects config if available (will be integrated in Feature 2).
+    Override with the ``FLEXTOOLSMCP_LOG_DIR`` environment variable (absolute
+    path). Pytest sets this for the whole suite so test runs do not write into
+    the user's real log tree (issue #173).
     """
-    log_dir = Path.home() / ".flextoolsmcp" / "logs"
+    override = os.environ.get("FLEXTOOLSMCP_LOG_DIR")
+    if override:
+        log_dir = Path(override)
+    else:
+        log_dir = Path.home() / ".flextoolsmcp" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir
 

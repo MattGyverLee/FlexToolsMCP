@@ -4308,6 +4308,27 @@ def build_writeability_payload(
     }
 
 
+def build_write_certification_payload(cert: dict, cud_info: dict) -> dict:
+    """Build the ``write_certification`` block on successful run_module responses.
+
+    ``is_certified_readonly`` answers the unprotected-writes gate only (guarded
+    mutations are excluded). Callers asking "did this script write at all?"
+    should read ``performs_writes`` and the ``protected_*`` lists -- the same
+    signals ``build_writeability_payload()`` already surfaces on validate_only /
+    confirmation_required paths (issue #131).
+    """
+    return {
+        "is_certified_readonly": cert["is_certified_readonly"],
+        "confidence": cert["confidence"],
+        "mutating_calls_detected": [
+            m for m in cert.get("mutating_calls", []) if m.get("is_mutating")
+        ],
+        "protected_calls": list(cert.get("protected_calls") or []),
+        "protected_liblcm_calls": list(cert.get("protected_liblcm_calls") or []),
+        "performs_writes": compute_is_mutating_script(cert, cud_info),
+    }
+
+
 # Issue #21 follow-up: receiver-name -> preferred interface tie-break.
 # When `defined_on` lists more than one candidate interface, an alphabetical
 # pick (the old behavior) produces confidently-wrong rewrites for the most

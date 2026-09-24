@@ -43,4 +43,4 @@ def test_packaged_server_exposes_kernel_attribute():
     import flextoolsmcp.server as pkg
     import flextoolsmcp.server.kernel as packaged
 
-    assert getattr(pkg, "kernel") is packaged
+    assert pkg.kernel is packaged

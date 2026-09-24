@@ -141,18 +141,16 @@ class TestGeneratedScriptWiring:
         assert "ui=_lcm_ui" in script or "ui=" in script.split("OpenProject(projectName=PROJECT_NAME", 1)[1][:200]
 
     def test_headless_ui_import_is_version_gated(self, monkeypatch, tmp_path):
-        """A-8: the import must degrade gracefully (except ImportError), not
-        hard-crash the whole run on an older flexicon build."""
+        """A-8 / #148: HeadlessLcmUI is gated on flexicon CAPABILITIES and
+        imported from the public flexicon package, degrading visibly on skew."""
         script = _capture_generated_script(monkeypatch, tmp_path)
-        assert "from flexicon.code.headless_ui import HeadlessLcmUI" in script
-        # It must be guarded, and the guard must be the repo's existing
-        # ImportError-degrade convention, not a bare except.
-        idx = script.index("from flexicon.code.headless_ui import HeadlessLcmUI")
-        preceding = script[max(0, idx - 60):idx]
+        assert '"ui-injection" in _UI_CAPS' in script
+        assert "from flexicon import HeadlessLcmUI" in script
+        idx = script.index("from flexicon import HeadlessLcmUI")
+        preceding = script[max(0, idx - 120):idx]
         assert "try:" in preceding
-        following = script[idx:idx + 400]
+        following = script[idx:idx + 500]
         assert "except ImportError:" in following
-        # The fallback must be visible, not silent.
         assert "report.Warning(" in following
 
     def test_teardown_no_longer_bare_except_pass(self, monkeypatch, tmp_path):
@@ -169,6 +167,23 @@ class TestGeneratedScriptWiring:
 # ---------------------------------------------------------------------------
 # Tier 2: actually running the generated script against a fake flexicon.
 # ---------------------------------------------------------------------------
+
+_FAKE_FLEXICON_HEADLESS = textwrap.dedent(
+    """
+    CAPABILITIES = frozenset({"ui-injection"})
+
+
+    class HeadlessLcmUI:
+        def __init__(self, *a, **k):
+            pass
+    """
+)
+
+_FAKE_FLEXICON_NO_UI = textwrap.dedent(
+    """
+    CAPABILITIES = frozenset()
+    """
+)
 
 _FAKE_FLEXICON_INIT = textwrap.dedent(
     """
@@ -203,24 +218,11 @@ _FAKE_FLEXICON_INIT = textwrap.dedent(
     """
 )
 
-_FAKE_HEADLESS_UI = textwrap.dedent(
-    """
-    class HeadlessLcmUI:
-        def __init__(self, *a, **k):
-            pass
-    """
-)
-
-
 def _write_fake_flexicon(root, *, with_headless_ui):
     pkg = root / "flexicon"
     pkg.mkdir(parents=True, exist_ok=True)
-    (pkg / "__init__.py").write_text(_FAKE_FLEXICON_INIT, encoding="utf-8")
-    code_pkg = pkg / "code"
-    code_pkg.mkdir(exist_ok=True)
-    (code_pkg / "__init__.py").write_text("", encoding="utf-8")
-    if with_headless_ui:
-        (code_pkg / "headless_ui.py").write_text(_FAKE_HEADLESS_UI, encoding="utf-8")
+    extras = _FAKE_FLEXICON_HEADLESS if with_headless_ui else _FAKE_FLEXICON_NO_UI
+    (pkg / "__init__.py").write_text(_FAKE_FLEXICON_INIT + extras, encoding="utf-8")
 
 
 def _run_script(script_path, fake_root, *, capture_path=None, close_raises=False):
@@ -315,10 +317,8 @@ class TestRunnerScriptRuntime:
         assert "simulated ConflictingSave during teardown" in payload["teardown_error"]["message"]
 
     def test_missing_headless_ui_degrades_with_visible_warning(self, monkeypatch, tmp_path):
-        """A-8 fallback: an older flexicon build without headless_ui must
-        not crash the run -- it falls back to ui=None (historical FwLcmUI
-        behavior) and reports the degradation as a WARNING message, not
-        silently."""
+        """A-8 / #148 fallback: flexicon without ui-injection must not crash
+        the run -- it omits ui= and reports the degradation as a WARNING."""
         script = _capture_generated_script(monkeypatch, tmp_path)
         script_path = tmp_path / "runner.py"
         script_path.write_text(script, encoding="utf-8")
@@ -335,7 +335,7 @@ class TestRunnerScriptRuntime:
 
         warnings = [m for m in payload["messages"] if m.get("type") == "WARNING"]
         assert warnings, f"expected a visible fallback warning, got messages: {payload['messages']}"
-        assert any("HeadlessLcmUI" in w["message"] and "not available" in w["message"] for w in warnings)
+        assert any("ui-injection" in w["message"] for w in warnings)
 
 
 # ---------------------------------------------------------------------------

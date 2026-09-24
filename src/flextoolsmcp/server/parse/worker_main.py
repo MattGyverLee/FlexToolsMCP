@@ -684,15 +684,25 @@ class _RealBackend(_ParseBackend):
         """
         from flexicon import FLExInitialize, FLExProject
 
-        try:
-            from flexicon.code.headless_ui import HeadlessLcmUI
+        import flexicon as _flexicon_pkg
 
-            lcm_ui = HeadlessLcmUI()
-        except ImportError:
+        _UI_CAPS = getattr(_flexicon_pkg, "CAPABILITIES", frozenset())
+        if "ui-injection" in _UI_CAPS:
+            try:
+                from flexicon import HeadlessLcmUI
+
+                lcm_ui = HeadlessLcmUI()
+            except ImportError:
+                lcm_ui = None
+                _log(
+                    "flexicon advertises ui-injection but HeadlessLcmUI is not "
+                    "importable; OpenProject will omit ui=."
+                )
+        else:
             lcm_ui = None
             _log(
-                "HeadlessLcmUI unavailable in this flexicon build; falling "
-                "back to the WinForms FwLcmUI."
+                "flexicon build does not advertise ui-injection in CAPABILITIES; "
+                "OpenProject will omit ui=."
             )
 
         # Issue #159: the `ui=` kwarg only exists on flexicon >=4.4.0

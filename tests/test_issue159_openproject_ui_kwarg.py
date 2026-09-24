@@ -255,6 +255,13 @@ _NEW_FLEXICON_INIT = textwrap.dedent(
     """
     import os
 
+    CAPABILITIES = frozenset({"ui-injection"})
+
+
+    class HeadlessLcmUI:
+        def __init__(self, *a, **k):
+            pass
+
 
     def FLExInitialize():
         pass
@@ -322,23 +329,10 @@ _OLD_FLEXICON_INIT = textwrap.dedent(
 # Deliberately NOT a C# bound method that would make inspect fail (the
 # broad `except Exception` fallback is covered by the source-level tests).
 
-_FAKE_HEADLESS_UI = textwrap.dedent(
-    """
-    class HeadlessLcmUI:
-        def __init__(self, *a, **k):
-            pass
-    """
-)
-
-
 def _write_fake_flexicon(root, *, openproject_init):
     pkg = root / "flexicon"
     pkg.mkdir(parents=True, exist_ok=True)
     (pkg / "__init__.py").write_text(openproject_init, encoding="utf-8")
-    code_pkg = pkg / "code"
-    code_pkg.mkdir(exist_ok=True)
-    (code_pkg / "__init__.py").write_text("", encoding="utf-8")
-    (code_pkg / "headless_ui.py").write_text(_FAKE_HEADLESS_UI, encoding="utf-8")
 
 
 def _run_script(script_path, fake_root, *, capture_path=None):

@@ -151,9 +151,6 @@ class TestRunnerRefreshFromDiskRuntime:
         pkg = fake_pkg / "flexicon"
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text(_FAKE_FLEXICON, encoding="utf-8")
-        (pkg / "code").mkdir()
-        (pkg / "code" / "__init__.py").write_text("", encoding="utf-8")
-        (pkg / "code" / "headless_ui.py").write_text("class HeadlessLcmUI:\n    pass\n", encoding="utf-8")
 
         events_path = tmp_path / "events.log"
         env_extra = {"FAKE_FLEXICON_EVENTS_PATH": str(events_path)}

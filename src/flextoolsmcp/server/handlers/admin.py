@@ -593,9 +593,9 @@ async def handle_start(args: dict) -> list[TextContent]:
     # Diagnostic for #10: record identity of the configured session_state so
     # the next "Session not initialized" log line can be compared against this.
     try:
-        from ..kernel import get_operations_logger
+        from ..kernel import get_operations_logger, is_stateless_client_mode
     except ImportError:
-        from server.kernel import get_operations_logger
+        from server.kernel import get_operations_logger, is_stateless_client_mode
     _op_logger = get_operations_logger()
     if _op_logger:
         _op_logger.info(
@@ -677,6 +677,18 @@ async def handle_start(args: dict) -> list[TextContent]:
         )
     if index_offers:
         result["index_health"] = index_offers
+
+    if is_stateless_client_mode():
+        warnings.append(
+            "FLEXTOOLS_STATELESS=1: API discovery gates are skipped for every "
+            "flextools_run_module call in this process (issue #142). Write-safety, "
+            "casting, syntax, and unprotected_writes gates are unchanged."
+        )
+        result[KEY_MESSAGE] = (
+            "Session configured (stateless client mode). flextools_start is "
+            "optional for API discovery; flextools_run_module works without prior "
+            "get_object_api when FLEXTOOLS_STATELESS=1 is set in the server env."
+        )
 
     if warnings:
         result[KEY_WARNINGS] = warnings

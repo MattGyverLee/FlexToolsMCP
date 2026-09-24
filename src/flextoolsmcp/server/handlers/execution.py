@@ -45,9 +45,21 @@ _, get_operations_logger = safe_import_logging_helpers()
 SessionState = safe_import_session_state()
 
 try:
-    from ..kernel import get_pattern_tracker, get_project_write_lock
+    from ..kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 except ImportError:
-    from server.kernel import get_pattern_tracker, get_project_write_lock
+    from server.kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 
 # Skeleton storage closet (issue #24): persist helper defs from successful ops.
 try:
@@ -146,6 +158,43 @@ def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
         else:
             payload[KEY_STATUS] = "ok"
     return build_response_with_context(payload, include_session=True)
+
+
+def build_effect_check_payload(
+    execution_result: Dict[str, Any],
+    *,
+    write_enabled: bool,
+    is_mutating_script: bool,
+) -> Optional[Dict[str, Any]]:
+    """Issue #143: surface silent no-op writes on mutating runs.
+
+    When preflight already classified the script as mutating but LCM recorded
+    zero undoable actions, attach an advisory ``effect_check`` block so callers
+    can distinguish success-with-no-exception from success-with-no-mutation.
+    """
+    if not write_enabled or not is_mutating_script:
+        return None
+    if not execution_result.get("success"):
+        return None
+    count = execution_result.get("lcm_undoable_action_count")
+    if count is None:
+        return None
+    try:
+        count_int = int(count)
+    except (TypeError, ValueError):
+        return None
+    if count_int != 0:
+        return None
+    return {
+        "signal": "lcm_undoable_action_count",
+        "lcm_undoable_action_count": 0,
+        "verdict": "no_observable_effect",
+        "note": (
+            "Preflight classified this run as mutating, but LCM recorded zero "
+            "undoable actions. The script reported success without raising, so "
+            "a wrapper no-op or wrong collection target may have done nothing."
+        ),
+    }
 
 
 # Issue #46: auto-fix config
@@ -1929,10 +1978,17 @@ def _build_validate_only_checks(
         checks.append({"gate": "casting", "passed": True})
 
     # --- Gates 6+7: API discovery (REPORT ONLY -- no session mutation) ---
-    _skip_discovery_gates = skip_api_check or provenance_existing
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=provenance_existing,
+    )
     if _skip_discovery_gates:
-        checks.append({"gate": "api_discovery_required", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
-        checks.append({"gate": "undiscovered_entity", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
+        _skip_note = discovery_gate_skip_note(
+            skip_api_check=skip_api_check,
+            provenance_existing=provenance_existing,
+        )
+        checks.append({"gate": "api_discovery_required", "passed": True, "note": _skip_note})
+        checks.append({"gate": "undiscovered_entity", "passed": True, "note": _skip_note})
     else:
         no_prior_discovery = len(session_state_obj.get_discovered_apis()) == 0
         if no_prior_discovery and write_enabled:
@@ -3300,7 +3356,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "undiscovered_entity gates (issue #80). Write-safety + casting already "
             "ran and are unaffected by provenance."
         )
-    _skip_discovery_gates = skip_api_check or _provenance_existing
+    if is_stateless_client_mode() and not skip_api_check and not _provenance_existing:
+        get_operations_logger().info(
+            "[DISCOVERY] FLEXTOOLS_STATELESS=1 -- skipping api_discovery_required and "
+            "undiscovered_entity gates (issue #142). Write-safety + casting already "
+            "ran and are unaffected."
+        )
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=_provenance_existing,
+    )
 
     if not _skip_discovery_gates and len(session_state.get_discovered_apis()) == 0:
         if write_enabled:
@@ -4940,6 +5005,13 @@ MODULE_CODE = {code}
             _diagnostic_advisory = build_advisory_for_success_close(op_id)
             if _diagnostic_advisory:
                 execution_result[KEY_DIAGNOSTIC_REPORT] = _diagnostic_advisory
+            _effect_check = build_effect_check_payload(
+                execution_result,
+                write_enabled=write_enabled,
+                is_mutating_script=is_mutating_script,
+            )
+            if _effect_check is not None:
+                execution_result["effect_check"] = _effect_check
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

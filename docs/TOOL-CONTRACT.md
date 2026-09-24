@@ -30,6 +30,18 @@ Success responses may also carry optional top-level `update_notice`,
 [workspace_notice](#workspace_notice-advisory-block), and
 [project_adopted_notice](#project_adopted_notice-advisory-block) below.
 
+`flextools_run_module` success responses may also include an optional
+`effect_check` advisory when a write-enabled run was classified as mutating at
+preflight but LCM recorded zero undoable actions (issue #143). The block is
+informational only — it does not change `status` or fail the run.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `signal` | string | `"lcm_undoable_action_count"` (only signal today) |
+| `lcm_undoable_action_count` | int | Observed count after execution (zero triggers the advisory) |
+| `verdict` | string | `"no_observable_effect"` when mutating preflight and zero actions |
+| `note` | string | Human-readable explanation for the caller |
+
 #### Graceful discovery redirect (issue #80)
 
 `flextools_run_module` may return a **`status: "ok"`** response that did **not**

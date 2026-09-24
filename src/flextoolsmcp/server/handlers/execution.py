@@ -2186,23 +2186,21 @@ async def _handle_validate_only(
         _access = probe_project_access(project_name) if project_name else None
         if _access is not None:
             project_lock["sharing_enabled"] = _access.sharing_enabled
+            project_lock["probed"] = _access.probed
+            project_lock["verdict"] = _access.verdict
             if _access.probed:
-                project_lock["verdict"] = _access.verdict
                 project_lock["blocking"] = _access.verdict in (
                     "open_exclusive",
                     "held_by_other",
                 )
             else:
-                # Fail-open interim patch (issue #93 cycle 7, STRICTLY
-                # BOUNDED -- see specs/shared-mode-access/.crew-handoff.json
-                # fail_open_ruling): the projects directory could not be
-                # resolved, so probe_project_access() never actually
-                # inspected a lock file. Its verdict="free" in that case
-                # is a placeholder, not a finding -- publishing it (or a
-                # confident blocking:false) here would assert something we
-                # don't know. Omit `verdict` entirely and report
-                # `blocking` as unknown rather than "not blocking".
+                # Issue #118: projects directory unresolvable -- never assert
+                # blocking:false; LCM remains the backstop at open time.
                 project_lock["blocking"] = None
+            project_lock["lock_note"] = (
+                "locked reflects bare .fwdata.lock file existence on disk; "
+                "blocking reflects whether the access probe would refuse a write."
+            )
     except Exception as exc:
         _lock_logger = get_operations_logger()
         if _lock_logger is not None:

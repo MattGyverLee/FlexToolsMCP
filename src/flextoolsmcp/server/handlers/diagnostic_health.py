@@ -548,8 +548,8 @@ def _build_project_access_block() -> Dict[str, Any]:
     Pure composition of project_access.probe_project_access(): filesystem +
     stdlib only, never opens the project, no side effects. Replaces the old
     "locked: bool" block with the full verdict (free / open_shared /
-    open_exclusive / stale_lock / held_by_other) plus the facts it was
-    composed from, so a human reading flextools_health(verbose=True) can see
+    open_exclusive / stale_lock / held_by_other / unknown) plus the facts it
+    was composed from, so a human reading flextools_health(verbose=True) can see
     *why* a project is or isn't accessible without guessing.
     """
     project_name = session_state.project_name or ""
@@ -573,9 +573,14 @@ def _build_project_access_block() -> Dict[str, Any]:
     return {
         "project": access.project_name,
         "verdict": access.verdict,
+        "probed": access.probed,
         "sharing_enabled": access.sharing_enabled,
         "holder": holder,
         "lock_age_seconds": access.lock_age_seconds,
+        "lock_note": (
+            "verdict is from probe_project_access(); it is not inferred from "
+            "bare lock-file existence alone."
+        ),
     }
 
 

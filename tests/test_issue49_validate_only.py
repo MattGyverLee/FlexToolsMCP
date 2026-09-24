@@ -808,18 +808,19 @@ class TestValidateOnlyProjectLockEnrichment:
         assert payload["blocking"] is True
         assert payload["sharing_enabled"] is False
 
-    def test_unprobed_omits_verdict_and_reports_blocking_unknown(self, monkeypatch, tmp_path):
-        """Fail-open interim patch (cycle 7): when the probe never actually
-        ran (projects directory unresolvable), `verdict` must be omitted
-        entirely and `blocking` must be null, not a confident False."""
+    def test_unprobed_reports_unknown_verdict_and_null_blocking(self, monkeypatch, tmp_path):
+        """Issue #118: when the probe never ran (projects directory
+        unresolvable), verdict is unknown and blocking is null, not False."""
         unprobed = ProjectAccess(
             project_name="TestProj",
-            verdict="free",
+            verdict="unknown",
             sharing_enabled=None,
             holder=None,
             lock_age_seconds=None,
             probed=False,
         )
         payload = self._run(monkeypatch, tmp_path, unprobed)
-        assert "verdict" not in payload
+        assert payload["verdict"] == "unknown"
+        assert payload["probed"] is False
         assert payload["blocking"] is None
+        assert "lock_note" in payload

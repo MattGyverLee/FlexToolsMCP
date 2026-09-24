@@ -355,13 +355,14 @@ class TestProbeProjectAccess:
         assert access.lock_age_seconds is None
         assert access.verdict == "open_shared"
 
-    def test_unresolvable_projects_dir_is_free(self, monkeypatch):
+    def test_unresolvable_projects_dir_is_unknown(self, monkeypatch):
         import server.project_access as pa
         monkeypatch.setattr(pa, "get_projects_directory", lambda: None)
 
         access = pa.probe_project_access("Anything")
 
-        assert access.verdict == "free"
+        assert access.verdict == "unknown"
+        assert access.probed is False
         assert access.sharing_enabled is None
         assert access.holder is None
 

@@ -285,5 +285,7 @@ class TestHandlerWiring:
     def test_reject_still_returns_the_guidance_payload(self):
         block = self._reject_block()
         assert "get_unprotected_write_guidance(cert)" in block
-        assert "json.dumps(guidance" in block
+        assert 'error_response(\n                "unprotected_writes"' in block or (
+            'error_response("unprotected_writes"' in block
+        )
         assert 'error_code="unprotected_writes"' in block

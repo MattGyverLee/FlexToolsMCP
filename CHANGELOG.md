@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Pre-write backup skipped when preflight missed mutations** ([#99](https://github.com/MattGyverLee/FlexToolsMCP/issues/99)).
+  Automatic backup now runs on the first ``write_enabled`` execution per
+  (session, project), not only when ``needs_lock`` is true, and every
+  ``write_enabled`` ``run_module`` response includes an explicit ``backup``
+  object (including ``skipped_reason`` when no new copy was taken).
 - **`flextools_run_module` success responses omitted `_contract` / `status`**
   ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
   execution results (success, runtime failure, timeout, and temp-file errors)

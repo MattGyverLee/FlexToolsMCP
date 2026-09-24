@@ -49,6 +49,7 @@ from .models import (
     ParseLogInput,
     ParseDiffInput,
     ParseCancelInput,
+    ParseReleaseInput,
 )
 
 
@@ -694,6 +695,34 @@ with parse_job_cancelled for a run that has already ended.""",
         # Not read-only (it changes a run's state) but not destructive:
         # stopping a job writes nothing to the project. Idempotent -- a second
         # cancel of a run already stopping changes nothing more (M-3).
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        ),
+    ),
+
+    "flextools_parse_release": ToolDef(
+        name="flextools_parse_release",
+        description="""[PARSE] Release this server's own idle parse worker(s) for a project, dropping the .fwdata lock.
+
+flextools_try_word / flextools_parse_text leave a shared read worker running
+until its idle timeout, and it holds <project>.fwdata.lock until then.
+flextools_run_module's write gate already releases that worker automatically
+when it finds its own idle worker holding the lock, so most writes never need
+this tool. Use it to drop the lock on purpose -- for example, before handing
+the project to FLEx or another tool -- without submitting a write.
+
+Takes project_name (optional; falls back to the session's project). Never
+kills a live run: if a parse is still going on one of the project's workers,
+this refuses with project_locked and points at flextools_parse_cancel instead
+of ending it. No worker running at all is a SUCCESS with released: [] -- there
+was nothing holding the lock in the first place.""",
+        input_model=ParseReleaseInput,
+        # Not read-only (it ends a worker process) but not destructive: it
+        # writes nothing to the project. Idempotent -- releasing an
+        # already-released (or never-started) worker is a no-op success.
         annotations=ToolAnnotations(
             readOnlyHint=False,
             destructiveHint=False,

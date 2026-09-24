@@ -291,5 +291,8 @@ async def test_a_run_from_an_earlier_server_process_is_readable(record_dir):
     record = _completed_run(record_dir)
     # A fresh runner that has never heard of this run.
     parse_handler.set_runner(ParseRunner(pool=ExplodingPool(), record_dir=record_dir))
-    payload = await _log(record.run_id, "summary")
-    assert payload["content"]["stage"] == "completed"
+    try:
+        payload = await _log(record.run_id, "summary")
+        assert payload["content"]["stage"] == "completed"
+    finally:
+        parse_handler.set_runner(None)

@@ -59,6 +59,21 @@ def require_live_flexicon():
     return flexicon
 
 
+@pytest.fixture(autouse=True)
+def _reset_parse_runner_between_tests():
+    """Issue #175: parse tests share a module-level runner via set_runner().
+
+    Several modules inject a fake runner and forget to clear it (or only
+    restore a sibling fixture's runner). That leaks into later modules in a
+    full-suite run while the same file passes in isolation.
+    """
+    from flextoolsmcp.server.handlers import parse as parse_handler
+
+    parse_handler.set_runner(None)
+    yield
+    parse_handler.set_runner(None)
+
+
 @pytest.fixture
 def reset_session_state():
     """Reset session state for tests that need a clean state.

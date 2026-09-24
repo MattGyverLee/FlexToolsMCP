@@ -27,9 +27,9 @@ def adopt_resolved_project(
     """
     prev = getattr(session_state, "project_name", "") or ""
     if prev and resolved != prev:
-        try:
+        if __package__:
             from .server.kernel import get_operations_logger
-        except (ImportError, ValueError):
+        else:
             from server.kernel import get_operations_logger
         adopt_logger = get_operations_logger()
         if adopt_logger:

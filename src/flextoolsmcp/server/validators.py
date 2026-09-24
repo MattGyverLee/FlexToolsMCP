@@ -1811,6 +1811,7 @@ def detect_undiscovered_entities(
 
     # Walk AST for entity references.
     used_entities: Set[str] = set()
+    facade_accessors_used: Set[str] = set()
     for node in ast.walk(code_tree):
         # POSOperations(project), LexEntryOperations.GetAll(project), etc.
         if isinstance(node, ast.Name) and node.id in KNOWN_OPERATIONS:
@@ -1819,11 +1820,41 @@ def detect_undiscovered_entities(
             # project.<Accessor>...
             if isinstance(node.value, ast.Name) and node.value.id == "project":
                 accessor = node.attr
+                facade_accessors_used.add(accessor)
                 # Prefer the real index mapping; fall back to naive ops-class form
                 # so the gate still works if the index hasn't been loaded yet.
                 ops_class = accessor_to_ops.get(accessor) or f"{accessor}Operations"
                 if ops_class in KNOWN_OPERATIONS:
                     used_entities.add(ops_class)
+
+    # Issue #162: `project.Variants` (and other facade properties whose name
+    # does not match `{Accessor}Operations`) still proves deliberate use of
+    # that Operations surface -- parallel to issue #31's import-based implicit
+    # discovery. Without this, VariantOperations is flagged even though the
+    # only supported entry point is `project.Variants`.
+    implicit_from_facade: Set[str] = set()
+    for accessor in facade_accessors_used:
+        ops_class = accessor_to_ops.get(accessor)
+        if ops_class and ops_class in KNOWN_OPERATIONS:
+            implicit_from_facade.add(ops_class)
+            implicit_from_facade.add(accessor)
+    if implicit_from_facade:
+        for name in list(implicit_from_facade):
+            if name in ops_to_accessor:
+                implicit_from_facade.add(ops_to_accessor[name])
+            if name.endswith("Operations"):
+                implicit_from_facade.add(name[: -len("Operations")])
+        implicit_all |= implicit_from_facade
+        for v in implicit_from_facade:
+            satisfied.add(v)
+            if v in accessor_to_ops:
+                satisfied.add(accessor_to_ops[v])
+            if v in ops_to_accessor:
+                satisfied.add(ops_to_accessor[v])
+            if v.endswith("Operations"):
+                satisfied.add(v[: -len("Operations")])
+            else:
+                satisfied.add(v + "Operations")
 
     undiscovered = sorted(e for e in used_entities if e not in satisfied)
     if not undiscovered:

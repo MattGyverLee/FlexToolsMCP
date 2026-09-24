@@ -9,6 +9,13 @@
   chaining ``.Cache`` after ``project.project`` (which is already the
   ``LcmCache``) and emit a concrete rewrite such as
   ``project.project.LangProject`` instead of deferring to a generic resubmit.
+- **Docs gap: `find_writing_system()` / `GetMorphType()` return raw LCM objects**
+  ([#160](https://github.com/MattGyverLee/FlexToolsMCP/issues/160)). Added a
+  ``FLEXTOOLS-STYLE-GUIDE.md`` callout (section 5b) with JSON-boundary patterns
+  so export scripts extract primitives (``.Handle`` / ``.Id`` / morph-type
+  ``.Name``) instead of calling ``json.dumps`` on live ``Core*`` / ``IMo*``
+  handles.
+
 - **Pre-write backup skipped when preflight missed mutations** ([#99](https://github.com/MattGyverLee/FlexToolsMCP/issues/99)).
   Automatic backup now runs on the first ``write_enabled`` execution per
   (session, project), not only when ``needs_lock`` is true, and every

@@ -84,6 +84,42 @@ def _ensure_flexicon() -> Tuple[Optional[object], Optional[str]]:
 # ===== Logging Setup =====
 
 _ENV_LOG_DIR = "FLEXTOOLSMCP_LOG_DIR"
+_ENV_STATELESS_CLIENT = "FLEXTOOLS_STATELESS"
+
+
+def is_stateless_client_mode() -> bool:
+    """True when the MCP runs for ephemeral clients (issue #142).
+
+    Hermes/OpenClaw-style hosts start a fresh process per turn, so in-memory
+    discovery state cannot survive. When enabled, API discovery gates are skipped
+    (same effect as ``source='existing'``); write-safety and casting are unchanged.
+    """
+    val = os.environ.get(_ENV_STATELESS_CLIENT, "").strip().lower()
+    return val in ("1", "true", "yes", "on")
+
+
+def should_skip_discovery_gates(
+    *,
+    skip_api_check: bool = False,
+    provenance_existing: bool = False,
+) -> bool:
+    """Whether api_discovery_required and undiscovered_entity gates are bypassed."""
+    return skip_api_check or provenance_existing or is_stateless_client_mode()
+
+
+def discovery_gate_skip_note(
+    *,
+    skip_api_check: bool = False,
+    provenance_existing: bool = False,
+) -> str:
+    """Human-readable reason string for skipped discovery gates (checks[] note)."""
+    if skip_api_check:
+        return "skipped (skip_api_check)"
+    if provenance_existing:
+        return "skipped (source=existing)"
+    if is_stateless_client_mode():
+        return "skipped (FLEXTOOLS_STATELESS=1)"
+    return "skipped"
 
 
 def get_log_dir() -> Path:

@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
+  ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
+  ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates
+  (same cost lever as ``source='existing'``). Write-safety, casting, syntax, and
+  unprotected-write preflight are unchanged. ``flextools_health`` exposes
+  ``server.stateless_client_mode``; ``flextools_start`` documents the mode when
+  active.
+
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
   (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire

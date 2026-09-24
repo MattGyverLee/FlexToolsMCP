@@ -631,11 +631,17 @@ async def handle_flextools_health(args: dict) -> List[TextContent]:
     # second ParserDetector() pass.
     parser = _build_parser_block()
 
+    try:
+        from ..kernel import is_stateless_client_mode
+    except ImportError:
+        from server.kernel import is_stateless_client_mode
+
     result: Dict[str, Any] = {
         "server": {
             "version": _server_version(),
             "python": platform.python_version(),
             "pid": os.getpid(),
+            "stateless_client_mode": is_stateless_client_mode(),
         },
         "fieldworks": _build_fieldworks_block(),
         "parser": parser,

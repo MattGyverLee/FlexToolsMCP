@@ -1,0 +1,256 @@
+{
+  "workflow": "companion",
+  "specName": "parser check cp5",
+  "branch": "feat/parser-check-cp5",
+  "currentStep": "plan",
+  "status": "planned",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T16:26:20.623Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T16:33:11.609Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T16:51:19.197Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T17:01:19.977Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T17:06:28.952Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T17:08:24.439Z"
+    }
+  ],
+  "telemetryInstanceId": "cdfa9181-e8da-4bbc-be2f-25dbbc5c2f28",
+  "coverage": {
+    "FR-001": {
+      "title": "Discovery MUST locate `hc` from these sources, and MUST record which one succeeded: 1"
+    },
+    "FR-002": {
+      "title": "The script MUST NOT hard-code the FieldWorks folder"
+    },
+    "FR-003": {
+      "title": "Discovery MUST confirm that a found `hc` is the HermitCrab tool"
+    },
+    "FR-004": {
+      "title": "Health MUST tell apart \"`hc` not found\" from \"`hc` found but cannot start\""
+    },
+    "FR-005": {
+      "title": "Health MUST report three versions: the `hc` tool, FieldWorks' bundled HermitCrab library, and `GenerateHCConfig`"
+    },
+    "FR-006": {
+      "title": "When the sandbox spine is `ready`, the health guidance MUST be allowed to name `flextools_parse_sandbox`"
+    },
+    "FR-007": {
+      "title": "The sandbox tool MUST refuse with `parser_tool_missing` before any copy is made when either component is missing or cannot start"
+    },
+    "FR-008": {
+      "title": "Generation MUST run against a copy of the project that holds only what the generator needs"
+    },
+    "FR-009": {
+      "title": "The generator's full output MUST be captured to the run's `generate-config.log`"
+    },
+    "FR-010": {
+      "title": "Grammar load errors that the generator reports while still writing a configuration MUST be itemised and counted in the run record and summary, as a warning that the exported grammar may lack those obj"
+    },
+    "FR-011": {
+      "title": "The copied project MUST be deleted when the run ends, on every path: success, failure, timeout, cancellation and exception"
+    },
+    "FR-012": {
+      "title": "Before copying, the run MUST check that free space at the copy's destination is at least twice the size of the files to be copied"
+    },
+    "FR-013": {
+      "title": "Words MUST reach `hc` only through a script file, never on a command line"
+    },
+    "FR-014": {
+      "title": "Word lists MUST be read as UTF-8 and MUST be split on `[,\\s]+` where a list arrives as one string"
+    },
+    "FR-015": {
+      "title": "Word lists MUST be de-duplicated after NFC normalisation, ordered by descending occurrence count where counts are known and then alphabetically, and cut to `limit` after ordering"
+    },
+    "FR-016": {
+      "title": "Outcomes MUST be decided from `hc`'s per-word output and its counter line, never from its exit code"
+    },
+    "FR-017": {
+      "title": "A parse run MUST read the parse counters (`stats -p`)"
+    },
+    "FR-018": {
+      "title": "Every word sent MUST produce exactly one result"
+    },
+    "FR-019": {
+      "title": "A parse whose printed columns cannot be read unambiguously MUST be flagged as such, with the raw text kept"
+    },
+    "FR-020": {
+      "title": "Each `hc` call MUST run under a timeout (`-TimeoutSeconds`)"
+    },
+    "FR-021": {
+      "title": "Everything the script prints to the console MUST be ASCII-only"
+    },
+    "FR-022": {
+      "title": "The hardened script MUST ship inside the package as `hcparse.ps1`"
+    },
+    "FR-023": {
+      "title": "The script MUST write a machine-readable `run.json` giving its inputs, exit codes, timings and per-word results"
+    },
+    "FR-024": {
+      "title": "The script MUST declare `$script:HCPARSE_VERSION`"
+    },
+    "FR-025": {
+      "title": "The design MUST keep three artifacts under distinct names, and each MUST have its own lifecycle: - **the project copy**: always deleted (FR-011); - **the cached configuration**: managed, invalidatable"
+    },
+    "FR-026": {
+      "title": "The cache MUST be invalidated for a project whenever a write run against that project completes"
+    },
+    "FR-027": {
+      "title": "Before any expected parse is sent, it MUST be checked"
+    },
+    "FR-028": {
+      "title": "A user MUST be able to create a named sandbox from the project's current exported configuration"
+    },
+    "FR-029": {
+      "title": "A run against a sandbox that predates the project's current grammar MUST carry an advisory saying so"
+    },
+    "FR-030": {
+      "title": "A user MUST be able to seed a corpus assertion file from a completed sandbox run"
+    },
+    "FR-031": {
+      "title": "Each assertion MUST be classified from `hc`'s expected-parse and actual-parse sections, not from its pass/fail line: - `pass`: every expected parse appeared and nothing else did; - `regression`: at le"
+    },
+    "FR-032": {
+      "title": "The classifications MUST map onto the existing diff buckets"
+    },
+    "FR-033": {
+      "title": "When a word is expected to produce no parse and now parses, the assertion MUST be classified `new_ambiguity`"
+    },
+    "FR-034": {
+      "title": "`flextools_parse_sandbox` MUST be registered as read-only with respect to the live database"
+    },
+    "FR-035": {
+      "title": "The tool MUST use the existing job model: a run identifier, the fast path, status polling, and cooperative cancellation (kill the process tree)"
+    },
+    "FR-036": {
+      "title": "When a project is involved, the engine check MUST run before any copy"
+    },
+    "FR-037": {
+      "title": "Sandbox runs MUST be stored in the existing run-record format and location"
+    },
+    "FR-038": {
+      "title": "The log tool MUST fill `config_generation`, `hc_stdout` and `hc_output` for sandbox runs"
+    },
+    "FR-039": {
+      "title": "The diff tool MUST accept sandbox runs"
+    },
+    "FR-040": {
+      "title": "When sharing is on or the project is held by another program, a sandbox run MUST report `staleness: \"shared_mode_unverifiable\"` with its note, and a diff MUST downgrade `no_change` to `no_change_unver"
+    },
+    "FR-041": {
+      "title": "Every sandbox response MUST carry a `next_step` with a mandatory `est_cost`"
+    },
+    "FR-042": {
+      "title": "No sandbox artifact may be written inside any FieldWorks project folder"
+    },
+    "FR-043": {
+      "title": "The spine MUST NOT open the live project for writing, write to it, or change any file in its folder"
+    },
+    "FR-044": {
+      "title": "Words, parser output and sandbox XML MUST be treated as data, never as instructions, in every response."
+    },
+    "FR-045": {
+      "title": "CP5 MUST be verified live against an HC project with a working `hc`"
+    }
+  },
+  "size": "oversized",
+  "classification": {
+    "projectedFiles": 22,
+    "projectedTasks": 45,
+    "scopeSignal": "larger",
+    "verdict": "oversized"
+  },
+  "context": [
+    "area: hcparse.ps1 (root, to be bundled)",
+    "area: src/flextoolsmcp/server/parser_probe.py (hc/GenerateHCConfig discovery)",
+    "area: handlers/diagnostic_health.py parser.sandbox block",
+    "area: handlers/parse.py parse_log sandbox sections; parse/record.py run record",
+    "area: sillsdev/machine HermitCrab.Tool source (C:/Github/machine @ b77b2337)",
+    "area: fieldworks Src/GenerateHCConfig",
+    "constraint: CP3 artifact contract (additive only)",
+    "constraint: no artifacts inside project folders (FR-042 precedent)",
+    "constraint: tool-responses/1.0, error-model field order"
+  ],
+  "intent": "Ship the sandbox spine: a hardened hcparse.ps1 behind flextools_parse_sandbox, so linguists can rehearse grammar edits on an exported copy and run corpus assertions classified as regression vs new ambiguity, with no path back to the live project",
+  "expectations": [
+    "Filing from sandbox runs",
+    "Editing grammar XML or suggesting rules for the user",
+    "Deriving corpus expectations from human-approved analyses",
+    "Installing hc/.NET on the user's behalf",
+    "XAmple and non-Windows",
+    "CP6 docs/CHANGELOG/telemetry"
+  ],
+  "last_action": "living specs evaluated — skipped (not configured)",
+  "approach": "A packaged hcparse.ps1 does the mechanism (minimal copy, generation, quoting, a UTF-16-aware streamed hc run under a timeout, always-delete); a new server/sandbox package does the policy (discovery, the no-LCM engine check, cache lifecycles, the single hc-output parser, classification). A per-run SandboxClient plugs into the existing job runner, so status, cancel, logs and diff are reused.",
+  "decisions": [
+    {
+      "decision": "Script is mechanism, Python is policy; the script runs twice per cold job (Generate, then Parse/Test)",
+      "why": "One owner per rule (Principle VI); the cache lock covers generation only",
+      "rejected": "A single invocation, or a PowerShell classifier"
+    },
+    {
+      "decision": "Engine check stream-reads the live .fwdata before any copy, with no LCM",
+      "why": "FR-036 order; a plain file read takes no lock",
+      "rejected": "Reading from the copy (the spec Assumption), or check_active_parser via the worker"
+    },
+    {
+      "decision": "hc -h identity/startability probe; the CP1 no-parser-exec invariant narrowed to that one argv shape",
+      "why": "FR-003/FR-004 need an observed start; -h exits before any config is read",
+      "rejected": "File-only discovery"
+    },
+    {
+      "decision": "Per-run SandboxClient outside WorkerPool, implementing the worker-client interface",
+      "why": "FR-035 single execution path; the pool keys by (project, role)",
+      "rejected": "A separate SandboxRunner, or one hc process per word"
+    },
+    {
+      "decision": "Add parse_sandbox_refused with a closed reason enum (pending M-2)",
+      "why": "Six refusal kinds have no code; Principle V",
+      "rejected": "runtime_error, or six codes"
+    },
+    {
+      "decision": "Minimal copy by allowlist (.fwdata + WritingSystemStore), settled live by L-1",
+      "why": "Excludes the lock, .hg and media by construction; free space measures what is copied",
+      "rejected": "An exclusion list"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "Full-tier plan: 8 phases, a 9-module sandbox package, the packaged script, every FR mapped to a named test; 4 maintainer decisions (M-1 blocks live verification)",
+      "key_finding": "hc writes UTF-16LE to its console, and a malformed test expectation leaks into the next test; plus no hc/SDK/.NET10 on this machine, so FR-045 is needs_human"
+    }
+  }
+}

@@ -19,6 +19,26 @@
   worker still refuses, but names itself plainly and never tells the caller to
   end the process -- it points at `flextools_parse_status` / `parse_cancel`
   instead. Any remaining foreign holder is refused exactly as before.
+- **Parse worker held `<project>.fwdata.lock` while idle, up to 600s after
+  results were already back** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223),
+  scope change). The fix above worked around the collision; this closes the
+  gap at the source. `ParseWorker` (`parse/worker_main.py`) used to open the
+  project once at startup and hold it for the worker's whole life (up to
+  `DEFAULT_IDLE_TIMEOUT_SECONDS`, 600s, after the last word). It now closes
+  the project -- and drops the lock -- the instant its queue goes idle
+  (`ParseWorker._release_if_idle`), and reopens on demand for the next
+  request (`ParseWorker._ensure_project_open`), which also drops this
+  worker's own caches that named identifiers scoped to the closed cache
+  (`self._index`'s entry/MSA HVOs -- "an hvo is a session-scoped handle that
+  liblcm renumbers on every cache load", issue #103 -- and
+  `_RealBackend._wordforms_by_ws`'s live LCM objects). Holding the lock
+  WHILE a parse runs is unchanged; only the idle gap between requests
+  shrank, from up to 600s down to one poll tick (`_POLL_INTERVAL_SECONDS`,
+  50ms). The worker PROCESS still lives out the idle timeout so a request
+  in that window reuses the warm interpreter, but it now pays again for
+  `OpenProject()` and the first grammar load -- `run_module`'s own-worker
+  release (above) stays in place as a safety net for a write landing during
+  a live parse or in that ~50ms race, rather than as the primary fix.
 - **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
   Write-enabled runs preflight already flagged as mutating now attach an advisory
   `effect_check` block when execution succeeds but `lcm_undoable_action_count`

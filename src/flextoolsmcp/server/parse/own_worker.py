@@ -17,6 +17,14 @@ This module is the ONE place that answers "is the holder one of ours, and
 which worker is it", so the two call sites (filing's preview gate and
 `run_module`'s write gate) cannot drift apart on the answer, per issue #223's
 explicit ask to share detection rather than duplicate it.
+
+#223's follow-up made the worker release the project as soon as its queue
+goes idle (`parse/worker_main.py`'s `ParseWorker._release_if_idle`), instead
+of holding it for the rest of the idle timeout. That shrank the window this
+module exists to cover -- a foreign-looking `held_by_other` that is
+actually us -- from up to 600s down to a live-parse collision or a ~50ms
+race, but did not remove it; see `handlers/execution.py`'s
+`_release_own_worker_or_refuse` docstring for the two remaining cases.
 """
 
 from typing import Any, Optional

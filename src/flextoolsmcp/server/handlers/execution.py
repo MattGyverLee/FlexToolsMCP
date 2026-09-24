@@ -2736,6 +2736,20 @@ async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: O
     used to build the confirmation preview -- releasing there would tear
     down a warm worker under an unconfirmed, maybe-never-submitted call.
 
+    STILL NEEDED AFTER THE #223 SCOPE CHANGE (the worker now releases the
+    project itself the instant its queue goes idle --
+    `parse/worker_main.py`'s `ParseWorker._release_if_idle` -- rather than
+    holding it for the rest of `DEFAULT_IDLE_TIMEOUT_SECONDS`). Two gaps
+    that self-release does not close on its own:
+      (1) the busy case -- a write landing WHILE a parse is genuinely
+          running still needs this function's refusal, which is now this
+          function's PRIMARY remaining job rather than a secondary one;
+      (2) a small race window between a result going out and the worker's
+          own next idle check (`_POLL_INTERVAL_SECONDS`, 50ms) -- a write
+          landing in that window still sees `held_by_other` and still
+          needs the idle-release branch below, just for a far smaller
+          window than the up-to-600s gap this originally closed.
+
     Returns `(refusal_response, decision)`:
       * own worker, busy   -> `(refusal_response, decision)` (unchanged
         decision; caller returns the refusal as-is).

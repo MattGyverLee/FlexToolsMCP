@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **`get_workspace_notice(once=True)` suppressed warnings after cwd change** ([#151](https://github.com/MattGyverLee/FlexToolsMCP/issues/151)).
+  The response-envelope guard is now keyed by detected ``repo_root`` instead of a
+  single process-global flag, so moving into a different source checkout can
+  surface the workspace warning again while repeat calls from the same checkout
+  stay deduplicated.
 - **Cross-session `operations.log` rotation dropped multi-day spans** ([#110](https://github.com/MattGyverLee/FlexToolsMCP/issues/110)).
   The durable rollup now keeps 12 size-based backups (was 3) while per-session
   log files stay at 3. Confirmed log triage still has jsonl and dated session

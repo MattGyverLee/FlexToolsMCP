@@ -131,6 +131,22 @@ from ..response_keys import (
     KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
 )
 
+
+def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Stamp TOOL-CONTRACT envelope keys on run_module JSON payloads (issue #119).
+
+    Preflight rejections already go through ``error_response`` / discovery
+    redirects through ``build_response_with_context``; the subprocess execution
+    path returned the raw runner dict without ``_contract`` or ``status``.
+    """
+    if KEY_STATUS not in payload:
+        if payload.get("success") is False:
+            payload[KEY_STATUS] = "error"
+        else:
+            payload[KEY_STATUS] = "ok"
+    return build_response_with_context(payload, include_session=True)
+
+
 # Issue #46: auto-fix config
 try:
     from ...config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
@@ -4424,12 +4440,12 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     try:
         # Determine if we need the write lock. Issue #93 escalation: this
@@ -4712,12 +4728,12 @@ MODULE_CODE = {code}
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
             )
-            return [TextContent(type="text", text=json.dumps({
+            return json_response(_finalize_run_module_response({
                 "success": False,
                 "error": err_msg,
                 "warnings": warnings,
                 "op_id": op_id,
-            }, indent=2))]
+            }))
 
         # Issue #35: extract user result payload (report.Result) before the main envelope.
         _user_result_sentinel = "===FLEXTOOLS_USER_RESULT==="
@@ -5038,12 +5054,18 @@ MODULE_CODE = {code}
             # error_type when available; fall back to a generic bucket.
             runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
-                [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))],
+                json_response(
+                    _finalize_run_module_response(execution_result),
+                    ensure_ascii=False,
+                ),
                 error_code=runtime_error_code,
                 code_size_bytes=code_size_bytes,
             )
 
-        return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
+        return json_response(
+            _finalize_run_module_response(execution_result),
+            ensure_ascii=False,
+        )
 
     except subprocess.TimeoutExpired:
         err_msg = "Execution timed out after {} seconds".format(timeout_seconds)
@@ -5051,12 +5073,12 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     except Exception as e:
         import traceback as _tb
@@ -5066,12 +5088,12 @@ MODULE_CODE = {code}
             error=err_msg, error_type=type(e).__name__,
             traceback_text=_tb.format_exc(),
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     finally:
         # Clean up temporary file

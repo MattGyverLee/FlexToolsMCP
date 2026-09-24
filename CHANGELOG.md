@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **`flextools_run_module` success responses omitted `_contract` / `status`**
+  ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
+  execution results (success, runtime failure, timeout, and temp-file errors)
+  now pass through ``build_response_with_context`` so they match
+  ``docs/TOOL-CONTRACT.md``.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with

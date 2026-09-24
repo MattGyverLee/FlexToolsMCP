@@ -165,6 +165,15 @@ class ServerStateErrorDetail(BaseModel):
     state_description: Optional[str] = None
 
 
+class InternalErrorDetail(BaseModel):
+    """Detail payload for internal_error (unhandled handler exceptions, issue #89)."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["internal_error"] = "internal_error"
+    error_type: Optional[str] = None
+    traceback: Optional[str] = None
+    tool: Optional[str] = None
+
+
 class PartialModuleStructureDetail(BaseModel):
     """Detail payload for partial_module_structure rejections."""
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -657,12 +666,13 @@ class ParserJobFailedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 31 per-code detail models
+# Discriminated union over all 32 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
     SyntaxErrorDetail,
     ServerStateErrorDetail,
+    InternalErrorDetail,
     PartialModuleStructureDetail,
     UnprotectedWritesDetail,
     CastingIssuesDetectedDetail,

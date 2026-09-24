@@ -119,9 +119,26 @@ class TestCollectInheritedMembers:
     def test_memoized_same_index_same_entity(self, liblcm_entities):
         from server.handlers.api import collect_inherited_members
 
-        first = collect_inherited_members("IFsClosedValue", liblcm_entities)
-        second = collect_inherited_members("IFsClosedValue", liblcm_entities)
+        first = collect_inherited_members(
+            "IFsClosedValue", liblcm_entities, cache_token=1,
+        )
+        second = collect_inherited_members(
+            "IFsClosedValue", liblcm_entities, cache_token=1,
+        )
         assert first is second  # cache hit, not just equal
+
+    def test_cache_token_bump_avoids_stale_memo(self, liblcm_entities):
+        """Issue #150: epoch change must not return a memo from a prior load."""
+        from server.handlers.api import collect_inherited_members
+
+        first = collect_inherited_members(
+            "IFsClosedValue", liblcm_entities, cache_token=1,
+        )
+        second = collect_inherited_members(
+            "IFsClosedValue", liblcm_entities, cache_token=2,
+        )
+        assert first is not second
+        assert first == second
 
     def test_unknown_entity_returns_empty(self, liblcm_entities):
         from server.handlers.api import collect_inherited_members

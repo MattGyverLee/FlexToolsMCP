@@ -11,9 +11,11 @@ Provides checks for code structure, safety, and correctness:
 - Validate project context
 """
 
+import io
 import re
 import ast
 import textwrap
+import tokenize
 from typing import Dict, Iterator, List, Set, Optional, Any, Tuple, TypeGuard, Union
 
 try:
@@ -178,6 +180,49 @@ _LIBLCM_MUTABLE_PATTERNS.extend(_facade_accessor_mutable_patterns("project"))
 def _strip_comments(code: str) -> str:
     """Remove Python comments from code to avoid false positives in pattern matching."""
     return _PATTERN_COMMENT.sub('', code)
+
+
+def _token_offset(code: str, line: int, col: int) -> int:
+    """Convert 1-based (line, col) from ``tokenize`` into a byte offset."""
+    if line < 1:
+        return 0
+    offset = 0
+    for ln, content in enumerate(code.splitlines(keepends=True), 1):
+        if ln == line:
+            return offset + min(col, len(content))
+        offset += len(content)
+    return len(code)
+
+
+def _mask_comments_and_strings(code: str) -> str:
+    """Return ``code`` with comments and string literals replaced by spaces.
+
+    Line and column positions are preserved so regex ``finditer`` line numbers
+    still align with the original source. Unlike ``_strip_comments``, this
+    respects ``#`` inside string literals and triple-quoted docstrings (issue
+    #133).
+    """
+    if not code:
+        return code
+    masked = list(code)
+    try:
+        readline = io.StringIO(code).readline
+        for tok_type, _tok_str, start, end, _ in tokenize.generate_tokens(readline):
+            if tok_type not in (tokenize.COMMENT, tokenize.STRING):
+                continue
+            begin = _token_offset(code, start[0], start[1])
+            finish = _token_offset(code, end[0], end[1])
+            for idx in range(begin, min(finish, len(masked))):
+                if masked[idx] not in "\n\r":
+                    masked[idx] = " "
+    except tokenize.TokenError:
+        return _strip_comments(code)
+    return "".join(masked)
+
+
+def _code_for_pattern_scan(code: str) -> str:
+    """Source text safe for regex scans that must ignore comments/strings."""
+    return _mask_comments_and_strings(code)
 
 
 def _is_line_protected(line_num: int, protected_ranges: List[tuple]) -> bool:
@@ -2275,7 +2320,7 @@ def detect_missing_operations_imports(code: str, api_mode: str) -> dict:
     }
 
     # Find all words that match Operations class names using compiled pattern
-    matches = _PATTERN_KNOWN_OPS.findall(code)
+    matches = _PATTERN_KNOWN_OPS.findall(_code_for_pattern_scan(code))
 
     if not matches:
         return result
@@ -2330,7 +2375,7 @@ def detect_wrong_library_imports(code: str, api_mode: str) -> dict:
 
     # Extract all import statements
     import_pattern = r'(?:from|import)\s+([\w.]+)'
-    imports = re.findall(import_pattern, code)
+    imports = re.findall(import_pattern, _code_for_pattern_scan(code))
 
     if api_mode == "flexicon":
         # In flexicon mode, flag imports from stable flexlibs. `flexlibs2` is the
@@ -3824,9 +3869,10 @@ def find_liblcm_mutations(
         if name not in _FACADE_INJECTED_NAMES:
             patterns.extend(_facade_accessor_mutable_patterns(name))
 
-    for line_num, line in enumerate(code.split('\n'), 1):
-        # Skip comments once per line
-        line_content = _strip_comments(line)
+    masked_code = _code_for_pattern_scan(code)
+    original_lines = code.split("\n")
+    for line_num, line in enumerate(masked_code.split("\n"), 1):
+        line_content = line
 
         for pattern, method_name, category in patterns:
             if (
@@ -3835,11 +3881,16 @@ def find_liblcm_mutations(
             ):
                 continue
             if re.search(pattern, line_content):
+                raw_context = (
+                    original_lines[line_num - 1]
+                    if line_num - 1 < len(original_lines)
+                    else line_content
+                )
                 mutations.append({
                     'method': method_name,
                     'line': line_num,
                     'category': category,
-                    'context': line_content.strip()[:60]  # First 60 chars for display
+                    'context': raw_context.strip()[:60]  # First 60 chars for display
                 })
 
     return mutations
@@ -4104,11 +4155,12 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     # Step 1: Extract Flexicon Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
     operations_calls_with_lines = []
+    code_for_scan = _code_for_pattern_scan(code)
 
-    for match in _PATTERN_OPERATIONS_CALL.finditer(code):
+    for match in _PATTERN_OPERATIONS_CALL.finditer(code_for_scan):
         class_name, method_name = match.groups()
         # Calculate line number from character position
-        line_num = code[:match.start()].count('\n') + 1
+        line_num = code_for_scan[:match.start()].count('\n') + 1
         operations_calls_with_lines.append((class_name, method_name, line_num))
 
     # Step 1b: AST-based receiver resolution (#8, #130). Catches:
@@ -4171,12 +4223,12 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
                 accessor_to_class.setdefault(_access_path[len("project."):], _cls_name)
         if accessor_to_class:
             existing = {(c, m, ln) for c, m, ln in operations_calls_with_lines}
-            for match in _PATTERN_PROJECT_ACCESSOR_CALL.finditer(code):
+            for match in _PATTERN_PROJECT_ACCESSOR_CALL.finditer(code_for_scan):
                 accessor_name, method_name = match.groups()
                 resolved_class = accessor_to_class.get(accessor_name)
                 if not resolved_class:
                     continue
-                line_num = code[:match.start()].count('\n') + 1
+                line_num = code_for_scan[:match.start()].count('\n') + 1
                 triple = (resolved_class, method_name, line_num)
                 if triple not in existing:
                     operations_calls_with_lines.append(triple)
@@ -5513,10 +5565,10 @@ def detect_casting_needs(
         },
     }
 
+    masked_code = _code_for_pattern_scan(code)
     # Scan code line by line for property access patterns
-    for line_num, line in enumerate(code.split('\n'), 1):
-        # Skip comments and empty lines
-        line_content = re.sub(r'#.*$', '', line).strip()
+    for line_num, line in enumerate(masked_code.split('\n'), 1):
+        line_content = line.strip()
         if not line_content:
             continue
 
@@ -5611,8 +5663,8 @@ def detect_casting_needs(
         # Look for property access that might need casting
         # Pattern: obj.PropertyName or obj.PropertyName()
         property_access_pattern = r'(\w+)\s*\.\s*([A-Z]\w+)\s*(?:\(|$|\.|\[)'
-        for line_num, line in enumerate(code.split('\n'), 1):
-            line_content = re.sub(r'#.*$', '', line)
+        for line_num, line in enumerate(masked_code.split('\n'), 1):
+            line_content = line
             for match in re.finditer(property_access_pattern, line_content):
                 obj_var, prop_name = match.groups()
 

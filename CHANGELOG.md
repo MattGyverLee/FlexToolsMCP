@@ -9,6 +9,14 @@
   execution results (success, runtime failure, timeout, and temp-file errors)
   now pass through ``build_response_with_context`` so they match
   ``docs/TOOL-CONTRACT.md``.
+- **Unhandled tool handler exceptions bypassed the structured error envelope**
+  ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
+  now catches handler failures and returns `internal_error` with
+  `error_type` / `traceback` / `tool` detail; the traceback is also logged via
+  `operations_logger`.
+- **`collect_inherited_members` memo could survive LibLCM index reload** ([#150](https://github.com/MattGyverLee/FlexToolsMCP/issues/150)).
+  Cache keys now use ``APIIndex.liblcm_entities_epoch`` (bumped on each load)
+  instead of ``id(entities)`` alone, and the memo is cleared when LibLCM reloads.
 - **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
   ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
   innermost traceback frame is inside the flexicon package, `run_module` now

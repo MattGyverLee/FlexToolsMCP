@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- **`collect_inherited_members` memo could survive LibLCM index reload** ([#150](https://github.com/MattGyverLee/FlexToolsMCP/issues/150)).
+  Cache keys now use ``APIIndex.liblcm_entities_epoch`` (bumped on each load)
+  instead of ``id(entities)`` alone, and the memo is cleared when LibLCM reloads.
 - **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
   ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
   innermost traceback frame is inside the flexicon package, `run_module` now

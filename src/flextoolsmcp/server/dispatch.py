@@ -40,6 +40,7 @@ from .models import (
     ParseTextInput,
     ParseLogInput,
     ParseDiffInput,
+    ParseCancelInput,
 )
 
 # ============================================================
@@ -98,6 +99,9 @@ TOOL_PARSE_TEXT = "flextools_parse_text"
 TOOL_PARSE_LOG = "flextools_parse_log"
 TOOL_PARSE_DIFF = "flextools_parse_diff"
 
+# Parse tools (parser-check CP4)
+TOOL_PARSE_CANCEL = "flextools_parse_cancel"
+
 # All tool names for validation
 ALL_TOOL_NAMES = frozenset([
     TOOL_FLEXTOOLS_START,
@@ -127,6 +131,7 @@ ALL_TOOL_NAMES = frozenset([
     TOOL_PARSE_TEXT,
     TOOL_PARSE_LOG,
     TOOL_PARSE_DIFF,
+    TOOL_PARSE_CANCEL,
 ])
 
 # Import all handler functions
@@ -180,6 +185,7 @@ def _import_handlers():
             handle_flextools_parse_text,
             handle_flextools_parse_log,
             handle_flextools_parse_diff,
+            handle_flextools_parse_cancel,
         )
     except ImportError:
         # Fallback to non-package mode (absolute imports)
@@ -229,6 +235,7 @@ def _import_handlers():
             handle_flextools_parse_text,
             handle_flextools_parse_log,
             handle_flextools_parse_diff,
+            handle_flextools_parse_cancel,
         )
 
     return {
@@ -259,6 +266,7 @@ def _import_handlers():
         "handle_flextools_parse_text": handle_flextools_parse_text,
         "handle_flextools_parse_log": handle_flextools_parse_log,
         "handle_flextools_parse_diff": handle_flextools_parse_diff,
+        "handle_flextools_parse_cancel": handle_flextools_parse_cancel,
     }
 
 
@@ -290,6 +298,7 @@ handle_flextools_parse_status = _handlers["handle_flextools_parse_status"]
 handle_flextools_parse_text = _handlers["handle_flextools_parse_text"]
 handle_flextools_parse_log = _handlers["handle_flextools_parse_log"]
 handle_flextools_parse_diff = _handlers["handle_flextools_parse_diff"]
+handle_flextools_parse_cancel = _handlers["handle_flextools_parse_cancel"]
 
 
 # Type alias for tool handlers
@@ -352,6 +361,9 @@ DISPATCH_ROUTES: Dict[str, Tuple[Callable, Type[BaseModel]]] = {
     TOOL_PARSE_TEXT: (handle_flextools_parse_text, ParseTextInput),
     TOOL_PARSE_LOG: (handle_flextools_parse_log, ParseLogInput),
     TOOL_PARSE_DIFF: (handle_flextools_parse_diff, ParseDiffInput),
+
+    # Parse tools (parser-check CP4)
+    TOOL_PARSE_CANCEL: (handle_flextools_parse_cancel, ParseCancelInput),
 }
 
 # Cache tool names (avoid O(n) list rebuild on every call)

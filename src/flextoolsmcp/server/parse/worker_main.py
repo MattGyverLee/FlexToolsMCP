@@ -72,9 +72,30 @@ Requests (stdin):
         -- the stored parser parameters, READ as context for a slow parse
            (US6, FR-055). Never written: CP3 has no project-data write.
 
+  CP4 additions (additive; protocol stays 1) -- the FILING preflight's three
+  questions. Each is a READ, asked only by the filing handler, and answered
+  from `server/filing/preflight_reads.py` (the read spine itself still
+  resolves no agent and files nothing):
+
+    {"type": "agent_probe", "request_id": str}
+        -- is the HermitCrab parser agent resolvable? (FR-025)
+    {"type": "filing_gate", "request_id": str, "probe_word": str,
+     "vernacular_ws"?: str}
+        -- a current grammar, THIS load's errors, whether the parser could
+           be built at all (a probe parse), and the forms eligible to reach
+           the grammar (FR-020..FR-023, FR-039).
+    {"type": "filing_preview", "request_id": str, "words": [str],
+     "vernacular_ws"?: str}
+        -- every stored analysis of every word, with its user opinion and its
+           segment use through a FRESH join (FR-011..FR-015, R-02).
+
 Responses (stdout):
 
-    {"type": "ready",     "protocol": 1, "project": str}
+    {"type": "ready",     "protocol": 1, "project": str, "pid": int}
+        `pid` is THIS process's own id -- the one LCM records as the holder
+        of the project it opens. On Windows a venv's python.exe is a launcher
+        whose child is the real interpreter, so the id the server spawned is
+        not it (CP4 L-0).
     {"type": "stage",     "run_id": str, "stage": "loading_grammar"|"parsing"}
     {"type": "result",    "request_id": str, "run_id": str, "wordform": str,
                           "index_in_run": int, "parse": {...},
@@ -95,6 +116,12 @@ Responses (stdout):
     {"type": "engine",        "request_id": str, "engine": str}
     {"type": "scope_resolved", "request_id": str, "resolved": {...}}
     {"type": "parser_parameters", "request_id": str, "parameters": {...}|null}
+    {"type": "agent",          "request_id": str, "agent": {...}}
+    {"type": "filing_gate",    "request_id": str, "morpher_null": bool,
+                               "load": {...}, "eligible": {"known": bool,
+                               "entries": [{"entry_guid", "headword"}]}}
+    {"type": "filing_preview", "request_id": str, "words": {...},
+                               "join_known": bool}
     {"type": "engine_changed", "run_id": str, "engine_at_submission": str,
                                "engine_now": str|null}
     {"type": "load_baseline",  "run_id": str, "baseline": {...}}
@@ -363,6 +390,37 @@ class _ParseBackend:
         """
         return None
 
+    # -- CP4: the filing preflight's reads (answered, never gated) ---------
+
+    def agent_facts(self) -> dict[str, Any]:
+        """Is the HermitCrab parser agent resolvable? (CP4 FR-025)."""
+        raise NotImplementedError
+
+    def filing_preview(self, words: list, vernacular_ws: Optional[str]) -> dict[str, Any]:
+        """Stored-analysis facts for the deletion projection (CP4, R-02)."""
+        raise NotImplementedError
+
+    def gate_probe(
+        self, probe_word: Optional[str], vernacular_ws: Optional[str]
+    ) -> tuple[Optional[float], bool]:
+        """Make the grammar current and ask whether the parser can be built.
+
+        Returns `(load_started, morpher_null)`: the wall-clock time a grammar
+        load began if this call paid for one (None when the held grammar was
+        current), and whether a probe parse came back null -- which is what
+        `HCParser.ParseWord` returns when the morpher could not be built
+        (FR-020).
+        """
+        raise NotImplementedError
+
+    def eligible_entries(self) -> dict[str, Any]:
+        """The entries whose forms can reach the grammar (CP4 FR-039, D-1).
+
+        `{"known": bool, "entries": [{"entry_guid", "headword"}]}`. `known`
+        False means the eligibility half has no answer, never "no entries".
+        """
+        return {"known": False, "entries": []}
+
     def release(self) -> None:
         """Drop the held grammar and any project handle."""
         raise NotImplementedError
@@ -556,7 +614,45 @@ class _StubBackend(_ParseBackend):
         }
 
     def load_error_baseline(self, load_started: float) -> Optional[dict[str, Any]]:
-        return {"captured": True, "source": "stub", "errors": []}
+        return {"captured": True, "source": "stub", "errors": list(self.stub_load_errors)}
+
+    #: CP4: what the stub reports to the filing preflight. Tests replace them.
+    stub_load_errors: list = []
+    stub_morpher_null: bool = False
+    stub_agent: dict[str, Any] = {
+        "state": "present", "agent_guid": "kguidAgentHermitCrabParser",
+        "agent_name": "HermitCrab", "active_engine": "HC",
+        "probe_source": None, "hint": None,
+    }
+    stub_eligible: list = [
+        {"entry_guid": "stub-entry-pukul", "headword": "pukul"},
+        {"entry_guid": "stub-entry-kirim", "headword": "kirim"},
+    ]
+    #: word -> stored-analysis facts, shaped as `preflight_reads.stored_analyses`
+    #: shapes them, plus `stub_in_segment`. A word absent here has no wordform.
+    stub_stored: dict[str, list] = {}
+
+    def agent_facts(self) -> dict[str, Any]:
+        return dict(self.stub_agent)
+
+    def filing_preview(self, words: list, vernacular_ws: Optional[str]) -> dict[str, Any]:
+        from ..signals.oracle import SegmentOccurrence
+        from ..filing.projection import attach_segment_use
+
+        stored = {w: (list(self.stub_stored[w]) if w in self.stub_stored else None) for w in words}
+        in_use = {r["analysis_guid"] for rs in self.stub_stored.values() for r in rs
+                  if r.get("stub_in_segment")}
+        return {"words": attach_segment_use(stored, SegmentOccurrence(in_use)), "join_known": True}
+
+    def gate_probe(
+        self, probe_word: Optional[str], vernacular_ws: Optional[str]
+    ) -> tuple[Optional[float], bool]:
+        started = time.time()
+        loaded = self.ensure_grammar("filing-gate")
+        return (started if loaded else None), bool(self.stub_morpher_null)
+
+    def eligible_entries(self) -> dict[str, Any]:
+        return {"known": True, "entries": [dict(e) for e in self.stub_eligible]}
 
     #: What `project_state()` reports; a test may replace it.
     stub_project_state: dict[str, Any] = {
@@ -582,6 +678,58 @@ class _StubBackend(_ParseBackend):
 
     def release(self) -> None:
         self._loaded = False
+
+
+def headless_ui_kwargs(flex_project_class: Any) -> dict[str, Any]:
+    """`OpenProject`'s headless-UI argument, where this flexicon build takes it.
+
+    A generated runner has no WinForms message pump, so a dialog with no
+    owner hangs forever (issue #96, flexicon #238): the project is opened with
+    flexicon's `HeadlessLcmUI` when the build advertises `ui-injection`.
+
+    Issue #159: the `ui=` kwarg only exists on flexicon >=4.4.0
+    `OpenProject()`. A stray older build (mismatched venv) rejects it with
+    TypeError at the session's very first action, so the INSTALLED signature
+    is probed in THIS process -- a server-side probe would describe the
+    server's flexicon, not this worker's.
+
+    Used by the CP4 filing worker. The read worker keeps its own inline copy
+    in `_RealBackend.open`, because `tests/test_issue159_openproject_ui_kwarg.py`
+    pins that method's source; the two must stay in step.
+    """
+    import flexicon as _flexicon_pkg
+
+    caps = getattr(_flexicon_pkg, "CAPABILITIES", frozenset())
+    lcm_ui = None
+    if "ui-injection" in caps:
+        try:
+            from flexicon import HeadlessLcmUI
+
+            lcm_ui = HeadlessLcmUI()
+        except ImportError:
+            _log(
+                "flexicon advertises ui-injection but HeadlessLcmUI is not "
+                "importable; OpenProject will omit ui=."
+            )
+    else:
+        _log(
+            "flexicon build does not advertise ui-injection in CAPABILITIES; "
+            "OpenProject will omit ui=."
+        )
+    try:
+        import inspect
+
+        accepts_ui = "ui" in inspect.signature(flex_project_class.OpenProject).parameters
+    except Exception:  # noqa: BLE001
+        accepts_ui = False
+    if not accepts_ui:
+        _log(
+            "this flexicon build's OpenProject() does not accept the ui= "
+            "argument; opening with this build's default LCM UI instead "
+            "(issue #159)."
+        )
+        return {}
+    return {"ui": lcm_ui}
 
 
 class ParserUnavailableError(RuntimeError):
@@ -909,6 +1057,23 @@ class _RealBackend(_ParseBackend):
             )
 
         return rows
+
+    def parse_raw(self, wordform: str) -> Any:
+        """The parser's own `ParseResult`, live objects and all (CP4, R-04).
+
+        What FieldWorks' filer takes: analyses holding live `IMoForm` /
+        `IMoMorphSynAnalysis` references, never reduced to plain data. Only the
+        FILING worker calls this -- it lives here, in the one module allowed
+        to parse (FR-026), so the filing spine reaches the parser through the
+        same facade and the same code, and never on its own. A stale grammar
+        is reloaded by the facade first; `None` means the morpher could not be
+        built (`HCParser.cs:89-90`).
+        """
+        return self._project.Parser.ParseWord(wordform)
+
+    def grammar_is_current(self) -> bool:
+        """`IsUpToDate()`, asked as a question (see `ensure_grammar`)."""
+        return bool(self._project.Parser.IsUpToDate())
 
     def reload_grammar(self) -> None:
         """Discard and rebuild the grammar now, as reset-then-update.
@@ -1317,6 +1482,51 @@ class _RealBackend(_ParseBackend):
                     entry[child.tag] = child.text
             errors.append(entry)
         return {"captured": True, "source": path, "errors": errors}
+
+    # -- CP4: the filing preflight's reads --------------------------------
+    #
+    # Delegated to `server/filing/preflight_reads.py` and `filing/eligibility.py`
+    # (see the protocol notes at the top of this module): the filing spine's
+    # reads run in this process because it holds the open project, and are
+    # kept out of this package so the read spine stays provably what it was.
+
+    def agent_facts(self) -> dict[str, Any]:
+        from ..filing.preflight_reads import agent_facts
+
+        return agent_facts(self._project, self.active_engine())
+
+    def filing_preview(self, words: list, vernacular_ws: Optional[str]) -> dict[str, Any]:
+        from ..filing.preflight_reads import preview_facts
+
+        return preview_facts(self, list(words), vernacular_ws)
+
+    def gate_probe(
+        self, probe_word: Optional[str], vernacular_ws: Optional[str]
+    ) -> tuple[Optional[float], bool]:
+        """A current grammar, and whether the parser could be built (FR-020).
+
+        `ensure_grammar` says whether the next parse will pay for a load; the
+        probe parse then performs it (the facade reloads a stale grammar
+        itself). `ParseWord` returns null when the morpher could not be
+        built (`HCParser.cs:89-90`), which the facade passes through (R-04).
+        """
+        started = time.time()
+        loaded = self.ensure_grammar("filing-gate")
+        if not probe_word:
+            return (started if loaded else None), False
+        result = self._project.Parser.ParseWord(probe_word)
+        return (started if loaded else None), result is None
+
+    def eligible_entries(self) -> dict[str, Any]:
+        try:
+            from ..filing.eligibility import eligible_entries
+        except ImportError:
+            return {"known": False, "entries": []}
+        try:
+            return {"known": True, "entries": eligible_entries(self._project)}
+        except Exception as exc:  # noqa: BLE001 -- unknown, never "none eligible"
+            _log(f"eligibility read failed: {exc}")
+            return {"known": False, "entries": []}
 
 
 def _as_text(value: Any) -> Optional[str]:
@@ -1750,7 +1960,11 @@ class ParseWorker:
             # explicable.
             with self._resolve_lock:
                 self._resolve_pending.append(message)
-        elif kind in ("engine_check", "resolve_scope", "parser_parameters"):
+        elif kind in (
+            "engine_check", "resolve_scope", "parser_parameters",
+            # CP4: the filing preflight's three reads (see the protocol notes).
+            "agent_probe", "filing_gate", "filing_preview",
+        ):
             # Main loop, for the same one-thread-owns-the-project reason.
             with self._resolve_lock:
                 self._control_pending.append(message)
@@ -1993,6 +2207,18 @@ class ParseWorker:
                             "parameters": self._backend.parser_parameters(),
                         }
                     )
+                elif message.get("type") == "agent_probe":
+                    self._emit(
+                        {"type": "agent", "request_id": request_id,
+                         "agent": self._backend.agent_facts()}
+                    )
+                elif message.get("type") == "filing_gate":
+                    self._answer_filing_gate(message)
+                elif message.get("type") == "filing_preview":
+                    preview = self._backend.filing_preview(
+                        list(message.get("words") or []), message.get("vernacular_ws")
+                    )
+                    self._emit({"type": "filing_preview", "request_id": request_id, **preview})
                 else:
                     resolved = self._backend.resolve_scope(dict(message.get("scope") or {}))
                     try:
@@ -2104,13 +2330,7 @@ class ParseWorker:
             # This parse paid for the grammar load, so the load-error file
             # on disk is now ours (FR-023). Read it once, here, and hold it
             # as the one current baseline beside the one held grammar.
-            try:
-                self._load_baseline = self._backend.load_error_baseline(load_started)
-            except Exception as exc:  # noqa: BLE001 -- a baseline must not fail a word
-                self._load_baseline = {
-                    "captured": False, "errors": [],
-                    "reason": f"{type(exc).__name__}: {exc}",
-                }
+            self._capture_load_baseline(load_started)
         if meta.get("engine_at_submission") is not None:
             self._send_baseline_once(word.run_id)
 
@@ -2198,6 +2418,46 @@ class ParseWorker:
             }
         )
 
+    def _answer_filing_gate(self, message: dict[str, Any]) -> None:
+        """The refuse-to-file gate's inputs (CP4 FR-020..FR-023, FR-039).
+
+        Makes the grammar current (paying a load if it was stale or never
+        loaded), probes whether the parser could be built, and reports THIS
+        worker's own load-error baseline -- read from the file its own load
+        wrote, never FLEx's copy by itself (FR-023) -- with the eligible
+        forms. The VERDICT is not computed here: the gate compares these
+        against the run records' baseline server-side (`filing/gate.py`).
+        """
+        load_started, morpher_null = self._backend.gate_probe(
+            message.get("probe_word"), message.get("vernacular_ws")
+        )
+        if load_started is not None:
+            self._capture_load_baseline(load_started)
+        load = dict(self._load_baseline) if self._load_baseline is not None else {
+            "captured": False, "errors": [],
+            "reason": "no grammar load has been observed by this worker",
+        }
+        load.pop("eligible_entries", None)
+        self._emit(
+            {
+                "type": "filing_gate",
+                "request_id": message.get("request_id"),
+                "morpher_null": bool(morpher_null),
+                "load": load,
+                "eligible": self._backend.eligible_entries(),
+            }
+        )
+
+    def _capture_load_baseline(self, load_started: float) -> None:
+        """Read the load-error file OUR load just wrote (FR-023). Never raises."""
+        try:
+            self._load_baseline = self._backend.load_error_baseline(load_started)
+        except Exception as exc:  # noqa: BLE001 -- a baseline must not fail a word
+            self._load_baseline = {
+                "captured": False, "errors": [],
+                "reason": f"{type(exc).__name__}: {exc}",
+            }
+
     def _send_baseline_once(self, run_id: str) -> None:
         """Hand a batch the current load-error baseline, once.
 
@@ -2206,9 +2466,19 @@ class ParseWorker:
         with, which is the held one (FR-027). Recording nothing would leave
         CP4's gate with no baseline to compare against for exactly the runs
         that were cheapest to start.
+
+        CP4 (FR-039, additive): a batch's baseline also records the entries
+        whose forms can reach that grammar -- `eligible_entries`, read once
+        per grammar load and only for a batch, so a single word never pays
+        for the lexicon walk. That is what lets a read-only run re-baseline
+        BOTH halves of the refuse-to-file gate (FR-021).
         """
         if run_id in self._baseline_sent or self._load_baseline is None:
             return
+        if "eligible_entries" not in self._load_baseline:
+            eligible = self._backend.eligible_entries()
+            if eligible.get("known"):
+                self._load_baseline["eligible_entries"] = list(eligible.get("entries") or [])
         self._baseline_sent.add(run_id)
         self._emit(
             {"type": "load_baseline", "run_id": run_id, "baseline": self._load_baseline}
@@ -2444,7 +2714,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     # request that is already buffered in the pipe and put its response
     # ahead of the handshake -- which a server reading `ready` as the first
     # line would then never match.
-    _emit({"type": "ready", "protocol": PROTOCOL_VERSION, "project": args.project})
+    _emit({"type": "ready", "protocol": PROTOCOL_VERSION, "project": args.project,
+           "pid": os.getpid()})
 
     reader = threading.Thread(
         target=_reader_thread, args=(worker,), name="parse-worker-stdin", daemon=True

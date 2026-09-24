@@ -66,7 +66,7 @@ nested shape in the **same payload**. Both shapes carry identical content.
 |---|---|---|
 | `_contract` | string | `"tool-responses/1.0"` |
 | `status` | string | `"error"` |
-| `error_code` | string | one of the 32 codes below |
+| `error_code` | string | one of the 34 codes below |
 | `message` | string | human-readable description |
 | `hint` | string or null | optional recovery suggestion |
 | `op_id` | string or null | operation identifier (may be absent) |
@@ -128,6 +128,8 @@ authoritative. All detail fields are optional unless noted.
 | `parse_scope_mismatch` | **In this order**: `baseline_fingerprint` (required object), `current_fingerprint` (required object), `differing_fields` (list -- which fingerprint fields disagree), `hint` (required string). Raised by `flextools_parse_diff` when two runs do not describe the same scope. Overridable: a forced comparison covers the intersection only and says so. |
 | `parser_timeout` | **In this order**: `timeout_seconds` (required number), `words_completed` (required int -- the partial results survive), `run_id` (required string), `hint` (required string). **Not** used by the bounded measurement: a measurement stopped at its bound is a successful result (`outcome: "terminated_at_bound"`), not this refusal. |
 | `parser_job_failed` | **In this order**: `state_at_failure` (required string), `failure` (required; `out_of_memory` \| `crashed` \| `cancelled` -- kept distinct because the remedies differ), `words_completed` (required int), `words_total` (required int), `run_id` (required string), `log_path` (required string). |
+| `parser_filing_in_progress` | **In this order**: `run_id` (required string), `started_at` (required string, ISO-8601 UTC), `words_completed` (required int), `hint` (required string -- names `flextools_parse_status(run_id=...)`). Raised by `flextools_parse_text(apply=true)` when a filing job is already running on the project, before the engine check, the scope, the preview, the backup or any parse. The claim is not a project lock: read-only parses, single-word tries and the run-reading tools are not refused on its account. |
+| `grammar_load_unclean` | **In this order**: `signal` (required; `morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count` (required int), `baseline_error_count` (required int), `baseline_source` (required; `this_run` \| `absent` \| `prior_run:<run_id>`), `log_path` (string or null), then, appended after those five: `new_errors` (list), `dropped_entries` (list of `{entry_guid, headword}`), `baseline_eligible_count` (int or null), `eligible_count` (int or null). Raised by `flextools_parse_text(apply=true)` when the grammar did not load cleanly: the parser could not be built, this load logged errors the baseline did not, or fewer lexical forms are eligible to reach the grammar than in the baseline (which the loader does without logging anything). **There is no override**: the only way past `new_load_errors` or `eligible_forms_dropped` is a read-only `flextools_parse_text` of the same scope, which re-baselines. |
 
 ---
 

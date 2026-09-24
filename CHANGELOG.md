@@ -150,6 +150,35 @@ optional `bound_seconds` (plain level only) for the bounded single-word
 measurement; a measurement stopped at its bound is a successful response, not
 `parser_timeout`.
 
+Two further error codes land at parser-check CP4, the first checkpoint that
+writes: `parser_filing_in_progress` (`run_id`, `started_at`,
+`words_completed`, `hint` -- a filing job is already running on this project;
+refused before any preview, backup or parse, and never raised against a
+read-only tool) and `grammar_load_unclean` (the parent spec's five fields --
+`signal`, `new_error_count`, `baseline_error_count`, `baseline_source`,
+`log_path` -- in the parent's order, then four fields appended after them:
+`new_errors`, `dropped_entries`, `baseline_eligible_count`,
+`eligible_count`). `grammar_load_unclean.signal` takes a third value,
+`eligible_forms_dropped`, for the case the grammar loader never logs: an
+entry whose every form has become ineligible (an emptied lexeme form, say)
+silently leaves the grammar. Neither code has an override; the one way past a
+new-load-error or dropped-form refusal is a read-only parse of the same
+scope, which re-baselines. Additive: `tool-responses/1.0` is unchanged and
+the hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 32 to 34.
+
+`flextools_parse_text` gains three optional arguments -- `apply` (file the
+results), `confirmed` and `plan_id` (the resubmission that confirms the
+preview it names) -- and nothing else: no argument, setting or environment
+variable skips the confirmation. `apply` absent or false is CP3's read-only
+batch, except that its `filing` field now reads `"not_requested"`. The
+tool's annotation does not change. A new tool, `flextools_parse_cancel`
+(`run_id`), stops a run at its next word boundary; it writes nothing to the
+project, and for a filing run what was already filed stays filed.
+`flextools_parse_log` gains a `deletions` section serving a filing run's
+pre-deletion captures, and its `summary` section gains a `filing` block; a
+read-only run answers `deletions` with a typed not-applicable response, never
+an empty one.
+
 ## [2.12.0] - 2026-09-10
 
 ### flexicon 4.8.0 is the new minimum

@@ -1,0 +1,35 @@
+{
+  "scenario": "S1: the preview writes nothing (US1; SC-001, SC-003)",
+  "write_disabled": {
+    "status": "error",
+    "error_code": "server_state_error",
+    "server_state": "write_disabled",
+    "message": "Filing writes to the project, and this session was started read-only. Nothing was parsed."
+  },
+  "runs_started_by_refused_call": 0,
+  "preview": {
+    "status": "error",
+    "error_code": "confirmation_required",
+    "message": "Filing would change this project, and nothing has been written yet. It may delete up to 2 analyses across 2 words. This is the preview. Read the plan, then resubmit the same call with confirmed=true and plan_id to file. Filing cannot be undone.",
+    "plan_id": "45199e7215a2f2e501fa682cf68079cf6742815c616a8900efcf955278bbff40"
+  },
+  "preview_upper_bound": 2,
+  "runs_started_by_preview": 0,
+  "never_parsed_word": {
+    "word": "zzqqxcp4neverparsed",
+    "status": "error",
+    "error_code": "confirmation_required",
+    "upper_bound": 0,
+    "message": "Filing would change this project, and nothing has been written yet. It may delete up to 0 analyses across 1 word. This is the preview. Read the plan, then resubmit the same call with confirmed=true and plan_id to file. Filing cannot be undone."
+  },
+  "fwdata_sha256_before": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+  "fwdata_sha256_after": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+  "verdicts": {
+    "write_disabled_refused": true,
+    "no_run_started_by_refusal_or_preview": true,
+    "preview_is_confirmation_required": true,
+    "fwdata_byte_identical": true,
+    "sc003_never_parsed_bound_is_zero": true
+  },
+  "recorded_at": "2026-09-24T15:43:10.379453+00:00"
+}

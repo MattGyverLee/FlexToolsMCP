@@ -1,0 +1,47 @@
+{
+  "question": "Q1 (FR-036): after the generic Delete() of an in-segment analysis, what does the segment hold?",
+  "before": {
+    "segment": "0a4345bc-525f-411c-bff7-87e4913cc84a",
+    "index": 0,
+    "count": 38,
+    "next_ref_guid": "808a9198-3bd2-4033-a165-f2fe28264abd",
+    "ref_class": "WfiAnalysis",
+    "ref_guid": "56dd0c94-f964-4436-9294-467339fa2f5d",
+    "wordform_guid": "96195397-267d-40fa-aba4-1b5945de4e07",
+    "analysis_guid": "56dd0c94-f964-4436-9294-467339fa2f5d"
+  },
+  "after_same_uow": {
+    "count": 37,
+    "ref_class": "WfiWordform",
+    "ref_guid": "808a9198-3bd2-4033-a165-f2fe28264abd"
+  },
+  "after_reopen": {
+    "count": 37,
+    "ref_class": "WfiWordform",
+    "ref_guid": "808a9198-3bd2-4033-a165-f2fe28264abd"
+  },
+  "wordforms": [
+    {
+      "guid": "96195397-267d-40fa-aba4-1b5945de4e07",
+      "forms": {
+        "id-fonipa": "membuɑt",
+        "id": "None"
+      }
+    },
+    {
+      "guid": "808a9198-3bd2-4033-a165-f2fe28264abd",
+      "forms": {
+        "id-fonipa": "membɑt͡ʃɑ",
+        "id": "None"
+      }
+    }
+  ],
+  "segment_baseline_text": "membuɑt membɑt͡ʃɑ mendɑlɑm mendeŋɑɾ menzɑɾɑh men̻d͡ʒɑhit meŋgɑd͡ʒi meŋgɑmbɑɾ meŋgosok meŋɑnɑk meŋɑn̻t͡ʃuŋ meŋɑmbil meŋeɾ",
+  "verdict": {
+    "segment_now_references_the_wordform": false,
+    "slot_removed_from_segment": true,
+    "count_before": 38,
+    "count_after": 37
+  },
+  "recorded_at": "2026-09-24T14:54:16.937962+00:00"
+}

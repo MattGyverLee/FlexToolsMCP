@@ -1,0 +1,50 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "grammar_load_unclean",
+  "message": "Filing refused: this grammar load logged 2 error(s) that the baseline for this scope did not. To accept them as pre-existing, run a read-only flextools_parse_text of the same scope, which re-baselines.",
+  "signal": "new_load_errors",
+  "new_error_count": 2,
+  "baseline_error_count": 3,
+  "baseline_source": "prior_run:fedcba9876543210fedcba9876543210",
+  "log_path": "C:\\Users\\demo\\AppData\\Local\\Temp\\DemoHCLoadErrors.xml",
+  "new_errors": [
+    {
+      "type": "InvalidShape",
+      "Form": "-ber",
+      "Reason": "shape could not be segmented"
+    },
+    {
+      "type": "InvalidShape",
+      "Form": "-kan",
+      "Reason": "shape could not be segmented"
+    }
+  ],
+  "dropped_entries": [],
+  "baseline_eligible_count": 118,
+  "eligible_count": 118,
+  "error": {
+    "code": "grammar_load_unclean",
+    "message": "Filing refused: this grammar load logged 2 error(s) that the baseline for this scope did not. To accept them as pre-existing, run a read-only flextools_parse_text of the same scope, which re-baselines.",
+    "signal": "new_load_errors",
+    "new_error_count": 2,
+    "baseline_error_count": 3,
+    "baseline_source": "prior_run:fedcba9876543210fedcba9876543210",
+    "log_path": "C:\\Users\\demo\\AppData\\Local\\Temp\\DemoHCLoadErrors.xml",
+    "new_errors": [
+      {
+        "type": "InvalidShape",
+        "Form": "-ber",
+        "Reason": "shape could not be segmented"
+      },
+      {
+        "type": "InvalidShape",
+        "Form": "-kan",
+        "Reason": "shape could not be segmented"
+      }
+    ],
+    "dropped_entries": [],
+    "baseline_eligible_count": 118,
+    "eligible_count": 118
+  }
+}

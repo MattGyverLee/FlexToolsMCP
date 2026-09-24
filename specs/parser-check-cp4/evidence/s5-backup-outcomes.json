@@ -1,0 +1,81 @@
+{
+  "scenario": "S5: backup outcomes (US2; SC-004, SC-008)",
+  "default": {
+    "plan_backup": {
+      "outcome": "will_be_taken",
+      "reason": null
+    },
+    "confirmation_setting": {
+      "require_write_confirmation": true,
+      "effective_for_filing": true
+    },
+    "preview_error_code": "confirmation_required",
+    "confirmed": {
+      "status": "ok",
+      "error_code": null,
+      "run_id": "7a81d8d234226d4b1e05734bd03a40ba",
+      "backup": {
+        "created": true,
+        "path": "C:\\Users\\thoua\\.flextoolsmcp\\backups\\CP4-Scratch-IndonesianHC-Complete-20260924T144647\\20260924T144654Z\\CP4-Scratch-IndonesianHC-Complete-20260924T144647.fwdata",
+        "intent": "will_be_taken"
+      },
+      "no_recovery_warning": null
+    },
+    "record_backup": {
+      "created": true,
+      "path": "C:\\Users\\thoua\\.flextoolsmcp\\backups\\CP4-Scratch-IndonesianHC-Complete-20260924T144647\\20260924T144654Z\\CP4-Scratch-IndonesianHC-Complete-20260924T144647.fwdata",
+      "intent": "will_be_taken"
+    },
+    "record_no_recovery_warning": null,
+    "meta_no_recovery_warning": null
+  },
+  "default_backup_path": "C:\\Users\\thoua\\.flextoolsmcp\\backups\\CP4-Scratch-IndonesianHC-Complete-20260924T144647\\20260924T144654Z\\CP4-Scratch-IndonesianHC-Complete-20260924T144647.fwdata",
+  "backup_disabled": {
+    "plan_backup": {
+      "outcome": "disabled_by_configuration",
+      "reason": "backup_before_write=false",
+      "no_recovery_warning": "NO BACKUP WAS TAKEN (backup_before_write=false). Filing cannot be undone, and no recovery point exists for this run."
+    },
+    "confirmation_setting": {
+      "require_write_confirmation": true,
+      "effective_for_filing": true
+    },
+    "preview_error_code": "confirmation_required",
+    "confirmed": {
+      "status": "ok",
+      "error_code": null,
+      "run_id": "758ddf9211eb6e152313461b0398d1ce",
+      "backup": {
+        "created": false,
+        "reason": "backup_before_write=false"
+      },
+      "no_recovery_warning": "NO BACKUP WAS TAKEN (backup_before_write=false). Filing cannot be undone, and no recovery point exists for this run."
+    },
+    "record_backup": {
+      "created": false,
+      "reason": "backup_before_write=false",
+      "path": null,
+      "intent": "disabled_by_configuration"
+    },
+    "record_no_recovery_warning": "NO BACKUP WAS TAKEN (backup_before_write=false). Filing cannot be undone, and no recovery point exists for this run.",
+    "meta_no_recovery_warning": "NO BACKUP WAS TAKEN (backup_before_write=false). Filing cannot be undone, and no recovery point exists for this run."
+  },
+  "require_confirmation_false": {
+    "error_code": "confirmation_required",
+    "confirmation_setting": {
+      "require_write_confirmation": false,
+      "effective_for_filing": true
+    }
+  },
+  "verdicts": {
+    "default_plan_will_be_taken": true,
+    "default_backup_under_backups_dir": true,
+    "default_backup_not_under_projects": true,
+    "disabled_plan_says_so": true,
+    "disabled_result_warns": true,
+    "disabled_record_warns": true,
+    "require_confirmation_false_still_requires_it_SC008": true,
+    "setting_disclosed": true
+  },
+  "recorded_at": "2026-09-24T14:47:20.857037+00:00"
+}

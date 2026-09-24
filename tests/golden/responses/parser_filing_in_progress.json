@@ -1,0 +1,18 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "parser_filing_in_progress",
+  "message": "A filing job is already running on project 'Demo'.",
+  "run_id": "0123456789abcdef0123456789abcdef",
+  "started_at": "2026-09-24T12:00:00+00:00",
+  "words_completed": 412,
+  "hint": "Watch the running job with flextools_parse_status(run_id='0123456789abcdef0123456789abcdef') rather than starting another.",
+  "error": {
+    "code": "parser_filing_in_progress",
+    "message": "A filing job is already running on project 'Demo'.",
+    "run_id": "0123456789abcdef0123456789abcdef",
+    "started_at": "2026-09-24T12:00:00+00:00",
+    "words_completed": 412,
+    "hint": "Watch the running job with flextools_parse_status(run_id='0123456789abcdef0123456789abcdef') rather than starting another."
+  }
+}

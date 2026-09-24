@@ -48,6 +48,7 @@ from .models import (
     ParseTextInput,
     ParseLogInput,
     ParseDiffInput,
+    ParseCancelInput,
 )
 
 
@@ -544,7 +545,7 @@ from the run's record on disk, so a run from an earlier server session is as
 readable as one still going. Takes the run_id from flextools_parse_text or
 flextools_try_word.
 
-Sections -- exactly these seven:
+Sections -- exactly these eight:
 - summary -- stage, progress, scope fingerprint, engine at submission, the host
   parser-report counters and what two of them deliberately mean differently.
   For a batch run it also carries the report: five corpus signals, each with the
@@ -560,6 +561,12 @@ Sections -- exactly these seven:
 - trace -- a drill-down trace (trace_index). Where the trace can be read, one line
   names the most frequent rejection and where it first occurred; where it cannot,
   it is returned raw and labelled raw, with no explanation invented.
+- deletions -- a FILING run's pre-deletion captures: every analysis filing may
+  delete or whose human disapproval it overwrites, recorded before the change
+  (wordform, morph bundles, glosses, evaluations), then what happened to it.
+  A filing run's summary also carries its filing block: counts, projected
+  deletions beside actual ones, the backup or the no-recovery warning. On a
+  read-only run this section is reported not applicable, never empty.
 - config_generation, hc_stdout, hc_output -- these belong to the sandboxed spine,
   which is not in this release. They come back as not applicable to this run's
   spine, naming the checkpoint that fills them -- never as an empty section.
@@ -602,7 +609,7 @@ yet. Save or close the project in FieldWorks and parse again.""",
 
     "flextools_parse_text": ToolDef(
         name="flextools_parse_text",
-        description="""[PARSE] In-process batch spine -- parse a corpus scope; filing results into the project is not yet reachable.
+        description="""[PARSE] In-process batch spine -- parse a corpus scope; with apply=true, file the results into the project behind preview, confirmation and backup.
 
 Resolves a scope (all texts, a genre, one text, or an explicit word list) to a
 definite, de-duplicated word list -- ordered by descending occurrence, then
@@ -610,22 +617,42 @@ alphabetically, with any limit applied after ordering -- and parses every word
 on the project's HermitCrab grammar as a background batch. Returns a run_id at
 once; poll it with flextools_parse_status.
 
-WHY THIS TOOL IS MARKED DESTRUCTIVE. It is annotated at its designed maximum
-capability, which includes filing parser analyses into the project. That
-capability ships in a later release and is NOT reachable today: there is no
-argument that enables it, the project is opened read-only, and nothing on this
-path writes to FieldWorks. The annotation is set now so it never has to change.
+READ-ONLY BY DEFAULT. Without apply, nothing is written: the project is opened
+read-only and the run leaves behind only its own record (the word list, one
+result line per word written as each completes, the scope fingerprint, the
+engine at submission, and the host parser report's counters). The fingerprint
+decides whether two runs may be compared; it deliberately says nothing about
+the grammar, because a grammar edit is what a comparison measures.
 
-What the run leaves behind, readable without reopening the project: the word
-list, one result line per word written as each word completes (a run killed at
-word 4,000 leaves 4,000 readable), and a run record carrying the scope
-fingerprint, the engine at submission, and the host parser report's counters.
-The fingerprint decides whether two runs may be compared; it deliberately says
-nothing about the grammar, because a grammar edit is what a comparison measures.
+FILING (apply=true) does what FLEx's Parse Words in Text does: parser analyses
+are created or re-approved, and every existing analysis that neither the parser
+nor a human vouches for and that no text uses is DELETED. That cannot be undone.
+So filing is never one call:
+1. apply=true -> confirmation_required with a mutation plan built from this
+   project: words in scope, how many analyses MAY be deleted (a concrete number,
+   including 0, per wordform), how many human disapprovals in use in a text will
+   be overwritten with an approval, the grammar's load-error standing, and
+   whether a backup is expected. Nothing is written or backed up, and nothing is
+   opened for writing.
+2. apply=true, confirmed=true, plan_id=<from step 1> -> the plan is recomputed;
+   if anything in it changed you get a new preview instead. Otherwise the
+   backup is attempted (best-effort -- a run without one carries a loud
+   no-recovery warning), and only then does the run start.
+Requires a session started with write_enabled=true. No argument or setting
+skips the confirmation.
 
-Single words from flextools_try_word overtake a running batch at its next word
-and use the same loaded grammar; the batch resumes where it was, and its status
-names the run it is waiting on.
+Refuses to file with grammar_load_unclean when the parser cannot be built, when
+this grammar load has errors the last read-only run of this scope did not, or
+when fewer lexical forms reach the grammar than then (which the loader does
+silently). The only way past the last two is a read-only parse of the same
+scope, which re-baselines. With parser_filing_in_progress when a filing job
+is already running on the project. With project_locked when FieldWorks holds
+the project exclusively; with sharing on, filing runs as a peer and says to
+make sure FLEx's own parser is not running.
+
+Single words from flextools_try_word overtake a running read-only batch at its
+next word and use the same loaded grammar; the batch resumes where it was, and
+its status names the run it is waiting on.
 
 Refuses with parser_engine_mismatch before anything else happens when the project's
 active parser is not HermitCrab; with parse_scope_empty when nothing matched; and
@@ -634,16 +661,43 @@ every candidate. Genre and text names are matched in the default analysis writin
 system. Nothing parses in any refused case.""",
         input_model=ParseTextInput,
         # D-1 / FR-025: the designed maximum capability, from the first
-        # release, UNCHANGED at CP4. A capability annotation is cached by
-        # hosts and read by calling models, so flipping it later would be a
-        # caller-visible contract event for a tool whose name did not change.
-        # CP3 ships no write path at all; the description's first line says
-        # filing is not yet reachable. Recorded as "not overturned" in
-        # specs/parser-check-cp3/plan.md, "Open maintainer decision".
+        # release, UNCHANGED at CP4 (CP4 FR-001). A capability annotation is
+        # cached by hosts and read by calling models, so flipping it later
+        # would be a caller-visible contract event for a tool whose name did
+        # not change. CP3 shipped it before any write path existed; CP4's
+        # filing path is what it was always describing.
         annotations=ToolAnnotations(
             readOnlyHint=False,
             destructiveHint=True,
             idempotentHint=False,
+            openWorldHint=False,
+        ),
+    ),
+
+    "flextools_parse_cancel": ToolDef(
+        name="flextools_parse_cancel",
+        description="""[PARSE] Cancel a parse run by its handle -- it stops at the next word boundary.
+
+Takes the run_id from flextools_parse_text or flextools_try_word. The word in
+flight finishes; nothing after it starts. Returns {run_id, cancel_requested: true}
+at once -- poll flextools_parse_status for the run to reach 'cancelled'.
+
+Cancelling writes nothing to the project. For a FILING run, every word filed
+before the cancel stays filed: filing cannot be undone, and the run's record
+lists exactly which words were filed (flextools_parse_log, summary section),
+so the one way back is to restore the backup -- or, for a project in
+Send/Receive, to discard the local copy and re-download it.
+
+Refuses with parse_run_not_found for a handle this server does not know, and
+with parse_job_cancelled for a run that has already ended.""",
+        input_model=ParseCancelInput,
+        # Not read-only (it changes a run's state) but not destructive:
+        # stopping a job writes nothing to the project. Idempotent -- a second
+        # cancel of a run already stopping changes nothing more (M-3).
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=True,
             openWorldHint=False,
         ),
     ),

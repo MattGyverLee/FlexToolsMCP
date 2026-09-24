@@ -44,8 +44,12 @@ artifacts.
 Sections, exactly these:
 
 ```
-summary | config_generation | hc_stdout | hc_output | trace | words | results
+summary | config_generation | hc_stdout | hc_output | trace | words | results | deletions
 ```
+
+(`deletions` was added additively at parser-check CP4: a filing run's
+pre-deletion captures. A read-only run answers it with a typed not-applicable,
+never an empty section. See `../../parser-check-cp4/contracts/tools.md`.)
 
 - `summary`, `words`, `results`, `trace` -- real content for in-process runs,
   paged.

@@ -1360,6 +1360,24 @@ FieldWorks release carrying a newer `SIL.Machine` may change the answer, and
 a checkpoint that inherits this verdict instead of re-probing it is the drift
 this paragraph exists to prevent.
 
+**Re-probed at CP4 (2026-09-24, FR-038, Q4): still absent; still deferred.**
+The installed assemblies are `ParserCore.dll` **9.3.11.0**,
+`SIL.Machine.Morphology.HermitCrab.dll` **3.8.2.0** and `SIL.Machine.dll` **3.8.2.0**,
+unchanged from CP3. Every public type was reflected over, matching
+`Check|Valid|Verif|Health|Diagnos|Problem|Lint|Audit` (evidence:
+`specs/parser-check-cp4/evidence/q4-checker-reprobe.json`). Nothing found is a
+grammar-health checker:
+- `IHCLoadErrorLogger` is the load-time callback that CP4's gate already consumes.
+- There are per-object `IsValid` properties on `ParseResult`, `ParseAnalysis` and
+  `ParseMorph`.
+- There is per-word `IsWordValid` on `AllomorphEnvironment` and `MorphCoOccurrenceRule`.
+- `SIL.Machine`'s matches are all unrelated to morphology: punctuation, translation,
+  data structures.
+
+So CP4's refuse-to-file gate keeps its own diff (load errors as a multiset, plus the
+eligibility port), and the three lints stay deferred. The next checkpoint must
+re-probe again against whatever engine is installed then.
+
 **The single most transferable idea is the net-shape screen.** It inspects a
 compiled FST statically -- `O(states + arcs)`, no word applied -- and asserts
 exactly one defect: a **zero-width cycle**, a loop whose every arc consumes
@@ -1810,11 +1828,22 @@ confirmation stops being read.
 
 What the user never sees changed: `ProcessParse` never writes
 `ISegment.AnalysesRS`, and the user agent's `SetEvaluation` is called in exactly
-one place and only to **approve** -- so filing can never overwrite or revoke a
-human's opinion. Note the asymmetry 9.3.4 draws out, because this paragraph is
-easy to read as stronger than it is: that same single call site *adds* user
-approvals the human never gave. Filing cannot take a human opinion away; it can
-invent one.
+one place and only to **approve**. Note the asymmetry 9.3.4 draws out, because
+this paragraph is easy to read as stronger than it is: that same single call site
+*adds* user approvals the human never gave.
+
+**Corrected at CP4 (D-2, CP4 FR-041).** An earlier version of this paragraph said
+"filing can never overwrite or revoke a human's opinion". That is **false** for
+one case: filing **does** overwrite an in-use human disapproval.
+`SetUnsuccessfulParseEvals` (`ParseFiler.cs:310-311`) sets the user agent to
+`approves` on **every** analysis in use in a text, unconditionally -- including
+one a human had marked incorrect. So filing can turn a human "this is wrong" into
+an approval, for exactly the analyses a text still uses. CP4 projects those
+overwrites separately in the mutation plan (FR-040), refuses to file any word
+whose live overwrites were not projected, and lists every overwrite in the run
+record with the prior evaluation captured before it happened (FR-041). What
+remains true: filing never removes a human approval, and never deletes a
+human-disapproved analysis.
 
 ### 12.3 P0-2: the grammar can shrink silently
 
@@ -1887,8 +1916,23 @@ session `write_enabled`, `require_write_confirmation` (first call returns
 `perform_pre_write_backup` before the first mutating parse per (session, project),
 and the existing `needs_lock` machinery.
 
-**Backup is mandatory here, not best-effort** -- filing is non-undoable, so it is
-the only recovery.
+**Backup is best-effort, stated before confirmation, and its absence is loud**
+(corrected at CP4, clarification 2026-09-23; this sentence used to say "Backup
+is mandatory here, not best-effort"). Constitution Principle I makes the
+pre-write backup best-effort -- it MUST NOT raise or refuse the run -- and CP4
+keeps that: filing attempts the backup through `run_module`'s own rung, before
+the project is opened for writing and before every filing run, and proceeds if it
+cannot be made. What CP4 adds is honesty about it: the mutation plan states the
+backup's expected outcome before the human confirms (will be taken; not
+expected, and why; disabled by configuration), and a run without one carries a
+prominent no-recovery warning in its response and its record. A required backup
+would refuse filing on exactly the projects where a local backup is not the
+recovery path anyway: a project in Send/Receive is recovered by not
+Send/Receiving the broken copy, deleting it and re-downloading, and a backup
+must never be written inside the project folder, where Mercurial could commit it
+(CP4 FR-007, FR-009, FR-042, FR-043). Issue #165's definition of done still says
+"Mandatory pre-write backup" and needs the same correction (CP4 decision M-2;
+an outward-facing edit, left to the maintainer).
 
 **The ladder is walked before the job starts, never during it.** Confirmation and
 backup complete while the caller is still present; only then is a `run_id`
@@ -2015,7 +2059,7 @@ entry under **"Tool contract"**.
 |---|---|
 | `parser_engine_mismatch` | `configured_engine`, `supported_engines`, `hint` |
 | `parser_core_missing` | `signal` (`absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path`, `detected_version`, `missing_members`, `lcmodel_install_path`, `install_hint`, `load_error` |
-| `grammar_load_unclean` | `signal` (`morpher_null` \| `new_load_errors`), `new_error_count`, `baseline_error_count`, `baseline_source` (`this_run` \| `prior_run:<run_id>` \| `absent`), `log_path` |
+| `grammar_load_unclean` | `signal` (`morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count`, `baseline_error_count`, `baseline_source` (`this_run` \| `prior_run:<run_id>` \| `absent`), `log_path`, then -- appended at CP4, the five above kept as a strict prefix -- `new_errors`, `dropped_entries`, `baseline_eligible_count`, `eligible_count`. `eligible_forms_dropped` (CP4 FR-039, D-1) is the case the load-error file cannot see: an entry whose every form the loader excludes silently, with no error logged |
 | `parser_tool_missing` | `component` (`"hc"` \| `"GenerateHCConfig.exe"`, closed enum -- shared with `flextools_health`'s `sandbox.components[].component`, 10.2), `expected_path`, `install_hint` |
 | `parser_config_failed` | `exit_code`, `stderr_tail`, `log_path`, `run_id` |
 | `parser_timeout` | `timeout_seconds`, `words_completed`, `run_id`, `hint` |
@@ -2261,6 +2305,20 @@ the first checkpoint with nothing blocking it.
     with `ActiveParser == "HC"` that has never run the parser. Does not block
     CP1: the probe ships either way, and only its verdict wording depends on
     the answer.
+
+    **CP4 finding (Q2, live read-only, 2026-09-24;
+    `specs/parser-check-cp4/evidence/q2-agent.json`).**
+    - On both designated HermitCrab projects (`IndonesianHC-Complete`,
+      `Malay Parsing-20230810withHC`), the HermitCrab agent
+      (`kguidAgentHermitCrabParser` = `5093d7d7-4f18-4aad-8c86-88389476df15`,
+      named `HCParser`) is in `LangProject.AnalyzingAgentsOC`, and it resolves by GUID
+      (`probe_hc_agent`: `present`). Both projects also carry the XAmple agent
+      (`M3Parser`), although neither uses XAmple. That is consistent with the standard
+      agents being created along with the project rather than on first parse.
+    - **Still open:** a project that has provably *never* run HermitCrab was not
+      available. Both designated projects may have been parsed before, and the agent's
+      evaluation count cannot be read through this surface. So the refusal wording stays
+      as it is.
 11. **`IStText.UniqueWordforms()` on a never-tokenized text.** Does it return
     anything for a text never opened in interlinear? This is 3.1's
     database-state-as-proxy trap one layer down: an empty result would mean "not

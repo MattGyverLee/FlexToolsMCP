@@ -32,6 +32,13 @@ That makes `filing` the one member with no producer, so its absence is
 asserted rather than assumed: `tests/test_parse_stages.py` fails if any CP2b
 code path can reach it. Without that test, "defined but unreachable" is
 indistinguishable from "we forgot to wire it up".
+
+CP4 GIVES IT A PRODUCER -- FOR ONE KIND OF RUN ONLY. A run created with
+`filing=True` (`flextools_parse_text(apply=true)`, after every rung of the
+write ladder) has its own table, `FILING_RUN_TRANSITIONS`, with the two
+filing edges. The read-run table above is unchanged, so for every read-only
+run `filing` is exactly as unreachable as it was, and the standing tests still
+prove it. The stage is named only in this module.
 """
 
 from __future__ import annotations
@@ -42,8 +49,10 @@ __all__ = [
     "RunStage",
     "TERMINAL_STAGES",
     "ALLOWED_TRANSITIONS",
+    "FILING_RUN_TRANSITIONS",
     "is_terminal",
     "can_transition",
+    "working_stage",
     "InvalidStageTransition",
 ]
 
@@ -122,6 +131,36 @@ ALLOWED_TRANSITIONS: dict[RunStage, frozenset[RunStage]] = {
 }
 
 
+#: CP4 (data-model section 10): the transition table of a FILING run -- one
+#: created with `filing=True`, and ONLY such a run. It is the read-run table
+#: above plus the two filing edges:
+#:
+#:   * `parsing -> filing` -- the first word is filed;
+#:   * `filing -> completed | cancelled | failed`.
+#:
+#: The read-run table is NOT touched: `ALLOWED_TRANSITIONS[FILING]` is still
+#: empty and nothing in it reaches `filing`, so every read-only run -- a
+#: single word, a batch, a measurement -- still cannot produce the stage
+#: (`tests/test_parse_stages.py`, `tests/test_parse_no_project_writes.py`).
+#: `filing` is named here and nowhere else in this package: the runner asks
+#: `working_stage()` for it rather than spelling it.
+FILING_RUN_TRANSITIONS: dict[RunStage, frozenset[RunStage]] = {
+    **ALLOWED_TRANSITIONS,
+    RunStage.PARSING: ALLOWED_TRANSITIONS[RunStage.PARSING] | {RunStage.FILING},
+    RunStage.FILING: frozenset({RunStage.COMPLETED, RunStage.CANCELLED, RunStage.FAILED}),
+}
+
+
+def working_stage(*, filing: bool) -> RunStage:
+    """The stage a run works in once its words are coming back.
+
+    `parsing` for every read-only run; `filing` for a filing run, whose every
+    word is parsed AND filed. The one place outside this table that the
+    filing stage is produced from.
+    """
+    return RunStage.FILING if filing else RunStage.PARSING
+
+
 class InvalidStageTransition(ValueError):
     """Raised when a run is asked to move between stages that do not connect.
 
@@ -160,6 +199,12 @@ def is_terminal(stage: RunStage) -> bool:
     return stage in TERMINAL_STAGES
 
 
-def can_transition(source: RunStage, target: RunStage) -> bool:
-    """Whether `source -> target` is an edge in the transition graph."""
-    return target in ALLOWED_TRANSITIONS.get(source, frozenset())
+def can_transition(source: RunStage, target: RunStage, *, filing: bool = False) -> bool:
+    """Whether `source -> target` is an edge in the run's transition graph.
+
+    `filing=True` only for a run created as a filing run (CP4); every other
+    run -- and every caller that does not say otherwise -- gets the read-run
+    table, in which `filing` is unreachable.
+    """
+    table = FILING_RUN_TRANSITIONS if filing else ALLOWED_TRANSITIONS
+    return target in table.get(source, frozenset())

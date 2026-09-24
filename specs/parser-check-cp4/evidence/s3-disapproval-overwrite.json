@@ -1,0 +1,36 @@
+{
+  "scenario": "S3: a human disapproval in use is overwritten (D-2; SC-011). Run inside the S2 pass (s2-projection-vs-actual.json), on the fifth seeded word.",
+  "analysis_guid": "73029057-4e76-42a3-a7c6-3a12a680da85",
+  "before": {
+    "user_opinion": "disapproves",
+    "in_text": true
+  },
+  "plan_disapproval_overwrites": {
+    "count": 1,
+    "by_wordform": {
+      "menzɑɾɑh": [
+        "73029057-4e76-42a3-a7c6-3a12a680da85"
+      ]
+    }
+  },
+  "in_use_approvals_projected": 4,
+  "record_disapprovals_overwritten": [
+    {
+      "wordform": "menzɑɾɑh",
+      "analysis_guid": "73029057-4e76-42a3-a7c6-3a12a680da85",
+      "prior_user_opinion": "disapproves",
+      "capture": "filing/deletions.jsonl"
+    }
+  ],
+  "after": {
+    "exists": true,
+    "user_opinion": "approves"
+  },
+  "verdicts": {
+    "s3_overwrite_projected": true,
+    "s3_overwrite_not_in_deletion": true,
+    "s3_overwrite_listed_with_prior": true,
+    "s3_disapproval_now_approval": true
+  },
+  "recorded_at": "2026-09-24T14:55:29.267430+00:00"
+}

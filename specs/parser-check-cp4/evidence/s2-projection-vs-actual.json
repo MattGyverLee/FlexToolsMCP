@@ -1,0 +1,279 @@
+{
+  "scenario": "S2+S3: the projection is the conjunction and an upper bound; a human disapproval in use is overwritten (US1, US5; SC-002, SC-011; D-2)",
+  "seed_result": {
+    "seeded": {
+      "parser_unused": [
+        "55f62e01-af8c-48cf-8c2a-9266d5c80102",
+        "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7",
+        "5963b04f-60a2-445f-b6fd-9650a44b6fc4",
+        "d2b8e74d-a110-4021-a326-c1a6e1c919e3",
+        "a7360443-5446-4c4d-8051-5b1992a9c762",
+        "d43d1732-d9b9-4500-ae75-648975711f2a",
+        "9da287ae-9831-4855-89cb-220f8ae69898",
+        "d9972e7c-9b46-420c-a9dd-74442c7ecd62"
+      ],
+      "in_text_direct": [
+        "bda2f288-56c6-494b-92f3-e4dfb3b8eb82",
+        "4eadfba3-bbd1-4a33-92f0-58a0c7a82dc9"
+      ],
+      "in_text_gloss": [
+        "dfec72e7-58c6-4a24-8e83-91d8c1eb4d32",
+        "ea322d01-64ca-4046-beb1-2e0da8393a45"
+      ],
+      "human_unused": [
+        "cb3d7d1e-3841-4f3e-80b9-864932c3af2c"
+      ],
+      "in_text_disapproved": [
+        "f31ca0f6-88b6-4d10-9930-0c4d85591e04"
+      ],
+      "pre_existing": {
+        "membuɑt": [
+          "38ea4c7e-ace8-42df-8547-ef870b99aa00"
+        ],
+        "membɑt͡ʃɑ": [
+          "827176ed-ee98-4363-a778-8c22794d9066"
+        ],
+        "mendɑlɑm": [
+          "b3996375-f9bf-42d8-a758-9a90594a9c50"
+        ],
+        "mendeŋɑɾ": [
+          "dc808bcc-22f5-4e0d-8c8c-e2bfd51b31a3"
+        ],
+        "menzɑɾɑh": [
+          "6e86a2e5-2616-4a06-a2b0-24ae405ecd53"
+        ]
+      }
+    }
+  },
+  "plan": {
+    "upper_bound": 14,
+    "by_wordform": {
+      "membuɑt": [
+        "38ea4c7e-ace8-42df-8547-ef870b99aa00",
+        "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7",
+        "55f62e01-af8c-48cf-8c2a-9266d5c80102",
+        "cb3d7d1e-3841-4f3e-80b9-864932c3af2c"
+      ],
+      "membɑt͡ʃɑ": [
+        "5963b04f-60a2-445f-b6fd-9650a44b6fc4",
+        "827176ed-ee98-4363-a778-8c22794d9066",
+        "d2b8e74d-a110-4021-a326-c1a6e1c919e3"
+      ],
+      "mendeŋɑɾ": [
+        "9da287ae-9831-4855-89cb-220f8ae69898",
+        "d9972e7c-9b46-420c-a9dd-74442c7ecd62",
+        "dc808bcc-22f5-4e0d-8c8c-e2bfd51b31a3"
+      ],
+      "mendɑlɑm": [
+        "a7360443-5446-4c4d-8051-5b1992a9c762",
+        "b3996375-f9bf-42d8-a758-9a90594a9c50",
+        "d43d1732-d9b9-4500-ae75-648975711f2a"
+      ],
+      "menzɑɾɑh": [
+        "6e86a2e5-2616-4a06-a2b0-24ae405ecd53"
+      ]
+    },
+    "disapproval_overwrites": {
+      "count": 1,
+      "by_wordform": {
+        "menzɑɾɑh": [
+          "f31ca0f6-88b6-4d10-9930-0c4d85591e04"
+        ]
+      }
+    },
+    "in_use_approvals_projected": 4
+  },
+  "confirmed": {
+    "status": "ok",
+    "error_code": null,
+    "message": null,
+    "run_id": "ebe93ee2397f68a8232e65d535636478"
+  },
+  "filing": {
+    "state": "completed",
+    "persisted": true,
+    "counts": {
+      "created": 0,
+      "reapproved": 5,
+      "duplicated": 0,
+      "deleted": 9,
+      "unchanged": 0,
+      "errored_words": 0,
+      "errored_word_deletions": 0,
+      "skipped": {
+        "invalid_object": 0,
+        "outside_projection": 0,
+        "filer_declined": 0
+      }
+    },
+    "actual_deletions": 9,
+    "projected_deletions": 14,
+    "in_use_approvals_recorded": 4,
+    "in_use_approvals_note": "4 analyses in use in a text were given a user approval by filing. Approval is recorded for anything left in use; this does not mean anyone reviewed them.",
+    "disapprovals_overwritten": [
+      {
+        "wordform": "menzɑɾɑh",
+        "analysis_guid": "f31ca0f6-88b6-4d10-9930-0c4d85591e04",
+        "prior_user_opinion": "disapproves",
+        "capture": "filing/deletions.jsonl"
+      }
+    ],
+    "filed_words": [
+      "membuɑt",
+      "membɑt͡ʃɑ",
+      "mendeŋɑɾ",
+      "mendɑlɑm",
+      "menzɑɾɑh"
+    ],
+    "error": null
+  },
+  "after": {
+    "55f62e01-af8c-48cf-8c2a-9266d5c80102": {
+      "exists": false
+    },
+    "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7": {
+      "exists": false
+    },
+    "5963b04f-60a2-445f-b6fd-9650a44b6fc4": {
+      "exists": false
+    },
+    "d2b8e74d-a110-4021-a326-c1a6e1c919e3": {
+      "exists": false
+    },
+    "a7360443-5446-4c4d-8051-5b1992a9c762": {
+      "exists": false
+    },
+    "d43d1732-d9b9-4500-ae75-648975711f2a": {
+      "exists": false
+    },
+    "9da287ae-9831-4855-89cb-220f8ae69898": {
+      "exists": false
+    },
+    "d9972e7c-9b46-420c-a9dd-74442c7ecd62": {
+      "exists": false
+    },
+    "cb3d7d1e-3841-4f3e-80b9-864932c3af2c": {
+      "exists": false
+    },
+    "bda2f288-56c6-494b-92f3-e4dfb3b8eb82": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "4eadfba3-bbd1-4a33-92f0-58a0c7a82dc9": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "dfec72e7-58c6-4a24-8e83-91d8c1eb4d32": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "ea322d01-64ca-4046-beb1-2e0da8393a45": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "f31ca0f6-88b6-4d10-9930-0c4d85591e04": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "38ea4c7e-ace8-42df-8547-ef870b99aa00": {
+      "exists": true,
+      "user_opinion": "noopinion"
+    },
+    "827176ed-ee98-4363-a778-8c22794d9066": {
+      "exists": true,
+      "user_opinion": "noopinion"
+    },
+    "b3996375-f9bf-42d8-a758-9a90594a9c50": {
+      "exists": true,
+      "user_opinion": "noopinion"
+    },
+    "dc808bcc-22f5-4e0d-8c8c-e2bfd51b31a3": {
+      "exists": true,
+      "user_opinion": "noopinion"
+    },
+    "6e86a2e5-2616-4a06-a2b0-24ae405ecd53": {
+      "exists": true,
+      "user_opinion": "noopinion"
+    }
+  },
+  "actually_deleted": [
+    "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7",
+    "55f62e01-af8c-48cf-8c2a-9266d5c80102",
+    "5963b04f-60a2-445f-b6fd-9650a44b6fc4",
+    "9da287ae-9831-4855-89cb-220f8ae69898",
+    "a7360443-5446-4c4d-8051-5b1992a9c762",
+    "cb3d7d1e-3841-4f3e-80b9-864932c3af2c",
+    "d2b8e74d-a110-4021-a326-c1a6e1c919e3",
+    "d43d1732-d9b9-4500-ae75-648975711f2a",
+    "d9972e7c-9b46-420c-a9dd-74442c7ecd62"
+  ],
+  "pre_deletion_captures": [
+    "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7",
+    "55f62e01-af8c-48cf-8c2a-9266d5c80102",
+    "5963b04f-60a2-445f-b6fd-9650a44b6fc4",
+    "9da287ae-9831-4855-89cb-220f8ae69898",
+    "a7360443-5446-4c4d-8051-5b1992a9c762",
+    "cb3d7d1e-3841-4f3e-80b9-864932c3af2c",
+    "d2b8e74d-a110-4021-a326-c1a6e1c919e3",
+    "d43d1732-d9b9-4500-ae75-648975711f2a",
+    "d9972e7c-9b46-420c-a9dd-74442c7ecd62"
+  ],
+  "verdicts": {
+    "no_in_text_analysis_projected": true,
+    "every_seeded_deletable_projected": true,
+    "human_made_unevaluated_counted_R01": true,
+    "actual_subset_of_projection_SC002": true,
+    "every_deleted_has_a_pre_deletion_capture": true,
+    "confirmed_after_lines_match": true,
+    "in_text_survive": true,
+    "in_text_now_user_approved_FR036": true,
+    "s3_overwrite_projected": true,
+    "s3_overwrite_not_in_deletion": true,
+    "s3_overwrite_listed_with_prior": true,
+    "s3_disapproval_now_approval": true
+  },
+  "seeded": {
+    "parser_unused": [
+      "55f62e01-af8c-48cf-8c2a-9266d5c80102",
+      "3e384bfa-bb36-4bbe-b3a6-7db3d00903d7",
+      "5963b04f-60a2-445f-b6fd-9650a44b6fc4",
+      "d2b8e74d-a110-4021-a326-c1a6e1c919e3",
+      "a7360443-5446-4c4d-8051-5b1992a9c762",
+      "d43d1732-d9b9-4500-ae75-648975711f2a",
+      "9da287ae-9831-4855-89cb-220f8ae69898",
+      "d9972e7c-9b46-420c-a9dd-74442c7ecd62"
+    ],
+    "in_text_direct": [
+      "bda2f288-56c6-494b-92f3-e4dfb3b8eb82",
+      "4eadfba3-bbd1-4a33-92f0-58a0c7a82dc9"
+    ],
+    "in_text_gloss": [
+      "dfec72e7-58c6-4a24-8e83-91d8c1eb4d32",
+      "ea322d01-64ca-4046-beb1-2e0da8393a45"
+    ],
+    "human_unused": [
+      "cb3d7d1e-3841-4f3e-80b9-864932c3af2c"
+    ],
+    "in_text_disapproved": [
+      "f31ca0f6-88b6-4d10-9930-0c4d85591e04"
+    ],
+    "pre_existing": {
+      "membuɑt": [
+        "38ea4c7e-ace8-42df-8547-ef870b99aa00"
+      ],
+      "membɑt͡ʃɑ": [
+        "827176ed-ee98-4363-a778-8c22794d9066"
+      ],
+      "mendɑlɑm": [
+        "b3996375-f9bf-42d8-a758-9a90594a9c50"
+      ],
+      "mendeŋɑɾ": [
+        "dc808bcc-22f5-4e0d-8c8c-e2bfd51b31a3"
+      ],
+      "menzɑɾɑh": [
+        "6e86a2e5-2616-4a06-a2b0-24ae405ecd53"
+      ]
+    }
+  },
+  "recorded_at": "2026-09-24T15:43:31.152570+00:00"
+}

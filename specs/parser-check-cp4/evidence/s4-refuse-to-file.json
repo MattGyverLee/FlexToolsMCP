@@ -1,0 +1,92 @@
+{
+  "scenario": "S4: the gate refuses (US3; SC-005)",
+  "words": [
+    "mejɑkin",
+    "melɑtih",
+    "membuɑt"
+  ],
+  "baseline_1": "1f204d63ae329152964ad8284a52266f",
+  "a_break": {
+    "entry_guid": "0569d40d-2d8c-4884-a338-d2fcff34c1cd",
+    "original": "ŋeoŋ",
+    "broken": "ŋeoŋ9"
+  },
+  "a_preview": {
+    "status": "error",
+    "error_code": "grammar_load_unclean",
+    "signal": "new_load_errors",
+    "message": "Filing refused: this grammar load has 1 load error(s) that the baseline (prior_run:1f204d63ae329152964ad8284a52266f, 0 error(s)) did not -- an edit may have broken entries the parser can no longer see, and filing would delete the analyses they licensed. The only way past this is to run a read-only flextools_parse_text of the same scope (without apply), which re-baselines: its load errors and eligible forms then count as pre-existing. There is no override. Nothing was written.",
+    "baseline_source": "prior_run:1f204d63ae329152964ad8284a52266f",
+    "new_errors": [
+      {
+        "type": "invalid-shape",
+        "Form": "ŋeoŋ9",
+        "Position": "4"
+      }
+    ],
+    "dropped_entries": [],
+    "baseline_eligible_count": 41,
+    "eligible_count": 41
+  },
+  "baseline_2": "efb15c50219e3a0fe476c6efd6121d9c",
+  "b_break": {
+    "entry_guid": "0569d40d-2d8c-4884-a338-d2fcff34c1cd",
+    "original": "ŋeoŋ",
+    "headword": "???"
+  },
+  "b_preview": {
+    "status": "error",
+    "error_code": "grammar_load_unclean",
+    "signal": "eligible_forms_dropped",
+    "message": "Filing refused: fewer lexical forms can reach the grammar than in the baseline (prior_run:efb15c50219e3a0fe476c6efd6121d9c) -- the loader drops such entries without logging any error, and filing would then delete the analyses they used to license. No longer eligible: 'ŋeoŋ'. The only way past this is to run a read-only flextools_parse_text of the same scope (without apply), which re-baselines: its load errors and eligible forms then count as pre-existing. There is no override. Nothing was written.",
+    "baseline_source": "prior_run:efb15c50219e3a0fe476c6efd6121d9c",
+    "new_errors": [],
+    "dropped_entries": [
+      {
+        "entry_guid": "0569d40d-2d8c-4884-a338-d2fcff34c1cd",
+        "headword": "ŋeoŋ"
+      }
+    ],
+    "baseline_eligible_count": 41,
+    "eligible_count": 40
+  },
+  "c_clean_preview": {
+    "status": "error",
+    "error_code": "confirmation_required",
+    "message": "Filing would change this project, and nothing has been written yet. It may delete up to 3 analyses across 3 words. This is the preview. Read the plan, then resubmit the same call with confirmed=true and plan_id to file. Filing cannot be undone."
+  },
+  "c_confirm": {
+    "status": "error",
+    "error_code": "grammar_load_unclean",
+    "signal": "new_load_errors",
+    "message": "Filing refused: this grammar load has 1 load error(s) that the baseline (prior_run:42d6ed3dd7fd2d70f29e3a15c7b090af, 0 error(s)) did not -- an edit may have broken entries the parser can no longer see, and filing would delete the analyses they licensed. The only way past this is to run a read-only flextools_parse_text of the same scope (without apply), which re-baselines: its load errors and eligible forms then count as pre-existing. There is no override. Nothing was written.",
+    "baseline_source": "prior_run:42d6ed3dd7fd2d70f29e3a15c7b090af",
+    "new_errors": [
+      {
+        "type": "invalid-shape",
+        "Form": "ŋeoŋ9",
+        "Position": "4"
+      }
+    ],
+    "dropped_entries": [],
+    "baseline_eligible_count": 41,
+    "eligible_count": 41
+  },
+  "c_fwdata_unchanged": true,
+  "baseline_3": "42d6ed3dd7fd2d70f29e3a15c7b090af",
+  "c_break": {
+    "entry_guid": "0569d40d-2d8c-4884-a338-d2fcff34c1cd",
+    "original": "ŋeoŋ",
+    "broken": "ŋeoŋ9"
+  },
+  "verdicts": {
+    "a_new_load_errors_refused": true,
+    "a_baseline_is_prior_run": true,
+    "b_eligible_forms_dropped_refused": true,
+    "b_names_the_dropped_entry": true,
+    "c_clean_preview_offered": true,
+    "c_confirmed_call_refused": true,
+    "c_nothing_written": true
+  },
+  "recorded_at": "2026-09-24T14:46:47.274116+00:00"
+}

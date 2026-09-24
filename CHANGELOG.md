@@ -6,10 +6,11 @@
 
 - **Duplicate kernel module objects under pytest / script imports**
   ([#172](https://github.com/MattGyverLee/FlexToolsMCP/issues/172)). Register
-  ``server.kernel`` and ``flextoolsmcp.server.kernel`` as aliases in
-  ``sys.modules`` so ``session_state`` and ``operations_logger`` are not split
-  across two copies of the same file when both import spellings appear in one
-  process.
+  ``server.kernel`` / ``flextoolsmcp.server.kernel`` (and the matching
+  ``session`` spellings) as aliases in ``sys.modules``, bind them on the parent
+  package for attribute / ``patch`` resolution on Python 3.10, and stop
+  recreating ``session_state`` in ``admin.py`` on a failed ``isinstance`` check
+  so ``SessionState`` class identity cannot reintroduce the #10 split-brain.
 - **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
   Write-enabled runs preflight already flagged as mutating now attach an advisory
   `effect_check` block when execution succeeds but `lcm_undoable_action_count`

@@ -1,0 +1,16 @@
+{
+  "method": "tests/live_support/q3_q5_filing.py on a fresh CP4-Scratch- copy of IndonesianHC-Complete (production filing path: preview, confirm, filing worker)",
+  "words": [
+    "mejɑkin",
+    "melɑtih",
+    "membuɑt",
+    "membɑt͡ʃɑ",
+    "memukul"
+  ],
+  "raw": "q3-q5-raw.json",
+  "recorded_at": "2026-09-24T14:36:43.368710+00:00",
+  "question": "Q3 (T004, R-05): does filing a word mark the grammar stale (IsUpToDate() false)?",
+  "reload_lines_run1": [],
+  "reloads_in_run1": 0,
+  "finding": "No. Over 5 filed words the filing worker's per-word IsUpToDate() check never came back false: 0 mid-run grammar reloads. Filing analyses does not invalidate the HermitCrab grammar; R-05's per-word gate costs one IsUpToDate() call per word and reloads only when the grammar really changes."
+}

@@ -1,0 +1,124 @@
+{
+  "recorded_at": "2026-09-24T14:35:53.713636+00:00",
+  "result": {
+    "project": "CP4-Scratch-IndonesianHC-Complete-20260924T143554",
+    "words": [
+      "mejɑkin",
+      "melɑtih",
+      "membuɑt",
+      "membɑt͡ʃɑ",
+      "memukul"
+    ],
+    "run1": {
+      "run_id": "c8ce0cc26551eed4c55b6d92e85b56d1",
+      "upper_bound": 5,
+      "state": "completed",
+      "persisted": true,
+      "counts": {
+        "created": 0,
+        "reapproved": 5,
+        "duplicated": 0,
+        "deleted": 0,
+        "unchanged": 0,
+        "errored_words": 0,
+        "errored_word_deletions": 0,
+        "skipped": {
+          "invalid_object": 0,
+          "outside_projection": 0,
+          "filer_declined": 0
+        }
+      },
+      "filed_words": [
+        "mejɑkin",
+        "melɑtih",
+        "membuɑt",
+        "membɑt͡ʃɑ",
+        "memukul"
+      ],
+      "actual_deletions": 0,
+      "error": null
+    },
+    "run1_reload_lines": [],
+    "run2": {
+      "run_id": "654a63e5d9ab953481930c8c9d0649fc",
+      "upper_bound": 5,
+      "state": "completed",
+      "persisted": true,
+      "counts": {
+        "created": 0,
+        "reapproved": 0,
+        "duplicated": 0,
+        "deleted": 0,
+        "unchanged": 5,
+        "errored_words": 0,
+        "errored_word_deletions": 0,
+        "skipped": {
+          "invalid_object": 0,
+          "outside_projection": 0,
+          "filer_declined": 0
+        }
+      },
+      "filed_words": [],
+      "actual_deletions": 0,
+      "error": null
+    },
+    "run2_reload_lines": [],
+    "verdicts": {
+      "q3_filing_marks_grammar_stale": false,
+      "q3_reloads_in_run1": 0,
+      "q5_second_run_all_unchanged": true,
+      "q5_second_run_unchanged": 5,
+      "run1_state": "completed",
+      "run2_state": "completed",
+      "run2_changed_file": false
+    },
+    "steps": [
+      {
+        "step": "copy",
+        "at": "2026-09-24T14:35:54.159128+00:00",
+        "fwdata": {
+          "sha256": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+          "mtime": 1722320572.0,
+          "size": 11578730
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T143554\\CP4-Scratch-IndonesianHC-Complete-20260924T143554.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "after_run1",
+        "at": "2026-09-24T14:36:08.641359+00:00",
+        "fwdata": {
+          "sha256": "a1181ec6b9702240420272990aabddc5249b48f4708529b8d1af25100ceef8a1",
+          "mtime": 1790260568.275874,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T143554\\CP4-Scratch-IndonesianHC-Complete-20260924T143554.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "after_run2",
+        "at": "2026-09-24T14:36:24.059288+00:00",
+        "fwdata": {
+          "sha256": "a1181ec6b9702240420272990aabddc5249b48f4708529b8d1af25100ceef8a1",
+          "mtime": 1790260568.275874,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T143554\\CP4-Scratch-IndonesianHC-Complete-20260924T143554.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      }
+    ]
+  },
+  "worker_stderr_tail": []
+}

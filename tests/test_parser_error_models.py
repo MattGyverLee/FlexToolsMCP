@@ -468,12 +468,13 @@ class TestCP3IsPurelyAdditive:
             "would make it a breaking change, which it is not."
         )
 
-    def test_union_carries_all_thirty_two_codes(self):
+    def test_union_carries_all_thirty_four_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 32, (
-            "expected 32 detail models after CP3's five additions on top of "
-            "main's 26 (incl. invalid_api_mode) plus internal_error (#89), found "
+        assert len(members) == 34, (
+            "expected 34 detail models: CP3's five additions on top of main's "
+            "26 (incl. invalid_api_mode), internal_error (#89), and CP4's two "
+            "(parser_filing_in_progress, grammar_load_unclean); found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():
@@ -496,3 +497,138 @@ class TestCP3IsPurelyAdditive:
     def test_cp3_codes_do_not_shadow_pre_cp3_codes(self):
         pre_cp3 = validate_detail(PARSER_ENGINE_MISMATCH_EXAMPLE)
         assert not isinstance(pre_cp3, tuple(CP3_MODELS.values()))
+
+
+# ===========================================================================
+# parser-check CP4 -- two additive codes (FR-035; contracts/tools.md s.2)
+# ===========================================================================
+
+from flextoolsmcp.server.response_models import (  # noqa: E402
+    GrammarLoadUncleanDetail,
+    ParserFilingInProgressDetail,
+)
+
+_CP4_CONTRACT_PATH = (
+    Path(__file__).parent.parent / "specs" / "parser-check-cp4" / "contracts" / "tools.md"
+)
+
+CP4_MODELS = {
+    "parser_filing_in_progress": ParserFilingInProgressDetail,
+    "grammar_load_unclean": GrammarLoadUncleanDetail,
+}
+
+#: The parent spec's five grammar_load_unclean fields, in the parent's order
+#: (specs/parser-check/SPEC.md section 14). CP4 may only APPEND after them.
+PARENT_GRAMMAR_LOAD_UNCLEAN_PREFIX = [
+    "signal", "new_error_count", "baseline_error_count", "baseline_source", "log_path",
+]
+
+CP4_EXAMPLES = {
+    "parser_filing_in_progress": {
+        "error_code": "parser_filing_in_progress",
+        "run_id": "a" * 32,
+        "started_at": "2026-09-24T12:00:00+00:00",
+        "words_completed": 12,
+        "hint": "Watch it with flextools_parse_status(run_id='" + "a" * 32 + "').",
+    },
+    "grammar_load_unclean": {
+        "error_code": "grammar_load_unclean",
+        "signal": "new_load_errors",
+        "new_error_count": 2,
+        "baseline_error_count": 3,
+        "baseline_source": "prior_run:" + "b" * 32,
+        "log_path": None,
+        "new_errors": [{"type": "InvalidShape"}],
+        "dropped_entries": [],
+        "baseline_eligible_count": 10,
+        "eligible_count": 10,
+    },
+}
+
+# | `code` *(verbatim)* | fields... |
+_CP4_ROW = _re.compile(r"^\|\s*`([a-z_]+)`[^|]*\|\s*(.+?)\s*\|\s*$")
+
+
+def _cp4_contract_field_order():
+    """Field order per CP4 code, read from contracts/tools.md section 2.
+
+    The cells carry prose: "(required str)", "(required: `a` | `b`)", "then,
+    appended after the parent's five". Parenthesised asides are removed first,
+    so the backticked names left are exactly the fields, in order.
+    """
+    order = {}
+    for line in _CP4_CONTRACT_PATH.read_text(encoding="utf-8").splitlines():
+        m = _CP4_ROW.match(line)
+        if not m or m.group(1) not in CP4_MODELS:
+            continue
+        cell = _re.sub(r"\([^()]*\)", "", m.group(2).replace("\\|", "/"))
+        order[m.group(1)] = _re.findall(r"`([a-z_]+)`", cell)
+    return order
+
+
+class TestCP4ContractTableIsReadable:
+    def test_both_codes_are_found_in_the_contract_table(self):
+        assert set(_cp4_contract_field_order()) == set(CP4_MODELS)
+
+    def test_every_parsed_row_has_fields(self):
+        for code, fields in _cp4_contract_field_order().items():
+            assert len(fields) >= 4, (code, fields)
+
+
+class TestCP4FieldOrderMatchesContract:
+    """FR-035: declared order == the contract row, error_code leading."""
+
+    @pytest.mark.parametrize("code", sorted(CP4_MODELS))
+    def test_declared_field_order_matches_contract(self, code):
+        expected = _cp4_contract_field_order()[code]
+        declared = [f for f in CP4_MODELS[code].model_fields if f != "error_code"]
+        assert declared == expected, (code, declared, expected)
+
+    @pytest.mark.parametrize("code", sorted(CP4_MODELS))
+    def test_error_code_leads(self, code):
+        assert list(CP4_MODELS[code].model_fields)[0] == "error_code"
+
+    def test_the_parent_five_are_a_strict_prefix(self):
+        declared = [f for f in GrammarLoadUncleanDetail.model_fields if f != "error_code"]
+        assert declared[:5] == PARENT_GRAMMAR_LOAD_UNCLEAN_PREFIX
+        assert declared[5:] == [
+            "new_errors", "dropped_entries", "baseline_eligible_count", "eligible_count",
+        ]
+
+
+class TestCP4Validation:
+    @pytest.mark.parametrize("code", sorted(CP4_MODELS))
+    def test_examples_validate_through_the_union(self, code):
+        assert isinstance(validate_detail(CP4_EXAMPLES[code]), CP4_MODELS[code])
+
+    @pytest.mark.parametrize("code", sorted(CP4_MODELS))
+    def test_extra_fields_are_forbidden(self, code):
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(dict(CP4_EXAMPLES[code], override=True))
+
+    @pytest.mark.parametrize("value", ["morpher_null", "new_load_errors", "eligible_forms_dropped"])
+    def test_the_three_signals_validate(self, value):
+        validate_detail(dict(CP4_EXAMPLES["grammar_load_unclean"], signal=value))
+
+    @pytest.mark.parametrize("value", ["load_errors", "MORPHER_NULL", "override", ""])
+    def test_the_signal_enum_is_closed(self, value):
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(dict(CP4_EXAMPLES["grammar_load_unclean"], signal=value))
+
+    @pytest.mark.parametrize("value", ["this_run", "absent", "prior_run:" + "c" * 32])
+    def test_baseline_source_accepts_the_three_shapes(self, value):
+        validate_detail(dict(CP4_EXAMPLES["grammar_load_unclean"], baseline_source=value))
+
+    @pytest.mark.parametrize("value", ["prior_run", "prior_run:xyz", "flex_file", "PRIOR_RUN:" + "c" * 32])
+    def test_baseline_source_refuses_anything_else(self, value):
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(dict(CP4_EXAMPLES["grammar_load_unclean"], baseline_source=value))
+
+    @pytest.mark.parametrize("field", ["run_id", "started_at", "words_completed", "hint"])
+    def test_every_in_progress_field_is_required(self, field):
+        data = {k: v for k, v in CP4_EXAMPLES["parser_filing_in_progress"].items() if k != field}
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(data)
+
+    def test_contract_version_is_still_1_0(self):
+        assert CONTRACT_VERSION == "tool-responses/1.0"

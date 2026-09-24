@@ -1,0 +1,29 @@
+{
+  "scenario": "FR-036 auto-approval survival (from S2)",
+  "in_text": [
+    "49b432ad-c869-4719-b935-c112835a439a",
+    "f8ec860e-9574-4029-8af5-65f490b18067",
+    "e4b60810-ee50-44d6-b481-d57c2c50c760",
+    "6beb2de7-f442-4af8-b5af-2f38db15530c"
+  ],
+  "after": {
+    "49b432ad-c869-4719-b935-c112835a439a": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "f8ec860e-9574-4029-8af5-65f490b18067": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "e4b60810-ee50-44d6-b481-d57c2c50c760": {
+      "exists": true,
+      "user_opinion": "approves"
+    },
+    "6beb2de7-f442-4af8-b5af-2f38db15530c": {
+      "exists": true,
+      "user_opinion": "approves"
+    }
+  },
+  "verdict": true,
+  "recorded_at": "2026-09-24T15:49:48.280771+00:00"
+}

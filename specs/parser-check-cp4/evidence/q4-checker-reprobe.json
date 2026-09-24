@@ -1,0 +1,160 @@
+{
+  "question": "Q4 (FR-038): do the installed ParserCore / HermitCrab assemblies expose a public grammar-health checker the gate could call instead of its own diff?",
+  "install": "C:\\Program Files\\SIL\\FieldWorks 9",
+  "pattern": "(Check|Valid|Verif|Health|Diagnos|Problem|Lint|Audit)",
+  "assemblies": {
+    "ParserCore.dll": {
+      "version": "9.3.11.0",
+      "types": [
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.IHCLoadErrorLogger",
+          "matching_members": [
+            "InvalidAffixProcess",
+            "InvalidEnvironment",
+            "InvalidPhoneme",
+            "InvalidReduplicationForm",
+            "InvalidRewriteRule",
+            "InvalidShape",
+            "InvalidStrata"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.InvalidAffixProcessException",
+          "matching_members": [
+            "get_IsInvalidLhs"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.InvalidReduplicationFormException",
+          "matching_members": []
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.WordformUpdatedEventArgs",
+          "matching_members": [
+            "get_CheckParser"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.ParseResult",
+          "matching_members": [
+            "get_IsValid"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.ParseAnalysis",
+          "matching_members": [
+            "get_IsValid"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.ParseMorph",
+          "matching_members": [
+            "get_IsValid"
+          ]
+        },
+        {
+          "type": "SIL.FieldWorks.WordWorks.Parser.TaskReport",
+          "matching_members": [
+            "CheckDisposed"
+          ]
+        }
+      ]
+    },
+    "SIL.Machine.Morphology.HermitCrab.dll": {
+      "version": "3.8.2.0",
+      "types": [
+        {
+          "type": "SIL.Machine.Morphology.HermitCrab.AllomorphEnvironment",
+          "matching_members": [
+            "IsWordValid"
+          ]
+        },
+        {
+          "type": "SIL.Machine.Morphology.HermitCrab.InvalidShapeException",
+          "matching_members": []
+        },
+        {
+          "type": "SIL.Machine.Morphology.HermitCrab.MorphCoOccurrenceRule`1",
+          "matching_members": [
+            "IsWordValid"
+          ]
+        }
+      ]
+    },
+    "SIL.Machine.dll": {
+      "version": "3.8.2.0",
+      "types": [
+        {
+          "type": "SIL.Machine.Translation.InteractiveTranslator",
+          "matching_members": [
+            "get_IsSegmentValid"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.IQuotationMarkResolutionSettings",
+          "matching_members": [
+            "AreMarksAValidPair",
+            "IsValidClosingQuotationMark",
+            "IsValidOpeningQuotationMark"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.QuotationMarkStringMatch",
+          "matching_members": [
+            "IsValidClosingQuotationMark",
+            "IsValidOpeningQuotationMark"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.QuotationMarkUpdateFirstPass",
+          "matching_members": [
+            "CheckWhetherFallbackModeWillWork"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.QuotationMarkUpdateResolutionSettings",
+          "matching_members": [
+            "AreMarksAValidPair",
+            "IsValidClosingQuotationMark",
+            "IsValidOpeningQuotationMark"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.QuoteConventionDetectionResolutionSettings",
+          "matching_members": [
+            "AreMarksAValidPair",
+            "IsValidClosingQuotationMark",
+            "IsValidOpeningQuotationMark"
+          ]
+        },
+        {
+          "type": "SIL.Machine.PunctuationAnalysis.QuoteConventionSet",
+          "matching_members": [
+            "IsValidClosingQuotationMark",
+            "IsValidOpeningQuotationMark",
+            "MarksAreAValidPair"
+          ]
+        },
+        {
+          "type": "SIL.Machine.DataStructures.PriorityQueue`1",
+          "matching_members": [
+            "IsValidQueue"
+          ]
+        },
+        {
+          "type": "SIL.Machine.Corpora.UsfmVersificationError",
+          "matching_members": [
+            "CheckError"
+          ]
+        },
+        {
+          "type": "SIL.Machine.Annotations.Range`1",
+          "matching_members": [
+            "IsValidRange"
+          ]
+        }
+      ]
+    }
+  },
+  "recorded_at": "2026-09-24T14:54:17.260332+00:00"
+}

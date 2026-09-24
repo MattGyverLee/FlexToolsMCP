@@ -1,0 +1,41 @@
+{
+  "scenario": "S6: concurrency and a crash (US4; SC-006, SC-007 non-shared)",
+  "started": {
+    "status": "ok",
+    "error_code": null,
+    "run_id": "151ab8829371067d93bfe526402c8f77"
+  },
+  "second_request": {
+    "seconds": 0.001,
+    "error_code": "parser_filing_in_progress",
+    "run_id": "151ab8829371067d93bfe526402c8f77",
+    "started_at": "2026-09-24T14:49:01.290319+00:00",
+    "words_completed": 49,
+    "hint": "A filing job (151ab8829371067d93bfe526402c8f77) has been running on this project since 2026-09-24T14:49:01.290319+00:00. Watch it with flextools_parse_status(run_id='151ab8829371067d93bfe526402c8f77') rather than starting a second one; a new filing request is accepted as soon as it ends. Read-only parses and single-word tries are not blocked by it."
+  },
+  "try_word_during_filing_non_shared": {
+    "status": "error",
+    "error_code": "parser_filing_in_progress"
+  },
+  "first_run_state": "completed",
+  "crash": {
+    "run_id": "e119a0215246d08621c3e0f14e8f8026",
+    "words_completed_at_kill": 52,
+    "swept": [
+      "e119a0215246d08621c3e0f14e8f8026"
+    ],
+    "state_after_sweep": "crashed",
+    "new_request_after_restart": {
+      "error_code": "confirmation_required",
+      "message": "Filing would change this project, and nothing has been written yet. It may delete up to 73 analyses across 120 words. This is the preview. Read the plan, then resubmit the same call with confirmed=true and plan_id to file. Filing cannot be undone."
+    }
+  },
+  "verdicts": {
+    "sc006_refused_in_progress_under_1s": true,
+    "sc006_four_fields": true,
+    "non_shared_read_refused_under_m1": true,
+    "crash_marked_crashed": true,
+    "new_request_not_refused_in_progress": true
+  },
+  "recorded_at": "2026-09-24T14:49:39.491903+00:00"
+}

@@ -1090,6 +1090,25 @@ async def main():
         for _w in _stale_lock_warnings:
             _log_warning(_w)
 
+    # Parser-check CP4 (FR-028, R-11): a filing run the previous server
+    # process left saying `filing` belongs to a job nothing is executing; its
+    # in-memory claim died with that process. Mark its record `crashed` (log
+    # only; nothing touches a project) so a reader of the record sees how far
+    # it got and how to recover, and a new filing request is not refused.
+    try:
+        if __package__:
+            from .server.filing.claims import sweep_orphaned_filing_runs
+        else:
+            from server.filing.claims import sweep_orphaned_filing_runs
+        for _run_id in sweep_orphaned_filing_runs():
+            _log_warning(
+                f"Filing run {_run_id} was left mid-run by a previous server "
+                f"process; its record is now marked crashed. Words it filed "
+                f"stay filed -- see flextools_parse_log(run_id='{_run_id}')."
+            )
+    except Exception as _sweep_exc:  # noqa: BLE001 -- a sweep never blocks startup
+        _log_warning(f"Filing-run startup sweep failed: {_sweep_exc}")
+
     _log_start = _time_module.time()
     if api_index.liblcm:
         version = api_index.liblcm_version or "unknown"

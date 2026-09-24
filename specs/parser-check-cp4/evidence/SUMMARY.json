@@ -1,0 +1,121 @@
+{
+  "feature": "parser-check CP4 live verification",
+  "date": "2026-09-24",
+  "versions": {
+    "FieldWorks ParserCore.dll": "9.3.11.0",
+    "SIL.Machine.Morphology.HermitCrab.dll": "3.8.2.0",
+    "pyflexicon": "4.9.0"
+  },
+  "sources": [
+    "IndonesianHC-Complete (correctness)",
+    "Malay Parsing-20230810withHC (scale)",
+    "Sena 3 (XAmple-refusal path of L-0 only, on a scratch copy)"
+  ],
+  "copies": "every run on a fresh CP4-Scratch- copy, deleted afterwards with its backups (FR-037)",
+  "files": {
+    "l0-coexistence.json": {
+      "coexistence_on_non_shared": "FAIL",
+      "detail": "With the read worker holding a non-shared project (lock PID = the read worker's own interpreter), a second process's OpenProject(writeEnabled=True) raises FP_FileLockedError ('This project is in use by another program'). The same open succeeds once the read worker is released. The two opens cannot coexist; FR-027's 'try_word answers during filing' cannot hold on a non-shared project.",
+      "m1_outcome": "M-1 interim restriction STAYS (reads refused during filing on non-shared projects; the read worker is released before the writable open, now unconditionally on non-shared). Per T005, stop as needs_human for a maintainer amendment of FR-027.",
+      "filing_on_production_path": "completed, persisted: 1 word filed (reapproved 1, deleted 0 against a projected upper bound of 1); the .fwdata changed; a fresh read worker re-reads the parser-evaluated analysis afterwards",
+      "read_worker_release_rewrites_file": false,
+      "xample_refusal_path_rewrites_file": false,
+      "xample_note": "The memory-noted save (parse-worker-saves-xample-project) was NOT reproduced on the try_word engine-refusal path: the Sena 3 copy's sha256 and mtime are unchanged after the refused open and the release. Its root cause lies on a path that gets further than the engine gate (the original test_parse_live run).",
+      "defects_found_and_fixed_on_the_way": [
+        "parser_probe: Assembly.LoadFile did not resolve ParserCore's dependencies in a process that had not imported flexicon, so filing's preflight refused parser_core_missing on a healthy install (and the read-spine probe had the same latent failure); fixed with an AssemblyResolve handler over ParserCore's own folder",
+        "handlers/parse: the access gate refused the server's OWN read worker's lock as held_by_other; now recognised (worker reports its own pid in 'ready'; a venv launcher's pid is not the lock holder) and released before re-probing",
+        "filing worker: flexicon's HeadlessLcmUI.SynchronizeInvoke is None; HCParser's ParserModelChangeListener subscribes to change notifications, so FieldWorks' filer died with NullReferenceException in SendPropChangedNotifications; fixed with a HeadlessLcmUI subclass returning SIL.LCModel.Utils.SingleThreadedSynchronizeInvoke",
+        "runner: a filing run that stopped on an error and then saved recorded error=null; the cause is now recorded"
+      ]
+    },
+    "q1-moveconc.json": {
+      "segment_now_references_the_wordform": false,
+      "slot_removed_from_segment": true,
+      "count_before": 38,
+      "count_after": 37
+    },
+    "q2-agent.json": "On both designated projects (ActiveParser == HC) the HermitCrab agent (CmAgentTags.kguidAgentHermitCrabParser = 5093d7d7-4f18-4aad-8c86-88389476df15, named 'HCParser') is owned by LangProject.AnalyzingAgentsOC, and the production probe (probe_hc_agent via DefaultParserAgent) reports state=present.",
+    "q3-staleness.json": "No. Over 5 filed words the filing worker's per-word IsUpToDate() check never came back false: 0 mid-run grammar reloads. Filing analyses does not invalidate the HermitCrab grammar; R-05's per-word gate costs one IsUpToDate() call per word and reloads only when the grammar really changes.",
+    "q4-checker-reprobe.json": "Run live: no public grammar-health checker in ParserCore 9.3.11.0 / HermitCrab 3.8.2.0; the gate keeps its own diff (parent SPEC 9.5.3)",
+    "q5-checksum.json": "Yes. Run 2, in a new filing worker process, reports unchanged = 5 of 5 and filed_words = []; the .fwdata is byte-identical before and after run 2. Wordform.Checksum == ParseResult.GetHashCode() holds across processes, so FLEx's own skip works for MCP runs.",
+    "s1-preview-writes-nothing.json": {
+      "write_disabled_refused": true,
+      "no_run_started_by_refusal_or_preview": true,
+      "preview_is_confirmation_required": true,
+      "fwdata_byte_identical": true,
+      "sc003_never_parsed_bound_is_zero": true
+    },
+    "s2-auto-approval-survival.json": true,
+    "s2-projection-vs-actual.json": {
+      "no_in_text_analysis_projected": true,
+      "every_seeded_deletable_projected": true,
+      "human_made_unevaluated_counted_R01": true,
+      "actual_subset_of_projection_SC002": true,
+      "every_deleted_has_a_pre_deletion_capture": true,
+      "confirmed_after_lines_match": true,
+      "in_text_survive": true,
+      "in_text_now_user_approved_FR036": true,
+      "s3_overwrite_projected": true,
+      "s3_overwrite_not_in_deletion": true,
+      "s3_overwrite_listed_with_prior": true,
+      "s3_disapproval_now_approval": true
+    },
+    "s3-disapproval-overwrite.json": {
+      "s3_overwrite_projected": true,
+      "s3_overwrite_not_in_deletion": true,
+      "s3_overwrite_listed_with_prior": true,
+      "s3_disapproval_now_approval": true
+    },
+    "s4-refuse-to-file.json": {
+      "a_new_load_errors_refused": true,
+      "a_baseline_is_prior_run": true,
+      "b_eligible_forms_dropped_refused": true,
+      "b_names_the_dropped_entry": true,
+      "c_clean_preview_offered": true,
+      "c_confirmed_call_refused": true,
+      "c_nothing_written": true
+    },
+    "s4d-midrun-and-shared-read.json": {
+      "foreign_edit_survived_filing_save": true,
+      "sc007_try_word_answered_during_run": true,
+      "s4d_refused_midrun": false,
+      "s4d_filed_so_far_reported": true
+    },
+    "s5-backup-outcomes.json": {
+      "default_plan_will_be_taken": true,
+      "default_backup_under_backups_dir": true,
+      "default_backup_not_under_projects": true,
+      "disabled_plan_says_so": true,
+      "disabled_result_warns": true,
+      "disabled_record_warns": true,
+      "require_confirmation_false_still_requires_it_SC008": true,
+      "setting_disclosed": true
+    },
+    "s6-concurrency.json": {
+      "sc006_refused_in_progress_under_1s": true,
+      "sc006_four_fields": true,
+      "non_shared_read_refused_under_m1": true,
+      "crash_marked_crashed": true,
+      "new_request_not_refused_in_progress": true
+    },
+    "s8-cancel.json": {
+      "state_cancelled": true,
+      "filed_words_listed": true,
+      "stopped_early": true,
+      "filed_words_persisted": true,
+      "cancel_note_given": true
+    },
+    "t081-eligibility-parity-scale.json": {
+      "agree": true,
+      "port_count": 277,
+      "loader_count": 277
+    },
+    "t081-eligibility-parity.json": {
+      "agree": true,
+      "port_count": 41,
+      "loader_count": 41
+    }
+  },
+  "run_mode": "live",
+  "run_mode_note": "Every file here came from a live run against FieldWorks on a fresh CP4-Scratch- copy (its name is recorded inside each file); nothing here is mocked. S1, S2+S3 and T081 were re-run independently by lex-verification (reviews/lex-verification.md)."
+}

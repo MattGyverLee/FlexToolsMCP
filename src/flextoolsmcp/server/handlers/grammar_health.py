@@ -256,23 +256,15 @@ async def handle_flextools_grammar_health(args: dict) -> List[TextContent]:
             session=session_state.summary(),
         )
     if resolved:
-        # Issue #168: adopt unconditionally, not only on a spelling fix --
-        # capture the PREVIOUS session project before overwriting so a
-        # genuine A->B change (issue #169's guardrail) can be logged below.
-        _prev_project_name = getattr(session_state, "project_name", "") or ""
-        if _prev_project_name and resolved != _prev_project_name:
-            try:
-                from ..kernel import get_operations_logger
-            except (ImportError, ValueError):
-                from server.kernel import get_operations_logger
-            _adopt_logger = get_operations_logger()
-            if _adopt_logger:
-                _adopt_logger.info(
-                    f"[PROJECT-ADOPTED] flextools_grammar_health: session "
-                    f"project changed '{_prev_project_name}' -> '{resolved}'"
-                )
-        session_state.project_name = resolved
-        project_name = resolved
+        try:
+            from ...project_adoption import adopt_resolved_project
+        except ImportError:
+            from project_adoption import adopt_resolved_project
+        project_name = adopt_resolved_project(
+            session_state,
+            resolved,
+            log_context="flextools_grammar_health",
+        )
 
     scan_result = await run_scan_module(
         module_import_path=SCAN_MODULE_IMPORT_PATH,

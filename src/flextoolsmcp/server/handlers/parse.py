@@ -442,23 +442,15 @@ def _resolve_project(project_name: Optional[str]):
             session=session_state.summary(),
         )
     if resolved:
-        # Issue #168: adopt unconditionally, not only on a spelling fix --
-        # capture the PREVIOUS session project before overwriting so a
-        # genuine A->B change (issue #169's guardrail) can be logged below.
-        _prev_project_name = getattr(session_state, "project_name", "") or ""
-        if _prev_project_name and resolved != _prev_project_name:
-            try:
-                from ..kernel import get_operations_logger
-            except (ImportError, ValueError):
-                from server.kernel import get_operations_logger
-            _adopt_logger = get_operations_logger()
-            if _adopt_logger:
-                _adopt_logger.info(
-                    f"[PROJECT-ADOPTED] flextools_try_word: session project "
-                    f"changed '{_prev_project_name}' -> '{resolved}'"
-                )
-        session_state.project_name = resolved
-        name = resolved
+        try:
+            from ...project_adoption import adopt_resolved_project
+        except ImportError:
+            from project_adoption import adopt_resolved_project
+        name = adopt_resolved_project(
+            session_state,
+            resolved,
+            log_context="flextools_try_word",
+        )
     return name, None
 
 

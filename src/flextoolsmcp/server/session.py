@@ -146,6 +146,9 @@ class SessionState:
     api_mode: str = "flexicon"            # API mode: flexicon, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
+    # Issue #174: set when a call re-points an already-set session project;
+    # consumed once into the next tool response envelope.
+    project_adopted_notice: Optional[Dict[str, Any]] = None
     write_enabled: bool = False            # Write access: False = read-only/dry-run
     # Diagnostic-report feature (spec section 4): verbatim human request text for
     # the current turn, set by flextools_start. run_module falls back to this when

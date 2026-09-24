@@ -7,8 +7,6 @@ log spans while operations.jsonl and per-session logs kept the same activity.
 import logging
 from pathlib import Path
 
-import pytest
-
 from server import kernel as kernel_mod
 
 

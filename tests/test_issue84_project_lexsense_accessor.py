@@ -25,6 +25,7 @@ import pathlib
 
 import pytest
 
+from conftest import require_live_flexicon
 from flextoolsmcp.server import APIIndex, get_index_dir
 from flextoolsmcp.server.constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES
 from flextoolsmcp.server.handlers.execution import _try_auto_fix_typos
@@ -282,7 +283,7 @@ class TestTemplateImportsResolve:
         """
         import importlib
 
-        _require_live_flexicon()
+        require_live_flexicon()
         tree = ast.parse((TEMPLATE_DIR / template).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom):
@@ -312,7 +313,7 @@ class TestAliasTableMatchesLiveInstall:
     """
 
     def test_declared_aliases_are_exactly_the_live_phantoms(self):
-        flexicon = _require_live_flexicon()
+        flexicon = require_live_flexicon()
         live = {n for n in dir(flexicon.FLExProject) if not n.startswith("_")}
         shorthands = {
             op[: -len("Operations")] for op in KNOWN_OPERATIONS if op.endswith("Operations")
@@ -324,7 +325,7 @@ class TestAliasTableMatchesLiveInstall:
         )
 
     def test_alias_targets_exist_on_the_live_class(self):
-        flexicon = _require_live_flexicon()
+        flexicon = require_live_flexicon()
         live = {n for n in dir(flexicon.FLExProject) if not n.startswith("_")}
         for phantom, correct in PROJECT_ACCESSOR_ALIASES.items():
             assert correct in live, f"{phantom} -> {correct} is not real either"

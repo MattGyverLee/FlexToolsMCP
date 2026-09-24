@@ -63,7 +63,8 @@ except ImportError:
 # Import validators with fallback
 try:
     from ..validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
@@ -80,7 +81,8 @@ try:
     )
 except ImportError:
     from server.validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -128,6 +130,22 @@ from ..response_keys import (
     KEY_DIAGNOSTIC_REPORT,
     KEY_DISCOVERY_REDIRECT, KEY_CAPABILITY_SUGGESTIONS, KEY_EXECUTED,
 )
+
+
+def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Stamp TOOL-CONTRACT envelope keys on run_module JSON payloads (issue #119).
+
+    Preflight rejections already go through ``error_response`` / discovery
+    redirects through ``build_response_with_context``; the subprocess execution
+    path returned the raw runner dict without ``_contract`` or ``status``.
+    """
+    if KEY_STATUS not in payload:
+        if payload.get("success") is False:
+            payload[KEY_STATUS] = "error"
+        else:
+            payload[KEY_STATUS] = "ok"
+    return build_response_with_context(payload, include_session=True)
+
 
 # Issue #46: auto-fix config
 try:
@@ -298,9 +316,14 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
             return False, f"flexicon not found: {e}"
         except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
             return False, f"flexicon installed but not initializable: {e}"
-        # Check version is available (flexicon uses 'version' not '__version__')
-        if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-            return False, "flexicon missing version info"
+        # Issue #146: do not treat version/__version__ as a capability proxy.
+        # Old builds can expose version while lacking every token this runner
+        # assumes; flexicon.CAPABILITIES is the supported probe surface.
+        if getattr(flexicon, "CAPABILITIES", None) is None:
+            return False, (
+                "flexicon missing CAPABILITIES (upgrade pyflexicon; "
+                "version attributes are not a capability probe)"
+            )
         return True, ""
 
     elif api_mode == "flexlibs_stable":
@@ -3089,8 +3112,22 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
         )
+        # Issue #95: return the structured TOOL-CONTRACT rejection (status,
+        # error_code, _contract, message) with the same fix guidance the log
+        # already records -- not a legacy ad-hoc dict whose ``error`` string
+        # collides with the nested deprecated shape.
         return _attach_assistance_if_loop(
-            [TextContent(type="text", text=json.dumps(guidance, indent=2))],
+            error_response(
+                "unprotected_writes",
+                guidance["message"],
+                mutations_found=guidance.get("mutations_found"),
+                why=guidance.get("why"),
+                fix_pattern=guidance.get("fix_pattern"),
+                templates_to_review=guidance.get("templates_to_review"),
+                next_steps=guidance.get("next_steps"),
+                mutating_calls=mutating[:20],
+                op_id=op_id,
+            ),
             error_code="unprotected_writes",
             code_size_bytes=_code_size_bytes,
         )
@@ -4002,6 +4039,23 @@ class SimpleReporter:
         print(payload)
 
 
+def _maybe_refresh_from_disk(project):
+    # Issue #147: a foreign FLEx save while this runner holds the project open
+    # leaves the in-memory cache stale; reconcile before CloseProject() commits.
+    if not WRITE_ENABLED or project is None:
+        return
+    try:
+        import flexicon
+
+        if "refresh-from-disk" not in getattr(flexicon, "CAPABILITIES", ()):
+            return
+        refresh = getattr(project, "RefreshFromDisk", None)
+        if callable(refresh):
+            refresh()
+    except Exception:
+        pass
+
+
 def run_module():
     result = {
         "success": False,
@@ -4338,6 +4392,7 @@ def run_module():
         # either a successful or an already-failed script body.
         if project:
             try:
+                _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
                 _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
@@ -4403,12 +4458,12 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     try:
         # Determine if we need the write lock. Issue #93 escalation: this
@@ -4691,12 +4746,12 @@ MODULE_CODE = {code}
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
             )
-            return [TextContent(type="text", text=json.dumps({
+            return json_response(_finalize_run_module_response({
                 "success": False,
                 "error": err_msg,
                 "warnings": warnings,
                 "op_id": op_id,
-            }, indent=2))]
+            }))
 
         # Issue #35: extract user result payload (report.Result) before the main envelope.
         _user_result_sentinel = "===FLEXTOOLS_USER_RESULT==="
@@ -4802,6 +4857,17 @@ MODULE_CODE = {code}
                 _skip_generic_attr_paths = True
             else:
                 _skip_generic_attr_paths = False
+            wrapper_internal = detect_flexicon_internal_attribute_error(
+                execution_result["error"]
+            )
+            if wrapper_internal.get("is_wrapper_internal"):
+                execution_result["wrapper_internal_error_detected"] = True
+                execution_result["error_type"] = "WrapperInternalError"
+                execution_result["object_type"] = wrapper_internal["object_type"]
+                execution_result["property_name"] = wrapper_internal["property_name"]
+                execution_result["help"] = wrapper_internal["suggestion"]
+                execution_result["raising_frame"] = wrapper_internal.get("raising_frame")
+                _skip_generic_attr_paths = True
             polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
             # Issue #39: Python's own "Did you mean: 'X'?" suffix is authoritative
             # about what exists on the live object, so for a typo it beats any
@@ -5006,12 +5072,18 @@ MODULE_CODE = {code}
             # error_type when available; fall back to a generic bucket.
             runtime_error_code = execution_result.get("error_type") or "runtime_error"
             return _attach_assistance_if_loop(
-                [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))],
+                json_response(
+                    _finalize_run_module_response(execution_result),
+                    ensure_ascii=False,
+                ),
                 error_code=runtime_error_code,
                 code_size_bytes=code_size_bytes,
             )
 
-        return [TextContent(type="text", text=json.dumps(execution_result, indent=2, ensure_ascii=False))]
+        return json_response(
+            _finalize_run_module_response(execution_result),
+            ensure_ascii=False,
+        )
 
     except subprocess.TimeoutExpired:
         err_msg = "Execution timed out after {} seconds".format(timeout_seconds)
@@ -5019,12 +5091,12 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     except Exception as e:
         import traceback as _tb
@@ -5034,12 +5106,12 @@ MODULE_CODE = {code}
             error=err_msg, error_type=type(e).__name__,
             traceback_text=_tb.format_exc(),
         )
-        return [TextContent(type="text", text=json.dumps({
+        return json_response(_finalize_run_module_response({
             "success": False,
             "error": err_msg,
             "warnings": warnings,
             "op_id": op_id,
-        }, indent=2))]
+        }))
 
     finally:
         # Clean up temporary file
@@ -5170,6 +5242,21 @@ class SimpleReporter:
         print(payload)
 
 
+def _maybe_refresh_from_disk(project):
+    if not WRITE_ENABLED or project is None:
+        return
+    try:
+        import flexicon
+
+        if "refresh-from-disk" not in getattr(flexicon, "CAPABILITIES", ()):
+            return
+        refresh = getattr(project, "RefreshFromDisk", None)
+        if callable(refresh):
+            refresh()
+    except Exception:
+        pass
+
+
 def run_scan():
     result = {
         "success": False,
@@ -5272,6 +5359,7 @@ def run_scan():
     finally:
         if project is not None:
             try:
+                _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
                 _teardown_msg = "{}: {}".format(type(e).__name__, str(e))

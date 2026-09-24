@@ -14,6 +14,7 @@ import json
 import asyncio
 import sys
 import os
+import traceback
 import warnings
 from pathlib import Path
 from typing import Any, Optional, List, Dict, TYPE_CHECKING
@@ -73,6 +74,7 @@ if __package__:
         clear_file_discovery_cache,
     )
     from .server.startup_notices import record_index_refresh_failure
+    from .response_utils import error_response
 else:
     from server.kernel import (
         get_operations_logger,
@@ -87,6 +89,7 @@ else:
         clear_file_discovery_cache,
     )
     from server.startup_notices import record_index_refresh_failure
+    from response_utils import error_response
 _local_imports_done = _time_module.time()
 
 # Safe logging helper that works even before initialization
@@ -450,6 +453,13 @@ def _load_library_api_index(
         try:
             with open(api_path, "r", encoding="utf-8") as f:
                 setattr(index, attr_name, json.load(f))
+            if attr_name == "liblcm":
+                index.liblcm_entities_epoch += 1
+                try:
+                    from flextoolsmcp.server.handlers.api import clear_inherited_members_cache
+                except ImportError:
+                    from server.handlers.api import clear_inherited_members_cache
+                clear_inherited_members_cache()
             extracted_version = _extract_file_version(api_path)
             setattr(index, version_attr, extracted_version)
             if installed_version:
@@ -510,6 +520,9 @@ class APIIndex:
     liblcm_version: str | None = None
     flexicon_version: str | None = None
     flexlibs_stable_version: str | None = None
+    # Bumped on each LibLCM index load/reload (issue #150): invalidates the
+    # inherited-members memo keyed on entities mappings.
+    liblcm_entities_epoch: int = 0
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":
@@ -981,7 +994,21 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # can inherit prior session state (e.g. write_enabled) on re-init.
         # Pydantic v2's `model_fields_set` is exactly this set, no re-dump needed.
         dumped["_user_provided_keys"] = validated_args.model_fields_set
-    result = await handler(dumped)
+    try:
+        result = await handler(dumped)
+    except Exception as exc:
+        tb = traceback.format_exc()
+        if operations_logger:
+            operations_logger.error(
+                f"[HANDLER EXCEPTION] {name}: {type(exc).__name__}: {exc}\n{tb}"
+            )
+        return error_response(
+            "internal_error",
+            f"Unhandled error in tool {name}: {exc}",
+            error_type=type(exc).__name__,
+            traceback=tb,
+            tool=name,
+        )
 
     # Issue #53: attach the cold-start auto-init note to the response body
     # (rather than returning it as a separate signal) so it survives whatever
@@ -1007,7 +1034,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             try:
                 parsed = json.loads(result_text)
                 if isinstance(parsed, dict):
-                    err_code = parsed.get("error")
+                    err_code = parsed.get("error_code")
+                    if not err_code:
+                        nested = parsed.get("error")
+                        if isinstance(nested, dict):
+                            err_code = nested.get("code")
+                        else:
+                            err_code = nested
             except (ValueError, TypeError):
                 err_code = None
         if err_code:

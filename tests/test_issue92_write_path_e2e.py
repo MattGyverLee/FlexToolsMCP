@@ -50,6 +50,8 @@ import uuid
 
 import pytest
 
+from conftest import require_live_flexicon
+
 pytestmark = pytest.mark.requires_flex
 
 _SCRATCH_PROJECT_ENV = "FLEXTOOLSMCP_E2E_SCRATCH_PROJECT"
@@ -90,8 +92,6 @@ def test_setgloss_persists_across_close_and_reopen():
     re-opening the project in a SEPARATE subprocess (a second
     flextools_run_module call) and reading the value back.
     """
-    from conftest import require_live_flexicon
-
     require_live_flexicon()
     project_name = _scratch_project_name()
 
@@ -199,8 +199,6 @@ def test_applysyncableproperties_persists_across_close_and_reopen():
     multistring, serialized as a ``{ws_id: text}`` dict) and
     ``ScientificName`` (a plain ``str``).
     """
-    from conftest import require_live_flexicon
-
     require_live_flexicon()
     project_name = _scratch_project_name()
 

@@ -76,7 +76,7 @@ import os
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from .priority import DEFAULT_SINGLE_WORD_PRIORITY, Priority
 from .queue import ParseQueue
@@ -384,11 +384,50 @@ class ParseRunner:
 
     def read_worker_busy(self, project_name: str) -> bool:
         """Is any live run using this project's shared read worker?"""
+        return self.worker_busy(project_name, role=SHARED_ROLE)
+
+    def worker_busy(self, project_name: str, *, role: str) -> bool:
+        """Is any live run using this project's worker of the given role?
+
+        Generalizes `read_worker_busy` (SHARED_ROLE only) to any role, so a
+        write gate that finds the lock held by a MEASUREMENT_ROLE worker can
+        ask the same question (#223).
+        """
         return any(
             not other.is_terminal and other.project_name == project_name
-            and other.worker_role == SHARED_ROLE
+            and other.worker_role == role
             for other in self._runs.values()
         )
+
+    def active_run_ids(self, project_name: str, *, role: str) -> List[str]:
+        """Non-terminal run IDs on this project's worker of the given role.
+
+        For a refusal that needs to NAME the run occupying our own worker
+        (#223), rather than just saying "busy".
+        """
+        return [
+            other.run_id for other in self._runs.values()
+            if not other.is_terminal and other.project_name == project_name
+            and other.worker_role == role
+        ]
+
+    def own_worker_role_for_pid(self, project_name: str, pid: Optional[int]) -> Optional[str]:
+        """Which role (if any) of this project's own workers holds PID `pid`?
+
+        Checks every role the pool is tracking for this project (SHARED_ROLE
+        and MEASUREMENT_ROLE), not just the shared read worker -- a write
+        gate's probe can find the lock held by either (#223). `None` if
+        `pid` is `None` or it does not match any worker this server started.
+        """
+        if pid is None:
+            return None
+        for role, worker in self._pool.workers_for(project_name).items():
+            worker_pid = getattr(worker, "worker_pid", None)
+            if not isinstance(worker_pid, int):
+                worker_pid = getattr(worker, "pid", None)
+            if worker_pid == pid:
+                return role
+        return None
 
     def mark_read_worker_stale(self, project_name: str) -> None:
         """Recycle this project's read worker before its next preflight read.

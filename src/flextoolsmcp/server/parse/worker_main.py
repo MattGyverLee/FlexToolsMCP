@@ -201,10 +201,15 @@ __all__ = [
 #: refuses a worker whose protocol it does not know rather than guessing.
 PROTOCOL_VERSION = 1
 
-#: How long the worker sits idle before releasing the project and exiting.
-#: Generous enough that a linguist thinking between words does not pay a
-#: grammar reload, short enough that a forgotten worker does not hold a
-#: `.fwdata` lock for the rest of the day (issue #57).
+#: How long the worker PROCESS sits idle before exiting.
+#:
+#: #223: this no longer bounds how long the project (and its `.fwdata`
+#: lock) stays held -- that is released the moment the queue empties
+#: (`ParseWorker._release_if_idle`), independent of this timeout. What
+#: this still bounds is how long the warm process (and its pythonnet /
+#: CLR bridge) is kept around so a later request in the same window skips
+#: process-startup cost; it still pays again for `OpenProject()` and the
+#: first grammar load either way (`ParseWorker._ensure_project_open`).
 DEFAULT_IDLE_TIMEOUT_SECONDS = 600.0
 
 _ENV_IDLE_TIMEOUT = "FLEXTOOLSMCP_PARSE_WORKER_IDLE_TIMEOUT"
@@ -310,6 +315,26 @@ class _ParseBackend:
     surface this small is what makes the stub an honest stand-in rather
     than a simplification that hides the parts that will actually be hard.
     """
+
+    def is_open(self) -> bool:
+        """Does this backend currently hold a project open (#223)?
+
+        Default True: a backend with no project-open concept (the stub) is
+        always ready. `_RealBackend` is the only implementation that can
+        answer False, once `release()` has dropped the project between
+        requests.
+        """
+        return True
+
+    def open(self) -> None:
+        """(Re)open whatever `is_open()` reports as closed. Default no-op.
+
+        Called by `ParseWorker._ensure_project_open()` before any request
+        touches the backend, so a `release()` taken while idle (#223) is
+        reversed on demand rather than left for the worker's whole
+        remaining life.
+        """
+        return None
 
     def preflight(self) -> None:
         """The engine gate. Called FIRST, before anything else per request.
@@ -457,6 +482,21 @@ class _StubBackend(_ParseBackend):
         #: the deterministic default below.
         self.analyses_by_word: dict[str, list] = {}
         self.human_by_word: dict[str, list] = {}
+        #: #223: modeled "project open" state, so a test can assert the
+        #: worker released it as soon as it went idle and reopened it for a
+        #: later request. True at construction -- `main()` never calls
+        #: `open()` for the stub branch, so it starts ready like the real
+        #: backend does after its own startup `open()`.
+        self._project_open = True
+        self.open_count = 0
+        self.release_count = 0
+
+    def is_open(self) -> bool:
+        return self._project_open
+
+    def open(self) -> None:
+        self._project_open = True
+        self.open_count += 1
 
     def ensure_grammar(self, run_id: str) -> bool:
         if self._loaded:
@@ -678,6 +718,8 @@ class _StubBackend(_ParseBackend):
 
     def release(self) -> None:
         self._loaded = False
+        self._project_open = False
+        self.release_count += 1
 
 
 def headless_ui_kwargs(flex_project_class: Any) -> dict[str, Any]:
@@ -819,8 +861,26 @@ class _RealBackend(_ParseBackend):
 
     # -- lifetime ---------------------------------------------------------
 
+    def is_open(self) -> bool:
+        """Is the project currently open (#223)?"""
+        return self._project is not None
+
     def open(self) -> None:
-        """Open the project read-only. Called once, at worker startup.
+        """Open the project read-only.
+
+        Called at worker startup, AND -- since #223 -- again whenever
+        `ParseWorker._ensure_project_open()` finds the project closed
+        because it was released while idle (`release()` below). Safe to
+        call repeatedly in one process: `FLExInitialize()` / `Sldr.Initialize()`
+        are documented as no-ops when already initialized
+        (`flexicon/code/FLExInit.py`, "repeated FLExInitialize() calls [are]
+        a no-op -- examples and per-test setUp rely on that"), and each call
+        here constructs a brand-new `FLExProject()` / `LcmCache`, which is
+        exactly what makes `ParserOperations._CurrentHandle` discard and
+        rebuild the grammar automatically on the next `project.Parser` call
+        (`flexicon/code/Parser/ParserOperations.py`, `_parser_cache is not
+        cache`) -- no special "reload the grammar" code is needed on our
+        side for that part.
 
         `writeEnabled=False` is not defensive decoration: FR-002 says the
         parser area exposes no way to write, and this checkpoint keeps that
@@ -889,8 +949,23 @@ class _RealBackend(_ParseBackend):
         self._project = project
 
     def release(self) -> None:
-        """Close the project and drop the grammar. Safe to call twice."""
+        """Close the project and drop the grammar. Safe to call twice.
+
+        #223: also called between requests now, whenever the worker goes
+        idle with nothing in flight -- not only once, at the end of the
+        worker's whole life. That makes `_wordforms_by_ws` (`_wordform_index`
+        above) load-bearing to clear here: its entries are live
+        `IWfiWordform` objects read off `project.Wordforms.GetAll()`
+        (`_wordform_index`, this class), bound to THIS `LcmCache`. A later
+        `open()` builds a brand-new cache (`FLExProject()` + `OpenProject()`
+        again), so reusing them would touch objects the disposed cache
+        already tore down. The grammar itself needs no matching code here:
+        `ParserOperations._CurrentHandle` already discards and rebuilds it
+        by comparing cache identity (see `open()`'s docstring) the next
+        time anything asks `project.Parser` for a fresh `self._project`.
+        """
         self._grammar_loaded = False
+        self._wordforms_by_ws = None
         project, self._project = self._project, None
         if project is not None:
             try:
@@ -1851,7 +1926,13 @@ class _SpecView:
 
 
 class ParseWorker:
-    """One worker, one project, one held grammar.
+    """One worker, one project, at most one held grammar at a time.
+
+    #223: the project (and its grammar) is open only while something is
+    actually in flight or the queue has not yet gone idle since the last
+    request -- see `run()`'s docstring, `_ensure_project_open` and
+    `_release_if_idle`. Not "one project, held for the worker's life": that
+    was the bug.
 
     Split deliberately from `main()` so the whole request/response cycle is
     testable in-process against the stub backend without spawning anything.
@@ -2059,6 +2140,23 @@ class ParseWorker:
         reported here, between words, rather than from `_parse_one` -- the
         queue discards a cancelled run's words at dequeue and `_parse_one`
         never sees them.
+
+        **THE PROJECT (AND ITS LOCK) IS RELEASED AS SOON AS THE QUEUE IS
+        EMPTY, NOT ONLY WHEN THE PROCESS EXITS (#223).** Holding
+        The project's fwdata lock WHILE a parse is running is fine and
+        unchanged -- that is every iteration where `word is not None`. What
+        changed is the gap AFTER a request's results are back and BEFORE
+        the next one, if any, arrives within `_idle_timeout`: this worker
+        used to keep the project (and the lock) open for that whole
+        window, up to `DEFAULT_IDLE_TIMEOUT_SECONDS`; it now drops it the
+        moment the queue empties (`_release_if_idle`) and reopens on
+        demand (`_ensure_project_open`, called from `_parse_one`,
+        `_drain_resolves` and `_drain_controls`) if another request lands
+        before the PROCESS itself times out. The process still lives out
+        `_idle_timeout` so a request in that window reuses the warm
+        interpreter/pythonnet bridge; it pays again for `OpenProject()` and
+        the first grammar load, which `_ensure_project_open` accounts for
+        by invalidating this worker's own caches too (see its docstring).
         """
         while True:
             self._drain_cancellations()
@@ -2074,7 +2172,12 @@ class ParseWorker:
                 self._parse_one(word)
                 continue
 
-            # Queue empty. Now -- and only now -- is it safe to stop.
+            # Queue empty and nothing else pending (both drains above are
+            # no-ops when they have nothing to answer): nothing is in
+            # flight, so the lock has no reason to still be held (#223).
+            self._release_if_idle()
+
+            # Now -- and only now -- is it safe to stop the PROCESS.
             if self._draining.is_set():
                 self._exit_reason = "shutdown"
                 break
@@ -2090,6 +2193,45 @@ class ParseWorker:
 
         self._drain_cancellations()
         return self._exit_reason
+
+    def _ensure_project_open(self) -> None:
+        """Reopen the project if `_release_if_idle` closed it (#223).
+
+        Called before anything actually touches the backend: at the top of
+        `_parse_one`, and inside `_drain_resolves` / `_drain_controls` once
+        they know they have a pending message to answer. A no-op when the
+        project is already open (the common case: most requests land while
+        the project never closed at all, e.g. mid-batch).
+
+        Anything THIS worker cached from the closed project is invalid the
+        instant it reopens, not just the backend's own state
+        (`_RealBackend.release`'s docstring covers `_wordforms_by_ws`):
+        `self._index` (`LexiconIndex`, built from `_backend.lexicon_rows()`)
+        holds entry/MSA **HVOs**, and an HVO "is a session-scoped handle
+        that liblcm renumbers on every cache load" (this module,
+        `_batch_parse`'s docstring, issue #103) -- reusing it against a
+        newly-opened cache would resolve to the wrong entries, or none.
+        `self._load_baseline` describes a specific grammar load that no
+        longer exists once the grammar is rebuilt, so it is dropped too
+        rather than served stale until the next load overwrites it.
+        """
+        if self._backend.is_open():
+            return
+        self._backend.open()
+        self._index = None
+        self._load_baseline = None
+
+    def _release_if_idle(self) -> None:
+        """Drop the project -- and its fwdata lock -- now that nothing is
+        in flight (#223), rather than waiting for `_idle_timeout`.
+
+        A no-op when the backend is already closed (checked here rather
+        than relying solely on `_RealBackend.release()`'s own idempotence,
+        so the common already-idle poll tick does not even call into the
+        backend).
+        """
+        if self._backend.is_open():
+            self._backend.release()
 
     def _drain_resolves(self) -> None:
         """Answer every parked resolve request. Runs on the main loop only.
@@ -2111,6 +2253,7 @@ class ParseWorker:
             pending, self._resolve_pending = self._resolve_pending, []
         if not pending:
             return
+        self._ensure_project_open()
 
         from .resolver import LexiconIndex, resolve_spec
 
@@ -2187,6 +2330,9 @@ class ParseWorker:
         """
         with self._resolve_lock:
             pending, self._control_pending = self._control_pending, []
+        if not pending:
+            return
+        self._ensure_project_open()
         for message in pending:
             request_id = message.get("request_id")
             try:
@@ -2300,6 +2446,11 @@ class ParseWorker:
             return
 
         self._note_interleave(word)
+        # #223: reopen first if `_release_if_idle` closed the project since
+        # the last word -- covers BOTH the gated path (`preflight()` inside
+        # `_before_parse`) and the batch path, which skips `preflight()`
+        # for a word carrying `engine_at_submission` (see `_before_parse`).
+        self._ensure_project_open()
 
         try:
             load_started = self._before_parse(word, meta)
@@ -2644,7 +2795,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         type=float,
         default=None,
         help=(
-            "Seconds of inactivity before releasing the project and exiting. "
+            "Seconds of inactivity before this PROCESS exits (#223: the "
+            "project, and its lock, is released as soon as the queue is "
+            "idle, not only at process exit -- this bounds how long the "
+            "warm process is kept around for a later request). "
             f"Default {DEFAULT_IDLE_TIMEOUT_SECONDS}s, or ${_ENV_IDLE_TIMEOUT}."
         ),
     )

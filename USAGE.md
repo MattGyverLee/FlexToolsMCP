@@ -70,6 +70,7 @@ server itself. Response shapes and error codes are in
 | `flextools_parse_log` | Read one section of a parse run's record back from disk |
 | `flextools_parse_diff` | Compare two batch runs word by word -- did a grammar edit help? |
 | `flextools_parse_cancel` | Cancel a parse run by its handle -- it stops at the next word boundary |
+| `flextools_parse_release` | Release this server's own idle parse worker(s) for a project, dropping the fwdata lock |
 
 ## API Modes
 

@@ -64,7 +64,7 @@ from ..parse.measure import (
 from ..parse.priority import Priority
 from ..parse.runner import ParseRunner
 from ..parse.stages import RunStage
-from ..parse.worker_client import WorkerError
+from ..parse.worker_client import SHARED_ROLE, WorkerError
 
 try:
     from ...response_utils import build_response_with_context, error_response
@@ -101,6 +101,18 @@ def get_runner() -> ParseRunner:
     global _runner
     if _runner is None:
         _runner = ParseRunner()
+    return _runner
+
+
+def peek_runner() -> Optional[ParseRunner]:
+    """The server's `ParseRunner` if one already exists, without creating it.
+
+    For call sites that only want to check for an existing worker (the
+    `run_module` write gate's own-worker detection, and
+    `flextools_parse_release`, #223) -- `get_runner()` would spin one up
+    just to find it empty, which would spawn a subprocess nobody asked for
+    and then immediately have nothing to release.
+    """
     return _runner
 
 
@@ -1377,16 +1389,23 @@ def _filing_needs_write_session() -> List[TextContent]:
 #: read-only worker (the preview itself opens it). Not a collision: that
 #: worker is released before the writable open (L-0: the two cannot coexist
 #: on a non-shared project), and access is probed again after the release.
-HELD_BY_OWN_READ_WORKER = "held_by_mcp_read_worker"
+#:
+#: Re-exported from `parse/own_worker.py`, the module both filing and
+#: `run_module` share so the two write gates cannot answer "is this ours?"
+#: differently (#223). Kept as a module attribute here too since existing
+#: imports and tests read it from `handlers.parse`.
+from ..parse.own_worker import HELD_BY_OWN_READ_WORKER, own_worker_role  # noqa: E402
 
 
 def _held_by_own_read_worker(runner, project_name: str, decision) -> bool:
-    """Is the lock that refuses this project held by our own read worker?"""
-    if decision.refusal is None:
-        return False
-    holder = getattr(getattr(decision, "access", None), "holder", None)
-    own = runner.read_worker_pid(project_name)
-    return own is not None and getattr(holder, "pid", None) == own
+    """Is the lock that refuses this project held by our own READ worker?
+
+    Filing's own writable open only ever collides with `SHARED_ROLE` (the
+    preview's read worker) -- `run_module`'s write gate uses the more
+    general `own_worker_role` directly, since a measurement worker can hold
+    its project's lock too (#223).
+    """
+    return own_worker_role(runner, project_name, decision) == SHARED_ROLE
 
 
 def _access_block(decision) -> Dict[str, Any]:
@@ -2501,6 +2520,115 @@ async def handle_flextools_parse_cancel(args: dict) -> List[TextContent]:
     if getattr(handle, "is_filing", False):
         result["filing_note"] = FILING_CANCEL_NOTE
     return json_response(build_response_with_context(result))
+
+
+# ---------------------------------------------------------------------------
+# flextools_parse_release (issue #223)
+# ---------------------------------------------------------------------------
+
+
+async def handle_flextools_parse_release(args: dict) -> List[TextContent]:
+    """Release this server's own idle parse worker(s) for a project (#223).
+
+    `flextools_try_word` / `flextools_parse_text` leave their shared read
+    worker running (idle timeout: `DEFAULT_IDLE_TIMEOUT_SECONDS`), and it
+    keeps the project's fwdata lock held until then. `flextools_run_module`'s
+    write gate already releases that worker automatically when it finds
+    its own idle worker holding the lock -- this tool exists for the case
+    nothing else prompts that release: a caller that wants the lock
+    dropped on purpose, without also submitting a write.
+
+    Never kills a live run. If any of the project's workers (the shared
+    read worker, or the bounded measurement worker) is mid-run, this
+    refuses with `project_locked` and points at `flextools_parse_cancel`
+    rather than tearing down work in progress.
+
+    No worker running at all is a SUCCESS, not an error -- there was
+    nothing holding the lock in the first place, so there is nothing to do.
+
+    Args:
+        args: validated `ParseReleaseInput` dump -- `project_name`
+            (optional; falls back to the session).
+
+    Returns:
+        `{status: ok, released: [...]}` naming the role(s) released (or an
+        empty list if there was nothing to release), or `project_locked`
+        naming the live run blocking release.
+    """
+    project_name, project_error = _resolve_project(args.get("project_name"))
+    if not project_name:
+        return project_error or error_response(
+            "project_name_required",
+            "No project specified. Either set project_name in start() or "
+            "provide it directly.",
+        )
+
+    runner = peek_runner()
+    if runner is None:
+        return json_response(build_response_with_context({
+            "status": "ok",
+            "project": project_name,
+            "released": [],
+            "note": (
+                "This server process has started no parse worker at all, "
+                "so there is nothing to release."
+            ),
+        }))
+
+    workers = runner.pool.workers_for(project_name)
+    if not workers:
+        return json_response(build_response_with_context({
+            "status": "ok",
+            "project": project_name,
+            "released": [],
+            "note": (
+                f"No parse worker is running for '{project_name}' in this "
+                "server process; nothing to release."
+            ),
+        }))
+
+    busy_roles = sorted(
+        role for role in workers if runner.worker_busy(project_name, role=role)
+    )
+    if busy_roles:
+        role = busy_roles[0]
+        run_ids = runner.active_run_ids(project_name, role=role)
+        run_note = f" (run {run_ids[0]})" if run_ids else ""
+        return error_response(
+            "project_locked",
+            f"Project '{project_name}' has a live parse run on this "
+            f"server's own worker{run_note}. Releasing now would end work "
+            "in progress, so this refuses. Wait for the run to finish, or "
+            "cancel it first, then retry.",
+            guidance=(
+                "Wait for the run to finish (flextools_parse_status), or "
+                "cancel it with flextools_parse_cancel(run_id=...), then "
+                "retry flextools_parse_release."
+            ),
+            remedy=(
+                "Wait for the run to finish (flextools_parse_status), or "
+                "cancel it with flextools_parse_cancel(run_id=...), then "
+                "retry flextools_parse_release."
+            ),
+            verdict="held_by_mcp_read_worker",
+            sharing_enabled=None,
+            holder_pid=None,
+            holder_process="this server's own parse worker",
+        )
+
+    released = sorted(workers.keys())
+    for role in released:
+        await runner.release_worker(project_name, role=role)
+    return json_response(build_response_with_context({
+        "status": "ok",
+        "project": project_name,
+        "released": released,
+        "note": (
+            f"Released this server's parse worker(s) for '{project_name}' "
+            f"({', '.join(released)}). Any lock this worker held on the "
+            "project's .fwdata is now dropped."
+        ),
+    }))
 
 
 def _result_summary(handle) -> Dict[str, Any]:

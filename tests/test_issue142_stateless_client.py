@@ -10,7 +10,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from flextoolsmcp.server.handlers import execution as execution_mod
 from flextoolsmcp.server.handlers.execution import _build_validate_only_checks
 from flextoolsmcp.server.kernel import (
     discovery_gate_skip_note,

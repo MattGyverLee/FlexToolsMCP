@@ -1988,6 +1988,63 @@ def detect_flexicon_internal_attribute_error(error_msg: str) -> dict:
     }
 
 
+def _interfaces_for_cast_property(
+    casting_index: Optional[Dict],
+    property_name: str,
+    available_on: Optional[List[str]] = None,
+) -> List[str]:
+    """Clean I-prefixed interfaces that define ``property_name`` in the casting index."""
+    candidates: List[str] = []
+    seen: Set[str] = set()
+    for entry in available_on or []:
+        head = _clean_interface_head(entry)
+        if head and head not in seen:
+            seen.add(head)
+            candidates.append(head)
+    if casting_index and property_name in (casting_index.get("properties") or {}):
+        for entry in (casting_index["properties"][property_name].get("defined_on") or []):
+            head = _clean_interface_head(entry)
+            if head and head not in seen:
+                seen.add(head)
+                candidates.append(head)
+    return candidates
+
+
+def _polymorphic_runtime_suggestion(
+    object_type: str,
+    property_name: str,
+    *,
+    rewrite: Optional[str],
+    imports_needed: List[str],
+    cast_candidates: List[str],
+) -> str:
+    """Actionable runtime hint when preflight cannot learn from this failure (#122)."""
+    if rewrite:
+        imports_clause = (
+            f" Imports: {', '.join(imports_needed)}."
+            if imports_needed
+            else ""
+        )
+        return (
+            f"'{object_type}' has no attribute '{property_name}'. "
+            f"Cast before accessing the property:\n    {rewrite}"
+            f"{imports_clause}"
+        )
+    if cast_candidates:
+        return (
+            f"'{object_type}' has no attribute '{property_name}'. "
+            f"Cast to a concrete interface first (from flexicon import cast_to_concrete; "
+            f"concrete = cast_to_concrete(obj)). "
+            f"Candidates for '{property_name}': {', '.join(cast_candidates)}."
+        )
+    return (
+        f"'{object_type}' has no attribute '{property_name}'. "
+        f"Call flextools_resolve_property(property_name='{property_name}', "
+        f"context_entity='{object_type}') to find the right cast, or use "
+        f"cast_to_concrete(obj) when the runtime type is heterogeneous."
+    )
+
+
 def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
@@ -1998,9 +2055,10 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
       - is_polymorphic_error: bool - whether this looks like a polymorphic issue
       - object_type: str - the object type from the error (e.g., 'IPhSegmentRule')
       - property_name: str - the missing property (e.g., 'RightHandSidesOS')
-      - suggestion: str - suggested resolve_property call
+      - suggestion: str - actionable recovery hint (never defers to a stateless resubmit)
       - rewrite: str | None - inline cast rewrite if casting_index resolved it
       - imports_needed: list[str] - imports to add alongside the rewrite
+      - cast_candidates: list[str] - interfaces when rewrite could not be picked
     """
     # Match pattern: 'ObjectType' object has no attribute 'PropertyName'
     pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
@@ -2014,6 +2072,7 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
         # rejections do, eliminating an extra round-trip.
         rewrite: Optional[str] = None
         imports_needed: List[str] = []
+        available_on: List[str] = []
         if casting_index:
             casting_props = (casting_index or {}).get("properties") or {}
             if property_name in casting_props:
@@ -2026,23 +2085,25 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
                     rewrite = f"{cast_iface}(obj).{property_name}"
                     imports_needed = _imports_for_interface(cast_iface)
 
+        cast_candidates = [] if rewrite else _interfaces_for_cast_property(
+            casting_index, property_name, available_on
+        )
+        suggestion = _polymorphic_runtime_suggestion(
+            object_type,
+            property_name,
+            rewrite=rewrite,
+            imports_needed=imports_needed,
+            cast_candidates=cast_candidates,
+        )
+
         return {
             "is_polymorphic_error": True,
             "object_type": object_type,
             "property_name": property_name,
             "rewrite": rewrite,
             "imports_needed": imports_needed,
-            # Issue #22: nudge at the preflight rewrite path first; resolve_property
-            # is the secondary escape hatch (e.g. for chained-receiver cases the
-            # rewriter deliberately skips).
-            "suggestion": (
-                f"Re-submit your code -- the preflight casting validator should "
-                f"now flag '{property_name}' on '{object_type}' with an inline "
-                f"`rewrite` (the cast-wrapped expression) and `imports_needed`. "
-                f"If the preflight doesn't catch it (e.g. chained receiver), call "
-                f"flextools_resolve_property(property_name='{property_name}', "
-                f"context_entity='{object_type}') as a fallback."
-            ),
+            "cast_candidates": cast_candidates,
+            "suggestion": suggestion,
         }
 
     return {"is_polymorphic_error": False}

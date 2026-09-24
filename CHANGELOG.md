@@ -7,6 +7,21 @@
 - **`collect_inherited_members` memo could survive LibLCM index reload** ([#150](https://github.com/MattGyverLee/FlexToolsMCP/issues/150)).
   Cache keys now use ``APIIndex.liblcm_entities_epoch`` (bumped on each load)
   instead of ``id(entities)`` alone, and the memo is cleared when LibLCM reloads.
+- **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
+  ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
+  innermost traceback frame is inside the flexicon package, `run_module` now
+  reports `WrapperInternalError` with upstream-oriented guidance instead of
+  advising a cast/resubmit loop the user cannot satisfy.
+- **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
+  Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
+  `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current
+  FieldWorks stacks.
+- **Flexicon template pre-flight ignored non-``ImportError`` load failures**
+  ([#132](https://github.com/MattGyverLee/FlexToolsMCP/issues/132)). When
+  ``pyflexicon`` is installed but FieldWorks is absent, ``import flexicon``
+  raises a bare ``Exception``; the template now captures that separately from a
+  missing package and reports a FieldWorks-oriented message instead of
+  ``pip install pyflexicon``.
 - **`detect_interface_attribute_typos` ignored loop variables** ([#127](https://github.com/MattGyverLee/FlexToolsMCP/issues/127)).
   For-loop targets with a non-polymorphic flexicon ``element_type`` (e.g.
   ``GetSenses`` → ``ILexSense``) are now checked for high-confidence attribute

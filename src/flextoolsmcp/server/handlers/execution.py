@@ -63,7 +63,8 @@ except ImportError:
 # Import validators with fallback
 try:
     from ..validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
@@ -80,7 +81,8 @@ try:
     )
 except ImportError:
     from server.validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -298,9 +300,14 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
             return False, f"flexicon not found: {e}"
         except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
             return False, f"flexicon installed but not initializable: {e}"
-        # Check version is available (flexicon uses 'version' not '__version__')
-        if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-            return False, "flexicon missing version info"
+        # Issue #146: do not treat version/__version__ as a capability proxy.
+        # Old builds can expose version while lacking every token this runner
+        # assumes; flexicon.CAPABILITIES is the supported probe surface.
+        if getattr(flexicon, "CAPABILITIES", None) is None:
+            return False, (
+                "flexicon missing CAPABILITIES (upgrade pyflexicon; "
+                "version attributes are not a capability probe)"
+            )
         return True, ""
 
     elif api_mode == "flexlibs_stable":
@@ -3089,8 +3096,22 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
         )
+        # Issue #95: return the structured TOOL-CONTRACT rejection (status,
+        # error_code, _contract, message) with the same fix guidance the log
+        # already records -- not a legacy ad-hoc dict whose ``error`` string
+        # collides with the nested deprecated shape.
         return _attach_assistance_if_loop(
-            [TextContent(type="text", text=json.dumps(guidance, indent=2))],
+            error_response(
+                "unprotected_writes",
+                guidance["message"],
+                mutations_found=guidance.get("mutations_found"),
+                why=guidance.get("why"),
+                fix_pattern=guidance.get("fix_pattern"),
+                templates_to_review=guidance.get("templates_to_review"),
+                next_steps=guidance.get("next_steps"),
+                mutating_calls=mutating[:20],
+                op_id=op_id,
+            ),
             error_code="unprotected_writes",
             code_size_bytes=_code_size_bytes,
         )
@@ -4802,6 +4823,17 @@ MODULE_CODE = {code}
                 _skip_generic_attr_paths = True
             else:
                 _skip_generic_attr_paths = False
+            wrapper_internal = detect_flexicon_internal_attribute_error(
+                execution_result["error"]
+            )
+            if wrapper_internal.get("is_wrapper_internal"):
+                execution_result["wrapper_internal_error_detected"] = True
+                execution_result["error_type"] = "WrapperInternalError"
+                execution_result["object_type"] = wrapper_internal["object_type"]
+                execution_result["property_name"] = wrapper_internal["property_name"]
+                execution_result["help"] = wrapper_internal["suggestion"]
+                execution_result["raising_frame"] = wrapper_internal.get("raising_frame")
+                _skip_generic_attr_paths = True
             polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
             # Issue #39: Python's own "Did you mean: 'X'?" suffix is authoritative
             # about what exists on the live object, so for a typo it beats any

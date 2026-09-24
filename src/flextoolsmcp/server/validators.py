@@ -1845,6 +1845,104 @@ def detect_undiscovered_entities(
     return result
 
 
+_PATTERN_TRACEBACK_FRAME = re.compile(
+    r'^\s*File "(?P<file>[^"]+)", line (?P<line>\d+)(?:, in (?P<qualname>[^\n]*))?',
+    re.MULTILINE,
+)
+
+# Issue #123: flexicon frames that raise AttributeError on broken upstream APIs.
+_KNOWN_FLEXICON_INTERNAL_SITES: Dict[str, str] = {
+    "LexiconAddComplexForm": "Upstream flexicon defect (flexicon#272). Use an alternative API or report upstream.",
+    "AddComplexFormComponent": "Upstream flexicon defect (flexicon#272). Use an alternative API or report upstream.",
+}
+
+
+def split_runner_error_and_traceback(error_msg: str) -> Tuple[str, str]:
+    """Split runner ``error`` text into the one-line message and traceback tail."""
+    if not error_msg:
+        return "", ""
+    text = error_msg
+    if text.startswith("Execution error: "):
+        text = text[len("Execution error: ") :]
+    if "\n" not in text:
+        return text.strip(), ""
+    first_nl = text.find("\n")
+    return text[:first_nl].strip(), text[first_nl + 1 :].strip()
+
+
+def attribute_error_raising_frame(traceback_text: str) -> Optional[Dict[str, Any]]:
+    """Return the innermost ``File ...`` frame from a traceback string."""
+    if not traceback_text:
+        return None
+    frames = list(_PATTERN_TRACEBACK_FRAME.finditer(traceback_text))
+    if not frames:
+        return None
+    last = frames[-1]
+    qualname = (last.group("qualname") or "").strip()
+    func_name = qualname.split(".")[-1] if qualname else ""
+    return {
+        "file": last.group("file"),
+        "line": int(last.group("line")),
+        "qualname": qualname,
+        "function": func_name,
+    }
+
+
+def _path_is_flexicon_package(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    if normalized == "<string>":
+        return False
+    if "/flexicon/" in normalized or normalized.endswith("/flexicon"):
+        return True
+    if "/site-packages/flexicon" in normalized:
+        return True
+    return False
+
+
+def detect_flexicon_internal_attribute_error(error_msg: str) -> dict:
+    """Detect AttributeErrors raised inside flexicon, not in user module code.
+
+    Returns dict with:
+      - is_wrapper_internal: bool
+      - object_type, property_name: parsed from the error line when present
+      - raising_frame: file/line/qualname of the innermost traceback frame
+      - suggestion: user-facing guidance (no cast/resubmit loop)
+    """
+    message_line, traceback_text = split_runner_error_and_traceback(error_msg)
+    pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
+    match = re.search(pattern, message_line)
+    if not match:
+        return {"is_wrapper_internal": False}
+
+    object_type, property_name = match.groups()
+    frame = attribute_error_raising_frame(traceback_text)
+    if not frame or not _path_is_flexicon_package(frame["file"]):
+        return {"is_wrapper_internal": False}
+
+    func_name = frame.get("function") or ""
+    upstream_note = _KNOWN_FLEXICON_INTERNAL_SITES.get(func_name, "")
+    location = f"{frame['file']}:{frame['line']}"
+    if frame.get("qualname"):
+        location = f"{frame['qualname']} ({location})"
+
+    suggestion = (
+        f"This failed inside flexicon ({location}), not in your script. "
+        f"No cast on your side will fix an AttributeError in the wrapper. "
+    )
+    if upstream_note:
+        suggestion += upstream_note
+    else:
+        suggestion += "Try a different flexicon API or report the failure upstream."
+
+    return {
+        "is_wrapper_internal": True,
+        "object_type": object_type,
+        "property_name": property_name,
+        "raising_frame": frame,
+        "suggestion": suggestion,
+    }
+
+
 def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
@@ -3606,6 +3704,90 @@ def _alias_satisfies(
     return False
 
 
+_LOCAL_CONTAINER_FACTORY_NAMES = frozenset(
+    {"list", "set", "dict", "tuple", "frozenset"}
+)
+_LOCAL_CONTAINER_DOT_FACTORY_NAMES = frozenset(
+    {
+        "HashSet",
+        "List",
+        "Dictionary",
+        "SortedSet",
+        "SortedDictionary",
+        "Queue",
+        "Stack",
+    }
+)
+_COLLECTION_MUTATION_METHODS = frozenset(
+    {"Add", "Remove", "Clear", "MoveTo", "Insert"}
+)
+
+
+def _is_local_container_constructor(value: ast.AST) -> bool:
+    """True when ``value`` constructs a plain/local container, not an LCM collection."""
+    if isinstance(value, (ast.List, ast.Set, ast.Dict, ast.Tuple)):
+        return True
+    if isinstance(value, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+        return True
+    if not isinstance(value, ast.Call):
+        return False
+    func = value.func
+    if isinstance(func, ast.Name) and func.id in _LOCAL_CONTAINER_FACTORY_NAMES:
+        return True
+    if isinstance(func, ast.Attribute) and func.attr in _LOCAL_CONTAINER_DOT_FACTORY_NAMES:
+        return True
+    if isinstance(func, ast.Subscript):
+        inner = func.value
+        if isinstance(inner, ast.Name) and inner.id in _LOCAL_CONTAINER_DOT_FACTORY_NAMES:
+            return True
+        if isinstance(inner, ast.Attribute) and inner.attr in _LOCAL_CONTAINER_DOT_FACTORY_NAMES:
+            return True
+    return False
+
+
+def _collect_local_container_names(tree: ast.AST) -> Set[str]:
+    """Names bound to locally constructed containers (issue #126).
+
+    Reassigning a name to a non-local value removes it, so a variable that
+    later holds an LCM collection is not treated as local.
+    """
+    assigns, _, bindings = _collect_assign_call_nodes(tree)
+    binding_nodes = list(assigns) + list(bindings)
+    binding_nodes.sort(key=lambda n: getattr(n, "lineno", 0))
+    local: Set[str] = set()
+    for node in binding_nodes:
+        for target, rhs in _iter_assign_pairs(node):
+            if not isinstance(target, ast.Name):
+                continue
+            name = target.id
+            if _is_local_container_constructor(rhs):
+                local.add(name)
+            elif isinstance(rhs, ast.Name) and rhs.id in local:
+                local.add(name)
+            else:
+                local.discard(name)
+    return local
+
+
+def _lines_with_local_collection_mutations(tree: ast.AST) -> Set[int]:
+    """Line numbers where a collection-mutation call targets a local container."""
+    local = _collect_local_container_names(tree)
+    if not local:
+        return set()
+    skip: Set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr not in _COLLECTION_MUTATION_METHODS:
+            continue
+        recv = node.func.value
+        if isinstance(recv, ast.Name) and recv.id in local:
+            skip.add(node.lineno)
+    return skip
+
+
 def find_liblcm_mutations(
     code: str, facade_names: Optional[Set[str]] = None
 ) -> List[Dict[str, Any]]:
@@ -3631,6 +3813,12 @@ def find_liblcm_mutations(
     """
     mutations = []
 
+    skip_collection_lines: Set[int] = set()
+    try:
+        skip_collection_lines = _lines_with_local_collection_mutations(ast.parse(code))
+    except SyntaxError:
+        pass
+
     patterns = list(_LIBLCM_MUTABLE_PATTERNS)
     for name in sorted(facade_names or ()):
         if name not in _FACADE_INJECTED_NAMES:
@@ -3641,6 +3829,11 @@ def find_liblcm_mutations(
         line_content = _strip_comments(line)
 
         for pattern, method_name, category in patterns:
+            if (
+                method_name in _COLLECTION_MUTATION_METHODS
+                and line_num in skip_collection_lines
+            ):
+                continue
             if re.search(pattern, line_content):
                 mutations.append({
                     'method': method_name,

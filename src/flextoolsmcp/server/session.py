@@ -640,3 +640,14 @@ class SessionState:
             }
             for op in self.operations_history
         ]
+
+
+# Collapse legacy/packaged spellings as soon as this module finishes loading,
+# so a later ``server.session`` import cannot create a second SessionState class
+# before kernel's registrar runs (#172 / #10).
+from ._dual_path import alias_dual_path_modules as _alias_dual_path_modules
+
+_alias_dual_path_modules(
+    ("flextoolsmcp.server.session", "server.session"),
+    ("flextoolsmcp.server._dual_path", "server._dual_path"),
+)

@@ -27,3 +27,20 @@ def test_kernel_import_spellings_share_one_module():
         f"Expected one kernel module object, found {len(distinct)} "
         f"across {kernel_modules!r}"
     )
+
+
+def test_session_import_spellings_share_one_class():
+    """SessionState class identity must not diverge across import spellings."""
+    import flextoolsmcp.server.session as packaged
+
+    legacy = importlib.import_module("server.session")
+    assert packaged is legacy
+    assert packaged.SessionState is legacy.SessionState
+
+
+def test_packaged_server_exposes_kernel_attribute():
+    """flextoolsmcp.server.kernel must be reachable via attribute access (py3.10)."""
+    import flextoolsmcp.server as pkg
+    import flextoolsmcp.server.kernel as packaged
+
+    assert getattr(pkg, "kernel") is packaged

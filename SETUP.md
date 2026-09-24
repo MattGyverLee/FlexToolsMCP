@@ -129,6 +129,19 @@ mkdir ~/flex-scripts        # any empty folder; the name doesn't matter
 **Note:** Indexes ship with the package and also refresh automatically when your
 installed FieldWorks / library versions change. You don't need to refresh by hand.
 
+### Short-lived clients (Hermes, OpenClaw)
+
+Some hosts start a **new MCP process on every turn**, so in-memory session
+discovery cannot survive between calls. Those clients hit `api_discovery_required`
+even when the generated code is correct.
+
+Set **`FLEXTOOLS_STATELESS=1`** in the MCP server's environment (alongside the
+`uvx flextools-mcp` launch command in your tool config). That skips only the
+API discovery gates; write-safety, casting, syntax, and unprotected-write checks
+still run. `flextools_health` reports `server.stateless_client_mode: true` when
+the flag is active. See issue #142 for the full design (disk-persisted sessions
+are planned as a follow-up).
+
 ### Claude Code
 
 Run these in PowerShell, not in the Claude chat:

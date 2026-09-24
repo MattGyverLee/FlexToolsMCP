@@ -39,7 +39,8 @@ one net-new file:
 ├── meta.json        # the durable run record -- REWRITTEN whole on stage change
 ├── results.jsonl    # one line per completed word -- APPENDED and flushed
 ├── words.txt        # the resolved word list -- NET-NEW at CP3
-└── traces/<n>.xml   # trace payloads, out of line, only where a drill-down was taken
+├── traces/<n>.xml   # trace payloads, out of line, only where a drill-down was taken
+└── filing/deletions.jsonl  # CP4, filing runs only: pre-deletion captures (section 10)
 ```
 
 `<record dir>` is `record.get_record_dir()`, overridable by
@@ -93,6 +94,8 @@ whole state or the other, never a half-written file.
 `engine_changed_midjob`, `load_error_baseline`, `counters`,
 `counter_divergences`, `words_path`, `project_state`.
 
+**CP4 additions** (additive, parser-check CP4): `filing`.
+
 Field meanings are in [`../data-model.md`](../data-model.md) sections 3 and 4.
 As shipped (`record.RunMeta`):
 
@@ -106,6 +109,7 @@ As shipped (`record.RunMeta`):
 | `counter_divergences` | list of two strings, each beginning `"<CounterName>:"` | batch runs |
 | `words_path` | `"words.txt"` | batch runs; `null` otherwise |
 | `project_state` | `ProjectParseState.to_dict()` from the ONE probe (`parse/project_state.py`, FR-004), read at submission: `parser_has_ever_run`, `analyses_total`, `parser_created_analyses`, `human_opinion_analyses`, `indeterminate_analyses`, `truncated`. The oracle's precondition (FR-041). *Added additively after the freeze, at US5 (section 9, rule 1).* | batch runs; `null` if the probe could not run |
+| `filing` | the filing section of CP4's data-model section 7: `requested`, `confirmed_plan`, `plan_id`, `backup`, `no_recovery_warning`, `send_receive`, `access_verdict`, `state` (`filing` \| `completed` \| `cancelled` \| `refused_midrun` \| `crashed` \| `failed`), `counts`, `projected_deletions`, `actual_deletions`, `in_use_approvals_recorded`, `disapprovals_overwritten`, `filed_words`, `divergences`. *Added additively at CP4 (parser-check-cp4/data-model.md section 7); a CP3 reader never sees it on a read-only run.* | filing runs (`apply=true`) only; `null` on every read-only run |
 
 **Written incrementally** (FR-016), not only at completion: progress and
 counters are rewritten after **every** word, not only on a stage change. A run
@@ -284,3 +288,39 @@ Stated here because this is the file those checkpoints will read.
    named consumers, and CP4's deletion-projection precondition is the third
    (FR-004).
 6. **`traces/` may be absent.** An empty drill-down history is the normal case.
+
+---
+
+## 10. CP4 additions (additive; parser-check CP4)
+
+Everything above is unchanged. CP4 adds three things, and removes nothing:
+
+1. **`load_error_baseline.eligible_entries`** -- on every BATCH run's baseline,
+   once the grammar is loaded: `[{"entry_guid": str, "headword": str}]`, the
+   entries whose forms could reach that grammar (CP4 FR-039, D-1). A read-only
+   run therefore re-baselines BOTH halves of CP4's refuse-to-file gate: its load
+   errors, and its eligible forms. A baseline written before CP4 has no such key;
+   the gate then compares load errors only and says so. (Recorded with headwords,
+   not bare GUIDs, so a dropped entry can be named even after it was deleted.)
+   A single-word run never pays for the lexicon walk and records none.
+2. **`meta.json` `filing`** -- the filing section (CP4 data-model section 7; the
+   row in section 3 above). Present only on a run created with `apply=true`;
+   `null` on every read-only run. A filing run is NEVER used as a gate baseline:
+   only a read-only run re-baselines (CP4 FR-021).
+3. **`filing/deletions.jsonl`** -- filing runs only. One JSON line per analysis
+   filing may delete (`kind: "pre_deletion"`) or whose human disapproval it
+   overwrites (`kind: "disapproval_overwrite"`, with `prior_user_opinion`),
+   written and fsynced BEFORE the filer runs: `wordform`, `analysis_guid`,
+   `morph_bundles` (`morph_guid`, `msa_guid`, `infl_type_guid`, `form`),
+   `glosses` (`guid`, `form_by_ws`), `evaluations` (`agent_guid`, `agent_name`,
+   `human`, `opinion`, `date`), `category`. What then happened is a SECOND line
+   per analysis, never a rewrite (the file is append-only): `confirmed_after` is
+   `deleted` / `survived` for a capture, `overwritten` / `unchanged` for an
+   overwrite. Served by `flextools_parse_log(section="deletions")`; a read-only
+   run answers that section with a typed not-applicable.
+
+Rule 1 of section 9 covers all three: a reader that ignores unknown keys reads a
+CP4 record exactly as it read a CP3 one. And, as ever, nothing here is written
+inside a FieldWorks project folder (CP4 FR-042): the whole record lives under
+`record.get_record_dir()`, and a record directory inside the projects directory
+is refused at filing time.

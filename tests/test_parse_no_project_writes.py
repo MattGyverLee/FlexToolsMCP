@@ -75,6 +75,14 @@ _WRITE_CALLS = {
 _READ_ONLY_MESSAGE_TYPES = {
     "parse", "cancel", "ping", "shutdown", "resolve", "assemblies",
     "engine_check", "resolve_scope", "parser_parameters",
+    # CP4: the filing preflight's three questions to the READ worker. Each is
+    # a read -- the agent lookup, this grammar load's errors and eligible
+    # forms, the stored analyses and their segment use -- answered from
+    # server/filing/preflight_reads.py, which T052's inverse test also holds
+    # to no writes. The one message that sets up a WRITE (`filing_setup`) is
+    # sent only to the filing worker, from server/filing/client.py, never
+    # from this module.
+    "agent_probe", "filing_gate", "filing_preview",
 }
 
 
@@ -169,9 +177,49 @@ def test_the_server_sends_the_worker_no_write():
 
 
 def test_filing_is_unreachable_from_every_stage():
-    """The write ladder is CP4's; at CP3 no run can reach `filing`."""
+    """No READ-ONLY run can reach `filing` (CP4 R-16: the claim is kept, per run).
+
+    `can_transition` without `filing=True` is the read-run table, byte for
+    byte what CP3 shipped: `filing` has no inbound edge there.
+    """
     reaching = [s.value for s in RunStage if can_transition(s, RunStage.FILING)]
     assert reaching == [], f"filing is reachable from {reaching}"
+    reaching = [s.value for s in RunStage
+                if can_transition(s, RunStage.FILING, filing=False)]
+    assert reaching == [], f"filing is reachable from {reaching} on a read run"
+
+
+def test_filing_is_reachable_only_for_a_filing_run():
+    """CP4 (data-model section 10): the FILING edges exist only on a run
+    created with filing=True -- parsing -> filing, and filing -> a terminal
+    stage. The read-run table is untouched."""
+    assert can_transition(RunStage.PARSING, RunStage.FILING, filing=True)
+    for terminal in (RunStage.COMPLETED, RunStage.CANCELLED, RunStage.FAILED):
+        assert can_transition(RunStage.FILING, terminal, filing=True)
+        assert not can_transition(RunStage.FILING, terminal)
+    assert not can_transition(RunStage.PARSING, RunStage.FILING)
+
+
+def test_try_word_never_files():
+    """FR-017 (structural): no try-a-word mode files anything, errored or not.
+
+    `handle_flextools_try_word` starts runs; none of them may be a filing run,
+    use the filing worker, or name the `file` level.
+    """
+    tree = _tree(SRC / "handlers" / "parse.py")
+    handler = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "handle_flextools_try_word"
+    )
+    for node in ast.walk(handler):
+        if isinstance(node, ast.keyword):
+            assert node.arg not in ("filing", "filing_setup"), (
+                f"try_word passes {node.arg}= at line {node.value.lineno}"
+            )
+        if isinstance(node, ast.Constant) and node.value == "file":
+            raise AssertionError(f"try_word names the 'file' level at line {node.lineno}")
+        if isinstance(node, ast.Name) and node.id in ("FILING_ROLE", "_handle_filing_request"):
+            raise AssertionError(f"try_word reaches {node.id} at line {node.lineno}")
 
 
 def test_the_measurement_reads_parser_parameters_and_never_assigns_them():

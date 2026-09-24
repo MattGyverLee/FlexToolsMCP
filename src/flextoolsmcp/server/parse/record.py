@@ -73,7 +73,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
-from typing import Any, Iterable, Iterator, Optional
+from typing import Any, Callable, Iterable, Iterator, Optional
 
 from .stages import RunStage
 
@@ -357,6 +357,12 @@ class RunMeta:
     engine_changed_midjob: bool = False
     #: Captured at this server's own grammar load, keyed to the fingerprint
     #: and stored BESIDE it, never inside it (FR-023, D-3).
+    #:
+    #: CP4 (additive, FR-039): a batch's baseline also carries
+    #: `eligible_entries` -- `[{"entry_guid", "headword"}]`, the entries whose
+    #: forms could reach that grammar -- so a read-only run re-baselines both
+    #: halves of the refuse-to-file gate. A baseline written before CP4 has no
+    #: such key; the gate then compares load errors only and says so.
     load_error_baseline: Optional[dict[str, Any]] = None
     #: `HostCounters.to_dict()`, refreshed as the run progresses.
     counters: Optional[dict[str, int]] = None
@@ -369,6 +375,15 @@ class RunMeta:
     #: project the parser has never run against reports the oracle absent.
     #: Added after the T053 freeze, additively (contracts/artifact.md s.9).
     project_state: Optional[dict[str, Any]] = None
+
+    # -- CP4 addition (contracts/artifact.md, CP4 amendment). Additive only.
+
+    #: The filing section (CP4 data-model.md section 7). Present only on a run
+    #: created with `apply=true`; None on every read-only run, so a CP3 reader
+    #: sees the record it always did. Carries the confirmed plan, the backup
+    #: outcome or the no-recovery warning, the per-outcome counts, projected
+    #: beside actual deletions, and the filing `state`.
+    filing: Optional[dict[str, Any]] = None
 
 
 class RunRecord:
@@ -427,6 +442,8 @@ class RunRecord:
         scope_fingerprint: Optional[dict[str, Any]] = None,
         engine_at_submission: Optional[str] = None,
         project_state: Optional[dict[str, Any]] = None,
+        filing: Optional[dict[str, Any]] = None,
+        guard: Optional[Callable[[Path], Any]] = None,
     ) -> "RunRecord":
         """Mint a run id and open its record at stage `starting`.
 
@@ -434,8 +451,14 @@ class RunRecord:
         BEFORE the first `meta.json`, so a record whose meta names a word list
         always has one. A single-word run passes none and gets no file: an
         empty `words.txt` would read as "this run resolved to no words".
+
+        CP4: `filing` is a filing run's initial section; `guard` (see
+        `append_jsonl`) vets the record's own directory before anything is
+        created in it.
         """
         record = cls(new_run_id(), max_bytes=max_bytes, record_dir=record_dir)
+        if guard is not None:
+            guard(record._root)
         record._root.mkdir(parents=True, exist_ok=True)
         words_path = None
         if words is not None:
@@ -454,6 +477,7 @@ class RunRecord:
                 counter_divergences=list(COUNTER_DIVERGENCES) if batch else None,
                 words_path=words_path,
                 project_state=project_state,
+                filing=filing,
             )
         )
         return record
@@ -541,6 +565,68 @@ class RunRecord:
 
     def result_count(self) -> int:
         return sum(1 for _ in self.iter_results())
+
+    # -- CP4: a filing run's section and captures -------------------------
+    #
+    # Generic on purpose. The filing package owns what its artifacts are
+    # called (`filing/paths.py`: `DELETIONS_RELPATH`) and passes a `guard`, a
+    # callable handed a path, which raises if the path must not be written --
+    # `filing.paths.assert_outside_project`, so no filing artifact ever lands
+    # inside a project folder (FR-042). This module, which a standing test
+    # proves never writes to a project, never imports the write spine.
+
+    def set_section(self, **sections: Any) -> RunMeta:
+        """Rewrite named meta.json sections in place (CP4: the filing section)."""
+        meta = self.read_meta() or RunMeta(run_id=self.run_id, stage=RunStage.STARTING.value)
+        for key, value in sections.items():
+            setattr(meta, key, value)
+        self.write_meta(meta)
+        return meta
+
+    def _child(self, relpath: str) -> Path:
+        """A path inside this run's directory, from a caller-fixed relative path."""
+        rel = Path(relpath)
+        if rel.is_absolute() or ".." in rel.parts:
+            raise ValueError(f"{relpath!r} is not a path inside the run record")
+        return self._root / rel
+
+    def append_jsonl(
+        self, relpath: str, line: dict[str, Any], *,
+        guard: Optional[Callable[[Path], Any]] = None,
+    ) -> None:
+        """Append one JSON line to a file in the record and FSYNC it.
+
+        CP4's pre-deletion captures (FR-031) are written BEFORE the filer
+        deletes the analysis they describe and are the only record of it
+        afterwards -- so each line is durable before this returns, like
+        `append_result`.
+        """
+        path = self._child(relpath)
+        if guard is not None:
+            guard(path)
+        self._enforce_size_cap()
+        payload = json.dumps(line, ensure_ascii=False)
+        with _WRITE_LOCK:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(payload + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+
+    def iter_jsonl(self, relpath: str) -> Iterator[dict[str, Any]]:
+        """Every line of a record JSONL file; a torn trailing line is skipped."""
+        path = self._child(relpath)
+        if not path.is_file():
+            return
+        with open(path, "r", encoding="utf-8") as handle:
+            for raw in handle:
+                raw = raw.strip()
+                if not raw:
+                    continue
+                try:
+                    yield json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
 
     # -- the word list ----------------------------------------------------
 

@@ -1,0 +1,1888 @@
+{
+  "workflow": "companion",
+  "specName": "parser check cp4",
+  "branch": "main",
+  "currentStep": "implement",
+  "status": "completed",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T00:55:06.794Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T00:58:48.068Z"
+    },
+    {
+      "step": "clarify",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T04:38:45.095Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T04:42:46.845Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T04:50:25.546Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T04:55:19.353Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T05:09:34.921Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T05:13:07.697Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T05:15:59.988Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T05:16:15.343Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T05:57:40.572Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:06:36.170Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:06:36.435Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:08:27.463Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:09:32.393Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:11:20.441Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:40.897Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:40.993Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:41.094Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:41.194Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:41.289Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:17:41.389Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:21:44.119Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:21:44.221Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:21:44.318Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:21:44.413Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:21:44.508Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:36.752Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:36.851Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:36.946Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:37.042Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:37.137Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:37.235Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:32:37.330Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:36:06.949Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:36:07.051Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:36:07.146Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:36:07.244Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:40:53.211Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:40:53.309Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:42:22.994Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:45:49.089Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:48:48.505Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:48:48.601Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:51:59.054Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T043",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:51:59.152Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T044",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:51:59.249Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T050",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:04.767Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T051",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:04.865Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T052",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:04.961Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:05.059Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:05.156Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:05.258Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T06:59:05.356Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:00:50.078Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:00:50.175Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:02:37.419Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:02:37.516Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:11:51.166Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:11:51.264Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:13:56.665Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T070",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:22:28.331Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T071",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:22:28.429Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T072",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:23:22.361Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T075",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:25:54.139Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T076",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:25:54.238Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T077",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:27:13.318Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T078",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:27:13.414Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T080",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:31:48.196Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T081",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:40:44.810Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T092",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:43:40.058Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T090",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:55:23.974Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T091",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:55:24.220Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T094",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T07:59:03.522Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:30:58.006Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:36:43.457Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T082",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:45:14.019Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T083",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:52:00.003Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T084",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:54:35.123Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T085",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:54:55.738Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T093",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T14:59:15.894Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T15:41:58.082Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T15:41:58.204Z"
+    }
+  ],
+  "last_action": "completed: 71/71 tasks; 2891 offline passed; live S1-S8, L-0, Q1-Q5, T081 evidence in specs/parser-check-cp4/evidence",
+  "telemetryInstanceId": "d4236da5-763b-468c-b0fc-1ae45af06d4e",
+  "coverage": {
+    "FR-001": {
+      "title": "The batch parse tool MUST accept an argument that requests filing (`apply`). Its absence MUST keep today's read-only behaviour exactly. The tool's capability annotation MUST NOT change (CP3 FR-025). T",
+      "tasks": [
+        "T010",
+        "T015",
+        "T018",
+        "T019"
+      ]
+    },
+    "FR-002": {
+      "title": "A filing request MUST pass the same four rungs as `run_module`, in `run_module`'s order: session writing enabled; `require_write_confirmation`; the existing project-access / lock gate; pre-write backu",
+      "tasks": [
+        "T006",
+        "T007",
+        "T008",
+        "T050",
+        "T063"
+      ]
+    },
+    "FR-003": {
+      "title": "Every rung MUST complete before a run identifier is issued. No path may exist by which a running job requests consent, backup or any other human decision.",
+      "tasks": [
+        "T050",
+        "T063"
+      ]
+    },
+    "FR-004": {
+      "title": "No argument, configuration key or environment variable introduced by this feature may skip or pre-answer the confirmation rung. `require_write_confirmation` MUST default on.",
+      "tasks": [
+        "T014",
+        "T037"
+      ]
+    },
+    "FR-005": {
+      "title": "An unconfirmed filing request MUST return `confirmation_required` with the mutation plan (FR-010) and MUST NOT write, back up, or open the project for writing.",
+      "tasks": [
+        "T037",
+        "T050"
+      ]
+    },
+    "FR-006": {
+      "title": "A confirmed filing request MUST be bound to the plan it confirms. If the re-computed plan differs from the previewed one in scope or in any projected count, the system MUST return `confirmation_requir",
+      "tasks": [
+        "T032",
+        "T036",
+        "T063"
+      ]
+    },
+    "FR-007": {
+      "title": "The pre-write backup MUST be attempted through `run_module`'s mechanism and is best-effort (constitution Principle I): a backup failure MUST NOT raise or refuse the run (clarified 2026-09-23). The mut",
+      "tasks": [
+        "T051",
+        "T063"
+      ]
+    },
+    "FR-008": {
+      "title": "The backup MUST be attempted before the project is opened for writing, and before the first filing run per (session, project). A backup taken earlier in the session by `run_module` MUST NOT satisfy th",
+      "tasks": [
+        "T022",
+        "T051",
+        "T063"
+      ]
+    },
+    "FR-009": {
+      "title": "The response issuing the run identifier MUST name the backup's location. When no backup was taken, the response MUST instead carry a prominent warning. The warning MUST give the reason and state that",
+      "tasks": [
+        "T051",
+        "T063"
+      ],
+      "tests": [
+        "tests/test_filing_backup.py",
+        "tests/test_filing_fail_closed.py::test_the_backup_just_taken_survives_any_retention_setting"
+      ]
+    },
+    "FR-010": {
+      "title": "The mutation plan MUST state: words in scope; the grammar's load-error standing (FR-020 to FR-023); the deletion projection; the duplicate disclosure; the backup's expected outcome (FR-007); and the p",
+      "tasks": [
+        "T031",
+        "T036"
+      ]
+    },
+    "FR-011": {
+      "title": "The deletion projection MUST be built on the conjunction: no user opinion **and** not in use in any text segment, either directly or through any of its glosses. It MUST NOT be built on \"no user opinio",
+      "tasks": [
+        "T030",
+        "T033"
+      ],
+      "tests": [
+        "tests/test_filing_projection.py",
+        "tests/test_filing_classify.py"
+      ]
+    },
+    "FR-012": {
+      "title": "The projection MUST exclude human-disapproved analyses.",
+      "tasks": [
+        "T030",
+        "T033"
+      ]
+    },
+    "FR-013": {
+      "title": "The projection MUST be computed from the project's actual state, per wordform, and MUST show a concrete number, including zero, never only an abstract warning.",
+      "tasks": [
+        "T030",
+        "T033",
+        "T037"
+      ]
+    },
+    "FR-014": {
+      "title": "The projection MUST be an upper bound on what filing can delete: no analysis may be deleted by the run that was not in the confirmed projection.",
+      "tasks": [
+        "T054",
+        "T058",
+        "T082"
+      ]
+    },
+    "FR-015": {
+      "title": "The projection MUST reuse CP3's segment-occurrence join and project-state probe (CP3 FR-004, FR-043), not rebuild them.",
+      "tasks": [
+        "T030",
+        "T033"
+      ]
+    },
+    "FR-016": {
+      "title": "The plan MUST disclose how many projected creations would duplicate an existing gloss-only analysis rather than complete it (parent 9.3.3). Merging is out of scope.",
+      "tasks": [
+        "T031",
+        "T036"
+      ]
+    },
+    "FR-017": {
+      "title": "In a filing run, results that carry a parse error (timeout, exception) MUST be filed exactly as FLEx files them, for consistency with the FLEx menu and with the next parse. The plan MUST state that a",
+      "tasks": [
+        "T053",
+        "T054",
+        "T058"
+      ],
+      "tests": [
+        "tests/test_filing_classify.py::test_an_errored_word_is_filed_and_counted_separately"
+      ]
+    },
+    "FR-018": {
+      "title": "Filing MUST go through FieldWorks' own filer, with the HermitCrab parser agent as the filer's agent, so filed analyses carry honest parser provenance. The filer's deferred wordform update MUST be driv",
+      "tasks": [
+        "T055",
+        "T057",
+        "T061"
+      ]
+    },
+    "FR-019": {
+      "title": "Each result MUST be checked for object liveness immediately before it is filed; a result that fails MUST be skipped and counted. When the filer declines to run a queued update because a write is alrea",
+      "tasks": [
+        "T055",
+        "T057",
+        "T058"
+      ]
+    },
+    "FR-020": {
+      "title": "If the parser cannot be built after the grammar loads, filing MUST be refused with `grammar_load_unclean` / `morpher_null`, with no override.",
+      "tasks": [
+        "T040",
+        "T043"
+      ],
+      "tests": [
+        "tests/test_filing_gate.py",
+        "tests/test_filing_fail_closed.py::test_a_missing_morpher_answer_refuses"
+      ]
+    },
+    "FR-021": {
+      "title": "If this load has load errors that the MCP's own baseline for this project and scope does not, filing MUST be refused with `grammar_load_unclean` / `new_load_errors`, naming the new errors. The refusal",
+      "tasks": [
+        "T040",
+        "T043"
+      ]
+    },
+    "FR-022": {
+      "title": "Load errors present in the baseline MUST be warned about and counted in the plan, and MUST NOT block. With no baseline, every load error MUST be treated as pre-existing and the baseline source reporte",
+      "tasks": [
+        "T040",
+        "T043"
+      ]
+    },
+    "FR-023": {
+      "title": "The baseline MUST be the load-error set recorded by the MCP's own runs (CP3 FR-023), keyed to the scope fingerprint. FLEx's load-error file MUST NOT be used as a prior state.",
+      "tasks": [
+        "T040",
+        "T043"
+      ]
+    },
+    "FR-024": {
+      "title": "The gate MUST be evaluated at preview, at the confirmed call, and again on the job's own grammar load before the first word is filed. A refusal at job time MUST end the run with nothing filed and MUST",
+      "tasks": [
+        "T040",
+        "T044",
+        "T061",
+        "T063",
+        "T083"
+      ]
+    },
+    "FR-025": {
+      "title": "The HermitCrab agent MUST be probed before any preview is built. If it is absent, filing MUST be refused with `parser_agent_missing`, never an unhandled lookup failure.",
+      "tasks": [
+        "T037",
+        "T050"
+      ]
+    },
+    "FR-026": {
+      "title": "While a filing job runs on a project, a second filing request for that project MUST be refused with `parser_filing_in_progress`, carrying `run_id`, `started_at`, `words_completed` and `hint`, before a",
+      "tasks": [
+        "T021",
+        "T070",
+        "T072"
+      ],
+      "tests": [
+        "tests/test_filing_claims.py"
+      ]
+    },
+    "FR-027": {
+      "title": "A filing job MUST NOT take a project-wide claim that blocks the MCP's read-only parses, single-word tries or run-reading tools for that project.",
+      "tasks": [
+        "T003",
+        "T005",
+        "T021",
+        "T070",
+        "T071"
+      ],
+      "tests": [
+        "specs/parser-check-cp4/evidence/l0-coexistence.json",
+        "specs/parser-check-cp4/evidence/s4d-midrun-and-shared-read.json",
+        "specs/parser-check-cp4/evidence/s6-concurrency.json"
+      ]
+    },
+    "FR-028": {
+      "title": "The in-progress refusal MUST clear when the job reaches any terminal state, including a crash of the process that ran it.",
+      "tasks": [
+        "T021",
+        "T026",
+        "T062",
+        "T070"
+      ]
+    },
+    "FR-029": {
+      "title": "The read-only tools (single-word try, read-only batch) MUST continue to open the project read-only. The standing boundary tests MUST stay green.",
+      "tasks": [
+        "T020",
+        "T052",
+        "T053"
+      ]
+    },
+    "FR-030": {
+      "title": "When FLEx has the project open in shared mode, filing MUST proceed as a non-master peer, reusing `run_module`'s shared-mode handling and its backup caveat for peers. Both the mutation plan and the res",
+      "tasks": [
+        "T050",
+        "T063"
+      ],
+      "tests": [
+        "tests/test_filing_fail_closed.py::test_on_a_shared_project_our_read_worker_stays_open_and_the_claim_is_shared",
+        "tests/test_filing_fail_closed.py::test_a_lock_held_by_our_own_read_worker_is_released_then_filing_starts"
+      ]
+    },
+    "FR-031": {
+      "title": "Before an analysis is deleted, the run record MUST capture enough of it (wordform, morph bundles, glosses, evaluations) to recognise and manually reconstruct it.",
+      "tasks": [
+        "T054",
+        "T058"
+      ]
+    },
+    "FR-032": {
+      "title": "The run record MUST carry: the confirmed plan, the backup location, and actual counts of created, re-approved, duplicated, deleted, unchanged and skipped (by reason), plus projected deletions next to",
+      "tasks": [
+        "T060",
+        "T075"
+      ]
+    },
+    "FR-033": {
+      "title": "The run record MUST count analyses that gained a user approval during filing because they were in use, and MUST word it as recorded-for-anything-in-use. It MUST NOT label any analysis as tacit, unrevi",
+      "tasks": [
+        "T075"
+      ],
+      "tests": [
+        "tests/test_filing_record.py::test_no_filing_output_says_tacit_unreviewed_or_auto_approved"
+      ]
+    },
+    "FR-034": {
+      "title": "Filed changes MUST be persisted to the project before the run reports success. Cancellation MUST stop at a word boundary, persist what was filed, and report it as filed and not undoable except by rest",
+      "tasks": [
+        "T019",
+        "T056",
+        "T061",
+        "T084"
+      ],
+      "tests": [
+        "tests/test_filing_cancel.py"
+      ]
+    },
+    "FR-035": {
+      "title": "`parser_filing_in_progress` and `grammar_load_unclean` MUST be added to the tool contract additively (staying on `tool-responses/1.0`), with detail fields in the parent spec's order, and a CHANGELOG e",
+      "tasks": [
+        "T009",
+        "T011",
+        "T012",
+        "T013",
+        "T017"
+      ]
+    },
+    "FR-036": {
+      "title": "Live verification with `FLEXLIBS_REQUIRE_LIVE=1` MUST produce a before/after evidence artifact for: the `MoveConcAnnotationsToWordform` edge case; the auto-approval survival (an in-text analysis survi",
+      "tasks": [
+        "T080",
+        "T082",
+        "T083",
+        "T084"
+      ],
+      "tests": [
+        "specs/parser-check-cp4/evidence/q1-moveconc.json",
+        "specs/parser-check-cp4/evidence/s2-auto-approval-survival.json",
+        "specs/parser-check-cp4/evidence/q2-agent.json",
+        "specs/parser-check-cp4/evidence/s2-projection-vs-actual.json",
+        "specs/parser-check-cp4/evidence/s4-refuse-to-file.json"
+      ]
+    },
+    "FR-037": {
+      "title": "Live runs MUST use a disposable copy of a project, never a working project in place.",
+      "tasks": [
+        "T001",
+        "T080"
+      ],
+      "tests": [
+        "tests/test_parse_live_cp4.py::test_a_working_project_name_is_refused"
+      ]
+    },
+    "FR-038": {
+      "title": "CP1 deferred re-probing the installed engine for public grammar-health checkers to CP4 (parent 9.5.3). The re-probe MUST run against the installed engine version and its finding MUST be recorded. It M",
+      "tasks": [
+        "T084",
+        "T085"
+      ],
+      "tests": [
+        "specs/parser-check-cp4/evidence/q4-checker-reprobe.json"
+      ]
+    },
+    "FR-039": {
+      "title": "In addition to the load-error diff, the gate MUST compare the number of lexical forms eligible to reach the grammar against the baseline, using the loader's own eligibility rules (stem or clitic allom",
+      "tasks": [
+        "T035",
+        "T040",
+        "T041",
+        "T042",
+        "T043"
+      ],
+      "tests": [
+        "tests/test_filing_eligibility.py",
+        "tests/test_parse_live_cp4.py::test_t081_the_eligibility_port_matches_the_loaded_grammar",
+        "tests/test_parse_live_cp4.py::test_t081_parity_holds_on_the_scale_project_too"
+      ]
+    },
+    "FR-040": {
+      "title": "The plan MUST separately project the human-disapproved analyses that are in use in a text, because filing will overwrite each of those disapprovals with an approval (D-2). This count MUST NOT be folde",
+      "tasks": [
+        "T030",
+        "T033",
+        "T082"
+      ]
+    },
+    "FR-041": {
+      "title": "The run record MUST list, separately from FR-033's count, every analysis whose human disapproval was overwritten with an approval, capturing the prior evaluation first. The correction to parent 12.2 (",
+      "tasks": [
+        "T058",
+        "T075",
+        "T077"
+      ],
+      "tests": [
+        "tests/test_filing_record.py::test_every_overwritten_disapproval_is_listed_with_the_prior_evaluation"
+      ]
+    },
+    "FR-042": {
+      "title": "No backup, run record, pre-deletion capture or other artifact produced by filing may be written inside the project's folder or any folder under it. They MUST live under the MCP's own data directory, a",
+      "tasks": [
+        "T024",
+        "T051",
+        "T060"
+      ]
+    },
+    "FR-043": {
+      "title": "When the project takes part in Send/Receive, the no-backup warning (FR-009) and the mutation plan MUST name the recovery route. That route is not restoring the local backup: do not Send/Receive the br",
+      "tasks": [
+        "T024",
+        "T051"
+      ]
+    }
+  },
+  "size": "oversized",
+  "classification": {
+    "projectedFiles": 14,
+    "projectedTasks": 40,
+    "scopeSignal": "larger",
+    "verdict": "oversized"
+  },
+  "context": [
+    "source: GitHub issue #165",
+    "area: src/flextoolsmcp/server/handlers/parse.py (handle_flextools_parse_text, FILING_NOT_REACHABLE)",
+    "area: src/flextoolsmcp/server/handlers/execution.py run_module write ladder (~4430-4700)",
+    "area: FieldWorks ParseFiler.cs UpdateWordforms/SetUnsuccessfulParseEvals",
+    "constraint: no confirmation/backup bypass flag (issue #165)",
+    "constraint: reuse CP3 join/probe/baseline (CP3 FR-004/FR-023/FR-043)",
+    "constraint: backups never inside project folder (Mercurial/Send-Receive bloat)"
+  ],
+  "intent": "Let the MCP file HermitCrab parse results into a FLEx project through FLEx's own ParseFiler, behind the full write ladder, a conjunction-based deletion projection, and a refuse-to-file load-error gate.",
+  "expectations": [
+    "Merging parser morphology into gloss-only analyses (parent 17.6)",
+    "Sandbox spine (CP5) and CP6 docs/telemetry",
+    "Any confirmation or backup bypass / unattended filing",
+    "Coordinating with FLEx's own background parser"
+  ],
+  "approach": "Extract run_module's inline write ladder into server/write_ladder.py and reuse it; put the write spine in a new server/filing/ package run by a FILING_ROLE worker so the CP3 read spine and its no-write tests stay untouched; drive FieldWorks' ParseFiler headlessly with a paused real IdleQueue and a fresh filer per word, enforcing the confirmed deletion projection as a per-word guard.",
+  "decisions": [
+    {
+      "decision": "Deletion bound uses FR-011 two conjuncts (user noopinion AND not in any segment), not CP3 projection predicate",
+      "why": "ParseFiler deletes human-made never-evaluated unused analyses; CP3 is_human_record filter under-counts them, breaking FR-014",
+      "rejected": "Reuse signals/projections.deletion_projection as-is"
+    },
+    {
+      "decision": "Enforce the upper bound per word at filing time: skip a word whose live would-delete set exceeds the confirmed projection (outside_projection)",
+      "why": "Cached join, Texts-only traversal and a moving lexicon can all make the preview too small; makes SC-002 hold by construction",
+      "rejected": "Trust the preview; refuse the whole run on divergence"
+    },
+    {
+      "decision": "Real IdleQueue with IsPaused=true, pumped by hand; one ParseFiler per word",
+      "why": "UpdateWordforms is private; a declined (CanStartUow=false) batch stays in the filer queue and would be filed silently with the next word",
+      "rejected": "null idle queue; single long-lived filer; reflecting on private UpdateWordforms"
+    },
+    {
+      "decision": "Confirmation is unconditional for filing and bound to a plan_id (sha256 of canonical plan) issued in-session",
+      "why": "manage_config can set require_write_confirmation=false and confirmed is an unverified boolean; SC-008 and FR-006 would fail",
+      "rejected": "Honour require_write_confirmation for filing; bare confirmed=True"
+    },
+    {
+      "decision": "Write spine in new server/filing/ package under a FILING_ROLE worker; read worker unchanged",
+      "why": "Keeps FR-029 a structural fact proven by the existing no-write tests; reads go to a different process (FR-027)",
+      "rejected": "Write mode inside parse/worker_main.py"
+    },
+    {
+      "decision": "Extract run_module ladder rungs into server/write_ladder.py with no behaviour change",
+      "why": "FR-002 forbids copies; rungs are inline in handle_run_module today",
+      "rejected": "Copy the block; call handle_run_module internally"
+    },
+    {
+      "decision": "Re-run the refuse-to-file gate on every grammar reload during the job",
+      "why": "flexicon ParseWord silently reloads a stale grammar; a mid-run edit could otherwise file against new load errors",
+      "rejected": "Gate only before the first word"
+    },
+    {
+      "decision": "Port HCLoader eligibility predicates (eligible_forms_dropped signal), pinned by a live parity test",
+      "why": "Predicates are private instance methods; FR-039 must name dropped entries",
+      "rejected": "Reflect on the loaded Language (cannot name entries)"
+    },
+    {
+      "decision": "Do not reproduce FLEx lowercase side-filing; disclose the divergence",
+      "why": "It files wordforms outside the confirmed scope and projection",
+      "rejected": "Reproduce ParserWorker lowercase ProcessParse"
+    },
+    {
+      "decision": "Interim: on non-shared projects, release the read worker and refuse reads during filing until live L-0 proves two-process coexistence safe (maintainer decision M-1)",
+      "why": "Read worker has been observed rewriting a .fwdata; a whole-file rewrite could silently revert filing",
+      "rejected": "Assume coexistence is safe"
+    },
+    {
+      "decision": "Keep every filing name out of server/parse/: FILING_ROLE, the filing worker module and filing_setup live in filing/client.py and register into a generic WorkerPool role registry; the read worker answers the three filing-preflight reads by delegating to filing/preflight_reads.py",
+      "why": "The standing CP2b/CP3 structural tests (no filing literal, no agent probe, no write message in parse/) keep meaning what they say; parse/ stays provably read-only",
+      "rejected": "Loosening those tests to allow filing names in parse/"
+    },
+    {
+      "decision": "Baseline eligible_entries stores [{entry_guid, headword}] instead of bare GUIDs",
+      "why": "FR-039 must NAME entries no longer eligible; a headword recorded at baseline time names a dropped entry even when it has since been deleted",
+      "rejected": "[guid] only (data-model section 4) plus a headword lookup at refusal time, which cannot name a deleted entry"
+    },
+    {
+      "decision": "Only read-only batch runs serve as gate baselines; filing runs never re-baseline",
+      "why": "A filing run refused mid-run loaded the very grammar the gate refused; letting it re-baseline would whitewash the new errors and open a bypass. FR-021 names the read-only parse as the one escape",
+      "rejected": "R-12 wording that filing runs count as baseline sources too"
+    },
+    {
+      "decision": "A load whose error file could not be read, or an eligibility read that failed against a baseline that has one, refuses",
+      "why": "Unknown is never clean for a gate whose failure mode is silent deletion; FLEx own HCLoadErrors.xml is never substituted (FR-023)",
+      "rejected": "Treating an unreadable load as clean or as pre-existing"
+    },
+    {
+      "decision": "Amend tests/test_cp1_boundary.py with a pinned CP4 allowlist: filing/filer.py may construct ParseFiler and call ProcessParse, nothing else; HCParser/XAmpleParser/ParserWorker construction and ParseWord stay forbidden outside worker_main",
+      "why": "FR-018 requires filing through FieldWorks own ParseFiler, which the CP1 test forbade tree-wide; its docstring requires any widening to be justified in the test",
+      "rejected": "Moving the filer call into parse/worker_main.py (puts a write into the read spine) or a blanket per-file exemption"
+    },
+    {
+      "decision": "Filing persists at intervals (FLEXTOOLSMCP_FILING_SAVE_SECONDS, default 15 s) and always on filing_commit before any terminal state, rather than SaveChanges per word",
+      "why": "FR-034 persist-before-success; a per-word save rewrites a whole XML-backend project each word; the record carries persisted so a crash says what may be unsaved",
+      "rejected": "Save per word; save only at CloseProject"
+    },
+    {
+      "decision": "Extended the HCLoader eligibility port with environment/position presence, MSA routing (stem vs rule kinds, sense-less variants) and enabled-template slot routing",
+      "why": "T081 live parity on Malay found 280 vs 277: -el- (infix, no position), -kan2 and ber- (inflectional, slots only in a disabled template) drop silently in HCLoader; an over-generous port hides exactly the D-1 drops the gate exists to catch (e.g. disabling a template)",
+      "rejected": "Keeping R-12 (environments taken as valid, positions logged): wrong -- IsValidRuleForm rejects a positionless infix before anything is logged"
+    },
+    {
+      "decision": "Unknown is never a shield on the filer side: would_delete counts an unreadable user opinion as deletable and an unreadable segment join (in_use None) as unshielded; unknown use guards every disapproval",
+      "why": "Sweep #4: reading unknown as shielded let the R-02 subset guard pass and ParseFiler delete an unconfirmed analysis with no pre_deletion capture",
+      "rejected": "Adding a fourth skip reason (e.g. unreadable): SKIP_REASONS is a fixed data-model set; the existing outside_projection skip already expresses it"
+    },
+    {
+      "decision": "Deferred read-worker recycle: a busy read worker at filing end is marked stale and recycled before the next filing preflight read",
+      "why": "Sweep #2 HIGH: the busy-skip left previews reading a pre-filing LCM cache (R-09)",
+      "rejected": "Killing the busy worker (loses a user word in flight) or leaving it (stale previews, spurious outside_projection skips)"
+    },
+    {
+      "decision": "On a non-shared project the read worker is released before the writable open unconditionally (no longer gated by the M-1 flag); the flag stays True and governs only read refusals during filing",
+      "why": "L-0: a writable open raises FP_FileLockedError while the read worker holds the project, so the release is required for the open to succeed at all",
+      "rejected": "Dropping the interim restriction (L-0 failed) or keeping the release behind the flag (the open would fail if the flag were ever flipped)"
+    },
+    {
+      "decision": "The filing worker opens with a HeadlessLcmUI subclass whose SynchronizeInvoke is SIL.LCModel.Utils.SingleThreadedSynchronizeInvoke",
+      "why": "HeadlessLcmUI returns None, safe only without change subscribers; HCParser registers ParserModelChangeListener, so ParseFiler died with NRE in SendPropChangedNotifications (live)",
+      "rejected": "Patching flexicon (outward; filed as a recommendation instead) or dropping the ui kwarg (FwLcmUI modal dialogs hang a headless process, flexicon #238)"
+    },
+    {
+      "decision": "FR-027/SC-007 amended by the maintainer: on projects with sharing off, read-only parses and single-word tries wait for a filing run (refused with parser_filing_in_progress, hint says so); on projects with sharing on they are not blocked; run-reading tools never blocked",
+      "why": "L-0: a read-only LCM open takes the project lock and a second writable open fails FP_FileLockedError on non-shared projects; shared projects coexist (S4d)",
+      "rejected": "Keeping FR-027 unconditional (impossible on non-shared) or refusing reads on shared projects too (loses concurrency where it works)"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "Full-tier plan: extracted write ladder, new filing package/worker, per-word guarded ParseFiler, plan-bound unconditional confirmation, gate on every reload, 8 phases with live L-0 first",
+      "key_finding": "CP3 deletion projection under-counts what ParseFiler deletes (human-made unevaluated unused analyses), so it is not an upper bound; and confirmation is bypassable today via manage_config"
+    },
+    "tasks": {
+      "summary": "71 tasks across 9 phases: Setup (live L-0/Q2/Q3/Q5), Foundational (ladder extraction, contract, filing skeleton), US1 preview, US3 gate, US2 filing, US4 claims, US6 record, US5 live proof, Polish; 6 tripwire tests"
+    },
+    "implement": {
+      "summary": "CP4 filing shipped and live-verified: preview/confirm/plan_id-bound filing through FieldWorks ParseFiler with the FR-011 bound, R-02 guard, refuse-to-file gate, best-effort backup, claim and cancel; L-0 settled FR-027 (reads wait on sharing-off projects); 7 live-only defects fixed; flexicon #441 filed"
+    }
+  },
+  "currentTask": "T005",
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Disposable-copy helper: CP4-Scratch- naming, prefix-refusing teardown, .hg and lock files never copied, source read-only",
+      "files": [
+        "tests/live_support/make_disposable.py",
+        "tests/live_support/__init__.py"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Evidence README naming every Phase 1 and Phase 8 artifact per CP2b/CP3 precedent",
+      "files": [
+        "specs/parser-check-cp4/evidence/README.md"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "Extraction test: ladder leaves counted per path via write_ladder; AST scan forbids direct rung calls in handle_run_module, the filing path and server/filing; observed red (ImportError) before T007",
+      "files": [
+        "tests/test_write_ladder_extraction.py"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Extracted probe_write_access / backup_intent / take_backup into write_ladder.py (moved, call-time leaf lookups preserve run_module test seams); backup.py gains predict_backup_skip sharing one disk-space rule",
+      "files": [
+        "src/flextoolsmcp/server/write_ladder.py",
+        "src/flextoolsmcp/server/backup.py"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "handle_run_module rewritten onto write_ladder; issue55/shared_mode/issue92/async_locking suites pass unmodified (292 passed) and goldens byte-identical",
+      "files": [
+        "src/flextoolsmcp/server/handlers/execution.py"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "ParserFilingInProgressDetail and GrammarLoadUncleanDetail in contract field order (parent five, then four appended), eligible_forms_dropped signal, baseline_source pattern; appended to AnyDetail",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "ParseTextInput gains apply/confirmed/plan_id (64 hex) with confirmed/plan_id refused without apply; ParseCancelInput(run_id)",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "Two code rows added; documented count 32 -> 34 (taken from live file)",
+      "files": [
+        "docs/TOOL-CONTRACT.md"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Golden fixtures for both codes via make_golden.py; existing goldens unchanged",
+      "files": [
+        "tests/make_golden.py",
+        "tests/golden/responses/parser_filing_in_progress.json",
+        "tests/golden/responses/grammar_load_unclean.json"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Tool contract CHANGELOG entry: two codes, enum value, four appended fields, three arguments, flextools_parse_cancel, deletions section",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "SC-008 tripwire: enumerates schema, config keys and env vars against the bypass pattern with a justified pre-CP4 allowlist; require_write_confirmation=false filing assertion observed red (handler ignores apply) until T037; shared offline harness tests/filing_fakes.py with dual config-module isolation",
+      "files": [
+        "tests/test_filing_bypass_surface.py",
+        "tests/filing_fakes.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "parse_text description rewritten with the contract first line and the preview/confirm/backup sequence (annotation unchanged); flextools_parse_cancel ToolDef (not read-only, not destructive, idempotent)",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "flextools_parse_cancel route + ALL_TOOL_NAMES; tool-list test updated to 28",
+      "files": [
+        "src/flextoolsmcp/server/dispatch.py",
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Contract tests: union 34, CP4 field order read from contracts/tools.md s.2, parent five a strict prefix, closed signal enum, baseline_source pattern, doc-row transcription + golden containment for both codes",
+      "files": [
+        "tests/test_response_contract.py",
+        "tests/test_parser_error_models.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "R-16: exact schema set with the three filing args, confirmation-needs-apply validation, new first line pinned, all four annotations pinned, read-only response = CP3 keys with filing=not_requested",
+      "files": [
+        "tests/test_parse_text_handler.py"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "handle_flextools_parse_cancel over ParseRunner.cancel_run (parse_run_not_found / parse_job_cancelled / cancel_requested, filing note on filing runs); read-only path emits filing=not_requested; shared _live_run_not_found helper",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "filing package docstring: the only write spine, one writable open (worker_filing), module map",
+      "files": [
+        "src/flextoolsmcp/server/filing/__init__.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "In-process per-project claim (casefolded key, atomic acquire, run-scoped release, live words_completed) + startup sweep marking orphaned filing records crashed with the recovery pointer; RunMeta gains additive filing section",
+      "files": [
+        "src/flextoolsmcp/server/filing/claims.py",
+        "src/flextoolsmcp/server/parse/record.py"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "Session filing_plans (newest per (project, scope key)) and filing_backed_up_projects, both retired on a new session boundary",
+      "files": [
+        "src/flextoolsmcp/server/session.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "FILING_ROLE registered from the filing package (filing/client.py) through a new WorkerPool role registry so parse/ never names the write spine; read-only client methods probe_agent/filing_gate/filing_preview; filing_setup lives on FilingWorkerClient",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/filing/client.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "assert_outside_project (real-path, case-insensitive, refuses anything under the projects root) and send_receive_status (.hg dir; unknown worded as S/R)",
+      "files": [
+        "src/flextoolsmcp/server/filing/paths.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "CP3 deletion_projection docstring: not the filing bound (R-01)",
+      "files": [
+        "src/flextoolsmcp/server/signals/projections.py"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Filing-claim startup sweep wired beside sweep_stale_locks (log-only, never blocks startup); CP3 artifact contract gains the CP4 filing field and boundary tests updated for the three read-only preflight messages",
+      "files": [
+        "src/flextoolsmcp/server.py",
+        "specs/parser-check-cp3/contracts/artifact.md",
+        "tests/test_parse_batch_artifact.py",
+        "tests/test_parse_no_project_writes.py"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "R-01 tripwire: human-made unevaluated unused analysis counted (CP3 predicate proven to give 0), gloss shield through the real segment_occurrence join, disapproval excluded + in-use overwrite separate, unknown use counted, never-parsed spoken-for project = 0, FR-015 import/no-traversal assertions; observed red (ImportError) before T033",
+      "files": [
+        "tests/test_filing_projection.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Plan-shape tests: all 16 data-model keys, CP3 duplicate_projection carried (unknown not zero without a prior run), plan_id stable under key order, blind to display wording, moved by every bound field; observed red (ImportError)",
+      "files": [
+        "tests/test_filing_plan_binding.py"
+      ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "FR-006 tripwire: bare confirmed, foreign plan_id, changed plan and another scope's plan_id all re-preview without spawning the filing worker; only the matching plan_id starts a run; red until the handler (T037)",
+      "files": [
+        "tests/test_filing_plan_binding.py"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "deletion_upper_bound on FR-011's two conjuncts over the one CP3 join (fresh_occurrence/attach_segment_use) with the probe consumed not re-run; unknown use/opinion counted toward the bound; disapproval overwrites and in-use approvals projected separately; never-parsed not short-circuited",
+      "files": [
+        "src/flextoolsmcp/server/filing/projection.py"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "Read-only filing preflight messages in the read worker (agent_probe, filing_gate, filing_preview) dispatched to filing/preflight_reads.py: fresh wordform index, DefaultUserAgent opinion, fresh segment join; gate inputs from this worker's own load-error baseline; stub backend answers",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/filing/preflight_reads.py"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "Every batch baseline records eligible_entries ({entry_guid, headword}) once per grammar load, batch-only so try-word never pays the lexicon walk; documented on RunMeta",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/record.py"
+      ]
+    },
+    "T036": {
+      "status": "DONE",
+      "did": "build_plan with all data-model section 2 fields, plan_id = sha256 of canonical JSON over the bound fields only (backup by outcome, access by verdict), duplicate disclosure unknown-not-zero without a prior run; fixed sentences in filing/wording.py",
+      "files": [
+        "src/flextoolsmcp/server/filing/plan.py",
+        "src/flextoolsmcp/server/filing/wording.py"
+      ]
+    },
+    "T037": {
+      "status": "DONE",
+      "did": "Filing preview path (contracts rows 1-10): claim, write-session refusal, engine, agent probe, surface probe, scope, access probe as data, plan built from project facts, confirmation unconditional and bound to a session-issued plan_id equal to the recomputed plan; row 9 gate slot placeholder until T044; runner gains the three read-only preflight requests; filer.probe_filing_surface reuses probe_parser_core(WRITE_REQUIRED_MEMBERS)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/filing/filer.py"
+      ]
+    },
+    "T040": {
+      "status": "DONE",
+      "did": "FR-039 tripwire: morpher_null without override, 3->5 errors = 2 new (multiset) naming the read-only re-baseline, absent baseline all pre-existing, stale foreign-mtime file plays no part (unreadable load refuses), emptied lexeme form refused as eligible_forms_dropped naming the entry (a load-error-only gate passes it), find_baseline by created_at excluding filing runs, preview refuses with no plan; observed red (ImportError)",
+      "files": [
+        "tests/test_filing_gate.py"
+      ]
+    },
+    "T041": {
+      "status": "DONE",
+      "did": "Eligibility port tests, one fixture per branch of IsValidLexEntryForm / IsValidRuleForm / HasValidRuleForm (circumfix branch, dotted circles, affix process arity, env-dependent shapes eligible) plus the CLR fact reader; observed red (ImportError)",
+      "files": [
+        "tests/test_filing_eligibility.py"
+      ]
+    },
+    "T042": {
+      "status": "DONE",
+      "did": "Port of IsValidLexEntryForm / IsValidRuleForm / HasValidRuleForm over plain facts with C# line references, env-dependent shapes eligible (logged by loader), CLR fact reader; module docstring names the Principle VI violation and the T081 parity pin",
+      "files": [
+        "src/flextoolsmcp/server/filing/eligibility.py"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "find_baseline (newest read-only batch run by created_at, captured, same project+scope; filing runs never re-baseline), multiset load-error diff, eligibility diff naming dropped entries, unreadable load/eligibility refuse (unknown is never clean), this_run reference for job time; messages name the only escape",
+      "files": [
+        "src/flextoolsmcp/server/filing/gate.py"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "Gate wired into contracts row 9 (read worker filing_gate facts vs find_baseline), refusal before any plan; plan gate slot filled; baseline run feeds the duplicate disclosure; raw facts kept for the job-time reference",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_filing_gate.py"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "FR-002 tripwire: claim first (worker asked nothing), write-disabled names flextools_start(write_enabled=true), agent/surface refuse before any preview, unconfirmed+open_exclusive previews (remedy in plan) while confirmed is project_locked, unknown refused on confirm, open_shared verbatim advisory, start_run only on the confirmed call, backup before spawn, SC-001 offline (sha256/no backup/no spawn/no claim); observed red",
+      "files": [
+        "tests/test_filing_ladder_order.py"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "Backup tests: intent==outcome for default/disk-full/opt-out, run proceeds without backup, verbatim warning in response and meta, run_module backup does not satisfy filing, every run backs up, path-or-warning, backup outside projects, record dir inside a project refused, .hg and unknown worded as S/R; observed red",
+      "files": [
+        "tests/test_filing_backup.py"
+      ]
+    },
+    "T052": {
+      "status": "DONE",
+      "did": "Inverse confinement: writeEnabled=True (keyword or positional) only in filing/worker_filing.py, exactly once; filing read modules make no write call; read worker still opens read-only; observed red (worker_filing absent)",
+      "files": [
+        "tests/test_filing_write_confinement.py"
+      ]
+    },
+    "T053": {
+      "status": "DONE",
+      "did": "R-16: scan set unchanged; filing unreachable on read runs (default and filing=False), reachable only with filing=True; try_word never files (structural AST check); observed red (no filing kwarg yet)",
+      "files": [
+        "tests/test_parse_no_project_writes.py"
+      ]
+    },
+    "T054": {
+      "status": "DONE",
+      "did": "Classify tests on a fake word surface: counts, R-02 outside_projection files nothing (deletion and overwrite guards), filer predicate, errored words filed and counted separately, captures before the pump with prior evaluation, confirmed_after lines, invalid_object, filer_declined, unchanged; observed red (ImportError)",
+      "files": [
+        "tests/test_filing_classify.py"
+      ]
+    },
+    "T055": {
+      "status": "DONE",
+      "did": "FR-019 tripwire: fakes model ProcessParse-only-enqueues and CanStartUow-false-leaves-work; paused real queue, non-null handler, HC agent passed through, decline -> filer_declined, declined word NOT filed by the next word (single long-lived filer fails), bound-member probe by name and arity; observed red",
+      "files": [
+        "tests/test_filing_filer_pump.py"
+      ]
+    },
+    "T056": {
+      "status": "DONE",
+      "did": "Cancel tests: word-boundary stop with filed_words and verbatim not-undoable note in response and record, claim cleared, parse_cancel unknown/ended/read-only answers, annotations; observed red",
+      "files": [
+        "tests/test_filing_cancel.py"
+      ]
+    },
+    "T057": {
+      "status": "DONE",
+      "did": "Per-word ParseFiler + paused real IdleQueue pumped by hand (remove then Delegate(Parameter); False -> filer_declined; fresh filer so a decline cannot leak); ClrFilerSurface loads ParserCore+FwUtils in the filing worker only and exposes the CLR types for probe_bound_members",
+      "files": [
+        "src/flextoolsmcp/server/filing/filer.py"
+      ]
+    },
+    "T058": {
+      "status": "DONE",
+      "did": "Per-word sequence: liveness, checksum-unchanged, R-02 guard on the filer's own predicate (deletions and in-use disapprovals inside the confirmed projection or nothing filed), captures fsynced before the pump, pump, before/after classification with confirmed_after lines; FilingCounts helpers",
+      "files": [
+        "src/flextoolsmcp/server/filing/classify.py"
+      ]
+    },
+    "T059": {
+      "status": "DONE",
+      "did": "FILING_RUN_TRANSITIONS (read table + parsing->filing, filing->terminal) with can_transition(..., filing=) and working_stage(); read-run table untouched so the standing unreachability tests still hold",
+      "files": [
+        "src/flextoolsmcp/server/parse/stages.py"
+      ]
+    },
+    "T060": {
+      "status": "DONE",
+      "did": "RunRecord: filing section (create/set_filing), fsynced filing/deletions.jsonl appender and reader, both taking a path guard so the filing side's assert_outside_project vets every artifact path without parse/ importing the write spine",
+      "files": [
+        "src/flextoolsmcp/server/parse/record.py"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "FILING_ROLE worker: probes every bound member before the one writable open (per-operation mode, no session UOW), resolves the HC agent by GUID (KeyNotFoundException -> parser_agent_missing lookup_failed), re-runs the whole gate on the first load and every stale reload vs the confirmed call's own load (refused_midrun, nothing asked), files each word via classify/filer, saves at intervals and on filing_commit, RefreshFromDisk-before-CloseProject at teardown; parses through worker_main.parse_raw; shared headless_ui_kwargs helper; CP1 boundary test amended narrowly (filer.py: ParseFiler + ProcessParse only, pinned)",
+      "files": [
+        "src/flextoolsmcp/server/filing/worker_filing.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "Runner: filing=True runs under the filing role with filing_setup before the first word, parsing->filing via working_stage, per-word observer, commit before EVERY terminal state (completed/cancelled/refused_midrun/failed; crashed when the worker is gone), claim released in the terminal transition before done is set, filing worker released and read worker recycled when idle; filing/observer.py keeps the record's filing section",
+      "files": [
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/filing/observer.py",
+        "src/flextoolsmcp/server/filing/client.py",
+        "src/flextoolsmcp/server/filing/wording.py"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "Confirmed path (contracts rows 11-14): project_locked on exclusive/other holders, project_drive_unavailable on unknown, gate re-run, record dir refused inside the projects root, best-effort backup before every filing run under its own session key (intent recorded beside outcome), M-1 interim read-worker release on non-shared projects, claim taken under a token and rebound to the run id, run started under FILING_ROLE; response names the backup path or carries the verbatim no-recovery warning, shared/stale advisories",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/filing/claims.py",
+        "src/flextoolsmcp/server/filing/observer.py"
+      ]
+    },
+    "T070": {
+      "status": "DONE",
+      "did": "Claim tests: second request refused <1s before the engine (boom-stub) with the four fields and parse_status hint, live words_completed, other projects unaffected, case-insensitive; claim clears on success/mid-run refusal/worker crash/cancel/failed save, startup sweep marks orphans crashed idempotently; shared try-word proceeds, M-1 interim refuses non-shared reads (and proceeds once flipped), run-reading tools never consult the claim, no lock names",
+      "files": [
+        "tests/test_filing_claims.py"
+      ]
+    },
+    "T071": {
+      "status": "DONE",
+      "did": "filing/claims.py added to the standing no-edit-blocking scan (a dictionary, not a lock)",
+      "files": [
+        "tests/test_parse_no_edit_blocking.py"
+      ]
+    },
+    "T072": {
+      "status": "DONE",
+      "did": "Row 2 claim lookup confirmed first (before engine/scope/preview/backup/parse); parse_status/log/diff never consult the claim; M-1 interim read refusal (parser_filing_in_progress, non-shared projects only, one named constant) on try_word and read-only parse_text",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T075": {
+      "status": "DONE",
+      "did": "Record tests over a fake filing run read back through parse_log: every data-model s.7 count key, projected beside actual, verbatim in-use approvals sentence, overwritten disapprovals listed with the prior evaluation in the captures, deletions section served (typed not-applicable on read-only runs, a note when a filing run captured nothing), forbidden-word scan over every filing response/log/status/meta with only the three mandated sentences exempt; observed red",
+      "files": [
+        "tests/test_filing_record.py",
+        "tests/filing_fakes.py"
+      ]
+    },
+    "T076": {
+      "status": "DONE",
+      "did": "parse_log: summary carries the meta filing block; new deletions section (paged captures from filing/deletions.jsonl, typed not-applicable on read-only runs, never empty); PARSE_LOG_SECTIONS, ParseLogInput and the parse_log description updated; CP3 tools.md section list amended additively",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/models.py",
+        "src/flextoolsmcp/server/tool_definitions.py",
+        "specs/parser-check-cp3/contracts/tools.md",
+        "src/flextoolsmcp/server/filing/wording.py"
+      ]
+    },
+    "T077": {
+      "status": "DONE",
+      "did": "Parent SPEC corrections: 12.2 D-2 (filing DOES overwrite an in-use human disapproval; projected, guarded, listed), 12.4 backup best-effort stated before confirmation with the S/R and FR-042 reasons (issue #165 edit left to maintainer, M-2), section 14 grammar_load_unclean row extended (eligible_forms_dropped + four appended fields, parent five a prefix)",
+      "files": [
+        "specs/parser-check/SPEC.md"
+      ]
+    },
+    "T078": {
+      "status": "DONE",
+      "did": "CP3 artifact contract amended additively: layout gains filing/deletions.jsonl, new section 10 for eligible_entries on batch baselines, the meta filing section (never a gate baseline) and the capture file's line shapes",
+      "files": [
+        "specs/parser-check-cp3/contracts/artifact.md"
+      ]
+    },
+    "T080": {
+      "status": "DONE",
+      "did": "Live test module: requires_flex, CP4-Scratch- fixture refusing working names (FR-037), FLEXLIBS_REQUIRE_LIVE=1 fails missing prerequisites; offline guards pass",
+      "files": [
+        "tests/test_parse_live_cp4.py"
+      ]
+    },
+    "T081": {
+      "status": "DONE",
+      "did": "Parity probe (HCLoader.Load vs port, set equality) run live on scratch copies; found 3 silent drops the port missed (infix w/o position, slotted infl affix outside enabled templates, MSA routing); port fixed; parity now 41=41 and 277=277",
+      "files": [
+        "tests/test_parse_live_cp4.py",
+        "tests/live_support/parity_probe.py",
+        "src/flextoolsmcp/server/filing/eligibility.py",
+        "tests/test_filing_eligibility.py",
+        "specs/parser-check-cp4/evidence/t081-eligibility-parity.json",
+        "specs/parser-check-cp4/evidence/t081-eligibility-parity-scale.json"
+      ]
+    },
+    "T092": {
+      "status": "DONE",
+      "did": "make_golden.py: all fixtures up to date (2 new CP4 fixtures); validate_integrity.py rc=0 (the 14-Operations warning is pre-existing on main)",
+      "files": [
+        "tests/golden/responses/grammar_load_unclean.json",
+        "tests/golden/responses/parser_filing_in_progress.json"
+      ]
+    },
+    "T090": {
+      "status": "DONE",
+      "did": "Sweeps 1-2 via sweep-pattern (Explore x2): 22 siblings triaged; fixed deferred read-worker recycle after filing (R-09 busy skip); eligibility port recorded as second original site",
+      "files": [
+        "specs/parser-check-cp4/reviews/pattern-audit-1-2.md",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/filing/observer.py",
+        "tests/test_filing_fail_closed.py"
+      ]
+    },
+    "T091": {
+      "status": "DONE",
+      "did": "Sweep 3 re-grepped config_get (13 sites, table in review); fixed backup_retention=0 deleting the just-taken backup. Sweep 4: fixed 7 fail-open paths (filer guard unreadable opinion/segment join, unreadable preview words disclosed, incomplete preview, missing morpher_null, claim race)",
+      "files": [
+        "specs/parser-check-cp4/reviews/pattern-audit-3-4.md",
+        "src/flextoolsmcp/server/backup.py",
+        "src/flextoolsmcp/server/filing/classify.py",
+        "src/flextoolsmcp/server/filing/worker_filing.py",
+        "src/flextoolsmcp/server/filing/preflight_reads.py",
+        "src/flextoolsmcp/server/filing/projection.py",
+        "src/flextoolsmcp/server/filing/gate.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_filing_classify.py",
+        "tests/test_filing_projection.py",
+        "tests/test_filing_fail_closed.py"
+      ]
+    },
+    "T094": {
+      "status": "DONE",
+      "did": "Surfaced M-2 to the maintainer in the session report: issue #165's definition of done still says Mandatory pre-write backup; CP4 ships best-effort backup (FR-009). Issue NOT edited (outward-facing, needs authorisation)"
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "L-0 run live on scratch copies: non-shared coexistence FAILS (FP_FileLockedError); release does not rewrite; XAmple-path save not reproduced on the refusal path; 4 live-only defects fixed (probe dependency resolution, own-lock refusal, null SynchronizeInvoke NRE in the filer, dropped failure cause); filing then completed and persisted",
+      "files": [
+        "tests/live_support/l0_coexistence.py",
+        "specs/parser-check-cp4/evidence/l0-coexistence.json",
+        "src/flextoolsmcp/server/parser_probe.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/filing/worker_filing.py",
+        "tests/test_filing_fail_closed.py"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Q2 agent present by GUID on both projects; Q3 filing does not mark the grammar stale (0 reloads over 5 words); Q5 second run 5/5 unchanged across processes, file byte-identical; fixed: filing_commit now closes the project so 'persisted' means on disk and the lock is freed before the claim clears",
+      "files": [
+        "tests/live_support/q2_agent_probe.py",
+        "tests/live_support/q3_q5_filing.py",
+        "specs/parser-check-cp4/evidence/q2-agent.json",
+        "specs/parser-check-cp4/evidence/q3-staleness.json",
+        "specs/parser-check-cp4/evidence/q5-checksum.json",
+        "src/flextoolsmcp/server/filing/worker_filing.py"
+      ]
+    },
+    "T082": {
+      "status": "DONE",
+      "did": "S1 (write-disabled refused, preview writes nothing, sha identical, never-parsed bound 0) and S2+S3 live (bound 14 = 9 seeded + 5 pre-existing; actual 9 = seeded, all captured; 4 in-text survive user-approved; in-use disapproval projected, listed with prior, overwritten)",
+      "files": [
+        "tests/live_support/cp4_scenarios.py",
+        "tests/live_support/lcm_writer.py",
+        "specs/parser-check-cp4/evidence/s1-preview-writes-nothing.json",
+        "specs/parser-check-cp4/evidence/s2-projection-vs-actual.json",
+        "specs/parser-check-cp4/evidence/s2-auto-approval-survival.json"
+      ]
+    },
+    "T083": {
+      "status": "DONE",
+      "did": "S4 a-c live pass (new_load_errors vs prior_run baseline; eligible_forms_dropped names the entry; clean preview then break refused at confirm, nothing written); S4d FINDING: a foreign-process grammar edit mid-run is not seen by the filing worker (no reload), run completes on its gated grammar, foreign edit survives the save; S5 pass (backup path, disabled warning in result+meta, require_write_confirmation=false still confirms); S6 pass (in-progress <1s with 4 fields, non-shared read refused, crash swept to crashed, new request accepted); SC-007 holds on a shared copy (try_word 0.05s mid-run); fixed: sharing read from the setting, in-progress hint wording",
+      "files": [
+        "tests/live_support/cp4_scenarios.py",
+        "tests/live_support/shared_mode.py",
+        "specs/parser-check-cp4/evidence/s4-refuse-to-file.json",
+        "specs/parser-check-cp4/evidence/s4d-midrun-and-shared-read.json",
+        "specs/parser-check-cp4/evidence/s5-backup-outcomes.json",
+        "specs/parser-check-cp4/evidence/s6-concurrency.json",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/filing/plan.py",
+        "src/flextoolsmcp/server/filing/claims.py",
+        "tests/test_filing_fail_closed.py"
+      ]
+    },
+    "T084": {
+      "status": "DONE",
+      "did": "S7 Q1: generic Delete() of an in-segment analysis REMOVES the slot from Segment.AnalysesRS (38->37, later refs shift; no move to wordform) - filing must never delete an in-use analysis; Q4: no public grammar-health checker in ParserCore 9.3.11 / HermitCrab 3.8.2 / SIL.Machine 3.8.2; S8 cancel: state cancelled mid-run, filed words listed and persisted, cancel note in the record",
+      "files": [
+        "tests/live_support/cp4_scenarios.py",
+        "specs/parser-check-cp4/evidence/q1-moveconc.json",
+        "specs/parser-check-cp4/evidence/q4-checker-reprobe.json",
+        "specs/parser-check-cp4/evidence/s8-cancel.json"
+      ]
+    },
+    "T085": {
+      "status": "DONE",
+      "did": "FR-038 re-probe finding written into parent SPEC 9.5.3: ParserCore 9.3.11 / HermitCrab 3.8.2 / SIL.Machine 3.8.2 expose no public grammar-health checker; gate keeps its own diff; lints stay deferred",
+      "files": [
+        "specs/parser-check/SPEC.md"
+      ]
+    },
+    "T093": {
+      "status": "DONE",
+      "did": "Full suite 2891 passed, ruff clean, boundary+ladder green, test_issue55 unmodified since 2aedb1d; SC-001..SC-011 mapped to live evidence and tests (SUMMARY.json); SC-007 holds on shared projects and cannot hold on non-shared (L-0), pending the FR-027 amendment in T005",
+      "files": [
+        "specs/parser-check-cp4/evidence/SUMMARY.json",
+        "specs/parser-check-cp4/evidence/s3-disapproval-overwrite.json"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "M-1 settled: L-0 failed; maintainer approved amending FR-027/SC-007 (reads wait during filing on sharing-off projects, unblocked on sharing-on). Spec, R-10 outcome, plan, quickstart, claims/handler wording and tests updated; Q2 finding in parent 17.10",
+      "files": [
+        "specs/parser-check-cp4/spec.md",
+        "specs/parser-check-cp4/research.md",
+        "specs/parser-check-cp4/plan.md",
+        "specs/parser-check-cp4/quickstart.md",
+        "specs/parser-check/SPEC.md",
+        "src/flextoolsmcp/server/filing/claims.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_filing_claims.py"
+      ]
+    }
+  },
+  "concerns": [
+    {
+      "note": "First T014 run wrote require_write_confirmation=false into the real ~/.flextoolsmcp/config.json: flextoolsmcp.config and the bare config module (admin.py fallback import) hold separate CONFIG_FILE/caches and only one was redirected. Reverted within the same minute (key removed; it was not set before). filing_fakes now redirects both modules and asserts the real file is byte-identical after every filing test. Pre-existing test pollution (test.*, paths.* keys from test_v1_3_0_upgrade) left untouched.",
+      "step": "implement"
+    },
+    {
+      "note": "Spec wording conflict: FR-017 and data-model s.8 mandate the errored-word rule sentence containing unreviewed, while FR-033 / contracts s.3 forbid unreviewed in any filing output, and CP3 COUNTER_DIVERGENCES (also in every batch meta.json) contains unreviewed. Resolved by scanning the plan, the filing meta section and filing responses with only the mandated FR-017 sentence exempted (wording.FORBIDDEN_SCAN_EXEMPT); CP3 counter text is outside the filing section. Maintainer may want to reword FR-017.",
+      "step": "implement"
+    },
+    {
+      "note": "Residual D-1 gap: whether a PRESENT environment/position validates is not ported (IsValidEnvironment needs the loader natural-class tables), so an affix whose every environment is present but invalid is counted eligible while HCLoader drops it silently. research.md R-12 said environment failures are logged; that holds only when at least one environment validates.",
+      "step": "implement"
+    },
+    {
+      "note": "Pre-existing siblings recorded, not fixed (outside CP4 write path): _evaluation_facts reads Human off the evaluation (worker_main.py:1359, verify live); send_receive_status ignores LIFT OtherRepositories/.hg; RefreshFromDisk failures swallowed before close (#147 pattern, run_module + filing worker); _pid_is_alive fail-open; read worker never refreshes from disk against non-filing writers. See reviews/pattern-audit-*.md",
+      "step": "implement"
+    },
+    {
+      "note": "Upstream candidates (not filed; outward-facing): flexicon HeadlessLcmUI.SynchronizeInvoke=None breaks any write with a live HCParser (its own docstring contingency now hit); CP1 parser_probe read-spine probe returned load_failed in any process that had not imported flexicon (fixed here with an AssemblyResolve handler).",
+      "step": "implement"
+    },
+    {
+      "note": "S4d not reproducible as specified: in shared mode the filing worker never sees another process grammar edit as staleness (IsUpToDate stays true), so a mid-run foreign break does not end the run refused_midrun; the run completes on the grammar it gated at start (safe: no ungated grammar used; the foreign edit survives the save; the next run gate sees it). SC-005 cannot-build (morpher_null) variant is offline-only.",
+      "step": "implement"
+    }
+  ],
+  "verified": [
+    {
+      "what": "Full offline suite after Phase 5 (US2)",
+      "command": "PYTHONPATH=src python -m pytest tests -m \"not requires_flex\"",
+      "result": "2832 passed, 6 skipped (baseline 2590)",
+      "warnings": [
+        "23 pre-existing DeprecationWarnings (ast.Str) unrelated to CP4"
+      ]
+    },
+    {
+      "what": "Repo lint as in CI",
+      "command": "ruff check .",
+      "result": "All checks passed"
+    },
+    {
+      "what": "T004 Q2 (read-only): HermitCrab agent present and resolvable by GUID on both designated projects",
+      "command": "tests/live_support/q2_agent_probe.py on CP4-Scratch- copies of IndonesianHC-Complete and Malay Parsing-20230810withHC",
+      "result": "HCParser agent 5093d7d7-4f18-4aad-8c86-88389476df15 in AnalyzingAgentsOC; probe_hc_agent state=present on both; never-parsed case not established (evidence/q2-agent.json)",
+      "warnings": [
+        "EvaluationsRC not readable on CmAgent; eval count recorded as null"
+      ]
+    },
+    {
+      "what": "T081 eligibility-port parity, live, set equality",
+      "command": "pytest tests/test_parse_live_cp4.py -k t081",
+      "result": "2 passed: IndonesianHC 41=41, Malay 277=277, no unmapped form ids, no load errors (evidence/t081-*.json); first run failed 280 vs 277 and drove the port fix",
+      "warnings": []
+    },
+    {
+      "what": "Full offline suite + lint after the T081 port fix and the pattern-audit fixes",
+      "command": "pytest tests/ -m \"not requires_flex\"; ruff check .",
+      "result": "2886 passed, 6 skipped; ruff clean; boundary + ladder suites 267 passed; test_issue55_write_safety_ladder.py unmodified since 2aedb1d; real config md5 unchanged (c8966401...)",
+      "warnings": [
+        "23 pytest warnings (ast.Str deprecation in pre-existing tests) judged benign"
+      ]
+    },
+    {
+      "what": "SC mapping (offline halves)",
+      "command": "see reviews/ and tests/test_filing_*.py",
+      "result": "SC-001 test_parse_no_project_writes + test_filing_ladder_order (byte-identical fwdata on every unconfirmed path); SC-003 test_filing_projection::test_a_never_parsed_project_projects_exactly_zero (offline); SC-004 test_filing_backup; SC-005 test_filing_gate (4 variants incl. silent drop) + T081 live parity; SC-006 test_filing_claims (sub-second, 4 fields); SC-008 test_filing_bypass_surface; SC-010 full suite green; SC-011 test_filing_record (offline half). LIVE-PENDING: SC-002, SC-007 (blocked on L-0 / M-1), SC-009, live halves of SC-003/SC-011",
+      "warnings": []
+    },
+    {
+      "what": "Live verification on CP4-Scratch- copies (L-0, Q2-Q5, S1-S8, T081)",
+      "command": "tests/live_support/{l0_coexistence,q2_agent_probe,q3_q5_filing,cp4_scenarios}.py; FLEXLIBS_REQUIRE_LIVE=1 pytest tests/test_parse_live_cp4.py",
+      "result": "All scenario verdicts pass except two recorded findings: L-0 non-shared coexistence fails (M-1 stays; FR-027 amendment needed) and S4d mid-run foreign break not detected (safe: gated grammar used). Evidence + SUMMARY.json in specs/parser-check-cp4/evidence/. ParserCore 9.3.11, HermitCrab 3.8.2, pyflexicon 4.9.0",
+      "warnings": []
+    },
+    {
+      "what": "Final offline + lint + boundary + goldens + integrity after live fixes",
+      "command": "pytest -m \"not requires_flex\"; ruff check .; boundary+ladder suites; make_golden.py; validate_integrity.py; CP3 live smoke",
+      "result": "2891 passed, 6 skipped; ruff clean; 267 boundary/ladder passed; test_issue55 unmodified since 2aedb1d; goldens up to date; integrity rc=0; CP4 live + CP3 t122 14 passed; no scratch copies or backups left; real config md5 unchanged",
+      "warnings": [
+        "23 benign pytest deprecation warnings"
+      ]
+    },
+    {
+      "what": "T093 SC mapping (live + offline)",
+      "command": "evidence/SUMMARY.json + tests/test_filing_*.py",
+      "result": "SC-001 s1 + test_parse_no_project_writes; SC-002 s2 (actual 9 subset of bound 14, all captured); SC-003 s1 never-parsed word bound 0 + offline; SC-004 s5; SC-005 s4 a/b/c live, cannot-build offline, mid-run = S4d finding; SC-006 s6 (1 ms, 4 fields); SC-007 holds on shared (s4d, 0.05 s) and CANNOT hold on non-shared (L-0) - pending FR-027 amendment (T005); SC-008 s5 + test_filing_bypass_surface; SC-009 five FR-036 artifacts present; SC-010 suite green; SC-011 s3",
+      "warnings": []
+    },
+    {
+      "what": "flexicon upstream issue filed (maintainer-authorised)",
+      "command": "gh issue create --repo MattGyverLee/flexicon",
+      "result": "https://github.com/MattGyverLee/flexicon/issues/441 (HeadlessLcmUI.SynchronizeInvoke None -> NRE after loading an HCParser)",
+      "warnings": []
+    },
+    {
+      "what": "after_implement hooks",
+      "command": "lex-qc; lex-verification",
+      "result": "lex-qc APPROVE WITH NON-BLOCKING (pattern-audit gate PASS, live-evidence gate PASS; run_mode field added to SUMMARY.json); lex-verification PASS (independent live re-run of S1, S2+S3, T081 on fresh scratch copies; no leftovers; config unchanged)",
+      "warnings": [
+        "lex-qc: _handle_filing_request is long but linear; candidate for extraction if it grows"
+      ]
+    }
+  ]
+}

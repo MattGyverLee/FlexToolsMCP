@@ -3,8 +3,9 @@
 ## Project Structure
 
 ```
-/src
-  server.py              # MCP server with 12 tools
+/src/flextoolsmcp
+  server.py              # MCP server entry point
+  server/                # Tool definitions, handlers, session state
   flexicon_analyzer.py  # FlexLibs Python AST extraction
   liblcm_extractor.py    # LibLCM .NET reflection extraction
   build_casting_index.py # Pythonnet casting requirements generator

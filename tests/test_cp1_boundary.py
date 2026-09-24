@@ -552,17 +552,49 @@ CP2B_PARSE_OPERATION_ALLOWLIST = frozenset(
 CP2B_PARSE_PACKAGE = "src/flextoolsmcp/server/parse/"
 
 
+#: Parser-check CP4 -- the FILING spine's one exception, and the second
+#: amendment this file has taken (never a weakening; see
+#: ``TestTheFilingAllowlistIsPinned``). Filing hands each parse result to
+#: FieldWorks' own ``ParseFiler`` -- the filer FLEx's Parse Words in Text
+#: uses -- so the filed analyses carry the parser's honest provenance (CP4
+#: FR-018). That means CONSTRUCTING a ``ParseFiler`` and calling its
+#: ``ProcessParse``, which this file forbids tree-wide. The exception is
+#: exactly those two names, in exactly the one module that drives the filer
+#: (``filing/filer.py``, a fresh filer per word, R-03). ``HCParser``,
+#: ``XAmpleParser`` and ``ParserWorker`` construction stay forbidden there
+#: and everywhere; ``ParseWord`` stays in the parse package (the filing
+#: worker parses through ``worker_main``'s ``parse_raw``); and the CP1
+#: diagnostic surface is untouched.
+CP4_FILING_ALLOWLIST = {
+    "src/flextoolsmcp/server/filing/filer.py": frozenset({"ParseFiler", "ProcessParse"}),
+}
+
+
 def _is_parse_operation_allowed(rel_path: str) -> bool:
     return rel_path.replace("\\", "/") in CP2B_PARSE_OPERATION_ALLOWLIST
 
 
-def scan_with_cp2b_allowlist(source: str, rel_path: str) -> List[Violation]:
-    """``scan_source_for_construction`` with CP2b's narrow exception applied.
+def _filing_allowed(violation: "Violation", rel_path: str) -> bool:
+    """True for a CP4 filer violation that names ONLY an allowlisted name."""
+    names = CP4_FILING_ALLOWLIST.get(rel_path.replace("\\", "/"))
+    if not names:
+        return False
+    kind, detail = violation[0], violation[3]
+    if kind not in ("direct_construction", "literal_construction", "parse_operation"):
+        return False
+    return any(detail.startswith(f"{name}(") for name in names)
 
-    Drops ``parse_operation`` violations for an allowlisted file and nothing
-    else. Every other kind, and every other file, is reported unchanged.
+
+def scan_with_cp2b_allowlist(source: str, rel_path: str) -> List[Violation]:
+    """``scan_source_for_construction`` with the two narrow exceptions applied.
+
+    Drops ``parse_operation`` violations for the CP2b-allowlisted worker, and
+    -- CP4 -- the ``ParseFiler`` construction / ``ProcessParse`` violations
+    of the filer module, and nothing else. Every other kind, and every other
+    file, is reported unchanged.
     """
     violations = scan_source_for_construction(source, rel_path)
+    violations = [v for v in violations if not _filing_allowed(v, rel_path)]
     if not _is_parse_operation_allowed(rel_path):
         return violations
     return [v for v in violations if v[0] != "parse_operation"]
@@ -691,13 +723,16 @@ class TestNoParserExecutionOutsideTheParsePackage:
         )
 
     def test_parse_operations_in_the_tree_are_confined_to_the_parse_package(self):
+        """Parsing stays in the parse package. The one parse-family call
+        outside it is CP4's `ProcessParse` in the filer -- a FILING call, not
+        a parse -- and it is exempted by name, in that file only."""
         outside: List[str] = []
         for path in server_tree_files():
             rel = _rel(path).replace("\\", "/")
             if rel.startswith(CP2B_PARSE_PACKAGE):
                 continue
             if any(
-                v[0] == "parse_operation"
+                v[0] == "parse_operation" and not _filing_allowed(v, rel)
                 for v in scan_source_for_construction(
                     path.read_text(encoding="utf-8"), rel
                 )
@@ -707,6 +742,58 @@ class TestNoParserExecutionOutsideTheParsePackage:
             "these modules parse words outside "
             f"{CP2B_PARSE_PACKAGE}: {outside}"
         )
+
+
+class TestTheFilingAllowlistIsPinned:
+    """CP4's exception must stay exactly as narrow as it was written.
+
+    The same control ``TestTheParseAllowlistIsPinned`` imposes on CP2b's:
+    widening it means editing this class and saying why.
+    """
+
+    FILER = "src/flextoolsmcp/server/filing/filer.py"
+
+    def test_the_allowlist_is_exactly_the_filer_and_its_two_names(self):
+        assert CP4_FILING_ALLOWLIST == {
+            self.FILER: frozenset({"ParseFiler", "ProcessParse"}),
+        }, (
+            "The filing allowlist changed. It holds one module -- the filer "
+            "driver -- and two names: constructing FieldWorks' ParseFiler, and "
+            "calling its ProcessParse. Anything more is a second write path "
+            "or a parser construction; justify it here or revert it."
+        )
+
+    def test_the_allowlist_actually_suppresses_something(self):
+        path = REPO_ROOT / self.FILER
+        raw = scan_source_for_construction(path.read_text(encoding="utf-8"), self.FILER)
+        assert any(_filing_allowed(v, self.FILER) for v in raw), (
+            "the filer no longer constructs a ParseFiler; the allowlist entry "
+            "is exempting nothing"
+        )
+
+    def test_the_filer_constructs_no_parser_and_parses_nothing(self):
+        """The exemption buys ParseFiler and ProcessParse -- nothing else."""
+        path = REPO_ROOT / self.FILER
+        raw = scan_source_for_construction(path.read_text(encoding="utf-8"), self.FILER)
+        others = [v for v in raw if not _filing_allowed(v, self.FILER)]
+        assert others == [], "\n".join(repr(v) for v in others)
+
+    def test_a_planted_parser_construction_in_the_filer_is_still_caught(self):
+        planted = "def f(cache):\n    return HCParser(cache)\n"
+        violations = scan_with_cp2b_allowlist(planted, self.FILER)
+        assert any(v[0] == "direct_construction" and v[3].startswith("HCParser(")
+                   for v in violations)
+
+    def test_a_planted_parse_word_in_the_filer_is_still_caught(self):
+        planted = "def f(parser):\n    return parser.ParseWord('menulis')\n"
+        violations = scan_with_cp2b_allowlist(planted, self.FILER)
+        assert any(v[0] == "parse_operation" for v in violations)
+
+    def test_the_filing_worker_itself_constructs_and_parses_nothing(self):
+        """It parses through worker_main's parse_raw and files through the filer."""
+        path = REPO_ROOT / "src/flextoolsmcp/server/filing/worker_filing.py"
+        rel = "src/flextoolsmcp/server/filing/worker_filing.py"
+        assert scan_source_for_construction(path.read_text(encoding="utf-8"), rel) == []
 
 
 class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:

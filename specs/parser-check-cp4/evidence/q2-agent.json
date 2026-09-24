@@ -1,0 +1,93 @@
+{
+  "question": "Q2 (T004): is the HermitCrab agent present and resolvable by GUID?",
+  "method": "tests/live_support/q2_agent_probe.py, read only (writeEnabled=False), on fresh CP4-Scratch- copies",
+  "runs": [
+    {
+      "source": "IndonesianHC-Complete",
+      "rc": 0,
+      "result": {
+        "project": "CP4-Scratch-IndonesianHC-Complete-20260924T074141",
+        "active_parser": "HC",
+        "hc_agent_guid": "5093d7d7-4f18-4aad-8c86-88389476df15",
+        "hc_agent_in_repository": true,
+        "hc_agent_evaluation_count": null,
+        "probe": {
+          "state": "present",
+          "agent_guid": "kguidAgentHermitCrabParser",
+          "agent_name": "HermitCrab",
+          "active_engine": "HC",
+          "probe_source": null,
+          "hint": null
+        },
+        "agents": [
+          {
+            "guid": "1257a971-fcef-4f06-a5e2-c289de5aaf72",
+            "name": "M3Parser",
+            "human": false
+          },
+          {
+            "guid": "5093d7d7-4f18-4aad-8c86-88389476df15",
+            "name": "HCParser",
+            "human": false
+          },
+          {
+            "guid": "67e9b8bf-c312-458e-89c3-6e9326e48aa0",
+            "name": "Computer",
+            "human": false
+          },
+          {
+            "guid": "9303883a-ad5c-4ccf-97a5-4add391f8dcb",
+            "name": "default user",
+            "human": true
+          }
+        ]
+      },
+      "stderr_tail": ""
+    },
+    {
+      "source": "Malay Parsing-20230810withHC",
+      "rc": 0,
+      "result": {
+        "project": "CP4-Scratch-Malay Parsing-20230810withHC-20260924T074145",
+        "active_parser": "HC",
+        "hc_agent_guid": "5093d7d7-4f18-4aad-8c86-88389476df15",
+        "hc_agent_in_repository": true,
+        "hc_agent_evaluation_count": null,
+        "probe": {
+          "state": "present",
+          "agent_guid": "kguidAgentHermitCrabParser",
+          "agent_name": "HermitCrab",
+          "active_engine": "HC",
+          "probe_source": null,
+          "hint": null
+        },
+        "agents": [
+          {
+            "guid": "1257a971-fcef-4f06-a5e2-c289de5aaf72",
+            "name": "M3Parser",
+            "human": false
+          },
+          {
+            "guid": "5093d7d7-4f18-4aad-8c86-88389476df15",
+            "name": "HCParser",
+            "human": false
+          },
+          {
+            "guid": "67e9b8bf-c312-458e-89c3-6e9326e48aa0",
+            "name": "Computer",
+            "human": false
+          },
+          {
+            "guid": "9303883a-ad5c-4ccf-97a5-4add391f8dcb",
+            "name": "default user",
+            "human": true
+          }
+        ]
+      },
+      "stderr_tail": ""
+    }
+  ],
+  "finding": "On both designated projects (ActiveParser == HC) the HermitCrab agent (CmAgentTags.kguidAgentHermitCrabParser = 5093d7d7-4f18-4aad-8c86-88389476df15, named 'HCParser') is owned by LangProject.AnalyzingAgentsOC, and the production probe (probe_hc_agent via DefaultParserAgent) reports state=present.",
+  "not_established": "Whether a project that has NEVER run HermitCrab carries the agent: both designated projects may have been parsed before, and the agent's evaluation count was not readable through this surface (EvaluationsRC is absent). Both projects also carry the XAmple agent (M3Parser) although neither uses XAmple, which is consistent with the standard agents being created with the project rather than on first parse -- consistent with, not proof of.",
+  "recorded_at": "2026-09-24T07:42:07.315189+00:00"
+}

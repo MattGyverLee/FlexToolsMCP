@@ -178,6 +178,37 @@ GOLDEN_FIXTURES: dict[str, dict] = {
     "runtime_error": {
         "message": "Code raised an exception at runtime",
     },
+    # Parser-check CP4 (FR-035): detail fields in contracts/tools.md s.2 order.
+    "parser_filing_in_progress": {
+        "message": "A filing job is already running on project 'Demo'.",
+        "run_id": "0123456789abcdef0123456789abcdef",
+        "started_at": "2026-09-24T12:00:00+00:00",
+        "words_completed": 412,
+        "hint": (
+            "Watch the running job with "
+            "flextools_parse_status(run_id='0123456789abcdef0123456789abcdef') "
+            "rather than starting another."
+        ),
+    },
+    "grammar_load_unclean": {
+        "message": (
+            "Filing refused: this grammar load logged 2 error(s) that the baseline "
+            "for this scope did not. To accept them as pre-existing, run a read-only "
+            "flextools_parse_text of the same scope, which re-baselines."
+        ),
+        "signal": "new_load_errors",
+        "new_error_count": 2,
+        "baseline_error_count": 3,
+        "baseline_source": "prior_run:fedcba9876543210fedcba9876543210",
+        "log_path": "C:\\Users\\demo\\AppData\\Local\\Temp\\DemoHCLoadErrors.xml",
+        "new_errors": [
+            {"type": "InvalidShape", "Form": "-ber", "Reason": "shape could not be segmented"},
+            {"type": "InvalidShape", "Form": "-kan", "Reason": "shape could not be segmented"},
+        ],
+        "dropped_entries": [],
+        "baseline_eligible_count": 118,
+        "eligible_count": 118,
+    },
 }
 
 

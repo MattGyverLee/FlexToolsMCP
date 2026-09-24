@@ -44,6 +44,10 @@ CP3_MODULES = sorted(
     list((SRC / "parse").glob("*.py"))
     + list((SRC / "signals").glob("*.py"))
     + [SRC / "handlers" / "parse.py"]
+    # CP4 (FR-027, R-11): the filing claim is a per-project dictionary, NOT a
+    # lock, and this scan is what proves it takes none of the claims an edit
+    # waits on.
+    + [SRC / "filing" / "claims.py"]
 )
 
 FINGERPRINT = {

@@ -99,6 +99,9 @@ EXPECTED_TOOL_NAMES = [
     "flextools_parse_text",
     "flextools_parse_log",
     "flextools_parse_diff",
+    # parser-check CP4. Stops a run; writes nothing to the project, so it is
+    # neither READ_ONLY (it changes a run's state) nor DESTRUCTIVE (M-3).
+    "flextools_parse_cancel",
 ]
 # Dynamically derive count instead of magic number (eliminates out-of-sync issues)
 EXPECTED_TOOL_COUNT = len(EXPECTED_TOOL_NAMES)

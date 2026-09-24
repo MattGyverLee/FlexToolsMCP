@@ -75,8 +75,9 @@ except Flexicon which is a PyPI package (`pip install pyflexicon`, imported as
 ## Project Structure
 
 ```
-/src
-  server.py              # MCP server with 6 tools
+/src/flextoolsmcp
+  server.py              # MCP server entry point
+  server/                # Tool definitions, handlers, session state
   flexicon_analyzer.py   # FlexLibs stable + Flexicon Python AST extraction
   liblcm_extractor.py    # LibLCM .NET reflection extraction
   refresh.py             # Unified refresh script
@@ -100,15 +101,13 @@ except Flexicon which is a PyPI package (`pip install pyflexicon`, imported as
 
 ## MCP Server Tools
 
-The server exposes 6 tools:
-- `get_object_api` - Get methods/properties for objects like ILexEntry, LexSenseOperations
-- `search_by_capability` - Natural language search with synonym expansion
-- `get_navigation_path` - Find paths between object types (ILexEntry -> ILexSense)
-- `find_examples` - Get code examples by operation type (create, read, update, delete)
-- `list_categories` - List API categories (lexicon, grammar, texts, etc.)
-- `list_entities_in_category` - List entities in a category
+Tools are defined in `src/flextoolsmcp/server/tool_definitions.py` and handled in
+`src/flextoolsmcp/server/handlers/`. The maintained tool list is
+[USAGE.md](USAGE.md#mcp-tools-reference) -- don't copy it here or elsewhere;
+`python scripts/validate_integrity.py server` checks USAGE.md against the
+definitions, so adding, renaming, or removing a tool means updating USAGE.md.
 
-Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md) for the envelope shape, all 18 error codes, and the deprecation timeline for the nested `error` object (drops at `tool-responses/2.0`).
+Tool responses follow a versioned contract. See [`docs/TOOL-CONTRACT.md`](docs/TOOL-CONTRACT.md) for the envelope shape, all error codes, and the deprecation timeline for the nested `error` object (drops at `tool-responses/2.0`).
 
 ## Refreshing Indexes
 

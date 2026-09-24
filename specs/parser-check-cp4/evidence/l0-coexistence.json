@@ -1,0 +1,345 @@
+{
+  "question": "L-0 (T003): can a writable open coexist with the read worker's read-only open on a NON-shared project?",
+  "recorded_at": "2026-09-24T14:28:51.935616+00:00",
+  "coexistence": {
+    "steps": [
+      {
+        "step": "copy",
+        "at": "2026-09-24T14:28:52.361626+00:00",
+        "fwdata": {
+          "sha256": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+          "mtime": 1722320572.0,
+          "size": 11578730
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "read_open",
+        "at": "2026-09-24T14:28:54.738706+00:00",
+        "fwdata": {
+          "sha256": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+          "mtime": 1722320572.0,
+          "size": 11578730
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": true,
+          "lock_text": "{\"__type\":\"FileLockContent:#Palaso.IO.FileLock\",\"PID\":17236,\"ProcessName\":\"python\",\"Timestamp\":639258389335870702}",
+          "verdict": "held_by_other",
+          "holder": {
+            "pid": 17236,
+            "process_name": "python"
+          }
+        },
+        "read_worker_pid": 32268
+      },
+      {
+        "step": "raw_writable_open_during",
+        "at": "2026-09-24T14:28:57.347831+00:00",
+        "fwdata": {
+          "sha256": "9a5adc0210ec83848b6535222351546b1352908a5d746d2c6f13fd50a1ae66c3",
+          "mtime": 1722320572.0,
+          "size": 11578730
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": true,
+          "lock_text": "{\"__type\":\"FileLockContent:#Palaso.IO.FileLock\",\"PID\":17236,\"ProcessName\":\"python\",\"Timestamp\":639258389335870702}",
+          "verdict": "held_by_other",
+          "holder": {
+            "pid": 17236,
+            "process_name": "python"
+          }
+        }
+      },
+      {
+        "step": "filed",
+        "at": "2026-09-24T14:29:10.063083+00:00",
+        "fwdata": {
+          "sha256": "3f7bf3a68d1bf2967d1ed1c0e6e0f355cc85de60458135a1fdd3739501e07ef0",
+          "mtime": 1790260147.7491739,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": true,
+          "lock_text": "{\"__type\":\"FileLockContent:#Palaso.IO.FileLock\",\"PID\":3592,\"ProcessName\":\"python\",\"Timestamp\":639258389488986772}",
+          "verdict": "held_by_other",
+          "holder": {
+            "pid": 3592,
+            "process_name": "python"
+          }
+        },
+        "read_worker_alive": true
+      },
+      {
+        "step": "read_released",
+        "at": "2026-09-24T14:29:13.229520+00:00",
+        "fwdata": {
+          "sha256": "3f7bf3a68d1bf2967d1ed1c0e6e0f355cc85de60458135a1fdd3739501e07ef0",
+          "mtime": 1790260147.7491739,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "raw_writable_open_after",
+        "at": "2026-09-24T14:29:18.323945+00:00",
+        "fwdata": {
+          "sha256": "3f7bf3a68d1bf2967d1ed1c0e6e0f355cc85de60458135a1fdd3739501e07ef0",
+          "mtime": 1790260147.7491739,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "reread",
+        "at": "2026-09-24T14:29:22.601841+00:00",
+        "fwdata": {
+          "sha256": "3f7bf3a68d1bf2967d1ed1c0e6e0f355cc85de60458135a1fdd3739501e07ef0",
+          "mtime": 1790260147.7491739,
+          "size": 11570670
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      }
+    ],
+    "project": "CP4-Scratch-IndonesianHC-Complete-20260924T142852",
+    "word": "mejɑkin",
+    "try_word_before": {
+      "status": "ok",
+      "error_code": null,
+      "analysis_count": 1
+    },
+    "raw_writable_open_while_read_worker_holds": {
+      "opened": false,
+      "open_error": "FP_FileLockedError: This project is in use by another program. To allow shared access to this project, turn on the sharing option in the Sharing tab of the Fieldworks Project Properties dialog.",
+      "rc": 0
+    },
+    "baseline_run": "86265cbf5bb4d355ccacd601ec09be17",
+    "preview": {
+      "status": "error",
+      "error_code": "confirmation_required",
+      "message": "Filing would change this project, and nothing has been written yet. It may delete up to 1 analysis across 1 word. This is the preview. Read the plan, then resubmit the same call with confirmed=true and plan_id to file. Filing cannot be undone.",
+      "plan_id": "cbfb62d4f1bf2d561e0bfb616860bd27d5744db5de4e5bf7daf109e9b59dc681"
+    },
+    "plan_deletion": {
+      "predicate": "user_noopinion AND not_referenced_by_any_segment_directly_or_via_gloss",
+      "upper_bound": 1,
+      "by_wordform": {
+        "mejɑkin": [
+          "52d93043-6e6c-4da2-a27d-59d032b5e298"
+        ]
+      },
+      "segment_use_unknown": 0,
+      "opinion_unknown": 0,
+      "excluded_disapproved": 0,
+      "words_unreadable": [],
+      "project_state": {
+        "parser_has_ever_run": true,
+        "analyses_total": 77,
+        "parser_created_analyses": 76,
+        "human_opinion_analyses": 1,
+        "indeterminate_analyses": 0,
+        "truncated": false
+      },
+      "parser_created_present": true
+    },
+    "confirmed": {
+      "status": "ok",
+      "error_code": null,
+      "message": null,
+      "run_id": "f7549ac82b0ff09167ed5389b617e3fa",
+      "backup": {
+        "created": true,
+        "path": "C:\\Users\\thoua\\.flextoolsmcp\\backups\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\20260924T142902Z\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata",
+        "intent": "will_be_taken"
+      }
+    },
+    "filing": {
+      "state": "completed",
+      "persisted": true,
+      "counts": {
+        "created": 0,
+        "reapproved": 1,
+        "duplicated": 0,
+        "deleted": 0,
+        "unchanged": 0,
+        "errored_words": 0,
+        "errored_word_deletions": 0,
+        "skipped": {
+          "invalid_object": 0,
+          "outside_projection": 0,
+          "filer_declined": 0
+        }
+      },
+      "filed_words": [
+        "mejɑkin"
+      ],
+      "actual_deletions": 0,
+      "projected_deletions": 1,
+      "backup": {
+        "created": true,
+        "path": "C:\\Users\\thoua\\.flextoolsmcp\\backups\\CP4-Scratch-IndonesianHC-Complete-20260924T142852\\20260924T142902Z\\CP4-Scratch-IndonesianHC-Complete-20260924T142852.fwdata",
+        "intent": "will_be_taken"
+      },
+      "error": null
+    },
+    "filing_results": null,
+    "try_word_after_filing": {
+      "status": "ok",
+      "error_code": null,
+      "analysis_count": 1
+    },
+    "raw_writable_open_after_release": {
+      "opened": true,
+      "closed": true,
+      "rc": 0
+    },
+    "reread": {
+      "wordform": "mejɑkin",
+      "found": true,
+      "analyses": [
+        {
+          "analysis_guid": "52d93043-6e6c-4da2-a27d-59d032b5e298",
+          "user_opinion": "noopinion",
+          "parser_evaluated": true,
+          "in_segment": false
+        }
+      ]
+    },
+    "verdicts": {
+      "release_rewrote_file": false,
+      "filing_changed_file": true
+    }
+  },
+  "xample_refusal": {
+    "steps": [
+      {
+        "step": "copy",
+        "at": "2026-09-24T14:29:22.683898+00:00",
+        "fwdata": {
+          "sha256": "33f5b43bb5244db4398f85985dc663bdbd529471c55286be268da5e14132eea2",
+          "mtime": 1790172849.803457,
+          "size": 55921314
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-Sena 3-20260924T142922\\CP4-Scratch-Sena 3-20260924T142922.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "refused_open",
+        "at": "2026-09-24T14:29:25.491251+00:00",
+        "fwdata": {
+          "sha256": "33f5b43bb5244db4398f85985dc663bdbd529471c55286be268da5e14132eea2",
+          "mtime": 1790172849.803457,
+          "size": 55921314
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-Sena 3-20260924T142922\\CP4-Scratch-Sena 3-20260924T142922.fwdata.lock",
+          "lock_exists": true,
+          "lock_text": "{\"__type\":\"FileLockContent:#Palaso.IO.FileLock\",\"PID\":4396,\"ProcessName\":\"python\",\"Timestamp\":639258389644979092}",
+          "verdict": "held_by_other",
+          "holder": {
+            "pid": 4396,
+            "process_name": "python"
+          }
+        }
+      },
+      {
+        "step": "released",
+        "at": "2026-09-24T14:29:27.941269+00:00",
+        "fwdata": {
+          "sha256": "33f5b43bb5244db4398f85985dc663bdbd529471c55286be268da5e14132eea2",
+          "mtime": 1790172849.803457,
+          "size": 55921314
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-Sena 3-20260924T142922\\CP4-Scratch-Sena 3-20260924T142922.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      },
+      {
+        "step": "settled",
+        "at": "2026-09-24T14:29:28.971995+00:00",
+        "fwdata": {
+          "sha256": "33f5b43bb5244db4398f85985dc663bdbd529471c55286be268da5e14132eea2",
+          "mtime": 1790172849.803457,
+          "size": 55921314
+        },
+        "access": {
+          "lock_path": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP4-Scratch-Sena 3-20260924T142922\\CP4-Scratch-Sena 3-20260924T142922.fwdata.lock",
+          "lock_exists": false,
+          "verdict": "free",
+          "holder": null
+        }
+      }
+    ],
+    "project": "CP4-Scratch-Sena 3-20260924T142922",
+    "try_word": {
+      "status": "error",
+      "error_code": "parser_engine_mismatch",
+      "message": "This project's active parser is 'XAmple', but this operation requires one of ['HC']. Switch the active parser in FieldWorks via Words > Parser > Choose Parser, or run this operation against a project configured for a supported engine."
+    },
+    "verdicts": {
+      "release_rewrote_file": false
+    }
+  },
+  "worker_stderr_tail": [
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922] [parse-worker] ParserEngineMismatchError: This project's active parser is 'XAmple', but this operation requires one of ['HC']. Switch the active parser in FieldWorks via Words > Parser > Choose Parser, or run this operation against a project configured for a supported engine.",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922] Traceback (most recent call last):",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]   File \"C:\\Github\\FlexToolsMCP-cp4\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2305, in _parse_one",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     load_started = self._before_parse(word, meta)",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]   File \"C:\\Github\\FlexToolsMCP-cp4\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2376, in _before_parse",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     self._backend.preflight()",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     ~~~~~~~~~~~~~~~~~~~~~~~^^",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]   File \"C:\\Github\\FlexToolsMCP-cp4\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 938, in preflight",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     check_active_parser(self._project.lp, supported_engines=(\"HC\",))",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]   File \"C:\\Github\\FlexToolsMCP-cp4\\src\\flextoolsmcp\\server\\parser_probe.py\", line 837, in check_active_parser",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     raise ParserEngineMismatchError(",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     ...<6 lines>...",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922]     )",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922] flextoolsmcp.server.parser_probe.ParserEngineMismatchError: This project's active parser is 'XAmple', but this operation requires one of ['HC']. Switch the active parser in FieldWorks via Words > Parser > Choose Parser, or run this operation against a project configured for a supported engine.",
+    "[parse-worker CP4-Scratch-Sena 3-20260924T142922] "
+  ],
+  "verdict": {
+    "coexistence_on_non_shared": "FAIL",
+    "detail": "With the read worker holding a non-shared project (lock PID = the read worker's own interpreter), a second process's OpenProject(writeEnabled=True) raises FP_FileLockedError ('This project is in use by another program'). The same open succeeds once the read worker is released. The two opens cannot coexist; FR-027's 'try_word answers during filing' cannot hold on a non-shared project.",
+    "m1_outcome": "M-1 interim restriction STAYS (reads refused during filing on non-shared projects; the read worker is released before the writable open, now unconditionally on non-shared). Per T005, stop as needs_human for a maintainer amendment of FR-027.",
+    "filing_on_production_path": "completed, persisted: 1 word filed (reapproved 1, deleted 0 against a projected upper bound of 1); the .fwdata changed; a fresh read worker re-reads the parser-evaluated analysis afterwards",
+    "read_worker_release_rewrites_file": false,
+    "xample_refusal_path_rewrites_file": false,
+    "xample_note": "The memory-noted save (parse-worker-saves-xample-project) was NOT reproduced on the try_word engine-refusal path: the Sena 3 copy's sha256 and mtime are unchanged after the refused open and the release. Its root cause lies on a path that gets further than the engine gate (the original test_parse_live run).",
+    "defects_found_and_fixed_on_the_way": [
+      "parser_probe: Assembly.LoadFile did not resolve ParserCore's dependencies in a process that had not imported flexicon, so filing's preflight refused parser_core_missing on a healthy install (and the read-spine probe had the same latent failure); fixed with an AssemblyResolve handler over ParserCore's own folder",
+      "handlers/parse: the access gate refused the server's OWN read worker's lock as held_by_other; now recognised (worker reports its own pid in 'ready'; a venv launcher's pid is not the lock holder) and released before re-probing",
+      "filing worker: flexicon's HeadlessLcmUI.SynchronizeInvoke is None; HCParser's ParserModelChangeListener subscribes to change notifications, so FieldWorks' filer died with NullReferenceException in SendPropChangedNotifications; fixed with a HeadlessLcmUI subclass returning SIL.LCModel.Utils.SingleThreadedSynchronizeInvoke",
+      "runner: a filing run that stopped on an error and then saved recorded error=null; the cause is now recorded"
+    ]
+  }
+}

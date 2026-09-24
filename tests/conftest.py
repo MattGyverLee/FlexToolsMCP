@@ -44,6 +44,21 @@ def pytest_unconfigure(config):
     _PYTEST_LOG_DIR = None
 
 
+def require_live_flexicon():
+    """Skip the calling test unless a live FieldWorks-backed flexicon import works.
+
+    Unlike ``pytest.importorskip("flexicon")``, this also catches the bare
+    ``Exception`` flexicon raises when no FieldWorks/SIL.LCModel runtime is
+    present (pyflexicon is a runtime dependency, so CI always installs the
+    package -- it just cannot always import successfully).
+    """
+    try:
+        import flexicon  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 -- flexicon raises non-ImportError on missing FieldWorks
+        pytest.skip(f"flexicon unavailable (no live FieldWorks install?): {exc}")
+    return flexicon
+
+
 @pytest.fixture
 def reset_session_state():
     """Reset session state for tests that need a clean state.

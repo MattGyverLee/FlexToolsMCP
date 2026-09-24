@@ -320,21 +320,22 @@ def Main(project, report, modifyAllowed):
             "polymorphic", "subtype", "concrete type", "discriminate",
             "wfianalysis", "wfigloss", "wordforms",
         ],
-        "library": "liblcm",
+        "library": "flexicon",
         "code": '''from flexicon import FLExProject
 # Walk the analysis hierarchy: WfiWordform -> WfiAnalysis -> WfiGloss.
 # The three types are polymorphic; identify the concrete type with the
 # ClassName property (on ICmObject), NOT with kclsid* class-id constants
 # -- those C# statics are not exposed through pythonnet.
+#
+# On liblcm 11+, iterate wordforms via flexicon (legacy LangProject inventory
+# accessors were removed).
 
 def Main(project, report, modifyAllowed):
-    wordforms = project.Cache.LangProject.WordformInventoryOA.WordformsOC
-
-    for wf in wordforms:
+    for wf in project.Wordforms.GetAll():
         # Every LCM object exposes ClassName (str) and ClassID (int) via
         # ICmObject -- no cast, no class-id constant needed.
         assert wf.ClassName == "WfiWordform"
-        report.Info(f"Wordform: {wf.Form.BestVernacularAlternative.Text}")
+        report.Info(f"Wordform: {project.Wordforms.GetForm(wf)}")
 
         for analysis in wf.AnalysesOC:
             # analysis is an IWfiAnalysis. Confirm by ClassName, not by

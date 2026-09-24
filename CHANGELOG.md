@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **`get_workspace_notice(once=True)` suppressed warnings after cwd change** ([#151](https://github.com/MattGyverLee/FlexToolsMCP/issues/151)).
+  The response-envelope guard is now keyed by detected ``repo_root`` instead of a
+  single process-global flag, so moving into a different source checkout can
+  surface the workspace warning again while repeat calls from the same checkout
+  stay deduplicated.
+
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
   (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire

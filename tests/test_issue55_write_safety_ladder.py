@@ -445,4 +445,4 @@ class TestRung3ConfirmationEnforcement:
         result2 = asyncio.run(execution_mod.handle_run_module(args))
         data2 = _parse(result2)
         assert calls["n"] == 1, "backup must not fire twice for the same (session, project)"
-        assert "backup" not in data2 or data2.get("backup") is None
+        assert data2["backup"]["skipped_reason"] == "already_backed_up_this_session"

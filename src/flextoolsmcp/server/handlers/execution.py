@@ -4741,8 +4741,13 @@ MODULE_CODE = {code}
         # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
         # project). Runs AFTER the lock probe (so we don't back up a project
         # FieldWorks currently has locked) and BEFORE the subprocess launch.
+        #
+        # Issue #99: gate on write_enabled, not needs_lock. Preflight can miss
+        # a mutating script (needs_lock=False) while write_enabled=True still
+        # executes code that commits LCM actions -- the documented safety net
+        # must not depend on static analysis being complete.
         _backup_result: Optional[Dict[str, Any]] = None
-        if needs_lock and not session_state.was_backed_up(project_name):
+        if write_enabled and not session_state.was_backed_up(project_name):
             _backup_arg = args.get("backup_before_write")
             _backup_result = perform_pre_write_backup(project_name, backup_before_write=_backup_arg)
             _bk_logger = get_operations_logger()
@@ -4839,10 +4844,23 @@ MODULE_CODE = {code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["code"] = code
-        # Issue #55 (Rung 2): surface the pre-write backup outcome (if this run
-        # was the first mutating run for this (session, project)).
-        if _backup_result is not None:
-            execution_result["backup"] = _backup_result
+        # Issue #55 (Rung 2) + #99: surface backup outcome on every write_enabled
+        # execution so a silent skip is visible in the tool response.
+        if write_enabled:
+            if _backup_result is not None:
+                execution_result["backup"] = _backup_result
+            elif session_state.was_backed_up(project_name):
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "already_backed_up_this_session",
+                }
+            else:
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "backup_not_attempted",
+                }
         # Issue #93 CP4 (T4.1): tell the caller the write went through a live
         # FLEx peer / over a stale lock rather than against an idle project.
         if _shared_mode is not None:

@@ -34,30 +34,14 @@ from flextoolsmcp.server.validators import (
     detect_unknown_attribute_error,
 )
 
+from conftest import require_live_flexicon as _require_live_flexicon
+
 TEMPLATE_DIR = pathlib.Path(__file__).resolve().parents[1] / "src" / "flextoolsmcp" / "templates"
 
 
 @pytest.fixture(scope="module")
 def api_index():
     return APIIndex.load(get_index_dir())
-
-
-def _require_live_flexicon():
-    """Skip the calling test unless a live flexicon+FieldWorks install is present.
-
-    `pytest.importorskip` only turns an `ImportError` into a skip. On a box
-    without FieldWorks, `import flexicon` doesn't raise `ImportError` -- the
-    module imports fine but raises a bare `Exception` (e.g. "64bit FieldWorks
-    9 not found") during its own init. That bare Exception is NOT caught by
-    `importorskip`, so it escapes and pytest reports an ERROR instead of a
-    SKIP. This helper catches the broad `Exception` deliberately, which is
-    the whole point -- do not narrow it.
-    """
-    try:
-        import flexicon
-    except Exception as exc:  # noqa: BLE001 -- flexicon raises non-ImportError on missing FieldWorks
-        pytest.skip(f"needs a live flexicon+FieldWorks install: {exc}")
-    return flexicon
 
 
 # ---------------------------------------------------------------------------

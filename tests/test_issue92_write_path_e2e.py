@@ -90,9 +90,9 @@ def test_setgloss_persists_across_close_and_reopen():
     re-opening the project in a SEPARATE subprocess (a second
     flextools_run_module call) and reading the value back.
     """
-    pytest.importorskip(
-        "flexicon", reason="CP1 e2e write check needs a live flexicon+FieldWorks install"
-    )
+    from conftest import require_live_flexicon
+
+    require_live_flexicon()
     project_name = _scratch_project_name()
 
     from flextoolsmcp.server import APIIndex, kernel, project_discovery
@@ -199,9 +199,9 @@ def test_applysyncableproperties_persists_across_close_and_reopen():
     multistring, serialized as a ``{ws_id: text}`` dict) and
     ``ScientificName`` (a plain ``str``).
     """
-    pytest.importorskip(
-        "flexicon", reason="CP1 e2e write check needs a live flexicon+FieldWorks install"
-    )
+    from conftest import require_live_flexicon
+
+    require_live_flexicon()
     project_name = _scratch_project_name()
 
     from flextoolsmcp.server import APIIndex, kernel, project_discovery

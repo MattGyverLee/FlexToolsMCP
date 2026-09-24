@@ -166,6 +166,46 @@ covers all three of these shapes -- including the raw C# multistring
 object itself (e.g. `sense.Gloss`, not just `sense.Gloss...Text`) -- in
 one call, without you resolving `.Text` yourself first.
 
+### 5b. Raw LCM Return Values (JSON Export)
+
+Several flexicon helpers return **live LCM / .NET objects**, not Python
+strings or dicts. That is intentional -- callers pass those objects straight
+back into other flexicon methods (for example, a writing-system handle into
+`get_String`). It also means `json.dumps(...)` on a dict that still holds
+such an object raises `TypeError: Object of type ... is not JSON
+serializable` (issue #160).
+
+Common traps when building a JSON export:
+
+```python
+import json
+
+# WRONG -- find_writing_system returns CoreWritingSystemDefinition, not a str/int
+ws = find_writing_system(project, "en")
+payload = {"ws": ws}  # json.dumps(payload) -> TypeError
+
+# RIGHT -- extract a JSON-safe primitive (tag or int handle) at the boundary
+ws = find_writing_system(project, "en")
+payload = {"ws_tag": ws.Id, "ws_handle": ws.Handle}
+
+# WRONG -- GetMorphType returns IMoMorphType (LCM object)
+entry = project.LexEntry.Find("run")
+payload = {"morph_type": project.LexEntry.GetMorphType(entry)}
+
+# RIGHT -- read the display name (or ClassName) before serializing
+mt = project.LexEntry.GetMorphType(entry)
+morph_label = ""
+if mt is not None:
+    morph_label = mt.Name.BestAnalysisAlternative.Text  # normalized str via flexicon paths
+payload = {"morph_type": morph_label}
+```
+
+**Rule of thumb:** flexicon methods whose docstrings say they return an
+`IMo*` / `Core*` / `ITs*` type are handing you an LCM object. Pull the
+primitive you need (`.Text`, `.Handle`, `.Id`, `.ClassName`, …) at the
+JSON boundary, the same way you normalize multistrings before comparing
+them to `""`.
+
 ### 6. Error Handling Pattern
 
 ```python
@@ -286,8 +326,11 @@ raw_text = sense.Gloss.AnalysisDefaultWritingSystem.Text
 if raw_text == FLEX_EMPTY_PLACEHOLDER:
     raw_text = ""
 
-# Writing-system lookup by name or tag (substring match, case-insensitive)
-ws_handle = find_writing_system(project, "pyn")  # finds "Pinyin", "zh-Latn-pinyin", etc.
+# Writing-system lookup by name or tag (substring match, case-insensitive).
+# Returns a CoreWritingSystemDefinition LCM object (NOT json-serializable) --
+# use .Handle or .Id when building JSON (see "Raw LCM Return Values" above).
+ws = find_writing_system(project, "pyn")  # finds "Pinyin", "zh-Latn-pinyin", etc.
+ws_handle = ws.Handle
 
 # Enumerate writing systems with their display names and tags
 for ws_info in list_writing_systems(project):

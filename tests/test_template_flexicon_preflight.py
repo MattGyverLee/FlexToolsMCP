@@ -46,12 +46,14 @@ HOW IT TESTS
     more, which is the point of the stub).
 """
 
+import importlib.abc
+import importlib.util
 import json
 import re
 import sys
 import types
 import unittest
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -127,10 +129,52 @@ def _stubbed_flexicon(**kwargs):
             sys.modules["flexicon"] = saved
 
 
-def _exec_template(src, module_name="_flexicon_template_under_test"):
+class _RaisingFlexiconLoader(importlib.abc.Loader):
+    """Loader whose exec_module raises -- mirrors FieldWorks-less pyflexicon."""
+
+    def __init__(self, exc):
+        self._exc = exc
+
+    def create_module(self, spec):  # noqa: ARG002 - loader protocol
+        return types.ModuleType(spec.name)
+
+    def exec_module(self, module):  # noqa: ARG002 - loader protocol
+        raise self._exc
+
+
+class _FlexiconRaisingFinder(importlib.abc.MetaPathFinder):
+    def __init__(self, exc):
+        self._exc = exc
+
+    def find_spec(self, fullname, path, target=None):  # noqa: ARG002
+        if fullname != "flexicon":
+            return None
+        loader = _RaisingFlexiconLoader(self._exc)
+        return importlib.util.spec_from_loader(
+            fullname, loader, origin="<test>"
+        )
+
+
+@contextmanager
+def _flexicon_raises_on_import(exc):
+    """Make ``import flexicon`` run module body code that raises ``exc``."""
+    saved = sys.modules.pop("flexicon", None)
+    finder = _FlexiconRaisingFinder(exc)
+    sys.meta_path.insert(0, finder)
+    try:
+        yield
+    finally:
+        sys.meta_path.remove(finder)
+        sys.modules.pop("flexicon", None)
+        if saved is not None:
+            sys.modules["flexicon"] = saved
+
+
+def _exec_template(src, module_name="_flexicon_template_under_test", *, stub_flexicon=True):
     """exec template source against the stub and hand back its namespace."""
     ns: "dict[str, Any]" = {"__name__": module_name}
-    with _stubbed_flexicon():
+    ctx = _stubbed_flexicon() if stub_flexicon else nullcontext()
+    with ctx:
         exec(compile(src, "2-flexicon-template.py", "exec"), ns)
     return ns
 
@@ -372,75 +416,35 @@ class TestPreflightFailurePaths(unittest.TestCase):
             "tell a missing package from a broken one. Got:\n%s" % text,
         )
 
-    def test_installed_but_load_failed_quotes_error_without_pip_install(self):
-        """Issue #132: FieldWorks-less flexicon raises bare Exception at import."""
-        ns = _load_namespace()
-        ns["_flexicon"] = None
-        ns["FLExProject"] = None
-        ns["_FLEXICON_IMPORT_ERROR"] = None
-        ns["_FLEXICON_LOAD_ERROR"] = "64bit FieldWorks 9 not found"
+    def test_installed_but_load_failed_is_not_reported_as_missing_package(self):
+        """Issue #132 -- FieldWorks-less pyflexicon raises bare Exception."""
+        msg = "64bit FieldWorks 9 not found"
+        with _flexicon_raises_on_import(Exception(msg)):
+            ns = _exec_template(
+                _template_source(),
+                "_flexicon_fieldworks_missing_under_test",
+                stub_flexicon=False,
+            )
+
+        self.assertIsNone(ns.get("_flexicon"))
+        self.assertIsNone(ns.get("_FLEXICON_IMPORT_ERROR"))
+        self.assertEqual(msg, ns.get("_FLEXICON_LOAD_ERROR"))
 
         report = _FakeReport()
         result = ns["_flexicon_preflight"](report)
 
         self.assertFalse(result)
         text = report.text
-        self.assertIn(
-            "64bit FieldWorks 9 not found", text,
-            "The load failure must be quoted. Got:\n%s" % text,
-        )
-        self.assertIn(
-            "did not load", text,
-            "Must distinguish installed-but-broken from missing package. Got:\n%s"
-            % text,
-        )
+        self.assertIn(msg, text)
+        self.assertIn("FieldWorks", text)
         self.assertNotIn(
             "pip install pyflexicon", text,
-            "pyflexicon is present; pip install is the wrong remedy. Got:\n%s"
-            % text,
+            "The package is installed; pip is the wrong remedy. Got:\n%s" % text,
         )
-
-    def test_load_failure_at_import_is_caught_without_stub(self):
-        """The template guard must catch non-ImportError import failures (#132)."""
-        import importlib.util
-
-        src = _template_source()
-        head = src.split("def _flexicon_installed_version", 1)[0]
-        self.assertIn("except Exception as _load_error:", head)
-        self.assertIn("_FLEXICON_LOAD_ERROR", head)
-
-        class _ExplodingLoader:
-            def create_module(self, spec):
-                return None
-
-            def exec_module(self, module):
-                raise RuntimeError("flexicon import exploded")
-
-        class _FlexiconFinder:
-            def find_spec(self, fullname, path, target=None):
-                if fullname == "flexicon":
-                    return importlib.util.spec_from_loader(
-                        "flexicon", _ExplodingLoader()
-                    )
-                return None
-
-        saved = sys.modules.get("flexicon")
-        sys.modules.pop("flexicon", None)
-        finder = _FlexiconFinder()
-        sys.meta_path.insert(0, finder)
-        ns = {"__name__": "_flexicon_load_guard_under_test"}
-        try:
-            exec(compile(src, "2-flexicon-template.py", "exec"), ns)
-        finally:
-            sys.meta_path.remove(finder)
-            sys.modules.pop("flexicon", None)
-            if saved is not None:
-                sys.modules["flexicon"] = saved
-
-        self.assertIsNone(ns.get("_flexicon"))
-        self.assertIsNone(ns.get("_FLEXICON_IMPORT_ERROR"))
-        self.assertEqual(
-            "flexicon import exploded", ns.get("_FLEXICON_LOAD_ERROR"),
+        self.assertNotIn(
+            "which is not installed", text.lower(),
+            "Load failure must not take the missing-pyflexicon branch. Got:\n%s"
+            % text,
         )
 
     def test_a_bad_symbol_is_not_reported_as_a_missing_package(self):
@@ -867,21 +871,26 @@ class TestPreflightIsAscii(unittest.TestCase):
 
     def test_t4_3a_every_emittable_message_is_ascii(self):
         scenarios = [
-            ("not installed", None, None, "No module named 'flexicon'", None),
+            ("not installed", None, None, "No module named 'flexicon'", None, None),
+            (
+                "installed but load failed", None, None, None,
+                "64bit FieldWorks 9 not found", None,
+            ),
             ("too old", _FakeFlexiconModule("4.1.1"), _BridgelessFLExProject,
-             None, None),
+             None, None, None),
             ("too old, unknown version", _FakeFlexiconModule(None),
-             _BridgelessFLExProject, None, None),
+             _BridgelessFLExProject, None, None, None),
             ("behind the tested version", _FakeFlexiconModule("4.3.0"),
-             _CurrentFLExProject, None, "4.7.0"),
+             _CurrentFLExProject, None, None, "4.7.0"),
         ]
 
-        for label, flexicon_mod, cls, import_error, tested in scenarios:
+        for label, flexicon_mod, cls, import_error, load_error, tested in scenarios:
             with self.subTest(scenario=label):
                 ns = _load_namespace()
                 ns["_flexicon"] = flexicon_mod
                 ns["FLExProject"] = cls
                 ns["_FLEXICON_IMPORT_ERROR"] = import_error
+                ns["_FLEXICON_LOAD_ERROR"] = load_error
                 if tested is not None:
                     ns["_TESTED_AGAINST"] = tested
 

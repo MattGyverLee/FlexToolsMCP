@@ -823,6 +823,25 @@ class ParseCancelInput(BaseModel):
     )
 
 
+class ParseReleaseInput(BaseModel):
+    """Release this server's own idle parse worker(s) for a project (#223).
+
+    `flextools_try_word` / `flextools_parse_text` leave a shared read
+    worker running until its idle timeout, holding `<project>.fwdata.lock`
+    until then. `flextools_run_module`'s write gate already releases it
+    automatically when a write needs the lock -- this tool exists for the
+    case nothing else prompts that release: dropping the lock on purpose,
+    without also submitting a write. Refuses rather than killing a live
+    run; a no-op success if no worker is running at all.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    project_name: Optional[str] = Field(
+        default=None,
+        description="Name of the FieldWorks project. Uses session value if set by start()."
+    )
+
+
 # ============================================================
 # Parse scope (parser-check CP3, US1; data-model.md sections 1-2)
 # ============================================================

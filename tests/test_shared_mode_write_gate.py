@@ -74,7 +74,7 @@ def _access(verdict, *, pid=68436, process="FieldWorks", sharing=None, holder=Tr
 # ---------------------------------------------------------------------------
 
 class TestBuildAccessRemedy:
-    @pytest.mark.parametrize("verdict", ["free", "open_shared", "stale_lock"])
+    @pytest.mark.parametrize("verdict", ["free", "open_shared", "stale_lock", "unknown"])
     def test_non_blocking_verdicts_have_no_remedy(self, verdict):
         """Nothing for the user to do -- these proceed."""
         assert build_access_remedy(_access(verdict)) is None

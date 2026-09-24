@@ -92,15 +92,16 @@ class ProjectAccess:
       "stale_lock"     -- lock file present but the claimed PID is dead
       "held_by_other"  -- lock held by a live process that is NOT FieldWorks
                           (e.g. a leftover MCP subprocess)
+      "unknown"        -- the projects directory could not be resolved, so
+                          no lock file was inspected (issue #118)
 
     probed: False only when the projects directory itself could not be
     resolved (get_projects_directory() returned None) -- in that case
-    verdict is reported as "free" WITHOUT ever inspecting a lock file, a
-    known fail-open gap (see specs/shared-mode-access/.crew-handoff.json
-    fail_open_ruling). True (the default) means a lock file check actually
-    ran, even if the result was "no lock file present". Callers that
-    surface `verdict`/`blocking` to a human or machine consumer should
-    treat probed=False as "unknown", not as a confirmed "free".
+    verdict is "unknown", not a confirmed "free". True (the default) means
+    a lock file check actually ran, even if the result was "no lock file
+    present". Callers that surface `verdict`/`blocking` should treat
+    probed=False / verdict="unknown" as "we did not probe", not as access
+    being free.
     """
     project_name: str
     verdict: str
@@ -290,7 +291,7 @@ def build_access_remedy(access: "ProjectAccess") -> Optional[str]:
     """The user-actionable next step for a verdict that blocks a write.
 
     Returns None for verdicts that do not block ("free", "open_shared",
-    "stale_lock") -- there is nothing for the user to do. Shared by the CP4
+    "stale_lock", "unknown") -- there is nothing for the user to do. Shared by the CP4
     write gate and (CP3) the post-hoc FP_FileLockedError diagnosis, so the
     two can never drift apart.
     """
@@ -396,16 +397,13 @@ def probe_project_access(project_name: str) -> ProjectAccess:
     """
     dir_result = get_projects_directory()
     if dir_result is None:
-        # Fail-open gap (interim patch, issue #93 cycle 7): we cannot
-        # resolve the projects directory at all, so nothing was actually
-        # probed. verdict="free" here is a placeholder, not a finding --
-        # probed=False lets reporting sites tell "confirmed free" apart
-        # from "we never looked". Widening this into a real "unknown"
-        # verdict is deliberately DEFERRED (see fail_open_ruling); do not
-        # expand scope here.
+        # Issue #118: no projects directory means no lock file was inspected.
+        # verdict="unknown" (not "free") so consumers never treat this as
+        # "confirmed not locked". The write path still fails at LCM open if
+        # the project truly does not exist; this gate is vacuous, not bypassed.
         return ProjectAccess(
             project_name=project_name,
-            verdict="free",
+            verdict="unknown",
             sharing_enabled=None,
             holder=None,
             lock_age_seconds=None,

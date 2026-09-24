@@ -32,6 +32,11 @@ jobs:
       - name: Validate integrity (syntax / imports / tool count)
         run: python scripts/validate_integrity.py all
 
+      # Lint before the multi-minute pytest suite so a one-line F401 cannot
+      # hide behind green tests and get merged mid-run (see #201 / #204 / #205).
+      - name: Lint with ruff
+        run: ruff check .
+
       - name: Run pytest with coverage
         # --cov targets src/flextoolsmcp (the installed package source) AND
         # server (bare-module path added by conftest for legacy imports).
@@ -56,9 +61,6 @@ jobs:
           --cov-fail-under=25
           --cov-report=term-missing
           -q
-
-      - name: Lint with ruff
-        run: ruff check .
 
   # ---------------------------------------------------------------------------
   # Linux smoke job — verifies the pure-Python test surface passes without

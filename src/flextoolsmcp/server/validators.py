@@ -1811,6 +1811,7 @@ def detect_undiscovered_entities(
 
     # Walk AST for entity references.
     used_entities: Set[str] = set()
+    facade_accessors_used: Set[str] = set()
     for node in ast.walk(code_tree):
         # POSOperations(project), LexEntryOperations.GetAll(project), etc.
         if isinstance(node, ast.Name) and node.id in KNOWN_OPERATIONS:
@@ -1819,11 +1820,41 @@ def detect_undiscovered_entities(
             # project.<Accessor>...
             if isinstance(node.value, ast.Name) and node.value.id == "project":
                 accessor = node.attr
+                facade_accessors_used.add(accessor)
                 # Prefer the real index mapping; fall back to naive ops-class form
                 # so the gate still works if the index hasn't been loaded yet.
                 ops_class = accessor_to_ops.get(accessor) or f"{accessor}Operations"
                 if ops_class in KNOWN_OPERATIONS:
                     used_entities.add(ops_class)
+
+    # Issue #162: `project.Variants` (and other facade properties whose name
+    # does not match `{Accessor}Operations`) still proves deliberate use of
+    # that Operations surface -- parallel to issue #31's import-based implicit
+    # discovery. Without this, VariantOperations is flagged even though the
+    # only supported entry point is `project.Variants`.
+    implicit_from_facade: Set[str] = set()
+    for accessor in facade_accessors_used:
+        ops_class = accessor_to_ops.get(accessor)
+        if ops_class and ops_class in KNOWN_OPERATIONS:
+            implicit_from_facade.add(ops_class)
+            implicit_from_facade.add(accessor)
+    if implicit_from_facade:
+        for name in list(implicit_from_facade):
+            if name in ops_to_accessor:
+                implicit_from_facade.add(ops_to_accessor[name])
+            if name.endswith("Operations"):
+                implicit_from_facade.add(name[: -len("Operations")])
+        implicit_all |= implicit_from_facade
+        for v in implicit_from_facade:
+            satisfied.add(v)
+            if v in accessor_to_ops:
+                satisfied.add(accessor_to_ops[v])
+            if v in ops_to_accessor:
+                satisfied.add(ops_to_accessor[v])
+            if v.endswith("Operations"):
+                satisfied.add(v[: -len("Operations")])
+            else:
+                satisfied.add(v + "Operations")
 
     undiscovered = sorted(e for e in used_entities if e not in satisfied)
     if not undiscovered:
@@ -1988,6 +2019,160 @@ def detect_flexicon_internal_attribute_error(error_msg: str) -> dict:
     }
 
 
+def _interfaces_for_cast_property(
+    casting_index: Optional[Dict],
+    property_name: str,
+    available_on: Optional[List[str]] = None,
+) -> List[str]:
+    """Clean I-prefixed interfaces that define ``property_name`` in the casting index."""
+    candidates: List[str] = []
+    seen: Set[str] = set()
+    for entry in available_on or []:
+        head = _clean_interface_head(entry)
+        if head and head not in seen:
+            seen.add(head)
+            candidates.append(head)
+    if casting_index and property_name in (casting_index.get("properties") or {}):
+        for entry in (casting_index["properties"][property_name].get("defined_on") or []):
+            head = _clean_interface_head(entry)
+            if head and head not in seen:
+                seen.add(head)
+                candidates.append(head)
+    return candidates
+
+
+def _is_project_project_node(node: ast.AST) -> bool:
+    """True when *node* is the ``project.project`` sub-expression (one Attribute)."""
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "project"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "project"
+    )
+
+
+def _attr_chain_from_outer_attr(node: ast.Attribute) -> Optional[List[str]]:
+    """Return dotted name parts from *node* (outermost Attribute) down to a Name root."""
+    parts: List[str] = []
+    cur: ast.AST = node
+    while isinstance(cur, ast.Attribute):
+        parts.append(cur.attr)
+        cur = cur.value
+    if isinstance(cur, ast.Name):
+        parts.append(cur.id)
+        return list(reversed(parts))
+    return None
+
+
+def _rewrite_chain_drop_redundant_cache(parts: List[str]) -> str:
+    """Strip ``project.project.Cache`` down to ``project.project`` in a chain."""
+    out: List[str] = []
+    i = 0
+    while i < len(parts):
+        if i + 2 < len(parts) and parts[i : i + 3] == ["project", "project", "Cache"]:
+            out.extend(["project", "project"])
+            i += 3
+        else:
+            out.append(parts[i])
+            i += 1
+    return ".".join(out)
+
+
+def _chain_has_redundant_project_cache(parts: List[str]) -> bool:
+    for i in range(len(parts) - 2):
+        if parts[i : i + 3] == ["project", "project", "Cache"]:
+            return True
+    return False
+
+
+def _redundant_project_cache_casting_issues(tree: ast.AST) -> List[Dict[str, Any]]:
+    """Issue #108 (a): preflight rewrite for ``project.project.Cache.*`` hops."""
+    parent_map = _build_parent_map(tree)
+    seen_lines: Set[int] = set()
+    issues: List[Dict[str, Any]] = []
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or node.attr != "Cache":
+            continue
+        if not _is_project_project_node(node.value):
+            continue
+        if node.lineno in seen_lines:
+            continue
+        seen_lines.add(node.lineno)
+
+        outer = node
+        while True:
+            parent = parent_map.get(outer)
+            if isinstance(parent, ast.Attribute) and parent.value is outer:
+                outer = parent
+            else:
+                break
+        if not isinstance(outer, ast.Attribute):
+            continue
+        chain = _attr_chain_from_outer_attr(outer)
+        if not chain or not _chain_has_redundant_project_cache(chain):
+            continue
+        original = ".".join(chain)
+        rewrite = _rewrite_chain_drop_redundant_cache(chain)
+        issues.append(
+            {
+                "property": "Cache",
+                "line": node.lineno,
+                "pattern": "project.project.Cache",
+                "found_at": original,
+                "missing_on": ["LcmCache"],
+                "available_on": [],
+                "fix": (
+                    "Remove the redundant `.Cache`: `project.project` is already the "
+                    "LcmCache (FLExProject.project IS the cache). Use "
+                    f"`{rewrite}` instead of `{original}`."
+                ),
+                "flexicon_helper": None,
+                "severity": "error",
+                "rewrite": rewrite,
+                "imports_needed": [],
+                "cast_interface": None,
+                "kind": "redundant_lcm_cache_hop",
+            }
+        )
+    return issues
+
+
+def _polymorphic_runtime_suggestion(
+    object_type: str,
+    property_name: str,
+    *,
+    rewrite: Optional[str],
+    imports_needed: List[str],
+    cast_candidates: List[str],
+) -> str:
+    """Actionable runtime hint when preflight cannot learn from this failure (#122)."""
+    if rewrite:
+        imports_clause = (
+            f" Imports: {', '.join(imports_needed)}."
+            if imports_needed
+            else ""
+        )
+        return (
+            f"'{object_type}' has no attribute '{property_name}'. "
+            f"Cast before accessing the property:\n    {rewrite}"
+            f"{imports_clause}"
+        )
+    if cast_candidates:
+        return (
+            f"'{object_type}' has no attribute '{property_name}'. "
+            f"Cast to a concrete interface first (from flexicon import cast_to_concrete; "
+            f"concrete = cast_to_concrete(obj)). "
+            f"Candidates for '{property_name}': {', '.join(cast_candidates)}."
+        )
+    return (
+        f"'{object_type}' has no attribute '{property_name}'. "
+        f"Call flextools_resolve_property(property_name='{property_name}', "
+        f"context_entity='{object_type}') to find the right cast, or use "
+        f"cast_to_concrete(obj) when the runtime type is heterogeneous."
+    )
+
+
 def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 
@@ -1998,9 +2183,10 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
       - is_polymorphic_error: bool - whether this looks like a polymorphic issue
       - object_type: str - the object type from the error (e.g., 'IPhSegmentRule')
       - property_name: str - the missing property (e.g., 'RightHandSidesOS')
-      - suggestion: str - suggested resolve_property call
+      - suggestion: str - actionable recovery hint (never defers to a stateless resubmit)
       - rewrite: str | None - inline cast rewrite if casting_index resolved it
       - imports_needed: list[str] - imports to add alongside the rewrite
+      - cast_candidates: list[str] - interfaces when rewrite could not be picked
     """
     # Match pattern: 'ObjectType' object has no attribute 'PropertyName'
     pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
@@ -2009,11 +2195,29 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
     if match:
         object_type, property_name = match.groups()
 
+        # Issue #108 (a): ``project.project`` is already LcmCache; ``.Cache`` is redundant.
+        if object_type == "LcmCache" and property_name == "Cache":
+            suggestion = (
+                "Remove the redundant `.Cache`: `project.project` is already the "
+                "LcmCache (FLExProject.project IS the cache; see flexicon#193). Use "
+                "`project.project.<member>` instead of `project.project.Cache.<member>`."
+            )
+            return {
+                "is_polymorphic_error": True,
+                "object_type": object_type,
+                "property_name": property_name,
+                "rewrite": "project.project",
+                "imports_needed": [],
+                "cast_candidates": [],
+                "suggestion": suggestion,
+            }
+
         # Issue #36: mirror the pre-flight casting lookup so runtime errors carry
         # the same self-healing payload (rewrite + imports_needed) that pre-flight
         # rejections do, eliminating an extra round-trip.
         rewrite: Optional[str] = None
         imports_needed: List[str] = []
+        available_on: List[str] = []
         if casting_index:
             casting_props = (casting_index or {}).get("properties") or {}
             if property_name in casting_props:
@@ -2026,23 +2230,25 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
                     rewrite = f"{cast_iface}(obj).{property_name}"
                     imports_needed = _imports_for_interface(cast_iface)
 
+        cast_candidates = [] if rewrite else _interfaces_for_cast_property(
+            casting_index, property_name, available_on
+        )
+        suggestion = _polymorphic_runtime_suggestion(
+            object_type,
+            property_name,
+            rewrite=rewrite,
+            imports_needed=imports_needed,
+            cast_candidates=cast_candidates,
+        )
+
         return {
             "is_polymorphic_error": True,
             "object_type": object_type,
             "property_name": property_name,
             "rewrite": rewrite,
             "imports_needed": imports_needed,
-            # Issue #22: nudge at the preflight rewrite path first; resolve_property
-            # is the secondary escape hatch (e.g. for chained-receiver cases the
-            # rewriter deliberately skips).
-            "suggestion": (
-                f"Re-submit your code -- the preflight casting validator should "
-                f"now flag '{property_name}' on '{object_type}' with an inline "
-                f"`rewrite` (the cast-wrapped expression) and `imports_needed`. "
-                f"If the preflight doesn't catch it (e.g. chained receiver), call "
-                f"flextools_resolve_property(property_name='{property_name}', "
-                f"context_entity='{object_type}') as a fallback."
-            ),
+            "cast_candidates": cast_candidates,
+            "suggestion": suggestion,
         }
 
     return {"is_polymorphic_error": False}
@@ -2206,14 +2412,25 @@ def detect_overload_resolution_error(
     if not match:
         return {"is_overload_error": False}
 
-    method_name = match.group(1).rsplit(".", 1)[-1]
+    qualified_name = match.group(1)
+    if "." in qualified_name:
+        entity_from_error, method_name = qualified_name.rsplit(".", 1)
+    else:
+        entity_from_error = None
+        method_name = qualified_name
     given_types_raw = match.group(2) or ""
     given_arg_types = [
         t.strip().replace("<class '", "").rstrip("'>").strip("'")
         for t in given_types_raw.split(",") if t.strip()
     ]
 
-    all_candidates = _find_method_overloads(method_name, api_index, entity_hint)
+    # Issue #111: pythonnet often qualifies the method (e.g.
+    # ISilDataAccess.BeginUndoTask). Without narrowing, shared names like
+    # BeginUndoTask match unrelated entities and the hint misleads.
+    resolved_entity_hint = entity_hint or entity_from_error
+    all_candidates = _find_method_overloads(
+        method_name, api_index, resolved_entity_hint
+    )
 
     given_arity = len(given_arg_types) if given_arg_types else None
     if given_arity is not None and all_candidates:
@@ -2226,6 +2443,7 @@ def detect_overload_resolution_error(
     result: Dict[str, Any] = {
         "is_overload_error": True,
         "method_name": method_name,
+        "entity_hint": resolved_entity_hint,
         "given_arg_types": given_arg_types,
         "candidates": ordered[:max_candidates],
         "total_candidates_found": len(all_candidates),
@@ -5337,6 +5555,7 @@ def detect_casting_needs(
         except SyntaxError:
             tree = None
     if tree is not None:
+        issues.extend(_redundant_project_cache_casting_issues(tree))
         ast_assigns, _ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Issue #130: type every FLExProject-valued variable, not just the
         # injected `project`, so a module written in flexicon's documented

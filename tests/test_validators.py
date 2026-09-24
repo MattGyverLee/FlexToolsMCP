@@ -323,6 +323,27 @@ class TestOverloadResolutionError(unittest.TestCase):
             result = detect_overload_resolution_error(error)
             self.assertFalse(result["is_overload_error"])
 
+    def test_qualified_method_name_narrows_to_containing_type(self):
+        """Issue #111: pythonnet qualifies overload failures as Type.Method.
+        The containing type must narrow index lookup -- otherwise BeginUndoTask
+        matches every unrelated entity that happens to expose the same name."""
+        from flextoolsmcp.server import APIIndex, get_index_dir
+
+        error = (
+            "No method matches given arguments for ISilDataAccess.BeginUndoTask: "
+            "(<class 'str'>,)"
+        )
+        idx = APIIndex.load(get_index_dir())
+        result = detect_overload_resolution_error(error, idx)
+
+        self.assertTrue(result["is_overload_error"])
+        self.assertEqual(result["method_name"], "BeginUndoTask")
+        self.assertEqual(result["entity_hint"], "ISilDataAccess")
+        self.assertEqual(result["total_candidates_found"], 1)
+        self.assertEqual(result["candidates"][0]["entity"], "ISilDataAccess")
+        self.assertIn("bstrUndo", result["candidates"][0]["signature"])
+        self.assertIn("ISilDataAccess.BeginUndoTask", result["suggestion"])
+
 
 class TestImportValidation(unittest.TestCase):
     """Tests for detect_missing_operations_imports() and detect_wrong_library_imports()."""

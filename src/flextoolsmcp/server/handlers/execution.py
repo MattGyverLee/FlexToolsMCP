@@ -775,6 +775,17 @@ def _log_report_messages(messages: List[Dict[str, Any]], include_info: bool) -> 
             logger.debug(f"  report.Info: {text}{suffix}")
 
 
+
+
+def _require_jsonl_log_dir(log_dir_fn: Optional[Any]) -> Any:
+    """Issue #109: refuse silent fallback to the production log directory."""
+    if log_dir_fn is None:
+        raise TypeError(
+            "log_dir_fn is required for JSONL telemetry closes (issue #109). "
+            "Pass get_log_dir at production call sites or a tmp-path callable in tests."
+        )
+    return log_dir_fn
+
 def _log_operation_end_success(
     op_id: str,
     seq: int,
@@ -796,6 +807,7 @@ def _log_operation_end_success(
     `execution.get_log_dir` directly (the pre-existing pattern) keep working
     unchanged alongside tests that pass `log_dir_fn` explicitly.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     # Always replay warnings/errors even when overall result was success --
     # report.Warning() doesn't fail the run but the user wants visibility.
@@ -817,7 +829,7 @@ def _log_operation_end_success(
         warning_count=warning_count,
         error_count=error_count,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -856,6 +868,7 @@ def _log_operation_failure(
     handler don't have them yet -- losing the close marker is still better
     than no log at all.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.error("[FAIL] Operation failed")
     if error_type:
@@ -866,19 +879,26 @@ def _log_operation_failure(
             first_line = first_line[:500] + "..."
         logger.error(f"Error:           {first_line}")
     if polymorphic_hint and polymorphic_hint.get("is_polymorphic_error"):
-        # Issue #22: with #21's inlined rewrite, the preflight casting
-        # validator usually catches these BEFORE subprocess launch and
-        # returns the rewrite in casting_issues[*].rewrite. By the time we
-        # reach this runtime path, the validator missed it -- so point at
-        # the inlined-rewrite field for next-attempt recovery, not at an
-        # extra resolve_property hop. Logged at INFO because the hint is a
-        # recovery breadcrumb, not a failure marker (those are at ERROR via #17).
-        logger.info(
-            f"Polymorphic hint: object={polymorphic_hint.get('object_type')} "
-            f"property={polymorphic_hint.get('property_name')} "
-            f"-> resubmit; preflight should now emit casting_issues[*].rewrite "
-            f"and casting_issues[*].imports_needed"
-        )
+        # Issue #122: preflight is stateless -- identical code resubmitted after
+        # a runtime polymorphic miss does NOT gain new casting_issues. Log the
+        # actionable hint at ERROR so it survives error-level log filters (#122).
+        obj = polymorphic_hint.get("object_type")
+        prop = polymorphic_hint.get("property_name")
+        guidance = polymorphic_hint.get("help") or polymorphic_hint.get("suggestion")
+        if guidance:
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): {guidance}"
+            )
+        elif polymorphic_hint.get("rewrite"):
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): apply rewrite "
+                f"{polymorphic_hint.get('rewrite')}"
+            )
+        else:
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): cast before accessing "
+                f"'{prop}' or call flextools_resolve_property."
+            )
     if traceback_text:
         logger.debug("Traceback:")
         for tb_line in traceback_text.rstrip().splitlines():
@@ -916,7 +936,7 @@ def _log_operation_failure(
             warning_count=warning_count,
             error_count=error_count,
             assistance_triggered=False,
-            log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+            log_dir_fn=log_dir_fn,
         )
 
 
@@ -1019,6 +1039,7 @@ def _log_preflight_reject(
     the signature) -- existing callers, including tests that monkeypatch
     `execution.get_log_dir` directly, are unaffected.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.warning("[REJECT] Pre-flight validation blocked execution")
     logger.warning(f"Reason code:     {reason_code}")
@@ -1042,7 +1063,7 @@ def _log_preflight_reject(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
         casting_signature=casting_signature,
     )
 
@@ -1071,6 +1092,7 @@ def _log_discovery_redirect(
     `_log_operation_end_success` for rationale (None default, resolved at
     call time so monkeypatching `execution.get_log_dir` still works).
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     if logger is not None:
         logger.info("[REDIRECT] Gentle discovery redirect (code not executed)")
@@ -1091,7 +1113,7 @@ def _log_discovery_redirect(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -1116,7 +1138,7 @@ def _graceful_discovery_redirect(
     as an error. ``executed`` is False and ``discovery_redirect.needs_resubmit``
     is True so a client cannot mistake it for a completed run.
     """
-    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}")
+    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}", log_dir_fn=get_log_dir)
 
     prefer_tools = [
         "flextools_get_object_api(object_type='...')",
@@ -2940,6 +2962,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "syntax_error",
             f"line {syn_exc.lineno}: {syn_exc.msg}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -2973,6 +2996,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "server_state_error",
             "Server initialization incomplete:\n" + "\n".join(error_details),
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -2999,6 +3023,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
                 f"missing_elements={partial_check.get('missing_elements')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -3054,6 +3079,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "nested_unit_of_work",
                 f"constructs={[c.get('construct') for c in constructs[:5]]}",
+            log_dir_fn=get_log_dir,
             )
             _is_per_op_uow = _probe_undoable_capability()
             if _is_per_op_uow:
@@ -3109,6 +3135,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #95: return the structured TOOL-CONTRACT rejection (status,
         # error_code, _contract, message) with the same fix guidance the log
@@ -3160,6 +3187,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "hvo_literal_write_risk",
             f"findings={[f.get('detail') for f in findings[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3306,6 +3334,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "casting_issues_detected",
                     f"{len(issues)} polymorphic property access issue(s) require casting.",
                     casting_signature=_casting_sig,
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #21: each issue carries an inline rewrite + imports_needed so
                 # the LLM doesn't need to call flextools_resolve_property to recover.
@@ -3422,6 +3451,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "api_discovery_required",
                 "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+            log_dir_fn=get_log_dir,
             )
             # Issue #29: inline get_object_api for the top entities we can spot in
             # the submitted code, so the LLM gets the real method shapes in the
@@ -3597,6 +3627,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     op_id, seq, time.monotonic() - t_start,
                     "undiscovered_entity",
                     f"undiscovered={undiscovered_list}",
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #20: inline get_object_api docs when the undiscovered
                 # entity is explicitly imported from flexicon. Single round-trip
@@ -3638,6 +3669,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "undefined_variables",
             f"undefined_vars={undefined_check.get('undefined_vars')}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3658,6 +3690,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "missing_imports",
             f"missing_imports={missing_ops_check.get('missing_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3679,6 +3712,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "wrong_library_imports",
             f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #54: populate affected_symbols -- the specific names imported
         # from the wrong library module(s).  Parse from the code AST so the LLM
@@ -3748,6 +3782,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "invalid_api_chain",
                 f"issues={chain_check.get('issues')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -4459,6 +4494,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -4566,6 +4602,7 @@ MODULE_CODE = {code}
                     op_id, seq, time.monotonic() - t_start,
                     "confirmation_required",
                     f"mutations={_mutation_count}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
@@ -4628,6 +4665,7 @@ MODULE_CODE = {code}
                     f"verdict={_decision.verdict} sharing_enabled={_refusal['sharing_enabled']} "
                     f"holder_pid={_refusal['holder_pid']} "
                     f"holder_process={_refusal['holder_process']}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
@@ -4656,11 +4694,18 @@ MODULE_CODE = {code}
         # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
         # project). Runs AFTER the lock probe (so we don't back up a project
         # FieldWorks currently has locked) and BEFORE the subprocess launch.
-        # The rung itself is write_ladder.take_backup (CP4, R-07); this
-        # module's perform_pre_write_backup is passed in so the name the
-        # ladder tests patch is the one that runs.
+        #
+        # Issue #99: gate on write_enabled, not needs_lock. Preflight can miss
+        # a mutating script (needs_lock=False) while write_enabled=True still
+        # executes code that commits LCM actions -- the documented safety net
+        # must not depend on static analysis being complete.
+        #
+        # The rung itself is write_ladder.take_backup (CP4, R-07), which applies
+        # the once-per-(session, project) rule; this module's
+        # perform_pre_write_backup is passed in so the name the ladder tests
+        # patch is the one that runs.
         _backup_result: Optional[Dict[str, Any]] = None
-        if needs_lock:
+        if write_enabled:
             _backup_result = write_ladder.take_backup(
                 project_name,
                 session_state=session_state,
@@ -4706,6 +4751,7 @@ MODULE_CODE = {code}
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
+            log_dir_fn=get_log_dir,
             )
             return json_response(_finalize_run_module_response({
                 "success": False,
@@ -4759,10 +4805,23 @@ MODULE_CODE = {code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["code"] = code
-        # Issue #55 (Rung 2): surface the pre-write backup outcome (if this run
-        # was the first mutating run for this (session, project)).
-        if _backup_result is not None:
-            execution_result["backup"] = _backup_result
+        # Issue #55 (Rung 2) + #99: surface backup outcome on every write_enabled
+        # execution so a silent skip is visible in the tool response.
+        if write_enabled:
+            if _backup_result is not None:
+                execution_result["backup"] = _backup_result
+            elif session_state.was_backed_up(project_name):
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "already_backed_up_this_session",
+                }
+            else:
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "backup_not_attempted",
+                }
         # Issue #93 CP4 (T4.1): tell the caller the write went through a live
         # FLEx peer / over a stale lock rather than against an idle project.
         if _shared_mode is not None:
@@ -4868,13 +4927,15 @@ MODULE_CODE = {code}
                         f"'{native_did_you_mean}'. Replace it and re-run."
                     )
                 elif polymorphic_info["is_polymorphic_error"]:
-                    # No concrete rewrite and no name suggestion: fall back to the
-                    # resolve_property hint for manual casting.
+                    # No concrete rewrite and no name suggestion: hand the model the
+                    # fix directly (#122) rather than deferring to a stateless resubmit.
                     execution_result["polymorphic_error_detected"] = True
                     execution_result["error_type"] = "PolymorphicAttributeError"
                     execution_result["object_type"] = polymorphic_info["object_type"]
                     execution_result["property_name"] = polymorphic_info["property_name"]
                     execution_result["help"] = polymorphic_info["suggestion"]
+                    if polymorphic_info.get("cast_candidates"):
+                        execution_result["cast_candidates"] = polymorphic_info["cast_candidates"]
 
         # Issue #75: detect pythonnet overload-resolution failures ("No method
         # matches given arguments"). Distinct failure class from the
@@ -4965,6 +5026,9 @@ MODULE_CODE = {code}
                 # Issue #36: include cast rewrite so runtime errors are self-healing
                 "rewrite": execution_result.get("rewrite"),
                 "imports_needed": execution_result.get("imports_needed") or [],
+                "help": execution_result.get("help"),
+                "suggestion": execution_result.get("help"),
+                "cast_candidates": execution_result.get("cast_candidates") or [],
             }
 
         duration_s = time.monotonic() - t_start
@@ -4978,6 +5042,7 @@ MODULE_CODE = {code}
                 warning_count=warning_count,
                 error_count=error_count,
                 messages=report_messages,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: a successful op resets the retry-loop detector --
             # by definition we've broken whatever loop we were stuck in.
@@ -5028,6 +5093,7 @@ MODULE_CODE = {code}
                 messages=report_messages,
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
@@ -5051,6 +5117,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -5066,6 +5133,7 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
             traceback_text=_tb.format_exc(),
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,

@@ -1,29 +1,29 @@
 {
   "scenario": "FR-036 auto-approval survival (from S2)",
   "in_text": [
-    "bda2f288-56c6-494b-92f3-e4dfb3b8eb82",
-    "4eadfba3-bbd1-4a33-92f0-58a0c7a82dc9",
-    "dfec72e7-58c6-4a24-8e83-91d8c1eb4d32",
-    "ea322d01-64ca-4046-beb1-2e0da8393a45"
+    "49b432ad-c869-4719-b935-c112835a439a",
+    "f8ec860e-9574-4029-8af5-65f490b18067",
+    "e4b60810-ee50-44d6-b481-d57c2c50c760",
+    "6beb2de7-f442-4af8-b5af-2f38db15530c"
   ],
   "after": {
-    "bda2f288-56c6-494b-92f3-e4dfb3b8eb82": {
+    "49b432ad-c869-4719-b935-c112835a439a": {
       "exists": true,
       "user_opinion": "approves"
     },
-    "4eadfba3-bbd1-4a33-92f0-58a0c7a82dc9": {
+    "f8ec860e-9574-4029-8af5-65f490b18067": {
       "exists": true,
       "user_opinion": "approves"
     },
-    "dfec72e7-58c6-4a24-8e83-91d8c1eb4d32": {
+    "e4b60810-ee50-44d6-b481-d57c2c50c760": {
       "exists": true,
       "user_opinion": "approves"
     },
-    "ea322d01-64ca-4046-beb1-2e0da8393a45": {
+    "6beb2de7-f442-4af8-b5af-2f38db15530c": {
       "exists": true,
       "user_opinion": "approves"
     }
   },
   "verdict": true,
-  "recorded_at": "2026-09-24T15:43:31.153151+00:00"
+  "recorded_at": "2026-09-24T15:49:48.280771+00:00"
 }

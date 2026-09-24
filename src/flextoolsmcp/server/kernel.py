@@ -911,3 +911,31 @@ def get_pattern_tracker() -> Optional[PatternTracker]:
     """
     global pattern_tracker
     return pattern_tracker
+
+
+def _register_kernel_module_aliases() -> None:
+    """Ensure legacy and packaged import spellings share one module object.
+
+    ``src/`` is on ``sys.path`` for pytest and script-mode runs, so the same
+    ``kernel.py`` file can be imported as both ``server.kernel`` and
+    ``flextoolsmcp.server.kernel``. Without aliasing, each spelling gets its
+    own copy of module globals (``session_state``, ``operations_logger``, …),
+    which makes monkeypatches and session resets silently no-op (#172).
+    """
+    import sys
+
+    mod = sys.modules[__name__]
+    names = ("flextoolsmcp.server.kernel", "server.kernel")
+    loaded = {n: sys.modules[n] for n in names if n in sys.modules}
+    distinct = {id(m) for m in loaded.values()}
+    if len(distinct) > 1:
+        preferred = sys.modules.get("flextoolsmcp.server.kernel")
+        if preferred is not None:
+            mod = preferred
+        else:
+            mod = sys.modules.get("server.kernel", mod)
+    for name in names:
+        sys.modules[name] = mod
+
+
+_register_kernel_module_aliases()

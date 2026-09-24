@@ -160,6 +160,43 @@ def _finalize_run_module_response(payload: Dict[str, Any]) -> Dict[str, Any]:
     return build_response_with_context(payload, include_session=True)
 
 
+def build_effect_check_payload(
+    execution_result: Dict[str, Any],
+    *,
+    write_enabled: bool,
+    is_mutating_script: bool,
+) -> Optional[Dict[str, Any]]:
+    """Issue #143: surface silent no-op writes on mutating runs.
+
+    When preflight already classified the script as mutating but LCM recorded
+    zero undoable actions, attach an advisory ``effect_check`` block so callers
+    can distinguish success-with-no-exception from success-with-no-mutation.
+    """
+    if not write_enabled or not is_mutating_script:
+        return None
+    if not execution_result.get("success"):
+        return None
+    count = execution_result.get("lcm_undoable_action_count")
+    if count is None:
+        return None
+    try:
+        count_int = int(count)
+    except (TypeError, ValueError):
+        return None
+    if count_int != 0:
+        return None
+    return {
+        "signal": "lcm_undoable_action_count",
+        "lcm_undoable_action_count": 0,
+        "verdict": "no_observable_effect",
+        "note": (
+            "Preflight classified this run as mutating, but LCM recorded zero "
+            "undoable actions. The script reported success without raising, so "
+            "a wrapper no-op or wrong collection target may have done nothing."
+        ),
+    }
+
+
 # Issue #46: auto-fix config
 try:
     from ...config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
@@ -4968,6 +5005,13 @@ MODULE_CODE = {code}
             _diagnostic_advisory = build_advisory_for_success_close(op_id)
             if _diagnostic_advisory:
                 execution_result[KEY_DIAGNOSTIC_REPORT] = _diagnostic_advisory
+            _effect_check = build_effect_check_payload(
+                execution_result,
+                write_enabled=write_enabled,
+                is_mutating_script=is_mutating_script,
+            )
+            if _effect_check is not None:
+                execution_result["effect_check"] = _effect_check
         else:
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=duration_s,

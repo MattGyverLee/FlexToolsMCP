@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
+  Write-enabled runs preflight already flagged as mutating now attach an advisory
+  `effect_check` block when execution succeeds but `lcm_undoable_action_count`
+  is zero, so a wrapper that mutates nothing is no longer indistinguishable from
+  a real write.
 - **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
   ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
   ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates

@@ -6,42 +6,69 @@ This guide covers how to use FLExTools MCP to generate and run FLExTools modules
 
 ## MCP Tools Reference
 
-The server exposes 16 tools organized by category:
+This is the one maintained list of the server's tools. The definitions live in
+[`src/flextoolsmcp/server/tool_definitions.py`](src/flextoolsmcp/server/tool_definitions.py);
+`python scripts/validate_integrity.py server` fails when this list and that file
+disagree. AI clients read the full tool descriptions and schemas from the running
+server itself. Response shapes and error codes are in
+[docs/TOOL-CONTRACT.md](docs/TOOL-CONTRACT.md).
 
-### Admin & Configuration
+### Session & Configuration
 
 | Tool | Description |
 |------|-------------|
-| `flextools_start` | **BEGIN HERE** - Initialize session, set project name and API mode |
-| `flextools_manage_config` | Get/set/delete persistent configuration (dotted keys like `paths.flexicon`) |
-| `flextools_get_session_history` | View operation history and undo/redo stack depth |
-| `flextools_undo_last_operation` | Undo the most recent database write operation |
-| `flextools_get_module_template` | Get the official FLExTools module template |
+| `flextools_start` | **BEGIN HERE** - Initialize the session: project, API mode, and workflow guidance |
+| `flextools_list_projects` | List FieldWorks projects available on this machine |
+| `flextools_manage_config` | Get, set, delete, or list persistent configuration (dotted keys like `paths.flexicon`) |
+| `flextools_get_session_history` | View this session's operation history |
 
 ### Discovery & Analysis
 
 | Tool | Description |
 |------|-------------|
-| `flextools_search_by_capability` | Natural language search with synonym expansion; surfaces matching skeletons from prior successful runs |
-| `flextools_get_object_api` | Get full methods/properties for objects like ILexEntry, LexSenseOperations |
-| `flextools_get_navigation_path` | Find traversal paths between object types (ILexEntry -> ILexSense -> ILexExampleSentence) |
-| `flextools_find_examples` | Get code examples by operation type (create, read, update, delete, iterate) |
+| `flextools_search_by_capability` | Natural-language search for methods by what they do; surfaces matching skeletons from prior successful runs |
+| `flextools_get_object_api` | Full methods/properties for an object such as ILexEntry or LexSenseOperations |
+| `flextools_get_navigation_path` | Traversal paths between object types (ILexEntry -> ILexSense -> ILexExampleSentence) |
+| `flextools_find_examples` | Code examples by method or operation type (create, read, update, delete, iterate) |
 | `flextools_resolve_property` | Resolve property names and detect pythonnet casting requirements |
+| `flextools_resolve_type` | Resolve a type name to its namespace, assembly, and import statement |
+| `flextools_get_wrapper_dependencies` | LibLCM internals (factories, repositories, properties) a flexlibs/flexicon wrapper uses |
+| `flextools_find_wrappers_for_lcm` | Which wrapper methods cover a given LibLCM symbol |
 
 ### Catalog & Browsing
 
 | Tool | Description |
 |------|-------------|
-| `flextools_list_categories` | List semantic domains (lexicon, grammar, texts, wordform, reversal, etc.) |
-| `flextools_list_entities_in_category` | List all entities in a category with summaries |
+| `flextools_list_categories` | List API categories (lexicon, grammar, texts, wordform, reversal, etc.) |
+| `flextools_list_entities_in_category` | List the entities in a category with summaries |
+| `flextools_list_skeletons` | List captured "skeleton" helpers that survived prior sessions |
 
 ### Module Creation & Execution
 
 | Tool | Description |
 |------|-------------|
-| `flextools_start_module` | Interactive wizard to scaffold a new FLExTools module |
-| `flextools_get_operation_logs` | View recent operation logs + pattern-based recommendations for common errors |
-| `flextools_run_module` | Execute code against a FieldWorks project (dry-run by default, write_enabled=true for mutations) |
+| `flextools_get_module_template` | The official FlexTools module scaffold (Main / docs / FlexToolsModule) |
+| `flextools_start_module` | Interactive wizard to scaffold a new FlexTools module |
+| `flextools_run_module` | Execute code against a FieldWorks project (dry-run by default; `write_enabled=true` for mutations) |
+| `flextools_get_operation_logs` | Operation logs plus pattern-based recommendations for common errors |
+
+### Diagnostics
+
+| Tool | Description |
+|------|-------------|
+| `flextools_health` | Composed health/version snapshot -- call when something seems wrong |
+| `flextools_prepare_report` | Prepare a diagnostic report for the maintainer ("send this to the maintainer") |
+| `flextools_grammar_health` | Static scan of the grammar for path-multiplying properties |
+
+### Parser Check
+
+| Tool | Description |
+|------|-------------|
+| `flextools_try_word` | Does this word parse, and if not, why not? |
+| `flextools_parse_text` | Batch-parse a corpus scope |
+| `flextools_parse_status` | Poll a parse run by its handle: stage, progress, result, or failure |
+| `flextools_parse_log` | Read one section of a parse run's record back from disk |
+| `flextools_parse_diff` | Compare two batch runs word by word -- did a grammar edit help? |
 
 ## API Modes
 

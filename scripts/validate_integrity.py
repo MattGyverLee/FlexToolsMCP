@@ -29,6 +29,9 @@ import sys
 SRC_DIR = "src/flextoolsmcp"
 LOCAL_MODULES = {"json_utils"}
 MIN_TOOL_COUNT = 10
+TOOL_DEFINITIONS = "src/flextoolsmcp/server/tool_definitions.py"
+TOOL_REFERENCE_DOC = "USAGE.md"
+TOOL_REFERENCE_HEADING = "## MCP Tools Reference"
 CORE_CLASSES = ["FLExInitialize", "FLExCleanup", "FLExProject"]
 
 
@@ -279,6 +282,75 @@ def _count_tools_from_ast():
             file=sys.stderr,
         )
         return False
+
+
+def _tool_names_from_definitions():
+    """Tool names declared as ToolDef(name=...) in tool_definitions.py (AST, no import)."""
+    with open(TOOL_DEFINITIONS, encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename=TOOL_DEFINITIONS)
+
+    names = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "ToolDef"
+        ):
+            for kw in node.keywords:
+                if kw.arg == "name" and isinstance(kw.value, ast.Constant):
+                    names.add(kw.value.value)
+    return names
+
+
+def _tool_names_from_reference():
+    """Tool names listed in the USAGE.md tool reference tables."""
+    with open(TOOL_REFERENCE_DOC, encoding="utf-8") as f:
+        text = f.read()
+
+    start = text.find(TOOL_REFERENCE_HEADING)
+    if start == -1:
+        return None
+    end = text.find("\n## ", start + len(TOOL_REFERENCE_HEADING))
+    section = text[start:end if end != -1 else len(text)]
+    return set(re.findall(r"^\|\s*`(flextools_\w+)`", section, re.MULTILINE))
+
+
+def check_tool_reference_doc():
+    """Verify USAGE.md's tool reference lists exactly the defined tools.
+
+    USAGE.md is the single maintained human-readable tool list; other docs
+    point to it rather than copying it, so it must not drift.
+    """
+    defined = _tool_names_from_definitions()
+    documented = _tool_names_from_reference()
+
+    if documented is None:
+        print(
+            f"TOOL REFERENCE ERROR: {TOOL_REFERENCE_DOC} has no "
+            f"'{TOOL_REFERENCE_HEADING}' section",
+            file=sys.stderr,
+        )
+        return False
+
+    missing = sorted(defined - documented)
+    stale = sorted(documented - defined)
+    if not missing and not stale:
+        print(f"  {TOOL_REFERENCE_DOC}: all {len(defined)} tools documented [OK]")
+        return True
+
+    if missing:
+        print(
+            f"TOOL REFERENCE ERROR: defined in {TOOL_DEFINITIONS} but missing from "
+            f"{TOOL_REFERENCE_DOC}: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+    if stale:
+        print(
+            f"TOOL REFERENCE ERROR: listed in {TOOL_REFERENCE_DOC} but not defined: "
+            f"{', '.join(stale)}",
+            file=sys.stderr,
+        )
+    return False
 
 
 def check_refresh_runs():
@@ -553,6 +625,8 @@ def cmd_server(args):
 
     print("Phase 2: Functional checks...")
     if not check_server_tools():
+        all_ok = False
+    if not check_tool_reference_doc():
         all_ok = False
 
     return 0 if all_ok else 1

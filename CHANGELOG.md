@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- **GetAll collection contract surfaced per method in the flexicon index** ([#124](https://github.com/MattGyverLee/FlexToolsMCP/issues/124)).
+  Post-process step ``build_getall_contract.py`` annotates every shipped
+  ``GetAll`` with a structured ``collection_contract`` (shape, element type,
+  whether elements are raw LCM objects vs flexicon wrapper collections).
+  ``get_object_api`` includes that field on GetAll rows in the thin method
+  index so callers see the contract where they look up methods, not only in
+  the ``wrap_enumerable`` doc blob.
+
 - **`get_workspace_notice(once=True)` suppressed warnings after cwd change** ([#151](https://github.com/MattGyverLee/FlexToolsMCP/issues/151)).
   The response-envelope guard is now keyed by detected ``repo_root`` instead of a
   single process-global flag, so moving into a different source checkout can

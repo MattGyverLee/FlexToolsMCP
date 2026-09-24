@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- **SpecKit Companion ignored nine feature specs stored as `SPEC.md` on
+  case-sensitive filesystems** ([#128](https://github.com/MattGyverLee/FlexToolsMCP/issues/128)).
+  Companion scripts only looked for lowercase `spec.md`, so Linux/macOS
+  case-sensitive checkouts saw empty feature state and could mint duplicate
+  spec directories. Renamed the nine legacy files to `spec.md` and taught
+  `derive-from-files`, `doctor_bleed`, `living_spec_fold`, and `spec_context`
+  to resolve either spelling via `resolve_feature_spec_md()`.
 - **`run_module` refused writes against its own idle parse worker, naming it as
   a foreign process to kill** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
   `flextools_try_word` / `flextools_parse_text` leave a shared read worker

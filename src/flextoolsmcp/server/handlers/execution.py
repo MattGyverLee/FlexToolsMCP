@@ -298,9 +298,14 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
             return False, f"flexicon not found: {e}"
         except Exception as e:  # noqa: BLE001 -- non-ImportError: no FieldWorks
             return False, f"flexicon installed but not initializable: {e}"
-        # Check version is available (flexicon uses 'version' not '__version__')
-        if not hasattr(flexicon, 'version') and not hasattr(flexicon, '__version__'):
-            return False, "flexicon missing version info"
+        # Issue #146: do not treat version/__version__ as a capability proxy.
+        # Old builds can expose version while lacking every token this runner
+        # assumes; flexicon.CAPABILITIES is the supported probe surface.
+        if getattr(flexicon, "CAPABILITIES", None) is None:
+            return False, (
+                "flexicon missing CAPABILITIES (upgrade pyflexicon; "
+                "version attributes are not a capability probe)"
+            )
         return True, ""
 
     elif api_mode == "flexlibs_stable":

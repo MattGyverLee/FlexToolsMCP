@@ -7,10 +7,12 @@ FR-014, FR-024, FR-025, FR-002; D-1).
   * FR-024 -- the engine gate is the handler's FIRST project-touching
     statement: nothing is resolved and nothing is queued before it, and a
     mismatch refuses with no scope read and no run created.
-  * FR-025 / D-1 -- annotated destructive from the first release, the filing
-    argument ABSENT from the schema (and refused if guessed at), and the
-    description's first line states the spine and that filing is not yet
-    reachable.
+  * FR-025 / D-1 -- annotated destructive from the first release, and the
+    annotation UNCHANGED at CP4 (CP4 FR-001).
+  * CP4 R-16 -- the schema is exactly CP3's five fields plus `apply`,
+    `confirmed` and `plan_id`; a guessed filing argument is still refused;
+    the description's first line names the filing path; and a read-only
+    response is CP3's, apart from `filing: "not_requested"`.
   * FR-002 -- a scope that matched texts but yielded no words starts no run
     and is not reported as `parse_scope_empty`.
 
@@ -208,7 +210,7 @@ async def test_a_submission_records_the_fingerprint_and_says_nothing_was_filed(r
     await asyncio.wait_for(handle.done.wait(), timeout=5)
 
     assert payload["status"] == "ok"
-    assert payload["filing"] == parse_handler.FILING_NOT_REACHABLE
+    assert payload["filing"] == "not_requested"
     fingerprint = payload["scope_fingerprint"]
     assert fingerprint["engine"] == "HC"
     assert fingerprint["vernacular_ws"] == "id"
@@ -259,16 +261,33 @@ async def test_texts_with_no_words_start_no_run_and_are_not_called_empty(runner_
 # FR-025 / D-1 -- schema and annotation
 # ---------------------------------------------------------------------------
 
-_FILING_WORDS = ("file", "filing", "write", "commit", "record_to_project", "apply")
+_FILING_WORDS = ("file", "filing", "write", "commit", "record_to_project", "force", "skip")
+
+#: CP4's three filing arguments (contracts/tools.md s.1) -- the only
+#: filing-shaped names the schema may carry.
+_FILING_ARGUMENTS = {"apply", "confirmed", "plan_id"}
 
 
-def test_the_filing_argument_is_absent_from_the_schema():
+def test_the_schema_is_cp3s_five_fields_plus_the_three_filing_arguments():
+    """R-16: still an exact-set assertion, now with CP4's three added."""
     properties = ParseTextInput.model_json_schema()["properties"]
     assert set(properties) == {
         "scope_kind", "scope_value", "limit", "vernacular_ws", "project_name",
-    }
-    for name in properties:
+    } | _FILING_ARGUMENTS
+    for name in set(properties) - _FILING_ARGUMENTS:
         assert not any(word in name for word in _FILING_WORDS), name
+
+
+def test_apply_defaults_off_and_a_confirmation_needs_apply():
+    request = ParseTextInput(scope_kind="all_texts")
+    assert request.apply is False and request.confirmed is False and request.plan_id is None
+    with pytest.raises(ValidationError):
+        ParseTextInput(scope_kind="all_texts", confirmed=True)
+    with pytest.raises(ValidationError):
+        ParseTextInput(scope_kind="all_texts", plan_id="a" * 64)
+    with pytest.raises(ValidationError):
+        ParseTextInput(scope_kind="all_texts", apply=True, plan_id="not-hex")
+    ParseTextInput(scope_kind="all_texts", apply=True, confirmed=True, plan_id="a" * 64)
 
 
 def test_a_guessed_filing_argument_is_refused_not_ignored():
@@ -284,20 +303,50 @@ def test_scope_kind_and_value_are_validated_together():
 
 
 def test_the_tool_is_annotated_at_its_designed_maximum_capability():
+    """CP4 FR-001: the annotation does NOT change now that filing ships."""
     from flextoolsmcp.server.tool_definitions import TOOLS
 
     tool = TOOLS["flextools_parse_text"]
     assert tool.annotations.readOnlyHint is False
     assert tool.annotations.destructiveHint is True
+    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.openWorldHint is False
     assert tool.input_model is ParseTextInput
 
 
-def test_the_description_first_line_states_the_spine_and_that_filing_is_unreachable():
+def test_the_description_first_line_names_the_spine_and_the_filing_path():
+    """R-16 / FR-001: the first line no longer says filing is unreachable."""
     from flextoolsmcp.server.tool_definitions import TOOLS
 
     first = TOOLS["flextools_parse_text"].description.splitlines()[0]
-    assert "In-process" in first and "spine" in first
-    assert "filing" in first and "not yet reachable" in first
+    assert first == (
+        "[PARSE] In-process batch spine -- parse a corpus scope; with apply=true, "
+        "file the results into the project behind preview, confirmation and backup."
+    )
+    assert "not yet reachable" not in TOOLS["flextools_parse_text"].description
+
+
+#: The keys CP3's read-only submission response carried (before CP4). A
+#: read-only response is diffed against this: same keys, and `filing` is the
+#: only value CP4 changed (R-16).
+_CP3_SUBMISSION_KEYS = {
+    "status", "project", "run_id", "run_started", "stage", "words_completed",
+    "words_total", "scope", "scope_fingerprint", "engine_at_submission",
+    "record_dir", "notes", "filing",
+}
+
+
+async def test_a_read_only_response_is_cp3s_apart_from_filing_not_requested(runner_for):
+    worker = Worker()
+    runner = runner_for(worker)
+    payload = await _call({"scope_kind": "words", "scope_value": ["a"]})
+    await asyncio.wait_for(runner.get(payload["run_id"]).done.wait(), timeout=5)
+    optional = {"result_summary", "failure", "counters", "counter_divergences",
+                "engine_changed_midjob", "warnings", "next_step", "note", "session", "_contract"}
+    assert _CP3_SUBMISSION_KEYS <= set(payload)
+    assert set(payload) - _CP3_SUBMISSION_KEYS <= optional
+    assert payload["filing"] == "not_requested"
+    assert "parse_word" in worker.calls and worker.parse_kwargs[0]["level"] == "batch"
 
 
 def test_the_tool_is_routed():

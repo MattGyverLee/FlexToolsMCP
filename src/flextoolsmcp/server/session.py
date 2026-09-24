@@ -146,6 +146,9 @@ class SessionState:
     api_mode: str = "flexicon"            # API mode: flexicon, flexlibs_stable, liblcm
     output_type: str = "auto"              # Output type: auto, operation, module
     project_name: str = ""                 # FLEx project name (empty = prompt user)
+    # Issue #174: set when a call re-points an already-set session project;
+    # consumed once into the next tool response envelope.
+    project_adopted_notice: Optional[Dict[str, Any]] = None
     write_enabled: bool = False            # Write access: False = read-only/dry-run
     # Diagnostic-report feature (spec section 4): verbatim human request text for
     # the current turn, set by flextools_start. run_module falls back to this when
@@ -168,6 +171,20 @@ class SessionState:
     # been taken THIS session. Ensures the backup fires exactly once per
     # (session, project) instead of on every mutating run.
     backed_up_projects: set = field(default_factory=set)
+
+    # Parser-check CP4 (FR-008): projects backed up by FILING this session.
+    # A separate key from run_module's `backed_up_projects` above, so a
+    # run_module backup taken earlier in the session never satisfies filing.
+    filing_backed_up_projects: set = field(default_factory=set)
+
+    # Parser-check CP4 (FR-006, R-08): the mutation plans this session has
+    # issued, as {(project, scope_fingerprint_key): {plan_id, issued_at, plan}}.
+    # Only the NEWEST plan per key is kept. A confirmed filing request must
+    # carry a plan_id found here AND equal to the plan recomputed at confirm
+    # time; anything else is a new preview. This is what makes a bare
+    # `confirmed=True` -- or one carrying another session's plan_id -- unable
+    # to reach filing.
+    filing_plans: dict = field(default_factory=dict)
 
     # Issue #53: count of cold-start auto-initializations performed this
     # session (a READ_ONLY_SAFE tool -- or run_module with an explicit
@@ -358,6 +375,10 @@ class SessionState:
         # yet" for any project -- the prior session's backup is still on disk,
         # but this session hasn't verified it applies to the current state.
         self.backed_up_projects = set()
+        # CP4: the same boundary retires filing's backups and issued plans. A
+        # plan issued in an earlier session cannot be confirmed in this one.
+        self.filing_backed_up_projects = set()
+        self.filing_plans = {}
 
     def record_validated_api(self, entity: str) -> None:
         """Record an API that was validated via get_object_api."""
@@ -414,6 +435,19 @@ class SessionState:
     def record_backup(self, project_name: str) -> None:
         """Mark project_name as backed-up for the remainder of this session."""
         self.backed_up_projects.add(project_name)
+
+    # --- Parser-check CP4: issued filing plans (FR-006, R-08) ---
+
+    def issue_filing_plan(self, project_name: str, scope_key: str, plan_id: str,
+                          plan: dict, issued_at: str) -> None:
+        """Record the newest plan issued for (project, scope). Replaces older."""
+        self.filing_plans[(project_name, scope_key)] = {
+            "plan_id": plan_id, "issued_at": issued_at, "plan": plan,
+        }
+
+    def issued_filing_plan(self, project_name: str, scope_key: str) -> Optional[dict]:
+        """The newest plan issued for (project, scope) this session, or None."""
+        return self.filing_plans.get((project_name, scope_key))
 
     def summary(self) -> dict:
         """Return session state summary for tool responses."""

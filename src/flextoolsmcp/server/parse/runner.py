@@ -87,6 +87,7 @@ from .stages import (
     RunStage,
     can_transition,
     is_terminal,
+    working_stage,
 )
 from .worker_client import MEASUREMENT_ROLE, SHARED_ROLE, WorkerError, WorkerPool
 
@@ -233,6 +234,17 @@ class RunHandle:
     #: measured fact rather than a guess (FR-056).
     stage_entered_at: float = field(default_factory=time.monotonic)
 
+    # -- CP4 (filing) -----------------------------------------------------
+
+    #: True only for a run created with `filing=True`: its words are parsed
+    #: AND filed, in a worker of its own. Every other run is read-only.
+    is_filing: bool = False
+    #: The run's `filing` meta section, kept current by its observer.
+    filing: Optional[dict[str, Any]] = None
+    #: The filing run's observer (`filing/observer.py`): per-word
+    #: bookkeeping and the terminal hook. None on every read-only run.
+    observer: Any = None
+
     @property
     def is_terminal(self) -> bool:
         return is_terminal(self.stage)
@@ -302,6 +314,9 @@ class ParseRunner:
         )
         self._record_dir = record_dir
         self._runs: dict[str, RunHandle] = {}
+        # Projects whose shared read worker holds a cache older than a write
+        # made elsewhere, and was busy when that write ended (CP4 R-09).
+        self._stale_read_workers: set[str] = set()
 
     # -- introspection ----------------------------------------------------
 
@@ -350,6 +365,78 @@ class ParseRunner:
             request_id=f"scope:{uuid.uuid4().hex[:12]}", scope=scope
         )
 
+    # -- CP4: the filing preflight's reads, put to the READ worker ---------
+    #
+    # Three questions the filing handler asks before any preview exists
+    # (contracts/tools.md rows 5 and 9). Each is a read, answered by the
+    # shared read-only worker because it is the one process with the project
+    # open; none of them starts a run, parses a batch word or writes.
+
+    def read_worker_pid(self, project_name: str) -> Optional[int]:
+        """The PID of this project's shared read worker, if one is running."""
+        worker = self._pool.peek(project_name)
+        if worker is None:
+            return None
+        pid = getattr(worker, "worker_pid", None)
+        if not isinstance(pid, int):
+            pid = getattr(worker, "pid", None)
+        return pid if isinstance(pid, int) else None
+
+    def read_worker_busy(self, project_name: str) -> bool:
+        """Is any live run using this project's shared read worker?"""
+        return any(
+            not other.is_terminal and other.project_name == project_name
+            and other.worker_role == SHARED_ROLE
+            for other in self._runs.values()
+        )
+
+    def mark_read_worker_stale(self, project_name: str) -> None:
+        """Recycle this project's read worker before its next preflight read.
+
+        For a write that ended while the worker was busy: the worker is not
+        killed under a user's word, but it is not trusted again either.
+        """
+        self._stale_read_workers.add(project_name)
+
+    async def _preflight_worker(self, project_name: str):
+        """The read worker for a preflight read, recycled first if stale.
+
+        If it is stale AND still busy, the stale worker answers: the filing
+        worker re-checks every word against its own fresh read (R-02), so a
+        stale preview costs skipped words, never an unconfirmed deletion.
+        """
+        if project_name in self._stale_read_workers and not self.read_worker_busy(project_name):
+            self._stale_read_workers.discard(project_name)
+            await self.release_worker(project_name, role=SHARED_ROLE)
+        return await self._pool.get(project_name)
+
+    async def probe_agent(self, project_name: str) -> dict[str, Any]:
+        """Is the HermitCrab parser agent resolvable? (CP4 FR-025)."""
+        worker = await self._preflight_worker(project_name)
+        return await worker.probe_agent(request_id=f"agent:{uuid.uuid4().hex[:12]}")
+
+    async def filing_gate(
+        self, project_name: str, *, probe_word: Optional[str], vernacular_ws: Optional[str]
+    ) -> dict[str, Any]:
+        """The refuse-to-file gate's inputs, from this load (CP4 FR-020..FR-023, FR-039)."""
+        worker = await self._preflight_worker(project_name)
+        return await worker.filing_gate(
+            request_id=f"gate:{uuid.uuid4().hex[:12]}",
+            probe_word=probe_word,
+            vernacular_ws=vernacular_ws,
+        )
+
+    async def filing_preview(
+        self, project_name: str, *, words: list[str], vernacular_ws: Optional[str]
+    ) -> dict[str, Any]:
+        """The stored-analysis facts the deletion projection is built from."""
+        worker = await self._preflight_worker(project_name)
+        return await worker.filing_preview(
+            request_id=f"preview:{uuid.uuid4().hex[:12]}",
+            words=list(words),
+            vernacular_ws=vernacular_ws,
+        )
+
     def known_run_ids(self) -> list[str]:
         """Backs `parse_run_not_found`'s "here are the handles that exist"."""
         return list(self._runs)
@@ -365,7 +452,9 @@ class ParseRunner:
         edge, so this is also what makes FR-027's "no CP2b code path can
         produce filing" true by construction rather than by inspection.
         """
-        if stage is not handle.stage and not can_transition(handle.stage, stage):
+        if stage is not handle.stage and not can_transition(
+            handle.stage, stage, filing=handle.is_filing
+        ):
             raise InvalidStageTransition(handle.stage, stage)
         if stage is not handle.stage:
             handle.stage_entered_at = time.monotonic()
@@ -385,6 +474,13 @@ class ParseRunner:
 
         if is_terminal(stage):
             self._release_displaced(handle)
+            if handle.observer is not None:
+                # A filing run's claim clears in the SAME transition that
+                # makes it terminal (FR-028), before anyone waiting on the run
+                # is woken -- so no caller can see a finished run whose
+                # project still reads as busy.
+                with contextlib.suppress(Exception):
+                    handle.observer.on_terminal(handle)
             handle.done.set()
 
     @staticmethod
@@ -400,6 +496,10 @@ class ParseRunner:
             updates["load_error_baseline"] = handle.load_error_baseline
             if handle.counters is not None:
                 updates["counters"] = handle.counters.to_dict()
+        if handle.is_filing and handle.filing is not None:
+            # The record's `filing` SECTION (a meta field), not the stage: the
+            # stage is produced only through stages.py's filing-run table.
+            updates.update(dict(filing=handle.filing))
         return updates
 
     def _persist_progress(self, handle: RunHandle) -> None:
@@ -460,6 +560,10 @@ class ParseRunner:
         vernacular_ws: Optional[str] = None,
         project_state: Optional[dict[str, Any]] = None,
         worker_role: str = SHARED_ROLE,
+        filing: bool = False,
+        filing_setup: Optional[dict[str, Any]] = None,
+        observer: Any = None,
+        record_guard: Any = None,
     ) -> RunHandle:
         """Start a run and wait out the grace window. THE only entry point.
 
@@ -486,9 +590,18 @@ class ParseRunner:
         its window. What happens when the window closes is the measurement's
         business (`measure.py`), not this method's -- here it still only
         stops waiting.
+
+        A FILING run (CP4) is this same call too, with `filing=True`, under
+        the filing package's worker role, carrying the `filing_setup` its
+        worker is handed before the first word and the `observer` that keeps
+        the record's `filing` section. The caller -- the filing handler --
+        has already walked every rung of the write ladder; this method only
+        runs what it was given. `record_guard` vets the record's directory
+        (FR-042) before anything is created in it.
         """
         window = grace_window if grace_window is not None else self._grace_window
         batch = scope_fingerprint is not None
+        section = observer.initial_section() if (filing and observer is not None) else None
 
         record = RunRecord.create(
             project_name=project_name,
@@ -498,6 +611,8 @@ class ParseRunner:
             scope_fingerprint=scope_fingerprint,
             engine_at_submission=engine_at_submission,
             project_state=project_state,
+            filing=section,
+            guard=record_guard,
         )
         handle = RunHandle(
             run_id=record.run_id,
@@ -511,13 +626,18 @@ class ParseRunner:
             vernacular_ws=vernacular_ws,
             counters=HostCounters() if batch else None,
             worker_role=worker_role,
+            is_filing=bool(filing),
+            filing=section,
+            observer=observer if filing else None,
         )
         self._runs[handle.run_id] = handle
         self._displace(handle)
         self._prune(project_name)
+        if handle.observer is not None:
+            handle.observer.on_start(handle)
 
         handle.task = asyncio.create_task(
-            self._execute_run(handle, wordforms, level, restricted_to)
+            self._execute_run(handle, wordforms, level, restricted_to, filing_setup)
         )
 
         # The grace window, in full. Note what is NOT here: no cancel, no
@@ -548,6 +668,7 @@ class ParseRunner:
         wordforms: list[str],
         level: str,
         restricted_to: Optional[tuple[int, ...]],
+        filing_setup: Optional[dict[str, Any]] = None,
     ) -> None:
         """Drive one run to a terminal stage. Never raises.
 
@@ -556,10 +677,27 @@ class ParseRunner:
         here becomes `failed` with a `RunFailure`, because a run that raised
         into a background task and left no stage would be indistinguishable
         from one still running.
+
+        A FILING run (CP4) differs in four places, and only four:
+
+          * its worker is handed `filing_setup` before the first word;
+          * after its first word it works in `filing`, not `parsing`;
+          * each word's outcome goes to the run's observer;
+          * before it reports ANY terminal state -- completed, cancelled,
+            refused mid-run, failed -- its worker is asked to persist what
+            was filed (FR-034), and the record says whether that worked. A
+            filing run never reports success over unsaved changes.
         """
+        worker = None
         try:
             worker = await self._worker_for(handle)
             worker.listen_to_run(handle.run_id, lambda m: self._on_run_message(handle, m))
+            if handle.is_filing:
+                await worker.filing_setup(
+                    request_id=f"setup:{handle.run_id}:{uuid.uuid4().hex[:8]}",
+                    run_id=handle.run_id,
+                    setup=dict(filing_setup or {}, record_root=str(handle.record.root)),
+                )
 
             # THE STAGE IS NOT ANNOUNCED FROM HERE. It used to be: this line
             # set `loading_grammar` unconditionally, before the worker had
@@ -628,6 +766,10 @@ class ParseRunner:
                 # `loading_grammar` on the cold one.
                 if handle.stage in (RunStage.STARTING, RunStage.LOADING_GRAMMAR):
                     self._set_stage(handle, RunStage.PARSING)
+                if handle.is_filing and handle.stage is RunStage.PARSING:
+                    # The first word is filed: the run is now filing, an edge
+                    # that exists only in a filing run's table (stages.py).
+                    self._set_stage(handle, working_stage(filing=True))
 
                 entry = {
                     "index": index,
@@ -647,6 +789,8 @@ class ParseRunner:
                 handle.words_completed += 1
                 with contextlib.suppress(Exception):
                     handle.record.append_result(entry)
+                if handle.observer is not None:
+                    handle.observer.on_result(handle, entry)
                 if handle.is_batch:
                     # Counters accumulate from the line just written, and
                     # progress is persisted per word: a killed run's meta
@@ -656,6 +800,8 @@ class ParseRunner:
 
             if handle.cancel_requested:
                 stage_at_cancel = handle.stage.value
+                if handle.is_filing:
+                    await self._commit_filing(handle, worker, state="cancelled")
                 self._set_stage(
                     handle, RunStage.CANCELLED, stage_at_cancel=stage_at_cancel
                 )
@@ -664,6 +810,13 @@ class ParseRunner:
                     # An empty run still passes through parsing, so the
                     # stage history stays a path through the graph.
                     self._set_stage(handle, RunStage.PARSING)
+                if handle.is_filing and not await self._commit_filing(
+                    handle, worker, state="completed"
+                ):
+                    raise WorkerError(
+                        "The filing worker could not persist the filed words; the "
+                        "run is not reported as completed. See the run record."
+                    )
                 self._set_stage(handle, RunStage.COMPLETED)
 
         except asyncio.CancelledError:
@@ -683,6 +836,8 @@ class ParseRunner:
             # That is the run ending as asked, not the run failing -- and
             # reporting it as `failed` would both lose the distinction and
             # attach diagnostic guidance to a user's own decision.
+            if handle.is_filing and not handle.is_terminal:
+                await self._end_filing_on_error(handle, worker, exc)
             if handle.cancel_requested:
                 with contextlib.suppress(InvalidStageTransition):
                     self._set_stage(
@@ -693,6 +848,11 @@ class ParseRunner:
             else:
                 self._fail(handle, exc)
         finally:
+            if handle.observer is not None:
+                # Idempotent: already done in the terminal transition; here
+                # only for a path that ended without one.
+                with contextlib.suppress(Exception):
+                    handle.observer.on_terminal(handle)
             handle.done.set()
             # Drop the run listener so a long-lived worker does not
             # accumulate one closure per run it has ever served.
@@ -700,6 +860,78 @@ class ParseRunner:
                 existing = self._peek_worker(handle)
                 if existing is not None:
                     existing.stop_listening(handle.run_id)
+            if handle.is_filing:
+                # The filing worker is spawned for one run and released with
+                # it: the process that holds a writable open does not outlive
+                # the job (R-09).
+                with contextlib.suppress(Exception):
+                    await self._pool.release(handle.project_name, role=handle.worker_role)
+                if handle.observer is not None:
+                    with contextlib.suppress(Exception):
+                        await handle.observer.after_terminal(handle, self)
+
+    async def _commit_filing(
+        self, handle: RunHandle, worker: Any, *, state: str, cause: Optional[str] = None
+    ) -> bool:
+        """Ask the filing worker to persist what it filed; record the outcome.
+
+        FR-034: "filed changes are persisted to the project before the run
+        reports success", and a cancelled or refused run persists what it
+        already filed. Returns whether the save succeeded; the observer
+        records it either way. `cause` is why a run that stopped early
+        stopped: it is recorded even when the save itself succeeds (a run
+        that ended `failed` with `error: null` tells nobody anything -- found
+        live by CP4 L-0).
+        """
+        ok, error = False, None
+        try:
+            answer = await worker.filing_commit(
+                request_id=f"commit:{handle.run_id}:{uuid.uuid4().hex[:8]}",
+                run_id=handle.run_id,
+            )
+            ok = bool(answer.get("ok"))
+            error = answer.get("error")
+        except Exception as exc:  # noqa: BLE001 -- recorded, never raised past here
+            error = f"{type(exc).__name__}: {exc}"
+        if cause and error:
+            error = f"{cause}; the save afterwards also failed: {error}"
+        elif cause:
+            error = cause
+        if handle.observer is not None:
+            handle.observer.finish(handle, state=state if ok else "failed",
+                                   persisted=ok, error=error)
+        self._persist_progress(handle)
+        return ok
+
+    async def _end_filing_on_error(self, handle: RunHandle, worker: Any, exc: Exception) -> None:
+        """A filing run that stopped on an error: persist what was filed, name why.
+
+        `refused_midrun` for a grammar the gate refused on a reload (FR-024:
+        whatever was already filed is persisted and reported, and nothing is
+        asked); `crashed` when the worker process is gone (nothing can be
+        persisted from a dead process, and the record says so); `failed`
+        otherwise.
+        """
+        code = getattr(exc, "error_code", None)
+        alive = False
+        with contextlib.suppress(Exception):
+            alive = bool(worker is not None and worker.is_running())
+        if handle.cancel_requested:
+            state = "cancelled"
+        elif code == "grammar_load_unclean":
+            state = "refused_midrun"
+        elif not alive:
+            state = "crashed"
+        else:
+            state = "failed"
+        cause = f"{type(exc).__name__}: {exc}"
+        if alive:
+            ok = await self._commit_filing(handle, worker, state=state, cause=cause)
+            if not ok and handle.observer is not None:
+                handle.observer.finish(handle, state=state, persisted=False,
+                                       error=f"{cause}; the save after the error did not succeed")
+        elif handle.observer is not None:
+            handle.observer.finish(handle, state=state, persisted=False, error=cause)
 
     @staticmethod
     def _is_word_error(handle: RunHandle, worker: Any, exc: Exception) -> bool:

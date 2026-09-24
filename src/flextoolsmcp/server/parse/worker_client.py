@@ -66,6 +66,7 @@ __all__ = [
     "WorkerStartupError",
     "ParseWorkerClient",
     "WorkerPool",
+    "register_role",
 ]
 
 _log = logging.getLogger(__name__)
@@ -81,6 +82,19 @@ WORKER_MODULE_PATH = "flextoolsmcp.server.parse.worker_main"
 #: worker would take any running batch down with it.
 SHARED_ROLE = "shared"
 MEASUREMENT_ROLE = "measurement"
+
+#: Roles registered by OTHER packages: role -> (child module, client class).
+#: The read spine names no role but its own two. CP4's filing package
+#: registers its FILING worker here at import (`server/filing/client.py`), so
+#: the module that opens a project for writing is addressed from the filing
+#: package and never from this one (R-09, FR-029). Roles not registered run
+#: the read worker.
+_ROLE_CLIENTS: dict[str, tuple[str, type]] = {}
+
+
+def register_role(role: str, module_path: str, client_class: Optional[type] = None) -> None:
+    """Map a pool role to the child module (and client class) it runs."""
+    _ROLE_CLIENTS[role] = (module_path, client_class or ParseWorkerClient)
 
 #: How long to wait for the worker's `ready` handshake before giving up.
 #: Generous: the child pays a full interpreter start plus a pythonnet import.
@@ -140,9 +154,17 @@ class ParseWorkerClient:
     """
 
     def __init__(
-        self, project_name: str, *, stub: bool = False, parse_delay: float = 0.0
+        self,
+        project_name: str,
+        *,
+        stub: bool = False,
+        parse_delay: float = 0.0,
+        module_path: str = WORKER_MODULE_PATH,
     ) -> None:
         self.project_name = project_name
+        #: The child module this client spawns. The read worker by default;
+        #: another package's worker for a role it registered (CP4, R-09).
+        self._module_path = module_path
         self._stub = stub
         #: Stub-only, and only meaningful to tests that need a word boundary
         #: to still exist when a second message arrives. Ignored by the real
@@ -162,6 +184,7 @@ class ParseWorkerClient:
         #: waiter wants the same answer.
         self._assembly_waiters: list[asyncio.Future] = []
         self._protocol: Optional[int] = None
+        self._worker_pid: Optional[int] = None
         self._closed = False
         self._write_lock = asyncio.Lock()
 
@@ -170,6 +193,15 @@ class ParseWorkerClient:
     @property
     def pid(self) -> Optional[int]:
         return self._proc.pid if self._proc is not None else None
+
+    @property
+    def worker_pid(self) -> Optional[int]:
+        """The worker's OWN process id, as it reported it in `ready`.
+
+        This is the id a project lock names. `pid` is the process the server
+        spawned, which on Windows may be a launcher whose child is the worker.
+        """
+        return self._worker_pid
 
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.returncode is None
@@ -190,7 +222,7 @@ class ParseWorkerClient:
                 args += ["--parse-delay", str(self._parse_delay)]
 
         self._proc = await spawn_module_async(
-            WORKER_MODULE_PATH, args, env=_child_env()
+            self._module_path, args, env=_child_env()
         )
         self._stderr_task = asyncio.create_task(self._drain_stderr())
 
@@ -213,6 +245,8 @@ class ParseWorkerClient:
             )
 
         self._protocol = ready.get("protocol")
+        reported = ready.get("pid")
+        self._worker_pid = reported if isinstance(reported, int) else self.pid
         self._reader_task = asyncio.create_task(self._read_loop())
 
     async def aclose(self) -> None:
@@ -395,6 +429,9 @@ class ParseWorkerClient:
 
         if kind in (
             "result", "resolved", "error", "engine", "scope_resolved", "parser_parameters",
+            # CP4: the read worker's three read-only filing-preflight answers
+            # (the agent probe, the gate's inputs, the preview's facts).
+            "agent", "filing_gate", "filing_preview",
         ):
             request_id = message.get("request_id")
             future = self._pending.pop(request_id, None) if request_id else None
@@ -590,6 +627,68 @@ class ParseWorkerClient:
         resolved["project_state"] = answer.get("project_state")
         return resolved
 
+    # -- CP4: the filing preflight, answered by the READ worker (read-only) --
+
+    async def probe_agent(self, *, request_id: str, timeout: float = 60.0) -> dict[str, Any]:
+        """The HermitCrab agent probe (CP4 FR-025), run in the read worker.
+
+        Asked only by the filing handler's preflight, never on a try-a-word
+        or batch path: the read spine itself still resolves no agent (CP2b
+        FR-016). The worker answers it from `server/filing/preflight_reads.py`;
+        a missing agent comes back as `state: "absent"` with the
+        `parser_agent_missing` fields, never as an unhandled lookup failure.
+        """
+        answer = await self._request({"type": "agent_probe", "request_id": request_id}, timeout)
+        return dict(answer.get("agent") or {})
+
+    async def filing_gate(
+        self,
+        *,
+        request_id: str,
+        probe_word: Optional[str] = None,
+        vernacular_ws: Optional[str] = None,
+        timeout: float = 600.0,
+    ) -> dict[str, Any]:
+        """The refuse-to-file gate's inputs, read in the read worker (FR-020..FR-023, FR-039).
+
+        A current grammar (loaded now if it was stale or never loaded), THIS
+        load's errors, whether the parser could be built (a probe parse of
+        `probe_word`), and the eligible-entry set. Read-only: the gate's
+        verdict is computed server-side (`filing/gate.py`). Generous timeout:
+        it may pay for a grammar load.
+        """
+        message: dict[str, Any] = {"type": "filing_gate", "request_id": request_id}
+        if probe_word is not None:
+            message["probe_word"] = probe_word
+        if vernacular_ws is not None:
+            message["vernacular_ws"] = vernacular_ws
+        answer = await self._request(message, timeout)
+        return {k: answer.get(k) for k in ("morpher_null", "load", "eligible")}
+
+    async def filing_preview(
+        self,
+        *,
+        request_id: str,
+        words: list,
+        vernacular_ws: Optional[str] = None,
+        timeout: float = 600.0,
+    ) -> dict[str, Any]:
+        """The stored-analysis facts the deletion projection is built from.
+
+        Per word: every stored analysis's GUID, its human opinion, whether the
+        parser has evaluated it, and whether any text segment references it --
+        through a FRESH segment join, never the worker-lifetime cache (R-02).
+        Opens nothing for writing.
+        """
+        message: dict[str, Any] = {
+            "type": "filing_preview", "request_id": request_id, "words": list(words),
+        }
+        if vernacular_ws is not None:
+            message["vernacular_ws"] = vernacular_ws
+        answer = await self._request(message, timeout)
+        return {"words": dict(answer.get("words") or {}),
+                "join_known": bool(answer.get("join_known"))}
+
     async def cancel_run(self, run_id: str) -> None:
         """Ask the worker to stop a run at its next word boundary.
 
@@ -757,8 +856,14 @@ class WorkerPool:
                 self._workers.pop(key, None)
                 await existing.aclose()
 
-            worker = ParseWorkerClient(
-                project_name, stub=self._stub, parse_delay=self._parse_delay
+            module_path, client_class = _ROLE_CLIENTS.get(
+                role, (WORKER_MODULE_PATH, ParseWorkerClient)
+            )
+            worker = client_class(
+                project_name,
+                stub=self._stub,
+                parse_delay=self._parse_delay,
+                module_path=module_path,
             )
             await worker.start()
             self._workers[key] = worker

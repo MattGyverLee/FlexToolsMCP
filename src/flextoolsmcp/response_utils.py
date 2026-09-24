@@ -125,6 +125,24 @@ def tool_handler(func: Callable) -> Callable:
     return wrapper
 
 
+def _attach_ephemeral_session_notices(data: Dict[str, Any]) -> None:
+    """Attach one-shot session advisories to a response dict (issue #174)."""
+    if "project_adopted_notice" in data:
+        return
+    try:
+        if __package__:
+            from .project_adoption import consume_project_adopted_notice
+            from .server.kernel import session_state
+        else:
+            from project_adoption import consume_project_adopted_notice
+            from server.kernel import session_state
+        notice = consume_project_adopted_notice(session_state)
+        if notice:
+            data["project_adopted_notice"] = notice
+    except Exception:
+        pass
+
+
 def build_response_with_context(data: Dict[str, Any], include_session: bool = True) -> Dict[str, Any]:
     """Add session context and contract version stamp to tool response.
 
@@ -186,6 +204,8 @@ def build_response_with_context(data: Dict[str, Any], include_session: bool = Tr
             "write_enabled": session_state.write_enabled,
             "project": session_state.project_name or "(not set)"
         }
+
+    _attach_ephemeral_session_notices(data)
 
     return data
 
@@ -276,6 +296,8 @@ def error_response(error_code: str, message: str, **extra) -> List[Any]:
     # extra happens to contain keys that overlap.  The nested key is always
     # the plain string "error".
     data["error"] = nested
+
+    _attach_ephemeral_session_notices(data)
 
     if TextContent is None:
         # Fallback if MCP not available (e.g., unit tests)

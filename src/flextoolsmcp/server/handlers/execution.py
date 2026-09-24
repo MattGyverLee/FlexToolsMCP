@@ -109,15 +109,16 @@ except ImportError:
         detect_hvo_literal_args,
     )
 
-# Issue #93 CP4 (T4.2): backup honesty. With FieldWorks attached as a live
-# peer, the .fwdata on disk lags FLEx's unsaved in-memory state, so a file
-# copy is a floor -- the oldest state we could restore to -- not a snapshot
-# of what you see in the UI right now.
-_PEER_BACKUP_CAVEAT = (
-    " NOTE: FieldWorks currently has this project open, so the .fwdata on "
-    "disk lags FLEx's unsaved in-memory state. This copy is a floor to fall "
-    "back to, not a snapshot of what the FLEx UI is showing."
-)
+# The write ladder's shared rungs (parser-check CP4, R-07): the access gate,
+# the backup intent and the backup itself, extracted from handle_run_module
+# so filing walks the same code. Reached as module attributes so the leaves
+# stay patchable. The peer caveat (issue #93 CP4 T4.2) moved with them.
+try:
+    from .. import write_ladder
+    from ..write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
+except ImportError:
+    from server import write_ladder
+    from server.write_ladder import PEER_BACKUP_CAVEAT as _PEER_BACKUP_CAVEAT
 
 
 # Issue #55 (Rung 2): automatic pre-write backup.
@@ -165,15 +166,14 @@ try:
 except (ImportError, ValueError):
     from config import config_get, AUTO_FIX_ENABLED_KEY, AUTO_FIX_ENABLED_DEFAULT
 
-# Issue #55: write-path safety ladder config knobs (backup + confirmation).
+# Issue #55: write-path safety ladder config knob (confirmation). The backup
+# knob is read by write_ladder.backup_intent (CP4, R-07).
 try:
     from ...config import (
-        BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT,
         REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
     )
 except (ImportError, ValueError):
     from config import (
-        BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT,
         REQUIRE_WRITE_CONFIRMATION_KEY, REQUIRE_WRITE_CONFIRMATION_DEFAULT,
     )
 
@@ -249,30 +249,19 @@ def _available_projects_payload() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# DEAD BUT RETAINED: three-tier casting-helper injection.
+# Retired: three-tier casting-helper injection ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
 #
-# `_validate_api_mode`, `_get_casting_helpers_code` and `_get_api_mode_imports`
-# are currently CALLED BY NOTHING on a live path. `_get_api_mode_imports` has no
-# call sites; the only callers of the other two are inside it. The generated
-# runner script does not import `casting_helpers`, so the injection these
-# implement has not happened since at least the 2.3.1 packaging release.
+# Runner-side injection died at commit d3e55d4 (2026-04-07) when the last call to
+# `_get_api_mode_imports` was removed. The restore-vs-retire decision is **retire**:
+# preflight casting detection, auto-fix rewrite, and runtime polymorphic hints
+# already cover the supported path; the helpers swallow errors in ways that
+# contradict the write-path safety guarantee.
 #
-# They are kept here deliberately. The parser-check campaign (CP1-CP6) is an
-# ADDITIVE campaign: removing an unrelated capability is out of its scope, and
-# a deletion riding along in a parser-check commit is how a capability question
-# gets decided without ever being asked. The restore-vs-delete decision, and
-# the overlap with the auto-fix rewrite path that already ships, are tracked as
-# their own issues rather than settled here.
+# `_get_api_mode_imports` / `_get_casting_helpers_code` were deleted here. Archaeology:
+# `specs/parser-check-cp2b/reviews/casting-injection-archivist.md`.
 #
-# Two things a future reader must not conclude from this block:
-#   * That the feature works. It does not run. Do not cite it as live coverage.
-#   * That `_validate_api_mode` can simply be wired up. `api_mode` no longer
-#     selects runtime libraries -- the runner imports `flexicon` unconditionally
-#     -- so there is no live seam for it to gate. That gap is its own issue.
-#
-# NO INJECTION TIER IS REPORTED ANYWHERE, because nothing is injected. The
-# pre-flight casting DETECTION is separate, real, and still runs: it is what
-# populates `casting_issues`.
+# `_validate_api_mode` remains for direct probes/tests (#146, #164). It is not
+# wired into the runner import seam (`api_mode` is advisory; execution is flexicon-only).
 # ---------------------------------------------------------------------------
 
 
@@ -352,131 +341,6 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
         return True, ""
 
     return False, f"Unknown API mode: {api_mode}"
-
-
-def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Optional[set] = None) -> str:
-    """Generate casting helpers code based on injection tier.
-
-    Uses HELPER_FUNCTION_DEFS from constants to avoid duplication.
-
-    Args:
-        injection_tier: 'none' | 'minimal' | 'full'
-        helpers_needed: Set of helper names for 'minimal' tier
-
-    Returns:
-        Python code string with helper definitions (or empty if tier='none')
-    """
-    try:
-        from ...casting_helpers import HELPER_FUNCTION_DEFS
-    except ImportError:
-        from casting_helpers import HELPER_FUNCTION_DEFS
-
-    if injection_tier == "none":
-        return ""
-
-    if injection_tier == "minimal" and helpers_needed:
-        # Only import what's needed
-        helper_names = ", ".join(sorted(helpers_needed))
-        return f"""
-# Auto-injected: Minimal casting helpers for polymorphic types (three-tier strategy, tier 2)
-try:
-    from casting_helpers import {helper_names}
-except ImportError:
-    # Fallback: Define only needed helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-    # Full injection (tier='full' or defensive fallback)
-    return f"""
-# Auto-injected: Safe casting helpers for polymorphic types (three-tier strategy, tier 3 - full)
-try:
-    from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
-except ImportError:
-    # Fallback: Define all helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-
-def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> str:
-    """Generate imports and namespace dict for a given API mode.
-
-    Args:
-        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
-        helpers_needed: Optional set of specific helper names to inject (e.g., {'get_headword'})
-        injection_tier: 'none' | 'minimal' | 'full'
-            - none: Don't inject casting helpers (code pre-flighted, safe)
-            - minimal: Only inject helpers in helpers_needed set
-            - full: Inject full suite of helpers (defensive mode)
-
-    Returns:
-        imports_code: Python code string with imports and helpers
-
-    Raises:
-        ValueError: If API mode is invalid or required libraries are not installed
-    """
-    if helpers_needed is None:
-        helpers_needed = set()
-
-    # Gate #1: Validate API mode is valid
-    is_valid, error_msg = _validate_api_mode(api_mode)
-    if not is_valid:
-        raise ValueError(f"API mode validation failed: {error_msg}")
-
-    # Base imports per API mode
-    BASE_IMPORTS = {
-        "flexlibs_stable": "from flexlibs import FLExInitialize, FLExCleanup, FLExProject",
-        "flexicon": "from flexicon import FLExInitialize, FLExCleanup, FLExProject",
-        "liblcm": """import clr
-clr.AddReference('SIL.LCModel')
-from SIL.LCModel import *
-from SIL.LCModel.Core.WritingSystems import *
-
-def FLExInitialize():
-    \"\"\"Initialize LibLCM backend.\"\"\"
-    pass
-
-def FLExCleanup():
-    \"\"\"Cleanup LibLCM backend.\"\"\"
-    pass
-
-class FLExProject:
-    \"\"\"Wrapper for direct LibLCM project access.\"\"\"
-    def __init__(self):
-        self._backend = None
-        self._cache = None
-
-    def OpenProject(self, projectName, writeEnabled=False):
-        \"\"\"Open project using LibLCM directly.\"\"\"
-        try:
-            from SIL.LCModel import LcmCache
-            self._cache = LcmCache.CreateCacheForNewLcmProject(projectName, "en", "en", "en",
-                                                               writeSystemType=LcmWriteSystemType.kDefault)
-            self._backend = self._cache.ServiceLocator
-        except Exception as e:
-            raise RuntimeError(f"Failed to open LibLCM project: {e}")
-
-    def CloseProject(self):
-        \"\"\"Close project.\"\"\"
-        if self._cache:
-            self._cache.Dispose()
-
-    def __getattr__(self, name):
-        \"\"\"Delegate unknown attributes to backend.\"\"\"
-        if self._backend:
-            return getattr(self._backend, name)
-        raise AttributeError(f"Project not initialized: {name}")
-""",
-    }
-
-    if api_mode not in BASE_IMPORTS:
-        raise ValueError(f"Unknown API mode: {api_mode}")
-
-    # Get base imports and append casting helpers (single shared logic)
-    imports = BASE_IMPORTS[api_mode]
-    casting_helpers = _get_casting_helpers_code(injection_tier, helpers_needed)
-    imports += casting_helpers
-
-    return imports
 
 
 # ---------------------------------------------------------------------------
@@ -787,6 +651,17 @@ def _log_report_messages(messages: List[Dict[str, Any]], include_info: bool) -> 
             logger.debug(f"  report.Info: {text}{suffix}")
 
 
+
+
+def _require_jsonl_log_dir(log_dir_fn: Optional[Any]) -> Any:
+    """Issue #109: refuse silent fallback to the production log directory."""
+    if log_dir_fn is None:
+        raise TypeError(
+            "log_dir_fn is required for JSONL telemetry closes (issue #109). "
+            "Pass get_log_dir at production call sites or a tmp-path callable in tests."
+        )
+    return log_dir_fn
+
 def _log_operation_end_success(
     op_id: str,
     seq: int,
@@ -808,6 +683,7 @@ def _log_operation_end_success(
     `execution.get_log_dir` directly (the pre-existing pattern) keep working
     unchanged alongside tests that pass `log_dir_fn` explicitly.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     # Always replay warnings/errors even when overall result was success --
     # report.Warning() doesn't fail the run but the user wants visibility.
@@ -829,7 +705,7 @@ def _log_operation_end_success(
         warning_count=warning_count,
         error_count=error_count,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -868,6 +744,7 @@ def _log_operation_failure(
     handler don't have them yet -- losing the close marker is still better
     than no log at all.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.error("[FAIL] Operation failed")
     if error_type:
@@ -935,7 +812,7 @@ def _log_operation_failure(
             warning_count=warning_count,
             error_count=error_count,
             assistance_triggered=False,
-            log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+            log_dir_fn=log_dir_fn,
         )
 
 
@@ -1038,6 +915,7 @@ def _log_preflight_reject(
     the signature) -- existing callers, including tests that monkeypatch
     `execution.get_log_dir` directly, are unaffected.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.warning("[REJECT] Pre-flight validation blocked execution")
     logger.warning(f"Reason code:     {reason_code}")
@@ -1061,7 +939,7 @@ def _log_preflight_reject(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
         casting_signature=casting_signature,
     )
 
@@ -1090,6 +968,7 @@ def _log_discovery_redirect(
     `_log_operation_end_success` for rationale (None default, resolved at
     call time so monkeypatching `execution.get_log_dir` still works).
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     if logger is not None:
         logger.info("[REDIRECT] Gentle discovery redirect (code not executed)")
@@ -1110,7 +989,7 @@ def _log_discovery_redirect(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -1135,7 +1014,7 @@ def _graceful_discovery_redirect(
     as an error. ``executed`` is False and ``discovery_redirect.needs_resubmit``
     is True so a client cannot mistake it for a completed run.
     """
-    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}")
+    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}", log_dir_fn=get_log_dir)
 
     prefer_tools = [
         "flextools_get_object_api(object_type='...')",
@@ -2903,20 +2782,15 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             session=session_state.summary(),
         )
     if resolved:
-        # Issue #168: adopt unconditionally, not only on a spelling fix --
-        # capture the PREVIOUS session project before overwriting so a
-        # genuine A->B change (issue #169's guardrail) can be logged below.
-        _prev_project_name = getattr(session_state, "project_name", "") or ""
-        if _prev_project_name and resolved != _prev_project_name:
-            _adopt_logger = get_operations_logger()
-            if _adopt_logger:
-                _adopt_logger.info(
-                    f"[PROJECT-ADOPTED] flextools_run_module: session project "
-                    f"changed '{_prev_project_name}' -> '{resolved}'"
-                )
-        # Update session so subsequent calls (and the op log) use the canonical name.
-        session_state.project_name = resolved
-        project_name = resolved
+        try:
+            from ...project_adoption import adopt_resolved_project
+        except ImportError:
+            from project_adoption import adopt_resolved_project
+        project_name = adopt_resolved_project(
+            session_state,
+            resolved,
+            log_context="flextools_run_module",
+        )
 
     # === Operation logging begins here ===
     # Every code-bearing call gets an op_id and a Start block, regardless of
@@ -2966,6 +2840,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "syntax_error",
             f"line {syn_exc.lineno}: {syn_exc.msg}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -2999,6 +2874,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "server_state_error",
             "Server initialization incomplete:\n" + "\n".join(error_details),
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3025,6 +2901,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
                 f"missing_elements={partial_check.get('missing_elements')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -3080,6 +2957,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "nested_unit_of_work",
                 f"constructs={[c.get('construct') for c in constructs[:5]]}",
+            log_dir_fn=get_log_dir,
             )
             _is_per_op_uow = _probe_undoable_capability()
             if _is_per_op_uow:
@@ -3135,6 +3013,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #95: return the structured TOOL-CONTRACT rejection (status,
         # error_code, _contract, message) with the same fix guidance the log
@@ -3186,6 +3065,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "hvo_literal_write_risk",
             f"findings={[f.get('detail') for f in findings[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3332,6 +3212,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "casting_issues_detected",
                     f"{len(issues)} polymorphic property access issue(s) require casting.",
                     casting_signature=_casting_sig,
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #21: each issue carries an inline rewrite + imports_needed so
                 # the LLM doesn't need to call flextools_resolve_property to recover.
@@ -3457,6 +3338,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "api_discovery_required",
                 "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+            log_dir_fn=get_log_dir,
             )
             # Issue #29: inline get_object_api for the top entities we can spot in
             # the submitted code, so the LLM gets the real method shapes in the
@@ -3632,6 +3514,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     op_id, seq, time.monotonic() - t_start,
                     "undiscovered_entity",
                     f"undiscovered={undiscovered_list}",
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #20: inline get_object_api docs when the undiscovered
                 # entity is explicitly imported from flexicon. Single round-trip
@@ -3673,6 +3556,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "undefined_variables",
             f"undefined_vars={undefined_check.get('undefined_vars')}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3693,6 +3577,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "missing_imports",
             f"missing_imports={missing_ops_check.get('missing_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3714,6 +3599,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "wrong_library_imports",
             f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #54: populate affected_symbols -- the specific names imported
         # from the wrong library module(s).  Parse from the code AST so the LLM
@@ -3783,6 +3669,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "invalid_api_chain",
                 f"issues={chain_check.get('issues')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -4494,6 +4381,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -4525,26 +4413,18 @@ MODULE_CODE = {code}
         # an exclusively-held project still gets confirmation_required first,
         # exactly as before. Only computed under write intent; read-only runs
         # have never been gated and still are not (T4.3).
-        # Imports hoisted out of `if needs_lock:` so check_project_locked /
-        # build_access_remedy (used later, at line ~4284, under a SEPARATE
-        # `if needs_lock and _access is not None:` guard) are unconditionally
-        # bound here -- static analysis cannot prove the two independent
-        # `needs_lock` checks agree, so the old conditional import left them
-        # "possibly unbound" from a type-checker's perspective even though
-        # they are always bound in practice (probe_project_access() is still
-        # only CALLED, i.e. the actual filesystem probe only happens, when
-        # needs_lock is True).
-        try:
-            from ..project_access import probe_project_access, build_access_remedy
-            from ..project_discovery import check_project_locked
-        except (ImportError, ValueError):
-            from server.project_access import probe_project_access, build_access_remedy
-            from server.project_discovery import check_project_locked
-        _access = None
+        # Parser-check CP4 (R-07): the probe AND the write decision it implies
+        # (the project_locked refusal fields, the shared-mode advisory) come
+        # from write_ladder.probe_write_access, the one implementation filing
+        # shares. The refusal itself is still issued below, after the
+        # confirmation gate -- the rung order is this handler's, not the
+        # ladder's.
+        _decision = None
         _probe_access = needs_lock or (not write_enabled)
         if _probe_access:
-            _access = probe_project_access(project_name)
-        _live_fw_peer = _access is not None and _access.verdict == "open_shared"
+            _decision = write_ladder.probe_write_access(project_name)
+        _access = _decision.access if _decision is not None else None
+        _live_fw_peer = _decision is not None and _decision.live_peer
         _shared_mode_read_back = None
         if (not write_enabled) and _access is not None and _access.verdict == "open_shared":
             _shared_mode_read_back = {
@@ -4575,14 +4455,12 @@ MODULE_CODE = {code}
                 _writeability = build_writeability_payload(
                     code, api_idx, code_tree, cud_info=cud_info, cert=cert
                 )
-                _backup_would_run = (
-                    (
-                        args.get("backup_before_write")
-                        if args.get("backup_before_write") is not None
-                        else bool(config_get(BACKUP_BEFORE_WRITE_KEY, BACKUP_BEFORE_WRITE_DEFAULT))
-                    )
-                    and not session_state.was_backed_up(project_name)
-                )
+                _backup_would_run = write_ladder.backup_intent(
+                    project_name,
+                    session_state=session_state,
+                    backup_before_write=args.get("backup_before_write"),
+                    config_get=config_get,
+                ).would_run
                 _mutation_count = len(_writeability["mutations_detected"])
                 if _mutation_count > 0:
                     # Normal case: mutations_detected enumerates the hit(s).
@@ -4611,6 +4489,7 @@ MODULE_CODE = {code}
                     op_id, seq, time.monotonic() - t_start,
                     "confirmation_required",
                     f"mutations={_mutation_count}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
@@ -4660,76 +4539,40 @@ MODULE_CODE = {code}
         # Read-only runs never reach here (needs_lock is False), so exploring a
         # project while FLEx has it open keeps working regardless of verdict.
         _shared_mode = None
-        if needs_lock and _access is not None:
-            if _access.verdict in ("open_exclusive", "held_by_other"):
-                _holder_pid = _access.holder.pid if _access.holder else None
-                _holder_proc = _access.holder.process_name if _access.holder else None
-                _lock_path = check_project_locked(project_name)
-                _remedy = build_access_remedy(_access)
+        if needs_lock and _decision is not None and _access is not None:
+            if _decision.refusal is not None:
+                _refusal = _decision.refusal
                 _lock_msg = (
                     f"Project '{project_name}' is held for exclusive access "
-                    f"(verdict: {_access.verdict}) and this script requests "
+                    f"(verdict: {_decision.verdict}) and this script requests "
                     f"write access."
                 )
                 _log_preflight_reject(
                     op_id, seq, time.monotonic() - t_start, "project_locked",
-                    f"verdict={_access.verdict} sharing_enabled={_access.sharing_enabled} "
-                    f"holder_pid={_holder_pid} holder_process={_holder_proc}",
+                    f"verdict={_decision.verdict} sharing_enabled={_refusal['sharing_enabled']} "
+                    f"holder_pid={_refusal['holder_pid']} "
+                    f"holder_process={_refusal['holder_process']}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
                         "project_locked",
                         _lock_msg,
-                        guidance=(
-                            _remedy
-                            or "Close FieldWorks, then retry. Read-only operations "
-                               "do not require closing FieldWorks."
-                        ),
-                        lock_file_path=str(_lock_path) if _lock_path else None,
-                        verdict=_access.verdict,
-                        sharing_enabled=_access.sharing_enabled,
-                        holder_pid=_holder_pid,
-                        holder_process=_holder_proc,
-                        remedy=_remedy,
+                        **_refusal,
                         op_id=op_id,
                     ),
                     error_code="project_locked",
                     code_size_bytes=_code_size_bytes,
                 )
 
-            if _access.verdict == "open_shared":
-                _shared_mode = {
-                    "verdict": "open_shared",
-                    "sharing_enabled": True,
-                    "holder_pid": _access.holder.pid if _access.holder else None,
-                    "holder_process": _access.holder.process_name if _access.holder else None,
-                    "note": (
-                        "FieldWorks has this project open with sharing enabled, "
-                        "so this run attached as a non-master LCM peer and wrote "
-                        "through the shared commit log. The change should be "
-                        "visible in the FLEx UI. Custom-field and writing-system "
-                        "changes are NOT safe from a peer and are not covered by "
-                        "this path."
-                    ),
-                }
+            _shared_mode = _decision.advisory
+            if _decision.verdict == "open_shared":
                 get_operations_logger().info(
                     f"[SHARED] '{project_name}' open_shared (holder PID "
                     f"{_shared_mode['holder_pid']}); proceeding with the write "
                     "as a non-master peer."
                 )
-            elif _access.verdict == "stale_lock":
-                _shared_mode = {
-                    "verdict": "stale_lock",
-                    "sharing_enabled": _access.sharing_enabled,
-                    "holder_pid": _access.holder.pid if _access.holder else None,
-                    "holder_process": _access.holder.process_name if _access.holder else None,
-                    "note": (
-                        "A .fwdata.lock file is present but the process that "
-                        "claimed it is no longer running, so the lock is stale. "
-                        "Proceeding: LCM treats a stale lock as acquirable. This "
-                        "server never deletes lock files."
-                    ),
-                }
+            elif _decision.verdict == "stale_lock":
                 get_operations_logger().warning(
                     f"[SHARED] '{project_name}' stale_lock (dead PID "
                     f"{_shared_mode['holder_pid']}); proceeding with the write."
@@ -4738,15 +4581,28 @@ MODULE_CODE = {code}
         # Issue #55 (Rung 2): automatic pre-write backup, once per (session,
         # project). Runs AFTER the lock probe (so we don't back up a project
         # FieldWorks currently has locked) and BEFORE the subprocess launch.
+        #
+        # Issue #99: gate on write_enabled, not needs_lock. Preflight can miss
+        # a mutating script (needs_lock=False) while write_enabled=True still
+        # executes code that commits LCM actions -- the documented safety net
+        # must not depend on static analysis being complete.
+        #
+        # The rung itself is write_ladder.take_backup (CP4, R-07), which applies
+        # the once-per-(session, project) rule; this module's
+        # perform_pre_write_backup is passed in so the name the ladder tests
+        # patch is the one that runs.
         _backup_result: Optional[Dict[str, Any]] = None
-        if needs_lock and not session_state.was_backed_up(project_name):
-            _backup_arg = args.get("backup_before_write")
-            _backup_result = perform_pre_write_backup(project_name, backup_before_write=_backup_arg)
+        if write_enabled:
+            _backup_result = write_ladder.take_backup(
+                project_name,
+                session_state=session_state,
+                backup_before_write=args.get("backup_before_write"),
+                live_peer=_live_fw_peer,
+                perform=perform_pre_write_backup,
+            )
+        if _backup_result is not None:
             _bk_logger = get_operations_logger()
             if _backup_result.get("created"):
-                if _live_fw_peer:
-                    _backup_result["note"] = _PEER_BACKUP_CAVEAT.strip()
-                session_state.record_backup(project_name)
                 _bk_logger.info(f"[BACKUP] '{project_name}' -> {_backup_result['path']}")
             elif _backup_result.get("skipped_reason") == "insufficient_disk_space":
                 _bk_logger.warning(
@@ -4782,6 +4638,7 @@ MODULE_CODE = {code}
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
+            log_dir_fn=get_log_dir,
             )
             return json_response(_finalize_run_module_response({
                 "success": False,
@@ -4835,10 +4692,23 @@ MODULE_CODE = {code}
             execution_result["stderr"] = stderr
         if args.get("show_code", True):
             execution_result["code"] = code
-        # Issue #55 (Rung 2): surface the pre-write backup outcome (if this run
-        # was the first mutating run for this (session, project)).
-        if _backup_result is not None:
-            execution_result["backup"] = _backup_result
+        # Issue #55 (Rung 2) + #99: surface backup outcome on every write_enabled
+        # execution so a silent skip is visible in the tool response.
+        if write_enabled:
+            if _backup_result is not None:
+                execution_result["backup"] = _backup_result
+            elif session_state.was_backed_up(project_name):
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "already_backed_up_this_session",
+                }
+            else:
+                execution_result["backup"] = {
+                    "created": False,
+                    "path": None,
+                    "skipped_reason": "backup_not_attempted",
+                }
         # Issue #93 CP4 (T4.1): tell the caller the write went through a live
         # FLEx peer / over a stale lock rather than against an idle project.
         if _shared_mode is not None:
@@ -5059,6 +4929,7 @@ MODULE_CODE = {code}
                 warning_count=warning_count,
                 error_count=error_count,
                 messages=report_messages,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: a successful op resets the retry-loop detector --
             # by definition we've broken whatever loop we were stuck in.
@@ -5109,6 +4980,7 @@ MODULE_CODE = {code}
                 messages=report_messages,
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
@@ -5132,6 +5004,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -5147,6 +5020,7 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
             traceback_text=_tb.format_exc(),
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,

@@ -338,7 +338,7 @@ def test_meta_json_fields_match_the_frozen_artifact_contract():
     text = contract.read_text(encoding="utf-8")
     section = text.split("## 3. `meta.json`", 1)[1].split("\n## 4.", 1)[0]
     listed = set()
-    for label in ("**CP2b fields**", "**CP3 additions**"):
+    for label in ("**CP2b fields**", "**CP3 additions**", "**CP4 additions**"):
         paragraph = section.split(label, 1)[1].split("\n\n", 1)[0]
         listed |= set(re.findall(r"`(\w+)`", paragraph))
 

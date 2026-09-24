@@ -807,6 +807,22 @@ class ParseStatusInput(BaseModel):
     )
 
 
+class ParseCancelInput(BaseModel):
+    """Cancel a parse run by its handle (parser-check CP4, FR-034; M-3).
+
+    A new tool rather than an action on `flextools_parse_status`, whose
+    read-only annotation callers can see and rely on. Cancelling writes
+    nothing to the project: the run stops at its next word boundary, and
+    anything a FILING run already filed stays filed.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(
+        description="The run's handle, as flextools_parse_text or flextools_try_word "
+                    "returned it."
+    )
+
+
 # ============================================================
 # Parse scope (parser-check CP3, US1; data-model.md sections 1-2)
 # ============================================================
@@ -874,14 +890,23 @@ class ParseScope(BaseModel):
 
 
 class ParseTextInput(BaseModel):
-    """Submit a batch parse over a resolved scope (parser-check CP3, US2).
+    """Submit a batch parse over a resolved scope (parser-check CP3, US2),
+    and -- from CP4 -- file its results into the project (FR-001).
 
     Scope kind and value, an optional word limit, an optional writing system,
-    an optional project name -- and NOTHING ELSE. In particular there is no
-    argument that files results into the project: that argument is absent
-    from the schema until the code implementing it ships at CP4 (FR-025,
-    D-1). `extra="forbid"` is what makes "absent" enforceable -- a caller who
-    guesses at a `file` or `write` flag is refused, not silently ignored.
+    an optional project name, and CP4's three filing arguments: `apply`,
+    `confirmed`, `plan_id`. NOTHING ELSE. In particular there is no argument
+    that skips or pre-answers the confirmation, lowers the backup rung, or
+    overrides the session's write permission (FR-004, SC-008, R-15);
+    `tests/test_filing_bypass_surface.py` enumerates this schema and fails
+    if a bypass-shaped name ever appears. `extra="forbid"` is what makes
+    "absent" enforceable -- a caller who guesses at a `force` or `write`
+    flag is refused, not silently ignored.
+
+    `apply` absent or false is CP3's read-only batch, exactly (FR-001).
+    `confirmed` and `plan_id` mean something only with `apply=true`; a
+    read-only request cannot carry a confirmation, so they are refused
+    without it.
     """
     model_config = ConfigDict(extra="forbid")
 
@@ -911,11 +936,40 @@ class ParseTextInput(BaseModel):
         description="Name of the FieldWorks project. Uses the session value if set "
                     "by start()."
     )
+    apply: bool = Field(
+        default=False,
+        description="File the parser's results into the project, as FLEx's Parse Words "
+                    "in Text does. The first call returns confirmation_required with a "
+                    "mutation plan and a plan_id, and writes nothing. Requires a session "
+                    "started with write_enabled=true. Filing cannot be undone."
+    )
+    confirmed: bool = Field(
+        default=False,
+        description="Resubmit flag, meaningful only with apply=true and the plan_id the "
+                    "preview returned. A confirmation for a plan that has since changed "
+                    "gets a new preview instead of filing."
+    )
+    plan_id: Optional[str] = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+        description="The plan_id from the preview this call confirms (64 lowercase hex). "
+                    "Only with apply=true."
+    )
 
     @model_validator(mode="after")
     def _scope_is_valid(self) -> "ParseTextInput":
         """Validate kind/value together at the tool boundary, via ParseScope."""
         self.to_scope()
+        return self
+
+    @model_validator(mode="after")
+    def _confirmation_needs_apply(self) -> "ParseTextInput":
+        """A read-only request cannot carry a confirmation (contracts row 0)."""
+        if not self.apply and (self.confirmed or self.plan_id is not None):
+            raise ValueError(
+                "confirmed and plan_id are meaningful only with apply=true: they "
+                "confirm a filing preview, and a read-only parse files nothing."
+            )
         return self
 
     def to_scope(self) -> ParseScope:
@@ -927,9 +981,11 @@ class ParseTextInput(BaseModel):
         )
 
 
-#: The seven log sections, verbatim from contracts/tools.md section 1.
+#: The log sections, verbatim from contracts/tools.md section 1: CP3's seven,
+#: plus CP4's additive `deletions` (a filing run's pre-deletion captures).
 PARSE_LOG_SECTIONS = (
     "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+    "deletions",
 )
 
 
@@ -946,14 +1002,18 @@ class ParseLogInput(BaseModel):
                                     "flextools_try_word returned it.")
     section: Literal[
         "summary", "config_generation", "hc_stdout", "hc_output", "trace", "words", "results",
+        "deletions",
     ] = Field(
         default="summary",
         description="summary: stage, progress, fingerprint, counters, and for a batch run "
-                    "the report (signals, oracle, pairings, clusters, projections). words: the resolved "
+                    "the report (signals, oracle, pairings, clusters, projections); for a "
+                    "filing run also its filing block (counts, projected beside actual "
+                    "deletions, backup, overwritten disapprovals). words: the resolved "
                     "word list. results: one line per completed word. trace: a drill-down "
-                    "trace (pass trace_index). config_generation / hc_stdout / hc_output "
-                    "belong to the sandbox spine and are reported as not applicable to "
-                    "in-process runs."
+                    "trace (pass trace_index). deletions: a filing run's pre-deletion "
+                    "captures (not applicable to read-only runs). config_generation / "
+                    "hc_stdout / hc_output belong to the sandbox spine and are reported as "
+                    "not applicable to in-process runs."
     )
     offset: int = Field(default=0, ge=0, description="First item to return (words, results).")
     limit: int = Field(default=50, ge=1, le=500, description="Items per page (words, results).")

@@ -220,6 +220,42 @@ def _format_clr_type(clr_type) -> str:
     return _CLR_PRIMITIVE_NAMES.get(name, name)
 
 
+#: Directories whose assemblies the resolver below already serves.
+_RESOLVER_DIRS: set = set()
+
+
+def _install_directory_resolver(directory: Path) -> None:
+    """Resolve ParserCore's dependencies from its OWN folder. Best-effort.
+
+    `Assembly.LoadFile` does not probe the loaded file's directory, so in a
+    process that has not yet imported flexicon (which sets up FieldWorks'
+    assembly resolution), `GetTypes()` throws `ReflectionTypeLoadException`
+    for every type touching SIL.Core / SIL.LCModel / SIL.Machine -- `HCParser`
+    among them -- and a present, healthy install probes as `load_failed`.
+    Found live by the CP4 L-0 run (evidence/l0-coexistence.json): the probe's
+    verdict depended on whether anything had imported flexicon first.
+    Installed once per directory; a failure to install leaves the probe
+    exactly as it was.
+    """
+    key = str(directory).lower()
+    if key in _RESOLVER_DIRS:
+        return
+    try:
+        import System  # type: ignore
+
+        def _resolve(_sender, args):
+            name = System.Reflection.AssemblyName(args.Name).Name
+            candidate = Path(directory) / f"{name}.dll"
+            if candidate.is_file():
+                return System.Reflection.Assembly.LoadFrom(str(candidate))
+            return None
+
+        System.AppDomain.CurrentDomain.AssemblyResolve += System.ResolveEventHandler(_resolve)
+        _RESOLVER_DIRS.add(key)
+    except Exception:  # noqa: BLE001 -- no CLR, or a test double: probe as before
+        pass
+
+
 def _load_parser_core_members(dll_path: Path) -> Tuple[FrozenSet[str], Optional[str]]:
     """Reflectively load ``ParserCore.dll`` and enumerate its member surface.
 
@@ -250,6 +286,7 @@ def _load_parser_core_members(dll_path: Path) -> Tuple[FrozenSet[str], Optional[
     import System  # type: ignore
     from System.Reflection import BindingFlags  # type: ignore
 
+    _install_directory_resolver(Path(dll_path).parent)
     assembly = System.Reflection.Assembly.LoadFile(str(dll_path))
 
     asm_version = assembly.GetName().Version

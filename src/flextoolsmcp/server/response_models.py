@@ -7,12 +7,14 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 31 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 34 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
   + 5 parser-check CP3 codes: parse_scope_empty, parse_scope_ambiguous,
-  parse_scope_mismatch, parser_timeout, parser_job_failed)
+  parse_scope_mismatch, parser_timeout, parser_job_failed
+  + internal_error (#89)
+  + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -666,7 +668,75 @@ class ParserJobFailedDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 32 per-code detail models
+# parser-check CP4 -- two additive refusal codes
+#
+# Field ORDER below is transcribed from specs/parser-check-cp4/contracts/
+# tools.md section 2 and asserted by tests/test_parser_error_models.py and
+# tests/test_response_contract.py. The contract stays tool-responses/1.0
+# (FR-035): both codes are new, and grammar_load_unclean's four trailing
+# fields are APPENDED after the parent spec's five, which stay a strict
+# prefix in the parent's order.
+# ---------------------------------------------------------------------------
+
+class ParserFilingInProgressDetail(BaseModel):
+    """Detail payload for parser_filing_in_progress rejections (CP4, FR-026).
+
+    Raised when a filing request arrives for a project that already has a
+    filing job running. Checked FIRST, before the engine check, the scope,
+    the preview, the backup or any parse, which is what keeps the refusal
+    under a second (SC-006).
+
+    The claim is not a project lock (FR-027): read-only parses, single-word
+    tries and the run-reading tools are not refused on its account.
+
+    ``hint`` names ``flextools_parse_status(run_id=...)``: the useful thing
+    to do with a running job is to watch it, not to start a second one.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_filing_in_progress"] = "parser_filing_in_progress"
+    run_id: str
+    started_at: str
+    words_completed: int
+    hint: str
+
+
+class GrammarLoadUncleanDetail(BaseModel):
+    """Detail payload for grammar_load_unclean rejections (CP4, FR-020..FR-024, FR-039).
+
+    Filing is refused when the grammar did not load cleanly, because filing
+    against a grammar that silently lost entries deletes every analysis
+    those entries used to license, with no error anywhere in the chain.
+
+    ``signal`` is a CLOSED enum:
+      * ``morpher_null`` -- the parser could not be built at all (FR-020);
+      * ``new_load_errors`` -- this load logged errors the baseline did not
+        (FR-021);
+      * ``eligible_forms_dropped`` -- fewer lexical forms are eligible to
+        reach the grammar than in the baseline, which the loader does
+        WITHOUT logging anything (FR-039, D-1). Additive to the parent's two.
+
+    There is no override. The only way past ``new_load_errors`` or
+    ``eligible_forms_dropped`` is a read-only ``flextools_parse_text`` of the
+    same scope, which re-baselines; the message says so.
+
+    ``baseline_source`` is ``this_run``, ``absent`` or ``prior_run:<run_id>``.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["grammar_load_unclean"] = "grammar_load_unclean"
+    signal: Literal["morpher_null", "new_load_errors", "eligible_forms_dropped"]
+    new_error_count: int
+    baseline_error_count: int
+    baseline_source: str = Field(pattern=r"^(this_run|absent|prior_run:[0-9a-f]{32})$")
+    log_path: Optional[str] = None
+    # -- appended after the parent spec's five (contracts/tools.md s.2) --
+    new_errors: List[Any] = Field(default_factory=list)
+    dropped_entries: List[Dict[str, Any]] = Field(default_factory=list)
+    baseline_eligible_count: Optional[int] = None
+    eligible_count: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Discriminated union over all 34 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -702,6 +772,8 @@ AnyDetail = Union[
     ParseScopeMismatchDetail,
     ParserTimeoutDetail,
     ParserJobFailedDetail,
+    ParserFilingInProgressDetail,
+    GrammarLoadUncleanDetail,
 ]
 
 

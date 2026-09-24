@@ -442,23 +442,15 @@ def _resolve_project(project_name: Optional[str]):
             session=session_state.summary(),
         )
     if resolved:
-        # Issue #168: adopt unconditionally, not only on a spelling fix --
-        # capture the PREVIOUS session project before overwriting so a
-        # genuine A->B change (issue #169's guardrail) can be logged below.
-        _prev_project_name = getattr(session_state, "project_name", "") or ""
-        if _prev_project_name and resolved != _prev_project_name:
-            try:
-                from ..kernel import get_operations_logger
-            except (ImportError, ValueError):
-                from server.kernel import get_operations_logger
-            _adopt_logger = get_operations_logger()
-            if _adopt_logger:
-                _adopt_logger.info(
-                    f"[PROJECT-ADOPTED] flextools_try_word: session project "
-                    f"changed '{_prev_project_name}' -> '{resolved}'"
-                )
-        session_state.project_name = resolved
-        name = resolved
+        try:
+            from ...project_adoption import adopt_resolved_project
+        except ImportError:
+            from project_adoption import adopt_resolved_project
+        name = adopt_resolved_project(
+            session_state,
+            resolved,
+            log_context="flextools_try_word",
+        )
     return name, None
 
 
@@ -523,6 +515,10 @@ async def handle_flextools_try_word(args: dict) -> List[TextContent]:
             "No project specified. Either set project_name in start() or "
             "provide it directly.",
         )
+
+    refused = _read_refused_during_filing(project_name)
+    if refused is not None:
+        return refused
 
     bound_seconds = args.get("bound_seconds")
     if bound_seconds is not None:
@@ -1066,14 +1062,10 @@ def _level_guidance(level: str, result: Dict[str, Any]) -> Dict[str, Any]:
 # flextools_parse_text (CP3, US2)
 # ---------------------------------------------------------------------------
 
-#: Carried on every parse_text response. Plain words, because the tool's
-#: annotation says destructive and a caller deserves to know why that is not
-#: what this call just did (FR-025, D-1).
-FILING_NOT_REACHABLE = (
-    "Nothing was written to the project. Filing parser results into "
-    "FieldWorks is this tool's designed capability but is not reachable in "
-    "this release: there is no argument that enables it."
-)
+#: Carried on every READ-ONLY parse_text response (CP4 R-16, contracts s.1):
+#: the tool is annotated destructive, and a caller deserves to know that this
+#: call filed nothing. A filing run carries "started" instead.
+FILING_NOT_REQUESTED = "not_requested"
 
 
 def _worker_error_response(exc: Exception) -> List[TextContent]:
@@ -1121,6 +1113,15 @@ async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
             "provide it directly.",
         )
 
+    if request.apply:
+        # CP4: filing. Its own path, in its own check order (contracts/tools.md
+        # section 1); `apply` absent or false never reaches it (FR-001).
+        return await _handle_filing_request(request, scope, project_name)
+
+    refused = _read_refused_during_filing(project_name)
+    if refused is not None:
+        return refused
+
     runner = get_runner()
 
     # (2) FR-024 -- the gate, once, at submission, before anything else is
@@ -1165,7 +1166,7 @@ async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
                 "The selected texts yielded no words to parse, so no run was "
                 "started."
             ],
-            "filing": FILING_NOT_REACHABLE,
+            "filing": FILING_NOT_REQUESTED,
             "next_step": None,
         }
         return json_response(build_response_with_context(result))
@@ -1201,7 +1202,7 @@ async def handle_flextools_parse_text(args: dict) -> List[TextContent]:
         "engine_at_submission": engine,
         "record_dir": str(handle.record.root),
         "notes": resolved.notes,
-        "filing": FILING_NOT_REACHABLE,
+        "filing": FILING_NOT_REQUESTED,
     }
     if handle.is_terminal:
         if handle.stage is RunStage.FAILED and handle.failure is not None:
@@ -1246,6 +1247,659 @@ def _batch_block(handle) -> Dict[str, Any]:
     if warnings:
         block["warnings"] = warnings
     return block
+
+
+# ---------------------------------------------------------------------------
+# flextools_parse_text(apply=true) -- filing (CP4)
+# ---------------------------------------------------------------------------
+#
+# THE CHECK ORDER IS THE CONTRACT (contracts/tools.md section 1). Each row is a
+# refusal that stops the call; nothing below a refusal runs:
+#
+#    0  input validation                  (dispatch boundary)
+#    1  project resolved                  project_name_required
+#    2  filing claim held                 parser_filing_in_progress   FR-026
+#    3  session write_enabled             server_state_error          FR-002
+#    4  engine gate                       parser_engine_mismatch
+#    5  HermitCrab agent probe            parser_agent_missing        FR-025
+#    6  filing surface probe              parser_core_missing
+#    7  scope resolution                  parse_scope_empty / _ambiguous
+#    8  access PROBE, data only           (verdict into the plan)     FR-030
+#    9  refuse-to-file gate               grammar_load_unclean        FR-020..FR-024
+#   10  CONFIRMATION, bound to plan_id    confirmation_required       FR-005, FR-006
+#   11  access GATE (confirmed call)      project_locked / project_drive_unavailable
+#   12  gate again (confirmed call)       grammar_load_unclean        FR-024
+#   13  backup, best-effort               never refuses               FR-007, FR-008
+#   14  claim, run, run_id                                            FR-003
+#
+# THE RUNG ORDER IS run_module's, LITERALLY (FR-002): write_enabled (3), then
+# confirmation (10), then the access gate (11), then backup (13). So an
+# unconfirmed request against a project FLEx holds exclusively gets the
+# preview -- whose `access` field already says the confirmed call will be
+# refused and what the remedy is -- exactly as run_module's does. Rows 4-9 are
+# filing's own preflights; each refuses before a preview exists because a
+# preview cannot be built without it.
+#
+# CONFIRMATION IS UNCONDITIONAL FOR FILING (R-08). `require_write_confirmation`
+# is read only to be disclosed in the plan; it never lowers this rung. And a
+# confirmation counts only with a `plan_id` this session issued that is equal
+# to the plan recomputed now: a bare `confirmed=True`, a plan_id from another
+# scope, or a plan that has changed since it was shown gets a new preview.
+# ---------------------------------------------------------------------------
+
+try:
+    from ...config import (
+        config_get as _config_get,
+        REQUIRE_WRITE_CONFIRMATION_KEY as _REQUIRE_CONFIRMATION_KEY,
+        REQUIRE_WRITE_CONFIRMATION_DEFAULT as _REQUIRE_CONFIRMATION_DEFAULT,
+    )
+except (ImportError, ValueError):
+    from config import (  # type: ignore[no-redef]
+        config_get as _config_get,
+        REQUIRE_WRITE_CONFIRMATION_KEY as _REQUIRE_CONFIRMATION_KEY,
+        REQUIRE_WRITE_CONFIRMATION_DEFAULT as _REQUIRE_CONFIRMATION_DEFAULT,
+    )
+
+from .. import write_ladder  # noqa: E402 -- grouped with the CP4 section it serves
+from ..filing import claims as filing_claims  # noqa: E402
+from ..filing import filer as filing_filer  # noqa: E402
+from ..filing import paths as filing_paths  # noqa: E402
+from ..filing import plan as filing_plan  # noqa: E402
+from ..filing import projection as filing_projection  # noqa: E402
+from ..filing import wording as filing_wording  # noqa: E402
+
+#: A filing run's `filing` value once it has started.
+FILING_STARTED = "started"
+
+
+def _filing_in_progress(claim) -> List[TextContent]:
+    """Row 2 (FR-026): refused before anything heavy, four fields."""
+    return error_response(
+        "parser_filing_in_progress",
+        f"A filing job is already running on project {claim.project!r}; a second "
+        f"one is not started. Nothing was previewed, backed up or parsed.",
+        run_id=claim.run_id,
+        started_at=claim.started_at,
+        words_completed=claim.words_completed,
+        hint=filing_claims.in_progress_hint(claim),
+    )
+
+
+def _read_refused_during_filing(project_name: str) -> Optional[List[TextContent]]:
+    """FR-027 (amended after L-0): a READ refused while filing, sharing off only.
+
+    On a project with sharing off, the filing job is the only opener: a
+    read-only open takes the project lock and a second, writable open then
+    fails (L-0, evidence/l0-coexistence.json). So reads on such a project
+    wait for its job (`claims.READS_REFUSED_ON_NON_SHARED_DURING_FILING`).
+    Projects with sharing on are never restricted, and the run-reading tools
+    (status, log, diff) never consult the claim at all -- they read disk.
+    """
+    claim = filing_claims.reads_refused(project_name)
+    if claim is None:
+        return None
+    return error_response(
+        "parser_filing_in_progress",
+        f"A filing job is running on project {project_name!r}, which has sharing "
+        f"turned off, so read-only parses of it wait until the job ends: on such a "
+        f"project only one process can have it open, and the filing job has it. "
+        f"Turning on project sharing in FieldWorks lets reads continue during "
+        f"filing. Nothing was parsed.",
+        run_id=claim.run_id,
+        started_at=claim.started_at,
+        words_completed=claim.words_completed,
+        hint=filing_claims.in_progress_hint(claim),
+    )
+
+
+def _filing_needs_write_session() -> List[TextContent]:
+    """Row 3: filing cannot quietly degrade to a read-only parse.
+
+    `run_module` has no refusal here -- a disabled session simply runs its
+    script read-only. `apply=true` cannot do that without lying about what
+    it did, so it refuses, with an existing code (contracts row 3).
+    """
+    return error_response(
+        "server_state_error",
+        "Filing writes to the project, and this session was started read-only. "
+        "Nothing was parsed.",
+        server_state="write_disabled",
+        component="session",
+        state_description=(
+            "The session's write_enabled is false. Start it with "
+            "flextools_start(write_enabled=true) and resubmit; filing still asks "
+            "for confirmation before anything is written."
+        ),
+    )
+
+
+#: The verdict the plan states when the lock's holder is THIS server's own
+#: read-only worker (the preview itself opens it). Not a collision: that
+#: worker is released before the writable open (L-0: the two cannot coexist
+#: on a non-shared project), and access is probed again after the release.
+HELD_BY_OWN_READ_WORKER = "held_by_mcp_read_worker"
+
+
+def _held_by_own_read_worker(runner, project_name: str, decision) -> bool:
+    """Is the lock that refuses this project held by our own read worker?"""
+    if decision.refusal is None:
+        return False
+    holder = getattr(getattr(decision, "access", None), "holder", None)
+    own = runner.read_worker_pid(project_name)
+    return own is not None and getattr(holder, "pid", None) == own
+
+
+def _access_block(decision) -> Dict[str, Any]:
+    """Row 8: the access verdict as the plan states it (FR-030)."""
+    verdict = decision.verdict
+    block: Dict[str, Any] = {"verdict": verdict}
+    if verdict == HELD_BY_OWN_READ_WORKER:
+        if getattr(decision.access, "sharing_enabled", False):
+            block["note"] = (
+                "This server's own read-only worker has the project open. Sharing is "
+                "enabled, so it stays open alongside filing, and single-word tries "
+                "keep answering while the run goes."
+            )
+        else:
+            block["note"] = (
+                "This server's own read-only worker has the project open. It is closed "
+                "before filing opens the project for writing, and access is checked "
+                "again at that moment."
+            )
+    elif verdict == "open_shared":
+        block["shared_mode_advisory"] = filing_wording.SHARED_MODE_ADVISORY
+    elif decision.refusal is not None:
+        block["remedy"] = decision.refusal.get("remedy") or decision.refusal.get("guidance")
+        block["refused_on_confirm"] = True
+    elif verdict == "unknown":
+        block["remedy"] = (
+            "The FieldWorks projects directory could not be located, so whether "
+            "FieldWorks holds this project could not be checked. Set FW_PROJECTS_DIR "
+            "or check the FieldWorks installation; the confirmed call is refused "
+            "until access can be checked."
+        )
+        block["refused_on_confirm"] = True
+    return block
+
+
+async def _evaluate_filing_gate(
+    runner, project_name: str, resolved: ResolvedScope, scope_key: str
+) -> Dict[str, Any]:
+    """Rows 9 and 12: the refuse-to-file gate, on THIS load (FR-020..FR-024, FR-039).
+
+    Asks the read worker for this load's facts (a current grammar, its errors,
+    a probe parse, the eligible forms), finds the MCP's own baseline for the
+    project and scope, and compares. Returns the plan's `gate` slot; a refusal
+    comes back under `status: "refused"` with its response in `refusal`. The
+    raw facts and the baseline ride along (`current`, `baseline`) for the
+    confirmed call to hand the filing worker as its job-time reference.
+    """
+    from ..filing import gate as filing_gate
+
+    try:
+        current = await runner.filing_gate(
+            project_name, probe_word=resolved.words[0], vernacular_ws=resolved.vernacular_ws
+        )
+    except WorkerError as exc:
+        return {"status": "refused", "refusal": _worker_error_response(exc)}
+    baseline = filing_gate.find_baseline(project_name, scope_key, record_dir=runner.record_dir)
+    standing = filing_gate.evaluate(current, baseline)
+    if standing.refused:
+        return {
+            "status": "refused",
+            "refusal": error_response(
+                "grammar_load_unclean", standing.message(), **standing.refusal_detail()
+            ),
+        }
+    slot = standing.to_dict()
+    slot["baseline"] = (
+        {"run_id": baseline.run_id, "lines": list(baseline.lines() or [])}
+        if baseline is not None else None
+    )
+    slot["current"] = current
+    return slot
+
+
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _confirmation_required(
+    plan: Dict[str, Any], plan_id: str, request: ParseTextInput, *, reason: str
+) -> List[TextContent]:
+    """Row 10: the preview. Carries the plan and its id; writes nothing."""
+    deletion = plan["deletion_projection"]
+    upper_bound = int(deletion.get("upper_bound") or 0)
+    words = int(plan.get("words_in_scope") or 0)
+    overwrites = int((plan.get("disapproval_overwrites") or {}).get("count") or 0)
+    unreadable = list(deletion.get("words_unreadable") or [])
+    message = (
+        f"Filing would change this project, and nothing has been written yet. It "
+        f"may delete up to {upper_bound} "
+        f"analys{'is' if upper_bound == 1 else 'es'} across {words} "
+        f"word{'' if words == 1 else 's'}"
+        + (f", and would overwrite {overwrites} human disapproval(s) of analyses in "
+           f"use in a text with an approval" if overwrites else "")
+        + (f". The analyses of {len(unreadable)} word(s) could not be read, so that "
+           f"bound does not cover them; filing will delete nothing for them that this "
+           f"plan does not name" if unreadable else "")
+        + f". {reason} Read the plan, then resubmit the same call with "
+        f"confirmed=true and plan_id to file. Filing cannot be undone."
+    )
+    backup = plan["backup"]
+    note = (
+        "A backup will be attempted on the CONFIRMED call, before the project is "
+        "opened for writing -- not on this preview."
+        if backup.get("outcome") == "will_be_taken"
+        else backup.get("no_recovery_warning")
+    )
+    resubmit = {
+        "scope_kind": request.scope_kind,
+        "scope_value": request.scope_value,
+        "limit": request.limit,
+        "vernacular_ws": request.vernacular_ws,
+        "project_name": request.project_name,
+        "apply": True,
+        "confirmed": True,
+        "plan_id": plan_id,
+    }
+    return error_response(
+        "confirmation_required",
+        message,
+        plan=plan,
+        plan_id=plan_id,
+        backup={"intent": backup.get("outcome"), "note": note},
+        plan_id_limit=filing_wording.PLAN_ID_LIMIT,
+        next_step=[
+            _rung(
+                action="Confirm this exact plan to file.",
+                tool="flextools_parse_text",
+                args={k: v for k, v in resubmit.items() if v is not None},
+                rationale=(
+                    "The plan is recomputed on the confirmed call; if anything in "
+                    "it has changed you get a new preview instead of a filing run."
+                ),
+                est_cost="the whole scope: every word is parsed and filed",
+            )
+        ],
+    )
+
+
+async def _handle_filing_request(
+    request: ParseTextInput, scope, project_name: str
+) -> List[TextContent]:
+    """`flextools_parse_text(apply=true)`: the preview, or -- bound to it -- the run.
+
+    See the section comment above for the check order; the row numbers below
+    are contracts/tools.md section 1's.
+    """
+    # (2) FR-026 -- the claim first, before anything heavy (SC-006).
+    claim = filing_claims.lookup(project_name)
+    if claim is not None:
+        return _filing_in_progress(claim)
+
+    # (3) FR-002 rung 1 -- the session, not the call, grants writing (R-15).
+    if not session_state.is_write_enabled():
+        return _filing_needs_write_session()
+
+    runner = get_runner()
+
+    # (4) The engine gate.
+    try:
+        engine = await runner.check_engine(project_name)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+
+    # (5) FR-025 -- the HermitCrab agent, before any preview is built.
+    try:
+        agent = await runner.probe_agent(project_name)
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+    if agent.get("state") != "present":
+        detail = {k: agent.get(k) for k in
+                  ("agent_guid", "agent_name", "active_engine", "probe_source", "hint")}
+        detail["active_engine"] = detail.get("active_engine") or engine
+        return error_response(
+            "parser_agent_missing",
+            detail.get("hint") or "The HermitCrab parser agent was not found.",
+            **detail,
+        )
+
+    # (6) R-03 -- the write spine's surface.
+    import asyncio
+
+    surface = await asyncio.to_thread(filing_filer.probe_filing_surface)
+    if not surface.ok:
+        detail = surface.refusal_detail()
+        return error_response(
+            "parser_core_missing",
+            "Filing is unavailable: FieldWorks' parse filer could not be reached. "
+            "Nothing was previewed or written.",
+            **detail,
+        )
+
+    # (7) Scope resolution.
+    try:
+        raw = dict(await runner.resolve_scope(project_name, scope.model_dump()))
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+    project_state = raw.pop("project_state", None)
+    resolved = ResolvedScope(**raw)
+    if not resolved.words:
+        return json_response(build_response_with_context({
+            "status": "ok",
+            "project": project_name,
+            "run_id": None,
+            "run_started": False,
+            "filing": "nothing_to_file",
+            "never_tokenized_text_ids": resolved.never_tokenized_text_ids,
+            "notes": resolved.notes or [
+                "The selected texts yielded no words to parse, so nothing would be "
+                "filed and no preview was built."
+            ],
+            "next_step": None,
+        }))
+    fingerprint = build_fingerprint(resolved, engine)
+    from ..parse.fingerprint import fingerprint_key
+
+    scope_key = fingerprint_key(fingerprint.to_dict())
+
+    # (8) FR-030 -- the access PROBE. Data for the plan; refused only at row 11.
+    decision = write_ladder.probe_write_access(project_name)
+    # Sharing is the PROJECT's setting, not the lock verdict: the probe answers
+    # `held_by_other` for any Python holder, sharing or not, so "shared" read
+    # off the verdict alone missed every shared project the MCP itself had
+    # open (found live; evidence/shared-coexistence.json).
+    sharing = bool(getattr(decision.access, "sharing_enabled", False))
+    held_by_self = _held_by_own_read_worker(runner, project_name, decision)
+    if held_by_self:
+        # The holder is us (L-0, evidence/l0-coexistence.json): no refusal here;
+        # the confirmed call releases the worker and probes again (row 11).
+        decision = write_ladder.AccessDecision(
+            project_name=project_name, access=decision.access,
+            verdict=HELD_BY_OWN_READ_WORKER)
+
+    # (9) FR-020..FR-024 -- the refuse-to-file gate, on this load.
+    standing = await _evaluate_filing_gate(runner, project_name, resolved, scope_key)
+    if standing.get("status") == "refused":
+        return standing["refusal"]
+    baseline_run = standing.pop("baseline", None)
+    # The raw facts are the job-time reference (R-05), not part of the plan a
+    # human reads -- and the eligible-entry list is too long to show anyway.
+    gate_current = standing.pop("current", None)
+
+    # The plan: computed from the project, never an abstract warning (FR-013).
+    try:
+        facts = await runner.filing_preview(
+            project_name, words=list(resolved.words), vernacular_ws=resolved.vernacular_ws
+        )
+    except WorkerError as exc:
+        return _worker_error_response(exc)
+    word_facts = facts.get("words") if isinstance(facts, dict) else None
+    missing = (sorted(set(resolved.words) - set(word_facts))
+               if isinstance(word_facts, dict) else list(resolved.words))
+    if missing:
+        # An incomplete answer is not "nothing to delete" for the missing words.
+        return error_response(
+            "runtime_error",
+            f"The preview's read of the project did not answer for {len(missing)} "
+            f"word(s) in scope, so no plan can bound them. Nothing was written.",
+            error_type="IncompletePreview", missing_words=missing[:20],
+        )
+    projected = filing_projection.project(word_facts, project_state)
+    intent = write_ladder.backup_intent(
+        project_name,
+        session_state=session_state,
+        config_get=_config_get,
+        session_key=write_ladder.FILING_BACKUP_KEY,
+        once_per_session=False,
+        predict_skips=True,
+        live_peer=decision.live_peer,
+    )
+    send_receive = filing_paths.send_receive_status(project_name)
+    plan, plan_id = filing_plan.build_plan(
+        scope={"kind": scope.kind, "value": scope.value, "limit": scope.limit},
+        scope_fingerprint_key=scope_key,
+        words_in_scope=len(resolved.words),
+        gate=standing,
+        projection=projected,
+        duplicate_disclosure=filing_plan.duplicate_disclosure(
+            baseline_run.get("lines") if baseline_run else None,
+            basis=f"prior_run:{baseline_run['run_id']}" if baseline_run else "absent",
+        ),
+        backup={"outcome": intent.outcome, "reason": intent.reason,
+                "peer_caveat": intent.peer_caveat},
+        access=_access_block(decision),
+        send_receive=send_receive,
+        require_write_confirmation=bool(
+            _config_get(_REQUIRE_CONFIRMATION_KEY, _REQUIRE_CONFIRMATION_DEFAULT)
+        ),
+    )
+
+    # (10) FR-005 / FR-006 / R-08 -- confirmation, unconditional and bound.
+    issued = session_state.issued_filing_plan(project_name, scope_key)
+    bound = (
+        request.confirmed
+        and request.plan_id is not None
+        and issued is not None
+        and issued["plan_id"] == request.plan_id
+        and plan_id == request.plan_id
+    )
+    if not bound:
+        if not request.confirmed:
+            reason = "This is the preview."
+        elif request.plan_id is None:
+            reason = ("confirmed=true was sent without a plan_id; a confirmation "
+                      "must name the plan it confirms.")
+        elif issued is None or issued["plan_id"] != request.plan_id:
+            reason = ("The plan_id sent was not issued by this session for this "
+                      "scope, so this is a new preview.")
+        else:
+            reason = ("The plan changed since it was previewed (the recomputed plan "
+                      "differs), so this is a new preview of what filing would do now.")
+        session_state.issue_filing_plan(project_name, scope_key, plan_id, plan, _now_iso())
+        return _confirmation_required(plan, plan_id, request, reason=reason)
+
+    # (11) FR-002 rung 3 / FR-030 -- the access GATE, now that it is confirmed.
+    if held_by_self and not sharing:
+        # L-0: a writable open cannot coexist with our read-only one on a
+        # non-shared project, so the worker is released FIRST and access is
+        # decided on what remains. Anyone else holding it now is a refusal.
+        # On a SHARED project the two coexist (live), so the worker stays.
+        from ..parse.worker_client import SHARED_ROLE
+
+        await runner.release_worker(project_name, role=SHARED_ROLE)
+        decision = write_ladder.probe_write_access(project_name)
+    if decision.refusal is not None:
+        return error_response(
+            "project_locked",
+            f"Project '{project_name}' is held for exclusive access (verdict: "
+            f"{decision.verdict}), and filing writes to it. Nothing was written.",
+            **decision.refusal,
+        )
+    if decision.verdict == "unknown":
+        # #118: run_module proceeds on `unknown`; filing refuses it -- a
+        # disclosed divergence (contracts row 11). Whether FieldWorks holds
+        # the project could not be checked, and a write here cannot be undone.
+        return error_response(
+            "project_drive_unavailable",
+            "The FieldWorks projects directory could not be located, so whether "
+            "FieldWorks holds this project could not be checked. Filing refuses "
+            "rather than write blind. Nothing was written.",
+            attempted_path=None,
+            hint=_access_block(decision)["remedy"],
+        )
+
+    # (12) FR-024 -- the gate again, on the confirmed call. After a self-lock
+    # release this re-opens a read worker; it is released again below (FR-027).
+    again = await _evaluate_filing_gate(runner, project_name, resolved, scope_key)
+    if again.get("status") == "refused":
+        return again["refusal"]
+    gate_current = again.get("current") or gate_current
+
+    # FR-042 -- the run record lives outside every project folder. Refused
+    # here, before the backup and before anything is created.
+    from ..parse.record import get_record_dir
+
+    record_root = runner.record_dir or get_record_dir()
+    try:
+        filing_paths.assert_outside_project(record_root)
+    except filing_paths.ArtifactInsideProject as refused:
+        return error_response(
+            "server_state_error",
+            "Filing refused: the run-record directory is inside the FieldWorks "
+            "projects directory. Nothing was written.",
+            server_state="record_dir_inside_project",
+            component="filing",
+            state_description=str(refused),
+        )
+
+    # (13) FR-007 / FR-008 -- the backup, best-effort, before the writable open.
+    backup_block, no_recovery = _take_filing_backup(project_name, decision, send_receive)
+    # SC-004: the record holds what was promised beside what happened.
+    backup_block["intent"] = plan["backup"]["outcome"]
+
+    # On a non-shared project the read worker is released before the writable
+    # open: L-0 showed the two CANNOT hold it at once (FP_FileLockedError;
+    # evidence/l0-coexistence.json). Not a flag -- the open would fail.
+    # `claims.READS_REFUSED_ON_NON_SHARED_DURING_FILING` governs only whether
+    # reads are refused while the run holds the project.
+    shared = sharing or decision.verdict == "open_shared"
+    if not shared:
+        from ..parse.worker_client import SHARED_ROLE
+
+        await runner.release_worker(project_name, role=SHARED_ROLE)
+
+    # (14) FR-003 -- the claim, then the run, then (only now) a run_id.
+    token = f"pending-{uuid.uuid4().hex}"
+    for _attempt in range(3):
+        if filing_claims.acquire(project_name, token, shared=shared) is not None:
+            break
+        claim = filing_claims.lookup(project_name)
+        if claim is not None:
+            return _filing_in_progress(claim)
+        # The holder released between the two calls: try again.
+    else:
+        # Never start a job without holding the claim (FR-026).
+        return error_response(
+            "runtime_error",
+            "The filing claim for this project could not be taken. Nothing was written.",
+            error_type="FilingClaimUnavailable",
+        )
+    from ..filing.client import FILING_ROLE
+    from ..filing.observer import FilingObserver
+
+    observer = FilingObserver(
+        project_name=project_name,
+        plan=plan,
+        plan_id=plan_id,
+        backup=backup_block,
+        no_recovery_warning=no_recovery,
+        send_receive=send_receive,
+        access_verdict=decision.verdict,
+        claim_token=token,
+    )
+    setup = {
+        "projection": plan["deletion_projection"]["by_wordform"],
+        "overwrites": plan["disapproval_overwrites"]["by_wordform"],
+        "gate_reference": gate_current,
+    }
+    try:
+        handle = await runner.start_run(
+            project_name=project_name,
+            wordforms=list(resolved.words),
+            level="file",
+            priority=Priority.LOW,
+            scope_fingerprint=fingerprint.to_dict(),
+            engine_at_submission=engine,
+            vernacular_ws=resolved.vernacular_ws,
+            project_state=project_state,
+            worker_role=FILING_ROLE,
+            filing=True,
+            filing_setup=setup,
+            observer=observer,
+            record_guard=filing_paths.assert_outside_project,
+        )
+    except Exception as exc:  # noqa: BLE001 -- the claim must not outlive a failed start
+        filing_claims.release(project_name)
+        if isinstance(exc, WorkerError):
+            return _worker_error_response(exc)
+        raise
+
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "project": project_name,
+        "run_id": handle.run_id,
+        "run_started": True,
+        "stage": handle.stage.value,
+        "words_completed": handle.words_completed,
+        "words_total": handle.words_total,
+        "scope": {"kind": resolved.scope_kind, "value": resolved.scope_value,
+                  "limit": resolved.limit, "truncated": resolved.truncated,
+                  "vernacular_ws": resolved.vernacular_ws},
+        "scope_fingerprint": fingerprint.to_dict(),
+        "engine_at_submission": engine,
+        "record_dir": str(handle.record.root),
+        "filing": FILING_STARTED,
+        "plan_id": plan_id,
+        "notes": resolved.notes,
+    }
+    if backup_block.get("created"):
+        result["backup"] = backup_block
+    else:
+        result["no_recovery_warning"] = no_recovery
+        result["backup"] = {"created": False, "reason": backup_block.get("reason")}
+    if shared:
+        result["shared_mode_advisory"] = filing_wording.SHARED_MODE_ADVISORY
+    elif decision.verdict == "stale_lock" and decision.advisory:
+        result["stale_lock_advisory"] = decision.advisory.get("note")
+    if handle.is_terminal and handle.failure is not None:
+        result["failure"] = handle.failure.to_dict()
+    result["next_step"] = _status_next_step(handle) or [
+        _read_run_rung(handle.run_id, "The filing record: counts, captures, and the backup.")
+    ]
+    return json_response(build_response_with_context(result))
+
+
+def _take_filing_backup(project_name: str, decision, send_receive):
+    """Row 13: the backup, through run_module's rung (FR-002, FR-007, FR-008).
+
+    Best-effort and never refusing (constitution Principle I). Filing backs up
+    before EVERY run -- not once per session, as run_module does -- under its
+    own session key, so a run_module backup never satisfies it. A backup root
+    that would land inside the projects directory is not written at all
+    (FR-042). Returns `(backup_block, no_recovery_warning_or_None)`.
+    """
+    from .. import backup as backup_mod
+
+    try:
+        filing_paths.assert_outside_project(backup_mod.BACKUP_ROOT)
+    except filing_paths.ArtifactInsideProject:
+        reason = "backup_root_inside_projects_directory"
+        return ({"created": False, "reason": reason, "path": None},
+                filing_wording.no_recovery_warning(reason, send_receive))
+    outcome = write_ladder.take_backup(
+        project_name,
+        session_state=session_state,
+        live_peer=decision.live_peer,
+        session_key=write_ladder.FILING_BACKUP_KEY,
+        once_per_session=False,
+    ) or {"path": None, "created": False, "skipped_reason": "backup_not_attempted"}
+    if outcome.get("created"):
+        block = {"created": True, "path": outcome.get("path")}
+        if outcome.get("note"):
+            block["note"] = outcome["note"]
+        if filing_paths.treats_as_send_receive(send_receive):
+            block["send_receive_note"] = (
+                "A local backup is a convenience for this machine, not a way to "
+                "revert the shared project."
+            )
+        return block, None
+    reason = outcome.get("skipped_reason") or "reason not recorded"
+    return ({"created": False, "reason": reason, "path": None},
+            filing_wording.no_recovery_warning(reason, send_receive))
 
 
 # ---------------------------------------------------------------------------
@@ -1456,6 +2110,30 @@ async def handle_flextools_parse_log(args: dict) -> List[TextContent]:
         if not lines:
             result["note"] = _empty_note(meta, "results")
 
+    elif section == "deletions":
+        # CP4 (FR-031, FR-041): a filing run's captures, read from disk like
+        # every other section. A read-only run has none to have: it is
+        # reported not applicable -- never as an empty section (FR-028).
+        if meta is None or not meta.filing:
+            result = {
+                "status": "ok", "run_id": run_id, "section": section,
+                "applicable": False, "reason": "not_applicable_for_this_run",
+                "note": (
+                    "This section holds a filing run's pre-deletion captures -- "
+                    "filing runs only. This run was read-only: it filed nothing, so "
+                    "nothing was captured. It is not applicable, not empty."
+                ),
+            }
+        else:
+            lines = list(record.iter_jsonl(filing_paths.DELETIONS_RELPATH))
+            result.update(_page(lines, offset, limit))
+            if not lines:
+                result["note"] = (
+                    "No analysis was captured: this filing run deleted nothing and "
+                    "overwrote no human disapproval (or stopped before its first "
+                    "word -- see the summary's filing block)."
+                )
+
     else:  # trace
         result.update(_trace_section(record, args, meta))
 
@@ -1653,6 +2331,36 @@ async def handle_flextools_parse_diff(args: dict) -> List[TextContent]:
 # ---------------------------------------------------------------------------
 
 
+def _live_run_not_found(runner, run_id: str) -> List[TextContent]:
+    """`parse_run_not_found` for a handle this server process does not hold.
+
+    Shared by `flextools_parse_status` and `flextools_parse_cancel`: both act
+    on the LIVE run (a cancel cannot reach a run from an earlier server
+    process -- nothing is executing it any more).
+    """
+    available = runner.known_run_ids()
+    return error_response(
+        "parse_run_not_found",
+        f"No parse run with handle {run_id!r}.",
+        run_id=run_id,
+        # Named, not counted. A handle is an opaque 32-character string;
+        # told only that theirs is wrong, a caller cannot tell a typo
+        # from a run this server has forgotten (FR-035).
+        available_runs=available,
+        hint=(
+            "Handles are issued by flextools_try_word when a parse "
+            "outlives the grace window, and by flextools_parse_text for "
+            "every batch; they live as long as this server process does. "
+            + (
+                f"Runs this server knows about: {', '.join(available)}."
+                if available
+                else "This server has no runs at all, so the handle is "
+                "either from an earlier server process or mistyped."
+            )
+        ),
+    )
+
+
 async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
     """Report on a parse run by its handle (FR-033 .. FR-036).
 
@@ -1685,27 +2393,7 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
     handle = runner.get(run_id)
 
     if handle is None:
-        available = runner.known_run_ids()
-        return error_response(
-            "parse_run_not_found",
-            f"No parse run with handle {run_id!r}.",
-            run_id=run_id,
-            # Named, not counted. A handle is an opaque 32-character string;
-            # told only that theirs is wrong, a caller cannot tell a typo
-            # from a run this server has forgotten (FR-035).
-            available_runs=available,
-            hint=(
-                "Handles are issued by flextools_try_word when a parse "
-                "outlives the grace window, and by flextools_parse_text for "
-                "every batch; they live as long as this server process does. "
-                + (
-                    f"Runs this server knows about: {', '.join(available)}."
-                    if available
-                    else "This server has no runs at all, so the handle is "
-                    "either from an earlier server process or mistyped."
-                )
-            ),
-        )
+        return _live_run_not_found(runner, run_id)
 
     result: Dict[str, Any] = {
         "status": "ok",
@@ -1745,6 +2433,73 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
         result["partial_results_available"] = handle.words_completed > 0
 
     result["next_step"] = _status_next_step(handle)
+    return json_response(build_response_with_context(result))
+
+
+# ---------------------------------------------------------------------------
+# flextools_parse_cancel (CP4, FR-034; M-3)
+# ---------------------------------------------------------------------------
+
+#: What a cancelled FILING run tells its caller (FR-034). Filed words stay
+#: filed; the only way back is the backup, or for a Send/Receive project the
+#: discard-and-re-download route.
+FILING_CANCEL_NOTE = (
+    "Cancellation stops the run at its next word boundary. Every word filed "
+    "before that stays filed: filing cannot be undone except by restoring the "
+    "backup (or, for a project in Send/Receive, by discarding this copy and "
+    "re-downloading it). The run's record lists exactly which words were filed."
+)
+
+
+async def handle_flextools_parse_cancel(args: dict) -> List[TextContent]:
+    """Ask a run to stop at its next word boundary (FR-034).
+
+    A thin tool over `ParseRunner.cancel_run`, which existed from CP2b with
+    no caller. It works on read-only runs too -- the runner always supported
+    that; this only exposes it. Writes nothing to the project.
+
+      * an unknown handle             -> `parse_run_not_found`;
+      * a run that has already ended  -> `parse_job_cancelled`;
+      * otherwise                     -> `{run_id, cancel_requested: true}`,
+        returned at once. The run is `cancelled` only when the worker has
+        actually stopped, which `flextools_parse_status` reports.
+    """
+    from ..parse.runner import RunAlreadyTerminal
+
+    run_id = str(args.get("run_id") or "")
+    runner = get_runner()
+    try:
+        handle = await runner.cancel_run(run_id)
+    except RunAlreadyTerminal as ended:
+        detail = dict(ended.detail)
+        detail.pop("error_code", None)
+        return error_response("parse_job_cancelled", detail.get("hint") or str(ended), **detail)
+    if handle is None:
+        return _live_run_not_found(runner, run_id)
+
+    result: Dict[str, Any] = {
+        "status": "ok",
+        "run_id": handle.run_id,
+        "cancel_requested": True,
+        "stage": handle.stage.value,
+        "words_completed": handle.words_completed,
+        "words_total": handle.words_total,
+        "note": (
+            "The run will stop at its next word boundary; the word in flight "
+            "finishes first. Poll flextools_parse_status for 'cancelled'."
+        ),
+        "next_step": [
+            _rung(
+                action="Poll this run until it reports 'cancelled'.",
+                tool="flextools_parse_status",
+                args={"run_id": handle.run_id},
+                rationale="Cancellation is cooperative: it lands at a word boundary.",
+                est_cost="instant",
+            )
+        ],
+    }
+    if getattr(handle, "is_filing", False):
+        result["filing_note"] = FILING_CANCEL_NOTE
     return json_response(build_response_with_context(result))
 
 

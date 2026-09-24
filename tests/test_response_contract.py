@@ -167,6 +167,16 @@ GOLDEN_REQUIRED_KEYS = {
     "project_path_mismatch": {"_contract", "status", "error_code", "message", "error"},
     "project_not_found": {"_contract", "status", "error_code", "message", "error"},
     "runtime_error": {"_contract", "status", "error_code", "message", "error"},
+    # Parser-check CP4 (FR-035): the detail fields ride at top level too.
+    "parser_filing_in_progress": {
+        "_contract", "status", "error_code", "message", "error",
+        "run_id", "started_at", "words_completed", "hint",
+    },
+    "grammar_load_unclean": {
+        "_contract", "status", "error_code", "message", "error",
+        "signal", "new_error_count", "baseline_error_count", "baseline_source", "log_path",
+        "new_errors", "dropped_entries", "baseline_eligible_count", "eligible_count",
+    },
 }
 
 
@@ -420,7 +430,7 @@ class TestParserCheckCP2bCodes:
         with pytest.raises(pydantic.ValidationError):
             models[code].model_validate(payload)
 
-    def test_the_documented_error_code_count_is_thirty_two(self):
+    def test_the_documented_error_code_count_is_thirty_four(self):
         """FR-037: the hand-maintained count in the contract doc tracks reality.
 
         Hand-maintained counts drift silently, which is why this compares
@@ -433,8 +443,9 @@ class TestParserCheckCP2bCodes:
         from flextoolsmcp.server.response_models import AnyDetail
 
         union_size = len(typing.get_args(AnyDetail))
-        # 31 through CP3; #89 adds internal_error -> 32.
-        assert union_size == 32, f"the detail union holds {union_size} models"
+        # 31 through CP3; #89 adds internal_error -> 32; CP4 adds
+        # parser_filing_in_progress and grammar_load_unclean -> 34.
+        assert union_size == 34, f"the detail union holds {union_size} models"
 
         doc = (
             Path(__file__).parent.parent / "docs" / "TOOL-CONTRACT.md"
@@ -467,6 +478,9 @@ class TestParserCheckCP2bCodes:
             ("parse_scope_mismatch", "ParseScopeMismatchDetail"),
             ("parser_timeout", "ParserTimeoutDetail"),
             ("parser_job_failed", "ParserJobFailedDetail"),
+            # CP4 (FR-035): same transcription check for the two new rows.
+            ("parser_filing_in_progress", "ParserFilingInProgressDetail"),
+            ("grammar_load_unclean", "GrammarLoadUncleanDetail"),
         ],
     )
     def test_each_cp3_row_lists_its_fields_in_the_models_order(self, code, model_name):

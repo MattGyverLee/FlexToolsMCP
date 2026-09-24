@@ -229,32 +229,16 @@ See [USAGE.md](USAGE.md) for workflows, tool reference, and examples.
 
 ## What's Included
 
-### MCP Tools (16)
+### MCP Tools
 
-Tool responses follow a versioned envelope contract. See [docs/TOOL-CONTRACT.md](docs/TOOL-CONTRACT.md) for the full shape (success and error envelopes, all 17 error codes, and the deprecation timeline for the nested `error` object).
+The `flextools_*` tools cover the whole workflow: starting a session,
+finding APIs by intent, looking up objects and navigation paths, getting examples
+and module templates, running code against a project (dry-run first), checking
+parser behavior, and producing diagnostic reports. The full list is in
+[USAGE.md](USAGE.md#mcp-tools-reference); your AI assistant reads the complete
+tool descriptions from the server directly.
 
-**Admin & Config:**
-- `flextools_start` - Initialize session, set project and API mode
-- `flextools_manage_config` - Get/set/delete persistent configuration
-- `flextools_get_session_history` - View operation history and undo stack
-- `flextools_undo_last_operation` - Undo the most recent write
-- `flextools_get_module_template` - Get FLExTools module boilerplate
-
-**Discovery:**
-- `flextools_search_by_capability` - Find APIs by natural language intent
-- `flextools_get_object_api` - Get full API for an object/operations class
-- `flextools_get_navigation_path` - Find traversal between object types
-- `flextools_find_examples` - Get code examples by operation type
-- `flextools_resolve_property` - Check casting requirements for properties
-
-**Catalog:**
-- `flextools_list_categories` - List semantic domains (lexicon, grammar, etc.)
-- `flextools_list_entities_in_category` - List entities in a domain
-
-**Module & Execution:**
-- `flextools_start_module` - Interactive wizard for new module
-- `flextools_get_operation_logs` - View logs and pattern recommendations
-- `flextools_run_module` - Execute code with dry-run and write modes
+Tool responses follow a versioned envelope contract. See [docs/TOOL-CONTRACT.md](docs/TOOL-CONTRACT.md) for the full shape (success and error envelopes, the error codes, and the deprecation timeline for the nested `error` object).
 
 ### API Coverage
 - **LibLCM**: 2,295 C# entities

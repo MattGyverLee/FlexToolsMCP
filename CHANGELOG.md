@@ -12,6 +12,29 @@
   ``server.stateless_client_mode``; ``flextools_start`` documents the mode when
   active.
 
+- **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
+  Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
+  (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire
+  ruling: preflight casting detection, auto-fix rewrite, and runtime polymorphic hints
+  remain the supported path. `_validate_api_mode` is kept for direct probes/tests only.
+
+- **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
+  Preflight and runtime polymorphic hints now detect the common mistake of
+  chaining ``.Cache`` after ``project.project`` (which is already the
+  ``LcmCache``) and emit a concrete rewrite such as
+  ``project.project.LangProject`` instead of deferring to a generic resubmit.
+- **Docs gap: `find_writing_system()` / `GetMorphType()` return raw LCM objects**
+  ([#160](https://github.com/MattGyverLee/FlexToolsMCP/issues/160)). Added a
+  ``FLEXTOOLS-STYLE-GUIDE.md`` callout (section 5b) with JSON-boundary patterns
+  so export scripts extract primitives (``.Handle`` / ``.Id`` / morph-type
+  ``.Name``) instead of calling ``json.dumps`` on live ``Core*`` / ``IMo*``
+  handles.
+
+- **Pre-write backup skipped when preflight missed mutations** ([#99](https://github.com/MattGyverLee/FlexToolsMCP/issues/99)).
+  Automatic backup now runs on the first ``write_enabled`` execution per
+  (session, project), not only when ``needs_lock`` is true, and every
+  ``write_enabled`` ``run_module`` response includes an explicit ``backup``
+  object (including ``skipped_reason`` when no new copy was taken).
 - **`flextools_run_module` success responses omitted `_contract` / `status`**
   ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
   execution results (success, runtime failure, timeout, and temp-file errors)
@@ -157,6 +180,35 @@ existing code changes shape, and the hand-maintained count in
 optional `bound_seconds` (plain level only) for the bounded single-word
 measurement; a measurement stopped at its bound is a successful response, not
 `parser_timeout`.
+
+Two further error codes land at parser-check CP4, the first checkpoint that
+writes: `parser_filing_in_progress` (`run_id`, `started_at`,
+`words_completed`, `hint` -- a filing job is already running on this project;
+refused before any preview, backup or parse, and never raised against a
+read-only tool) and `grammar_load_unclean` (the parent spec's five fields --
+`signal`, `new_error_count`, `baseline_error_count`, `baseline_source`,
+`log_path` -- in the parent's order, then four fields appended after them:
+`new_errors`, `dropped_entries`, `baseline_eligible_count`,
+`eligible_count`). `grammar_load_unclean.signal` takes a third value,
+`eligible_forms_dropped`, for the case the grammar loader never logs: an
+entry whose every form has become ineligible (an emptied lexeme form, say)
+silently leaves the grammar. Neither code has an override; the one way past a
+new-load-error or dropped-form refusal is a read-only parse of the same
+scope, which re-baselines. Additive: `tool-responses/1.0` is unchanged and
+the hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 32 to 34.
+
+`flextools_parse_text` gains three optional arguments -- `apply` (file the
+results), `confirmed` and `plan_id` (the resubmission that confirms the
+preview it names) -- and nothing else: no argument, setting or environment
+variable skips the confirmation. `apply` absent or false is CP3's read-only
+batch, except that its `filing` field now reads `"not_requested"`. The
+tool's annotation does not change. A new tool, `flextools_parse_cancel`
+(`run_id`), stops a run at its next word boundary; it writes nothing to the
+project, and for a filing run what was already filed stays filed.
+`flextools_parse_log` gains a `deletions` section serving a filing run's
+pre-deletion captures, and its `summary` section gains a `filing` block; a
+read-only run answers `deletions` with a typed not-applicable response, never
+an empty one.
 
 ## [2.12.0] - 2026-09-10
 

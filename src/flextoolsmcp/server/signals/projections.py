@@ -56,7 +56,12 @@ def _is_deletion_candidate(record: Dict[str, Any]) -> bool:
 
 
 def deletion_projection(results: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
-    """Stored analyses a deletion pass WOULD remove. Nothing is removed."""
+    """Stored analyses a deletion pass WOULD remove. Nothing is removed.
+
+    NOT THE FILING BOUND: CP4's upper bound is `filing.projection.deletion_upper_bound`,
+    because FLEx's filer also deletes human-made, never-evaluated, unused
+    analyses, which the parser-created conjunct here excludes (CP4 R-01).
+    """
     candidates: List[Dict[str, Any]] = []
     unknown = 0
     for line in results:

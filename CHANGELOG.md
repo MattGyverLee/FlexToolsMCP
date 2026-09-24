@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **Cross-session `operations.log` rotation dropped multi-day spans** ([#110](https://github.com/MattGyverLee/FlexToolsMCP/issues/110)).
+  The durable rollup now keeps 12 size-based backups (was 3) while per-session
+  log files stay at 3. Confirmed log triage still has jsonl and dated session
+  folders as authoritative fallbacks when a byte cursor on `operations.log`
+  crosses a rotation boundary.
+
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
   (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire

@@ -110,14 +110,28 @@ def get_log_dir() -> Path:
 _CROSS_SESSION_HANDLER_FLAG = "_flextoolsmcp_cross_session"
 
 
-def _make_file_handler(log_file: Path):
+# Cross-session operations.log retention (issue #110). Size-based rotation with a
+# small backupCount silently discards multi-day spans: jsonl + per-session logs
+# kept the data, but logscan byte cursors on operations.log saw a hole. Session
+# logs rotate more often and need fewer backups; the durable rollup keeps more.
+_OPERATIONS_LOG_MAX_BYTES = 5 * 1024 * 1024
+_OPERATIONS_LOG_BACKUP_COUNT = 12
+_SESSION_LOG_BACKUP_COUNT = 3
+
+
+def _make_file_handler(
+    log_file: Path,
+    *,
+    max_bytes: int = _OPERATIONS_LOG_MAX_BYTES,
+    backup_count: int = _SESSION_LOG_BACKUP_COUNT,
+):
     """Build the standard rotating file handler with our format. Helper to
     avoid drift between setup_logging and rotate_logging_to_session."""
     from logging.handlers import RotatingFileHandler
     handler = RotatingFileHandler(
         log_file,
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=3,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
         encoding='utf-8'
     )
     handler.setLevel(logging.DEBUG)
@@ -310,7 +324,11 @@ def setup_logging(session_id: str = ""):
     # Avoid adding duplicate handlers
     if not logger.handlers:
         # Cross-session handler -- attached for the lifetime of the process
-        cross_handler = _make_file_handler(cross_session_log)
+        cross_handler = _make_file_handler(
+            cross_session_log,
+            max_bytes=_OPERATIONS_LOG_MAX_BYTES,
+            backup_count=_OPERATIONS_LOG_BACKUP_COUNT,
+        )
         setattr(cross_handler, _CROSS_SESSION_HANDLER_FLAG, True)
         logger.addHandler(cross_handler)
 

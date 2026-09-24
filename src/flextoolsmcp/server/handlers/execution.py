@@ -775,6 +775,17 @@ def _log_report_messages(messages: List[Dict[str, Any]], include_info: bool) -> 
             logger.debug(f"  report.Info: {text}{suffix}")
 
 
+
+
+def _require_jsonl_log_dir(log_dir_fn: Optional[Any]) -> Any:
+    """Issue #109: refuse silent fallback to the production log directory."""
+    if log_dir_fn is None:
+        raise TypeError(
+            "log_dir_fn is required for JSONL telemetry closes (issue #109). "
+            "Pass get_log_dir at production call sites or a tmp-path callable in tests."
+        )
+    return log_dir_fn
+
 def _log_operation_end_success(
     op_id: str,
     seq: int,
@@ -796,6 +807,7 @@ def _log_operation_end_success(
     `execution.get_log_dir` directly (the pre-existing pattern) keep working
     unchanged alongside tests that pass `log_dir_fn` explicitly.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     # Always replay warnings/errors even when overall result was success --
     # report.Warning() doesn't fail the run but the user wants visibility.
@@ -817,7 +829,7 @@ def _log_operation_end_success(
         warning_count=warning_count,
         error_count=error_count,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -856,6 +868,7 @@ def _log_operation_failure(
     handler don't have them yet -- losing the close marker is still better
     than no log at all.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.error("[FAIL] Operation failed")
     if error_type:
@@ -923,7 +936,7 @@ def _log_operation_failure(
             warning_count=warning_count,
             error_count=error_count,
             assistance_triggered=False,
-            log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+            log_dir_fn=log_dir_fn,
         )
 
 
@@ -1026,6 +1039,7 @@ def _log_preflight_reject(
     the signature) -- existing callers, including tests that monkeypatch
     `execution.get_log_dir` directly, are unaffected.
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     logger.warning("[REJECT] Pre-flight validation blocked execution")
     logger.warning(f"Reason code:     {reason_code}")
@@ -1049,7 +1063,7 @@ def _log_preflight_reject(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
         casting_signature=casting_signature,
     )
 
@@ -1078,6 +1092,7 @@ def _log_discovery_redirect(
     `_log_operation_end_success` for rationale (None default, resolved at
     call time so monkeypatching `execution.get_log_dir` still works).
     """
+    log_dir_fn = _require_jsonl_log_dir(log_dir_fn)
     logger = get_operations_logger()
     if logger is not None:
         logger.info("[REDIRECT] Gentle discovery redirect (code not executed)")
@@ -1098,7 +1113,7 @@ def _log_discovery_redirect(
         warning_count=0,
         error_count=0,
         assistance_triggered=False,
-        log_dir_fn=log_dir_fn if log_dir_fn is not None else get_log_dir,
+        log_dir_fn=log_dir_fn,
     )
 
 
@@ -1123,7 +1138,7 @@ def _graceful_discovery_redirect(
     as an error. ``executed`` is False and ``discovery_redirect.needs_resubmit``
     is True so a client cannot mistake it for a completed run.
     """
-    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}")
+    _log_discovery_redirect(op_id, seq, duration_s, reason, f"undiscovered={undiscovered}", log_dir_fn=get_log_dir)
 
     prefer_tools = [
         "flextools_get_object_api(object_type='...')",
@@ -2947,6 +2962,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "syntax_error",
             f"line {syn_exc.lineno}: {syn_exc.msg}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -2980,6 +2996,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "server_state_error",
             "Server initialization incomplete:\n" + "\n".join(error_details),
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3006,6 +3023,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "partial_module_structure",
                 f"missing_elements={partial_check.get('missing_elements')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -3061,6 +3079,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "nested_unit_of_work",
                 f"constructs={[c.get('construct') for c in constructs[:5]]}",
+            log_dir_fn=get_log_dir,
             )
             _is_per_op_uow = _probe_undoable_capability()
             if _is_per_op_uow:
@@ -3116,6 +3135,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "unprotected_writes",
             f"mutating_calls={[m.get('method') for m in mutating[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #95: return the structured TOOL-CONTRACT rejection (status,
         # error_code, _contract, message) with the same fix guidance the log
@@ -3167,6 +3187,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "hvo_literal_write_risk",
             f"findings={[f.get('detail') for f in findings[:5]]}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3313,6 +3334,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     "casting_issues_detected",
                     f"{len(issues)} polymorphic property access issue(s) require casting.",
                     casting_signature=_casting_sig,
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #21: each issue carries an inline rewrite + imports_needed so
                 # the LLM doesn't need to call flextools_resolve_property to recover.
@@ -3429,6 +3451,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "api_discovery_required",
                 "No APIs discovered yet -- call start() / get_object_api() / search_by_capability() first.",
+            log_dir_fn=get_log_dir,
             )
             # Issue #29: inline get_object_api for the top entities we can spot in
             # the submitted code, so the LLM gets the real method shapes in the
@@ -3604,6 +3627,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                     op_id, seq, time.monotonic() - t_start,
                     "undiscovered_entity",
                     f"undiscovered={undiscovered_list}",
+                log_dir_fn=get_log_dir,
                 )
                 # Issue #20: inline get_object_api docs when the undiscovered
                 # entity is explicitly imported from flexicon. Single round-trip
@@ -3645,6 +3669,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "undefined_variables",
             f"undefined_vars={undefined_check.get('undefined_vars')}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3665,6 +3690,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "missing_imports",
             f"missing_imports={missing_ops_check.get('missing_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         return _attach_assistance_if_loop(
             error_response(
@@ -3686,6 +3712,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             op_id, seq, time.monotonic() - t_start,
             "wrong_library_imports",
             f"wrong_imports={wrong_imports_check.get('wrong_imports')} api_mode={api_mode}",
+        log_dir_fn=get_log_dir,
         )
         # Issue #54: populate affected_symbols -- the specific names imported
         # from the wrong library module(s).  Parse from the code AST so the LLM
@@ -3755,6 +3782,7 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 op_id, seq, time.monotonic() - t_start,
                 "invalid_api_chain",
                 f"issues={chain_check.get('issues')}",
+            log_dir_fn=get_log_dir,
             )
             return _attach_assistance_if_loop(
                 error_response(
@@ -4466,6 +4494,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -4583,6 +4612,7 @@ MODULE_CODE = {code}
                     op_id, seq, time.monotonic() - t_start,
                     "confirmation_required",
                     f"mutations={_mutation_count}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
@@ -4647,6 +4677,7 @@ MODULE_CODE = {code}
                     op_id, seq, time.monotonic() - t_start, "project_locked",
                     f"verdict={_access.verdict} sharing_enabled={_access.sharing_enabled} "
                     f"holder_pid={_holder_pid} holder_process={_holder_proc}",
+                log_dir_fn=get_log_dir,
                 )
                 return _attach_assistance_if_loop(
                     error_response(
@@ -4754,6 +4785,7 @@ MODULE_CODE = {code}
             _log_operation_failure(
                 op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
                 error=err_msg, error_type="Timeout", stderr=stderr,
+            log_dir_fn=get_log_dir,
             )
             return json_response(_finalize_run_module_response({
                 "success": False,
@@ -5031,6 +5063,7 @@ MODULE_CODE = {code}
                 warning_count=warning_count,
                 error_count=error_count,
                 messages=report_messages,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: a successful op resets the retry-loop detector --
             # by definition we've broken whatever loop we were stuck in.
@@ -5081,6 +5114,7 @@ MODULE_CODE = {code}
                 messages=report_messages,
                 traceback_text=traceback_text,
                 polymorphic_hint=polymorphic_hint,
+            log_dir_fn=get_log_dir,
             )
             # Issue #28: record a runtime-failure signal. Use the structured
             # error_type when available; fall back to a generic bucket.
@@ -5104,6 +5138,7 @@ MODULE_CODE = {code}
         _log_operation_failure(
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type="TimeoutExpired",
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,
@@ -5119,6 +5154,7 @@ MODULE_CODE = {code}
             op_id=op_id, seq=seq, duration_s=time.monotonic() - t_start,
             error=err_msg, error_type=type(e).__name__,
             traceback_text=_tb.format_exc(),
+        log_dir_fn=get_log_dir,
         )
         return json_response(_finalize_run_module_response({
             "success": False,

@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- **Docs gap: `find_writing_system()` / `GetMorphType()` return raw LCM objects**
+  ([#160](https://github.com/MattGyverLee/FlexToolsMCP/issues/160)). Added a
+  ``FLEXTOOLS-STYLE-GUIDE.md`` callout (section 5b) with JSON-boundary patterns
+  so export scripts extract primitives (``.Handle`` / ``.Id`` / morph-type
+  ``.Name``) instead of calling ``json.dumps`` on live ``Core*`` / ``IMo*``
+  handles.
+
 - **`flextools_run_module` success responses omitted `_contract` / `status`**
   ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
   execution results (success, runtime failure, timeout, and temp-file errors)

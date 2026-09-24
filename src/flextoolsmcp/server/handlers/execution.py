@@ -4075,27 +4075,31 @@ def run_module():
         # API Mode-specific imports
         from flexicon import FLExInitialize, FLExCleanup, FLExProject
 
-        # Issue #96 (A-8): a generated runner has no WinForms message pump.
-        # Passing no `ui=` to OpenProject() falls back to flexicon's WinForms
-        # FwLcmUI, whose ConflictingSave() opens a modal dialog with no
-        # owner -- an indefinite hang in this headless subprocess (flexicon
-        # issue #238). HeadlessLcmUI never blocks a conflicting save; it
-        # raises FP_ConflictingSaveError instead, which the teardown path
-        # below now surfaces as a real failure instead of swallowing it.
-        # Older flexicon builds may not ship the module yet -- degrade to
-        # the historical FwLcmUI rather than hard-failing the whole run, but
-        # make the degradation visible instead of silent.
-        try:
-            from flexicon.code.headless_ui import HeadlessLcmUI
-            _lcm_ui = HeadlessLcmUI()
-        except ImportError:
+        # Issue #96 (A-8) / #148: inject HeadlessLcmUI when flexicon advertises
+        # ui-injection. flexicon >=4.8 defaults ui=None to HeadlessLcmUI
+        # (flexicon #285); the pre-4.8 hazard was WinForms FwLcmUI modal dialogs
+        # in a headless subprocess (flexicon #238). Probe CAPABILITIES instead of
+        # importing flexicon.code.headless_ui (internal path; top-level export
+        # since 4.8.0).
+        import flexicon as _flexicon_pkg
+        _UI_CAPS = getattr(_flexicon_pkg, "CAPABILITIES", frozenset())
+        if "ui-injection" in _UI_CAPS:
+            try:
+                from flexicon import HeadlessLcmUI
+                _lcm_ui = HeadlessLcmUI()
+            except ImportError:
+                _lcm_ui = None
+                report.Warning(
+                    "flexicon advertises ui-injection but HeadlessLcmUI is not "
+                    "importable from the top-level flexicon package; OpenProject "
+                    "will omit ui= and use flexicon's default LcmUI."
+                )
+        else:
             _lcm_ui = None
             report.Warning(
-                "flexicon.code.headless_ui.HeadlessLcmUI is not available in "
-                "this flexicon build; falling back to the WinForms FwLcmUI. "
-                "A ConflictingSave() in this headless subprocess can hang "
-                "indefinitely instead of raising (issue #96 / flexicon "
-                "#238). Upgrade flexicon to remove this hazard."
+                "This flexicon build does not advertise ui-injection in "
+                "CAPABILITIES; OpenProject will omit ui= and use flexicon's "
+                "default LcmUI."
             )
 
         FLExInitialize()
@@ -5270,17 +5274,26 @@ def run_scan():
     try:
         from flexicon import FLExInitialize, FLExCleanup, FLExProject
 
-        # Same headless-UI fallback as handle_run_module's runner (issue #96
-        # A-8 / flexicon #238): a generated runner has no WinForms message
-        # pump, so a ConflictingSave() dialog with no owner hangs forever.
-        try:
-            from flexicon.code.headless_ui import HeadlessLcmUI
-            _lcm_ui = HeadlessLcmUI()
-        except ImportError:
+        # Same headless-UI wiring as handle_run_module's runner (#96 / #148).
+        import flexicon as _flexicon_pkg
+        _UI_CAPS = getattr(_flexicon_pkg, "CAPABILITIES", frozenset())
+        if "ui-injection" in _UI_CAPS:
+            try:
+                from flexicon import HeadlessLcmUI
+                _lcm_ui = HeadlessLcmUI()
+            except ImportError:
+                _lcm_ui = None
+                report.Warning(
+                    "flexicon advertises ui-injection but HeadlessLcmUI is not "
+                    "importable from the top-level flexicon package; OpenProject "
+                    "will omit ui= and use flexicon's default LcmUI."
+                )
+        else:
             _lcm_ui = None
             report.Warning(
-                "flexicon.code.headless_ui.HeadlessLcmUI is not available in "
-                "this flexicon build; falling back to the WinForms FwLcmUI."
+                "This flexicon build does not advertise ui-injection in "
+                "CAPABILITIES; OpenProject will omit ui= and use flexicon's "
+                "default LcmUI."
             )
 
         FLExInitialize()

@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Cross-session `operations.log` rotation dropped multi-day spans** ([#110](https://github.com/MattGyverLee/FlexToolsMCP/issues/110)).
+  The durable rollup now keeps 12 size-based backups (was 3) while per-session
+  log files stay at 3. Confirmed log triage still has jsonl and dated session
+  folders as authoritative fallbacks when a byte cursor on `operations.log`
+  crosses a rotation boundary.
 - **`run_module` refused writes against its own idle parse worker, naming it as
   a foreign process to kill** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
   `flextools_try_word` / `flextools_parse_text` leave a shared read worker

@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 """Issue #119: run_module execution responses carry the tool-response envelope."""
 
-import pytest
-
 from flextoolsmcp.response_utils import CONTRACT_VERSION
 from flextoolsmcp.server.handlers.execution import _finalize_run_module_response
 

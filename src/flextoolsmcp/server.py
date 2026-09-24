@@ -453,6 +453,13 @@ def _load_library_api_index(
         try:
             with open(api_path, "r", encoding="utf-8") as f:
                 setattr(index, attr_name, json.load(f))
+            if attr_name == "liblcm":
+                index.liblcm_entities_epoch += 1
+                try:
+                    from flextoolsmcp.server.handlers.api import clear_inherited_members_cache
+                except ImportError:
+                    from server.handlers.api import clear_inherited_members_cache
+                clear_inherited_members_cache()
             extracted_version = _extract_file_version(api_path)
             setattr(index, version_attr, extracted_version)
             if installed_version:
@@ -513,6 +520,9 @@ class APIIndex:
     liblcm_version: str | None = None
     flexicon_version: str | None = None
     flexlibs_stable_version: str | None = None
+    # Bumped on each LibLCM index load/reload (issue #150): invalidates the
+    # inherited-members memo keyed on entities mappings.
+    liblcm_entities_epoch: int = 0
 
     @classmethod
     def load(cls, index_dir: Path) -> "APIIndex":

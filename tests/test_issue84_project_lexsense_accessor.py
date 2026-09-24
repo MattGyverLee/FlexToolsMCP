@@ -35,6 +35,8 @@ from flextoolsmcp.server.validators import (
     detect_unknown_attribute_error,
 )
 
+from conftest import require_live_flexicon as _require_live_flexicon
+
 TEMPLATE_DIR = pathlib.Path(__file__).resolve().parents[1] / "src" / "flextoolsmcp" / "templates"
 
 

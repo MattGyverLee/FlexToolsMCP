@@ -50,7 +50,7 @@ def require_live_flexicon():
     Unlike ``pytest.importorskip("flexicon")``, this also catches the bare
     ``Exception`` flexicon raises when no FieldWorks/SIL.LCModel runtime is
     present (pyflexicon is a runtime dependency, so CI always installs the
-    package -- it just cannot always import successfully).
+    package -- it just cannot always import successfully). See issue #115.
     """
     try:
         import flexicon  # noqa: F401

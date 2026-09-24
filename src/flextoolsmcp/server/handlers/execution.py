@@ -4039,6 +4039,23 @@ class SimpleReporter:
         print(payload)
 
 
+def _maybe_refresh_from_disk(project):
+    # Issue #147: a foreign FLEx save while this runner holds the project open
+    # leaves the in-memory cache stale; reconcile before CloseProject() commits.
+    if not WRITE_ENABLED or project is None:
+        return
+    try:
+        import flexicon
+
+        if "refresh-from-disk" not in getattr(flexicon, "CAPABILITIES", ()):
+            return
+        refresh = getattr(project, "RefreshFromDisk", None)
+        if callable(refresh):
+            refresh()
+    except Exception:
+        pass
+
+
 def run_module():
     result = {
         "success": False,
@@ -4375,6 +4392,7 @@ def run_module():
         # either a successful or an already-failed script body.
         if project:
             try:
+                _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
                 _teardown_msg = "{}: {}".format(type(e).__name__, str(e))
@@ -5224,6 +5242,21 @@ class SimpleReporter:
         print(payload)
 
 
+def _maybe_refresh_from_disk(project):
+    if not WRITE_ENABLED or project is None:
+        return
+    try:
+        import flexicon
+
+        if "refresh-from-disk" not in getattr(flexicon, "CAPABILITIES", ()):
+            return
+        refresh = getattr(project, "RefreshFromDisk", None)
+        if callable(refresh):
+            refresh()
+    except Exception:
+        pass
+
+
 def run_scan():
     result = {
         "success": False,
@@ -5326,6 +5359,7 @@ def run_scan():
     finally:
         if project is not None:
             try:
+                _maybe_refresh_from_disk(project)
                 project.CloseProject()
             except Exception as e:
                 _teardown_msg = "{}: {}".format(type(e).__name__, str(e))

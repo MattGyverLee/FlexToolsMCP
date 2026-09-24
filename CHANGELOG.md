@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
+  Preflight and runtime polymorphic hints now detect the common mistake of
+  chaining ``.Cache`` after ``project.project`` (which is already the
+  ``LcmCache``) and emit a concrete rewrite such as
+  ``project.project.LangProject`` instead of deferring to a generic resubmit.
 - **Pre-write backup skipped when preflight missed mutations** ([#99](https://github.com/MattGyverLee/FlexToolsMCP/issues/99)).
   Automatic backup now runs on the first ``write_enabled`` execution per
   (session, project), not only when ``needs_lock`` is true, and every

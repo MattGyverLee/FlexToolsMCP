@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
+  Preflight and runtime polymorphic hints now detect the common mistake of
+  chaining ``.Cache`` after ``project.project`` (which is already the
+  ``LcmCache``) and emit a concrete rewrite such as
+  ``project.project.LangProject`` instead of deferring to a generic resubmit.
 - **Docs gap: `find_writing_system()` / `GetMorphType()` return raw LCM objects**
   ([#160](https://github.com/MattGyverLee/FlexToolsMCP/issues/160)). Added a
   ``FLEXTOOLS-STYLE-GUIDE.md`` callout (section 5b) with JSON-boundary patterns

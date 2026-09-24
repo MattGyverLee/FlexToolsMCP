@@ -2041,6 +2041,103 @@ def _interfaces_for_cast_property(
     return candidates
 
 
+def _is_project_project_node(node: ast.AST) -> bool:
+    """True when *node* is the ``project.project`` sub-expression (one Attribute)."""
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "project"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "project"
+    )
+
+
+def _attr_chain_from_outer_attr(node: ast.Attribute) -> Optional[List[str]]:
+    """Return dotted name parts from *node* (outermost Attribute) down to a Name root."""
+    parts: List[str] = []
+    cur: ast.AST = node
+    while isinstance(cur, ast.Attribute):
+        parts.append(cur.attr)
+        cur = cur.value
+    if isinstance(cur, ast.Name):
+        parts.append(cur.id)
+        return list(reversed(parts))
+    return None
+
+
+def _rewrite_chain_drop_redundant_cache(parts: List[str]) -> str:
+    """Strip ``project.project.Cache`` down to ``project.project`` in a chain."""
+    out: List[str] = []
+    i = 0
+    while i < len(parts):
+        if i + 2 < len(parts) and parts[i : i + 3] == ["project", "project", "Cache"]:
+            out.extend(["project", "project"])
+            i += 3
+        else:
+            out.append(parts[i])
+            i += 1
+    return ".".join(out)
+
+
+def _chain_has_redundant_project_cache(parts: List[str]) -> bool:
+    for i in range(len(parts) - 2):
+        if parts[i : i + 3] == ["project", "project", "Cache"]:
+            return True
+    return False
+
+
+def _redundant_project_cache_casting_issues(tree: ast.AST) -> List[Dict[str, Any]]:
+    """Issue #108 (a): preflight rewrite for ``project.project.Cache.*`` hops."""
+    parent_map = _build_parent_map(tree)
+    seen_lines: Set[int] = set()
+    issues: List[Dict[str, Any]] = []
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or node.attr != "Cache":
+            continue
+        if not _is_project_project_node(node.value):
+            continue
+        if node.lineno in seen_lines:
+            continue
+        seen_lines.add(node.lineno)
+
+        outer = node
+        while True:
+            parent = parent_map.get(outer)
+            if isinstance(parent, ast.Attribute) and parent.value is outer:
+                outer = parent
+            else:
+                break
+        if not isinstance(outer, ast.Attribute):
+            continue
+        chain = _attr_chain_from_outer_attr(outer)
+        if not chain or not _chain_has_redundant_project_cache(chain):
+            continue
+        original = ".".join(chain)
+        rewrite = _rewrite_chain_drop_redundant_cache(chain)
+        issues.append(
+            {
+                "property": "Cache",
+                "line": node.lineno,
+                "pattern": "project.project.Cache",
+                "found_at": original,
+                "missing_on": ["LcmCache"],
+                "available_on": [],
+                "fix": (
+                    "Remove the redundant `.Cache`: `project.project` is already the "
+                    "LcmCache (FLExProject.project IS the cache). Use "
+                    f"`{rewrite}` instead of `{original}`."
+                ),
+                "flexicon_helper": None,
+                "severity": "error",
+                "rewrite": rewrite,
+                "imports_needed": [],
+                "cast_interface": None,
+                "kind": "redundant_lcm_cache_hop",
+            }
+        )
+    return issues
+
+
 def _polymorphic_runtime_suggestion(
     object_type: str,
     property_name: str,
@@ -2097,6 +2194,23 @@ def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = Non
 
     if match:
         object_type, property_name = match.groups()
+
+        # Issue #108 (a): ``project.project`` is already LcmCache; ``.Cache`` is redundant.
+        if object_type == "LcmCache" and property_name == "Cache":
+            suggestion = (
+                "Remove the redundant `.Cache`: `project.project` is already the "
+                "LcmCache (FLExProject.project IS the cache; see flexicon#193). Use "
+                "`project.project.<member>` instead of `project.project.Cache.<member>`."
+            )
+            return {
+                "is_polymorphic_error": True,
+                "object_type": object_type,
+                "property_name": property_name,
+                "rewrite": "project.project",
+                "imports_needed": [],
+                "cast_candidates": [],
+                "suggestion": suggestion,
+            }
 
         # Issue #36: mirror the pre-flight casting lookup so runtime errors carry
         # the same self-healing payload (rewrite + imports_needed) that pre-flight
@@ -5441,6 +5555,7 @@ def detect_casting_needs(
         except SyntaxError:
             tree = None
     if tree is not None:
+        issues.extend(_redundant_project_cache_casting_issues(tree))
         ast_assigns, _ast_calls, ast_bindings = _collect_assign_call_nodes(tree)
         # Issue #130: type every FLExProject-valued variable, not just the
         # injected `project`, so a module written in flexicon's documented

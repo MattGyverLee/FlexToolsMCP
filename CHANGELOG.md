@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Obsolete `FLEXLIBS2_PATH` in `.env` looked like active configuration but was
+  silently ignored** ([#141](https://github.com/MattGyverLee/FlexToolsMCP/issues/141)).
+  The MCP server now loads repo-root `.env` on startup (matching
+  `flextoolsmcp.refresh`), skips applying obsolete keys, and logs a clear warning
+  pointing at `FLEXICON_PATH` / `pip install pyflexicon`.
 - **`get_workspace_notice(once=True)` suppressed warnings after cwd change** ([#151](https://github.com/MattGyverLee/FlexToolsMCP/issues/151)).
   The response-envelope guard is now keyed by detected ``repo_root`` instead of a
   single process-global flag, so moving into a different source checkout can

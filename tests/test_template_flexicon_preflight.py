@@ -545,16 +545,16 @@ class TestPreflightFailurePaths(unittest.TestCase):
         self.assertIn("try:\n    import flexicon as _flexicon\n", head)
         package_try = head.index("try:\n    import flexicon as _flexicon\n")
         symbol_import = head.index("from flexicon import (")
-        handler = head.index("except ImportError as _import_error:")
-        load_handler = head.index("except Exception as _load_error:")
+        import_error_handler = head.index("except ImportError as _import_error:")
+        load_error_handler = head.index("except Exception as _load_error:")
         self.assertLess(
-            handler, symbol_import,
+            import_error_handler, symbol_import,
             "The missing-package handler must close BEFORE the `from flexicon "
             "import (...)` list, or a bad name lands in it again.",
         )
-        self.assertLess(load_handler, symbol_import)
-        self.assertLess(package_try, handler)
-        self.assertLess(handler, load_handler)
+        self.assertLess(load_error_handler, symbol_import)
+        self.assertLess(package_try, import_error_handler)
+        self.assertLess(import_error_handler, load_error_handler)
 
     def test_template_captures_non_importerror_on_package_import(self):
         """Structural guard for issue #132."""

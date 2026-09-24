@@ -30,10 +30,10 @@ DATE:
 # ============================================================================
 # This prevents FLExTools's default flexlibs (stable version) from being used
 #
-# The import is guarded so that a missing pyflexicon becomes a readable message
-# from _flexicon_preflight() below, instead of an ImportError traceback thrown
-# before Main() is ever reached. FlexTools shows that traceback with no remedy
-# and no hint that the module itself is fine.
+# The import is guarded so that environment problems become a readable message
+# from _flexicon_preflight() below, instead of a traceback thrown before Main()
+# is ever reached. FlexTools shows that traceback with no remedy and no hint
+# that the module itself is fine.
 #
 # The two imports are guarded SEPARATELY on purpose. `except ImportError`
 # cannot tell "no such package" from "no such name in the package", so a single
@@ -51,6 +51,9 @@ except ImportError as _import_error:
     _flexicon = None
     _FLEXICON_IMPORT_ERROR = str(_import_error)
 except Exception as _load_error:
+    # pyflexicon is often installed while FieldWorks is not; flexicon then raises
+    # a bare Exception at import time. That is not an ImportError, but it is the
+    # same class of environment failure the pre-flight exists to describe.
     _flexicon = None
     _FLEXICON_LOAD_ERROR = str(_load_error)
 

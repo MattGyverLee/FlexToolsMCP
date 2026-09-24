@@ -1845,6 +1845,104 @@ def detect_undiscovered_entities(
     return result
 
 
+_PATTERN_TRACEBACK_FRAME = re.compile(
+    r'^\s*File "(?P<file>[^"]+)", line (?P<line>\d+)(?:, in (?P<qualname>[^\n]*))?',
+    re.MULTILINE,
+)
+
+# Issue #123: flexicon frames that raise AttributeError on broken upstream APIs.
+_KNOWN_FLEXICON_INTERNAL_SITES: Dict[str, str] = {
+    "LexiconAddComplexForm": "Upstream flexicon defect (flexicon#272). Use an alternative API or report upstream.",
+    "AddComplexFormComponent": "Upstream flexicon defect (flexicon#272). Use an alternative API or report upstream.",
+}
+
+
+def split_runner_error_and_traceback(error_msg: str) -> Tuple[str, str]:
+    """Split runner ``error`` text into the one-line message and traceback tail."""
+    if not error_msg:
+        return "", ""
+    text = error_msg
+    if text.startswith("Execution error: "):
+        text = text[len("Execution error: ") :]
+    if "\n" not in text:
+        return text.strip(), ""
+    first_nl = text.find("\n")
+    return text[:first_nl].strip(), text[first_nl + 1 :].strip()
+
+
+def attribute_error_raising_frame(traceback_text: str) -> Optional[Dict[str, Any]]:
+    """Return the innermost ``File ...`` frame from a traceback string."""
+    if not traceback_text:
+        return None
+    frames = list(_PATTERN_TRACEBACK_FRAME.finditer(traceback_text))
+    if not frames:
+        return None
+    last = frames[-1]
+    qualname = (last.group("qualname") or "").strip()
+    func_name = qualname.split(".")[-1] if qualname else ""
+    return {
+        "file": last.group("file"),
+        "line": int(last.group("line")),
+        "qualname": qualname,
+        "function": func_name,
+    }
+
+
+def _path_is_flexicon_package(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    if normalized == "<string>":
+        return False
+    if "/flexicon/" in normalized or normalized.endswith("/flexicon"):
+        return True
+    if "/site-packages/flexicon" in normalized:
+        return True
+    return False
+
+
+def detect_flexicon_internal_attribute_error(error_msg: str) -> dict:
+    """Detect AttributeErrors raised inside flexicon, not in user module code.
+
+    Returns dict with:
+      - is_wrapper_internal: bool
+      - object_type, property_name: parsed from the error line when present
+      - raising_frame: file/line/qualname of the innermost traceback frame
+      - suggestion: user-facing guidance (no cast/resubmit loop)
+    """
+    message_line, traceback_text = split_runner_error_and_traceback(error_msg)
+    pattern = r"'(\w+)'\s+object\s+has\s+no\s+attribute\s+'(\w+)'"
+    match = re.search(pattern, message_line)
+    if not match:
+        return {"is_wrapper_internal": False}
+
+    object_type, property_name = match.groups()
+    frame = attribute_error_raising_frame(traceback_text)
+    if not frame or not _path_is_flexicon_package(frame["file"]):
+        return {"is_wrapper_internal": False}
+
+    func_name = frame.get("function") or ""
+    upstream_note = _KNOWN_FLEXICON_INTERNAL_SITES.get(func_name, "")
+    location = f"{frame['file']}:{frame['line']}"
+    if frame.get("qualname"):
+        location = f"{frame['qualname']} ({location})"
+
+    suggestion = (
+        f"This failed inside flexicon ({location}), not in your script. "
+        f"No cast on your side will fix an AttributeError in the wrapper. "
+    )
+    if upstream_note:
+        suggestion += upstream_note
+    else:
+        suggestion += "Try a different flexicon API or report the failure upstream."
+
+    return {
+        "is_wrapper_internal": True,
+        "object_type": object_type,
+        "property_name": property_name,
+        "raising_frame": frame,
+        "suggestion": suggestion,
+    }
+
+
 def detect_polymorphic_error(error_msg: str, casting_index: Optional[Dict] = None) -> dict:
     """Detect polymorphic attribute errors and suggest resolve_property.
 

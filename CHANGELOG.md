@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Flexicon-internal `AttributeError` misclassified as `PolymorphicAttributeError`**
+  ([#123](https://github.com/MattGyverLee/FlexToolsMCP/issues/123)). When the
+  innermost traceback frame is inside the flexicon package, `run_module` now
+  reports `WrapperInternalError` with upstream-oriented guidance instead of
+  advising a cast/resubmit loop the user cannot satisfy.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current

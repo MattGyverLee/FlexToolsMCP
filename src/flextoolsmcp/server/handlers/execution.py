@@ -63,7 +63,8 @@ except ImportError:
 # Import validators with fallback
 try:
     from ..validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports,
         certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
@@ -80,7 +81,8 @@ try:
     )
 except ImportError:
     from server.validators import (
-        detect_cud_operations, detect_polymorphic_error, detect_class_id_constant_error,
+        detect_cud_operations, detect_polymorphic_error, detect_flexicon_internal_attribute_error,
+        detect_class_id_constant_error,
         detect_undefined_variables,
         detect_missing_operations_imports, detect_wrong_library_imports, certify_script_readonly, get_unprotected_write_guidance, detect_casting_needs, validate_server_state,
         detect_unknown_attribute_error, detect_invalid_project_chains,
@@ -4816,6 +4818,17 @@ MODULE_CODE = {code}
                 _skip_generic_attr_paths = True
             else:
                 _skip_generic_attr_paths = False
+            wrapper_internal = detect_flexicon_internal_attribute_error(
+                execution_result["error"]
+            )
+            if wrapper_internal.get("is_wrapper_internal"):
+                execution_result["wrapper_internal_error_detected"] = True
+                execution_result["error_type"] = "WrapperInternalError"
+                execution_result["object_type"] = wrapper_internal["object_type"]
+                execution_result["property_name"] = wrapper_internal["property_name"]
+                execution_result["help"] = wrapper_internal["suggestion"]
+                execution_result["raising_frame"] = wrapper_internal.get("raising_frame")
+                _skip_generic_attr_paths = True
             polymorphic_info = detect_polymorphic_error(execution_result["error"], _rt_casting_index)
             # Issue #39: Python's own "Did you mean: 'X'?" suffix is authoritative
             # about what exists on the live object, so for a typo it beats any

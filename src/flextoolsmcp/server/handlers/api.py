@@ -495,13 +495,21 @@ KEY_INHERITED_FROM = "inherited_from"
 KEY_TOTAL_METHODS_INCLUDING_INHERITED = "total_methods_including_inherited"
 KEY_TOTAL_PROPERTIES_INCLUDING_INHERITED = "total_properties_including_inherited"
 
-# T2.1: memoized per (id(entities_index), entity_name). The `entities` dict
-# for a given library is loaded once per process (server.py's
-# ensure_liblcm_loaded() loads it lazily and never mutates/reloads it in
-# place -- see server.py:569-583), so caching against its identity is safe
-# and avoids re-walking ancestry (max depth 6, avg 1.33, max ancestor set 14
+# T2.1: memoized per (cache_token, entity_name). ``cache_token`` is
+# ``APIIndex.liblcm_entities_epoch``, bumped on each LibLCM load/reload
+# (issue #150); tests may omit it and fall back to ``id(entities_index)``.
+# Avoids re-walking ancestry (max depth 6, avg 1.33, max ancestor set 14
 # -- cycle1-explore.md Sec.4) on every request.
 _INHERITED_MEMBERS_CACHE: Dict[tuple, Dict[str, list]] = {}
+
+
+def clear_inherited_members_cache() -> None:
+    """Drop memoized LibLCM inheritance walks (issue #150).
+
+    Called when the LibLCM entities index is loaded or reloaded in-process so
+    a recycled ``id(entities)`` cannot serve stale ancestor members.
+    """
+    _INHERITED_MEMBERS_CACHE.clear()
 
 
 def _direct_ancestors(entity: dict) -> list:
@@ -529,7 +537,12 @@ def _is_interface_entity(entity_name: str, entity: dict | None) -> bool:
     return entity.get(KEY_TYPE) == "interface"
 
 
-def collect_inherited_members(entity_name: str, index: dict) -> Dict[str, list]:
+def collect_inherited_members(
+    entity_name: str,
+    index: dict,
+    *,
+    cache_token: int | None = None,
+) -> Dict[str, list]:
     """T2.1: walk `entity_name`'s ancestry in `index` (an ``entities``
     mapping, e.g. ``api_index.liblcm["entities"]``) and return ancestor-only
     members.
@@ -547,7 +560,12 @@ def collect_inherited_members(entity_name: str, index: dict) -> Dict[str, list]:
     are not expected to cycle, but a malformed or hand-authored index (e.g.
     in tests) must not hang the process. Memoized at module scope.
     """
-    cache_key = (id(index), entity_name)
+    # Issue #150: ``id(index)`` alone is unsafe after GC reuses addresses across
+    # reloads; callers pass ``cache_token`` (APIIndex.liblcm_entities_epoch).
+    cache_key = (
+        cache_token if cache_token is not None else id(index),
+        entity_name,
+    )
     cached = _INHERITED_MEMBERS_CACHE.get(cache_key)
     if cached is not None:
         return cached
@@ -630,7 +648,7 @@ def _ancestor_entity_names(entity_name: str, index: dict) -> list:
     return order
 
 
-def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None) -> dict:
+def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit: int, offset: int, object_type: str = "", library: str = "flexicon", casting_index: dict | None = None, entities_index: dict | None = None, inherited_members_cache_token: int | None = None) -> dict:
     """Apply pagination and filtering to an entity's methods and properties.
 
     Issue #48: when a ``casting_index`` is supplied, per-property casting
@@ -725,7 +743,11 @@ def paginate_entity(entity: dict, summary_only: bool, method_filter: str, limit:
     inherited_methods: list = []
     inherited_properties: list = []
     if library == "liblcm" and entities_index is not None and _is_interface_entity(object_type, entity):
-        inherited = collect_inherited_members(object_type, entities_index)
+        inherited = collect_inherited_members(
+            object_type,
+            entities_index,
+            cache_token=inherited_members_cache_token,
+        )
         inherited_methods = inherited[KEY_METHODS]
         inherited_properties = inherited[KEY_PROPERTIES]
 
@@ -999,6 +1021,9 @@ async def handle_get_object_api(args: dict) -> list[TextContent]:
                 entities[object_type], summary_only, method_filter, limit, offset,
                 object_type=object_type, library=source_name, casting_index=casting_index,
                 entities_index=entities,
+                inherited_members_cache_token=(
+                    api_index.liblcm_entities_epoch if source_name == "liblcm" else None
+                ),
             )
             result[KEY_FOUND] = True
             continue

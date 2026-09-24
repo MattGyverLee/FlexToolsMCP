@@ -85,8 +85,9 @@ if _flexicon is not None:
 # uses, and neither one reads as an environment problem on its own:
 #
 #   1. pyflexicon is not installed at all -> ImportError at load time.
-#   1b. pyflexicon is installed but flexicon cannot import (FieldWorks missing,
-#       broken install, etc.) -> a non-ImportError at load time.
+#   1b. pyflexicon is installed but cannot load (FieldWorks missing, etc.) ->
+#       a non-ImportError at import time. The package is present; the runtime
+#       is not.
 #   2. pyflexicon is installed but predates FLExProject.FromOpenProject()
 #      -> the module imports cleanly and then dies on the first line of Main()
 #         with "type object 'FLExProject' has no attribute 'FromOpenProject'".
@@ -229,31 +230,33 @@ def _flexicon_preflight(report):
         if _flexicon is None:
             if _FLEXICON_LOAD_ERROR is not None:
                 _report_preflight_error(report, [
-                    "[ERROR] flexicon (pyflexicon) is installed for FlexTools,",
-                    "[ERROR] but it did not load in this environment.",
+                    "[ERROR] pyflexicon is installed, but flexicon did not load in",
+                    "[ERROR] the Python environment FlexTools is using.",
                     "[ERROR]",
                     "[ERROR]   import failed with: %s" % (_FLEXICON_LOAD_ERROR,),
                     "[ERROR]",
-                    "[ERROR] This is usually a FieldWorks or Python-bitness problem,",
-                    "[ERROR] not a bug in this module. Fix the environment FlexTools",
-                    "[ERROR] uses, then run again.",
+                    "[ERROR] This is usually a FieldWorks / SIL.LCModel runtime",
+                    "[ERROR] problem, not a bug in this module. Fix the FieldWorks",
+                    "[ERROR] install (or run on a machine where FieldWorks works),",
+                    "[ERROR] then try again.",
                     "[ERROR]",
                     "[ERROR] The module itself is fine -- nothing here needs editing.",
                 ])
-            else:
-                _report_preflight_error(report, [
-                    "[ERROR] This module needs flexicon, which is not installed in",
-                    "[ERROR] the Python environment FlexTools is using.",
-                    "[ERROR]",
-                    "[ERROR]   import failed with: %s" % (_FLEXICON_IMPORT_ERROR,),
-                    "[ERROR]",
-                    "[ERROR] To fix it, run this in the Python that FlexTools uses",
-                    "[ERROR] (which is not necessarily the one on your PATH):",
-                    "[ERROR]",
-                    "[ERROR]     pip install pyflexicon",
-                    "[ERROR]",
-                    "[ERROR] The module itself is fine -- nothing here needs editing.",
-                ])
+                return False
+
+            _report_preflight_error(report, [
+                "[ERROR] This module needs flexicon, which is not installed in",
+                "[ERROR] the Python environment FlexTools is using.",
+                "[ERROR]",
+                "[ERROR]   import failed with: %s" % (_FLEXICON_IMPORT_ERROR,),
+                "[ERROR]",
+                "[ERROR] To fix it, run this in the Python that FlexTools uses",
+                "[ERROR] (which is not necessarily the one on your PATH):",
+                "[ERROR]",
+                "[ERROR]     pip install pyflexicon",
+                "[ERROR]",
+                "[ERROR] The module itself is fine -- nothing here needs editing.",
+            ])
             return False
 
         if _FLEXICON_SYMBOL_ERROR is not None or FLExProject is None:

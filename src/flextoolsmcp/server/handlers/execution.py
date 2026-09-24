@@ -866,19 +866,26 @@ def _log_operation_failure(
             first_line = first_line[:500] + "..."
         logger.error(f"Error:           {first_line}")
     if polymorphic_hint and polymorphic_hint.get("is_polymorphic_error"):
-        # Issue #22: with #21's inlined rewrite, the preflight casting
-        # validator usually catches these BEFORE subprocess launch and
-        # returns the rewrite in casting_issues[*].rewrite. By the time we
-        # reach this runtime path, the validator missed it -- so point at
-        # the inlined-rewrite field for next-attempt recovery, not at an
-        # extra resolve_property hop. Logged at INFO because the hint is a
-        # recovery breadcrumb, not a failure marker (those are at ERROR via #17).
-        logger.info(
-            f"Polymorphic hint: object={polymorphic_hint.get('object_type')} "
-            f"property={polymorphic_hint.get('property_name')} "
-            f"-> resubmit; preflight should now emit casting_issues[*].rewrite "
-            f"and casting_issues[*].imports_needed"
-        )
+        # Issue #122: preflight is stateless -- identical code resubmitted after
+        # a runtime polymorphic miss does NOT gain new casting_issues. Log the
+        # actionable hint at ERROR so it survives error-level log filters (#122).
+        obj = polymorphic_hint.get("object_type")
+        prop = polymorphic_hint.get("property_name")
+        guidance = polymorphic_hint.get("help") or polymorphic_hint.get("suggestion")
+        if guidance:
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): {guidance}"
+            )
+        elif polymorphic_hint.get("rewrite"):
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): apply rewrite "
+                f"{polymorphic_hint.get('rewrite')}"
+            )
+        else:
+            logger.error(
+                f"Polymorphic guidance ({obj}.{prop}): cast before accessing "
+                f"'{prop}' or call flextools_resolve_property."
+            )
     if traceback_text:
         logger.debug("Traceback:")
         for tb_line in traceback_text.rstrip().splitlines():
@@ -4909,13 +4916,15 @@ MODULE_CODE = {code}
                         f"'{native_did_you_mean}'. Replace it and re-run."
                     )
                 elif polymorphic_info["is_polymorphic_error"]:
-                    # No concrete rewrite and no name suggestion: fall back to the
-                    # resolve_property hint for manual casting.
+                    # No concrete rewrite and no name suggestion: hand the model the
+                    # fix directly (#122) rather than deferring to a stateless resubmit.
                     execution_result["polymorphic_error_detected"] = True
                     execution_result["error_type"] = "PolymorphicAttributeError"
                     execution_result["object_type"] = polymorphic_info["object_type"]
                     execution_result["property_name"] = polymorphic_info["property_name"]
                     execution_result["help"] = polymorphic_info["suggestion"]
+                    if polymorphic_info.get("cast_candidates"):
+                        execution_result["cast_candidates"] = polymorphic_info["cast_candidates"]
 
         # Issue #75: detect pythonnet overload-resolution failures ("No method
         # matches given arguments"). Distinct failure class from the
@@ -5006,6 +5015,9 @@ MODULE_CODE = {code}
                 # Issue #36: include cast rewrite so runtime errors are self-healing
                 "rewrite": execution_result.get("rewrite"),
                 "imports_needed": execution_result.get("imports_needed") or [],
+                "help": execution_result.get("help"),
+                "suggestion": execution_result.get("help"),
+                "cast_candidates": execution_result.get("cast_candidates") or [],
             }
 
         duration_s = time.monotonic() - t_start

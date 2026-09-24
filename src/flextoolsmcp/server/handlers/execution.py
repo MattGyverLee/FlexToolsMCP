@@ -45,9 +45,21 @@ _, get_operations_logger = safe_import_logging_helpers()
 SessionState = safe_import_session_state()
 
 try:
-    from ..kernel import get_pattern_tracker, get_project_write_lock
+    from ..kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 except ImportError:
-    from server.kernel import get_pattern_tracker, get_project_write_lock
+    from server.kernel import (
+        get_pattern_tracker,
+        get_project_write_lock,
+        should_skip_discovery_gates,
+        discovery_gate_skip_note,
+        is_stateless_client_mode,
+    )
 
 # Skeleton storage closet (issue #24): persist helper defs from successful ops.
 try:
@@ -2050,10 +2062,17 @@ def _build_validate_only_checks(
         checks.append({"gate": "casting", "passed": True})
 
     # --- Gates 6+7: API discovery (REPORT ONLY -- no session mutation) ---
-    _skip_discovery_gates = skip_api_check or provenance_existing
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=provenance_existing,
+    )
     if _skip_discovery_gates:
-        checks.append({"gate": "api_discovery_required", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
-        checks.append({"gate": "undiscovered_entity", "passed": True, "note": "skipped (skip_api_check/source=existing)"})
+        _skip_note = discovery_gate_skip_note(
+            skip_api_check=skip_api_check,
+            provenance_existing=provenance_existing,
+        )
+        checks.append({"gate": "api_discovery_required", "passed": True, "note": _skip_note})
+        checks.append({"gate": "undiscovered_entity", "passed": True, "note": _skip_note})
     else:
         no_prior_discovery = len(session_state_obj.get_discovered_apis()) == 0
         if no_prior_discovery and write_enabled:
@@ -3419,7 +3438,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "undiscovered_entity gates (issue #80). Write-safety + casting already "
             "ran and are unaffected by provenance."
         )
-    _skip_discovery_gates = skip_api_check or _provenance_existing
+    if is_stateless_client_mode() and not skip_api_check and not _provenance_existing:
+        get_operations_logger().info(
+            "[DISCOVERY] FLEXTOOLS_STATELESS=1 -- skipping api_discovery_required and "
+            "undiscovered_entity gates (issue #142). Write-safety + casting already "
+            "ran and are unaffected."
+        )
+    _skip_discovery_gates = should_skip_discovery_gates(
+        skip_api_check=skip_api_check,
+        provenance_existing=_provenance_existing,
+    )
 
     if not _skip_discovery_gates and len(session_state.get_discovered_apis()) == 0:
         if write_enabled:

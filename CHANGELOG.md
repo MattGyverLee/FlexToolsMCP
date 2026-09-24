@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
+  ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
+  ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates
+  (same cost lever as ``source='existing'``). Write-safety, casting, syntax, and
+  unprotected-write preflight are unchanged. ``flextools_health`` exposes
+  ``server.stateless_client_mode``; ``flextools_start`` documents the mode when
+  active.
+
 - **`flextools_run_module` success responses omitted `_contract` / `status`**
   ([#119](https://github.com/MattGyverLee/FlexToolsMCP/issues/119)). Subprocess
   execution results (success, runtime failure, timeout, and temp-file errors)

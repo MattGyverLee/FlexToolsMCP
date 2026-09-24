@@ -9,6 +9,18 @@
   log files stay at 3. Confirmed log triage still has jsonl and dated session
   folders as authoritative fallbacks when a byte cursor on `operations.log`
   crosses a rotation boundary.
+- **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
+  Write-enabled runs preflight already flagged as mutating now attach an advisory
+  `effect_check` block when execution succeeds but `lcm_undoable_action_count`
+  is zero, so a wrapper that mutates nothing is no longer indistinguishable from
+  a real write.
+- **Ephemeral MCP clients blocked by `api_discovery_required` every turn**
+  ([#142](https://github.com/MattGyverLee/FlexToolsMCP/issues/142)). Set
+  ``FLEXTOOLS_STATELESS=1`` in the server environment to skip API discovery gates
+  (same cost lever as ``source='existing'``). Write-safety, casting, syntax, and
+  unprotected-write preflight are unchanged. ``flextools_health`` exposes
+  ``server.stateless_client_mode``; ``flextools_start`` documents the mode when
+  active.
 
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code

@@ -5,7 +5,6 @@ import pytest
 
 from server.validators import (
     _code_for_pattern_scan,
-    _mask_comments_and_strings,
     certify_script_readonly,
     detect_missing_operations_imports,
     detect_wrong_library_imports,

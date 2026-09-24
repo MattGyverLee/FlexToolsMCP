@@ -2267,14 +2267,25 @@ def detect_overload_resolution_error(
     if not match:
         return {"is_overload_error": False}
 
-    method_name = match.group(1).rsplit(".", 1)[-1]
+    qualified_name = match.group(1)
+    if "." in qualified_name:
+        entity_from_error, method_name = qualified_name.rsplit(".", 1)
+    else:
+        entity_from_error = None
+        method_name = qualified_name
     given_types_raw = match.group(2) or ""
     given_arg_types = [
         t.strip().replace("<class '", "").rstrip("'>").strip("'")
         for t in given_types_raw.split(",") if t.strip()
     ]
 
-    all_candidates = _find_method_overloads(method_name, api_index, entity_hint)
+    # Issue #111: pythonnet often qualifies the method (e.g.
+    # ISilDataAccess.BeginUndoTask). Without narrowing, shared names like
+    # BeginUndoTask match unrelated entities and the hint misleads.
+    resolved_entity_hint = entity_hint or entity_from_error
+    all_candidates = _find_method_overloads(
+        method_name, api_index, resolved_entity_hint
+    )
 
     given_arity = len(given_arg_types) if given_arg_types else None
     if given_arity is not None and all_candidates:
@@ -2287,6 +2298,7 @@ def detect_overload_resolution_error(
     result: Dict[str, Any] = {
         "is_overload_error": True,
         "method_name": method_name,
+        "entity_hint": resolved_entity_hint,
         "given_arg_types": given_arg_types,
         "candidates": ordered[:max_candidates],
         "total_candidates_found": len(all_candidates),

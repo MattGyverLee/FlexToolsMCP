@@ -869,6 +869,20 @@ class WorkerPool:
             self._workers[key] = worker
             return worker
 
+    def workers_for(self, project_name: str) -> dict[str, ParseWorkerClient]:
+        """Every RUNNING worker for this project, keyed by role.
+
+        For own-worker lock detection (#223): the shared read worker is not
+        the only role that can hold the project's lock -- the bounded
+        measurement worker (MEASUREMENT_ROLE) can too, briefly -- so a write
+        gate needs every role, not just `peek`'s single SHARED_ROLE default.
+        """
+        return {
+            role: worker
+            for (name, role), worker in self._workers.items()
+            if name == project_name and worker.is_running()
+        }
+
     def peek(
         self, project_name: str, *, role: str = SHARED_ROLE
     ) -> Optional[ParseWorkerClient]:

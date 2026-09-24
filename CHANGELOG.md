@@ -4,6 +4,21 @@
 
 ### Fixed
 
+- **`run_module` refused writes against its own idle parse worker, naming it as
+  a foreign process to kill** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
+  `flextools_try_word` / `flextools_parse_text` leave a shared read worker
+  running until its idle timeout, and `write_ladder.probe_write_access` is pure
+  filesystem: it cannot tell that worker apart from a genuinely foreign Python
+  process holding the same lock, so it always answered `held_by_other` -- on
+  both shared and non-shared projects. `run_module`'s write gate now detects
+  this server's own worker (any role the pool tracks, not just the shared read
+  worker) via the same logic filing already used, shared through the new
+  `parse/own_worker.py`. An idle own worker is released and access re-probed
+  before the refusal would be issued (never at the earlier confirmation-preview
+  probe, so an unconfirmed call cannot tear down a warm worker); a *busy* own
+  worker still refuses, but names itself plainly and never tells the caller to
+  end the process -- it points at `flextools_parse_status` / `parse_cancel`
+  instead. Any remaining foreign holder is refused exactly as before.
 - **Silent no-op mutating runs surfaced via `effect_check`** ([#143](https://github.com/MattGyverLee/FlexToolsMCP/issues/143)).
   Write-enabled runs preflight already flagged as mutating now attach an advisory
   `effect_check` block when execution succeeds but `lcm_undoable_action_count`
@@ -89,6 +104,15 @@
 - **Issue #173:** Pytest no longer writes into the real `~/.flextoolsmcp/logs`
   tree. `get_log_dir()` honors `FLEXTOOLSMCP_LOG_DIR`; the suite sets it via
   `pytest_configure`, with a regression test guarding against silent lapse.
+
+### Added
+
+- **`flextools_parse_release`** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
+  Releases this server's own idle parse worker(s) for a project, dropping the
+  fwdata lock without killing anything. Takes an optional `project_name`
+  (falls back to the session). Refuses with `project_locked` (pointing at
+  `flextools_parse_cancel`) if a run is currently live on one of the
+  project's workers; a no-op success if no worker is running at all.
 
 ### Governance
 

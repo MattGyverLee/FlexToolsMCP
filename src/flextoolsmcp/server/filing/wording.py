@@ -103,10 +103,15 @@ PROBLEM_ANNOTATIONS_SIDE_EFFECT = (
     "annotation in the whole project. No current code path creates them."
 )
 
-#: The non-Send/Receive recovery route.
+#: The non-Send/Receive recovery route. Such a project has no version history,
+#: so a restore is all-or-nothing: the sentence says what it costs, not just
+#: that it exists (maintainer, 2026-09-24).
 RESTORE_ROUTE = (
-    "If filing damages this project, the way back is to restore the backup taken "
-    "before the run (docs/RECOVERY.md). Filing itself cannot be undone."
+    "If filing damages this project, the backup taken before the run is a way back "
+    "(docs/RECOVERY.md), but restoring replaces the ENTIRE project with that copy: "
+    "anything changed after the backup -- by this run or by anyone else -- is lost, "
+    "and this project has no version history to recover it from. Filing itself "
+    "cannot be undone."
 )
 
 #: FR-034: what a cancelled filing run says, in the response and the record.

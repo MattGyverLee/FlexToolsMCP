@@ -195,11 +195,14 @@ def test_a_send_receive_project_is_told_the_real_recovery_route(filing_env):
     assert started["no_recovery_warning"].endswith(wording.SEND_RECEIVE_ROUTE)
 
 
-def test_a_non_send_receive_project_is_told_to_restore_the_backup(filing_env):
+def test_a_non_send_receive_project_is_told_what_a_restore_costs(filing_env):
+    """No version history behind it: a restore loses everything after the backup."""
     filing_env.install(_worker())
     first, _ = _file(filing_env)
     assert first["plan"]["send_receive"] is False
     assert first["plan"]["recovery_route"] == wording.RESTORE_ROUTE
+    assert "replaces the ENTIRE project" in wording.RESTORE_ROUTE
+    assert "is lost" in wording.RESTORE_ROUTE and "no version history" in wording.RESTORE_ROUTE
 
 
 def test_an_unresolvable_projects_directory_is_worded_as_send_receive(monkeypatch):

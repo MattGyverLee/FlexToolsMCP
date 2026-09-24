@@ -34,7 +34,17 @@ space on the backup volume is under 2x the project's `.fwdata` size.
 
 **There is no automated restore tool.** Restoring a backup means overwriting
 a live project file -- the one operation that must never be easy to invoke
-by accident. Restoring is a deliberate, manual, human-supervised procedure:
+by accident. Restoring is a deliberate, manual, human-supervised procedure.
+
+### What a restore costs
+
+A restore replaces the **entire** project with the backup copy. Anything changed
+after that backup is lost: the MCP write you are undoing, and also any other
+work done in FieldWorks or by other tools since then. A project that does not take
+part in Send/Receive has no version history to get it back from. So before
+restoring, ask whether it would be cheaper to repair the damage in place. For a
+Send/Receive project, do not restore at all: discard the local copy and
+re-download it from its repository instead.
 
 ### Steps to restore a backup
 
@@ -59,10 +69,12 @@ by accident. Restoring is a deliberate, manual, human-supervised procedure:
    <ProjectsDir>\<project-name>\<project-name>.fwdata
    ```
 
-4. **Back up the CURRENT (possibly-broken) file first**, just in case:
+4. **Back up the CURRENT (possibly-broken) file first**, just in case. Save it
+   **outside** the project folder: a stray copy inside it can be swept up by
+   Send/Receive and inflate the project's repository.
 
    ```
-   copy "<ProjectsDir>\<project-name>\<project-name>.fwdata" "<ProjectsDir>\<project-name>\<project-name>.fwdata.before-restore"
+   copy "<ProjectsDir>\<project-name>\<project-name>.fwdata" "%USERPROFILE%\.flextoolsmcp\backups\<project-name>\before-restore.fwdata"
    ```
 
 5. **Copy the backup file over the live file:**

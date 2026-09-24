@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
+  Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
+  (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire
+  ruling: preflight casting detection, auto-fix rewrite, and runtime polymorphic hints
+  remain the supported path. `_validate_api_mode` is kept for direct probes/tests only.
+
 - **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
   Preflight and runtime polymorphic hints now detect the common mistake of
   chaining ``.Cache`` after ``project.project`` (which is already the

@@ -237,30 +237,19 @@ def _available_projects_payload() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# DEAD BUT RETAINED: three-tier casting-helper injection.
+# Retired: three-tier casting-helper injection ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
 #
-# `_validate_api_mode`, `_get_casting_helpers_code` and `_get_api_mode_imports`
-# are currently CALLED BY NOTHING on a live path. `_get_api_mode_imports` has no
-# call sites; the only callers of the other two are inside it. The generated
-# runner script does not import `casting_helpers`, so the injection these
-# implement has not happened since at least the 2.3.1 packaging release.
+# Runner-side injection died at commit d3e55d4 (2026-04-07) when the last call to
+# `_get_api_mode_imports` was removed. The restore-vs-retire decision is **retire**:
+# preflight casting detection, auto-fix rewrite, and runtime polymorphic hints
+# already cover the supported path; the helpers swallow errors in ways that
+# contradict the write-path safety guarantee.
 #
-# They are kept here deliberately. The parser-check campaign (CP1-CP6) is an
-# ADDITIVE campaign: removing an unrelated capability is out of its scope, and
-# a deletion riding along in a parser-check commit is how a capability question
-# gets decided without ever being asked. The restore-vs-delete decision, and
-# the overlap with the auto-fix rewrite path that already ships, are tracked as
-# their own issues rather than settled here.
+# `_get_api_mode_imports` / `_get_casting_helpers_code` were deleted here. Archaeology:
+# `specs/parser-check-cp2b/reviews/casting-injection-archivist.md`.
 #
-# Two things a future reader must not conclude from this block:
-#   * That the feature works. It does not run. Do not cite it as live coverage.
-#   * That `_validate_api_mode` can simply be wired up. `api_mode` no longer
-#     selects runtime libraries -- the runner imports `flexicon` unconditionally
-#     -- so there is no live seam for it to gate. That gap is its own issue.
-#
-# NO INJECTION TIER IS REPORTED ANYWHERE, because nothing is injected. The
-# pre-flight casting DETECTION is separate, real, and still runs: it is what
-# populates `casting_issues`.
+# `_validate_api_mode` remains for direct probes/tests (#146, #164). It is not
+# wired into the runner import seam (`api_mode` is advisory; execution is flexicon-only).
 # ---------------------------------------------------------------------------
 
 
@@ -340,131 +329,6 @@ def _validate_api_mode(api_mode: str) -> Tuple[bool, str]:
         return True, ""
 
     return False, f"Unknown API mode: {api_mode}"
-
-
-def _get_casting_helpers_code(injection_tier: str = "full", helpers_needed: Optional[set] = None) -> str:
-    """Generate casting helpers code based on injection tier.
-
-    Uses HELPER_FUNCTION_DEFS from constants to avoid duplication.
-
-    Args:
-        injection_tier: 'none' | 'minimal' | 'full'
-        helpers_needed: Set of helper names for 'minimal' tier
-
-    Returns:
-        Python code string with helper definitions (or empty if tier='none')
-    """
-    try:
-        from ...casting_helpers import HELPER_FUNCTION_DEFS
-    except ImportError:
-        from casting_helpers import HELPER_FUNCTION_DEFS
-
-    if injection_tier == "none":
-        return ""
-
-    if injection_tier == "minimal" and helpers_needed:
-        # Only import what's needed
-        helper_names = ", ".join(sorted(helpers_needed))
-        return f"""
-# Auto-injected: Minimal casting helpers for polymorphic types (three-tier strategy, tier 2)
-try:
-    from casting_helpers import {helper_names}
-except ImportError:
-    # Fallback: Define only needed helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-    # Full injection (tier='full' or defensive fallback)
-    return f"""
-# Auto-injected: Safe casting helpers for polymorphic types (three-tier strategy, tier 3 - full)
-try:
-    from casting_helpers import safe_get_property, smart_cast, cast_or_default, get_headword, get_lexeme_form
-except ImportError:
-    # Fallback: Define all helpers if module not available
-{HELPER_FUNCTION_DEFS}
-"""
-
-
-def _get_api_mode_imports(api_mode: str, helpers_needed: Optional[set] = None, injection_tier: str = "full") -> str:
-    """Generate imports and namespace dict for a given API mode.
-
-    Args:
-        api_mode: One of 'flexlibs_stable', 'flexicon', 'liblcm'
-        helpers_needed: Optional set of specific helper names to inject (e.g., {'get_headword'})
-        injection_tier: 'none' | 'minimal' | 'full'
-            - none: Don't inject casting helpers (code pre-flighted, safe)
-            - minimal: Only inject helpers in helpers_needed set
-            - full: Inject full suite of helpers (defensive mode)
-
-    Returns:
-        imports_code: Python code string with imports and helpers
-
-    Raises:
-        ValueError: If API mode is invalid or required libraries are not installed
-    """
-    if helpers_needed is None:
-        helpers_needed = set()
-
-    # Gate #1: Validate API mode is valid
-    is_valid, error_msg = _validate_api_mode(api_mode)
-    if not is_valid:
-        raise ValueError(f"API mode validation failed: {error_msg}")
-
-    # Base imports per API mode
-    BASE_IMPORTS = {
-        "flexlibs_stable": "from flexlibs import FLExInitialize, FLExCleanup, FLExProject",
-        "flexicon": "from flexicon import FLExInitialize, FLExCleanup, FLExProject",
-        "liblcm": """import clr
-clr.AddReference('SIL.LCModel')
-from SIL.LCModel import *
-from SIL.LCModel.Core.WritingSystems import *
-
-def FLExInitialize():
-    \"\"\"Initialize LibLCM backend.\"\"\"
-    pass
-
-def FLExCleanup():
-    \"\"\"Cleanup LibLCM backend.\"\"\"
-    pass
-
-class FLExProject:
-    \"\"\"Wrapper for direct LibLCM project access.\"\"\"
-    def __init__(self):
-        self._backend = None
-        self._cache = None
-
-    def OpenProject(self, projectName, writeEnabled=False):
-        \"\"\"Open project using LibLCM directly.\"\"\"
-        try:
-            from SIL.LCModel import LcmCache
-            self._cache = LcmCache.CreateCacheForNewLcmProject(projectName, "en", "en", "en",
-                                                               writeSystemType=LcmWriteSystemType.kDefault)
-            self._backend = self._cache.ServiceLocator
-        except Exception as e:
-            raise RuntimeError(f"Failed to open LibLCM project: {e}")
-
-    def CloseProject(self):
-        \"\"\"Close project.\"\"\"
-        if self._cache:
-            self._cache.Dispose()
-
-    def __getattr__(self, name):
-        \"\"\"Delegate unknown attributes to backend.\"\"\"
-        if self._backend:
-            return getattr(self._backend, name)
-        raise AttributeError(f"Project not initialized: {name}")
-""",
-    }
-
-    if api_mode not in BASE_IMPORTS:
-        raise ValueError(f"Unknown API mode: {api_mode}")
-
-    # Get base imports and append casting helpers (single shared logic)
-    imports = BASE_IMPORTS[api_mode]
-    casting_helpers = _get_casting_helpers_code(injection_tier, helpers_needed)
-    imports += casting_helpers
-
-    return imports
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
+  Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
+  `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current
+  FieldWorks stacks.
 - **Flexicon template pre-flight ignored non-``ImportError`` load failures**
   ([#132](https://github.com/MattGyverLee/FlexToolsMCP/issues/132)). When
   ``pyflexicon`` is installed but FieldWorks is absent, ``import flexicon``

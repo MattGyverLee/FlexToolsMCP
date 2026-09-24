@@ -88,6 +88,29 @@ def test_all_example_code_parses_as_python():
             raise AssertionError(f"{ex['id']} code does not parse: {e}") from e
 
 
+# liblcm 11 removed several LangProject *Inventory* OA accessors; flexicon
+# exposes the same data via project.Wordforms (and siblings). Issue #98.
+_LIBLCM11_REMOVED_INVENTORY_ACCESSORS = (
+    "WordformInventoryOA",
+)
+
+
+def test_worked_examples_avoid_liblcm11_removed_inventory_accessors():
+    for ex in WORKED_EXAMPLES:
+        code = ex.get("code", "")
+        for removed in _LIBLCM11_REMOVED_INVENTORY_ACCESSORS:
+            assert removed not in code, (
+                f"worked example {ex['id']!r} still references removed {removed}"
+            )
+
+
+def test_analysis_subtype_example_uses_wordforms_facade():
+    example = next(
+        ex for ex in WORKED_EXAMPLES if ex["id"] == "analysis-subtype-disambiguation"
+    )
+    assert "project.Wordforms.GetAll()" in example["code"]
+
+
 if __name__ == "__main__":
     for name in [n for n in dir() if n.startswith("test_")]:
         try:

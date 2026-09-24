@@ -4553,6 +4553,23 @@ MODULE_CODE = {code}
                     code_size_bytes=_code_size_bytes,
                 )
 
+        # Issue #223: an idle parse read worker holds the project open and the
+        # probe reports `held_by_other` for our own PID. Filing already
+        # releases (non-shared) or coexists (shared); run_module's writable
+        # open cannot share the project with that worker, so release it and
+        # reprobe before the gate -- same as filing row 11, without the
+        # sharing carve-out.
+        if needs_lock and _decision is not None and _decision.refusal is not None:
+            from .parse import _held_by_own_read_worker, get_runner
+            from ..parse.worker_client import SHARED_ROLE
+
+            _runner = get_runner()
+            if _held_by_own_read_worker(_runner, project_name, _decision):
+                await _runner.release_worker(project_name, role=SHARED_ROLE)
+                _decision = write_ladder.probe_write_access(project_name)
+                _access = _decision.access
+                _live_fw_peer = _decision.live_peer
+
         # Issue #93 CP4 (T4.1): write gate, driven by the access probe rather
         # than by the bare existence of a .fwdata.lock file.
         #

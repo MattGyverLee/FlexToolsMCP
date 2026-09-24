@@ -24,10 +24,11 @@ Additional tool-specific data keys are spread at the top level alongside
 these envelope keys. Success models use `extra="ignore"` so unknown keys
 are forward-compatible.
 
-Success responses may also carry optional top-level `update_notice` and
-`workspace_notice` blocks — see
-[update_notice](#update_notice-advisory-block) and
-[workspace_notice](#workspace_notice-advisory-block) below.
+Success responses may also carry optional top-level `update_notice`,
+`workspace_notice`, and `project_adopted_notice` blocks — see
+[update_notice](#update_notice-advisory-block),
+[workspace_notice](#workspace_notice-advisory-block), and
+[project_adopted_notice](#project_adopted_notice-advisory-block) below.
 
 #### Graceful discovery redirect (issue #80)
 
@@ -503,6 +504,32 @@ instead, because both are moments where the setup can still be changed:
 - `flextools_health` — adds the same `WORKSPACE: …` line to `warnings`.
 
 Built by `get_workspace_notice()` in `flextoolsmcp/workspace_check.py`.
+
+---
+
+## `project_adopted_notice` advisory block
+
+Success and error responses may carry an optional top-level
+`project_adopted_notice` block when a tool call **re-points** the session
+project from one already-set name to another (issue #174; deferred from #168
+ruling R6). It is an **additive optional field** and did **not** bump the
+contract version.
+
+| Key | Type | Description |
+|---|---|---|
+| `previous_project` | string | Session project name before this call adopted a new one. |
+| `project` | string | Canonical project name now stored on the session. |
+| `message` | string | Human-readable summary naming both projects and stating that unqualified calls target the new project until changed again. |
+
+**Behavior guarantees.** Emitted only when the session already had a non-empty
+`project_name` and this call's resolved `project_name` differs — first adoption
+from an empty session is silent. The block is queued on adoption and consumed
+into **one** response envelope (success or error) for that call; it is not
+repeated on later calls. Write gating is unchanged: this is advisory only.
+
+Built by `adopt_resolved_project()` in `flextoolsmcp/project_adoption.py`,
+attached in `response_utils.build_response_with_context()` and
+`response_utils.error_response()`.
 
 ---
 

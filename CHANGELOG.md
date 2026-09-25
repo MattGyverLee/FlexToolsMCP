@@ -251,6 +251,11 @@ sorted position, not the top). Changes without an issue go under Other.
   `flextools_parse_text(apply=true)` run could file a word. `FilingWorker` now
   never idle-releases; `final_commit` closes the project. `FilingBackend.setup`
   refuses by name (`runtime_error` / `ProjectNotOpen`) if the project is closed.
+- **Pre-handler dispatch failures bypassed the structured error envelope**
+  ([#243](https://github.com/MattGyverLee/FlexToolsMCP/issues/243)). Session
+  gate, unknown-tool, and Pydantic validation failures in `call_tool` now return
+  `session_not_initialized`, `unknown_tool`, and `invalid_input` via
+  `error_response()` instead of legacy plain-text or non-contract JSON shapes.
 - **Search/API rows advertised broken `from flexicon import` lines for
   internal classes** ([#245](https://github.com/MattGyverLee/FlexToolsMCP/issues/245)).
   ``_build_entity_import`` now AST-parses flexicon's ``__init__.py`` re-exports

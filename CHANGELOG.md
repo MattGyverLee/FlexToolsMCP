@@ -473,6 +473,15 @@ reporting whether the sandbox spine is ready.
   and each `AlternateFormsOS` item), not on the entry. `entry.IsAbstract` on an
   `ILexEntry` receiver now gets a `misplaced_member` hint that points to those
   forms, instead of a spelling or cast suggestion.
+- **Weekly watch for when the `DoNotUseForParsing` block can be lifted.**
+  The block is temporary. FLEx may implement the field in its parsers
+  ([LT-22810](https://jira.sil.org/browse/LT-22810)), so the deprecation entry
+  now carries `tracking` and `upstream_watch` data. The new workflow
+  `upstream-flag-watch.yml` runs `scripts/upstream_flag_watch.py` every Monday.
+  It searches sillsdev/FieldWorks, liblcm and machine for the term and ignores
+  the 2026-09-25 baseline paths and PRs. When something new appears (a code
+  path, PR, issue or commit), it opens one sticky `upstream-flag-watch` issue
+  with the lift steps and comments only on later new findings.
 
 ## [2.12.0] - 2026-09-10
 

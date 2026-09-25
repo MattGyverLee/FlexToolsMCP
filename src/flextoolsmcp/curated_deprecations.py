@@ -161,6 +161,49 @@ CURATED_DEPRECATIONS: Dict[str, Dict[str, Any]] = {
         "replacement_owner": "IMoForm",
         "example": _DNUFP_EXAMPLE,
         "evidence": _DNUFP_EVIDENCE,
+        # Temporary block, not a verdict on the field: FLEx may implement it
+        # in the parsers (to take load off IsAbstract), with no timeline. When
+        # it does, delete this entry (and the MISPLACED_MEMBERS row pointing
+        # at it) and re-apply the indexes. Not part of the index annotation.
+        "tracking": {
+            "ticket": "LT-22810",
+            "url": "https://jira.sil.org/browse/LT-22810",
+            "unblock_when": (
+                "FLEx and its parsers (HermitCrab via HCLoader.cs, XAmple via "
+                "the M3 export/XSLTs) actually respect DoNotUseForParsing."
+            ),
+        },
+        # Read by scripts/upstream_flag_watch.py (weekly workflow
+        # upstream-flag-watch.yml). ``repos`` maps each watched repo to every
+        # default-branch path that mentioned the term on 2026-09-25 -- all
+        # storage, LIFT, copy and test-data uses with no parser effect. Any
+        # other path, or any PR, issue or commit mentioning the term that is
+        # not in ``baseline_refs``, is reported as a sign the block may be
+        # ready to lift.
+        "upstream_watch": {
+            "term": "DoNotUseForParsing",
+            "repos": {
+                "sillsdev/FieldWorks": [
+                    "DistFiles/Language Explorer/Import/LLImportPhase3.xsl",
+                    "DistFiles/Templates/MasterFieldWorksModel7.0.xml",
+                    "Src/LexText/LexTextControls/LiftExporter.cs",
+                    "Src/LexText/LexTextControls/LiftMerger.cs",
+                ],
+                "sillsdev/liblcm": [
+                    "src/SIL.LCModel/DomainImpl/OverridesLing_Lex.cs",
+                    "tests/SIL.LCModel.FixData.Tests/TestData/HomographDrops/Test.fwdata",
+                    "tests/SIL.LCModel.Tests/DomainImpl/LexEntryTests.cs",
+                    "tests/SIL.LCModel.Tests/TestData/DataMigration7000024Tests.xml",
+                    "tests/SIL.LCModel.Tests/TestData/DataMigration7000029Tests.xml",
+                    "tests/SIL.LCModel.Tests/TestData/DataMigration7000030.xml",
+                ],
+                "sillsdev/machine": [],
+            },
+            "baseline_refs": [
+                "https://github.com/sillsdev/liblcm/pull/38",
+                "https://github.com/sillsdev/liblcm/pull/219",
+            ],
+        },
     },
 }
 

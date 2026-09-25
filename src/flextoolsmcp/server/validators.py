@@ -768,6 +768,10 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     Targets the common "namespace thrash" pattern where users guess at accessor or
     method names (project.LexEntries -> project.LexEntry, GetPOS -> GetPartOfSpeech).
 
+    Also covers indexed LCM/flexicon interface members (issue #137): runtime
+    ``PolymorphicAttributeError`` paths previously had no ``did_you_mean`` when
+    the bad name was a plain typo on a concrete interface like ``ITsString``.
+
     Returns dict with:
       - has_suggestion: bool
       - object_type, attribute_name: parsed from the error
@@ -789,6 +793,13 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     elif object_type in KNOWN_OPERATIONS:
         candidates = _operation_method_names(api_index, object_type)
         scope = object_type
+    else:
+        # Issue #137: liblcm/flexicon index member lookup (post-#135 ITsString
+        # family). Reuses the same member harvest as preflight typo detection.
+        indexed = sorted(_interface_member_names(object_type, api_index))
+        if indexed:
+            candidates = indexed
+            scope = object_type
 
     # Issue #84: the name that just raised can never be its own fix. Suggesting
     # it back ("project.LexSense is not an accessor -- did you mean
@@ -806,10 +817,26 @@ def detect_unknown_attribute_error(error_msg: str, api_index: Optional[Any] = No
     if not matches:
         return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
 
+    # Issue #69 / #137: suppress low-confidence acronym-fallback matches.
+    import difflib as _dl
+
+    _filtered: List[str] = []
+    for cand in matches:
+        if _dl.SequenceMatcher(None, attr_name.lower(), cand.lower()).ratio() >= _MIN_CHAIN_MATCH_RATIO:
+            _filtered.append(cand)
+    matches = _filtered
+    if not matches:
+        return {"has_suggestion": False, "object_type": object_type, "attribute_name": attr_name}
+
     if scope == "project":
         suggestion = f"'{attr_name}' is not a project accessor. Did you mean: {', '.join('project.' + m for m in matches)}?"
-    else:
+    elif scope.endswith("Operations"):
         suggestion = f"'{scope}.{attr_name}' is not a method on {scope}. Did you mean: {', '.join(scope + '.' + m for m in matches)}?"
+    else:
+        suggestion = (
+            f"'{attr_name}' is not a member of {scope}. "
+            f"Did you mean: {', '.join(f'{scope}.{m}' for m in matches)}?"
+        )
 
     return {
         "has_suggestion": True,

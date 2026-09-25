@@ -7,7 +7,7 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 36 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 39 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
@@ -15,7 +15,9 @@ Provides:
   parse_scope_mismatch, parser_timeout, parser_job_failed
   + internal_error (#89)
   + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean
-  + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused)
+  + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused
+  + 3 pre-handler dispatch codes (#243): session_not_initialized,
+  unknown_tool, invalid_input)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -915,7 +917,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              36 known codes, plus any per-code detail fields.
+              39 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

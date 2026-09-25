@@ -3261,6 +3261,17 @@ def _resolve_alias_maps(
                 ops_class = accessors.get(rhs.attr)
                 if ops_class:
                     operations[target_name] = ops_class
+            elif (
+                isinstance(rhs, ast.Attribute)
+                and isinstance(rhs.value, ast.Name)
+                and rhs.value.id in casts
+            ):
+                parent_iface = casts[rhs.value.id]
+                inferred = _CAST_ALIAS_FROM_TYPED_PROPERTY.get(
+                    (parent_iface, rhs.attr)
+                )
+                if inferred:
+                    casts[target_name] = inferred
             elif isinstance(rhs, ast.Name):
                 # Chained rebind: propagate both alias kinds symmetrically so
                 #     a = ILexEntry(x)
@@ -3553,6 +3564,27 @@ def _scan_backward_for_cast(
                 return direct
             if isinstance(stmt.value, ast.Name):
                 return _resolve_cast_type_at(stmt, parents, stmt.value.id)
+            if (
+                isinstance(stmt.value, ast.Attribute)
+                and isinstance(stmt.value.value, ast.Name)
+            ):
+                # Issue #40: `lexdb = lp.LexDbOA` after a typed `lp` is as
+                # safe as an explicit ILexDb(...) cast for downstream reads.
+                parent_var = stmt.value.value.id
+                parent_iface = _resolve_cast_type_at(
+                    stmt.value, parents, parent_var
+                )
+                if parent_iface is None:
+                    parent_idx = stmt_list.index(stmt)
+                    parent_iface = _scan_backward_for_cast(
+                        stmt_list, parent_idx, parent_var, parents
+                    )
+                if parent_iface:
+                    inferred = _CAST_ALIAS_FROM_TYPED_PROPERTY.get(
+                        (parent_iface, stmt.value.attr)
+                    )
+                    if inferred:
+                        return inferred
             return None
         if isinstance(stmt, _CAST_SCAN_RECURSE_INTO):
             for field in ("body", "orelse", "finalbody"):
@@ -5073,6 +5105,14 @@ _CASTING_CONDITIONAL_SAFE = {
     "Form": {"IMoForm", "IMoStemAllomorph", "IMoAffixAllomorph",
              "IMoAffixProcess", "IMoStemName"},
     "FreeTranslation": {"ISegment"},
+}
+
+# Issue #40: when a variable is assigned from a typed parent property whose
+# LCM return type is unambiguous, treat the target as that interface for
+# cast-alias purposes (same effect as an explicit ILexDb(...) cast).
+# Deliberately curated -- not a general return-type inference engine.
+_CAST_ALIAS_FROM_TYPED_PROPERTY: Dict[Tuple[str, str], str] = {
+    ("ILangProject", "LexDbOA"): "ILexDb",
 }
 
 

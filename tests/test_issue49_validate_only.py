@@ -808,6 +808,20 @@ class TestValidateOnlyProjectLockEnrichment:
         assert payload["blocking"] is True
         assert payload["sharing_enabled"] is False
 
+    @pytest.mark.parametrize(
+        "verdict", ["free", "open_shared", "open_exclusive", "held_by_other", "stale_lock"])
+    def test_blocking_follows_the_write_ladder_refusing_set(self, monkeypatch, tmp_path, verdict):
+        """CP5 pattern audit sweep 3: `blocking` is the write ladder's own
+        REFUSING_VERDICTS, not a copied literal that could drift from it."""
+        from flextoolsmcp.server import write_ladder
+
+        payload = self._run(monkeypatch, tmp_path, _access(verdict, holder=True))
+        assert payload["blocking"] is (verdict in write_ladder.REFUSING_VERDICTS)
+        # A widened ladder set must widen `blocking` with it.
+        monkeypatch.setattr(write_ladder, "REFUSING_VERDICTS", (verdict,))
+        payload = self._run(monkeypatch, tmp_path, _access(verdict, holder=True))
+        assert payload["blocking"] is True
+
     def test_unprobed_reports_unknown_verdict_and_null_blocking(self, monkeypatch, tmp_path):
         """Issue #118: when the probe never ran (projects directory
         unresolvable), verdict is unknown and blocking is null, not False."""

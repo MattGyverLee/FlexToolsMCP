@@ -42,6 +42,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from flextoolsmcp.server.parse.record import (  # noqa: E402
     InvalidRunId,
     RecordSizeExceeded,
+    SANDBOX_FILES,
     RunRecord,
     is_valid_run_id,
     new_run_id,
@@ -359,3 +360,109 @@ def _only_run_id(record_dir: Path) -> str:
     ids = [p.name for p in record_dir.iterdir() if p.is_dir()]
     assert len(ids) == 1, f"Expected exactly one run record, found {ids}"
     return ids[0]
+
+
+# ---------------------------------------------------------------------------
+# CP5: the sandbox spine's meta fields and files (data-model.md section 6)
+# ---------------------------------------------------------------------------
+
+_SANDBOX_SECTION = {
+    "mode": "parse",
+    "config_source": {"kind": "project_cache", "cache_key": "abc123"},
+    "versions": {"hc_tool": "3.8.2", "hcparse": "5.0.0"},
+    "version_skew": False,
+    "hc": {"exit_code": 0, "timed_out": False, "in_flight_index": None},
+    "advisories": ["grammar_load_errors"],
+}
+
+
+def test_a_sandbox_meta_survives_a_stage_change(record_dir):
+    """
+    F-12: `read_meta` drops undeclared keys and every stage change rewrites
+    the meta. Declared `spine`/`sandbox` fields must round-trip through
+    set_stage, including the section a later `set_section` rewrote.
+    """
+    record = RunRecord.create(
+        project_name="TestProject", words_total=2, record_dir=record_dir,
+        spine="sandbox", sandbox=dict(_SANDBOX_SECTION),
+    )
+    record.set_stage(RunStage.LOADING_GRAMMAR)
+    updated = dict(_SANDBOX_SECTION, truncated_by_limit=True)
+    record.set_section(sandbox=updated)
+    record.set_stage(RunStage.PARSING, words_completed=1)
+
+    meta = RunRecord(record.run_id, record_dir=record_dir).read_meta()
+    assert meta.stage == RunStage.PARSING.value
+    assert meta.spine == "sandbox"
+    assert meta.effective_spine == "sandbox"
+    assert meta.sandbox == updated
+
+    on_disk = json.loads(record.meta_path.read_text(encoding="utf-8"))
+    assert on_disk["spine"] == "sandbox"
+    assert on_disk["sandbox"]["config_source"]["kind"] == "project_cache"
+
+
+def test_a_pre_cp5_meta_reads_as_in_process(record_dir):
+    """FR-037: a record written before CP5 has no spine key at all."""
+    run_id = new_run_id()
+    root = record_dir / run_id
+    root.mkdir(parents=True)
+    (root / "meta.json").write_text(json.dumps({
+        "run_id": run_id,
+        "stage": "done",
+        "project_name": "Old",
+        "words_total": 1,
+        "words_completed": 1,
+        "filing": None,
+    }), encoding="utf-8")
+
+    meta = RunRecord(run_id, record_dir=record_dir).read_meta()
+    assert meta.spine is None
+    assert meta.sandbox is None
+    assert meta.effective_spine == "in_process"
+
+
+def test_an_in_process_record_has_no_sandbox_dir(record):
+    assert record.read_meta().effective_spine == "in_process"
+    assert not (record.root / "sandbox").exists()
+
+
+def test_child_allows_the_sandbox_subdirectory(record):
+    assert record._child("sandbox/hc-stdout.txt") == record.root / "sandbox" / "hc-stdout.txt"
+
+
+@pytest.mark.parametrize("bad", ["../x", "sandbox/../../x", "/etc/passwd", "C:/Windows/x"])
+def test_child_refuses_traversal_and_absolute_paths(record, bad):
+    if bad.startswith("C:") and sys.platform != "win32":
+        pytest.skip("drive-letter paths are absolute only on Windows")
+    with pytest.raises(ValueError):
+        record._child(bad)
+
+
+def test_sandbox_files_round_trip(record):
+    text = "line one\nlinie zwei é\n"
+    path = record.write_sandbox_file("hc-script.txt", text)
+    assert path == record.root / "sandbox" / "hc-script.txt"
+    assert record.read_sandbox_file("hc-script.txt") == text
+    assert not path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+    record.append_sandbox_line("hc-stdout.txt", "first")
+    record.append_sandbox_line("hc-stdout.txt", "second\n")
+    assert record.read_sandbox_file("hc-stdout.txt") == "first\nsecond\n"
+    assert record.read_sandbox_file("run.json") is None
+
+
+def test_sandbox_file_names_are_a_closed_set(record):
+    assert "hc-stdout.txt" in SANDBOX_FILES
+    for bad in ("other.txt", "../meta.json", "sub/hc-stdout.txt"):
+        with pytest.raises(ValueError):
+            record.write_sandbox_file(bad, "x")
+
+
+def test_sandbox_writes_honor_the_guard(record):
+    def refuse(path):
+        raise PermissionError(str(path))
+
+    with pytest.raises(PermissionError):
+        record.write_sandbox_file("hc-stderr.txt", "x", guard=refuse)
+    assert record.read_sandbox_file("hc-stderr.txt") is None

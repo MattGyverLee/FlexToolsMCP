@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Disposable project copies for live write tests (parser-check CP4, FR-037).
+Disposable project copies for live write tests (parser-check CP4, FR-037;
+reused by CP5 with its own prefix).
 
 EVERY LIVE WRITE RUNS ON A COPY. CP4 is the first checkpoint that writes to a
 FieldWorks project, and the write it performs -- filing parser results --
@@ -9,9 +10,13 @@ deletes analyses and cannot be undone. A live test that filed into a working
 project in place would be the exact failure the feature exists to guard
 against, so the rule is enforced here rather than trusted to each test:
 
-  * a copy is always named ``CP4-Scratch-<source>-<stamp>``;
+  * a copy is always named ``<prefix><source>-<stamp>``, where ``prefix``
+    defaults to ``CP4-Scratch-`` and may be any of ``KNOWN_SCRATCH_PREFIXES``
+    (CP5 passes ``CP5-Scratch-``);
   * every destructive operation (teardown) REFUSES a name without the
-    ``CP4-Scratch-`` prefix, whatever the caller passes;
+    caller's scratch prefix, whatever the caller passes; an unknown prefix
+    (including the empty one) is itself refused, so it can never widen the
+    guard to a working project;
   * the source project is only ever READ -- nothing is written inside it,
     not a marker, not a lock, not a log (FR-042);
   * the copy's ``.hg`` directory is deleted, so a scratch copy can never take
@@ -24,11 +29,14 @@ Command line (quickstart "Disposable copy")::
     python tests/live_support/make_disposable.py --from "IndonesianHC-Complete"
     python tests/live_support/make_disposable.py --from "IndonesianHC-Complete" --as "CP4-Scratch-IndonesianHC"
     python tests/live_support/make_disposable.py --delete "CP4-Scratch-IndonesianHC"
+    python tests/live_support/make_disposable.py --from "IndonesianHC-Complete" --prefix "CP5-Scratch-"
 
 Library::
 
     with disposable_project("IndonesianHC-Complete") as copy:
         ...  # copy.name is the project name to open
+    with disposable_project("IndonesianHC-Complete", prefix=CP5_SCRATCH_PREFIX) as copy:
+        ...
 """
 
 from __future__ import annotations
@@ -43,8 +51,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Optional
 
-#: The one prefix a disposable copy may carry. Teardown refuses anything else.
+#: The default prefix a disposable copy carries (CP4's; existing callers use it).
 SCRATCH_PREFIX = "CP4-Scratch-"
+
+#: CP5's prefix, so its live harness never shares names with CP4's.
+CP5_SCRATCH_PREFIX = "CP5-Scratch-"
+
+#: The only prefixes a caller may choose. Teardown refuses a name that does not
+#: carry the caller's prefix, and refuses any prefix not listed here.
+KNOWN_SCRATCH_PREFIXES = (SCRATCH_PREFIX, CP5_SCRATCH_PREFIX)
 
 _FWDATA_EXT = ".fwdata"
 
@@ -64,16 +79,28 @@ class DisposableProject:
         return self.path / f"{self.name}{_FWDATA_EXT}"
 
 
-def is_disposable_name(name: str) -> bool:
-    return bool(name) and name.startswith(SCRATCH_PREFIX) and len(name) > len(SCRATCH_PREFIX)
+def _require_known_prefix(prefix: str) -> str:
+    if prefix not in KNOWN_SCRATCH_PREFIXES:
+        raise NotDisposable(
+            f"{prefix!r} is not a scratch prefix; use one of "
+            f"{', '.join(KNOWN_SCRATCH_PREFIXES)}."
+        )
+    return prefix
 
 
-def require_disposable(name: str) -> str:
+def is_disposable_name(name: str, prefix: str = SCRATCH_PREFIX) -> bool:
+    if prefix not in KNOWN_SCRATCH_PREFIXES:
+        return False
+    return bool(name) and name.startswith(prefix) and len(name) > len(prefix)
+
+
+def require_disposable(name: str, prefix: str = SCRATCH_PREFIX) -> str:
     """Return ``name`` if it is a scratch copy; raise otherwise (FR-037)."""
-    if not is_disposable_name(name):
+    _require_known_prefix(prefix)
+    if not is_disposable_name(name, prefix):
         raise NotDisposable(
             f"{name!r} is not a disposable copy. Live write tests run only on "
-            f"projects named {SCRATCH_PREFIX}<...> (FR-037); a working project "
+            f"projects named {prefix}<...> (FR-037); a working project "
             f"is never written in place."
         )
     return name
@@ -111,8 +138,10 @@ def make_disposable(
     *,
     name: Optional[str] = None,
     root: Optional[Path] = None,
+    prefix: str = SCRATCH_PREFIX,
 ) -> DisposableProject:
-    """Copy ``source`` to a new ``CP4-Scratch-`` project and return it.
+    """Copy ``source`` to a new ``<prefix>`` project (default ``CP4-Scratch-``)
+    and return it.
 
     The source is read, never written. Refuses if the target already exists:
     reusing a scratch copy from an earlier run would make a test's "before"
@@ -124,10 +153,11 @@ def make_disposable(
     if not src_fwdata.is_file():
         raise FileNotFoundError(f"No project {source!r} at {src_fwdata}")
 
+    _require_known_prefix(prefix)
     if name is None:
         stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
-        name = f"{SCRATCH_PREFIX}{source}-{stamp}"
-    require_disposable(name)
+        name = f"{prefix}{source}-{stamp}"
+    require_disposable(name, prefix)
 
     dest_dir = base / name
     if dest_dir.exists():
@@ -149,16 +179,18 @@ def make_disposable(
     return DisposableProject(name=name, path=dest_dir, source=source)
 
 
-def delete_disposable(name: str, *, root: Optional[Path] = None) -> bool:
+def delete_disposable(
+    name: str, *, root: Optional[Path] = None, prefix: str = SCRATCH_PREFIX
+) -> bool:
     """Delete a scratch copy. REFUSES any name without the scratch prefix."""
-    require_disposable(name)
+    require_disposable(name, prefix)
     dest_dir = projects_dir(root) / name
     if not dest_dir.exists():
         return False
-    # Resolve and re-check: a symlink or junction named CP4-Scratch-* that
+    # Resolve and re-check: a symlink or junction named <prefix>* that
     # points at a real project must not be followed into it.
     real = dest_dir.resolve()
-    if not is_disposable_name(real.name):
+    if not is_disposable_name(real.name, prefix):
         raise NotDisposable(f"{dest_dir} resolves to {real}, which is not a scratch copy.")
     shutil.rmtree(real)
     return True
@@ -166,33 +198,47 @@ def delete_disposable(name: str, *, root: Optional[Path] = None) -> bool:
 
 @contextlib.contextmanager
 def disposable_project(
-    source: str, *, root: Optional[Path] = None, keep: bool = False
+    source: str,
+    *,
+    root: Optional[Path] = None,
+    keep: bool = False,
+    prefix: str = SCRATCH_PREFIX,
 ) -> Iterator[DisposableProject]:
     """A scratch copy for the length of a ``with`` block, then torn down."""
-    copy = make_disposable(source, root=root)
+    copy = make_disposable(source, root=root, prefix=prefix)
     try:
         yield copy
     finally:
         if not keep:
             with contextlib.suppress(Exception):
-                delete_disposable(copy.name, root=root)
+                delete_disposable(copy.name, root=root, prefix=prefix)
 
 
 def main(argv: Optional[list] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--from", dest="source", help="Project to copy (read only).")
-    group.add_argument("--delete", help="Scratch copy to delete (CP4-Scratch- prefix required).")
-    parser.add_argument("--as", dest="name", help="Name for the copy (CP4-Scratch- prefix required).")
+    group.add_argument("--delete", help="Scratch copy to delete (the --prefix is required).")
+    parser.add_argument("--as", dest="name", help="Name for the copy (the --prefix is required).")
+    parser.add_argument(
+        "--prefix",
+        default=SCRATCH_PREFIX,
+        choices=KNOWN_SCRATCH_PREFIXES,
+        help=f"Scratch prefix (default {SCRATCH_PREFIX}).",
+    )
     parser.add_argument("--projects-dir", type=Path, default=None)
     args = parser.parse_args(argv)
 
     try:
         if args.delete:
-            removed = delete_disposable(args.delete, root=args.projects_dir)
+            removed = delete_disposable(
+                args.delete, root=args.projects_dir, prefix=args.prefix
+            )
             print(f"{'Deleted' if removed else 'No such copy'}: {args.delete}")
             return 0
-        copy = make_disposable(args.source, name=args.name, root=args.projects_dir)
+        copy = make_disposable(
+            args.source, name=args.name, root=args.projects_dir, prefix=args.prefix
+        )
         print(f"Created {copy.name} at {copy.path}")
         return 0
     except (NotDisposable, FileExistsError, FileNotFoundError) as exc:

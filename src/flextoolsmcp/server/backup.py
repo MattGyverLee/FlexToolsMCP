@@ -18,7 +18,7 @@ to log/surface it.
 import shutil
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 try:
     from .project_discovery import get_project_fwdata_path
@@ -67,19 +67,66 @@ def _prune_old_backups(project_backup_dir: Path, retention: int) -> None:
         shutil.rmtree(old_dir, ignore_errors=True)
 
 
+#: Free space must be at least this multiple of the bytes about to be written.
+DISK_SPACE_FACTOR = 2
+
+
+def _remove_partial_backup(dest_file: Path, dest_dir: Path) -> None:
+    """Best-effort removal of a copy that did not complete, and its empty
+    timestamp folder. Never raises: the caller re-raises the copy error."""
+    try:
+        if dest_file.exists():
+            dest_file.unlink()
+    except OSError:
+        pass
+    try:
+        dest_dir.rmdir()  # only succeeds when empty
+    except OSError:
+        pass
+
+
+def disk_space_ok(
+    path: Path, needed_bytes: int
+) -> Tuple[bool, int, Optional[int]]:
+    """The one statement of the disk-space rule (Principle VI).
+
+    Checks whether the volume holding ``path`` has at least
+    ``DISK_SPACE_FACTOR`` (2) times ``needed_bytes`` free. ``path`` must be an
+    existing directory or file on the target volume (it is passed straight to
+    ``shutil.disk_usage``).
+
+    Returns ``(ok, required_bytes, free_bytes)``:
+
+    - ``required_bytes`` is ``2 * needed_bytes`` -- the threshold applied, and
+      the figure a refusal reports as ``needed_bytes``.
+    - ``free_bytes`` is the volume's free space, or ``None`` when it cannot be
+      measured (``OSError`` from ``disk_usage``).
+    - ``ok`` is False only when ``free_bytes`` is known and below
+      ``required_bytes``. An unmeasurable volume is fail-open (``ok`` True),
+      matching the backup's long-standing behaviour.
+
+    Never raises for an unreadable volume. Callers: the pre-write backup
+    (`_space_skip_reason`) and the parse sandbox's work-directory check.
+    """
+    required_bytes = DISK_SPACE_FACTOR * needed_bytes
+    try:
+        free_bytes: Optional[int] = shutil.disk_usage(path).free
+    except OSError:
+        free_bytes = None
+    ok = free_bytes is None or free_bytes >= required_bytes
+    return ok, required_bytes, free_bytes
+
+
 def _space_skip_reason(fwdata_path: Path) -> Optional[str]:
     """``insufficient_disk_space`` when free disk < 2x the project, else None.
 
-    The one statement of the disk-space rule. Shared by the backup itself and
+    Applies the shared `disk_space_ok` rule. Shared by the backup itself and
     by `predict_backup_skip`, so a preview's stated backup outcome and the
     backup that follows it apply the same test (CP4 FR-007, SC-004).
     """
     project_size = fwdata_path.stat().st_size
-    try:
-        free_bytes = shutil.disk_usage(fwdata_path.parent).free
-    except OSError:
-        free_bytes = None
-    if free_bytes is not None and free_bytes < 2 * project_size:
+    ok, _required, _free = disk_space_ok(fwdata_path.parent, project_size)
+    if not ok:
         return "insufficient_disk_space"
     return None
 
@@ -147,7 +194,14 @@ def perform_pre_write_backup(
         dest_dir = BACKUP_ROOT / project_name / timestamp
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest_file = dest_dir / fwdata_path.name
-        shutil.copy2(fwdata_path, dest_file)
+        try:
+            shutil.copy2(fwdata_path, dest_file)
+        except BaseException:
+            # A failed copy must not leave a truncated .fwdata that retention
+            # (or a person restoring) would take for a real backup (CP5
+            # pattern audit, sweep 2: cleanup on every path, not just success).
+            _remove_partial_backup(dest_file, dest_dir)
+            raise
 
         # The copy above exists now, so nothing below may report it as absent
         # or delete it: an unparseable retention falls back to the default

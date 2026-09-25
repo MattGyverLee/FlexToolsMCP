@@ -48,6 +48,9 @@ CP3_MODULES = sorted(
     # lock, and this scan is what proves it takes none of the claims an edit
     # waits on.
     + [SRC / "filing" / "claims.py"]
+    # CP5 (T056): the sandbox spine copies the project and runs `hc` on the
+    # copy; it must take none of the claims an edit waits on either.
+    + list((SRC / "sandbox").glob("*.py"))
 )
 
 FINGERPRINT = {
@@ -130,10 +133,31 @@ async def test_an_edit_does_not_wait_for_the_batch(running_batch):
     assert running_batch.words_completed >= completed_before
 
 
+def _docstring_nodes(tree):
+    """The ids of the module/class/function docstring constants in `tree`.
+
+    CP5 (T056): the lock-file rule looks for string LITERALS the code could
+    use as a path. A docstring is prose, never a path the code opens, and the
+    sandbox modules' docstrings name `.fwdata.lock` precisely to say the
+    spine never takes it. Only docstrings are exempt; any other string that
+    names a lock file is still a hit.
+    """
+    ids = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            body = node.body
+            if (body and isinstance(body[0], ast.Expr)
+                    and isinstance(body[0].value, ast.Constant)
+                    and isinstance(body[0].value.value, str)):
+                ids.add(id(body[0].value))
+    return ids
+
+
 @pytest.mark.parametrize("path", CP3_MODULES, ids=lambda p: p.name)
 def test_no_cp3_module_introduces_a_project_wide_claim(path):
     """Structural: CP3 code references none of the claims an edit waits on."""
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    docstrings = _docstring_nodes(tree)
     hits = []
     for node in ast.walk(tree):
         name = None
@@ -141,7 +165,8 @@ def test_no_cp3_module_introduces_a_project_wide_claim(path):
             name = node.id
         elif isinstance(node, ast.Attribute):
             name = node.attr
-        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+        elif (isinstance(node, ast.Constant) and isinstance(node.value, str)
+              and id(node) not in docstrings):
             if node.value.endswith(".lock") or ".fwdata.lock" in node.value:
                 hits.append(f"{path.name}:{node.lineno} names a lock file")
         if name in _CLAIM_NAMES:

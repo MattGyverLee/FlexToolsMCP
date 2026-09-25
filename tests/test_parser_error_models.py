@@ -468,13 +468,14 @@ class TestCP3IsPurelyAdditive:
             "would make it a breaking change, which it is not."
         )
 
-    def test_union_carries_all_thirty_four_codes(self):
+    def test_union_carries_all_thirty_six_codes(self):
         import typing
         members = typing.get_args(AnyDetail)
-        assert len(members) == 34, (
-            "expected 34 detail models: CP3's five additions on top of main's "
-            "26 (incl. invalid_api_mode), internal_error (#89), and CP4's two "
-            "(parser_filing_in_progress, grammar_load_unclean); found "
+        assert len(members) == 36, (
+            "expected 36 detail models: CP3's five additions on top of main's "
+            "26 (incl. invalid_api_mode), internal_error (#89), CP4's two "
+            "(parser_filing_in_progress, grammar_load_unclean) and CP5's two "
+            "(parser_config_failed, parse_sandbox_refused); found "
             + str(len(members))
         )
         for model in CP3_MODELS.values():
@@ -629,6 +630,157 @@ class TestCP4Validation:
         data = {k: v for k, v in CP4_EXAMPLES["parser_filing_in_progress"].items() if k != field}
         with pytest.raises(pydantic.ValidationError):
             validate_detail(data)
+
+    def test_contract_version_is_still_1_0(self):
+        assert CONTRACT_VERSION == "tool-responses/1.0"
+
+
+# ===========================================================================
+# parser-check CP5 -- two additive codes (contracts/tools.md section 4)
+# ===========================================================================
+
+from flextoolsmcp.server.response_models import (  # noqa: E402
+    ParserConfigFailedDetail,
+    ParseSandboxRefusedDetail,
+)
+
+_CP5_CONTRACT_PATH = (
+    Path(__file__).parent.parent / "specs" / "parser-check-cp5" / "contracts" / "tools.md"
+)
+
+CP5_MODELS = {
+    "parser_config_failed": ParserConfigFailedDetail,
+    "parse_sandbox_refused": ParseSandboxRefusedDetail,
+}
+
+CP5_EXAMPLES = {
+    "parser_config_failed": {
+        "error_code": "parser_config_failed",
+        "exit_code": 1,
+        "stderr_tail": "The FieldWorks project is currently open in another application.",
+        "log_path": "C:/runs/" + "a" * 32 + "/sandbox/generate-config.log",
+        "run_id": "a" * 32,
+    },
+    "parse_sandbox_refused": {
+        "error_code": "parse_sandbox_refused",
+        "reason": "insufficient_disk_space",
+        "name": None,
+        "path": "C:/sandbox/work",
+        "hint": "Free some disk space.",
+        "needed_bytes": 2048,
+        "free_bytes": 1024,
+    },
+}
+
+# | **`code`** | status | fields... |   (escaped pipes are replaced first)
+_CP5_ROW = _re.compile(r"^\|\s*\**`([a-z_]+)`\**\s*\|[^|]*\|\s*(.+?)\s*\|\s*$")
+_CP5_REASON_HEADER = "`parse_sandbox_refused.reason` is a closed enum:"
+_CP5_REASON_ITEM = _re.compile(r"^-\s*`([a-z_]+)`\s*$")
+
+
+def _cp5_contract_text():
+    return _CP5_CONTRACT_PATH.read_text(encoding="utf-8")
+
+
+def _cp5_contract_field_order():
+    """Field order per CP5 code, read from contracts/tools.md section 4.
+
+    The cells read like "`exit_code` (int \\| null), `stderr_tail` (str)" and
+    "`reason` (see below)". Escaped pipes and parenthesised asides are
+    removed first, so the backticked names left are exactly the fields.
+    """
+    order = {}
+    for line in _cp5_contract_text().splitlines():
+        m = _CP5_ROW.match(line.replace("\\|", "/"))
+        if not m or m.group(1) not in CP5_MODELS:
+            continue
+        cell = _re.sub(r"\([^()]*\)", "", m.group(2))
+        order[m.group(1)] = _re.findall(r"`([a-z_]+)`", cell)
+    return order
+
+
+def _cp5_contract_reason_enum():
+    """The bulleted reason list that follows the section 4 table."""
+    lines = _cp5_contract_text().splitlines()
+    start = lines.index(_CP5_REASON_HEADER) + 1
+    reasons = []
+    for line in lines[start:]:
+        m = _CP5_REASON_ITEM.match(line.strip())
+        if not m:
+            if reasons:
+                break
+            continue
+        reasons.append(m.group(1))
+    return reasons
+
+
+class TestCP5ContractTableIsReadable:
+    def test_both_codes_are_found_in_the_contract_table(self):
+        assert set(_cp5_contract_field_order()) == set(CP5_MODELS)
+
+    def test_every_parsed_row_has_fields(self):
+        for code, fields in _cp5_contract_field_order().items():
+            assert len(fields) >= 4, (code, fields)
+
+    def test_the_reason_list_is_found(self):
+        assert len(_cp5_contract_reason_enum()) == 9
+
+
+class TestCP5FieldOrderMatchesContract:
+    """Section 4: declared order == the contract row, error_code leading."""
+
+    @pytest.mark.parametrize("code", sorted(CP5_MODELS))
+    def test_declared_field_order_matches_contract(self, code):
+        expected = _cp5_contract_field_order()[code]
+        declared = [f for f in CP5_MODELS[code].model_fields if f != "error_code"]
+        assert declared == expected, (code, declared, expected)
+
+    @pytest.mark.parametrize("code", sorted(CP5_MODELS))
+    def test_error_code_leads(self, code):
+        assert list(CP5_MODELS[code].model_fields)[0] == "error_code"
+
+    def test_the_reason_enum_matches_the_contract_exactly(self):
+        import typing
+        annotation = ParseSandboxRefusedDetail.model_fields["reason"].annotation
+        assert list(typing.get_args(annotation)) == _cp5_contract_reason_enum()
+
+
+class TestCP5Validation:
+    @pytest.mark.parametrize("code", sorted(CP5_MODELS))
+    def test_examples_validate_through_the_union(self, code):
+        assert isinstance(validate_detail(CP5_EXAMPLES[code]), CP5_MODELS[code])
+
+    @pytest.mark.parametrize("code", sorted(CP5_MODELS))
+    def test_extra_fields_are_forbidden(self, code):
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(dict(CP5_EXAMPLES[code], override=True))
+
+    def test_config_failed_exit_code_and_run_id_are_nullable(self):
+        # exit_code is null when the generator never returned one; run_id is
+        # null only when generation failed before a run existed.
+        detail = validate_detail(
+            dict(CP5_EXAMPLES["parser_config_failed"], exit_code=None, run_id=None)
+        )
+        assert detail.exit_code is None and detail.run_id is None
+
+    @pytest.mark.parametrize("field", ["stderr_tail", "log_path"])
+    def test_config_failed_required_fields(self, field):
+        data = {k: v for k, v in CP5_EXAMPLES["parser_config_failed"].items() if k != field}
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(data)
+
+    @pytest.mark.parametrize("field", ["reason", "hint"])
+    def test_sandbox_refused_required_fields(self, field):
+        data = {k: v for k, v in CP5_EXAMPLES["parse_sandbox_refused"].items() if k != field}
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(data)
+
+    @pytest.mark.parametrize(
+        "value", ["name_taken", "SANDBOX_EXISTS", "disk_full", "runtime_error", ""]
+    )
+    def test_the_reason_enum_is_closed(self, value):
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(dict(CP5_EXAMPLES["parse_sandbox_refused"], reason=value))
 
     def test_contract_version_is_still_1_0(self):
         assert CONTRACT_VERSION == "tool-responses/1.0"

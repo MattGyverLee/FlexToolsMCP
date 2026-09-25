@@ -124,11 +124,17 @@ def run_command(cmd: list, description: str) -> bool:
     print(f"       Running: {' '.join(cmd)}")
 
     try:
+        # Explicit codec on both ends (CP5 pattern audit, sweep 4): the
+        # children are Python scripts, told to write UTF-8, and decoded as
+        # UTF-8 -- never the locale code page, which can raise on a path.
         result = subprocess.run(
             cmd,
             cwd=get_project_root(),
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8"),
         )
 
         if result.returncode == 0:

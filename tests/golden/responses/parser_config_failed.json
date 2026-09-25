@@ -1,0 +1,18 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "parser_config_failed",
+  "message": "GenerateHCConfig.exe did not write a HermitCrab configuration for project 'Demo' (no 'Writing completed.' line in its output).",
+  "exit_code": 1,
+  "stderr_tail": "Loading project 'Demo'...\nThe FieldWorks project is currently open in another application.\nClose the project in FieldWorks and try again.",
+  "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\generate-config.log",
+  "run_id": "0123456789abcdef0123456789abcdef",
+  "error": {
+    "code": "parser_config_failed",
+    "message": "GenerateHCConfig.exe did not write a HermitCrab configuration for project 'Demo' (no 'Writing completed.' line in its output).",
+    "exit_code": 1,
+    "stderr_tail": "Loading project 'Demo'...\nThe FieldWorks project is currently open in another application.\nClose the project in FieldWorks and try again.",
+    "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\generate-config.log",
+    "run_id": "0123456789abcdef0123456789abcdef"
+  }
+}

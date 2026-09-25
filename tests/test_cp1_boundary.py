@@ -90,6 +90,21 @@ and the ``LcmCache`` prohibition run over the **CP1 module set** only --
 automatically). The rest of the server legitimately discusses and, in
 ``handlers/execution.py``, legitimately opens LCM caches and names the
 analysis classes; CP1 is the boundary under guard, not the whole product.
+
+NARROWED AGAIN AT CP5 (research.md R-04, FR-003/FR-004). CP1 forbade the
+detection surface from ever running ``hc``. CP5 needs exactly one bounded
+*identity* probe -- ``hc -h`` prints the usage text and exits without
+loading a grammar -- so the invariant is narrowed, not dropped:
+
+* the only permitted ``hc`` argv shapes are ``[<hc>, "-h"]`` and
+  ``[<dotnet>, <hc.dll>, "-h"]`` (``HC_IDENTITY_PROBE_ARGS`` below, pinned by
+  its own test so it cannot widen silently);
+* statically, that shape is permitted in ``parser_probe.py`` only
+  (``HC_PROBE_MODULE``); anywhere else in the CP1 set ``hc`` is still never run;
+* discovery never passes ``-i`` / ``-s`` / ``-o`` (the flags that load a
+  grammar, run a script or write output) and never runs ``GenerateHCConfig``;
+* every other ``hc`` argv -- including ``parse``, ``--help``, extra flags or a
+  repeated ``-h`` -- still fails the check (``TestHcIdentityProbeNarrowing``).
 """
 
 from __future__ import annotations
@@ -232,6 +247,93 @@ ANALYSIS_STATE_PATTERN = re.compile(
 
 # Argv tokens that would mean the sandbox spine actually ran a parse.
 FORBIDDEN_SUBPROCESS_ARGV = frozenset({"hc", "parse", "parse-words", "GenerateHCConfig.exe"})
+
+# --- CP5 narrowing (research.md R-04) -------------------------------------
+# The ONE hc invocation the detection surface may make: the identity probe.
+# Exactly these trailing args, nothing else. Widening this tuple is a
+# boundary change and must come with a spec change -- it is pinned verbatim
+# by TestHcIdentityProbeNarrowing.test_the_allowlist_is_exactly_dash_h.
+HC_IDENTITY_PROBE_ARGS: Tuple[str, ...] = ("-h",)
+
+# The only module whose *source* may contain the probe (static half).
+HC_PROBE_MODULE = "src/flextoolsmcp/server/parser_probe.py"
+
+# hc flags that load a grammar (-i), run commands (-s) or write results (-o).
+# Detection must never pass any of them, in any spelling.
+HC_WORK_FLAGS = frozenset({
+    "-i", "--input-file", "-s", "--script-file", "-o", "--output-file",
+})
+
+# How the static extractor renders ``hc_invoke_argv(path)`` -- the call that
+# expands to ``[path]`` or ``[dotnet, path.dll]``. Its expansion contract is
+# pinned dynamically (test_hc_invoke_argv_expands_to_exactly_the_two_shapes),
+# so treating it as "the hc program" statically is sound.
+HC_INVOKE_PLACEHOLDER = "<hc_invoke_argv(...)>"
+
+# The real hc usage header (tests/fakes/hc_fake.py USAGE_LINES; kept in sync
+# by test_spy_usage_text_matches_the_fake_hc). Returned by the dynamic spy's
+# fake subprocess.run for the permitted -h shape, UTF-16LE like real hc.
+HC_USAGE_LINES = (
+    "Usage: hc [OPTIONS]",
+    "HermitCrab.NET is a phonological and morphological parser.",
+)
+
+
+def _token_stem(token: str) -> str:
+    """Lower-cased basename without extension, for either path separator."""
+    base = re.split(r"[\\/]", token)[-1].lower()
+    return base.rsplit(".", 1)[0] if "." in base else base
+
+
+def _is_hc_program(token: str) -> bool:
+    return token == HC_INVOKE_PLACEHOLDER or _token_stem(token) == "hc"
+
+
+def _is_dotnet_dll_run(argv: List[str]) -> bool:
+    return (
+        len(argv) >= 2
+        and _token_stem(argv[0]) == "dotnet"
+        and argv[1].lower().endswith(".dll")
+    )
+
+
+def is_permitted_hc_identity_probe(argv: List[str]) -> bool:
+    """True only for ``[<hc>, "-h"]`` or ``[<dotnet>, <hc.dll>, "-h"]``."""
+    argv = list(argv)
+    if len(argv) == 1 + len(HC_IDENTITY_PROBE_ARGS):
+        return _is_hc_program(argv[0]) and tuple(argv[1:]) == HC_IDENTITY_PROBE_ARGS
+    if len(argv) == 2 + len(HC_IDENTITY_PROBE_ARGS):
+        return (
+            _is_dotnet_dll_run(argv)
+            and _token_stem(argv[1]) != "generatehcconfig"
+            and tuple(argv[2:]) == HC_IDENTITY_PROBE_ARGS
+        )
+    return False
+
+
+def _invokes_hc(argv: List[str]) -> bool:
+    return bool(argv) and (_is_hc_program(argv[0]) or _is_dotnet_dll_run(argv))
+
+
+def subprocess_argv_violation(argv: List[str], *, probe_permitted: bool) -> Optional[str]:
+    """Why this argv breaches the CP1 boundary, or None if it does not.
+
+    ``probe_permitted`` is True only where the identity probe may live
+    (``HC_PROBE_MODULE`` statically; the CP1 exercise dynamically).
+    """
+    argv = [str(a) for a in argv]
+    if any(_token_stem(t) == "generatehcconfig" for t in argv):
+        return "runs GenerateHCConfig (never allowed in detection)"
+    if probe_permitted and is_permitted_hc_identity_probe(argv):
+        return None
+    if _invokes_hc(argv) and any(t in HC_WORK_FLAGS for t in argv):
+        return "passes a grammar/script/output flag to hc"
+    forbidden = [t for t in argv if t in FORBIDDEN_SUBPROCESS_ARGV]
+    if forbidden:
+        return f"forbidden argv token(s) {forbidden}"
+    if _invokes_hc(argv):
+        return "runs hc outside the identity-probe allowlist"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -467,25 +569,119 @@ def subprocess_argv_literals(source: str, filename: str) -> List[Tuple[int, List
                 constants[node.target.id] = node.value.value
 
     found: List[Tuple[int, List[str]]] = []
+    for lineno, argv, _is_subprocess in _subprocess_calls(tree, constants):
+        if argv is not None:
+            found.append((lineno, argv))
+    return found
+
+
+_SUBPROCESS_CALLEES = frozenset({"run", "Popen", "call", "check_call", "check_output"})
+
+
+def _argv_assignments(tree: ast.AST) -> Dict[str, List[Tuple[int, ast.AST]]]:
+    """``name = <expr>`` single-target assignments, by name, with line numbers.
+
+    Module-wide rather than per-scope: a ``Name`` argv resolves to the nearest
+    *preceding* assignment of that name, which is exact for the short
+    build-then-run pattern (``argv = hc_invoke_argv(p) + ["-h"]``) and errs
+    toward resolving rather than hiding.
+    """
+    assigns: Dict[str, List[Tuple[int, ast.AST]]] = {}
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if _callee_name(node.func) not in {"run", "Popen", "call", "check_call", "check_output"}:
-            continue
-        if not node.args:
-            continue
-        argv_node = node.args[0]
-        if not isinstance(argv_node, (ast.List, ast.Tuple)):
-            continue
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                assigns.setdefault(target.id, []).append((node.lineno, node.value))
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            if isinstance(node.target, ast.Name):
+                assigns.setdefault(node.target.id, []).append((node.lineno, node.value))
+    return assigns
+
+
+def _resolve_argv(
+    node: ast.AST,
+    constants: Dict[str, str],
+    assigns: Dict[str, List[Tuple[int, ast.AST]]],
+    lineno: int,
+    depth: int = 0,
+) -> Optional[List[str]]:
+    """Render an argv expression as tokens, or None if it is opaque.
+
+    Handles list/tuple literals (non-literal elements are dropped, as the CP1
+    extractor always did), ``a + b`` concatenation, ``*hc_invoke_argv(p)``
+    splats, ``hc_invoke_argv(p)`` itself (as ``HC_INVOKE_PLACEHOLDER``) and a
+    ``Name`` bound earlier to any of those.
+    """
+    if depth > 8:
+        return None
+    if isinstance(node, (ast.List, ast.Tuple)):
         argv: List[str] = []
-        for element in argv_node.elts:
+        for element in node.elts:
+            if isinstance(element, ast.Starred):
+                inner = _resolve_argv(element.value, constants, assigns, lineno, depth + 1)
+                if inner:
+                    argv.extend(inner)
+                continue
             literal = _joined_string_constants(element)
             if literal is None and isinstance(element, ast.Name):
                 literal = constants.get(element.id)
             if literal is not None:
                 argv.append(literal)
-        found.append((node.lineno, argv))
-    return found
+        return argv
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _resolve_argv(node.left, constants, assigns, lineno, depth + 1)
+        right = _resolve_argv(node.right, constants, assigns, lineno, depth + 1)
+        if left is None or right is None:
+            return None
+        return left + right
+    if isinstance(node, ast.Call) and _callee_name(node.func) == "hc_invoke_argv":
+        return [HC_INVOKE_PLACEHOLDER]
+    if isinstance(node, ast.Name):
+        prior = [(ln, v) for ln, v in assigns.get(node.id, []) if ln <= lineno]
+        if prior:
+            _, value = max(prior, key=lambda item: item[0])
+            return _resolve_argv(value, constants, assigns, lineno, depth + 1)
+    return None
+
+
+def _subprocess_calls(
+    tree: ast.AST, constants: Dict[str, str]
+) -> List[Tuple[int, Optional[List[str]], bool]]:
+    """(lineno, argv-or-None, is_explicit_subprocess_attr) per candidate call."""
+    assigns = _argv_assignments(tree)
+    calls: List[Tuple[int, Optional[List[str]], bool]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if _callee_name(node.func) not in _SUBPROCESS_CALLEES:
+            continue
+        explicit = (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "subprocess"
+        )
+        argv = None
+        if node.args:
+            argv = _resolve_argv(node.args[0], constants, assigns, node.lineno)
+        calls.append((node.lineno, argv, explicit))
+    return calls
+
+
+def explicit_subprocess_calls(source: str, filename: str) -> List[Tuple[int, Optional[List[str]]]]:
+    """Every ``subprocess.<run|Popen|...>(...)`` call, resolvable or not.
+
+    Unlike ``subprocess_argv_literals`` this keeps calls whose argv could not
+    be rendered (``None``), so a test can require that nothing hides.
+    """
+    tree = ast.parse(source, filename=filename)
+    constants: Dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
+            if isinstance(node.value.value, str):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        constants[target.id] = node.value.value
+    return [(ln, argv) for ln, argv, explicit in _subprocess_calls(tree, constants) if explicit]
 
 
 # ---------------------------------------------------------------------------
@@ -813,19 +1009,25 @@ class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:
     )
     def test_cp1_module_never_shells_out_to_the_parser(self, path: Path):
         """The sandbox spine is *discovered* at CP1 (``dotnet tool list -g``),
-        never *run* -- running ``hc`` is loading a grammar and parsing."""
+        never *run* -- running ``hc`` is loading a grammar and parsing.
+
+        CP5 narrowing (R-04): the identity probe ``[<hc>, "-h"]`` /
+        ``[<dotnet>, <hc.dll>, "-h"]`` is permitted in ``HC_PROBE_MODULE``
+        only; every other hc argv, anywhere in the CP1 set, still fails."""
+        rel = _rel(path).replace("\\", "/")
         offenders = []
         for lineno, argv in subprocess_argv_literals(
             path.read_text(encoding="utf-8"), _rel(path)
         ):
-            for token in argv:
-                if token in FORBIDDEN_SUBPROCESS_ARGV:
-                    offenders.append((lineno, argv, token))
+            reason = subprocess_argv_violation(argv, probe_permitted=(rel == HC_PROBE_MODULE))
+            if reason:
+                offenders.append((lineno, argv, reason))
         assert offenders == [], f"{_rel(path)}: {offenders}"
 
     def test_the_only_cp1_subprocess_is_the_dotnet_discovery_call(self):
         """Non-vacuity for the test above: there IS a subprocess call in the
-        CP1 set, and it is the tool-list discovery one."""
+        CP1 set, and it is the tool-list discovery one. (CP5 adds exactly one
+        more, the identity probe -- see TestHcIdentityProbeNarrowing.)"""
         argvs = []
         for path in cp1_module_files():
             argvs.extend(
@@ -835,6 +1037,13 @@ class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:
             )
         assert argvs, "expected discover_hc_tool's subprocess call to be visible"
         assert any({"tool", "list", "-g"}.issubset(set(argv)) for argv in argvs), argvs
+        # And nothing else: each call is the tool listing or the identity probe.
+        others = [
+            argv for argv in argvs
+            if not {"tool", "list", "-g"}.issubset(set(argv))
+            and not is_permitted_hc_identity_probe(argv)
+        ]
+        assert others == [], others
 
 
 class TestParserProbeInspectionReflectionIsExcludedNotIgnored:
@@ -1306,13 +1515,26 @@ def _install_subprocess_spy(monkeypatch: pytest.MonkeyPatch, spy: BoundarySpy) -
     """
 
     class _Completed:
-        returncode = 0
-        stdout = ""
-        stderr = ""
+        def __init__(self, argv: List[str], stdout: Any, stderr: Any, returncode: int = 0):
+            self.args = argv
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
 
     def fake_run(argv: Any, *args: Any, **kwargs: Any) -> _Completed:
-        spy.subprocess_argv.append([str(a) for a in argv] if isinstance(argv, (list, tuple)) else [str(argv)])
-        return _Completed()
+        recorded = [str(a) for a in argv] if isinstance(argv, (list, tuple)) else [str(argv)]
+        spy.subprocess_argv.append(recorded)
+        text_mode = bool(
+            kwargs.get("text") or kwargs.get("universal_newlines") or kwargs.get("encoding")
+        )
+        if is_permitted_hc_identity_probe(recorded):
+            # CP5 identity probe (R-04): answer like real hc -h -- the usage
+            # text on stdout, UTF-16LE no BOM, \r\n; real hc exits -1 here.
+            usage = "\r\n".join(HC_USAGE_LINES) + "\r\n"
+            stdout: Any = usage if text_mode else usage.encode("utf-16-le")
+            return _Completed(recorded, stdout, "" if text_mode else b"", returncode=-1)
+        empty: Any = "" if text_mode else b""
+        return _Completed(recorded, empty, empty)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
@@ -1401,10 +1623,14 @@ class TestDynamicNoConstructionDuringTheCP1Exercise:
         assert boundary_spy.parses == [], boundary_spy.summary()
 
     def test_no_parser_binary_is_executed(self, boundary_spy: BoundarySpy):
+        """CP5 narrowing (R-04): the identity probe is the only hc argv the
+        exercise may produce (every entry point here is detection, and the
+        probe is only reachable through parser_probe.probe_hc)."""
         _exercise_cp1_entry_points(boundary_spy)
         offenders = [
-            argv for argv in boundary_spy.subprocess_argv
-            if any(token in FORBIDDEN_SUBPROCESS_ARGV for token in argv)
+            (argv, reason) for argv in boundary_spy.subprocess_argv
+            for reason in [subprocess_argv_violation(argv, probe_permitted=True)]
+            if reason
         ]
         assert offenders == [], offenders
 
@@ -1508,6 +1734,213 @@ class TestSpyIsFalsifiable:
 
         IPhPhoneme(object())
         assert boundary_spy.constructions == []
+
+    def test_spy_answers_the_identity_probe_with_utf16_usage_text(self, boundary_spy: BoundarySpy):
+        result = subprocess.run(["hc", "-h"], capture_output=True, stdin=subprocess.DEVNULL)
+        assert isinstance(result.stdout, bytes)
+        text = result.stdout.decode("utf-16-le")
+        assert text.startswith("Usage: hc [OPTIONS]\r\n")
+        assert "HermitCrab.NET is a phonological and morphological parser." in text
+
+    def test_spy_does_not_answer_any_other_hc_argv_with_usage_text(self, boundary_spy: BoundarySpy):
+        result = subprocess.run(["hc", "-i", "cfg.xml", "-h"], capture_output=True)
+        assert result.stdout == b""
+
+    def test_spy_usage_text_matches_the_fake_hc(self):
+        """HC_USAGE_LINES is a copy (hc_fake.py writes to sys.stdout.buffer at
+        import, so it is read by AST, not imported); keep the copy honest."""
+        source = (REPO_ROOT / "tests" / "fakes" / "hc_fake.py").read_text(encoding="utf-8")
+        usage = None
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "USAGE_LINES" for t in node.targets
+            ):
+                usage = ast.literal_eval(node.value)
+        assert usage is not None, "USAGE_LINES gone from tests/fakes/hc_fake.py"
+        assert tuple(usage[: len(HC_USAGE_LINES)]) == HC_USAGE_LINES
+
+
+# ---------------------------------------------------------------------------
+# CP5: the hc identity-probe narrowing (research.md R-04, FR-003/FR-004)
+# ---------------------------------------------------------------------------
+
+class TestHcIdentityProbeNarrowing:
+    """The CP1 "never run hc" invariant, narrowed to exactly one argv shape.
+
+    Everything here exists so the narrowing cannot widen silently: the
+    allowlist is pinned verbatim, every near-miss shape is rejected, the
+    static half permits the probe in ``parser_probe.py`` only, and the
+    dynamic half checks the argv the real ``probe_hc`` builds.
+    """
+
+    def test_the_allowlist_is_exactly_dash_h(self):
+        # Changing this is a boundary change: update research.md R-04 first.
+        assert HC_IDENTITY_PROBE_ARGS == ("-h",)
+        assert HC_PROBE_MODULE == "src/flextoolsmcp/server/parser_probe.py"
+        assert not (set(HC_IDENTITY_PROBE_ARGS) & HC_WORK_FLAGS)
+
+    @pytest.mark.parametrize("argv", [
+        ["hc", "-h"],
+        ["hc.exe", "-h"],
+        [r"C:\Users\u\.dotnet\tools\hc.exe", "-h"],
+        ["/home/u/.dotnet/tools/hc", "-h"],
+        ["dotnet", r"C:\tools\hc.dll", "-h"],
+        [r"C:\Program Files\dotnet\dotnet.exe", "tools/hc.dll", "-h"],
+        [HC_INVOKE_PLACEHOLDER, "-h"],
+    ])
+    def test_the_identity_probe_shapes_are_permitted(self, argv):
+        assert is_permitted_hc_identity_probe(argv)
+        assert subprocess_argv_violation(argv, probe_permitted=True) is None
+
+    @pytest.mark.parametrize("argv", [
+        ["hc"],
+        ["hc", "--help"],
+        ["hc", "-h", "-h"],
+        ["hc", "-c", "-h"],
+        ["-h", "hc"],
+        ["hc", "-i", "cfg.xml"],
+        ["hc", "-s", "script.txt"],
+        ["hc", "-o", "out.txt"],
+        ["hc", "-h", "-i", "cfg.xml"],
+        ["hc", "--input-file=cfg.xml"],
+        ["hc", "-i", "cfg.xml", "-s", "script.txt", "-o", "out.txt"],
+        [r"C:\Users\u\.dotnet\tools\hc.exe", "-i", "cfg.xml", "-s", "s.txt"],
+        [r"C:\Users\u\.dotnet\tools\hc.exe"],
+        ["dotnet", "hc.dll"],
+        ["dotnet", "hc.dll", "-i", "cfg.xml"],
+        ["dotnet", "hc.dll", "-h", "-o", "out.txt"],
+        [HC_INVOKE_PLACEHOLDER, "-i", "cfg.xml"],
+        [HC_INVOKE_PLACEHOLDER],
+        ["hc", "parse", "words.txt"],
+        ["GenerateHCConfig.exe", "p.fwdata", "out.xml"],
+        [r"C:\Program Files\SIL\FieldWorks 9\GenerateHCConfig.exe", "-h"],
+        ["dotnet", "GenerateHCConfig.dll", "-h"],
+    ])
+    def test_every_other_hc_argv_fails_the_check(self, argv):
+        assert not is_permitted_hc_identity_probe(argv)
+        assert subprocess_argv_violation(argv, probe_permitted=True), argv
+
+    @pytest.mark.parametrize("argv", [
+        ["hc", "-h"],
+        [r"C:\Users\u\.dotnet\tools\hc.exe", "-h"],
+        ["dotnet", "hc.dll", "-h"],
+        [HC_INVOKE_PLACEHOLDER, "-h"],
+    ])
+    def test_the_probe_is_forbidden_outside_the_probe_module(self, argv):
+        assert subprocess_argv_violation(argv, probe_permitted=False), argv
+
+    def test_unrelated_argv_is_not_flagged(self):
+        assert subprocess_argv_violation(["dotnet", "tool", "list", "-g"], probe_permitted=False) is None
+        assert subprocess_argv_violation(["dotnet", "--version"], probe_permitted=False) is None
+
+    # -- static half --------------------------------------------------------
+
+    def _probe_source(self) -> str:
+        return (REPO_ROOT / HC_PROBE_MODULE).read_text(encoding="utf-8")
+
+    def test_every_subprocess_call_in_the_probe_module_is_resolvable(self):
+        """An argv the extractor cannot render could hide anything; the probe
+        module must build every argv in a shape the scan can read."""
+        calls = explicit_subprocess_calls(self._probe_source(), HC_PROBE_MODULE)
+        assert calls, "no subprocess call in parser_probe.py at all"
+        opaque = [ln for ln, argv in calls if argv is None]
+        assert opaque == [], f"unresolvable subprocess argv at parser_probe.py lines {opaque}"
+
+    def test_the_identity_probe_is_visible_to_the_static_scan(self):
+        """Non-vacuity for the narrowing: the probe_hc call really is there
+        and really is the permitted shape (fails until T030's probe_hc lands)."""
+        argvs = [argv for _, argv in subprocess_argv_literals(self._probe_source(), HC_PROBE_MODULE)]
+        assert any(is_permitted_hc_identity_probe(a) for a in argvs), argvs
+
+    def test_discovery_never_passes_i_s_or_o_and_never_runs_generate_hc_config(self):
+        """Pinned (R-04): no subprocess argv in parser_probe.py carries an hc
+        work flag or names GenerateHCConfig -- and no such flag appears as a
+        string constant anywhere in the module's code, so it cannot be spliced
+        into an argv by a route the argv extractor does not follow."""
+        source = self._probe_source()
+        for lineno, argv in subprocess_argv_literals(source, HC_PROBE_MODULE):
+            assert not (set(argv) & HC_WORK_FLAGS), (lineno, argv)
+            assert not any(_token_stem(t) == "generatehcconfig" for t in argv), (lineno, argv)
+        flag_constants = [
+            (node.lineno, node.value)
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            and (node.value in HC_WORK_FLAGS
+                 or any(node.value.startswith(f + "=") for f in HC_WORK_FLAGS if f.startswith("--")))
+        ]
+        assert flag_constants == [], flag_constants
+
+    def test_the_extractor_sees_a_built_argv(self):
+        """Falsification: the build-then-run pattern the probe uses is
+        rendered, and a work flag spliced into it is caught even in the
+        probe module."""
+        planted = (
+            "def probe(path):\n"
+            "    argv = hc_invoke_argv(path) + ['-i', 'cfg.xml']\n"
+            "    return subprocess.run(argv, capture_output=True)\n"
+        )
+        argvs = subprocess_argv_literals(planted, "<planted>")
+        assert argvs and argvs[0][1] == [HC_INVOKE_PLACEHOLDER, "-i", "cfg.xml"]
+        assert subprocess_argv_violation(argvs[0][1], probe_permitted=True)
+        planted_ok = planted.replace("['-i', 'cfg.xml']", "['-h']")
+        ok = subprocess_argv_literals(planted_ok, "<planted>")
+        assert ok and subprocess_argv_violation(ok[0][1], probe_permitted=True) is None
+        splat = "def p(x):\n    subprocess.run([*hc_invoke_argv(x), '-s', 's.txt'])\n"
+        assert subprocess_argv_violation(
+            subprocess_argv_literals(splat, "<planted>")[0][1], probe_permitted=True)
+
+    def test_opaque_argv_is_reported_not_skipped(self):
+        planted = "def p(build):\n    subprocess.run(build(), capture_output=True)\n"
+        assert explicit_subprocess_calls(planted, "<planted>") == [(2, None)]
+
+    # -- dynamic half (needs T030's hc_invoke_argv / probe_hc) --------------
+
+    @staticmethod
+    def _parser_probe():
+        from server import parser_probe
+        clear = getattr(parser_probe, "clear_hc_probe_cache", None)
+        if clear is not None:
+            clear()
+        return parser_probe
+
+    def test_hc_invoke_argv_expands_to_exactly_the_two_shapes(self, tmp_path: Path):
+        """Why HC_INVOKE_PLACEHOLDER may stand for "the hc program"."""
+        parser_probe = self._parser_probe()
+        exe = tmp_path / "hc.exe"
+        assert parser_probe.hc_invoke_argv(exe) == [str(exe)] or \
+            [str(a) for a in parser_probe.hc_invoke_argv(exe)] == [str(exe)]
+        dll = tmp_path / "hc.dll"
+        argv = [str(a) for a in parser_probe.hc_invoke_argv(dll)]
+        assert len(argv) == 2 and _token_stem(argv[0]) == "dotnet" and argv[1] == str(dll)
+
+    def test_probe_of_an_exe_runs_exactly_hc_dash_h(
+        self, boundary_spy: BoundarySpy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.delenv("HC_TOOL_PATH", raising=False)
+        parser_probe = self._parser_probe()
+        exe = tmp_path / "hc.exe"
+        exe.write_bytes(b"MZ")
+        result = parser_probe.discover_hc_tool(override_path=exe)
+        assert boundary_spy.subprocess_argv == [[str(exe), "-h"]], boundary_spy.subprocess_argv
+        assert all(is_permitted_hc_identity_probe(a) for a in boundary_spy.subprocess_argv)
+        # The spy's usage text is recognised as HermitCrab.
+        assert getattr(result, "starts", None) is True, result
+
+    def test_probe_of_a_dll_runs_exactly_dotnet_dll_dash_h(
+        self, boundary_spy: BoundarySpy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.delenv("HC_TOOL_PATH", raising=False)
+        parser_probe = self._parser_probe()
+        dotnet = str(tmp_path / "dotnet.exe")
+        monkeypatch.setattr(
+            parser_probe.shutil, "which",
+            lambda name, *a, **k: dotnet if name == "dotnet" else None,
+        )
+        dll = tmp_path / "hc.dll"
+        dll.write_bytes(b"MZ")
+        parser_probe.discover_hc_tool(override_path=dll)
+        assert boundary_spy.subprocess_argv == [[dotnet, str(dll), "-h"]], boundary_spy.subprocess_argv
+        assert all(is_permitted_hc_identity_probe(a) for a in boundary_spy.subprocess_argv)
 
 
 if __name__ == "__main__":

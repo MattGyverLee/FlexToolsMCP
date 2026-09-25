@@ -1,0 +1,2169 @@
+{
+  "workflow": "companion",
+  "specName": "parser check cp5",
+  "branch": "feat/parser-check-cp5",
+  "currentStep": "implement",
+  "status": "implementing",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T16:26:20.623Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T16:33:11.609Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T16:51:19.197Z"
+    },
+    {
+      "step": "plan",
+      "substep": "research",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T17:01:19.977Z"
+    },
+    {
+      "step": "plan",
+      "substep": "design",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T17:06:28.952Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-09-24T17:08:24.439Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T18:20:14.243Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:24:31.598Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-09-24T18:25:20.471Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:29:15.058Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:29:15.157Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:29:15.267Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:32:29.818Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:32:36.532Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:32:36.707Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:33:38.996Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:33:39.097Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:33:41.734Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:34:17.926Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:34:18.016Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:34:18.107Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:35:39.178Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:12.207Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:12.300Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:12.392Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:57.685Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:57.777Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:36:57.870Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:42:24.459Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:42:24.974Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:42:25.224Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:47:07.367Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:47:52.746Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:47:55.488Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:48:19.338Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:49:35.741Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:53:44.805Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:55:12.122Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:55:12.223Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:55:12.328Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:55:12.430Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:56:10.087Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:56:28.196Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:57:21.261Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:57:24.159Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:57:24.250Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T038",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:05.028Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T039",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:05.357Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T049",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:37.214Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T044",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:37.681Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T045",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:37.780Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T18:59:59.511Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T043",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:02:38.887Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T046",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:03:01.630Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T047",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:03:01.757Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T048",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:06:04.948Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T052",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:07:21.394Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T064",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:07:47.967Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T065",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:07:48.074Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:09:35.740Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:11:30.213Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:12:51.571Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:12:51.741Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:12:51.904Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:12:52.045Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:12:52.198Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T069",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:13:12.480Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T070",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:13:12.586Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:15:38.571Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:15:38.661Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:15:38.748Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T068",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:16:27.449Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T087",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:16:32.986Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T088",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:16:33.120Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T090",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:16:33.227Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T076",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:17:15.617Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T066",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:09.872Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T081",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:26.376Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T082",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:38.880Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T074",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:47.596Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T078",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:47.704Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T079",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:47.819Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T084",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:19:54.815Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T071",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:20:28.903Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T050",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:20:32.035Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T051",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:20:32.148Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T085",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:21:32.198Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T075",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:22:37.936Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T091",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:23:59.264Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T094",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:24:30.620Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T089",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:26:35.340Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:28:49.652Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T067",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:32:16.624Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T073",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:33:26.146Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T072",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:34:15.986Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T077",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:34:33.495Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T083",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:35:36.591Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:35:42.929Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T080",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:36:24.789Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T086",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T19:37:26.092Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T092",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T20:15:03.203Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T093",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T23:55:26.181Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-24T23:55:39.557Z"
+    }
+  ],
+  "telemetryInstanceId": "cdfa9181-e8da-4bbc-be2f-25dbbc5c2f28",
+  "coverage": {
+    "FR-001": {
+      "title": "Discovery locates hc from 4 ordered sources and records the source",
+      "tasks": [
+        "T024",
+        "T030"
+      ],
+      "tests": [
+        "tests/test_sandbox_discovery.py"
+      ]
+    },
+    "FR-002": {
+      "title": "Script never hard-codes FW folder; receives hc/generator paths",
+      "tasks": [
+        "T034",
+        "T011",
+        "T043"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "FR-003": {
+      "title": "Discovery confirms hc identity via bounded usage-text probe",
+      "tasks": [
+        "T024",
+        "T028",
+        "T030"
+      ],
+      "tests": [
+        "tests/test_sandbox_discovery.py",
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "FR-004": {
+      "title": "Health distinguishes hc not found vs cannot start",
+      "tasks": [
+        "T024",
+        "T027",
+        "T030",
+        "T032"
+      ],
+      "tests": [
+        "tests/test_sandbox_discovery.py",
+        "tests/test_parser_health_block.py"
+      ]
+    },
+    "FR-005": {
+      "title": "Health and runs report three versions; skew warns, never refuses",
+      "tasks": [
+        "T025",
+        "T026",
+        "T031",
+        "T032"
+      ],
+      "tests": [
+        "tests/test_sandbox_versions.py",
+        "tests/test_parser_probe.py"
+      ]
+    },
+    "FR-006": {
+      "title": "Guidance names flextools_parse_sandbox only when ready",
+      "tasks": [
+        "T027",
+        "T032"
+      ],
+      "tests": [
+        "tests/test_parser_health_block.py"
+      ]
+    },
+    "FR-007": {
+      "title": "parser_tool_missing before any copy with verbatim install hint",
+      "tasks": [
+        "T007",
+        "T029",
+        "T033"
+      ],
+      "tests": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-008": {
+      "title": "Generation runs on a minimal allowlist copy outside project folders",
+      "tasks": [
+        "T034",
+        "T036",
+        "T043",
+        "T045"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py",
+        "tests/test_sandbox_workdir.py"
+      ]
+    },
+    "FR-009": {
+      "title": "Generation success judged from output; else parser_config_failed",
+      "tasks": [
+        "T007",
+        "T037",
+        "T043",
+        "T049"
+      ],
+      "tests": [
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "FR-010": {
+      "title": "Generator load errors itemised and counted as warnings",
+      "tasks": [
+        "T037",
+        "T049",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_sandbox_cache.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-011": {
+      "title": "Project copy deleted on every terminal path; orphans swept",
+      "tasks": [
+        "T034",
+        "T036",
+        "T045",
+        "T050",
+        "T081",
+        "T084",
+        "T086"
+      ],
+      "tests": [
+        "tests/test_sandbox_workdir.py",
+        "tests/test_sandbox_client.py",
+        "tests/test_sandbox_no_project_writes.py"
+      ]
+    },
+    "FR-012": {
+      "title": "Free space at least 2x copy size checked before copying",
+      "tasks": [
+        "T012",
+        "T081",
+        "T084",
+        "T086"
+      ],
+      "tests": [
+        "tests/test_sandbox_workdir.py",
+        "tests/test_sandbox_handler.py",
+        "tests/test_disk_space_ok.py"
+      ]
+    },
+    "FR-013": {
+      "title": "Words sent via UTF-8 script, quoted for hc; inexpressible reported",
+      "tasks": [
+        "T034",
+        "T048"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "FR-014": {
+      "title": "H11 UTF-8 reading and [,\\s]+ split preserved verbatim",
+      "tasks": [
+        "T034",
+        "T048"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "FR-015": {
+      "title": "NFC dedup, count-then-alpha order, limit after ordering",
+      "tasks": [
+        "T041",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-016": {
+      "title": "Outcomes from per-word output and counters, never exit code",
+      "tasks": [
+        "T038",
+        "T046",
+        "T051"
+      ],
+      "tests": [
+        "tests/test_sandbox_hc_output.py",
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "FR-017": {
+      "title": "Parse reads stats -p, corpus reads stats -t; divergence reported",
+      "tasks": [
+        "T038",
+        "T046",
+        "T050",
+        "T065",
+        "T069",
+        "T072"
+      ],
+      "tests": [
+        "tests/test_sandbox_hc_output.py",
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "FR-018": {
+      "title": "Exactly one result per word from the closed outcome set",
+      "tasks": [
+        "T039",
+        "T040",
+        "T046",
+        "T047",
+        "T050"
+      ],
+      "tests": [
+        "tests/test_sandbox_hc_output.py",
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "FR-019": {
+      "title": "Ambiguous columns flagged unreadable with raw kept",
+      "tasks": [
+        "T038",
+        "T046"
+      ],
+      "tests": [
+        "tests/test_sandbox_hc_output.py"
+      ]
+    },
+    "FR-020": {
+      "title": "hc under timeout; tree kill; parser_timeout; partial results kept",
+      "tasks": [
+        "T034",
+        "T040",
+        "T048",
+        "T050",
+        "T051"
+      ],
+      "tests": [
+        "tests/test_sandbox_client.py",
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "FR-021": {
+      "title": "Script console output ASCII-only",
+      "tasks": [
+        "T034",
+        "T037",
+        "T048"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "FR-022": {
+      "title": "Packaged hcparse.ps1 invoked via -NoProfile -File argv",
+      "tasks": [
+        "T004",
+        "T005",
+        "T011",
+        "T034",
+        "T057"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py",
+        "tests/test_sandbox_script_module.py"
+      ]
+    },
+    "FR-023": {
+      "title": "Script writes run.json; MCP folds it, never scrapes prose",
+      "tasks": [
+        "T011",
+        "T040",
+        "T050"
+      ],
+      "tests": [
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "FR-024": {
+      "title": "HCPARSE_VERSION declared, bumped, part of cache key",
+      "tasks": [
+        "T005",
+        "T011",
+        "T037",
+        "T049"
+      ],
+      "tests": [
+        "tests/test_sandbox_cache.py",
+        "tests/test_sandbox_script_module.py"
+      ]
+    },
+    "FR-025": {
+      "title": "Three lifecycles: copy, cache (LRU 3), user-owned sandbox",
+      "tasks": [
+        "T059",
+        "T049",
+        "T061",
+        "T082",
+        "T085"
+      ],
+      "tests": [
+        "tests/test_sandbox_lifecycles.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "FR-026": {
+      "title": "Cache invalidated on write completion; -ConfigOut cache-only",
+      "tasks": [
+        "T037",
+        "T043",
+        "T053",
+        "T054"
+      ],
+      "tests": [
+        "tests/test_sandbox_invalidation.py",
+        "tests/test_sandbox_cache.py",
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "FR-027": {
+      "title": "Assertions with delimiters/quotes/whitespace refused per-assertion",
+      "tasks": [
+        "T063",
+        "T068"
+      ],
+      "tests": [
+        "tests/test_sandbox_script.py",
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "FR-028": {
+      "title": "Named sandbox creation with origin; no overwrite; name validation",
+      "tasks": [
+        "T010",
+        "T058",
+        "T061",
+        "T062"
+      ],
+      "tests": [
+        "tests/test_sandbox_store.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-029": {
+      "title": "Predates-grammar advisory without altering sandbox",
+      "tasks": [
+        "T058",
+        "T061",
+        "T062"
+      ],
+      "tests": [
+        "tests/test_sandbox_store.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-030": {
+      "title": "Seed corpus from completed sandbox run; user-owned",
+      "tasks": [
+        "T066",
+        "T071",
+        "T073"
+      ],
+      "tests": [
+        "tests/test_sandbox_store.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-031": {
+      "title": "Assertion classification from Expected/Actual sections",
+      "tasks": [
+        "T064",
+        "T069",
+        "T070"
+      ],
+      "tests": [
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "FR-032": {
+      "title": "Classifications map onto diff buckets; new_ambiguity never pass",
+      "tasks": [
+        "T064",
+        "T070",
+        "T074"
+      ],
+      "tests": [
+        "tests/test_sandbox_classify.py",
+        "tests/test_parse_diff.py"
+      ]
+    },
+    "FR-033": {
+      "title": "Expected-no-parse now parsing is new_ambiguity labelled now_parses",
+      "tasks": [
+        "T064",
+        "T070"
+      ],
+      "tests": [
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "FR-034": {
+      "title": "`flextools_parse_sandbox` MUST be registered as read-only with respect to the live database",
+      "tests": [
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "FR-035": {
+      "title": "Reuses existing job model; no second execution path",
+      "tasks": [
+        "T040",
+        "T050",
+        "T051"
+      ],
+      "tests": [
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "FR-036": {
+      "title": "Engine check before copy without opening live project",
+      "tasks": [
+        "T035",
+        "T044",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_sandbox_engine.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-037": {
+      "title": "Sandbox runs in existing run-record format, additive fields",
+      "tasks": [
+        "T009",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_parse_record.py",
+        "tests/test_parse_batch_artifact.py"
+      ]
+    },
+    "FR-038": {
+      "title": "The log tool MUST fill `config_generation`, `hc_stdout` and `hc_output` for sandbox runs",
+      "tests": [
+        "tests/test_parse_log_sections.py"
+      ]
+    },
+    "FR-039": {
+      "title": "Diff accepts sandbox runs and discloses cross-spine comparison",
+      "tasks": [
+        "T076",
+        "T078",
+        "T079"
+      ],
+      "tests": [
+        "tests/test_parse_diff.py"
+      ]
+    },
+    "FR-040": {
+      "title": "Shared/held staleness reported; diff downgrades no_change",
+      "tasks": [
+        "T041",
+        "T052",
+        "T076",
+        "T078"
+      ],
+      "tests": [
+        "tests/test_sandbox_handler.py",
+        "tests/test_parse_diff.py"
+      ]
+    },
+    "FR-041": {
+      "title": "Every sandbox response carries next_step with est_cost",
+      "tasks": [
+        "T033",
+        "T041",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "FR-042": {
+      "title": "No sandbox artifact inside any project folder",
+      "tasks": [
+        "T010",
+        "T042"
+      ],
+      "tests": [
+        "tests/test_sandbox_no_project_writes.py",
+        "tests/test_sandbox_paths.py"
+      ]
+    },
+    "FR-043": {
+      "title": "Live project never written; byte-identity test",
+      "tasks": [
+        "T042",
+        "T055",
+        "T056"
+      ],
+      "tests": [
+        "tests/test_sandbox_no_project_writes.py",
+        "tests/test_parse_no_project_writes.py",
+        "tests/test_parse_no_edit_blocking.py"
+      ]
+    },
+    "FR-044": {
+      "title": "Words, output and XML treated as data",
+      "tasks": [
+        "T013",
+        "T041",
+        "T052"
+      ],
+      "tests": [
+        "tests/test_sandbox_handler.py",
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "FR-045": {
+      "title": "Live verification against HC project with working hc",
+      "tasks": [
+        "T091",
+        "T094",
+        "T095"
+      ],
+      "tests": [
+        "tests/test_parse_live_cp5.py"
+      ]
+    }
+  },
+  "size": "oversized",
+  "classification": {
+    "projectedFiles": 22,
+    "projectedTasks": 45,
+    "scopeSignal": "larger",
+    "verdict": "oversized"
+  },
+  "context": [
+    "area: hcparse.ps1 (root, to be bundled)",
+    "area: src/flextoolsmcp/server/parser_probe.py (hc/GenerateHCConfig discovery)",
+    "area: handlers/diagnostic_health.py parser.sandbox block",
+    "area: handlers/parse.py parse_log sandbox sections; parse/record.py run record",
+    "area: sillsdev/machine HermitCrab.Tool source (C:/Github/machine @ b77b2337)",
+    "area: fieldworks Src/GenerateHCConfig",
+    "constraint: CP3 artifact contract (additive only)",
+    "constraint: no artifacts inside project folders (FR-042 precedent)",
+    "constraint: tool-responses/1.0, error-model field order"
+  ],
+  "intent": "Ship the sandbox spine: a hardened hcparse.ps1 behind flextools_parse_sandbox, so linguists can rehearse grammar edits on an exported copy and run corpus assertions classified as regression vs new ambiguity, with no path back to the live project",
+  "expectations": [
+    "Filing from sandbox runs",
+    "Editing grammar XML or suggesting rules for the user",
+    "Deriving corpus expectations from human-approved analyses",
+    "Installing hc/.NET on the user's behalf",
+    "XAmple and non-Windows",
+    "CP6 docs/CHANGELOG/telemetry"
+  ],
+  "last_action": "94/95 tasks done; full suite 3893 passed; T095 live verification blocked on M-1 (needs a working hc)",
+  "approach": "A packaged hcparse.ps1 does the mechanism (minimal copy, generation, quoting, a UTF-16-aware streamed hc run under a timeout, always-delete); a new server/sandbox package does the policy (discovery, the no-LCM engine check, cache lifecycles, the single hc-output parser, classification). A per-run SandboxClient plugs into the existing job runner, so status, cancel, logs and diff are reused.",
+  "decisions": [
+    {
+      "decision": "Script is mechanism, Python is policy; the script runs twice per cold job (Generate, then Parse/Test)",
+      "why": "One owner per rule (Principle VI); the cache lock covers generation only",
+      "rejected": "A single invocation, or a PowerShell classifier"
+    },
+    {
+      "decision": "Engine check stream-reads the live .fwdata before any copy, with no LCM",
+      "why": "FR-036 order; a plain file read takes no lock",
+      "rejected": "Reading from the copy (the spec Assumption), or check_active_parser via the worker"
+    },
+    {
+      "decision": "hc -h identity/startability probe; the CP1 no-parser-exec invariant narrowed to that one argv shape",
+      "why": "FR-003/FR-004 need an observed start; -h exits before any config is read",
+      "rejected": "File-only discovery"
+    },
+    {
+      "decision": "Per-run SandboxClient outside WorkerPool, implementing the worker-client interface",
+      "why": "FR-035 single execution path; the pool keys by (project, role)",
+      "rejected": "A separate SandboxRunner, or one hc process per word"
+    },
+    {
+      "decision": "Add parse_sandbox_refused with a closed reason enum (pending M-2)",
+      "why": "Six refusal kinds have no code; Principle V",
+      "rejected": "runtime_error, or six codes"
+    },
+    {
+      "decision": "Minimal copy by allowlist (.fwdata + WritingSystemStore), settled live by L-1",
+      "why": "Excludes the lock, .hg and media by construction; free space measures what is copied",
+      "rejected": "An exclusion list"
+    },
+    {
+      "decision": "SandboxClient verifies each hc block header word against the dispatch-sent word (NFC) and cross-checks dispatch sent count vs hc-script.txt commands; mismatch marks remaining words error_no_output + attribution_mismatch flag, or fails the run as parser_job_failed",
+      "why": "Results were attributed by position; a script/hc disagreement would silently mis-attribute every later word (SC-004, FR-018)",
+      "rejected": "Trust positional attribution alone"
+    }
+  ],
+  "step_summaries": {
+    "plan": {
+      "summary": "Full-tier plan: 8 phases, a 9-module sandbox package, the packaged script, every FR mapped to a named test; 4 maintainer decisions (M-1 blocks live verification)",
+      "key_finding": "hc writes UTF-16LE to its console, and a malformed test expectation leaks into the next test; plus no hc/SDK/.NET10 on this machine, so FR-045 is needs_human"
+    },
+    "tasks": {
+      "summary": "95 tasks across 9 phases: Setup, Foundational, US1-US6 (test-first waves), Polish; T095 live verification needs_human on M-1"
+    },
+    "implement": {
+      "summary": "Sandbox spine shipped: hcparse.ps1 (Generate/Parse/Test), server/sandbox package (paths, engine, workdir, cache, script, hc_output, classify, store, client), flextools_parse_sandbox (parse/create_sandbox/list/seed_corpus/run_corpus), health parser.sandbox, spine-aware log/diff/status; 94/95 tasks, 3893 tests green; T095 live verification needs_human (M-1)"
+    }
+  },
+  "currentTask": "T063",
+  "task_summaries": {
+    "T003": {
+      "status": "DONE",
+      "did": "Created sandbox package skeleton with a docstring stating the read-only boundary and the copy/cache/sandbox/corpus lifecycles",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/__init__.py"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Added scripts/*.ps1 to package-data and MANIFEST.in; verified the built wheel contains flextoolsmcp/scripts/hcparse.ps1",
+      "files": [
+        "pyproject.toml",
+        "MANIFEST.in"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "Created PS 5.1 hcparse.ps1 skeleton: full param block, HCPARSE_VERSION 5.0.0, per-mode validation exiting 2, mode stubs, try/finally run.json writer",
+      "files": [
+        "src/flextoolsmcp/scripts/hcparse.ps1"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Extracted the 2x free-space rule into backup.disk_space_ok(path, needed_bytes) -> (ok, required_bytes, free_bytes); _space_skip_reason now calls it; added tests/test_disk_space_ok.py",
+      "files": [
+        "src/flextoolsmcp/server/backup.py",
+        "tests/test_disk_space_ok.py"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Added ParserConfigFailedDetail and ParseSandboxRefusedDetail (contract field order), registered in AnyDetail, tally 34->36",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "Added ParseSandboxInput (extra=forbid) with words/word_file-per-action validator, from_run_id 32-hex, limit ge=1, timeout 10-86400",
+      "files": [
+        "src/flextoolsmcp/server/models.py"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "sandbox/paths.py: root + env override, per-project area dirs, FR-028 name rule, FR-042 guard at use, is_under/assert_under",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/paths.py",
+        "tests/test_sandbox_paths.py"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "sandbox/script.py: script_path, cached HCPARSE_VERSION read (exactly one match), FR-022 argv list builder, tolerant run/dispatch loaders",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/script.py",
+        "tests/test_sandbox_script_module.py"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "Declared RunMeta.spine/sandbox (+effective_spine), SANDBOX_FILES and sandbox file helpers; hardened _child against rooted paths; tests for F-12 round-trip, pre-CP5 in_process, _child",
+      "files": [
+        "src/flextoolsmcp/server/parse/record.py",
+        "tests/test_parse_record.py"
+      ]
+    },
+    "T001": {
+      "status": "DONE",
+      "did": "Scriptable fake hc: UTF-16LE per-line-flushed stdout, usage/parse/test/stats faithful to HermitCrab.Tool, JSON FakeGrammar config, FAKE_HC_* knobs (sleep/crash on word N, load_error, runtime_missing 0x80008096, not_hermitcrab, echo, BOM, stats overrides, argv log)",
+      "files": [
+        "tests/fakes/hc_fake.py"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Scriptable fake GenerateHCConfig: help exit 0, missing fwdata, four progress lines, working-folder JSON listing, config with FakeGrammar; FAKE_GEN_* knobs (locked, migration, crash, empty_config, N load-error lines in F-9 templates, slow start, honor_lock)",
+      "files": [
+        "tests/fakes/generate_fake.py"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "cmd shims (FAKE_PYTHON fallback python, exit code propagated); conftest fixtures fake_hc, fake_generator, sandbox_root, fake_project, fake_project_factory, windows_only marker; self-test test_sandbox_fakes.py 30 passed",
+      "files": [
+        "tests/fakes/hc.cmd",
+        "tests/fakes/GenerateHCConfig.cmd",
+        "tests/conftest.py",
+        "tests/test_sandbox_fakes.py"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Added golden fixtures for parser_config_failed and parse_sandbox_refused (insufficient_disk_space) and regenerated goldens; only the two new files changed",
+      "files": [
+        "tests/make_golden.py",
+        "tests/golden/responses/parser_config_failed.json",
+        "tests/golden/responses/parse_sandbox_refused.json"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "TOOL-CONTRACT rows for parser_config_failed and parse_sandbox_refused (model field order), count 36, first-emitter notes; contracts/tools.md run_id now str|null",
+      "files": [
+        "docs/TOOL-CONTRACT.md",
+        "specs/parser-check-cp5/contracts/tools.md"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "USAGE.md Parser Check rows for flextools_parse_cancel and flextools_parse_sandbox",
+      "files": [
+        "USAGE.md"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "CHANGELOG Tool contract paragraph for CP5 sandbox spine, two new codes, first emitters, count 34->36, health parser.sandbox",
+      "files": [
+        "CHANGELOG.md"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Added flextools_parse_sandbox ToolDef (READ_ONLY_SAFE, verbatim first line, body with actions, user-owned sandboxes, data-never-instructions, refusal codes)",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "Routed flextools_parse_sandbox through dispatch.py touch points: model import, TOOL_PARSE_SANDBOX constant, ALL_TOOL_NAMES, both handler imports, handler map, module alias, DISPATCH_ROUTES",
+      "files": [
+        "src/flextoolsmcp/server/dispatch.py"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Added handle_flextools_parse_sandbox stub: rebuilds ParseSandboxInput, refuses every action with runtime_error (error_type NotImplementedError) plus next_step rung with est_cost",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Discovery tests (4 ordered sources + source, no-fallthrough override, hc -h probe classification/argv/decoding, memo, fake-hc runs); 36 failing on missing behaviour",
+      "files": [
+        "tests/test_sandbox_discovery.py"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "Version tests (read_file_version seam, store-path/beside-dll tool version, three ParserVersions fields, skew flag + health advisory still ready); 22 failing on missing behaviour",
+      "files": [
+        "tests/test_sandbox_versions.py"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "Appended TestSandboxVersionsNeverCompared: absurd version of each of the three still ready; 9 new failing, 20 existing pass",
+      "files": [
+        "tests/test_parser_probe.py"
+      ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "FR-007 refusal + check-order steps 1-3 tests for flextools_parse_sandbox (17 tests, failing against the T015 stub)",
+      "files": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Narrowed CP1 never-run-hc invariant to an allowlist of exactly [hc,-h]/[dotnet,hc.dll,-h] (parser_probe.py only statically), pinned no -i/-s/-o and no GenerateHCConfig, UTF-16LE usage-text spy for -h",
+      "files": [
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Health-block tests for parser.sandbox (additive keys, found+starts status rule, per-cause rungs, FR-006 naming rule, ready rung args validated by ParseSandboxInput); sweep example swapped to a guaranteed-unregistered name",
+      "files": [
+        "tests/test_parser_health_block.py"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "discover_hc_tool: 4 ordered sources with recorded source, HcToolDiscovery(ProbeResult), memoised hc -h probe (UTF-16LE/UTF-8, R-03 table), .dll via dotnet, not_hermitcrab fall-through except override, runtime_missing/not_hermitcrab signals, explicit utf-8 on dotnet tool list",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py",
+        "tests/test_sandbox_discovery.py"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "read_file_version via ctypes GetFileVersionInfoW; hc tool version from store path/shim sibling store/beside-dll; ParserVersions gains fieldworks_hermitcrab_version, generate_hc_config_version, hc_engine_version_skew (hermitcrab_versions_differ, never a floor)",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py",
+        "tests/test_sandbox_versions.py"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "parse_sandbox handler: check-order steps 1-3 (project, sandbox name, hc/GenerateHCConfig discovery) via per-step helpers; later steps still refuse not-implemented",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Union count 34->36 (test renamed thirty_six); CP5 block parses contracts/tools.md s.4 table + reason list; checks field order, error_code lead, closed reason enum, nullability, required fields",
+      "files": [
+        "tests/test_parser_error_models.py"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Code count 34->36 (renamed thirty_six), CP5 code-to-model rows, GOLDEN_REQUIRED_KEYS for parser_config_failed and parse_sandbox_refused",
+      "files": [
+        "tests/test_response_contract.py"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "flextools_parse_sandbox in EXPECTED_TOOL_NAMES (29) and READ_ONLY_TOOLS; first-line pin plus body pins (never written, user-owned, data never instructions, both new codes)",
+      "files": [
+        "tests/test_mcp_tools.py"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Gate clean: validate_integrity server 29 tools OK; 4 contract suites 321 passed; full suite green after in-flux files settled"
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "Health sandbox spine: CP5 component/advisory/detected keys, found+starts status rule, per-cause rungs, FR-006 ready-only flextools_parse_sandbox rung",
+      "files": [
+        "src/flextoolsmcp/server/handlers/diagnostic_health.py"
+      ]
+    },
+    "T037": {
+      "status": "DONE",
+      "did": "Cache tests: key recipe, FR-009 fixtures, stderr_tail, timeout, load errors warm/cold, per-key lock, .partial rename, lookup/invalidate/last_used_at, ConfigOut AST pin, SC-006 offline, Windows real-script integration",
+      "files": [
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "Wrote Windows-only hcparse.ps1 invariant tests (Generate+Parse) driving the real script against the fakes; 22 fail pending T043/T048, 13 static/param tests pass",
+      "files": [
+        "tests/test_sandbox_script.py"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "Engine-check tests: HC pass, XAmple/absent/unparseable/truncated/no-MoMorphData/missing refuse as parser_engine_mismatch with 'could not be read' only when unreadable, one retry, stream stops early, (path,size,mtime_ns) memo + remember() for key.json, no lock/writes, no flexicon/LCM import (subprocess)",
+      "files": [
+        "tests/test_sandbox_engine.py"
+      ]
+    },
+    "T036": {
+      "status": "DONE",
+      "did": "Workdir tests: allowlist measure (fwdata + WritingSystemStore/**), marker fields, copy root outside project, delete with 3 retries/0.2s and failed+path, root guard refusing non-work targets; terminal-path matrix left to client tests, free-space/sweep left to T081",
+      "files": [
+        "tests/test_sandbox_workdir.py"
+      ]
+    },
+    "T038": {
+      "status": "DONE",
+      "did": "Output-parser tests (parse mode) for hc_output.py: blocks, incremental feed, outcomes, R-08 u16 columns, stats -p, load errors, crash, randomized n->n, fake-hc e2e",
+      "files": [
+        "tests/test_sandbox_hc_output.py"
+      ]
+    },
+    "T039": {
+      "status": "DONE",
+      "did": "Parse-outcome tests for classify.py: every outcome enum value -> data-model 6.4 line, parsed only for parsed, tally and stats -p reconciliation divergences",
+      "files": [
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "T049": {
+      "status": "DONE",
+      "did": "cache.py: fingerprint_key-recipe key, per-(project,key) asyncio.Lock, build_entry via -Mode Generate into <key>.partial judged by R-05, load-error tagging, key.json, lookup/invalidate/last_used_at, guarded deleters",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/cache.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "engine.py: shared read-only stream of live .fwdata, iterparse stops at first MoMorphData rt, summarize_parser_parameters, one retry, fail safe to XAmple with 'could not be read' hint, (path,size,mtime_ns) memo + remember(), no LCM import",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/engine.py"
+      ]
+    },
+    "T045": {
+      "status": "DONE",
+      "did": "workdir.py: allowlist measure, create work/<run_id>/ with marker, read_marker, delete guarded to work/ with 3 retries 200ms reporting deleted|failed|not_made + path_if_failed",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/workdir.py"
+      ]
+    },
+    "T041": {
+      "status": "DONE",
+      "did": "parse-action handler tests (engine check, FR-015 word list, R-13 staleness, 5.1 envelope, FR-041 failure rungs, FR-044) with handler-boundary seams",
+      "files": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "Implemented hcparse.ps1 Generate mode: allowlist copy (fwdata + WritingSystemStore), verbatim generate-config.log, R-05 judging, -ConfigOut sandboxes refusal (exit 3), timeout tree-kill (6), WorkDir cleared in finally",
+      "files": [
+        "src/flextoolsmcp/scripts/hcparse.ps1"
+      ]
+    },
+    "T046": {
+      "status": "DONE",
+      "did": "hc_output.py: BlockReader/iter_blocks incremental splitter, parse_block outcomes, R-08 u16 column round-trip, stats -p counters, load-error detect, banner strip, read_parse_stream n->n",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/hc_output.py"
+      ]
+    },
+    "T047": {
+      "status": "DONE",
+      "did": "classify.py: data-model 6.4 sandbox line (signature null, rendered_morphs=forms, morphs, readable, raw, flags, parse_time_ms; analyses null except parsed/not_parsed), outcome tally, stats -p reconciliation divergences",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/classify.py",
+        "specs/parser-check-cp5/data-model.md"
+      ]
+    },
+    "T048": {
+      "status": "DONE",
+      "did": "Implemented hcparse.ps1 Parse mode: UTF-8 word read / [,\\s]+ split, R-09 quoting + leading_dash_unverified flag, dispatch.json before hc, BOM-less hc-script.txt ending stats -p, UTF-16LE hc stdout streamed to AutoFlush UTF-8 files, taskkill /T /F timeout with in_flight_index, exits 5/6; contracts/hcparse.md updated additively",
+      "files": [
+        "src/flextoolsmcp/scripts/hcparse.ps1",
+        "specs/parser-check-cp5/contracts/hcparse.md"
+      ]
+    },
+    "T052": {
+      "status": "DONE",
+      "did": "parse action: steps 2 (name+existence), 2b FR-015 word list, 3, 4 engine check, 5 R-13 staleness, 7 free space, 8 start_run(SANDBOX_ROLE) + 5.1 envelope",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T064": {
+      "status": "DONE",
+      "did": "Assertion classification tests: F-8 four-way table, now_parses label, error reasons incl. timeout, SC-005, buckets, 'fixed' text scan, data-model 6.5 assertion line, tally",
+      "files": [
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "T065": {
+      "status": "DONE",
+      "did": "Test-mode output-parser tests: Testing blocks, Expected/Actual sections (None or unmatched), ? round-trip, stats -t counters, read_test_stream, fake-hc e2e, data-model 6.6 reconciliation",
+      "files": [
+        "tests/test_sandbox_hc_output.py"
+      ]
+    },
+    "T040": {
+      "status": "DONE",
+      "did": "Client tests: real _execute_run over fakes + real script; timeout/cancel/crash/load-error/config-failed/concurrency/watchdog/AST and work/ terminal-path matrix",
+      "files": [
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "T060": {
+      "status": "DONE",
+      "did": "sandbox handler tests: create_sandbox (sync cache build, parser_config_failed run_id null, sandbox_exists), named runs (not_found, no engine/generator, predates advisory, broken XML load_error), list",
+      "files": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T053": {
+      "status": "DONE",
+      "did": "after_terminal invalidates the project's sandbox cache on every terminal filing run (lazy guarded import, logged never raised); tests in test_sandbox_invalidation.py",
+      "files": [
+        "src/flextoolsmcp/server/filing/observer.py",
+        "tests/test_sandbox_invalidation.py"
+      ]
+    },
+    "T054": {
+      "status": "DONE",
+      "did": "run_module invalidates the sandbox cache after an error-free write-enabled run via lazy guarded _invalidate_sandbox_cache_after_write; read-only and failed runs do not",
+      "files": [
+        "src/flextoolsmcp/server/handlers/execution.py",
+        "tests/test_sandbox_invalidation.py"
+      ]
+    },
+    "T055": {
+      "status": "DONE",
+      "did": "no-writes scan covers server/sandbox/*.py, with a coverage assertion for its modules",
+      "files": [
+        "tests/test_parse_no_project_writes.py"
+      ]
+    },
+    "T056": {
+      "status": "DONE",
+      "did": "no-edit-blocking scan covers server/sandbox/*.py; lock-file literal rule now exempts docstrings only (sandbox docstrings name .fwdata.lock as prose)",
+      "files": [
+        "tests/test_parse_no_edit_blocking.py"
+      ]
+    },
+    "T057": {
+      "status": "DONE",
+      "did": "deleted root-level hcparse.ps1 (git rm, not committed); campaign.json scope_ref points at src/flextoolsmcp/scripts/hcparse.ps1",
+      "files": [
+        "hcparse.ps1",
+        "scripts/ralph/campaign.json"
+      ]
+    },
+    "T069": {
+      "status": "DONE",
+      "did": "hc_output.py test mode: parse_test_block (Test passed/failed, Expected/Actual None or unmatched parses), render_parse, TestCounters/parse_test_counters (stats -t), read_test_stream, test placeholders",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/hc_output.py"
+      ]
+    },
+    "T070": {
+      "status": "DONE",
+      "did": "classify.py test mode: classify_assertion four-way table + now_parses + error reasons/timeout, CLASSIFICATION_BUCKETS/bucket_for, assertion_to_line (6.5), tally_classifications, reconcile_test_counters (6.6)",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/classify.py"
+      ]
+    },
+    "T058": {
+      "status": "DONE",
+      "did": "Sandbox store tests: create/origin, exclusive refusal byte-identical, name rule, edited sha256, predates by stat, list, AST no-overwrite",
+      "files": [
+        "tests/test_sandbox_store.py"
+      ]
+    },
+    "T059": {
+      "status": "DONE",
+      "did": "Lifecycle tests: invalidate/rebuild/prune leave sandbox+corpus bytes identical; AST deleter-guard check; cache/workdir refuse user-owned paths (build_entry work_dir/log_dir guard pending in cache.py)",
+      "files": [
+        "tests/test_sandbox_lifecycles.py"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "store.py sandbox half: exclusive-claim create, origin.json once, sandbox_status/list with stat-only predates, current-key helpers",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/store.py"
+      ]
+    },
+    "T068": {
+      "status": "DONE",
+      "did": "Implemented hcparse.ps1 Test mode: corpus read/validated in parameter checks (exit 2), FR-027 reasons, test -p form:gloss lines (empty gloss ?, -- for leading dash, no -p for expected []), stats -t, shared dispatch/hc runner; contract Test-mode section added",
+      "files": [
+        "src/flextoolsmcp/scripts/hcparse.ps1",
+        "specs/parser-check-cp5/contracts/hcparse.md"
+      ]
+    },
+    "T087": {
+      "status": "DONE",
+      "did": "SPEC.md: 10.2 sandbox next_step rows (ready/cannot start/GenerateHCConfig missing) + FR-006 note; 13 F-1 UTF-16LE and R-04 narrowed-invariant notes; 14 parser_config_failed typed and parse_sandbox_refused added",
+      "files": [
+        "specs/parser-check/SPEC.md"
+      ]
+    },
+    "T088": {
+      "status": "DONE",
+      "did": "spec.md Assumptions: engine check streams the live .fwdata read-only before any copy, never via LCM (R-02); contracts/tools.md 5.2 next_step is a list",
+      "files": [
+        "specs/parser-check-cp5/spec.md",
+        "specs/parser-check-cp5/contracts/tools.md"
+      ]
+    },
+    "T090": {
+      "status": "DONE",
+      "did": "make_disposable: prefix parameter (default CP4-Scratch-, CP5_SCRATCH_PREFIX added, unknown prefixes refused) on all helpers and --prefix CLI; CP4 callers unchanged, test_parse_live_cp4 11 passed",
+      "files": [
+        "tests/live_support/make_disposable.py"
+      ]
+    },
+    "T076": {
+      "status": "DONE",
+      "did": "Diff tests: cross-spine comparison block + form-only disclosure + vernacular_ws tolerance, sandbox-pair (form,gloss), either-run staleness downgrade, in-process results unchanged",
+      "files": [
+        "tests/test_parse_diff.py"
+      ]
+    },
+    "T066": {
+      "status": "DONE",
+      "did": "Corpus store tests: exact parses in hc order, not_parsed -> [], exclusions with reasons, run_not_seedable cases, corpus_exists, corpus_invalid JSON path of first fault, NFC dedupe keeping first, list_corpora",
+      "files": [
+        "tests/test_sandbox_store.py"
+      ]
+    },
+    "T081": {
+      "status": "DONE",
+      "did": "Free-space tests (2x allowlist via backup.disk_space_ok on nearest existing ancestor of work/, needed/free, no dir created, fail-open) and sweep tests (marked orphan removed; live/unmarked/corrupt/files/outside-work untouched; no work root; undeletable stays)",
+      "files": [
+        "tests/test_sandbox_workdir.py"
+      ]
+    },
+    "T082": {
+      "status": "DONE",
+      "did": "Prune tests: LRU keep 3 by last_used_at, keep param, in-use refcount survives, refcount nesting/in_use/reset_state, invalidated and unusable deleted at refcount 0, partial/failed-log/foreign names ignored, per-project, no mkdir, config-cache guard",
+      "files": [
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T074": {
+      "status": "DONE",
+      "did": "diff buckets current-run corpus assertion lines through CLASSIFICATION_BUCKETS (new_ambiguity/changed->changed, never unchanged; error and baseline assertion lines not compared); tests added",
+      "files": [
+        "src/flextoolsmcp/server/parse/diff.py",
+        "tests/test_parse_diff.py"
+      ]
+    },
+    "T078": {
+      "status": "DONE",
+      "did": "diff comparison block {same_spine,same_config_source,same_engine_version,note} with fixed sentences for any sandbox pair; cross-spine vernacular_ws tolerance disclosed; either-run recorded staleness downgrades no_change; shared_mode_active unchanged",
+      "files": [
+        "src/flextoolsmcp/server/parse/diff.py"
+      ]
+    },
+    "T079": {
+      "status": "DONE",
+      "did": "signature.spine_pair_mode forces RENDERED_FALLBACK with KEY_FORMS cross-spine and KEY_MORPHS sandbox pairs (no identity dimension); null analyses read as unknown; R-14 CHECK settled in docstring",
+      "files": [
+        "src/flextoolsmcp/server/parse/signature.py"
+      ]
+    },
+    "T084": {
+      "status": "DONE",
+      "did": "workdir.py: check_free_space (2x allowlist via backup.disk_space_ok on nearest existing ancestor of work root, SpaceShortfall) and sweep(live_run_ids) removing marked non-live orphans via guarded delete",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/workdir.py"
+      ]
+    },
+    "T071": {
+      "status": "DONE",
+      "did": "store.py corpus half: seed_corpus from completed sandbox parse run (exclusive create), load_corpus whole-file validation with JSON path, NFC dedupe, list_corpora",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/store.py"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "SANDBOX_ROLE, SandboxLaunch, SandboxClient (engine check, cache lookup/build, Parse launch, 100ms tail, finalize folds run.json/counters, watchdog, own copy delete)",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/client.py"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "start_run SANDBOX_ROLE branch: per-run client, spine/sandbox/sandbox_launch kwargs, finalize before terminal, parser_timeout/parser_job_failed/parser_config_failed details",
+      "files": [
+        "src/flextoolsmcp/server/parse/runner.py"
+      ]
+    },
+    "T085": {
+      "status": "DONE",
+      "did": "cache.py: prune(project, keep=3) LRU by last_used_at with in-use slots first, invalidated/unusable deleted at refcount 0, guarded deletes; acquire/release/in_use/refcount; reset_state clears refcounts",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/cache.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T075": {
+      "status": "DONE",
+      "did": "Log-section tests: four-run sandbox matrix (success, load errors itemised+counted, timeout, broken sandbox), warm reuse line, empty/missing file -> _empty_note, in-process not-applicable golden unchanged, summary.run_spine from meta",
+      "files": [
+        "tests/test_parse_log_sections.py"
+      ]
+    },
+    "T091": {
+      "status": "DONE",
+      "did": "Live harness tests/test_parse_live_cp5.py: S1-S13 + L-1..L-7 driving real sandbox/health/run handlers; per-scenario project byte-identity hash, three FR-005 versions in evidence; S9/L-6 on CP5-Scratch copies behind FLEXTOOLSMCP_CP5_LIVE_WRITE=1; run here: 3 passed (S1 ran, wrote evidence/s1-health-no-hc.json), 18 skipped (no hc)",
+      "files": [
+        "tests/test_parse_live_cp5.py",
+        "specs/parser-check-cp5/evidence/s1-health-no-hc.json"
+      ]
+    },
+    "T094": {
+      "status": "DONE",
+      "did": "S1 live on this machine: health unavailable (hc not found), tool refused parser_tool_missing with install hint, project hash identical; versions FW HermitCrab 3.8.2.0, GenerateHCConfig 9.3.11.2703. L-5 before-half deferred to T095 (needs an hc 3.8 binary; obtaining one is an install)",
+      "files": [
+        "specs/parser-check-cp5/evidence/s1-health-no-hc.json"
+      ]
+    },
+    "T089": {
+      "status": "DONE",
+      "did": "artifact.md section 11 CP5 additions: spine (null reads in_process), meta.sandbox keys, sandbox/ files + encodings, sandbox results line (outcome enum, analyses null except parsed/not_parsed, readable/raw/morphs, flags, parse_time_ms), assertion line, reader compatibility",
+      "files": [
+        "specs/parser-check-cp3/contracts/artifact.md"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "create_sandbox (sync ensure_entry in a self-deleted work folder, parser_config_failed run_id null, store create) and list actions; named-sandbox store status (edited/predates) into config_source + predates advisory; advisory union",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T067": {
+      "status": "DONE",
+      "did": "seed_corpus handler tests (check order, sync, no run; real store+record) and run_corpus (step 6 corpus_not_found/corpus_invalid json_path, test-mode start_run, classification summary, hc_counters, counter_agreement, FR-027)",
+      "files": [
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T073": {
+      "status": "DONE",
+      "did": "seed_corpus (store.seed_corpus over the run's RunRecord; error mapping; 5.3 + run_corpus rung) and run_corpus (steps 1-8, step 6 corpus load, mode test, meta corpus, sandbox_launch.assertion_file, 6.6 test summary)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py"
+      ]
+    },
+    "T072": {
+      "status": "DONE",
+      "did": "SandboxClient Test mode: -Mode Test -AssertionFile, assertion lines via classify.assertion_to_line, stats -t reconciled (hc_counters, counter_agreement), unavailable_timeout; runner carries the assertion key",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/client.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "T077": {
+      "status": "DONE",
+      "did": "parse_log spine-aware: sandbox sections served verbatim from sandbox/ files (empty note, config_generation facts, 200k-char cap), summary run_spine from meta; in-process unchanged; fixture error_code fixed to parser_job_failed",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_parse_log_sections.py"
+      ]
+    },
+    "T083": {
+      "status": "DONE",
+      "did": "30-run soak over fakes + real script (cold/warm/crash/timeout/cancel/cancel-during-generation): work/ empty, <=3 cache entries, newest 20 runs retained",
+      "files": [
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "T042": {
+      "status": "DONE",
+      "did": "Added project-write tests: FR-042 area matrix + handler refusals (root/word_file in project), and Windows E2E through real handler/runner/client/hcparse.ps1 hashing the fake project per terminal path (success, gen fail, hc load fail, timeout, cancel x2) with empty work/",
+      "files": [
+        "tests/test_sandbox_no_project_writes.py"
+      ]
+    },
+    "T080": {
+      "status": "DONE",
+      "did": "parse_status on sandbox runs: spine, in_flight word/index on timeout, 6.6 summary (outcomes|classifications, counters) on every terminal stage; parse action summary counts by outcome",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T086": {
+      "status": "DONE",
+      "did": "step 7 via workdir.check_free_space on a cache miss only (lookup touch=False), fail-open; no sweep/prune in the handler (runner/client own them)",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T092": {
+      "status": "DONE",
+      "did": "Ran the five pattern-audit sweeps + sweep 6 (transient read as absence); wrote reviews/pattern-audit.md; fixed backup partial-copy cleanup, explicit UTF-8 subprocess codecs (refresh.py, server.py, project_discovery.py), record.py set_stage undeclared-key warning and read_meta bounded retry / read_meta_strict for writers; follow-ups listed",
+      "files": [
+        "specs/parser-check-cp5/reviews/pattern-audit.md",
+        "src/flextoolsmcp/server/backup.py",
+        "src/flextoolsmcp/refresh.py",
+        "src/flextoolsmcp/server.py",
+        "src/flextoolsmcp/server/project_discovery.py",
+        "src/flextoolsmcp/server/parse/record.py"
+      ]
+    },
+    "T093": {
+      "status": "DONE",
+      "did": "Full suite (-m 'not requires_flex'): 3893 passed, 6 skipped, 0 failed; validate_integrity server OK (29 tools, USAGE.md in sync); ruff check src tests clean after fixing 5 lint findings in new CP5 files",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/client.py",
+        "tests/test_sandbox_client.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "Test-mode script tests: test -p form:gloss lines, -- for leading dash, FR-027 not-expressible reasons, no backslash / no colon-less morph (F-5), empty gloss as ?, ends with stats -t (11 tests; 46/46 script tests pass)",
+      "files": [
+        "tests/test_sandbox_script.py"
+      ]
+    }
+  },
+  "concerns": [
+    {
+      "note": "Pre-existing order-dependent failure (fails at HEAD b1b671b too): test_cp1_boundary::test_no_analysis_or_wordform_path_is_read fails when TestIntegrationWindowsFieldWorksNoHcTool + TestNextStepRowsThatNameTryWord run first on a FieldWorks machine; cached flexicon submodules make detect_installed_library_version import FLExProject against the spy SIL.LCModel. Fix candidate in Polish: patch detect_installed_library_version in the CP1 exercise.",
+      "step": "implement"
+    },
+    {
+      "note": "FR-019 residual: a form and its gloss that both contain a space at the same column offset are indistinguishable from two morphs in hc output; the R-08 round-trip accepts it. Inherent to hc output format; documented, not detectable.",
+      "step": "implement"
+    },
+    {
+      "note": "Subagent full-suite runs executed requires_flex live tests (FieldWorks present), which rewrote CP2b/CP3/CP4 evidence timestamps and triggered an index refresh against the local flexicon working tree; both restored to HEAD. Later suite runs use -m \"not requires_flex\". Claude-Swahili.fwdata was written 2026-09-24 20:37Z with a lock held since 20:13Z -- consistent with the project being open in FLEx, not with a test run (no test opens it live).",
+      "step": "implement"
+    }
+  ],
+  "verified": [
+    {
+      "what": "Full offline suite (SC-010)",
+      "command": ".venv/Scripts/python.exe -m pytest -q -m \"not requires_flex\"",
+      "result": "3893 passed, 6 skipped, 119 deselected, 0 failed (331 s)",
+      "warnings": [
+        "23 DeprecationWarning ast.Str in flexicon_analyzer.py (pre-existing)"
+      ]
+    },
+    {
+      "what": "Tool surface integrity",
+      "command": "python scripts/validate_integrity.py server",
+      "result": "29 tools registered, all documented in USAGE.md"
+    },
+    {
+      "what": "Lint",
+      "command": "ruff check src tests",
+      "result": "All checks passed (5 CP5 findings fixed: F401, B904, B905, 2x B023)"
+    },
+    {
+      "what": "Live S1 (no hc) on this machine",
+      "command": "pytest tests/test_parse_live_cp5.py (requires_flex)",
+      "result": "S1 passed; evidence/s1-health-no-hc.json; project hash identical; S2-S13, L-1..L-7 skipped (no working hc, M-1)"
+    }
+  ]
+}

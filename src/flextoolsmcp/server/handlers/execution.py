@@ -2131,10 +2131,9 @@ async def _handle_validate_only(
             project_lock["probed"] = _access.probed
             project_lock["verdict"] = _access.verdict
             if _access.probed:
-                project_lock["blocking"] = _access.verdict in (
-                    "open_exclusive",
-                    "held_by_other",
-                )
+                # The one refusing set (pattern audit sweep 3): a copied
+                # literal here could drift from the write ladder's.
+                project_lock["blocking"] = _access.verdict in write_ladder.REFUSING_VERDICTS
             else:
                 # Issue #118: projects directory unresolvable -- never assert
                 # blocking:false; LCM remains the backstop at open time.
@@ -2715,6 +2714,27 @@ def _validate_patched_code(
         return False
 
     return True
+
+
+def _invalidate_sandbox_cache_after_write(project_name: str) -> None:
+    """Invalidate the project's sandbox config cache (CP5 FR-026).
+
+    The import is lazy (this module imports nothing from the sandbox at load
+    time) and every failure -- an import error included -- is logged, never
+    raised: a cache must never break run_module.
+    """
+    try:
+        from ..sandbox.cache import invalidate
+
+        invalidate(project_name)
+    except Exception as exc:  # noqa: BLE001 -- must never break run_module
+        op_logger = get_operations_logger()
+        if op_logger is not None:
+            with contextlib.suppress(Exception):
+                op_logger.warning(
+                    f"[SANDBOX] could not invalidate the config cache for "
+                    f"'{project_name}' after a write run: {exc}"
+                )
 
 
 async def _release_own_worker_or_refuse(project_name: str, decision, *, op_id: Optional[str] = None):
@@ -4878,6 +4898,17 @@ MODULE_CODE = {code}
             execution_result["shared_mode"] = _shared_mode
         if _shared_mode_read_back is not None:
             execution_result["shared_mode_read_back"] = _shared_mode_read_back
+
+        # CP5 FR-026: a write-enabled run that completed without error may have
+        # changed the grammar, so the project's sandbox config cache is
+        # invalidated. Trigger = write_enabled AND an error-free completion
+        # (success True, no error). A read-only run never invalidates. A run
+        # that errored (or timed out, which returned above) does not either:
+        # the cache key includes the .fwdata mtime, so any partial write that
+        # was saved still misses the cache on the next lookup. The helper is
+        # lazy and guarded -- a sandbox failure can never break run_module.
+        if write_enabled and execution_result.get("success") is True                 and not execution_result.get("error"):
+            _invalidate_sandbox_cache_after_write(project_name)
 
         # Include write certification result (issue #131: surface guarded hits too)
         execution_result["write_certification"] = build_write_certification_payload(

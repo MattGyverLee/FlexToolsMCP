@@ -7,14 +7,15 @@ Provides:
 - BaseEnvelope: common _contract / status / op_id fields
 - Per-tool *Success models (extra="ignore" for forward-compat)
 - RejectionEnvelope with a discriminated union keyed on error_code
-- 34 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
+- 36 per-code detail models (12 existing + 4 folded in + nested_unit_of_work
   + hvo_literal_write_risk + invalid_api_mode + 4 parser-check CP1 codes
   + 3 parser-check CP2b codes: parse_morph_unresolved, parse_run_not_found,
   parse_job_cancelled
   + 5 parser-check CP3 codes: parse_scope_empty, parse_scope_ambiguous,
   parse_scope_mismatch, parser_timeout, parser_job_failed
   + internal_error (#89)
-  + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean)
+  + 2 parser-check CP4 codes: parser_filing_in_progress, grammar_load_unclean
+  + 2 parser-check CP5 codes: parser_config_failed, parse_sandbox_refused)
 
 All field aliases reference KEY_* constants from response_keys so renames
 propagate automatically.
@@ -736,7 +737,75 @@ class GrammarLoadUncleanDetail(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Discriminated union over all 34 per-code detail models
+# parser-check CP5 -- two additive refusal codes (the second per M-2)
+#
+# Field ORDER below is transcribed from specs/parser-check-cp5/contracts/
+# tools.md section 4, which tests/test_parser_error_models.py parses. The
+# contract stays tool-responses/1.0: both codes are new, and the existing
+# parser_tool_missing / parser_timeout / parser_engine_mismatch shapes the
+# sandbox spine also emits are unchanged.
+# ---------------------------------------------------------------------------
+
+class ParserConfigFailedDetail(BaseModel):
+    """Detail payload for parser_config_failed (parser-check CP5, FR-009).
+
+    Generation is judged from its OUTPUT, not its exit code: a run that
+    exits 0 without the generator's ``Writing completed.`` line (a help
+    screen, a locked project, a migration prompt, a crash, an empty config)
+    is a failure, and lands here.
+
+    ``exit_code`` is null when the generator never returned one -- it timed
+    out or could not be started. ``stderr_tail`` is the last 20 lines of the
+    combined generator output, ASCII with non-ASCII escaped (FR-021), capped
+    at 4 KiB; the whole log is at ``log_path`` (the run's
+    ``sandbox/generate-config.log``). ``run_id`` is null only when the
+    failure came before a run existed.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parser_config_failed"] = "parser_config_failed"
+    exit_code: Optional[int] = None
+    stderr_tail: str
+    log_path: str
+    run_id: Optional[str] = None
+
+
+class ParseSandboxRefusedDetail(BaseModel):
+    """Detail payload for parse_sandbox_refused (parser-check CP5, M-2).
+
+    One code for the sandbox tool's own pre-run refusals -- names, existence,
+    corpora, seeding and disk space -- rather than one code per kind, or
+    ``runtime_error`` (which would misreport a request fault as a server
+    fault). Every one of these fires before a file is created (contracts/
+    tools.md section 3).
+
+    ``reason`` is a CLOSED enum; its members stay distinct because each has a
+    different remedy (rename, pick an existing name, fix the file, free
+    space). ``name`` and ``path`` identify what was refused where that
+    applies; ``needed_bytes`` / ``free_bytes`` are set only for
+    ``insufficient_disk_space``.
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    error_code: Literal["parse_sandbox_refused"] = "parse_sandbox_refused"
+    reason: Literal[
+        "name_invalid",
+        "sandbox_exists",
+        "sandbox_not_found",
+        "corpus_exists",
+        "corpus_not_found",
+        "corpus_invalid",
+        "run_not_seedable",
+        "insufficient_disk_space",
+        "word_file_invalid",
+    ]
+    name: Optional[str] = None
+    path: Optional[str] = None
+    hint: str
+    needed_bytes: Optional[int] = None
+    free_bytes: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Discriminated union over all 36 per-code detail models
 # ---------------------------------------------------------------------------
 
 AnyDetail = Union[
@@ -774,6 +843,8 @@ AnyDetail = Union[
     ParserJobFailedDetail,
     ParserFilingInProgressDetail,
     GrammarLoadUncleanDetail,
+    ParserConfigFailedDetail,
+    ParseSandboxRefusedDetail,
 ]
 
 
@@ -816,7 +887,7 @@ def validate_detail(data: Dict[str, Any]) -> AnyDetail:
 
     Args:
         data: Dict containing at minimum ``error_code`` matching one of the
-              31 known codes, plus any per-code detail fields.
+              36 known codes, plus any per-code detail fields.
 
     Returns:
         A validated instance of the appropriate detail model (e.g.

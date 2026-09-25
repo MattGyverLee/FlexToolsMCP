@@ -6,6 +6,11 @@ Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
 ### Fixed
+- **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
+  ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
+  LCM names now resolve as property lookups; when a property has no wrapper
+  method the tool returns ``found: false`` with ``kind: property`` instead of
+  ``found: true`` for the bare entity with an empty method list.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with

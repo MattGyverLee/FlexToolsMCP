@@ -173,16 +173,57 @@ def _entity_summary_for_lib(value: Any) -> str:
     return ""
 
 
+def _lookup_dotted_property(
+    reverse: dict, lcm_name: str, include: list[str]
+) -> Optional[dict]:
+    """Resolve ``Entity.Property`` without downgrading to a misleading entity hit (#87).
+
+    When the reverse mapping has no wrapper method for a property, return
+    ``found: false`` with ``kind: property`` instead of ``found: true`` for the
+    bare entity with an empty method list.
+    """
+    if "." not in lcm_name:
+        return None
+    entity, prop = lcm_name.split(".", 1)
+    if not entity or not prop:
+        return None
+
+    hit = _lookup_flat_kind(reverse, lcm_name, "property", include)
+    if hit:
+        return hit
+
+    by_entity = reverse.get("by_liblcm_entity", {})
+    if entity not in by_entity:
+        return None
+
+    return {
+        KEY_FOUND: False,
+        KEY_LCM_NAME: lcm_name,
+        KEY_KIND: "property",
+        KEY_MESSAGE: (
+            f"No flexicon wrapper method reads {entity}.{prop}. "
+            f"Access the property directly via LibLCM."
+        ),
+        KEY_HINT: (
+            f"{entity} has wrapper coverage at the entity level, but "
+            f"{prop} is an LCM property with no dedicated wrapper method. "
+            f"Use api_mode='liblcm' or read {prop} on a cast {entity} object."
+        ),
+        KEY_ADVISORY: (
+            "Use api_mode='liblcm' if you need to access this LCM property directly."
+        ),
+    }
+
+
 def _lookup_entity(reverse: dict, lcm_name: str, include: list[str]) -> Optional[dict]:
     """Look up `lcm_name` in by_liblcm_entity. Returns the response payload or None."""
     by_entity = reverse.get("by_liblcm_entity", {})
 
-    # Bare entity name (e.g. "ILexEntry"). Also allow "Foo.bar" by stripping
-    # the trailing dotted segment so callers can pass "ILexEntry.HeadWord"
-    # and still get entity-level coverage info.
-    candidates = [lcm_name]
+    # Issue #87: dotted names are property-qualified; do not strip to entity here.
     if "." in lcm_name:
-        candidates.append(lcm_name.split(".", 1)[0])
+        return None
+
+    candidates = [lcm_name]
 
     info = None
     matched_name = None
@@ -303,12 +344,18 @@ def _lookup_flat_kind(
 
 def _auto_lookup(reverse: dict, lcm_name: str, include: list[str]) -> Optional[dict]:
     """Dispatch order for kind='auto':
-       1. by_liblcm_entity (handles 'Foo' and 'Foo.bar')
-       2. factories (if name endswith 'Factory')
-       3. repositories (if name endswith 'Repository')
-       4. properties
-       5. methods
+       1. ``Entity.Property`` dotted symbols (issue #87)
+       2. by_liblcm_entity (bare interface names only)
+       3. factories (if name endswith 'Factory')
+       4. repositories (if name endswith 'Repository')
+       5. properties
+       6. methods
     """
+    if "." in lcm_name:
+        hit = _lookup_dotted_property(reverse, lcm_name, include)
+        if hit is not None:
+            return hit
+
     hit = _lookup_entity(reverse, lcm_name, include)
     if hit:
         return hit
@@ -359,7 +406,10 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
     if kind == "auto":
         hit = _auto_lookup(reverse, lcm_name, include)
     elif kind == "entity":
-        hit = _lookup_entity(reverse, lcm_name, include)
+        if "." in lcm_name:
+            hit = _lookup_dotted_property(reverse, lcm_name, include)
+        else:
+            hit = _lookup_entity(reverse, lcm_name, include)
     elif kind in ("factory", "repository", "method", "property"):
         hit = _lookup_flat_kind(reverse, lcm_name, kind, include)
     else:

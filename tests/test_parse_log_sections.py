@@ -308,7 +308,7 @@ async def test_a_run_from_an_earlier_server_process_is_readable(record_dir):
 #
 #   {"status": "ok", "run_id", "section", "applicable": true,
 #    "run_spine": "sandbox",
-#    "source": "sandbox/<file>",        # generate-config.log | hc-stdout.txt
+#    "source": "sandbox/<file>",        # generate-config.log | worker-stderr.txt
 #                                       # | hc-output.txt
 #    "content": "<the file's text, verbatim>"      -- when the file has text
 #    "note": _empty_note(meta, <what>)             -- instead of content when
@@ -324,7 +324,7 @@ async def test_a_run_from_an_earlier_server_process_is_readable(record_dir):
 
 _SANDBOX_SECTION_FILES = {
     "config_generation": "generate-config.log",
-    "hc_stdout": "hc-stdout.txt",
+    "hc_stdout": "worker-stderr.txt",
     "hc_output": "hc-output.txt",
 }
 
@@ -359,17 +359,15 @@ def _sandbox_section_meta(*, reused=False, load_errors=(), mode="parse"):
     return {
         "mode": mode,
         "config_source": {"kind": "project_cache", "cache_key": "3f2a9c0d11e4b7a8"},
-        "versions": {"hc_tool": "3.8.1", "fieldworks_hermitcrab": "3.8.2.0",
+        "versions": {"fieldworks_hermitcrab": "3.8.2.0",
                      "generate_hc_config": "9.3.11", "hcparse": "5.0.0"},
-        "version_skew": False,
-        "hc_source": "path",
         "generation": {"reused_cache": reused, "cache_key": "3f2a9c0d11e4b7a8",
                        "load_error_count": len(load_errors),
                        "load_errors": list(load_errors)},
         "copy": {"bytes": 0, "cleanup": "not_made" if reused else "deleted",
                  "path_if_failed": None},
-        "hc": {"exit_code": 0, "timed_out": False, "in_flight_index": None,
-               "duration_ms": 12, "counters": "ok"},
+        "worker": {"exit_code": 0, "timed_out": False, "in_flight_index": None,
+                   "duration_ms": 12, "counters": "ok"},
         "truncated_by_limit": False,
         "advisories": ["grammar_load_errors"] if load_errors else [],
     }
@@ -410,7 +408,7 @@ def _four_runs(record_dir):
     success = _sandbox_record(
         record_dir, ["membaca", "xyz"], results=["membaca", "xyz"],
         files={"generate-config.log": _GEN_LOG,
-               "hc-stdout.txt": _BANNER + _BLOCKS + "# of parses: 2, successful: 1, "
+               "worker-stderr.txt": _BANNER + _BLOCKS + "# of parses: 2, successful: 1, "
                "failed: 1, error: 0\n\n",
                "hc-output.txt": _BLOCKS + "# of parses: 2, successful: 1, failed: 1, "
                "error: 0\n\n"},
@@ -420,7 +418,7 @@ def _four_runs(record_dir):
         load_errors=_LOAD_ERRORS,
         files={"generate-config.log": "Loading project...\n" + "\n".join(_LOAD_ERRORS)
                + "\nWriting completed.\n",
-               "hc-stdout.txt": _BANNER + _BLOCKS, "hc-output.txt": _BLOCKS},
+               "worker-stderr.txt": _BANNER + _BLOCKS, "hc-output.txt": _BLOCKS},
     )
     timeout = _sandbox_record(
         record_dir, ["membaca", "xyz", "zzz"], results=["membaca", "xyz"],
@@ -428,16 +426,17 @@ def _four_runs(record_dir):
         failure={"stage_at_failure": "parsing", "error_code": "parser_timeout",
                  "message": "hc did not finish within 10 seconds"},
         files={"generate-config.log": _GEN_LOG,
-               "hc-stdout.txt": _BANNER + _BLOCKS + 'Parsing "zzz"\n',
+               "worker-stderr.txt": _BANNER + _BLOCKS + 'Parsing "zzz"\n',
                "hc-output.txt": _BLOCKS + 'Parsing "zzz"\n'},
     )
     broken = _sandbox_record(
         record_dir, ["membaca"], stage="failed",
         failure={"stage_at_failure": "loading_grammar", "error_code": "parser_job_failed",
-                 "message": "Load Error: The feature 'bogus' is not defined."},
+                 "message": "XmlException: The feature 'bogus' is not defined."},
         files={"generate-config.log": _GEN_LOG,
-               "hc-stdout.txt": 'Reading configuration file "hc-config.xml"... \n'
-               "Load Error: The feature 'bogus' is not defined.\n",
+               # The client's line for a load failure (FR-038, sandbox-worker.md 5).
+               "worker-stderr.txt": "Sandbox job failed (engine_unavailable): "
+               "XmlException: The feature 'bogus' is not defined.\n",
                "hc-output.txt": ""},
     )
     return {"success": success, "load_errors": load_errors, "timeout": timeout,
@@ -507,7 +506,7 @@ async def test_a_warm_run_shows_the_reuse_line_first(record_dir):
     record = _sandbox_record(
         record_dir, ["membaca"], results=["membaca"], reused=True,
         files={"generate-config.log": _REUSE_LINE + _GEN_LOG,
-               "hc-stdout.txt": _BANNER + _BLOCKS, "hc-output.txt": _BLOCKS},
+               "worker-stderr.txt": _BANNER + _BLOCKS, "hc-output.txt": _BLOCKS},
     )
     payload = await _log(record.run_id, "config_generation")
     assert payload["reused_cache"] is True
@@ -525,11 +524,12 @@ async def test_the_timed_out_run_keeps_its_in_flight_header_and_results(record_d
     assert [line["wordform"] for line in results["items"]] == ["membaca", "xyz"]
 
 
-async def test_the_broken_sandbox_shows_hc_load_error(record_dir):
+async def test_the_broken_sandbox_shows_the_load_exception(record_dir):
     record = _four_runs(record_dir)["broken"]
     stdout = await _log(record.run_id, "hc_stdout")
-    assert "Load Error: The feature 'bogus' is not defined." in stdout["content"]
-    # hc printed no result blocks: an explained absence, never an empty section.
+    assert "engine_unavailable" in stdout["content"]
+    assert "The feature 'bogus' is not defined." in stdout["content"]
+    # The worker recorded no results: an explained absence, never an empty section.
     output = await _log(record.run_id, "hc_output")
     assert output["applicable"] is True
     assert "content" not in output or output["content"]
@@ -627,7 +627,7 @@ async def test_in_process_sandbox_sections_are_unchanged(record_dir, quiet_conte
 async def test_a_sandbox_named_run_with_in_process_spine_is_not_filled(record_dir):
     """Applicability is the recorded spine, not the presence of files."""
     record = _completed_run(record_dir)
-    record.write_sandbox_file("hc-stdout.txt", "stray\n")
+    record.write_sandbox_file("worker-stderr.txt", "stray\n")
     payload = await _log(record.run_id, "hc_stdout")
     assert payload["applicable"] is False
     assert payload["reason"] == "not_applicable_for_this_spine"
@@ -637,13 +637,13 @@ async def test_a_long_sandbox_file_is_capped_and_says_so(record_dir, monkeypatch
     """Like a raw trace (max_trace_chars): capped inline, the file path given."""
     monkeypatch.setattr(parse_handler, "SANDBOX_LOG_MAX_CHARS", 10)
     record = _sandbox_record(record_dir, ["a"], results=["a"],
-                             files={"hc-stdout.txt": _BANNER + _BLOCKS})
+                             files={"worker-stderr.txt": _BANNER + _BLOCKS})
     payload = await _log(record.run_id, "hc_stdout")
-    full = record.read_sandbox_file("hc-stdout.txt")
+    full = record.read_sandbox_file("worker-stderr.txt")
     assert payload["content"] == full[:10]
     assert payload["content_truncated"] is True
     assert payload["content_chars"] == len(full)
-    assert payload["source_path"].endswith("hc-stdout.txt")
+    assert payload["source_path"].endswith("worker-stderr.txt")
 
 
 # -- CP5 pattern audit sweep 6: an unreadable meta.json is not absence --------

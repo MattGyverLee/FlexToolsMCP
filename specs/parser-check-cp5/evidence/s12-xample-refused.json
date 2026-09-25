@@ -1,0 +1,68 @@
+{
+  "scenario": "S12",
+  "project": "Sena 3",
+  "source_project": null,
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\Sena 3",
+      "before": {
+        "sha256": "e38515ac445844935cd6c983a6e5f40283f5490f398b0859724351ac798fdce8",
+        "files": 79,
+        "bytes": 118699548,
+        "locks": []
+      },
+      "after": {
+        "sha256": "e38515ac445844935cd6c983a6e5f40283f5490f398b0859724351ac798fdce8",
+        "files": 79,
+        "bytes": 118699548,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "parse": {
+      "status": "error",
+      "error_code": "parser_engine_mismatch",
+      "message": "The project's active parser is 'XAmple'; the sandbox spine exports and runs HermitCrab (HC) grammars only.",
+      "configured_engine": "XAmple",
+      "supported_engines": [
+        "HC"
+      ],
+      "hint": "This project's active parser could not be read from its .fwdata (absent), so it is treated as 'XAmple'; this operation requires one of ['HC']. If FieldWorks was saving the project, try again. Otherwise check the parser in FieldWorks via Words > Parser > Choose Parser.",
+      "next_step": [
+        {
+          "action": "Switch the project's parser to HermitCrab in FLEx, then retry.",
+          "tool": null,
+          "args": null,
+          "rationale": "The engine check reads the project's saved parser setting; a grammar for another engine cannot be exported for HermitCrab.",
+          "est_cost": "minutes"
+        },
+        {
+          "action": "See the sandboxes and corpora that exist for this project.",
+          "tool": "flextools_parse_sandbox",
+          "args": {
+            "action": "list",
+            "project_name": "Sena 3"
+          },
+          "rationale": "Lists existing sandbox and corpus names; nothing is created.",
+          "est_cost": "instant"
+        }
+      ],
+      "project_adopted_notice": {
+        "previous_project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+        "project": "Sena 3",
+        "message": "Session project is now 'Sena 3' (was 'CP5-Scratch-IndonesianHC-Complete-20260925T061059'). Unqualified calls target 'Sena 3' until you change it again."
+      }
+    }
+  },
+  "observations": {
+    "locks_seen_during_call": []
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:12:23.065394+00:00"
+}

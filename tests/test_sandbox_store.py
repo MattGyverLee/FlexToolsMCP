@@ -129,7 +129,7 @@ SRC_STORE = (Path(__file__).resolve().parent.parent / "src" / "flextoolsmcp"
              / "server" / "sandbox" / "store.py")
 
 ORIGIN_KEYS = {"schema", "name", "project", "created_at", "from_cache_key",
-               "from_inputs", "sha256_at_creation"}
+               "from_inputs", "sha256_at_creation", "hc_parameters", "lcm_ids_path"}
 LIST_ITEM_KEYS = {"name", "path", "created_at", "edited", "predates_project_grammar"}
 STATUS_KEYS = LIST_ITEM_KEYS | {"from_cache_key"}
 
@@ -214,10 +214,55 @@ async def test_create_returns_path_and_records_origin(
     assert origin["created_at"].endswith("Z")
     assert made["origin"] == {"from_cache_key": entry.key, "created_at": origin["created_at"]}
     assert store.read_origin(fake_project.name, "tighten-env") == origin
-    # Only the two documented files.
-    assert sorted(p.name for p in sdir.iterdir()) == ["hc-config.xml", "origin.json"]
+    # T101: the Morpher settings and the id-map sidecar travel with it.
+    assert origin["hc_parameters"] == entry.hc_parameters is not None
+    assert origin["lcm_ids_path"] == "lcm-ids.json"
+    assert (sdir / "lcm-ids.json").read_bytes() == entry.lcm_ids_path.read_bytes()
+    assert store.sandbox_lcm_ids_path(fake_project.name, "tighten-env") == sdir / "lcm-ids.json"
+    # Only the three documented files.
+    assert sorted(p.name for p in sdir.iterdir()) == [
+        "hc-config.xml", "lcm-ids.json", "origin.json"]
     # The cache entry is still usable.
     assert cache.lookup(fake_project.name, entry.key, touch=False) is not None
+
+
+async def test_create_from_entry_predating_sidecar_records_absent(
+        sandbox_root, fake_project, fake_generator):
+    store = _store()
+    entry = await _entry(fake_project, fake_generator)
+    old_meta = {k: v for k, v in entry.meta.items()
+                if k not in ("hc_parameters", "lcm_ids_path")}
+    old = cache.CacheEntry(project=entry.project, key=entry.key, path=entry.path,
+                           meta=old_meta)
+    store.create_sandbox(fake_project.name, "old-entry", old)
+    sdir = paths.sandbox_dir(fake_project.name, "old-entry")
+    origin = json.loads((sdir / "origin.json").read_text(encoding="utf-8"))
+    assert origin["hc_parameters"] is None and origin["lcm_ids_path"] is None
+    assert sorted(p.name for p in sdir.iterdir()) == ["hc-config.xml", "origin.json"]
+    assert store.sandbox_lcm_ids_path(fake_project.name, "old-entry") is None
+
+
+async def test_invalid_sidecar_is_copied_verbatim_never_dropped(
+        sandbox_root, fake_project, fake_generator):
+    store = _store()
+    entry = await _entry(fake_project, fake_generator)
+    bad = json.dumps({"schema": "flextoolsmcp.hc-lcm-ids/1", "valid": False, "ids": {},
+                      "invalid_ids": ["7"], "error": None}).encode("utf-8")
+    entry.lcm_ids_path.write_bytes(bad)
+    store.create_sandbox(fake_project.name, "bad-map", entry)
+    sdir = paths.sandbox_dir(fake_project.name, "bad-map")
+    assert (sdir / "lcm-ids.json").read_bytes() == bad
+
+
+async def test_recorded_sidecar_that_vanished_is_not_absent(
+        sandbox_root, fake_project, fake_generator):
+    store = _store()
+    entry = await _entry(fake_project, fake_generator)
+    store.create_sandbox(fake_project.name, "gone", entry)
+    sdir = paths.sandbox_dir(fake_project.name, "gone")
+    (sdir / "lcm-ids.json").unlink()  # the user deleted it by hand
+    found = store.sandbox_lcm_ids_path(fake_project.name, "gone")
+    assert found == sdir / "lcm-ids.json" and not found.exists()
 
 
 async def test_second_create_refused_first_file_byte_identical(

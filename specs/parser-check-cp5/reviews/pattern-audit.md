@@ -204,3 +204,29 @@ this change.
    - `sandbox/store.py` `_check_seedable` (`:455`).
 
    `parse/diff.py`'s local retry can call `read_meta_strict` directly (sweep 6).
+
+---
+
+## Pattern audit (T110, 2026-09-25): an engine/LCM id used as a dedup key without a null/uniqueness guard
+
+HermitCrab's `Morpheme.Id` is unset in GenerateHCConfig's export. `_parse_raw` keyed rule (c)'s
+"already seen" set on `str(morpheme.Id)`, so every morph got the key `'None'` and a root after a
+prefix was dropped (live: `memukul` came back as `mem`). The fix is `hc_engine.morpheme_key`: the
+key is `(MSA id, InflTypeID)`, then the engine id, then the morph's position.
+
+Original site: `src/flextoolsmcp/server/parse/worker_main.py` `_parse_raw` (`morpheme_key=`).
+
+Siblings found (sweep of `src/flextoolsmcp`, ~70 sites examined and cleared):
+- `server/parse/hc_engine.py` `morpheme_key` [MED]. The first fix keyed on the MSA id alone, but an
+  inflectional variant carries its main entry's MSA with its own `InflTypeID`. **Fixed**: the key
+  is now `(msa, infl_type)`, with a unit test in `tests/test_sandbox_worker.py`.
+- `server/scan/grammar_scan_module.py:934-938` [MED]. Segment rules are grouped by
+  `(InitialStratumRA.Hvo, FinalStratumRA.Hvo)`, so every rule with an unset stratum shares
+  `(None, None)`. That is outside CP5 and is left for a separate fix.
+- `server/parse/worker_main.py` stub backend (`morpheme_key=form`) [LOW]. Test-only, and scripted
+  analyses give each morph its own key. No change.
+- `hc_engine.RawMorph.morpheme_key` defaults to `None` [LOW]. Both real constructors set it.
+  No change.
+- `server/filing/eligibility.py:325,398`; `signature.py`, `record.py`, `oracle.py` GUID-triple
+  signatures [LOW]. A live LCM object always has a GUID, and a None there is intended (FR-031a).
+  No change.

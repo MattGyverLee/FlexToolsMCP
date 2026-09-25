@@ -1,0 +1,1048 @@
+{
+  "scenario": "S15",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\IndonesianHC-Complete",
+      "before": {
+        "sha256": "08ad2b1c017613607f1b5fe49ede8091f6b0ae03f6932ea1f2075dd68526f4f3",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": null
+    }
+  ],
+  "responses": {
+    "sandbox": {
+      "status": "ok",
+      "run_id": "533f2a4ca2c4859b2a3a763b037fae78",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+      "stage": "completed",
+      "words_completed": 61,
+      "words_total": 61,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "meabi",
+          "mejɑkin",
+          "melatih",
+          "melɑtih",
+          "memadan",
+          "memanis",
+          "memasak",
+          "membaca",
+          "membuat",
+          "membuɑt",
+          "membɑt͡ʃɑ",
+          "memukul",
+          "memɑdɑn",
+          "memɑnis",
+          "menabi",
+          "mendalam",
+          "mendengar",
+          "mendeŋɑɾ",
+          "mendɑlɑm",
+          "mengambil",
+          "menganycung",
+          "mengeong",
+          "menggaji",
+          "mengirim",
+          "mengisi",
+          "mengukur",
+          "mengundang",
+          "menikah",
+          "menikɑh",
+          "menilai",
+          "menilɑi",
+          "menolong",
+          "menoloŋ",
+          "menulis",
+          "menyanyi",
+          "menyatat",
+          "menzarah",
+          "menzɑɾɑh",
+          "men̻ut͡ʃi",
+          "men̻ɑtɑt",
+          "merambut",
+          "merasa",
+          "mewakil",
+          "mewɑkil",
+          "mewɑŋi",
+          "meŋabi",
+          "meŋeɾti",
+          "meŋgɑmbɑɾ",
+          "meŋikɑt",
+          "meŋukuɾ",
+          "meŋɑ",
+          "meŋɑb",
+          "meŋɑbi",
+          "meŋɑit",
+          "meŋɑm",
+          "meŋɑmb",
+          "meŋɑmbil",
+          "meŋɑnɑk",
+          "meŋɑn̻t͡ʃuŋ",
+          "meŋɑt͡ʃo",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 61,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 61,
+        "NumParseErrors": 0,
+        "NumZeroParses": 8,
+        "TotalParseTime": 312,
+        "TotalAnalyses": 28,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 28
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 61,
+        "parsed": 28,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\533f2a4ca2c4859b2a3a763b037fae78",
+        "outcomes": {
+          "parsed": 28,
+          "not_parsed": 8,
+          "invalid_segment": 25,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "533f2a4ca2c4859b2a3a763b037fae78",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\533f2a4ca2c4859b2a3a763b037fae78",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+        "run_id": "533f2a4ca2c4859b2a3a763b037fae78",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 1,
+        "words_total": 61,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "meabi",
+            "mejɑkin",
+            "melatih",
+            "melɑtih",
+            "memadan",
+            "memanis",
+            "memasak",
+            "membaca",
+            "membuat",
+            "membuɑt",
+            "membɑt͡ʃɑ",
+            "memukul",
+            "memɑdɑn",
+            "memɑnis",
+            "menabi",
+            "mendalam",
+            "mendengar",
+            "mendeŋɑɾ",
+            "mendɑlɑm",
+            "mengambil",
+            "menganycung",
+            "mengeong",
+            "menggaji",
+            "mengirim",
+            "mengisi",
+            "mengukur",
+            "mengundang",
+            "menikah",
+            "menikɑh",
+            "menilai",
+            "menilɑi",
+            "menolong",
+            "menoloŋ",
+            "menulis",
+            "menyanyi",
+            "menyatat",
+            "menzarah",
+            "menzɑɾɑh",
+            "men̻ut͡ʃi",
+            "men̻ɑtɑt",
+            "merambut",
+            "merasa",
+            "mewakil",
+            "mewɑkil",
+            "mewɑŋi",
+            "meŋabi",
+            "meŋeɾti",
+            "meŋgɑmbɑɾ",
+            "meŋikɑt",
+            "meŋukuɾ",
+            "meŋɑ",
+            "meŋɑb",
+            "meŋɑbi",
+            "meŋɑit",
+            "meŋɑm",
+            "meŋɑmb",
+            "meŋɑmbil",
+            "meŋɑnɑk",
+            "meŋɑn̻t͡ʃuŋ",
+            "meŋɑt͡ʃo",
+            "pukul"
+          ],
+          "text_ids": [],
+          "word_count": 61,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\533f2a4ca2c4859b2a3a763b037fae78",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "5e9e807a58d23a93"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "5e9e807a58d23a93",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "533f2a4ca2c4859b2a3a763b037fae78"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0",
+        "project_adopted_notice": {
+          "previous_project": "CP5-Scratch-Circumsanity-20260925T063109",
+          "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+          "message": "Session project is now 'CP5-Scratch-IndonesianHC-Complete-20260925T063139' (was 'CP5-Scratch-Circumsanity-20260925T063109'). Unqualified calls target 'CP5-Scratch-IndonesianHC-Complete-20260925T063139' until you change it again."
+        }
+      }
+    },
+    "project": {
+      "status": "ok",
+      "run_id": "d74b8ff8c16347cc024f28c24746321e",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+      "stage": "completed",
+      "words_completed": 61,
+      "words_total": 61,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "meabi",
+          "mejɑkin",
+          "melatih",
+          "melɑtih",
+          "memadan",
+          "memanis",
+          "memasak",
+          "membaca",
+          "membuat",
+          "membuɑt",
+          "membɑt͡ʃɑ",
+          "memukul",
+          "memɑdɑn",
+          "memɑnis",
+          "menabi",
+          "mendalam",
+          "mendengar",
+          "mendeŋɑɾ",
+          "mendɑlɑm",
+          "mengambil",
+          "menganycung",
+          "mengeong",
+          "menggaji",
+          "mengirim",
+          "mengisi",
+          "mengukur",
+          "mengundang",
+          "menikah",
+          "menikɑh",
+          "menilai",
+          "menilɑi",
+          "menolong",
+          "menoloŋ",
+          "menulis",
+          "menyanyi",
+          "menyatat",
+          "menzarah",
+          "menzɑɾɑh",
+          "men̻ut͡ʃi",
+          "men̻ɑtɑt",
+          "merambut",
+          "merasa",
+          "mewakil",
+          "mewɑkil",
+          "mewɑŋi",
+          "meŋabi",
+          "meŋeɾti",
+          "meŋgɑmbɑɾ",
+          "meŋikɑt",
+          "meŋukuɾ",
+          "meŋɑ",
+          "meŋɑb",
+          "meŋɑbi",
+          "meŋɑit",
+          "meŋɑm",
+          "meŋɑmb",
+          "meŋɑmbil",
+          "meŋɑnɑk",
+          "meŋɑn̻t͡ʃuŋ",
+          "meŋɑt͡ʃo",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 61,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": "id-fonipa"
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 61,
+        "NumParseErrors": 25,
+        "NumZeroParses": 33,
+        "TotalParseTime": 7096,
+        "TotalAnalyses": 28,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 28
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 61,
+        "parsed": 28,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\d74b8ff8c16347cc024f28c24746321e"
+      },
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "d74b8ff8c16347cc024f28c24746321e",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\d74b8ff8c16347cc024f28c24746321e"
+    }
+  },
+  "observations": {
+    "words_compared": 61,
+    "disagreements": {},
+    "comparison": {
+      "meabi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mejɑkin": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "jɑkin"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "jɑkin"
+          ]
+        ]
+      },
+      "melatih": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "melɑtih": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "lɑtih"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "lɑtih"
+          ]
+        ]
+      },
+      "memadan": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "memanis": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "memasak": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "membaca": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "membuat": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "membuɑt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "buɑt"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "buɑt"
+          ]
+        ]
+      },
+      "membɑt͡ʃɑ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "bɑt͡ʃɑ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "bɑt͡ʃɑ"
+          ]
+        ]
+      },
+      "memukul": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "pukul"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "pukul"
+          ]
+        ]
+      },
+      "memɑdɑn": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "pɑdɑn"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "pɑdɑn"
+          ]
+        ]
+      },
+      "memɑnis": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "mɑnis"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "mɑnis"
+          ]
+        ]
+      },
+      "menabi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mendalam": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mendengar": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mendeŋɑɾ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "deŋɑɾ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "deŋɑɾ"
+          ]
+        ]
+      },
+      "mendɑlɑm": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "dɑlɑm"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "dɑlɑm"
+          ]
+        ]
+      },
+      "mengambil": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menganycung": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mengeong": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menggaji": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mengirim": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mengisi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mengukur": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mengundang": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menikah": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menikɑh": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "nikɑh"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "nikɑh"
+          ]
+        ]
+      },
+      "menilai": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menilɑi": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "nilɑi"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "nilɑi"
+          ]
+        ]
+      },
+      "menolong": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menoloŋ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "toloŋ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "toloŋ"
+          ]
+        ]
+      },
+      "menulis": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "tulis"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "tulis"
+          ]
+        ]
+      },
+      "menyanyi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menyatat": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menzarah": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "menzɑɾɑh": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "zɑɾɑh"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "zɑɾɑh"
+          ]
+        ]
+      },
+      "men̻ut͡ʃi": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "t͡ʃut͡ʃi"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "t͡ʃut͡ʃi"
+          ]
+        ]
+      },
+      "men̻ɑtɑt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "t͡ʃɑtɑt"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "t͡ʃɑtɑt"
+          ]
+        ]
+      },
+      "merambut": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "merasa": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mewakil": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "mewɑkil": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "wɑkil"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "wɑkil"
+          ]
+        ]
+      },
+      "mewɑŋi": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "wɑŋi"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "wɑŋi"
+          ]
+        ]
+      },
+      "meŋabi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋeɾti": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "eɾti"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "eɾti"
+          ]
+        ]
+      },
+      "meŋgɑmbɑɾ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "gɑmbɑɾ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "gɑmbɑɾ"
+          ]
+        ]
+      },
+      "meŋikɑt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ikɑt"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ikɑt"
+          ]
+        ]
+      },
+      "meŋukuɾ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ukuɾ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ukuɾ"
+          ]
+        ]
+      },
+      "meŋɑ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋɑb": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋɑbi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋɑit": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "kɑit"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "kɑit"
+          ]
+        ]
+      },
+      "meŋɑm": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋɑmb": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "meŋɑmbil": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ɑmbil"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ɑmbil"
+          ]
+        ]
+      },
+      "meŋɑnɑk": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ɑnɑk"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ɑnɑk"
+          ]
+        ]
+      },
+      "meŋɑn̻t͡ʃuŋ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ɑn̻t͡ʃuŋ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ɑn̻t͡ʃuŋ"
+          ]
+        ]
+      },
+      "meŋɑt͡ʃo": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "meŋ",
+            "ŋɑt͡ʃo"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "meŋ",
+            "ŋɑt͡ʃo"
+          ]
+        ]
+      },
+      "pukul": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "pukul"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "pukul"
+          ]
+        ]
+      }
+    },
+    "disclosed_differences": [
+      "glosses: the sandbox reads Morpheme.Gloss; FLEx labels morphs by category",
+      "user_added morphs: emitted in named sandboxes only (none in a cache run)"
+    ]
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:32:36.122255+00:00"
+}

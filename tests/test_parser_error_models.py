@@ -19,6 +19,7 @@ out of the AnyDetail Union -- testing only the bare model class would not
 catch that. This file exists specifically to catch it.
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -70,9 +71,9 @@ PARSER_AGENT_MISSING_EXAMPLE = {
 
 PARSER_TOOL_MISSING_EXAMPLE = {
     "error_code": "parser_tool_missing",
-    "component": "hc",
-    "expected_path": "C:\\Users\\me\\.dotnet\\tools\\hc.exe",
-    "install_hint": "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool",
+    "component": "fieldworks_hermitcrab",
+    "expected_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll",
+    "install_hint": "GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks.",
 }
 
 
@@ -240,7 +241,7 @@ class TestParserToolMissingDetail:
         detail = validate_detail(PARSER_TOOL_MISSING_EXAMPLE)
         assert isinstance(detail, ParserToolMissingDetail)
         assert detail.error_code == "parser_tool_missing"
-        assert detail.component == "hc"
+        assert detail.component == "fieldworks_hermitcrab"
         assert detail.expected_path == PARSER_TOOL_MISSING_EXAMPLE["expected_path"]
         assert detail.install_hint == PARSER_TOOL_MISSING_EXAMPLE["install_hint"]
 
@@ -254,6 +255,12 @@ class TestParserToolMissingDetail:
         detail = validate_detail(data)
         assert isinstance(detail, ParserToolMissingDetail)
         assert detail.component == "GenerateHCConfig.exe"
+
+    def test_the_retired_hc_component_is_rejected(self):
+        """CP5 re-plan: `hc` left the enum with the `hc` console tool."""
+        bad = dict(PARSER_TOOL_MISSING_EXAMPLE, component="hc")
+        with pytest.raises(pydantic.ValidationError):
+            validate_detail(bad)
 
     def test_component_enum_rejects_value_outside_set(self):
         bad = dict(PARSER_TOOL_MISSING_EXAMPLE, component="nonexistent_component")
@@ -439,24 +446,46 @@ class TestCP3ExtraFieldsForbidden:
 
 
 class TestCP3JobFailureEnumIsClosed:
-    """`out_of_memory | crashed | cancelled` and nothing else.
+    """`out_of_memory | crashed | cancelled | engine_unavailable |
+    id_map_invalid` and nothing else.
 
-    The three are kept distinct because the remedies differ: out of memory
-    means cut the scope, crashed means read the log, cancelled means it was
-    asked to stop and nothing is wrong.
+    They are kept distinct because the remedies differ: out of memory means
+    cut the scope, crashed means read the log, cancelled means it was asked
+    to stop and nothing is wrong. CP5 adds the sandbox worker's two (T114):
+    the config never loaded into a Morpher, or its id map is invalid.
     """
 
-    @pytest.mark.parametrize("value", ["out_of_memory", "crashed", "cancelled"])
+    @pytest.mark.parametrize(
+        "value",
+        ["out_of_memory", "crashed", "cancelled", "engine_unavailable", "id_map_invalid"],
+    )
     def test_accepts_each_contract_value(self, value):
         detail = validate_detail(
             dict(CP3_EXAMPLES["parser_job_failed"], failure=value)
         )
         assert detail.failure == value
 
-    @pytest.mark.parametrize("value", ["timeout", "Crashed", "OUT_OF_MEMORY", ""])
+    @pytest.mark.parametrize(
+        "value",
+        ["timeout", "Crashed", "OUT_OF_MEMORY", "", "engine_missing", "id_map_absent"],
+    )
     def test_rejects_anything_else(self, value):
         with pytest.raises(pydantic.ValidationError):
             validate_detail(dict(CP3_EXAMPLES["parser_job_failed"], failure=value))
+
+    @pytest.mark.parametrize("value", ["engine_unavailable", "id_map_invalid"])
+    def test_cp5_golden_fixture_validates(self, value):
+        """Each CP5 value's golden fixture is a valid detail, in field order."""
+        path = (
+            Path(__file__).parent / "golden" / "responses"
+            / f"parser_job_failed_{value}.json"
+        )
+        fixture = json.loads(path.read_text(encoding="utf-8"))
+        fields = list(ParserJobFailedDetail.model_fields)
+        detail = {k: fixture[k] for k in fields}
+        assert validate_detail(detail).failure == value
+        present = [k for k in fixture if k in fields]
+        assert present == fields
 
 
 class TestCP3IsPurelyAdditive:

@@ -3,7 +3,7 @@
   "specName": "parser check cp5",
   "branch": "feat/parser-check-cp5",
   "currentStep": "implement",
-  "status": "implementing",
+  "status": "completed",
   "history": [
     {
       "step": "specify",
@@ -819,6 +819,165 @@
       "kind": "complete",
       "by": "ai",
       "at": "2026-09-24T23:55:39.557Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T100",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:36:36.165Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T097",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:36:36.789Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T114",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:36:38.995Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T113",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:38:47.585Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T099",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:40:22.638Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T101",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:41:22.794Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T096",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:42:10.141Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T112",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:42:10.444Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T098",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T02:42:10.749Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T102",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:13:30.799Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T115",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:15:19.148Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T103",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:16:46.536Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T107",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:24:39.083Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T104",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:36:01.632Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T105",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:36:01.779Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T106",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:36:01.895Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T108",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:40:19.274Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T109",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T03:45:20.335Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T110",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T06:24:43.056Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-09-25T06:33:57.169Z"
     }
   ],
   "telemetryInstanceId": "cdfa9181-e8da-4bbc-be2f-25dbbc5c2f28",
@@ -1325,9 +1484,7 @@
         "T056"
       ],
       "tests": [
-        "tests/test_sandbox_no_project_writes.py",
-        "tests/test_parse_no_project_writes.py",
-        "tests/test_parse_no_edit_blocking.py"
+        "tests/test_parse_live_cp5.py"
       ]
     },
     "FR-044": {
@@ -1351,6 +1508,25 @@
       ],
       "tests": [
         "tests/test_parse_live_cp5.py"
+      ]
+    },
+    "FR-050": {
+      "tests": [
+        "tests/test_sandbox_worker.py::TestShapingRules",
+        "tests/test_sandbox_cache.py::test_form_ids_carry_their_default_vernacular_form_text",
+        "tests/test_parse_live_cp5.py::test_s14_circumfix_shaping_and_id_map"
+      ]
+    },
+    "FR-047": {
+      "tests": [
+        "tests/test_parse_live_cp5.py::test_s4_parse_words",
+        "tests/test_parse_live_cp5.py::test_s6_sandbox_rehearse"
+      ]
+    },
+    "FR-046": {
+      "tests": [
+        "tests/test_parse_live_cp5.py::test_s16_live_process_isolation",
+        "tests/test_sandbox_worker.py::TestIsolation"
       ]
     }
   },
@@ -1381,7 +1557,7 @@
     "XAmple and non-Windows",
     "CP6 docs/CHANGELOG/telemetry"
   ],
-  "last_action": "94/95 tasks done; full suite 3893 passed; T095 live verification blocked on M-1 (needs a working hc)",
+  "last_action": "T110 done: live 17 pass / 2 human-gated skip / S5 SC-006 miss (#242); non-live 3864 pass",
   "approach": "A packaged hcparse.ps1 does the mechanism (minimal copy, generation, quoting, a UTF-16-aware streamed hc run under a timeout, always-delete); a new server/sandbox package does the policy (discovery, the no-LCM engine check, cache lifecycles, the single hc-output parser, classification). A per-run SandboxClient plugs into the existing job runner, so status, cancel, logs and diff are reused.",
   "decisions": [
     {
@@ -1418,6 +1594,69 @@
       "decision": "SandboxClient verifies each hc block header word against the dispatch-sent word (NFC) and cross-checks dispatch sent count vs hc-script.txt commands; mismatch marks remaining words error_no_output + attribution_mismatch flag, or fails the run as parser_job_failed",
       "why": "Results were attributed by position; a script/hc disagreement would silently mis-attribute every later word (SC-004, FR-018)",
       "rejected": "Trust positional attribution alone"
+    },
+    {
+      "decision": "M-1 resolved: sandbox Parse/Test calls FieldWorks bundled HermitCrab engine (3.8.2) directly in the parse worker; Generate stays",
+      "why": "lowest maintenance: one parse path, no hc CLI copy or text-output parsing",
+      "rejected": "packaged hc stand-in hc_fw.py driven by hcparse.ps1 (in reference/); dotnet-tool hc"
+    },
+    {
+      "decision": "CP5 re-plan (2026-09-24): sandbox Parse/Test run in a --sandbox mode of the existing parse worker (server/parse/worker_main.py) on FieldWorks' own SIL.Machine.Morphology.HermitCrab.dll via pythonnet -- no new binary, no hc CLI, no hc stand-in, no LCM/flexicon in that process, no project opened. Results replicate FLEx's Try A Word shaping (HCParser.GetMorphs) using an lcm-ids.json sidecar built at generation; project ParserParameters/HC applied by feature detection. Generate mode unchanged. See research.md R-17 and spec FR-046..FR-050."
+    },
+    {
+      "decision": "APR circumfix: emit BOTH occurrences (second flagged is_circumfix), plus infix placement and is_circumfix for ID2>0",
+      "why": "HCParser.GetMorphs:347-440 emits the first occurrence too (LT-21447 Leipzig); maintainer rule: FLEx is the reference",
+      "rejected": "contract text: first occurrence recorded but not emitted"
+    },
+    {
+      "decision": "Add --named-sandbox worker flag to switch on rule (a) user_added exception",
+      "why": "worker cannot otherwise tell a named-sandbox config from a cache config",
+      "rejected": "inferring from id-map absence"
+    },
+    {
+      "decision": "Carry parameters_applied/id_map/engine_version/load errors on the existing load_baseline message",
+      "why": "one channel, already routed to run listeners, sent before the first result",
+      "rejected": "new message type or per-result fields"
+    },
+    {
+      "decision": "lcm-ids.json built from a shared stream read of the live .fwdata, checked against the cache key before and after",
+      "why": "hcparse.ps1 Generate deletes the work/ copy before returning; path/size/mtime check makes a mid-read change mark the map invalid (source_changed)",
+      "rejected": "reading the byte-identical work/<run_id>/ copy (it no longer exists at that point)"
+    },
+    {
+      "decision": "A sandbox worker that dies mid-list gives error_no_output for the in-flight word and not_reached for the rest; the run completes",
+      "why": "FR-018: every word gets exactly one result; a start/load failure still fails the run (FR-016)",
+      "rejected": "failing the whole run as parser_job_failed/crashed on any mid-list death"
+    },
+    {
+      "decision": "hc_stdout serves worker-stderr.txt and hc_output a rendered hc-output.txt; in-process not-applicable notes kept byte-identical",
+      "why": "contracts/tools.md section 7: section names unchanged, contents reworded",
+      "rejected": "writing the worker diagnostics under the old hc-stdout.txt name"
+    },
+    {
+      "decision": "hcparse.ps1 Parse/Test code deleted; retired modes exit 2; HCPARSE_VERSION 6.0.0",
+      "why": "T107; the version bump rebuilds 5.x cache entries so every entry has an lcm-ids sidecar",
+      "rejected": "leaving the modes in place unused"
+    },
+    {
+      "decision": "Shaped morphs show the allomorph form (IMoForm.Form in the default vernacular ws, recorded in lcm-ids.json); guessed morphs keep the surface string",
+      "why": "FLEx HCParser.GetMorphs builds MorphInfo from the IMoForm and uses the surface only as GuessedString; live parity showed mem/ukul vs FLEx meN/pukul",
+      "rejected": "keep surface forms and disclose; emit both fields"
+    },
+    {
+      "decision": "Rule (c) keys morphemes on the MSA id, then engine id, then position",
+      "why": "GenerateHCConfig leaves Morpheme.Id unset so every morph collided and roots were dropped after prefixes (memukul -> mem)",
+      "rejected": "keying on the pythonnet Morpheme wrapper object"
+    },
+    {
+      "decision": "SC-006 miss recorded, S5 kept strict, T110 closed; warm worker pool deferred to #242",
+      "why": "Warm run cost is the fresh worker process (CLR + HermitCrab load); only a pool fixes it",
+      "rejected": "rewording SC-006; implementing the pool inside T110"
+    },
+    {
+      "decision": "Morpheme key includes InflTypeID alongside the MSA id",
+      "why": "Pattern sweep (QC gate): an inflectional variant shares its main entry MSA",
+      "rejected": "MSA id alone"
     }
   ],
   "step_summaries": {
@@ -1429,10 +1668,10 @@
       "summary": "95 tasks across 9 phases: Setup, Foundational, US1-US6 (test-first waves), Polish; T095 live verification needs_human on M-1"
     },
     "implement": {
-      "summary": "Sandbox spine shipped: hcparse.ps1 (Generate/Parse/Test), server/sandbox package (paths, engine, workdir, cache, script, hc_output, classify, store, client), flextools_parse_sandbox (parse/create_sandbox/list/seed_corpus/run_corpus), health parser.sandbox, spine-aware log/diff/status; 94/95 tasks, 3893 tests green; T095 live verification needs_human (M-1)"
+      "summary": "CP5 live verification on scratch copies: in-process sandbox verified against FieldWorks HermitCrab 3.8.2.0; two FR-050 shaping bugs fixed; SC-006 marginal miss tracked in #242"
     }
   },
-  "currentTask": "T063",
+  "currentTask": "T110",
   "task_summaries": {
     "T003": {
       "status": "DONE",
@@ -2125,6 +2364,209 @@
       "files": [
         "tests/test_sandbox_script.py"
       ]
+    },
+    "T100": {
+      "status": "DONE",
+      "did": "engine.py: hc_parameters_from_text (FLEx defaults, HCParser.LoadParser element names), EngineReading.hc_parameters, remember(key, active_parser, hc_parameters)",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/engine.py",
+        "tests/test_sandbox_engine.py"
+      ]
+    },
+    "T097": {
+      "status": "DONE",
+      "did": "Added CP5_SANDBOX_ENGINE_ALLOWLIST (Morpher/XmlLanguageLoader only inside worker_main._SandboxBackend) with pinning, non-vacuity, _RealBackend-scoped and falsifiability tests; removed hc -h identity-probe narrowing (kept a T104-pending transitional probe permission for parser_probe.py)",
+      "files": [
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T114": {
+      "status": "DONE",
+      "did": "Widened ParserJobFailedDetail.failure with engine_unavailable and id_map_invalid; TOOL-CONTRACT row, CHANGELOG line, two variant golden fixtures, enum/golden tests",
+      "files": [
+        "src/flextoolsmcp/server/response_models.py",
+        "docs/TOOL-CONTRACT.md",
+        "tests/make_golden.py",
+        "tests/golden/responses/parser_job_failed_engine_unavailable.json",
+        "tests/golden/responses/parser_job_failed_id_map_invalid.json",
+        "tests/test_parser_error_models.py",
+        "CHANGELOG.md"
+      ]
+    },
+    "T113": {
+      "status": "DONE",
+      "did": "FR-014 split now in Python: handlers/parse.py split_words() used for both words strings and word_file (UTF-8, BOM tolerated); 8 new tests",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "tests/test_sandbox_handler.py"
+      ]
+    },
+    "T099": {
+      "status": "DONE",
+      "did": "New sandbox/lcm_ids.py (LCM-free sidecar builder: config ids by role, fwdata rt-order HVO resolve + class validation, source_changed guard); build_entry writes lcm-ids.json + key.json hc_parameters/lcm_ids_path (not in key); CacheEntry.lcm_ids_path/.hc_parameters; optional id_source",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/lcm_ids.py",
+        "src/flextoolsmcp/server/sandbox/cache.py",
+        "tests/test_sandbox_cache.py"
+      ]
+    },
+    "T101": {
+      "status": "DONE",
+      "did": "store.create_sandbox copies lcm-ids.json verbatim (exclusive create) and records hc_parameters + lcm_ids_path in origin.json; sandbox_lcm_ids_path() distinguishes absent (None) from recorded-but-missing",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/store.py",
+        "tests/test_sandbox_store.py"
+      ]
+    },
+    "T096": {
+      "status": "DONE",
+      "did": "--sandbox mode: _SandboxBackend (AssemblyResolve, XmlLanguageLoader.Load w/ callback, Morpher, feature-detected params, ParseWord w/ guessRoot, held Morpher), _StubSandboxBackend for --stub --sandbox, D1 refusals, load_baseline engine facts; verified live against FW 9 engine 3.8.2.0",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/parse/hc_engine.py",
+        "tests/test_sandbox_worker.py",
+        "specs/parser-check-cp5/contracts/sandbox-worker.md"
+      ]
+    },
+    "T112": {
+      "status": "DONE",
+      "did": "hc_engine.shape_analysis ports HCParser.GetMorphs rules a-d + infix placement; id_map_invalid backstop; unshaped path for absent map; per-rule unit tests. Rule b corrected in docs: FLEx emits both APR-circumfix occurrences",
+      "files": [
+        "src/flextoolsmcp/server/parse/hc_engine.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "tests/test_sandbox_worker.py",
+        "specs/parser-check-cp5/spec.md",
+        "specs/parser-check-cp5/research.md",
+        "specs/parser-check-cp5/tasks.md"
+      ]
+    },
+    "T098": {
+      "status": "DONE",
+      "did": "SandboxSpawn dataclass + ParseWorkerClient(sandbox=...) / spawn_args() build --sandbox argv; child-process test",
+      "files": [
+        "src/flextoolsmcp/server/parse/worker_client.py",
+        "tests/test_sandbox_worker.py"
+      ]
+    },
+    "T102": {
+      "status": "DONE",
+      "did": "SandboxClient runs Parse/Test via the --sandbox worker: watchdog, id-map gate before spawn, crash -> error_no_output/not_reached, worker-stderr.txt (hc_stdout) + rendered hc-output.txt (hc_output), meta.sandbox.worker/engine_counters; engine.read_parameters; stub crash/sleep knobs; handler/runner read worker section",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/client.py",
+        "src/flextoolsmcp/server/sandbox/engine.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/runner.py",
+        "tests/test_sandbox_client.py",
+        "tests/test_parse_log_sections.py",
+        "tests/test_sandbox_handler.py",
+        "tests/test_parse_no_project_writes.py"
+      ]
+    },
+    "T115": {
+      "status": "DONE",
+      "did": "Named-sandbox runs source Morpher params from origin.json's project via a parameters-only .fwdata stream read (live_project); flex_defaults with a reason note when no project / unresolvable / unreadable; boom-stub no-LCM-import and byte-identical tests",
+      "files": [
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/sandbox/client.py",
+        "tests/test_sandbox_handler.py",
+        "tests/test_sandbox_client.py"
+      ]
+    },
+    "T103": {
+      "status": "DONE",
+      "did": "Classification compares the worker's structured analyses as sets of ordered (form, gloss) sequences; test_sandbox_classify.py rewritten for the worker parse dict (58 tests, no hc text)",
+      "files": [
+        "src/flextoolsmcp/server/sandbox/classify.py",
+        "tests/test_sandbox_classify.py"
+      ]
+    },
+    "T107": {
+      "status": "DONE",
+      "did": "hcparse.ps1 is Generate-only (Parse/Test code and params deleted, retired modes exit 2, HCPARSE_VERSION 6.0.0); sandbox/hc_output.py, tests/fakes/hc_fake.py+hc.cmd, fake_hc fixture and test_sandbox_hc_output.py deleted; script.py MODES=(Generate,), dispatch loader gone; script/fakes tests trimmed",
+      "files": [
+        "src/flextoolsmcp/scripts/hcparse.ps1",
+        "src/flextoolsmcp/server/sandbox/script.py",
+        "src/flextoolsmcp/server/sandbox/hc_output.py",
+        "src/flextoolsmcp/server/sandbox/__init__.py",
+        "tests/fakes/hc_fake.py",
+        "tests/fakes/hc.cmd",
+        "tests/fakes/generate_fake.py",
+        "tests/conftest.py",
+        "tests/test_sandbox_script.py",
+        "tests/test_sandbox_script_module.py",
+        "tests/test_sandbox_hc_output.py",
+        "tests/test_sandbox_fakes.py",
+        "specs/parser-check-cp5/contracts/hcparse.md"
+      ]
+    },
+    "T104": {
+      "status": "DONE",
+      "did": "Discovery retargeted at FieldWorks' bundled HermitCrab DLL: discover_fieldworks_hermitcrab (presence + FileVersion, no spawn, no load), EngineDiscovery, SandboxProbe(engine, generate_config), COMPONENT_FIELDWORKS_HERMITCRAB, FIELDWORKS_REPAIR_HINT; hc four-source lookup, hc -h probe, HC_TOOL_PATH and version skew removed; CP1 transitional hc -h allowance deleted",
+      "files": [
+        "src/flextoolsmcp/server/parser_probe.py",
+        "tests/test_sandbox_discovery.py",
+        "tests/test_sandbox_versions.py",
+        "tests/test_parser_probe.py",
+        "tests/test_cp1_boundary.py"
+      ]
+    },
+    "T105": {
+      "status": "DONE",
+      "did": "Health: fieldworks_hermitcrab component (found, expected_path, file_version, signal, reason), no starts/source, ready iff engine+GenerateHCConfig found, no skew advisory, detected gains fieldworks_hermitcrab_path; repair-FieldWorks rung. Handler step 3 uses engine discovery; parser_tool_missing.component fieldworks_hermitcrab (response model + TOOL-CONTRACT); engine_dir passed to the worker; diff reads the per-run engine version",
+      "files": [
+        "src/flextoolsmcp/server/handlers/diagnostic_health.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/response_models.py",
+        "src/flextoolsmcp/server/parse/diff.py",
+        "docs/TOOL-CONTRACT.md",
+        "tests/test_parser_health_block.py",
+        "tests/test_sandbox_handler.py",
+        "tests/test_parser_error_models.py",
+        "tests/test_parse_diff.py",
+        "tests/test_parse_log_sections.py",
+        "tests/test_parse_live_cp5.py"
+      ]
+    },
+    "T106": {
+      "status": "DONE",
+      "did": "flextools_parse_sandbox description and USAGE row reframed on the in-process worker with FieldWorks' bundled HermitCrab (no hc install language; parser_job_failed listed); parse_log's stale sandbox-section note fixed; validate_integrity server clean",
+      "files": [
+        "src/flextoolsmcp/server/tool_definitions.py",
+        "USAGE.md"
+      ]
+    },
+    "T108": {
+      "status": "DONE",
+      "did": "Isolation: a real --stub --sandbox child imports no flexicon/LCM and writes nothing to its cwd or inputs; AST scan of the sandbox path; SC-001 e2e rewritten on the worker (stub engine reads the fake config's stub payload), byte-identical project on 6 terminal paths; retired leading_dash advisory, added shaping_not_applied note; record's retired sandbox file names dropped",
+      "files": [
+        "tests/test_sandbox_worker.py",
+        "tests/test_sandbox_no_project_writes.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/handlers/parse.py",
+        "src/flextoolsmcp/server/parse/record.py",
+        "tests/test_parse_record.py"
+      ]
+    },
+    "T109": {
+      "status": "DONE",
+      "did": "Non-live suite green: 3859 passed, 6 skipped, 0 failed"
+    },
+    "T110": {
+      "status": "DONE",
+      "did": "Rewrote the CP5 live suite for the in-process worker on CP5-Scratch copies only (S3-S16, L-1/L-2/L-4). Live: 17 pass, 2 human-gated skip, S5 (SC-006) misses 2x at ~1.8-1.9x (#242). Fixed two FR-050 bugs found live: morpheme key collision dropped roots; morphs now show FLEx's allomorph form from lcm-ids.json",
+      "files": [
+        "tests/test_parse_live_cp5.py",
+        "src/flextoolsmcp/server/parse/hc_engine.py",
+        "src/flextoolsmcp/server/parse/worker_main.py",
+        "src/flextoolsmcp/server/sandbox/lcm_ids.py",
+        "tests/test_sandbox_worker.py",
+        "tests/test_sandbox_cache.py",
+        "specs/parser-check-cp5/evidence/*.json",
+        "specs/parser-check-cp5/data-model.md",
+        "specs/parser-check-cp5/contracts/sandbox-worker.md",
+        "specs/parser-check-cp5/spec.md"
+      ]
     }
   },
   "concerns": [
@@ -2138,6 +2580,22 @@
     },
     {
       "note": "Subagent full-suite runs executed requires_flex live tests (FieldWorks present), which rewrote CP2b/CP3/CP4 evidence timestamps and triggered an index refresh against the local flexicon working tree; both restored to HEAD. Later suite runs use -m \"not requires_flex\". Claude-Swahili.fwdata was written 2026-09-24 20:37Z with a lock held since 20:13Z -- consistent with the project being open in FLEx, not with a test run (no test opens it live).",
+      "step": "implement"
+    },
+    {
+      "note": "T095 stopped as needs_human: M-1 still open (no hc on PATH, HC_TOOL_PATH unset, .NET 8 runtime only, no SDK). Live L-1..L-7 / S2..S13 not run; no mock downgrade.",
+      "step": "implement"
+    },
+    {
+      "note": "T110 live checks (needs_human) are not run; test_parse_live_cp5.py is only patched to collect, with retired S1/S2/L-5 skipped and unreachable hc-era code left for T110 to rewrite",
+      "step": "implement"
+    },
+    {
+      "note": "SC-006 misses 2x on IndonesianHC-Complete (1.78-1.93x): a warm run is dominated by spawning a new sandbox worker; test_s5_warm_cache stays red until #242",
+      "step": "implement"
+    },
+    {
+      "note": "A sandbox parse submission blocks ~3 s until the worker is ready (CLR + grammar load) even though the response says the run continues in the background",
       "step": "implement"
     }
   ],
@@ -2164,6 +2622,45 @@
       "what": "Live S1 (no hc) on this machine",
       "command": "pytest tests/test_parse_live_cp5.py (requires_flex)",
       "result": "S1 passed; evidence/s1-health-no-hc.json; project hash identical; S2-S13, L-1..L-7 skipped (no working hc, M-1)"
+    },
+    {
+      "what": "non-live suite",
+      "command": ".venv/Scripts/python.exe -m pytest tests -m \"not requires_flex\"",
+      "result": "3859 passed, 6 skipped, 0 failed",
+      "warnings": [
+        "ast.Str DeprecationWarning in flexicon_analyzer.py (pre-existing)"
+      ]
+    },
+    {
+      "what": "tool docs integrity",
+      "command": "python scripts/validate_integrity.py server",
+      "result": "clean, 30 tools documented"
+    },
+    {
+      "what": "CP5 live suite on CP5-Scratch copies (IndonesianHC-Complete, Circumsanity, Malay, Sena 3 refusal)",
+      "command": "FLEXTOOLSMCP_CP5_LIVE_WRITE=1 .venv/Scripts/python.exe -m pytest tests/test_parse_live_cp5.py -m requires_flex",
+      "result": "17 passed, 2 skipped (S7, L-4 need a human), 1 failed (S5/SC-006 ratio 1.78-1.93x, #242); no scratch copy left behind",
+      "warnings": [
+        "S7 and L-4 skipped: human setup required (FLEx holding a copy; network off)"
+      ]
+    },
+    {
+      "what": "SC-003 parity vs FLEx own parser (flextools_parse_text on the same scratch copy)",
+      "command": "pytest tests/test_parse_live_cp5.py -k s15 -m requires_flex",
+      "result": "121 words, 0 disagreements after the allomorph-form fix (NFC-normalized comparison)",
+      "warnings": [
+        "LCM returns NFD text; compared as NFC"
+      ]
+    },
+    {
+      "what": "D4/R-17 id-map numbering validated through LCM on Circumsanity",
+      "command": "pytest tests/test_parse_live_cp5.py -k s14 -m requires_flex",
+      "result": "every lcm-ids.json id resolved by LCM to the recorded GUID and class; circumfixes shown before and after the stem"
+    },
+    {
+      "what": "Non-live suite",
+      "command": ".venv/Scripts/python.exe -m pytest -m \"not requires_flex\"",
+      "result": "3864 passed, 6 skipped"
     }
   ]
 }

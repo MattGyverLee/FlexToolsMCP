@@ -8,7 +8,19 @@ A cached config is `config-cache/<project>/<cache_key>/`:
 
   hc-config.xml         what GenerateHCConfig wrote
   generate-config.log   its whole stdout+stderr, verbatim (FR-009)
-  key.json              inputs, timestamps, load errors, versions
+  key.json              inputs, timestamps, load errors, versions,
+                        hc_parameters, lcm_ids_path
+  lcm-ids.json          the validated id map Try A Word shaping reads
+                        (FR-050; `lcm_ids.py` builds it)
+
+SIDECAR AND PARAMETERS (CP5 re-plan, D3/D4, FR-047/FR-050). After a
+successful generation, `build_entry` makes one stream read of the source
+`.fwdata` (`lcm_ids.build`) that yields both the `lcm-ids.json` sidecar and
+the project's `ParserParameters` text, which `engine.hc_parameters_from_text`
+turns into key.json's `hc_parameters` (None when the file could not be read).
+Neither is part of the cache key (FR-025). An entry that predates them has
+no `lcm_ids_path` / `hc_parameters`; `CacheEntry.lcm_ids_path` and
+`.hc_parameters` then read None.
 
 THE KEY (FR-024, FR-025). `sha256(canonical JSON of the seven inputs)[:16]`
 -- `parse.fingerprint.fingerprint_key`'s recipe -- over the live `.fwdata`
@@ -58,7 +70,7 @@ from typing import (Any, Awaitable, Callable, Dict, Iterator, List, Optional, Tu
                     Union)
 
 from ..parse.fingerprint import fingerprint_key
-from . import paths, script
+from . import engine, lcm_ids, paths, script
 
 __all__ = [
     "SCHEMA",
@@ -172,6 +184,25 @@ class CacheEntry:
     @property
     def log_path(self) -> Path:
         return self.path / LOG_NAME
+
+    @property
+    def lcm_ids_path(self) -> Optional[Path]:
+        """The sidecar's path, or None for an entry that predates it.
+
+        None only when key.json records no `lcm_ids_path`; a recorded path
+        whose file is missing or unreadable is still returned, so the caller
+        treats it as invalid rather than absent (FR-050).
+        """
+        relative = (self.meta or {}).get("lcm_ids_path")
+        if not isinstance(relative, str) or not relative:
+            return None
+        return self.path / relative
+
+    @property
+    def hc_parameters(self) -> Optional[Dict[str, Any]]:
+        """key.json's `hc_parameters`, or None (predates the key, or unread)."""
+        value = (self.meta or {}).get("hc_parameters")
+        return dict(value) if isinstance(value, dict) else None
 
     @property
     def load_errors(self) -> List[Dict[str, str]]:
@@ -581,12 +612,18 @@ async def build_entry(
     versions: Optional[Dict[str, Any]] = None,
     timeout_seconds: int = DEFAULT_GENERATE_TIMEOUT_SECONDS,
     run_script: Optional[RunScript] = None,
+    id_source: Optional[PathLike] = None,
 ) -> CacheEntry:
     """Generate a config into `<key>.partial/`, judge it, rename it into place.
 
     The caller holds `lock_for(project, key)` (see `ensure_entry`). Raises
     `ParserConfigFailed` when R-05's conditions do not all hold; the
     `.partial` directory never survives this call.
+
+    `id_source` is the `.fwdata` the sidecar is read from. By default the
+    live `inputs["fwdata_path"]`, checked against the key's size/mtime
+    before and after the read (`lcm_ids.py`, THE SOURCE); an explicit
+    byte-identical copy is read as-is.
     """
     from ..response_models import ParserConfigFailedDetail
 
@@ -648,6 +685,22 @@ async def build_entry(
             ))
 
         load_errors = extract_load_errors(output)
+        if id_source is None:
+            source: PathLike = inputs["fwdata_path"]
+            expected = (inputs["fwdata_path"], inputs["fwdata_size"],
+                        inputs["fwdata_mtime_ns"])
+        else:
+            source, expected = id_source, None
+        id_map, parameters_text = await asyncio.to_thread(
+            lcm_ids.build, config_out, source, expected_key=expected)
+        _write_json(partial / lcm_ids.LCM_IDS_NAME, id_map)
+        if not id_map.get("valid"):
+            _log.warning(
+                "lcm-ids.json for %s is invalid (%s; ids %s): runs against it are refused",
+                project, id_map.get("error"), id_map.get("invalid_ids"),
+            )
+        hc_parameters = (engine.hc_parameters_from_text(parameters_text)
+                         if parameters_text is not None else None)
         now = _now_iso()
         meta: Dict[str, Any] = {
             "schema": SCHEMA,
@@ -665,6 +718,8 @@ async def build_entry(
                 "load_error_count": len(load_errors),
             },
             "versions": dict(versions or {}),
+            "hc_parameters": hc_parameters,
+            "lcm_ids_path": lcm_ids.LCM_IDS_NAME,
         }
         _write_json(partial / KEY_JSON, meta)
 
@@ -690,6 +745,7 @@ async def ensure_entry(
     versions: Optional[Dict[str, Any]] = None,
     timeout_seconds: int = DEFAULT_GENERATE_TIMEOUT_SECONDS,
     run_script: Optional[RunScript] = None,
+    id_source: Optional[PathLike] = None,
 ) -> CacheEntry:
     """The usable entry for this project's current inputs, building it once."""
     _check_write_targets(work_dir, log_dir)
@@ -709,4 +765,5 @@ async def ensure_entry(
             versions=versions,
             timeout_seconds=timeout_seconds,
             run_script=run_script,
+            id_source=id_source,
         )

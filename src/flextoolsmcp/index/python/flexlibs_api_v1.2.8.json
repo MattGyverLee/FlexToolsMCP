@@ -22,6 +22,24 @@
       "description": "This class provides convenience methods for accessing a FieldWorks\nproject by hiding some of the complexity of LCM.\nFor functionality that isn't provided here, LCM data and methods\ncan be used directly via `FLExProject.project`, `FLExProject.lp` and\n`FLExProject.lexDB`.\nHowever, for long term use, new methods should be added to this class.\n\nUsage::\n\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString, ITsStrBldr\nfrom SIL.LCModel.Core.Text import TsStringUtils\n\nproject = FLExProject()\ntry:\nproject.OpenProject(\"my project\",\nwriteEnabled = True/False)\nexcept:\n#\"Failed to open project\"\ndel project\nexit(1)\n\nWSHandle = project.WSHandle('en')\n\n# Traverse the whole lexicon\nfor lexEntry in project.LexiconAllEntries():\nheadword = project.LexiconGetHeadword(lexEntry)\n\n# Use get_String() and set_String() with text fields:\nlexForm = lexEntry.LexemeFormOA\nlexEntryValue = ITsString(lexForm.Form.get_String(WSHandle)).Text\nnewValue = convert_headword(lexEntryValue)\nmkstr = TsStringUtils.MakeString(newValue, WSHandle)\nlexForm.Form.set_String(WSHandle, mkstr)",
       "example": "",
       "id": "FLExProject",
+      "instance_attributes": [
+        {
+          "access_path": "project.lexDB",
+          "defined_in": "OpenProject",
+          "description": "Lexical database (ILexDb). Most lexicon structure and entries are reachable from here.",
+          "kind": "instance_attr",
+          "name": "lexDB",
+          "type": "ILexDb"
+        },
+        {
+          "access_path": "project.lp",
+          "defined_in": "OpenProject",
+          "description": "Language project root (LCM LangProject). Primary low-level LCM access when Operations wrappers do not cover a property.",
+          "kind": "instance_attr",
+          "name": "lp",
+          "type": "LangProject"
+        }
+      ],
       "lcm_dependencies": [
         "CellarPropertyType",
         "CellarPropertyTypeFilter",

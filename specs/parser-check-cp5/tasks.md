@@ -13,9 +13,14 @@ them.
 **Maintainer decisions carried in (plan, "Open maintainer decisions"):**
 - **M-2**: `parse_sandbox_refused` is added. The count goes from 34 to 36.
 - **M-3**: `run.json` records dispatch. Python interprets hc's output.
-- **M-4**: the spec's Q2 and Q3 defaults are accepted as written: seeding from a baseline run, and
-  version skew is a warning that never refuses.
-- **M-1** is still open. Every live task after T094 is **`needs_human`**.
+- **M-4**: the spec's Q2 default is accepted as written: seeding from a baseline run. Q3 (version
+  skew) is **moot** (CP5 re-plan, D7): there is no separately-installed engine to be skewed against,
+  so the skew warning is removed rather than kept as a never-refusing warning.
+- **M-1 is resolved (CP5 re-plan 2026-09-24, `HANDOFF.md`, research.md R-17, D1-D8).** There is no
+  `hc` CLI: Parse and Test run in-process, in a `--sandbox` mode of the parse worker, against
+  FieldWorks' own bundled HermitCrab engine. See Phase 10. Only T110 (live verification) is
+  `needs_human`, and only for want of a live FieldWorks/HC project scratch copy, not for want of a
+  working `hc`.
 
 **Format**: `- [ ] **T###** [P?] [US#] Description · path`. `[P]` means the task is independent
 within its wave: it touches a different file and has no incomplete dependency.
@@ -32,6 +37,8 @@ within its wave: it touches a different file and has no incomplete dependency.
   `test` Expected/Actual sections (F-8). Environment knobs cover: sleep on word N, a crash mid-list,
   `Load Error:` with exit -1, a .NET host runtime-missing stderr with exit `0x80008096`, other
   usage text (not HermitCrab), and echoing the script back · `tests/fakes/hc_fake.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** There is no `hc` to fake; Parse/Test now run
+  > in-process against the real bundled engine. See Phase 10, T108.
 - [x] **T002** [P] Write the scriptable fake `GenerateHCConfig`. It lists its working folder to a
   side file (for FR-008), writes a config, and prints the four progress lines. Knobs cover: help
   text with exit 0, the locked message with exit 1, the migration message with exit 1, an
@@ -86,7 +93,8 @@ within its wave: it touches a different file and has no incomplete dependency.
   - read `HCPARSE_VERSION` with the pinned regex, requiring exactly one match;
   - build the argv as a **list** starting `powershell -NoProfile -NonInteractive -ExecutionPolicy
     Bypass -File` (FR-022);
-  - load `dispatch.json` and `run.json` tolerantly.
+  - load `run.json` tolerantly (`dispatch.json` is retired -- contracts/hcparse.md section 4 --
+    and is no longer read).
 
   File: `src/flextoolsmcp/server/sandbox/script.py`
 - [x] **T012** [P] Extract `_space_skip_reason`'s 2x rule into a shared `disk_space_ok(path,
@@ -158,10 +166,16 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
   - the `.dll` form runs as `dotnet hc.dll`.
 
   File: `tests/test_sandbox_discovery.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** There is no `hc` to discover; discovery becomes
+  > bundled-DLL presence + `FileVersion` only, no probe. See Phase 10, T105.
 - [x] **T025** [P] [US1] Version tests (FR-005): all three versions are reported; a skewed fixture
   gives `hc_engine_version_skew` and still `ready` · `tests/test_sandbox_versions.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** No independently-installed engine to skew
+  > against; the skew warning is removed, not just untriggered. See Phase 10, T105.
 - [x] **T026** [P] [US1] Extend the no-floor regression test: an absurd version of any of the three
   still reports `ready` · `tests/test_parser_probe.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** Only two versions remain (bundled HermitCrab DLL,
+  > `GenerateHCConfig`); folds into T105/T106.
 - [x] **T027** [P] [US1] Health-block tests:
   - the additive `sandbox` and `detected` keys;
   - `ready` names `flextools_parse_sandbox` with usable `args`;
@@ -173,6 +187,9 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
 - [x] **T028** [P] [US1] R-04 narrowing: permit exactly `[<hc>, "-h"]` and `[dotnet, <hc.dll>, "-h"]`.
   Add a pin that discovery never passes `-i`, `-s` or `-o` and never runs GenerateHCConfig. Give the
   fake `subprocess.run` usage-text stdout for the `-h` shape · `tests/test_cp1_boundary.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D2).** The `hc -h` identity-probe carve-out is retired;
+  > replaced by the differently-shaped `CP5_SANDBOX_ENGINE_ALLOWLIST` (`Morpher`,
+  > `XmlLanguageLoader.Load`, scoped to `worker_main.py`'s `--sandbox` mode). See Phase 10, T104.
 - [x] **T029** [P] [US1] FR-007 refusal tests:
   - a missing or non-starting hc gives `parser_tool_missing` with fields in order;
   - `install_hint.startswith("dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool")`,
@@ -182,6 +199,9 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
   - GenerateHCConfig is not required for a named-sandbox source.
 
   File: `tests/test_sandbox_handler.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** There is no `hc` to install; `install_hint` no
+  > longer starts `dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool`. The refusal is
+  > rebuilt around the bundled DLL, with a repair/reinstall-FieldWorks hint. See Phase 10, T104, T105.
 
 ### Implementation
 
@@ -194,6 +214,8 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
   `SANDBOX_SIGNAL_NOT_HERMITCRAB`, kept outside `CLOSED_SIGNALS`. Give
   `_find_hc_via_dotnet_tool_list` an explicit encoding (pattern-audit sweep 4, known instance) ·
   `src/flextoolsmcp/server/parser_probe.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** Replaced by bundled-DLL presence/`FileVersion`
+  > discovery with no probe. See Phase 10, T105.
 
 **⟶ Wait for T030, then:**
 
@@ -204,6 +226,8 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
 
   Compute the skew flag. It is never compared to a floor (FR-005) ·
   `src/flextoolsmcp/server/parser_probe.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** Only the bundled DLL's and `GenerateHCConfig`'s
+  > `FileVersion` remain; no skew flag. See Phase 10, T105.
 
 **⟶ Wait for T031, then:**
 
@@ -218,6 +242,8 @@ fake hc) gives the right status, component detail and hint. The tool refuses wit
   project, resolve the config source (name validation only; existence arrives in US3), then
   discovery. Emit `parser_tool_missing` with the verbatim `hc` install hint (FR-007). Every refusal
   carries a `next_step` with `est_cost` · `src/flextoolsmcp/server/handlers/parse.py`
+  > **Superseded (CP5 re-plan 2026-09-24, D7).** Discovery (step 3) and the `parser_tool_missing`
+  > hint text are rebuilt around the bundled DLL, not an `hc` install hint. See Phase 10, T104, T105.
 
 **Checkpoint**: US1 works on its own. S1 is observable on this machine now, and
 `TestIntegrationWindowsFieldWorksNoHcTool` is green.
@@ -255,6 +281,11 @@ before and after. `work/` is empty.
   - no `-o` or `-c` is passed to hc.
 
   File: `tests/test_sandbox_script.py`
+  > **Superseded in part (CP5 re-plan 2026-09-24).** The Parse-mode invariants here (FR-013
+  > quoting, the `-Words` split, the UTF-16 round trip, `hc-stdout.txt` timeout handling, ASCII
+  > console output, and no `-o`/`-c` to hc) are retired along with Parse mode itself; only the
+  > Generate-mode invariants (allowlist-only copy, `-WorkDir` clearing, the `-ConfigOut` guard,
+  > `HCPARSE_VERSION` appearing once) remain live. See Phase 10, T096, T107, T108.
 - [x] **T035** [P] [US2] Engine-check tests (FR-036):
   - an XAmple `.fwdata` fixture is refused before the copy (boom-stub);
   - an absent or unparseable `ActiveParser` fails safe to a refusal, with the "could not be read"
@@ -264,6 +295,9 @@ before and after. `work/` is empty.
   - the result is cached in `key.json`.
 
   File: `tests/test_sandbox_engine.py`
+  > **Extended, not superseded (CP5 re-plan 2026-09-24).** The fail-safe/no-LCM-import engine
+  > check is unaffected by the re-plan; `key.json`'s cached result now also carries
+  > `hc_parameters` (D3/FR-047) via `engine.py`'s `remember()`. See Phase 10, T100.
 - [x] **T036** [P] [US2] Workdir tests (FR-008, FR-011):
   - the allowlist measure;
   - the marker's contents;
@@ -299,6 +333,8 @@ before and after. `work/` is empty.
   - `?` for an empty gloss.
 
   File: `tests/test_sandbox_hc_output.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** There is no `hc` text output to parse; the sandbox
+  > worker returns structured .NET-object data directly. See Phase 10, T108.
 - [x] **T039** [P] [US2] Parse-outcome tests: every `outcome` enum value, from fixtures (FR-018).
   `parsed` is true only for `parsed` · `tests/test_sandbox_classify.py`
 - [x] **T040** [P] [US2] Client tests (FR-020, FR-023, FR-035, SC-004, SC-008), driving a real
@@ -314,6 +350,9 @@ before and after. `work/` is empty.
   - the Python watchdog at `TimeoutSeconds + 30`.
 
   File: `tests/test_sandbox_client.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** `_execute_run` no longer drives a fake `hc` script or
+  > tails its stdout file; the client drives the `--sandbox` worker process instead. See Phase 10,
+  > T102.
 - [x] **T041** [P] [US2] Parse-action handler tests:
   - FR-015: NFC dedup, count then alphabetical order, `limit` after ordering, `truncated_by_limit`;
   - a `word_file` inside a project folder gives `word_file_invalid`;
@@ -371,6 +410,8 @@ before and after. `work/` is empty.
   - parsing `stats -p` counters.
 
   File: `src/flextoolsmcp/server/sandbox/hc_output.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** hc's stream-parsing functions are removed; keep only
+  > the result dataclasses / `render_parse` if still used by the worker path. See Phase 10, T108.
 - [x] **T047** [P] [US2] Write the parse-outcome mapping into the `results.jsonl` sandbox line
   (data-model section 6.4): `signature: null`, `rendered_morphs` = forms, `morphs`, `readable`,
   `raw`, `flags` · `src/flextoolsmcp/server/sandbox/classify.py`
@@ -393,6 +434,8 @@ before and after. `work/` is empty.
   - use exit codes 5 and 6.
 
   File: `src/flextoolsmcp/scripts/hcparse.ps1`
+  > **Superseded (CP5 re-plan 2026-09-24).** Parse mode is retired from the script; Parse now runs
+  > in the parse worker's `--sandbox` mode. See Phase 10, T096, T108.
 - [x] **T049** [P] [US2] Write `cache.py`:
   - the key is `sha256(canonical inputs)[:16]`, including `HCPARSE_VERSION`;
   - an `asyncio.Lock` per `(project, key)`;
@@ -420,6 +463,9 @@ before and after. `work/` is empty.
   - counters are reconciled into `counter_divergences`.
 
   File: `src/flextoolsmcp/server/sandbox/client.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** `SandboxClient` no longer tails a script's stdout file;
+  > it spawns and talks to a `--sandbox`-mode worker process over the JSON-lines protocol. See
+  > Phase 10, T102.
 
 **⟶ Wait for T050, then:**
 
@@ -500,6 +546,10 @@ refused.
   - `list`.
 
   File: `tests/test_sandbox_handler.py`
+  > **Superseded in part (CP5 re-plan 2026-09-24).** The broken-XML bullet's `Load Error:` text
+  > comes from the retired `hc` CLI; the in-process worker instead fails via
+  > `XmlLanguageLoader.Load`'s error callback (`engine_unavailable`, contracts/sandbox-worker.md
+  > section 5). See Phase 10, T096, T102.
 
 ### Implementation
 
@@ -546,6 +596,9 @@ parse, and the totals equal `stats -t`.
   - the script ends in `stats -t`.
 
   File: `tests/test_sandbox_script.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** hc's `test -p` dispatch is retired; expected parses
+  > are structured `(form, gloss)` data compared directly, never sent through a CLI. See Phase 10,
+  > T108.
 - [x] **T064** [P] [US4] Classification tests (FR-031..FR-033, SC-005):
   - the four-way table from F-8 fixtures;
   - `expected: []` that now parses gives `new_ambiguity` with `label: "now_parses"`;
@@ -556,6 +609,8 @@ parse, and the totals equal `stats -t`.
   File: `tests/test_sandbox_classify.py`
 - [x] **T065** [P] [US4] Output-parser tests for the `test` Expected/Actual sections, the `stats -t`
   counters, and the reconciliation table of data-model section 6.6 · `tests/test_sandbox_hc_output.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** There is no `hc test` report to parse; classification
+  > compares structured analyses directly (T103). See Phase 10, T108.
 - [x] **T066** [P] [US4] Corpus store tests (FR-030):
   - parsed words keep their exact readable parses in hc's order;
   - `not_parsed` becomes `[]`;
@@ -579,9 +634,12 @@ parse, and the totals equal `stats -t`.
 - [x] **T068** [P] [US4] Implement Test mode: read `-AssertionFile`, apply FR-027's check, emit
   `-p` values as `form:gloss` with no exceptions, add `--` only for a leading-`-` word, and end the
   script with `stats -t` · `src/flextoolsmcp/scripts/hcparse.ps1`
+  > **Superseded (CP5 re-plan 2026-09-24).** Test mode is retired from the script; Test now runs in
+  > the parse worker's `--sandbox` mode. See Phase 10, T096, T108.
 - [x] **T069** [P] [US4] Parse the `Testing "..."` blocks, the `Expected parses:` / `Actual parses:`
   sections (`None` or unmatched parses) and the `stats -t` counters ·
   `src/flextoolsmcp/server/sandbox/hc_output.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** No `hc` text output exists to parse. See Phase 10, T108.
 - [x] **T070** [P] [US4] Write the assertion classification and the `now_parses` label, the
   diff-bucket mapping, and the assertion line of data-model section 6.5 ·
   `src/flextoolsmcp/server/sandbox/classify.py`
@@ -594,6 +652,8 @@ parse, and the totals equal `stats -t`.
 - [x] **T072** [US4] Add Test mode to `SandboxClient`: launch `-Mode Test`, return assertion lines,
   reconcile `stats -t` against the classifications, and record `counters: "unavailable_timeout"` on
   a timeout · `src/flextoolsmcp/server/sandbox/client.py`
+  > **Superseded (CP5 re-plan 2026-09-24).** Test now goes through the sandbox worker like Parse,
+  > not a script `-Mode Test` invocation. See Phase 10, T102.
 
 **⟶ Wait for T072, then:**
 
@@ -762,24 +822,260 @@ remain per project, and run retention holds.
 
 **⟶ Wait for T094, then:**
 
-- [ ] **T095** **[needs_human, blocked on M-1]** Run L-1..L-7 and S2..S13 against a working hc. Fold
-  the answers back into code: the allowlist in `workdir.py`, the leading-dash rule, the BOM
-  handling, the timeout default, and the runtime matcher in `parser_probe.py`. Record SC-003 as
-  "partially verified (version-skewed)" on the no-SDK route. With no hc and no human, stop as
-  `needs_human`, and never downgrade to mocks · `specs/parser-check-cp5/evidence/*.json`
+- [x] **T095** **Superseded (CP5 re-plan 2026-09-24, M-1 resolved; see `HANDOFF.md`, research.md
+  R-17, D1-D8).** M-1 ("how do we get a working `hc`") is closed: there is no `hc` CLI in the
+  design of record. Parse and Test run in-process, in a `--sandbox` mode of the existing parse
+  worker, against FieldWorks' own bundled `SIL.Machine.Morphology.HermitCrab.dll` (the same engine
+  Try A Word uses). This task's original text (running L-1..L-7/S2..S13 against a working `hc`, and
+  folding hc-specific answers like the leading-dash rule and BOM handling back into `workdir.py` /
+  `parser_probe.py`) no longer describes a live design and is replaced by Phase 10 below, which is
+  **not** blocked on M-1 · *(no file; superseded task)*
+
+---
+
+## Phase 10: Re-plan -- sandbox parsing in the parse worker
+
+**New (CP5 re-plan 2026-09-24).** T001-T094 above implemented the original `hcparse.ps1`-driven
+Parse/Test design. That design is superseded (see the per-task supersession notes above, and
+`HANDOFF.md`, `research.md` R-17, D1-D8): Parse and Test now run **in-process**, in a `--sandbox`
+mode of the existing parse worker (`server/parse/worker_main.py`), calling FieldWorks' own bundled
+HermitCrab engine directly via pythonnet. Generate mode (the allowlisted copy, `GenerateHCConfig.exe`,
+the cache, its three lifecycles) is **unchanged** and none of its tasks (T043-T045, T049, T053-T057,
+T061, T081-T086) are touched by this phase except where a task specifically says otherwise.
+
+**Goal**: replace the script-driven Parse/Test implementation with the in-process `--sandbox` worker
+design, replicate FLEx's own Try A Word morph-shaping rules (FR-050), retarget health/discovery at
+the bundled DLL (D7), delete the retired `hc`-CLI machinery, and verify live against the real engine
+-- no longer `needs_human` for lack of a working `hc`.
+
+**Independent Test**: parse a word list (including a non-Latin list, an apostrophe word, a circumfix
+word and a guessed-root word) against the real FieldWorks-bundled HermitCrab DLL through the
+`--sandbox` worker; confirm no `flexicon`/LCM import, no project file written, and byte-identical
+project folders throughout.
+
+### Tests and implementation
+
+**Wave 1 -- independent (different files):**
+
+- [x] **T096** [P] [US2] Implement `--sandbox` mode and `_SandboxBackend` in the parse worker,
+  plus a `--stub --sandbox` smoke path: the `AssemblyResolve` handler (resolve by simple name from
+  the FieldWorks engine directory), `XmlLanguageLoader.Load` with a load-error callback,
+  `Morpher` construction, parameters applied by feature detection (FR-047, D3), `ParseWord` called
+  with `guessRoot` (never the one-argument overload), and D1's message refusals (`resolve`,
+  `engine_check`, `resolve_scope`, a client-supplied `parser_parameters`, `agent_probe`, any
+  `filing_*` message, `restricted_to`; FR-049). `release()` keeps the Morpher rather than tearing it
+  down between words. An optional `hc_engine.py` module may hold pure/discovery/resolver helpers
+  (engine-dir resolution, id-map loading) that do not need to live in `worker_main.py` itself ·
+  `src/flextoolsmcp/server/parse/worker_main.py`, `src/flextoolsmcp/server/parse/hc_engine.py`,
+  `tests/test_sandbox_worker.py` (contracts/sandbox-worker.md sections 1-3, 5, 7)
+- [x] **T112** [P] [US2] Implement FR-050's morph-shaping rules a-d (depends on T096's raw morph
+  list and T099's `lcm-ids.json`; contracts/sandbox-worker.md sections 4-5), applied to the
+  engine's raw per-analysis morph list, validated against the id-map, in order, per morph:
+  a. skip a morph whose allomorph `Property` `ID` (FormID) is absent or `0` -- **except**, in a
+     named-sandbox run, a morph with no `ID` at all is emitted, flagged `user_added: true`, and
+     never skipped by this rule;
+  b. an `AffixProcessAllomorph` with no `ID2` whose form's morph type is circumfix is recorded and
+     emitted on its first occurrence; its second occurrence is emitted too, as the suffix portion (corrected 2026-09-24 against `HCParser.cs:347-374`: FLEx emits **both** occurrences -- the first is recorded *and* emitted, so the circumfix shows before and after what it attaches to),
+     flagged `is_circumfix: true`;
+  c. a morpheme already seen is re-emitted only if it is (b)'s circumfix suffix portion (keyed on
+     `ID`) or has `ID2 > 0` (keyed on `ID2`); otherwise it is skipped;
+  d. the whole analysis is dropped -- not just the morph -- if a form ID, the morpheme's MSA `ID`,
+     or a positive `InflTypeID` is not present in the validated id-map (a morph flagged
+     `user_added` is exempt, per (a)'s exception).
+
+  Also implement the worker-side **backstop** for `id_map_invalid` (section 5; spec FR-050, "Who
+  refuses an invalid map"). The first `parse` fails `parser_job_failed`/`id_map_invalid` when
+  `--id-map` is given but its recorded `valid` flag is `false` or the file cannot be parsed at all.
+  The primary gate is the server-side check-order refusal before spawn, which is T102's job. An
+  omitted `--id-map` is legal only for a config source older than the sidecar: the worker emits
+  every morph unshaped and records `meta.sandbox.shaping.id_map: "absent"`, and T102 surfaces the
+  `shaping_not_applied` advisory.
+
+  Unit tests use a synthetic `lcm-ids.json` map with a `FormID==0` morph, a circumfix pair, a
+  repeated morpheme with `ID2 > 0`, and an id absent from the map, plus a named-sandbox
+  `user_added` morph and an `id_map_invalid` fixture -- one assertion per rule. The live check
+  against a real circumfix project is T110, not here ·
+  `src/flextoolsmcp/server/parse/worker_main.py`, `src/flextoolsmcp/server/parse/hc_engine.py`,
+  `tests/test_sandbox_worker.py` (contracts/sandbox-worker.md sections 4-5)
+- [x] **T113** [P] [US2] Move FR-014's word-list split out of the script and into Python **before**
+  T107 deletes Parse mode. Today `hcparse.ps1`'s Parse mode is the only code that splits a `words`
+  string on `[,\s]+`. In `handlers/parse.py`, split a string `words` on `[,\s]+` and drop empty
+  items. Keep a list `words` as given. Read `word_file` as UTF-8, with BOM tolerated, then split it
+  the same way. The resulting list goes to the worker as JSON. Tests: `"a,b c"` gives
+  `["a","b","c"]`; a leading/trailing separator gives no empty word; a non-Latin string
+  round-trips byte-exactly; a word containing `'` stays whole; a `word_file` holding the same
+  content gives the same list; an empty result is still refused as `word_file_invalid` ·
+  `src/flextoolsmcp/server/handlers/parse.py`, `tests/test_sandbox_handler.py`
+- [x] **T114** [P] Add the two new `parser_job_failed` failure values to the contract surface
+  (contracts/tools.md section 4; spec FR-016, FR-050, D7). Widen
+  `ParserJobFailedDetail.failure` from `Literal["out_of_memory","crashed","cancelled"]` to add
+  `"engine_unavailable"` and `"id_map_invalid"`; this is additive, and the field order is
+  unchanged. Update the `parser_job_failed` row in `docs/TOOL-CONTRACT.md`; the code count stays
+  36, since `parser_job_failed` already exists. Add one golden fixture per new value in
+  `tests/make_golden.py` and regenerate the goldens. Extend `tests/test_parser_error_models.py` so
+  both values validate and an unknown value is rejected. Add a line for them to the CHANGELOG's
+  "Tool contract" paragraph. Must land before T096, T102 and T112 emit either value ·
+  `src/flextoolsmcp/server/response_models.py`, `docs/TOOL-CONTRACT.md`, `tests/make_golden.py`,
+  `tests/golden/responses/*.json`, `tests/test_parser_error_models.py`, `CHANGELOG.md`
+- [x] **T097** [P] [US1] Add `CP5_SANDBOX_ENGINE_ALLOWLIST` (D2): `Morpher` and
+  `XmlLanguageLoader.Load` permitted only inside `worker_main.py`'s `--sandbox` mode. Remove the
+  retired `hc -h` identity-probe machinery (`HC_IDENTITY_PROBE_ARGS`, `HC_PROBE_MODULE`,
+  `TestHcIdentityProbeNarrowing`) and its docstring wording, replacing T028's narrowing ·
+  `tests/test_cp1_boundary.py`
+- [x] **T098** [P] [US2] Add the `--sandbox`/`--config`/`--hc-params`/`--id-map`/`--engine-dir`/
+  `--project` argv-building hook to the client-side worker launcher (contracts/sandbox-worker.md
+  section 1; FR-046, FR-047, FR-050) · `src/flextoolsmcp/server/parse/worker_client.py`
+- [x] **T099** [P] [US2] Write Generate-mode's `lcm-ids.json` sidecar generation and validation in
+  `cache.py`: a plain stream read of the byte-identical `work/<run_id>/` copy (never through LCM),
+  recording `{guid, class, morph_type_guid}` per id referenced by the exported config, validating
+  every `FormID`/`ID2` resolves to a `MoForm` subclass, every MSA `ID` to a `MoMorphSynAnalysis`
+  subclass, and every `InflTypeID` to a `LexEntryInflType`; an unresolved id marks the whole mapping
+  invalid (FR-050, D4/R-17). `key.json` gains `hc_parameters` (the project's `ParserParameters/HC`
+  settings, D3/FR-047) and `lcm_ids_path`, neither part of the cache key (FR-025) ·
+  `src/flextoolsmcp/server/sandbox/cache.py`, `tests/test_sandbox_cache.py`
+- [x] **T100** [P] [US2] Carry the resolved `hc_parameters` (D3/FR-047) through `engine.py`'s
+  `remember()` so a stream-read result records the project's Morpher settings alongside
+  `active_parser` · `src/flextoolsmcp/server/sandbox/engine.py`, `tests/test_sandbox_engine.py`
+- [x] **T101** [P] [US3] Make named-sandbox creation copy the `lcm-ids.json` sidecar alongside the
+  rest of the cache entry's inputs (FR-028, FR-050) · `src/flextoolsmcp/server/sandbox/store.py`,
+  `tests/test_sandbox_store.py`
+
+**⟶ Wait for Wave 1 to finish, then:**
+
+- [x] **T102** [US2] Rewrite `SandboxClient` to run Parse and Test through the spawned `--sandbox`
+  worker process (not a script): a wall-clock watchdog that calls `terminate()` on the worker's
+  process tree on expiry (FR-020); `hc_stdout` filled from the worker's own captured stdout/stderr,
+  `hc_output` filled from the worker's structured per-word/per-assertion results rendered for
+  reading (FR-038, unchanged section names); derived counters computed directly from the
+  classifications, with no independent counter to reconcile against (FR-017); `meta.sandbox` carries
+  `parser_parameters`, `parameters_applied`, `parameters_source` and the shaping fields (`guessed`,
+  `is_circumfix`, `user_added`) (FR-047, FR-048, FR-050). Add the id-map check-order gate (spec
+  FR-050, "Who refuses an invalid map"): a config source whose sidecar is recorded `valid: false`
+  is refused `parser_job_failed`/`id_map_invalid` **before** any worker is spawned (boom-stub the
+  spawn to prove it). A named sandbox with no sidecar gets no `--id-map`, and its response carries
+  the `shaping_not_applied` advisory (contracts/tools.md section 5.1). An existing but invalid
+  sidecar is never treated as absent · `src/flextoolsmcp/server/sandbox/client.py`,
+  `tests/test_sandbox_client.py`
+
+**⟶ Wait for T102, then:**
+
+- [x] **T115** [US3] Wire FR-047's second parameter source, `live_project`, for named-sandbox runs.
+  `origin.json` already records `project` (data-model section 4). When a named sandbox is run and
+  that project resolves, stream-read its `ParserParameters/HC` from the live `.fwdata` through
+  `engine.py`, with no LCM, no lock and the same one-retry rule (FR-036, D6). This is a
+  parameters-only read: it is **not** the engine check, so T060's "a named-sandbox run skips the
+  engine check" still holds, and an XAmple value here is never a refusal. Pass the result to the
+  worker as `--hc-params`, with `parameters_source: "live_project"`. When `origin.json` has no
+  project, the project no longer resolves, or the read fails after its retry, fall back to FLEx's
+  defaults with `parameters_source: "flex_defaults"` and a note saying why. Tests: one per
+  `parameters_source` value (`cache`, `live_project`, `flex_defaults`); a boom-stub proving no
+  flexicon/LCM import on the named-sandbox path; and a check that the named sandbox's files are
+  byte-identical after the read · `src/flextoolsmcp/server/handlers/parse.py`,
+  `src/flextoolsmcp/server/sandbox/client.py`, `tests/test_sandbox_handler.py`,
+  `tests/test_sandbox_client.py`
+
+**⟶ Wait for T115, then:**
+
+- [x] **T103** [US4] Rewrite `classify.py`'s test/corpus classification to compare the sandbox
+  worker's structured returned analyses directly against recorded expected `(form, gloss)`
+  sequences, as sets (FR-031..FR-033), replacing the retired `hc test` Expected/Actual section
+  reading · `src/flextoolsmcp/server/sandbox/classify.py`, `tests/test_sandbox_classify.py`
+
+**Checkpoint**: the sandbox worker parses and classifies end to end against the real bundled engine
+(or a scriptable stub via `--stub --sandbox`), with no script-driven Parse/Test path remaining.
+
+- [x] **T104** [P] [US1] Retarget discovery at the bundled DLL: resolve
+  `SIL.Machine.Morphology.HermitCrab.dll` and `GenerateHCConfig.exe` via the existing
+  `versioning.get_resolved_fieldworks_dir()`, reporting presence and `FileVersion` only -- no
+  process spawn, no DLL load (D7, FR-001, FR-004, FR-005). Remove the four-source `hc` fallback,
+  `HC_TOOL_PATH`, and the version-skew computation (replaces T024-T026, T030, T031) ·
+  `src/flextoolsmcp/server/parser_probe.py`, `tests/test_sandbox_discovery.py`
+- [x] **T105** [P] [US1] Update the health block (`parser.sandbox` component keys, advisories,
+  `next_step` rows for FR-006). The component value `hc` becomes `fieldworks_hermitcrab` in both
+  health and `parser_tool_missing.component`, with `expected_path` set to the DLL's path (spec
+  FR-007). Also update the missing-DLL `install_hint` wording (repair/reinstall
+  FieldWorks, not `dotnet tool install`), and the `parser_tool_missing`/`parser_job_failed`
+  (`engine_unavailable`) hint text in the handler ·
+  `src/flextoolsmcp/server/handlers/diagnostic_health.py`, `src/flextoolsmcp/server/handlers/parse.py`
+- [x] **T106** [P] Update `flextools_parse_sandbox`'s ToolDef description and USAGE.md rows for the
+  re-plan (no `hc` install hint language, `--sandbox` worker framing); run
+  `python scripts/validate_integrity.py server` and keep it clean ·
+  `src/flextoolsmcp/server/tool_definitions.py`, `USAGE.md`
+- [x] **T107** (requires T113: FR-014's split must already live in Python) Delete `hcparse.ps1`'s
+  Parse and Test modes (Generate mode is its one remaining
+  mode), `hc_output.py`'s hc-text stream parsers (keep the result dataclasses and `render_parse` if
+  still used by the sandbox-worker path), `tests/fakes/hc_fake.py` and their now-obsolete tests
+  (`tests/test_sandbox_hc_output.py`'s Parse/Test sections, the Parse/Test halves of
+  `tests/test_sandbox_script.py`). Bump `$script:HCPARSE_VERSION` ·
+  `src/flextoolsmcp/scripts/hcparse.ps1`, `src/flextoolsmcp/server/sandbox/hc_output.py`,
+  `tests/fakes/hc_fake.py`, `tests/test_sandbox_script.py`, `tests/test_sandbox_hc_output.py`
+
+**⟶ Wait for T104-T107, then:**
+
+- [x] **T108** [P] Isolation tests (FR-043, FR-046): the worker's `assemblies` message lists no
+  `SIL.LCModel*` assembly; `sys.modules` inside the sandbox worker process contains no `flexicon`
+  entry; the fake/real project folder hashes byte-identical before and after a full sandbox run; no
+  file is written by the sandbox worker itself (a scratch working directory's file list is unchanged
+  before/after) · `tests/test_sandbox_no_project_writes.py`, `tests/test_sandbox_worker.py`
+
+**Checkpoint**: the in-process re-plan is fully implemented and self-tested offline; no `hc`-CLI
+code path remains reachable.
+
+- [x] **T109** Run the non-live suite green: `.venv\Scripts\python.exe -m pytest -m "not requires_flex"`
+  · *(no file; gate)*
+
+**⟶ Wait for T109, then:**
+
+- [x] **T110** **[needs_human]** Run live checks against **scratch copies only**, `-m requires_flex`:
+  - `IndonesianHC-Complete`: `pukul`/`memukul`, IPA words, confirm the project's `ParserParameters/HC`
+    settings are applied (FR-047, `parameters_source`);
+  - a circumfix project (e.g. `Circumsanity` under `C:\ProgramData\SIL\FieldWorks\Projects`, via a
+    scratch copy only) for FR-050 rules b/c (implemented and unit-tested in T112), and validation
+    of the `lcm-ids.json` HVO-equals-`rt`-document-order assumption (D4/R-17);
+  - a Try A Word parity comparison (SC-003), naming the two disclosed differences (glosses from
+    `Morpheme.Gloss`, and `user_added` morphs in a named sandbox);
+  - a timeout, confirming pre-kill results are preserved and the in-flight word is named;
+  - confirm no copy is left behind on any path (SC-001);
+  - the corpus scenario (FR-045, SC-005): baseline parse → `seed_corpus` → create a named sandbox →
+    one deliberate edit that removes a word's only parse, and one that gives another word a second
+    parse → `run_corpus`. Exactly one `regression` and one `new_ambiguity`, each naming the right
+    parse;
+  - an apostrophe word in the project's orthography (FR-045). It is no longer a quoting test, but
+    it must still come back as one whole word with one result;
+  - live process isolation (FR-045, FR-046): during a real run, the worker's `assemblies` message
+    lists no `SIL.LCModel*` assembly, `sys.modules` in the worker holds no `flexicon`, and the
+    scratch project folder hashes byte-identical before and after.
+
+  Record the bundled HermitCrab DLL's `FileVersion` and `GenerateHCConfig`'s `FileVersion` in every
+  evidence file (FR-045) · `tests/test_parse_live_cp5.py`, `specs/parser-check-cp5/evidence/*.json`
+
+**⟶ Wait for T110, then:**
+
+- [x] **T111** File a separate GitHub issue for the #223 per-word project reopen (D8 -- out of
+  scope for CP5). Filed 2026-09-24 with maintainer approval as
+  [#235](https://github.com/MattGyverLee/FlexToolsMCP/issues/235) · *(no file)*
+
+**Checkpoint**: live verification is complete and evidence is recorded; the #223 follow-up is either
+filed (with maintainer approval) or explicitly recorded as still blocked.
 
 ---
 
 ## Dependencies & Execution Order
 
 **Phase order**: Setup (1) → Foundational (2) → US1 (3) → US2 (4) → US3 (5) → US4 (6) → US5 (7) →
-US6 (8) → Polish (9).
+US6 (8) → Polish (9) → **Re-plan (10)**.
 - US1 and US2 are the MVP.
 - US3 needs US2's cache and client.
 - US4 needs US2's client and US3's store module.
 - US5 needs sandbox runs to exist (US2) and assertion lines (US4) for its full matrix.
 - US6 needs US2's workdir and cache.
 - `handlers/parse.py` is edited in every story phase, so those edits never share a wave.
+- **Phase 10 supersedes Phases 3, 4 and 6's script-driven Parse/Test mechanics** (see the
+  per-task supersession notes on T024-T031, T034, T038, T040, T046, T048, T050, T060, T063, T065,
+  T068, T069, T072, and T095 itself; T035 is extended, not superseded), while leaving Generate mode
+  (Phase 3's discovery framing aside), the contract surface (Phase 2), US3's named-sandbox store
+  (Phase 5), US5's log/diff consumers (Phase 7) and US6's disk bounding (Phase 8) untouched except
+  where a Phase 10 task says otherwise.
 
 **Waves per phase:**
 - **Phase 1**: W1 (T001-T005) → T006.
@@ -791,9 +1087,22 @@ US6 (8) → Polish (9).
 - **Phase 6 (US4)**: tests W1 (T063-T067) → W2 (T068-T071) → T072 → T073 → T074.
 - **Phase 7 (US5)**: tests W1 (T075, T076) → W2 (T077-T079) → T080.
 - **Phase 8 (US6)**: tests W1 (T081-T083) → W2 (T084, T085) → T086.
-- **Phase 9**: W1 (T087-T091) → T092 → T093 → T094 → T095 (needs_human).
+- **Phase 9**: W1 (T087-T091) → T092 → T093 → T094 → T095 (superseded, see Phase 10).
+- **Phase 10 (re-plan)**: W1 (T096, T112, T113, T114, T097-T101) → T102 → T115 → T103 →
+  *checkpoint* → T104-T107 (parallel, different files) → T108 → *checkpoint* → T109 → T110
+  (`needs_human`) → T111 (done: #235) → *checkpoint*. T112 (FR-050 shaping) depends on T096's raw
+  morph list and T099's `lcm-ids.json` sidecar, and gates T102 (the client surfaces T112's shaping
+  fields in `meta.sandbox`). T114 (the contract's failure values) must land before any code emits
+  `engine_unavailable` or `id_map_invalid` (T096, T102, T112). T113 (the FR-014 split in Python)
+  must land before T107 deletes the script's Parse mode. T115 (the `live_project` parameter source)
+  needs T100's `engine.py` parameter read and T102's client.
 
 **Blocking notes:**
-- Phases 1-8 and T087-T094 are entirely offline and are **not** blocked on M-1.
-- T095 is the only task blocked on M-1.
-- Overturning M-2 changes T007, T016, T018 and T020-T022.
+- Phases 1-8 and T087-T094 are entirely offline and were **not** blocked on M-1.
+- **M-1 is resolved (`HANDOFF.md`, research.md R-17).** T095's original `needs_human`/`blocked on
+  M-1` framing is superseded; Phase 10 replaces it and is offline through T109. Only T110 (live
+  verification) is `needs_human` (for want of a live FieldWorks/HC project scratch copy, not for
+  want of a working `hc`), and T111 is done (#235 filed).
+- Overturning M-2 changes T007, T016, T018 and T020-T022 (unaffected by the re-plan).
+- Phase 10 does not reopen T043-T045, T049, T053-T057, T061 or T081-T086 (Generate mode and disk
+  bounding are unaffected by the re-plan).

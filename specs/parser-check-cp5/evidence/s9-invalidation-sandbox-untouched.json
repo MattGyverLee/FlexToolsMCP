@@ -1,0 +1,399 @@
+{
+  "scenario": "S9",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\IndonesianHC-Complete",
+      "before": {
+        "sha256": "08ad2b1c017613607f1b5fe49ede8091f6b0ae03f6932ea1f2075dd68526f4f3",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": null
+    },
+    {
+      "folder": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\parse\\sandboxes\\CP5-Scratch-IndonesianHC-Complete-20260925T061136\\x",
+      "before": {
+        "sha256": "829582580e8e7e48786c5247514df0dd0fb5373b64c97296816396b052904aad",
+        "files": 3,
+        "bytes": 77729,
+        "locks": []
+      },
+      "after": {
+        "sha256": "829582580e8e7e48786c5247514df0dd0fb5373b64c97296816396b052904aad",
+        "files": 3,
+        "bytes": 77729,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "create": {
+      "status": "ok",
+      "action": "create_sandbox",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+      "name": "x",
+      "path": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\parse\\sandboxes\\CP5-Scratch-IndonesianHC-Complete-20260925T061136\\x\\hc-config.xml",
+      "origin": {
+        "from_cache_key": "26afb4deb7d7c837",
+        "created_at": "2026-09-25T06:11:39.975Z"
+      },
+      "generation": {
+        "reused_cache": false,
+        "load_error_count": 0
+      },
+      "next_step": [
+        {
+          "action": "Edit the XML, then run words against the sandbox.",
+          "tool": "flextools_parse_sandbox",
+          "args": {
+            "action": "parse",
+            "project_name": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+            "sandbox": "x"
+          },
+          "rationale": "The sandbox is a user-owned copy of the exported grammar at path; edit it with ordinary file tools. No cache refresh or grammar change overwrites it.",
+          "est_cost": "minutes"
+        }
+      ],
+      "project_adopted_notice": {
+        "previous_project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+        "message": "Session project is now 'CP5-Scratch-IndonesianHC-Complete-20260925T061136' (was 'CP5-Scratch-IndonesianHC-Complete-20260925T061059'). Unqualified calls target 'CP5-Scratch-IndonesianHC-Complete-20260925T061136' until you change it again."
+      }
+    },
+    "warm2": {
+      "status": "ok",
+      "action": "parse",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+      "run_id": "f4fe8d0d7ed394c643df351eb769381a",
+      "run_started": true,
+      "stage": "completed",
+      "words_completed": 4,
+      "words_total": 4,
+      "truncated_by_limit": false,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dɑlɑm",
+          "memukul",
+          "mɑnis",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 4,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\f4fe8d0d7ed394c643df351eb769381a",
+      "project_state": {
+        "access": "free"
+      },
+      "spine": "sandbox",
+      "config_source": {
+        "kind": "project_cache",
+        "cache_key": "26afb4deb7d7c837"
+      },
+      "versions": {
+        "fieldworks_hermitcrab": "3.8.2.0",
+        "generate_hc_config": "9.3.11.2703",
+        "hcparse": "6.0.0"
+      },
+      "advisories": [],
+      "generation": {
+        "reused_cache": true,
+        "cache_key": "26afb4deb7d7c837",
+        "load_error_count": 0,
+        "load_errors": []
+      },
+      "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+      "result_summary": {
+        "words": 4,
+        "parsed": 4,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\f4fe8d0d7ed394c643df351eb769381a",
+        "outcomes": {
+          "parsed": 4,
+          "not_parsed": 0,
+          "invalid_segment": 0,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 4,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 142,
+        "TotalAnalyses": 4,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 4
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "f4fe8d0d7ed394c643df351eb769381a",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ]
+    },
+    "after_write": {
+      "status": "ok",
+      "run_id": "0209a5968365dc8748a81178483caaad",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+      "stage": "completed",
+      "words_completed": 4,
+      "words_total": 4,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dɑlɑm",
+          "memukul",
+          "mɑnis",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 4,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 4,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 148,
+        "TotalAnalyses": 4,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 4
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 4,
+        "parsed": 4,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\0209a5968365dc8748a81178483caaad",
+        "outcomes": {
+          "parsed": 4,
+          "not_parsed": 0,
+          "invalid_segment": 0,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "0209a5968365dc8748a81178483caaad",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\0209a5968365dc8748a81178483caaad",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+        "run_id": "0209a5968365dc8748a81178483caaad",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 4,
+        "words_total": 4,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "dɑlɑm",
+            "memukul",
+            "mɑnis",
+            "pukul"
+          ],
+          "text_ids": [],
+          "word_count": 4,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\0209a5968365dc8748a81178483caaad",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "afc4a526d48a3c8a"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "afc4a526d48a3c8a",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "0209a5968365dc8748a81178483caaad"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0"
+      }
+    },
+    "on_sandbox": {
+      "status": "ok",
+      "action": "parse",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+      "run_id": "c9a73c735b0ddf40a82a75df815c52f5",
+      "run_started": true,
+      "stage": "completed",
+      "words_completed": 4,
+      "words_total": 4,
+      "truncated_by_limit": false,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dɑlɑm",
+          "memukul",
+          "mɑnis",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 4,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\c9a73c735b0ddf40a82a75df815c52f5",
+      "project_state": {
+        "access": "free"
+      },
+      "spine": "sandbox",
+      "config_source": {
+        "kind": "named_sandbox",
+        "name": "x",
+        "edited": false,
+        "predates_project_grammar": true
+      },
+      "versions": {
+        "fieldworks_hermitcrab": "3.8.2.0",
+        "generate_hc_config": null,
+        "hcparse": "6.0.0"
+      },
+      "advisories": [
+        {
+          "code": "sandbox_predates_project_grammar",
+          "note": "This sandbox was made from an earlier state of the project's grammar; it was used exactly as it is."
+        }
+      ],
+      "generation": null,
+      "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+      "result_summary": {
+        "words": 4,
+        "parsed": 4,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\c9a73c735b0ddf40a82a75df815c52f5",
+        "outcomes": {
+          "parsed": 4,
+          "not_parsed": 0,
+          "invalid_segment": 0,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 4,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 156,
+        "TotalAnalyses": 4,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 4
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "c9a73c735b0ddf40a82a75df815c52f5",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ]
+    }
+  },
+  "observations": {
+    "write": {
+      "wrote": "ŋeoŋ"
+    },
+    "cache_key_before": "26afb4deb7d7c837",
+    "cache_key_after": "afc4a526d48a3c8a"
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:11:59.265730+00:00"
+}

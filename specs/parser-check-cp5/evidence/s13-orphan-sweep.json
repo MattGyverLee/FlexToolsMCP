@@ -1,0 +1,170 @@
+{
+  "scenario": "S13",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+      "before": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "next_run": {
+      "status": "ok",
+      "run_id": "f0d2cf008963e18c8aaa4893dab5baa7",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+      "stage": "completed",
+      "words_completed": 2,
+      "words_total": 2,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "memukul",
+          "pukul"
+        ],
+        "text_ids": [],
+        "word_count": 2,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 2,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 156,
+        "TotalAnalyses": 2,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 2
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 2,
+        "parsed": 2,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\f0d2cf008963e18c8aaa4893dab5baa7",
+        "outcomes": {
+          "parsed": 2,
+          "not_parsed": 0,
+          "invalid_segment": 0,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "f0d2cf008963e18c8aaa4893dab5baa7",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\f0d2cf008963e18c8aaa4893dab5baa7",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+        "run_id": "f0d2cf008963e18c8aaa4893dab5baa7",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 2,
+        "words_total": 2,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "memukul",
+            "pukul"
+          ],
+          "text_ids": [],
+          "word_count": 2,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\f0d2cf008963e18c8aaa4893dab5baa7",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "e1f91d9b40d766a3"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "e1f91d9b40d766a3",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "f0d2cf008963e18c8aaa4893dab5baa7"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0",
+        "project_adopted_notice": {
+          "previous_project": "Sena 3",
+          "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+          "message": "Session project is now 'CP5-Scratch-IndonesianHC-Complete-20260925T061059' (was 'Sena 3'). Unqualified calls target 'CP5-Scratch-IndonesianHC-Complete-20260925T061059' until you change it again."
+        }
+      }
+    }
+  },
+  "observations": {
+    "orphans": [
+      "660253969a9629b8d7269f9236895aa2"
+    ],
+    "remaining": []
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:12:30.334279+00:00"
+}

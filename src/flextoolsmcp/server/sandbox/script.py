@@ -4,8 +4,10 @@
 The seam to the packaged `hcparse.ps1` (parser-check CP5, contracts/hcparse.md,
 research R-01, R-12, FR-022, FR-024).
 
-The script is the mechanism; this module is how Python finds it, knows its
-version, builds its command line, and reads what it left behind:
+The script is the mechanism for Generate mode -- its one remaining mode since
+the CP5 re-plan moved Parse and Test into the parse worker's `--sandbox`
+mode (contracts/sandbox-worker.md). This module is how Python finds it,
+knows its version, builds its command line, and reads what it left behind:
 
   script_path()          the packaged script, next to this package (the
                          `file_utils.get_bundled_templates_dir` convention:
@@ -13,8 +15,7 @@ version, builds its command line, and reads what it left behind:
   read_hcparse_version() `$script:HCPARSE_VERSION`, the one source of truth
                          for the version that enters every cache key (R-12)
   build_argv()           an argv LIST, never a command string (FR-022)
-  load_run_json() /
-  load_dispatch_json()   tolerant readers: a missing, empty, truncated or
+  load_run_json()        a tolerant reader: a missing, empty, truncated or
                          non-object file is None, because a killed script
                          never reaches `finally` (R-06)
 """
@@ -31,14 +32,12 @@ __all__ = [
     "VERSION_RE",
     "ARGV_PREFIX",
     "RUN_JSON",
-    "DISPATCH_JSON",
     "MODES",
     "HcparseVersionError",
     "script_path",
     "read_hcparse_version",
     "build_argv",
     "load_run_json",
-    "load_dispatch_json",
 ]
 
 #: Pinned by contracts/hcparse.md section 2 and research R-12.
@@ -48,8 +47,8 @@ VERSION_RE = re.compile(r"^\$script:HCPARSE_VERSION\s*=\s*'([^']+)'", re.MULTILI
 ARGV_PREFIX = ("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File")
 
 RUN_JSON = "run.json"
-DISPATCH_JSON = "dispatch.json"
-MODES = ("Generate", "Parse", "Test")
+#: Parse and Test are retired (the script refuses them with exit 2).
+MODES = ("Generate",)
 
 
 class HcparseVersionError(RuntimeError):
@@ -82,7 +81,7 @@ def read_hcparse_version() -> str:
 
 
 def _param_name(key: str) -> str:
-    # Accept either the script's own spelling (`HcPath`) or a leading dash.
+    # Accept either the script's own spelling (`FwData`) or a leading dash.
     name = key[1:] if key.startswith("-") else key
     if not name or not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
         raise ValueError(f"Invalid hcparse parameter name {key!r}")
@@ -94,8 +93,9 @@ def build_argv(mode: str, **params: Any) -> List[str]:
     `-Mode <mode>` and one `-Name value` pair per parameter, in the order
     given. `None` values are omitted; `Path`s and numbers are `str()`-ed.
 
-    Parameter names are the script's (`HcPath`, `RunDir`, `TimeoutSeconds`,
-    ...). Values are never quoted or joined: each is one argv element.
+    Parameter names are the script's (`FwData`, `RunDir`,
+    `GenerateTimeoutSeconds`, ...). Values are never quoted or joined: each
+    is one argv element.
     """
     if mode not in MODES:
         raise ValueError(f"Unknown hcparse mode {mode!r}; expected one of {MODES}")
@@ -129,8 +129,3 @@ def _load_json_object(path: Path) -> Optional[Dict[str, Any]]:
 def load_run_json(run_dir: Union[str, Path]) -> Optional[Dict[str, Any]]:
     """`<run_dir>/run.json` as a dict, or None if missing/empty/truncated."""
     return _load_json_object(Path(run_dir) / RUN_JSON)
-
-
-def load_dispatch_json(run_dir: Union[str, Path]) -> Optional[Dict[str, Any]]:
-    """`<run_dir>/dispatch.json` as a dict, or None if missing/empty/truncated."""
-    return _load_json_object(Path(run_dir) / DISPATCH_JSON)

@@ -1,0 +1,123 @@
+{
+  "scenario": "S11",
+  "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+  "source_project": "IndonesianHC-Complete",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+      "before": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      },
+      "after": {
+        "sha256": "920fc5c90da69d19973e4ce76b1b2a691711d5ece574d5ee989e61f842b8c38f",
+        "files": 22,
+        "bytes": 14170547,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "create": {
+      "status": "ok",
+      "action": "create_sandbox",
+      "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+      "name": "broken-1790316737",
+      "path": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\parse\\sandboxes\\CP5-Scratch-IndonesianHC-Complete-20260925T061059\\broken-1790316737\\hc-config.xml",
+      "origin": {
+        "from_cache_key": "e1f91d9b40d766a3",
+        "created_at": "2026-09-25T06:12:17.139Z"
+      },
+      "generation": {
+        "reused_cache": true,
+        "load_error_count": 0
+      },
+      "next_step": [
+        {
+          "action": "Edit the XML, then run words against the sandbox.",
+          "tool": "flextools_parse_sandbox",
+          "args": {
+            "action": "parse",
+            "project_name": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+            "sandbox": "broken-1790316737"
+          },
+          "rationale": "The sandbox is a user-owned copy of the exported grammar at path; edit it with ordinary file tools. No cache refresh or grammar change overwrites it.",
+          "est_cost": "minutes"
+        }
+      ],
+      "project_adopted_notice": {
+        "previous_project": "CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+        "project": "CP5-Scratch-IndonesianHC-Complete-20260925T061059",
+        "message": "Session project is now 'CP5-Scratch-IndonesianHC-Complete-20260925T061059' (was 'CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159'). Unqualified calls target 'CP5-Scratch-IndonesianHC-Complete-20260925T061059' until you change it again."
+      }
+    },
+    "parse": {
+      "status": "error",
+      "error_code": "parser_job_failed",
+      "message": "XmlException: Unexpected end of file has occurred. The following elements are not closed: BoundaryDefinition, BoundaryDefinitions, CharacterDefinitionTable, Language, HermitCrabInput. Line 573, position 10.\r\n   at System.Xml.XmlTextReaderImpl.Throw(Exception e)\r\n   at System.Xml.XmlTextReaderImpl.ThrowUnclosedElements()\r\n   at System.Xml.XmlTextReaderImpl.ParseElementContent()\r\n   at System.Xml.XmlValidatingReaderImpl.Read()\r\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r)\r\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r, LoadOptions o)\r\n   at System.Xml.Linq.XDocument.Load(XmlReader reader, LoadOptions options)\r\n   at SIL.Machine.Morphology.HermitCrab.XmlLanguageLoader.Load()",
+      "state_at_failure": "loading_grammar",
+      "failure": "engine_unavailable",
+      "words_completed": 0,
+      "words_total": 3,
+      "run_id": "2fe6b4211d3d1efb1aa4cced1288da0f",
+      "log_path": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\2fe6b4211d3d1efb1aa4cced1288da0f\\sandbox\\worker-stderr.txt",
+      "spine": "sandbox",
+      "config_source": {
+        "kind": "named_sandbox",
+        "name": "broken-1790316737",
+        "edited": true,
+        "predates_project_grammar": false
+      },
+      "versions": {
+        "fieldworks_hermitcrab": "3.8.2.0",
+        "generate_hc_config": null,
+        "hcparse": "6.0.0"
+      },
+      "advisories": [],
+      "generation": null,
+      "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+      "project_state": {
+        "access": "free"
+      },
+      "next_step": [
+        {
+          "action": "Scan this project's grammar for path-multiplying properties.",
+          "tool": "flextools_grammar_health",
+          "args": {
+            "project_name": "CP5-Scratch-IndonesianHC-Complete-20260925T061059"
+          },
+          "rationale": "A static scan that runs no parse. It names the grammar properties that multiply the search space -- the usual reason a load or a parse is slow enough to notice -- and is cheaper than any trace it may make unnecessary.",
+          "est_cost": "seconds to a minute"
+        },
+        {
+          "action": "Check the environment and the project's grammar.",
+          "tool": "flextools_health",
+          "args": {
+            "verbose": true
+          },
+          "rationale": "A run that died while loading the grammar has usually exhausted memory. Repeating it repeats the step that exhausted it; the diagnostics say what the project needs.",
+          "est_cost": "seconds"
+        }
+      ]
+    },
+    "diagnostics": {
+      "status": "ok",
+      "run_id": "2fe6b4211d3d1efb1aa4cced1288da0f",
+      "section": "hc_stdout",
+      "applicable": true,
+      "run_spine": "sandbox",
+      "source": "sandbox/worker-stderr.txt",
+      "content": "[parse-worker] SandboxJobFailed: XmlException: Unexpected end of file has occurred. The following elements are not closed: BoundaryDefinition, BoundaryDefinitions, CharacterDefinitionTable, Language, HermitCrabInput. Line 573, position 10.\n   at System.Xml.XmlTextReaderImpl.Throw(Exception e)\n   at System.Xml.XmlTextReaderImpl.ThrowUnclosedElements()\n   at System.Xml.XmlTextReaderImpl.ParseElementContent()\n   at System.Xml.XmlValidatingReaderImpl.Read()\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r)\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r, LoadOptions o)\n   at System.Xml.Linq.XDocument.Load(XmlReader reader, LoadOptions options)\n   at SIL.Machine.Morphology.HermitCrab.XmlLanguageLoader.Load()\nTraceback (most recent call last):\n  File \"C:\\Github\\FlexToolsMCP\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2044, in ensure_grammar\n    self._load_engine()\n    ~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Github\\FlexToolsMCP\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2186, in _load_engine\n    language = XmlLanguageLoader.Load(self._config_path, handler)\nSystem.Xml.XmlException: Unexpected end of file has occurred. The following elements are not closed: BoundaryDefinition, BoundaryDefinitions, CharacterDefinitionTable, Language, HermitCrabInput. Line 573, position 10.\n   at System.Xml.XmlTextReaderImpl.Throw(Exception e)\n   at System.Xml.XmlTextReaderImpl.ThrowUnclosedElements()\n   at System.Xml.XmlTextReaderImpl.ParseElementContent()\n   at System.Xml.XmlValidatingReaderImpl.Read()\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r)\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r, LoadOptions o)\n   at System.Xml.Linq.XDocument.Load(XmlReader reader, LoadOptions options)\n   at SIL.Machine.Morphology.HermitCrab.XmlLanguageLoader.Load()\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"C:\\Github\\FlexToolsMCP\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2901, in _parse_one\n    load_started = self._before_parse(word, meta)\n  File \"C:\\Github\\FlexToolsMCP\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2977, in _before_parse\n    loaded = self._backend.ensure_grammar(word.run_id)\n  File \"C:\\Github\\FlexToolsMCP\\src\\flextoolsmcp\\server\\parse\\worker_main.py\", line 2047, in ensure_grammar\n    raise self._failure from exc\nSandboxJobFailed: XmlException: Unexpected end of file has occurred. The following elements are not closed: BoundaryDefinition, BoundaryDefinitions, CharacterDefinitionTable, Language, HermitCrabInput. Line 573, position 10.\n   at System.Xml.XmlTextReaderImpl.Throw(Exception e)\n   at System.Xml.XmlTextReaderImpl.ThrowUnclosedElements()\n   at System.Xml.XmlTextReaderImpl.ParseElementContent()\n   at System.Xml.XmlValidatingReaderImpl.Read()\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r)\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r, LoadOptions o)\n   at System.Xml.Linq.XDocument.Load(XmlReader reader, LoadOptions options)\n   at SIL.Machine.Morphology.HermitCrab.XmlLanguageLoader.Load()\n\nSandbox job failed (engine_unavailable): XmlException: Unexpected end of file has occurred. The following elements are not closed: BoundaryDefinition, BoundaryDefinitions, CharacterDefinitionTable, Language, HermitCrabInput. Line 573, position 10.\r\n   at System.Xml.XmlTextReaderImpl.Throw(Exception e)\r\n   at System.Xml.XmlTextReaderImpl.ThrowUnclosedElements()\r\n   at System.Xml.XmlTextReaderImpl.ParseElementContent()\r\n   at System.Xml.XmlValidatingReaderImpl.Read()\r\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r)\r\n   at System.Xml.Linq.XContainer.ReadContentFrom(XmlReader r, LoadOptions o)\r\n   at System.Xml.Linq.XDocument.Load(XmlReader reader, LoadOptions options)\r\n   at SIL.Machine.Morphology.HermitCrab.XmlLanguageLoader.Load()\n"
+    }
+  },
+  "observations": {},
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:12:21.854683+00:00"
+}

@@ -1996,8 +1996,12 @@ async def _handle_filing_request(
     else:
         result["no_recovery_warning"] = no_recovery
         result["backup"] = {"created": False, "reason": backup_block.get("reason")}
-    if shared:
+    if decision.verdict == "open_shared":
         result["shared_mode_advisory"] = filing_wording.SHARED_MODE_ADVISORY
+    elif shared:
+        # Sharing is on but FieldWorks does not hold the project (e.g. only
+        # this server's own read worker does): don't claim FLEx has it open.
+        result["shared_mode_advisory"] = filing_wording.SHARING_ENABLED_ADVISORY
     elif decision.verdict == "stale_lock" and decision.advisory:
         result["stale_lock_advisory"] = decision.advisory.get("note")
     if handle.is_terminal and handle.failure is not None:
@@ -2071,6 +2075,9 @@ IN_PROCESS_SPINE = "in_process"
 #: The three sandbox-spine sections: what each would hold, and who fills it.
 _SANDBOX_SECTIONS: Dict[str, str] = {
     "config_generation": "the HermitCrab configuration generated from the project for a sandboxed run",
+    # Kept verbatim: the in-process not-applicable response is pinned
+    # byte-identical (CP5 contracts/tools.md section 7), even though a
+    # sandbox run now fills these from its parse worker (FR-038).
     "hc_stdout": "the standard output of a sandboxed HermitCrab process",
     "hc_output": "the output file a sandboxed HermitCrab process writes",
 }
@@ -2103,13 +2110,13 @@ def _not_applicable(section: str, run_id: str) -> Dict[str, Any]:
 #: its empty note calls the missing lines.
 _SANDBOX_SECTION_FILES: Dict[str, str] = {
     "config_generation": "generate-config.log",
-    "hc_stdout": "hc-stdout.txt",
+    "hc_stdout": "worker-stderr.txt",
     "hc_output": "hc-output.txt",
 }
 _SANDBOX_SECTION_WHAT: Dict[str, str] = {
     "config_generation": "configuration-generation log lines",
-    "hc_stdout": "hc console lines",
-    "hc_output": "hc result blocks",
+    "hc_stdout": "sandbox worker diagnostic lines",
+    "hc_output": "rendered sandbox results",
 }
 
 #: The most characters of one sandbox file served inline, like a trace's
@@ -2685,9 +2692,9 @@ async def handle_flextools_parse_status(args: dict) -> List[TextContent]:
         failure = handle.failure
         if (handle.stage is RunStage.FAILED and failure is not None
                 and failure.error_code == "parser_timeout"):
-            hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
-            result["in_flight"] = hc.get("in_flight_word")
-            result["in_flight_index"] = hc.get("in_flight_index")
+            worker = _sandbox_worker_section(sandbox)
+            result["in_flight"] = worker.get("in_flight_word")
+            result["in_flight_index"] = worker.get("in_flight_index")
         if handle.is_terminal:
             summary = result.get("result_summary") or _result_summary(handle)
             summary.update(_sandbox_summary_block(handle, sandbox))
@@ -2811,17 +2818,18 @@ from ..response_models import (  # noqa: E402
 )
 from ..sandbox import paths as sandbox_paths  # noqa: E402
 
-#: contracts/tools.md section 4, verbatim: the command, one space, one sentence.
-HC_INSTALL_HINT = (
-    "dotnet tool install -g SIL.Machine.Morphology.HermitCrab.Tool Installing it "
-    "needs a .NET SDK, and hc 3.8 and later need the .NET 10 runtime to run."
-)
-GENERATE_HC_CONFIG_INSTALL_HINT = (
-    "GenerateHCConfig.exe ships with FieldWorks 9; repair or reinstall FieldWorks."
-)
-#: Fallback `expected_path` when discovery reports none (the field is a str).
+#: contracts/tools.md section 4, verbatim. Both sandbox components --
+#: FieldWorks' bundled HermitCrab and GenerateHCConfig.exe -- come from the
+#: FieldWorks install and are repaired the same way, so they share one hint
+#: (CP5 re-plan: there is no `hc` console tool to install any more).
+FIELDWORKS_HERMITCRAB_INSTALL_HINT = parser_probe.FIELDWORKS_REPAIR_HINT
+GENERATE_HC_CONFIG_INSTALL_HINT = parser_probe.FIELDWORKS_REPAIR_HINT
+#: Fallback `expected_path`s when discovery reports none (the field is a str).
 _GENERATE_HC_CONFIG_DEFAULT_PATH = (
     r"C:\Program Files\SIL\FieldWorks 9\GenerateHCConfig.exe"
+)
+_FIELDWORKS_HERMITCRAB_DEFAULT_PATH = (
+    r"C:\Program Files\SIL\FieldWorks 9\SIL.Machine.Morphology.HermitCrab.dll"
 )
 
 #: contracts/tools.md section 5.1: fixed text, on every parse response (US2).
@@ -2842,12 +2850,19 @@ SANDBOX_ENGINE = "HC"
 #: FR-014: a word list that arrives as one string is split on this, verbatim.
 _WORD_SPLIT_RE = re.compile(r"[,\s]+")
 
+
+def split_words(text: str) -> List[str]:
+    """FR-014's split: `text` on runs of commas and whitespace, empties dropped.
+
+    The one place a word-list string is split. It used to live in
+    `hcparse.ps1`'s Parse mode; the sandbox worker receives the result as a
+    JSON list, so no word is ever re-split or quoted downstream (T113).
+    Apostrophes and every other non-separator character stay inside a word.
+    """
+    return [word for word in _WORD_SPLIT_RE.split(text) if word]
+
 #: contracts/tools.md section 5.1, advisory codes and their fixed notes.
 _ADVISORY_NOTES = {
-    "hc_engine_version_skew": (
-        "hc uses HermitCrab {a}; FieldWorks bundles {b}. Results may differ from "
-        "FLEx's own parser."
-    ),
     "sandbox_predates_project_grammar": (
         "This sandbox was made from an earlier state of the project's grammar; it "
         "was used exactly as it is."
@@ -2856,9 +2871,12 @@ _ADVISORY_NOTES = {
         "{n} grammar objects failed to load during export and are missing from "
         "this configuration."
     ),
-    "leading_dash_unverified": (
-        "These words begin with '-'. Whether hc receives such a word intact has "
-        "not been verified; treat their results with care."
+    # FR-050: a config source older than the id-map sidecar. (The former
+    # `leading_dash_unverified` is retired with the hc script's quoting.)
+    "shaping_not_applied": (
+        "This sandbox predates the id map, so FLEx's Try A Word display rules were "
+        "not applied; morphs are shown unshaped. Re-create the sandbox from the "
+        "current project to restore them."
     ),
 }
 
@@ -2878,7 +2896,8 @@ class _SandboxPlan:
     word_count: int = 0
     scope_value: List[str] = dc_field(default_factory=list)
     truncated: bool = False
-    hc: Any = None
+    #: FieldWorks' bundled HermitCrab (`parser_probe.EngineDiscovery`, D7).
+    engine: Any = None
     generator: Any = None
     project_state: Dict[str, Any] = dc_field(default_factory=dict)
     staleness: Optional[str] = None
@@ -3174,10 +3193,10 @@ def _sandbox_raw_words(plan: _SandboxPlan):
                 "Check the path exists and is a readable file, then retry.",
                 plan.project_name,
             )
-        return [line.strip() for line in text.splitlines()], None
+        return split_words(text), None
     words = request.words
     if isinstance(words, str):
-        return _WORD_SPLIT_RE.split(words), None
+        return split_words(words), None
     return list(words or []), None
 
 
@@ -3226,19 +3245,14 @@ def _sandbox_generation_may_run(request: ParseSandboxInput) -> bool:
 
 
 def _tool_missing_rungs(component: str) -> List[Dict[str, Any]]:
-    install = (
-        "Install hc with the dotnet tool command in install_hint, then retry."
-        if component == "hc"
-        else "Repair or reinstall FieldWorks 9, then retry."
-    )
     return [
         _rung(
-            action=install,
+            action="Repair or reinstall FieldWorks 9, then retry.",
             tool=None,
             args=None,
             rationale=(
-                f"{component} is required for this action and was not found or "
-                "could not start. Nothing was copied or created."
+                f"{component} is required for this action and was not found in "
+                "the FieldWorks install. Nothing was copied or created."
             ),
             est_cost="minutes",
         ),
@@ -3247,8 +3261,9 @@ def _tool_missing_rungs(component: str) -> List[Dict[str, Any]]:
             tool="flextools_health",
             args={"verbose": True},
             rationale=(
-                "flextools_health reports each sandbox component (hc, "
-                "GenerateHCConfig.exe) with where it was looked for."
+                "flextools_health reports each sandbox component "
+                "(fieldworks_hermitcrab, GenerateHCConfig.exe) with where it "
+                "was looked for."
             ),
             est_cost="seconds",
         ),
@@ -3260,7 +3275,9 @@ def _tool_missing(component: str, expected_path: str, message: str) -> List[Text
         component=component,
         expected_path=expected_path,
         install_hint=(
-            HC_INSTALL_HINT if component == "hc" else GENERATE_HC_CONFIG_INSTALL_HINT
+            FIELDWORKS_HERMITCRAB_INSTALL_HINT
+            if component == parser_probe.COMPONENT_FIELDWORKS_HERMITCRAB
+            else GENERATE_HC_CONFIG_INSTALL_HINT
         ),
     )
     return error_response(
@@ -3272,24 +3289,25 @@ def _tool_missing(component: str, expected_path: str, message: str) -> List[Text
 
 
 def _sandbox_check_tools(plan: _SandboxPlan) -> Optional[List[TextContent]]:
-    """Step 3: tool discovery (FR-007). `hc` first, then GenerateHCConfig.exe.
+    """Step 3: the engine check (D6/D7, FR-007). FieldWorks' bundled
+    HermitCrab first, then GenerateHCConfig.exe.
 
-    `hc` must be found AND start (`starts is True`). GenerateHCConfig.exe is
-    looked up only when generation may run, so a named sandbox's parse never
-    blames it.
+    A presence-plus-`FileVersion` read only: nothing is spawned and the
+    engine is not loaded (an engine that will not load fails the run's
+    first parse as `engine_unavailable`). GenerateHCConfig.exe is looked up
+    only when generation may run, so a named sandbox's parse never blames
+    it.
     """
-    hc = parser_probe.discover_hc_tool()
-    if not (getattr(hc, "found", False) and getattr(hc, "starts", None) is True):
-        expected = (
-            getattr(hc, "path", None)
-            or getattr(hc, "expected_path", None)
-            or parser_probe.HC_EXPECTED_PATH_DESCRIPTION
+    engine = parser_probe.discover_fieldworks_hermitcrab()
+    if not getattr(engine, "found", getattr(engine, "ok", False)):
+        expected = getattr(engine, "expected_path", None) or _FIELDWORKS_HERMITCRAB_DEFAULT_PATH
+        reason = getattr(engine, "reason", None)
+        message = (
+            "FieldWorks' HermitCrab engine (SIL.Machine.Morphology.HermitCrab.dll) "
+            "was not found" + (f": {reason}." if reason else ".")
         )
-        reason = getattr(hc, "reason", None)
-        what = "was found but could not start" if getattr(hc, "found", False) else "was not found"
-        message = f"The hc tool {what}" + (f": {reason}." if reason else ".")
-        return _tool_missing("hc", str(expected), message)
-    plan.hc = hc
+        return _tool_missing(parser_probe.COMPONENT_FIELDWORKS_HERMITCRAB, str(expected), message)
+    plan.engine = engine
 
     if _sandbox_generation_may_run(plan.request):
         ghc = parser_probe.discover_generate_hc_config()
@@ -3299,7 +3317,7 @@ def _sandbox_check_tools(plan: _SandboxPlan) -> Optional[List[TextContent]]:
                 "GenerateHCConfig.exe",
                 str(expected),
                 "GenerateHCConfig.exe was not found; it is needed to export the "
-                "project's grammar for hc.",
+                "project's grammar for the sandbox.",
             )
         plan.generator = ghc
     return None
@@ -3361,7 +3379,7 @@ def _sandbox_run_engine_check(plan: _SandboxPlan) -> Optional[List[TextContent]]
                 args=None,
                 rationale=(
                     "The engine check reads the project's saved parser setting; "
-                    "a grammar for another engine cannot be exported for hc."
+                    "a grammar for another engine cannot be exported for HermitCrab."
                 ),
                 est_cost="minutes",
             ),
@@ -3515,15 +3533,14 @@ def _sandbox_versions(plan: _SandboxPlan) -> Dict[str, Any]:
     except Exception:  # noqa: BLE001
         hcparse = None
     return {
-        "hc_tool": getattr(plan.hc, "detected_version", None),
-        "fieldworks_hermitcrab": None,
+        "fieldworks_hermitcrab": getattr(plan.engine, "file_version", None),
         "generate_hc_config": None,
         "hcparse": hcparse,
     }
 
 
 def _sandbox_launch(plan: _SandboxPlan) -> Dict[str, Any]:
-    """What the client needs to launch the script (T050/T051 reconcile)."""
+    """What the client needs to run: config source, generator, timeout (T102)."""
     request, project_name = plan.request, plan.project_name
     fwdata = _sandbox_fwdata_path(project_name)
     config_path = (
@@ -3535,12 +3552,48 @@ def _sandbox_launch(plan: _SandboxPlan) -> Dict[str, Any]:
         "generate_hc_config_path": (
             getattr(plan.generator, "expected_path", None) if plan.generator else None
         ),
-        "hc_path": getattr(plan.hc, "path", None),
-        "hc_invoke_argv": getattr(plan.hc, "invoke_argv", None),
         "config_path": config_path,
+        "sandbox_name": request.sandbox,
+        # FR-047 source 2 for a named sandbox (T115): its origin's project.
+        **_sandbox_origin(project_name, request.sandbox),
         "timeout_seconds": request.timeout_seconds,
-        # run_corpus (Test mode, T072): the corpus JSON the script reads.
+        # run_corpus (Test mode, T072): the corpus JSON the client classifies against.
         "assertion_file": str(plan.corpus.path) if plan.corpus is not None else None,
+        # D6: the FieldWorks folder step 3 found the engine in, for the
+        # worker's AssemblyResolve handler.
+        "engine_dir": _sandbox_engine_dir(plan),
+    }
+
+
+def _sandbox_engine_dir(plan: _SandboxPlan) -> Optional[str]:
+    """The directory holding the bundled HermitCrab DLL step 3 found, or None."""
+    engine = getattr(plan, "engine", None)
+    path = getattr(engine, "expected_path", None) if engine is not None else None
+    if not path or not getattr(engine, "found", getattr(engine, "ok", False)):
+        return None
+    return str(Path(path).parent)
+
+
+def _sandbox_origin(project_name: str, name: Optional[str]) -> Dict[str, Any]:
+    """A named sandbox's originating project and its live `.fwdata` (T115).
+
+    `origin.json` records the project the sandbox was made from (data-model
+    section 4). `origin_fwdata_path` is set only when that project still
+    resolves to an existing `.fwdata`; the client stream-reads its
+    `ParserParameters/HC` from there (FR-047, `parameters_source:
+    "live_project"`), with no LCM, no lock and no engine check. Nothing
+    here opens or reads the project. `{}` for a project-cache run.
+    """
+    if name is None:
+        return {}
+    from ..sandbox import store as sandbox_store
+
+    origin = sandbox_store.read_origin(project_name, name) or {}
+    origin_project = origin.get("project") if isinstance(origin.get("project"), str) else None
+    fwdata = _sandbox_fwdata_path(origin_project) if origin_project else None
+    return {
+        "origin_project": origin_project,
+        "origin_fwdata_path": str(fwdata) if fwdata is not None and fwdata.is_file() else None,
     }
 
 
@@ -3569,18 +3622,8 @@ def _sandbox_recorded(handle, fallback: Dict[str, Any]) -> Dict[str, Any]:
     return merged
 
 
-def _leading_dash_words(handle) -> List[str]:
-    words = []
-    for entry in getattr(handle, "results", None) or []:
-        flags = (entry.get("parse") or {}).get("flags") or []
-        if "leading_dash_unverified" in flags:
-            words.append(entry.get("wordform"))
-    return words
-
-
 def _sandbox_advisories(sandbox: Dict[str, Any], handle) -> List[Dict[str, Any]]:
     """Advisory codes (a list in meta) as `{code, note}` with the fixed notes."""
-    versions = sandbox.get("versions") or {}
     generation = sandbox.get("generation") or {}
     out: List[Dict[str, Any]] = []
     for item in sandbox.get("advisories") or []:
@@ -3592,14 +3635,9 @@ def _sandbox_advisories(sandbox: Dict[str, Any], handle) -> List[Dict[str, Any]]
         note = None
         if template is not None:
             note = template.format(
-                a=versions.get("hc_tool"),
-                b=versions.get("fieldworks_hermitcrab"),
                 n=generation.get("load_error_count") or 0,
             )
-        advisory: Dict[str, Any] = {"code": code, "note": note}
-        if code == "leading_dash_unverified":
-            advisory["words"] = _leading_dash_words(handle)  # data, not prose
-        out.append(advisory)
+        out.append({"code": code, "note": note})
     return out
 
 
@@ -3639,7 +3677,6 @@ async def _sandbox_start_parse(plan: _SandboxPlan) -> List[TextContent]:
         "mode": mode,
         "config_source": config_source,
         "versions": _sandbox_versions(plan),
-        "hc_source": getattr(plan.hc, "source", None),
         "generation": None,
         "truncated_by_limit": plan.truncated,
         "advisories": _sandbox_submitted_advisories(plan),
@@ -3972,32 +4009,38 @@ def _sandbox_summary_block(handle, sandbox: Dict[str, Any]) -> Dict[str, Any]:
         outcomes = sandbox_classify.tally_outcomes(lines)
     except KeyError:
         outcomes = None
-    hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
-    return {"outcomes": outcomes, "counters": hc.get("counters")}
+    worker = _sandbox_worker_section(sandbox)
+    return {"outcomes": outcomes, "counters": worker.get("counters")}
+
+
+def _sandbox_worker_section(sandbox: Dict[str, Any]) -> Dict[str, Any]:
+    """`meta.sandbox.worker` (data-model 6.2), `{}` when absent."""
+    worker = sandbox.get("worker")
+    return worker if isinstance(worker, dict) else {}
 
 
 def _sandbox_test_summary(handle, sandbox: Dict[str, Any]) -> Dict[str, Any]:
-    """data-model 6.6's test block: classifications, hc_counters, agreement."""
+    """data-model 6.6's test block: classifications, engine_counters, agreement."""
     from ..sandbox import classify as sandbox_classify
-    from ..sandbox import hc_output as sandbox_hc_output
 
     lines = [r for r in (getattr(handle, "results", None) or [])
              if isinstance(r, dict) and isinstance(r.get("assertion"), dict)]
     classifications = sandbox_classify.tally_classifications(lines)
-    hc = sandbox.get("hc") if isinstance(sandbox.get("hc"), dict) else {}
-    counters = hc.get("hc_counters") if isinstance(hc.get("hc_counters"), dict) else None
+    worker = _sandbox_worker_section(sandbox)
+    counters = worker.get("engine_counters")
+    counters = counters if isinstance(counters, dict) else None
     agreement: Optional[bool] = None
     if counters is not None:
         try:
             divergences = sandbox_classify.reconcile_test_counters(
-                lines, sandbox_hc_output.TestCounters(**counters)
+                lines, sandbox_classify.TestCounters(**counters)
             )
             agreement = not divergences
         except Exception:  # noqa: BLE001 -- unreadable counters: agreement unknown
             agreement = None
     return {
         "classifications": classifications,
-        "hc_counters": counters,
+        "engine_counters": counters,
         "counter_agreement": agreement,
     }
 

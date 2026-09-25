@@ -124,7 +124,7 @@ async def test_invalidate_leaves_sandbox_and_corpus_identical(
         sandbox_root, fake_project, fake_generator):
     entry, config, corpus = await _user_owned(fake_project, fake_generator)
     before = _user_files(sandbox_root)
-    assert len(before) == 3  # hc-config.xml, origin.json, the corpus
+    assert len(before) == 4  # hc-config.xml, origin.json, lcm-ids.json, the corpus
     assert cache.invalidate(fake_project.name) >= 1
     assert cache.lookup(fake_project.name, entry.key, touch=False) is None
     assert _user_files(sandbox_root) == before

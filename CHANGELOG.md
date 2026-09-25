@@ -5,37 +5,87 @@
 Issue-linked Fixed bullets are sorted ascending by issue number (insert at the
 sorted position, not the top). Changes without an issue go under Other.
 
+### Other
+
+*(Unreleased changes with no issue link go here; append at the bottom.)*
+
+## [2.13.0] - 2026-09-25
+
+### Headline: parser checks
+
+FLExToolsMCP can now run FieldWorks' HermitCrab parser, not just document the
+APIs around it. This release ships the whole parser-check series (CP1-CP5,
+[#166](https://github.com/MattGyverLee/FlexToolsMCP/issues/166)):
+
+- **Try a word** -- `flextools_try_word` parses one word the way FLEx's Try A
+  Word does, with `explain` (trace) and `restricted` (test a proposed
+  decomposition) levels; `flextools_grammar_health` reports grammar-load
+  problems.
+- **Batch parsing** -- `flextools_parse_text` parses a scope of texts in a
+  background worker; `flextools_parse_status`, `flextools_parse_log`,
+  `flextools_parse_diff` (did a grammar edit help?), `flextools_parse_cancel`
+  and `flextools_parse_release` manage the runs.
+- **Filing results (the one write path)** -- `flextools_parse_text` with
+  `apply` files parse results into the project, only after a preview is
+  confirmed by `plan_id`; there is no setting that skips the confirmation.
+- **Sandbox** -- `flextools_parse_sandbox` rehearses speculative grammar
+  edits on an exported copy of the grammar, with FieldWorks' own bundled
+  HermitCrab engine, and re-runs saved word corpora. It never opens or writes
+  the live project.
+
+Everything is additive: the tool contract stays at `tool-responses/1.0`, and
+no existing response shape changes. The new error codes are listed under
+[Tool contract](#tool-contract) below.
+
+### flexicon 4.10.0 is the new minimum; index refreshed
+
+The `pyflexicon` floor moves `>=4.9.0` -> `>=4.10.0` (the `<5` cap is
+unchanged), in `pyproject.toml` and its `requirements.txt` mirror, so the
+floor again covers the version the bundled index was built against. 4.10.0 is
+the current release on PyPI. The `*_flexicon-v4.9.0` index files leave the
+repo.
+
+`python -m flextoolsmcp.refresh` against flexicon 4.10.0: the flexicon-mode
+index, LCM bridge and common-patterns files move to `v4.10.0`. The change is
+purely additive: 120 -> 121 entities (`FP_DeduplicationError`), 1541 -> 1581
+methods, and nothing removed (new `OverlayOperations`, complex-form-type
+lookups, `LexSenseOperations.GetMSA`, `FLExProject.SyncForeignChanges`, among
+others). LibLCM `v11.0.0` (with its reverse mapping) was regenerated;
+flexlibs stays at `v1.2.8`.
+
+### Verification
+
+- `pytest -m "not requires_flex"`: green.
+- `python scripts/validate_integrity.py all`: clean.
+- eval: Tier-2 live task evals NOT run for this release.
+
 ### Fixed
+- **`project.LangProject` resolved to a wrong or empty suggestion; no-match fell
+  through without a discovery-tool pointer** ([#69](https://github.com/MattGyverLee/FlexToolsMCP/issues/69)).
+  Runtime `AttributeError` on `project.LangProject`, `project.LangProj`, or
+  `project.LanguageProject` now correctly suggests `project.lp`; `project.LexDb` /
+  `project.LexDbOA` suggest `project.lexDB`. These aliases live in
+  `PROJECT_RAW_HANDLE_ALIASES` and take highest priority over the fuzzy matcher.
+  A single `_MIN_SUGGESTION_RATIO = 0.6` constant is now shared between preflight
+  chain-detection and runtime attribute-error suggestions, closing the gap that
+  let the acronym fallback produce nonsense hits like `PossibilityList → PLPL`.
+  Preflight emits a non-blocking advisory (not a hard rejection) for raw-handle
+  aliases so the `hasattr`-guarded fallback pattern
+  (`project.lp if hasattr(project, "lp") else project.LangProject`) continues to
+  work. When no candidate clears the 0.6 floor, `did_you_mean` is now `[]` and
+  `help` carries an explicit pointer to `flextools_get_object_api` /
+  `flextools_search_by_capability` rather than an empty or misleading hint.
 - **Raw `AddCustomField` on the LCM metadata cache refused at preflight on write runs**
   ([#70](https://github.com/MattGyverLee/FlexToolsMCP/issues/70)). Bypassing
   ``project.CustomFields.CreateField`` with ``IFwMetaDataCacheManaged.AddCustomField``
   can corrupt projects and, with ``fieldWs=0`` followed by ``IUndoStackManager.Save()``,
   hung ``run_module`` until timeout. Write-enabled runs now return
   ``raw_addcustomfield_write_risk``; read-only runs surface an advisory.
-- **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
-  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
-  curated `not_cmpossibility_warning` (already on `get_object_api` for
-  `IMoInflAffixSlot` / `IMoInflAffixTemplate` / `IMoInflClass`) now also
-  appears when callers resolve properties with those types as
-  `context_entity`, so exploring `.Name` is answerable before a runtime
-  `ICmPossibility` cast fails.
-- **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
-  ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
-  ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade
-  accessors whose class name is not ``{Accessor}Operations``) now satisfies the
-  discovery gate the same way an explicit ``flextools_get_object_api`` call would,
-  parallel to import-based implicit discovery (issue #31).
 - **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
   ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
   LCM names now resolve as property lookups; when a property has no wrapper
   method the tool returns ``found: false`` with ``kind: property`` instead of
   ``found: true`` for the bare entity with an empty method list.
-- **Misleading `api_discovery_required` after read-only auto-discovery**
-  ([#244](https://github.com/MattGyverLee/FlexToolsMCP/issues/244)). The
-  write gate still requires explicit `get_object_api` validation, but rejections
-  now name entities that were auto-discovered on earlier read-only runs and
-  expose them as `auto_discovered_pending_validation` instead of claiming no
-  APIs were discovered.
 - **Unhandled tool handler exceptions bypassed the structured error envelope**
   ([#89](https://github.com/MattGyverLee/FlexToolsMCP/issues/89)). `call_tool`
   now catches handler failures and returns `internal_error` with
@@ -78,6 +128,13 @@ sorted position, not the top). Changes without an issue go under Other.
   ``access_path`` such as ``project.LexEntry`` over
   ``from flexicon import LexEntryOperations`` when the index carries a facade
   route. Closes the cycle-7 deferred gap in the ``is_operations_class`` branch.
+- **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  curated `not_cmpossibility_warning` (already on `get_object_api` for
+  `IMoInflAffixSlot` / `IMoInflAffixTemplate` / `IMoInflClass`) now also
+  appears when callers resolve properties with those types as
+  `context_entity`, so exploring `.Name` is answerable before a runtime
+  `ICmPossibility` cast fails.
 - **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
   Preflight and runtime polymorphic hints now detect the common mistake of
   chaining ``.Cache`` after ``project.project`` (which is already the
@@ -166,6 +223,12 @@ sorted position, not the top). Changes without an issue go under Other.
   so export scripts extract primitives (``.Handle`` / ``.Id`` / morph-type
   ``.Name``) instead of calling ``json.dumps`` on live ``Core*`` / ``IMo*``
   handles.
+- **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
+  ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
+  ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade
+  accessors whose class name is not ``{Accessor}Operations``) now satisfies the
+  discovery gate the same way an explicit ``flextools_get_object_api`` call would,
+  parallel to import-based implicit discovery (issue #31).
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
   (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire
@@ -302,6 +365,12 @@ sorted position, not the top). Changes without an issue go under Other.
   gate, unknown-tool, and Pydantic validation failures in `call_tool` now return
   `session_not_initialized`, `unknown_tool`, and `invalid_input` via
   `error_response()` instead of legacy plain-text or non-contract JSON shapes.
+- **Misleading `api_discovery_required` after read-only auto-discovery**
+  ([#244](https://github.com/MattGyverLee/FlexToolsMCP/issues/244)). The
+  write gate still requires explicit `get_object_api` validation, but rejections
+  now name entities that were auto-discovered on earlier read-only runs and
+  expose them as `auto_discovered_pending_validation` instead of claiming no
+  APIs were discovered.
 - **Search/API rows advertised broken `from flexicon import` lines for
   internal classes** ([#245](https://github.com/MattGyverLee/FlexToolsMCP/issues/245)).
   ``_build_entity_import`` now AST-parses flexicon's ``__init__.py`` re-exports
@@ -354,8 +423,8 @@ resolved, resolved from a foreign install, is missing an expected member, or
 threw while loading), `parser_agent_missing` (the HermitCrab agent record
 could not be resolved off the active `LangProject`, in place of letting a
 `KeyNotFoundException` propagate out of a handler), and `parser_tool_missing`
-(an external HC tool -- the `hc` CLI or `GenerateHCConfig.exe` -- is not on
-the expected path). All four are purely additive: `tool-responses/1.0` does
+(a HermitCrab component FieldWorks should supply -- its bundled HermitCrab
+engine or `GenerateHCConfig.exe` -- is not on the expected path). All four are purely additive: `tool-responses/1.0` does
 not move, and no existing response shape changes. The hand-maintained error
 code count in `docs/TOOL-CONTRACT.md` moves from 18 to 22 accordingly.
 
@@ -453,8 +522,10 @@ an empty one.
 Parser-check CP5 adds the sandbox spine: a new read-only tool,
 `flextools_parse_sandbox` (`action`: `parse`, `create_sandbox`,
 `seed_corpus`, `run_corpus`, `list`), parses words against an exported copy
-of the grammar with the stand-alone `hc` tool and never opens or writes the
-live project. It writes only under `~/.flextoolsmcp/parse/` and the run-record
+of the grammar with FieldWorks' own bundled HermitCrab engine (the one Try A
+Word uses), loaded in a separate parse worker with no project open, so it
+never opens or writes the live project. No separate `hc` console tool is
+needed. It writes only under `~/.flextoolsmcp/parse/` and the run-record
 directory. Two new error codes come with it: `parser_config_failed`
 (`exit_code`, `stderr_tail`, `log_path`, `run_id` -- `GenerateHCConfig.exe`
 did not produce a config, judged from its output rather than its exit code;
@@ -466,14 +537,16 @@ and `parse_sandbox_refused` (`reason`, `name`, `path`, `hint`,
 `corpus_exists`, `corpus_not_found`, `corpus_invalid`, `run_not_seedable`,
 `insufficient_disk_space`, `word_file_invalid`; each fires before a file is
 created). `parser_tool_missing` (CP1) and `parser_timeout` (CP3) get their
-first emitter here. Additive: `tool-responses/1.0` is unchanged, no existing
-code changes shape, and the hand-maintained count in `docs/TOOL-CONTRACT.md`
-goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
+first emitter here. `parser_job_failed` (CP3) gains two `failure` values
+for the sandbox worker: `engine_unavailable` (the config never loaded into a
+usable HermitCrab `Morpher`) and `id_map_invalid` (the config source's
+`lcm-ids.json` id map failed validation, so Try A Word's result shaping
+could not be applied safely); its field order is unchanged. Additive:
+`tool-responses/1.0` is unchanged, no existing code changes shape, and the
+hand-maintained count in `docs/TOOL-CONTRACT.md` goes from 34 to 36. `flextools_health` gains a `parser.sandbox` block
 reporting whether the sandbox spine is ready.
 
 ### Other
-
-*(Unreleased changes with no issue link go here; append at the bottom.)*
 
 - **The `flextools_parse_text` filing preview was megabytes on a large scope.**
   An `all_texts` preview listed every projected analysis GUID inline: 24k GUIDs,

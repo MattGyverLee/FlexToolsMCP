@@ -1,0 +1,1129 @@
+{
+  "scenario": "S15",
+  "project": "CP5-Scratch-Circumsanity-20260925T063236",
+  "source_project": "Circumsanity",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\Circumsanity",
+      "before": {
+        "sha256": "ecc4e91461072cf07e6195b085ae5f435c74fc7182802b5009160e423f1f0d9a",
+        "files": 25,
+        "bytes": 15833426,
+        "locks": []
+      },
+      "after": null
+    }
+  ],
+  "responses": {
+    "sandbox": {
+      "status": "ok",
+      "run_id": "85514d99f6b23e6a989ca81f2dedfbef",
+      "project": "CP5-Scratch-Circumsanity-20260925T063236",
+      "stage": "completed",
+      "words_completed": 60,
+      "words_total": 60,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dˤɛðˤiç",
+          "dˤɛðˤsːn",
+          "ibriðn",
+          "idˤudˤɛniw",
+          "ifdʒiɣn",
+          "ifɛsnsnθ",
+          "ifɛsnsːn",
+          "ilgɛmn",
+          "ilɛɣmɛnim",
+          "ilɛɣmɛnsnθ",
+          "imrːidɛ",
+          "imuçɛn",
+          "imɛwn",
+          "inijn",
+          "içrɛs",
+          "jlːi",
+          "jtːt",
+          "juʃiθ",
+          "juʃɛ",
+          "jzːnzi",
+          "lːɛmɛrθ",
+          "nzːnziθ",
+          "smɛwn",
+          "timzwɛrin",
+          "ttːuʃiθ",
+          "ttːuʃmt",
+          "tulːi",
+          "twɛl",
+          "tzːnzmθ",
+          "tzːnzt",
+          "tzːnzð",
+          "tɛbrd3t",
+          "tɛnuʃ",
+          "tɛtiðznzmθ",
+          "tɛttjuʃ",
+          "tɛttjzːnz",
+          "tɛttnuʃ",
+          "tɛttːzːnz",
+          "tɛɣzdist",
+          "tːuʃn",
+          "tːuʃnt",
+          "ulɛwnçmθ",
+          "wdznsʃ",
+          "wdznziʃ",
+          "wtːdznzʃ",
+          "wtːiðjzːnsʃ",
+          "wtːiðznsʃ",
+          "wtːiðznzinʃ",
+          "wtːiðznziʃ",
+          "wtːtznznʃ",
+          "y",
+          "znzɛɣ",
+          "əttuʃnəθ",
+          "ɛjlimn",
+          "ɛlɣm",
+          "ɛlɣmis",
+          "ɛmʕmuʃ",
+          "ɛsˤɣɛrˤ",
+          "ɛtˤftˤɛf",
+          "ɛçrus"
+        ],
+        "text_ids": [],
+        "word_count": 60,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 60,
+        "NumParseErrors": 0,
+        "NumZeroParses": 26,
+        "TotalParseTime": 622,
+        "TotalAnalyses": 31,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 31
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 60,
+        "parsed": 31,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\85514d99f6b23e6a989ca81f2dedfbef",
+        "outcomes": {
+          "parsed": 31,
+          "not_parsed": 26,
+          "invalid_segment": 3,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "85514d99f6b23e6a989ca81f2dedfbef",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\85514d99f6b23e6a989ca81f2dedfbef",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-Circumsanity-20260925T063236",
+        "run_id": "85514d99f6b23e6a989ca81f2dedfbef",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 6,
+        "words_total": 60,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "dˤɛðˤiç",
+            "dˤɛðˤsːn",
+            "ibriðn",
+            "idˤudˤɛniw",
+            "ifdʒiɣn",
+            "ifɛsnsnθ",
+            "ifɛsnsːn",
+            "ilgɛmn",
+            "ilɛɣmɛnim",
+            "ilɛɣmɛnsnθ",
+            "imrːidɛ",
+            "imuçɛn",
+            "imɛwn",
+            "inijn",
+            "içrɛs",
+            "jlːi",
+            "jtːt",
+            "juʃiθ",
+            "juʃɛ",
+            "jzːnzi",
+            "lːɛmɛrθ",
+            "nzːnziθ",
+            "smɛwn",
+            "timzwɛrin",
+            "ttːuʃiθ",
+            "ttːuʃmt",
+            "tulːi",
+            "twɛl",
+            "tzːnzmθ",
+            "tzːnzt",
+            "tzːnzð",
+            "tɛbrd3t",
+            "tɛnuʃ",
+            "tɛtiðznzmθ",
+            "tɛttjuʃ",
+            "tɛttjzːnz",
+            "tɛttnuʃ",
+            "tɛttːzːnz",
+            "tɛɣzdist",
+            "tːuʃn",
+            "tːuʃnt",
+            "ulɛwnçmθ",
+            "wdznsʃ",
+            "wdznziʃ",
+            "wtːdznzʃ",
+            "wtːiðjzːnsʃ",
+            "wtːiðznsʃ",
+            "wtːiðznzinʃ",
+            "wtːiðznziʃ",
+            "wtːtznznʃ",
+            "y",
+            "znzɛɣ",
+            "əttuʃnəθ",
+            "ɛjlimn",
+            "ɛlɣm",
+            "ɛlɣmis",
+            "ɛmʕmuʃ",
+            "ɛsˤɣɛrˤ",
+            "ɛtˤftˤɛf",
+            "ɛçrus"
+          ],
+          "text_ids": [],
+          "word_count": 60,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\85514d99f6b23e6a989ca81f2dedfbef",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "994d04cefbc2b41d"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "994d04cefbc2b41d",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "85514d99f6b23e6a989ca81f2dedfbef"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0",
+        "project_adopted_notice": {
+          "previous_project": "CP5-Scratch-IndonesianHC-Complete-20260925T063139",
+          "project": "CP5-Scratch-Circumsanity-20260925T063236",
+          "message": "Session project is now 'CP5-Scratch-Circumsanity-20260925T063236' (was 'CP5-Scratch-IndonesianHC-Complete-20260925T063139'). Unqualified calls target 'CP5-Scratch-Circumsanity-20260925T063236' until you change it again."
+        }
+      }
+    },
+    "project": {
+      "status": "ok",
+      "run_id": "52a75f37988f9f16ee442cdd1f73896d",
+      "project": "CP5-Scratch-Circumsanity-20260925T063236",
+      "stage": "completed",
+      "words_completed": 60,
+      "words_total": 60,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "dˤɛðˤiç",
+          "dˤɛðˤsːn",
+          "ibriðn",
+          "idˤudˤɛniw",
+          "ifdʒiɣn",
+          "ifɛsnsnθ",
+          "ifɛsnsːn",
+          "ilgɛmn",
+          "ilɛɣmɛnim",
+          "ilɛɣmɛnsnθ",
+          "imrːidɛ",
+          "imuçɛn",
+          "imɛwn",
+          "inijn",
+          "içrɛs",
+          "jlːi",
+          "jtːt",
+          "juʃiθ",
+          "juʃɛ",
+          "jzːnzi",
+          "lːɛmɛrθ",
+          "nzːnziθ",
+          "smɛwn",
+          "timzwɛrin",
+          "ttːuʃiθ",
+          "ttːuʃmt",
+          "tulːi",
+          "twɛl",
+          "tzːnzmθ",
+          "tzːnzt",
+          "tzːnzð",
+          "tɛbrd3t",
+          "tɛnuʃ",
+          "tɛtiðznzmθ",
+          "tɛttjuʃ",
+          "tɛttjzːnz",
+          "tɛttnuʃ",
+          "tɛttːzːnz",
+          "tɛɣzdist",
+          "tːuʃn",
+          "tːuʃnt",
+          "ulɛwnçmθ",
+          "wdznsʃ",
+          "wdznziʃ",
+          "wtːdznzʃ",
+          "wtːiðjzːnsʃ",
+          "wtːiðznsʃ",
+          "wtːiðznzinʃ",
+          "wtːiðznziʃ",
+          "wtːtznznʃ",
+          "y",
+          "znzɛɣ",
+          "əttuʃnəθ",
+          "ɛjlimn",
+          "ɛlɣm",
+          "ɛlɣmis",
+          "ɛmʕmuʃ",
+          "ɛsˤɣɛrˤ",
+          "ɛtˤftˤɛf",
+          "ɛçrus"
+        ],
+        "text_ids": [],
+        "word_count": 60,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": "jbn"
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 60,
+        "NumParseErrors": 3,
+        "NumZeroParses": 29,
+        "TotalParseTime": 19927,
+        "TotalAnalyses": 31,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 27
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 60,
+        "parsed": 31,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\52a75f37988f9f16ee442cdd1f73896d"
+      },
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "52a75f37988f9f16ee442cdd1f73896d",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-yi1vdn6t\\runs\\52a75f37988f9f16ee442cdd1f73896d"
+    }
+  },
+  "observations": {
+    "words_compared": 60,
+    "disagreements": {},
+    "comparison": {
+      "wtːiðznzinʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "wtːiðjzːnsʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tzːnzt": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ɛmʕmuʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛ",
+            "mʕmuʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛ",
+            "mʕmuʃ"
+          ]
+        ]
+      },
+      "juʃiθ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "j",
+            "uʃ",
+            "iθ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "j",
+            "uʃ",
+            "iθ"
+          ]
+        ]
+      },
+      "lːɛmɛrθ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "timzwɛrin": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ti",
+            "mzwɛr",
+            "in"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ti",
+            "mzwɛr",
+            "in"
+          ]
+        ]
+      },
+      "twɛl": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ɛjlimn": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛjlim",
+            "n"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛjlim",
+            "n"
+          ]
+        ]
+      },
+      "jtːt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "j",
+            "tːt"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "j",
+            "tːt"
+          ]
+        ]
+      },
+      "wtːiðznziʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "nzːnziθ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "n",
+            "zːnz",
+            "iθ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "n",
+            "zːnz",
+            "iθ"
+          ]
+        ]
+      },
+      "tːuʃnt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tːuʃ",
+            "n",
+            "t"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tːuʃ",
+            "n",
+            "t"
+          ]
+        ]
+      },
+      "jlːi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ilɛɣmɛnim": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ɛlɣmis": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛ",
+            "lɣm",
+            "is"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛ",
+            "lɣm",
+            "is"
+          ]
+        ]
+      },
+      "ɛlɣm": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛ",
+            "lɣm"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛ",
+            "lɣm"
+          ]
+        ]
+      },
+      "ɛtˤftˤɛf": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛ",
+            "tˤftˤɛf"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛ",
+            "tˤftˤɛf"
+          ]
+        ]
+      },
+      "ɛsˤɣɛrˤ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "ɛ",
+            "sˤɣɛrˤ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "ɛ",
+            "sˤɣɛrˤ"
+          ]
+        ]
+      },
+      "ilɛɣmɛnsnθ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "əttuʃnəθ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "wdznziʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "w",
+            "d",
+            "znzi",
+            "ʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "w",
+            "d",
+            "znzi",
+            "ʃ"
+          ]
+        ]
+      },
+      "ilgɛmn": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "i",
+            "lgɛm",
+            "n"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "i",
+            "lgɛm",
+            "n"
+          ]
+        ]
+      },
+      "znzɛɣ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "znz",
+            "ɛɣ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "znz",
+            "ɛɣ"
+          ]
+        ]
+      },
+      "wtːdznzʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tɛttjzːnz": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "tt",
+            "j",
+            "zːnz"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "tt",
+            "j",
+            "zːnz"
+          ]
+        ]
+      },
+      "tɛttːzːnz": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "tt",
+            "t",
+            "zːnz"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "tt",
+            "t",
+            "zːnz"
+          ]
+        ]
+      },
+      "ifɛsnsːn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "içrɛs": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tɛbrd3t": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tɛtiðznzmθ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "tið",
+            "znz",
+            "mθ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "tið",
+            "znz",
+            "mθ"
+          ]
+        ]
+      },
+      "imɛwn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ttːuʃmt": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "t",
+            "tːuʃ",
+            "m",
+            "t"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "t",
+            "tːuʃ",
+            "m",
+            "t"
+          ]
+        ]
+      },
+      "ɛçrus": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tzːnzmθ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "t",
+            "zːnz",
+            "mθ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "t",
+            "zːnz",
+            "mθ"
+          ]
+        ]
+      },
+      "y": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "dˤɛðˤsːn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "wtːiðznsʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "imrːidɛ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "jzːnzi": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "j",
+            "zːnz",
+            "i"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "j",
+            "zːnz",
+            "i"
+          ]
+        ]
+      },
+      "imuçɛn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ttːuʃiθ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "t",
+            "tːuʃ",
+            "iθ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "t",
+            "tːuʃ",
+            "iθ"
+          ]
+        ]
+      },
+      "tɛnuʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "n",
+            "uʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "n",
+            "uʃ"
+          ]
+        ]
+      },
+      "smɛwn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ibriðn": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "i",
+            "brið",
+            "n"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "i",
+            "brið",
+            "n"
+          ]
+        ]
+      },
+      "ifdʒiɣn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "ifɛsnsnθ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "wdznsʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "w",
+            "d",
+            "znz",
+            "ʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "w",
+            "d",
+            "znz",
+            "ʃ"
+          ]
+        ]
+      },
+      "tulːi": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "wtːtznznʃ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "juʃɛ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "j",
+            "uʃɛ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "j",
+            "uʃɛ"
+          ]
+        ]
+      },
+      "inijn": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tɛttnuʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "tt",
+            "n",
+            "uʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "tt",
+            "n",
+            "uʃ"
+          ]
+        ]
+      },
+      "ulɛwnçmθ": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      },
+      "tɛɣzdist": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "ɣzdis",
+            "t"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "ɣzdis",
+            "t"
+          ]
+        ]
+      },
+      "tːuʃn": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tːuʃ",
+            "n"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tːuʃ",
+            "n"
+          ]
+        ]
+      },
+      "dˤɛðˤiç": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "dˤɛðˤ",
+            "iç"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "dˤɛðˤ",
+            "iç"
+          ]
+        ]
+      },
+      "tɛttjuʃ": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "tɛ",
+            "tt",
+            "j",
+            "uʃ"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "tɛ",
+            "tt",
+            "j",
+            "uʃ"
+          ]
+        ]
+      },
+      "tzːnzð": {
+        "flex_parsed": true,
+        "sandbox_parsed": true,
+        "flex_forms": [
+          [
+            "t",
+            "zːnz",
+            "ð"
+          ]
+        ],
+        "sandbox_forms": [
+          [
+            "t",
+            "zːnz",
+            "ð"
+          ]
+        ]
+      },
+      "idˤudˤɛniw": {
+        "flex_parsed": false,
+        "sandbox_parsed": false,
+        "flex_forms": [],
+        "sandbox_forms": []
+      }
+    },
+    "disclosed_differences": [
+      "glosses: the sandbox reads Morpheme.Gloss; FLEx labels morphs by category",
+      "user_added morphs: emitted in named sandboxes only (none in a cache run)"
+    ]
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:33:38.989868+00:00"
+}

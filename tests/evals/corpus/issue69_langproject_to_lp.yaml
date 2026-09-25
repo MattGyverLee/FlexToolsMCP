@@ -1,0 +1,22 @@
+intent: "Raw LCM handle project.LangProject must not be hard-rejected (issue #69)"
+api_mode: flexicon
+write_enabled: false
+session:
+  validated_apis: ["LexEntryOperations"]
+code: |
+  # Typical defensive pattern copied from older FlexLibs scripts.
+  # project.lp is the Flexicon accessor; project.LangProject is the raw
+  # LCM handle used as a fallback.  The hasattr guard makes this correct
+  # code that must not trigger a preflight hard-rejection.
+  lp = project.lp if hasattr(project, "lp") else project.LangProject
+  entries = project.LexEntry.GetAll()
+  report.Info(f"Project: {lp}, entries: {len(entries)}")
+expect:
+  outcome: ok
+  error_code: null
+  auto_fixes: 0
+issue: 69
+notes: >
+  The advisory for project.LangProject (kind=advisory, blocking=False) is
+  informational only and must not set has_invalid=True.  The project.lp
+  reference on the same line is valid and must pass cleanly.

@@ -259,6 +259,51 @@ GOLDEN_FIXTURES: dict[str, dict] = {
 }
 
 
+def _job_failed(message: str, failure: str) -> dict:
+    """A parser_job_failed fixture, fields in contracts/tools.md s.4 order."""
+    return {
+        "message": message,
+        "state_at_failure": "parsing",
+        "failure": failure,
+        **_JOB_FAILED_TAIL,
+    }
+
+
+_JOB_FAILED_TAIL = {
+    "words_completed": 0,
+    "words_total": 12,
+    "run_id": "0123456789abcdef0123456789abcdef",
+    "log_path": (
+        "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\"
+        "0123456789abcdef0123456789abcdef\\sandbox\\worker-stderr.txt"
+    ),
+}
+
+
+# Fixtures for one code under a variant file name: name -> (code, extras).
+# Used when a code's detail carries an enum whose members each deserve their
+# own pinned shape (the file is tests/golden/responses/<name>.json).
+VARIANT_GOLDEN_FIXTURES = {
+    # Parser-check CP5 (FR-016, D7): the sandbox worker's config did not load
+    # into a usable Morpher on its first parse.
+    "parser_job_failed_engine_unavailable": ("parser_job_failed", _job_failed(
+        (
+            "The sandbox worker could not load the HermitCrab configuration for "
+            "project 'Demo': XmlException: Unexpected end of file."
+        ),
+        "engine_unavailable",
+    )),
+    # Parser-check CP5 (FR-050): the config source's lcm-ids.json failed validation.
+    "parser_job_failed_id_map_invalid": ("parser_job_failed", _job_failed(
+        (
+            "The sandbox's id map (lcm-ids.json) is invalid for project 'Demo': "
+            "ids 4918, 6609 did not resolve to the expected LCM class."
+        ),
+        "id_map_invalid",
+    )),
+}
+
+
 def _build_fixture(code: str, extras: dict) -> dict:
     """Generate a fixture dict by calling error_response() and parsing the result."""
     message = extras.pop("message")
@@ -302,6 +347,23 @@ def main(argv=None):
 
         if existing != fixture:
             stale.append(code)
+            if args.regen:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(fixture, f, indent=2, ensure_ascii=False)
+                    f.write("\n")
+                print(f"[REGEN] {path.name}")
+            else:
+                print(f"[STALE] {path.name}")
+        else:
+            print(f"[OK]    {path.name}")
+
+    for fixture_name, (code, raw_extras) in VARIANT_GOLDEN_FIXTURES.items():
+        fixture = _build_fixture(code, dict(raw_extras))
+        path = GOLDEN_DIR / f"{fixture_name}.json"
+        existing = _load_existing(path)
+
+        if existing != fixture:
+            stale.append(fixture_name)
             if args.regen:
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(fixture, f, indent=2, ensure_ascii=False)

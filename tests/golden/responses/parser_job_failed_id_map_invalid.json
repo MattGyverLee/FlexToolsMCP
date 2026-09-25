@@ -1,0 +1,22 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "parser_job_failed",
+  "message": "The sandbox's id map (lcm-ids.json) is invalid for project 'Demo': ids 4918, 6609 did not resolve to the expected LCM class.",
+  "state_at_failure": "parsing",
+  "failure": "id_map_invalid",
+  "words_completed": 0,
+  "words_total": 12,
+  "run_id": "0123456789abcdef0123456789abcdef",
+  "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\worker-stderr.txt",
+  "error": {
+    "code": "parser_job_failed",
+    "message": "The sandbox's id map (lcm-ids.json) is invalid for project 'Demo': ids 4918, 6609 did not resolve to the expected LCM class.",
+    "state_at_failure": "parsing",
+    "failure": "id_map_invalid",
+    "words_completed": 0,
+    "words_total": 12,
+    "run_id": "0123456789abcdef0123456789abcdef",
+    "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\worker-stderr.txt"
+  }
+}

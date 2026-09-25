@@ -133,11 +133,11 @@ authoritative. All detail fields are optional unless noted.
 | `project_drive_unavailable` | `attempted_path`, `hint` |
 | `project_path_mismatch` | `attempted_path`, `discovered_at`, `hint` |
 | `project_not_found` | `attempted_path`, `hint`, `recovery` (default `"list_projects"`) |
-| `runtime_error` | `stderr`, `traceback`, `exit_code`, `error_type` |
+| `runtime_error` | `stderr`, `traceback`, `exit_code`, `error_type` — plus optional `did_you_mean` (list[str]) and `help` (str) when the runner diagnosed an `AttributeError` with a recoverable suggestion (see [below](#did_you_mean-and-help-on-runtime_error)) |
 | `parser_engine_mismatch` | `configured_engine` (required string), `supported_engines` (required list), `hint` (required string) |
 | `parser_core_missing` | `signal` (required; `absent` \| `foreign_install` \| `incompatible_surface` \| `load_failed`), `expected_path` (required string), `detected_version` -- **reported and never compared: there is no version floor**, this is a standing guarantee with a regression test behind it (SPEC 16), `missing_members` (required list), `lcmodel_install_path`, `install_hint` (required string), `load_error` |
 | `parser_agent_missing` | `agent_guid` (required string), `agent_name` (required; always `"HermitCrab"`), `active_engine` (required string), `probe_source` (required; `bootstrap_absent` \| `lookup_failed`), `hint` (required string) |
-| `parser_tool_missing` | `component` (required; `"hc"` \| `"GenerateHCConfig.exe"`), `expected_path` (required string), `install_hint` (required string). First emitted by `flextools_parse_sandbox` (CP5): `hc` must be found and start, and `GenerateHCConfig.exe` must be found when a config may be generated. |
+| `parser_tool_missing` | `component` (required; `"fieldworks_hermitcrab"` \| `"GenerateHCConfig.exe"`), `expected_path` (required string), `install_hint` (required string). First emitted by `flextools_parse_sandbox` (CP5): FieldWorks' bundled `SIL.Machine.Morphology.HermitCrab.dll` must be present, and `GenerateHCConfig.exe` must be found when a config may be generated. Both are repaired by repairing FieldWorks, so both carry the same `install_hint`. The CP5 re-plan retired the `"hc"` value along with the `hc` console tool. |
 | `parse_morph_unresolved` | **Exactly five keys, in this order**: `morph`, `position` (0-based index in the decomposition), `resolved_to` (required; `none` \| `ambiguous` \| `no_msa`), `candidates` (required list of `{headword, sense, msa_hvo, entry_hvo}` -- **`msa_hvo: null` IS the `no_msa` signal**), `hint` (required string). The three `resolved_to` values are kept distinct because they call for three different actions: fix the spelling, pick the homograph, or add an analysis to the entry. **No parse runs** for a request that raises this. |
 | `parse_run_not_found` | `run_id` (required string), `available_runs` (required list -- the handles that DO exist, named rather than counted), `hint` (required string). The only refusal `flextools_parse_status` issues. |
 | `parse_job_cancelled` | `run_id` (required string), `words_completed` (required int -- the partial results are readable), `state_at_cancel` (required string), `hint` (required string). Raised when something tries to **act** on a run that has already ended. **Not** raised by `flextools_parse_status`: asking about a terminal run is a successful query. |
@@ -145,11 +145,43 @@ authoritative. All detail fields are optional unless noted.
 | `parse_scope_ambiguous` | **In this order**: `scope` (required object), `requested` (required string -- the genre as typed), `candidates` (list -- EVERY matching genre, never a sample). Matching is case-insensitive over genre name and abbreviation, so the collisions are often ones the caller could not predict. |
 | `parse_scope_mismatch` | **In this order**: `baseline_fingerprint` (required object), `current_fingerprint` (required object), `differing_fields` (list -- which fingerprint fields disagree), `hint` (required string). Raised by `flextools_parse_diff` when two runs do not describe the same scope. Overridable: a forced comparison covers the intersection only and says so. |
 | `parser_timeout` | **In this order**: `timeout_seconds` (required number), `words_completed` (required int -- the partial results survive), `run_id` (required string), `hint` (required string). **Not** used by the bounded measurement: a measurement stopped at its bound is a successful result (`outcome: "terminated_at_bound"`), not this refusal. First emitted by `flextools_parse_sandbox` (CP5), as a terminal run state. |
-| `parser_job_failed` | **In this order**: `state_at_failure` (required string), `failure` (required; `out_of_memory` \| `crashed` \| `cancelled` -- kept distinct because the remedies differ), `words_completed` (required int), `words_total` (required int), `run_id` (required string), `log_path` (required string). |
+| `parser_job_failed` | **In this order**: `state_at_failure` (required string), `failure` (required; `out_of_memory` \| `crashed` \| `cancelled` \| `engine_unavailable` \| `id_map_invalid` -- kept distinct because the remedies differ; the last two are CP5's sandbox worker: its config never loaded into a usable Morpher, or its `lcm-ids.json` id map failed validation), `words_completed` (required int), `words_total` (required int), `run_id` (required string), `log_path` (required string). |
 | `parser_filing_in_progress` | **In this order**: `run_id` (required string), `started_at` (required string, ISO-8601 UTC), `words_completed` (required int), `hint` (required string -- names `flextools_parse_status(run_id=...)`). Raised by `flextools_parse_text(apply=true)` when a filing job is already running on the project, before the engine check, the scope, the preview, the backup or any parse. The claim is not a project lock: read-only parses, single-word tries and the run-reading tools are not refused on its account. |
 | `grammar_load_unclean` | **In this order**: `signal` (required; `morpher_null` \| `new_load_errors` \| `eligible_forms_dropped`), `new_error_count` (required int), `baseline_error_count` (required int), `baseline_source` (required; `this_run` \| `absent` \| `prior_run:<run_id>`), `log_path` (string or null), then, appended after those five: `new_errors` (list), `dropped_entries` (list of `{entry_guid, headword}`), `baseline_eligible_count` (int or null), `eligible_count` (int or null). Raised by `flextools_parse_text(apply=true)` when the grammar did not load cleanly: the parser could not be built, this load logged errors the baseline did not, or fewer lexical forms are eligible to reach the grammar than in the baseline (which the loader does without logging anything). **There is no override**: the only way past `new_load_errors` or `eligible_forms_dropped` is a read-only `flextools_parse_text` of the same scope, which re-baselines. |
 | `parser_config_failed` | **In this order**: `exit_code` (int or null -- null when the generator never returned one: it timed out or could not be started), `stderr_tail` (required string -- the last 20 lines of the combined generator output, ASCII with non-ASCII escaped, capped at 4 KiB), `log_path` (required string -- the run's `sandbox/generate-config.log`), `run_id` (string or null -- null only when generation failed before a run existed, i.e. `flextools_parse_sandbox(action="create_sandbox")`). Raised by `flextools_parse_sandbox` when `GenerateHCConfig.exe` did not produce a config. Generation is judged from its output, not its exit code: a run that exits 0 without the generator's `Writing completed.` line is a failure. |
 | `parse_sandbox_refused` | **In this order**: `reason` (required; `name_invalid` \| `sandbox_exists` \| `sandbox_not_found` \| `corpus_exists` \| `corpus_not_found` \| `corpus_invalid` \| `run_not_seedable` \| `insufficient_disk_space` \| `word_file_invalid` -- a closed enum, kept distinct because the remedies differ), `name` (string or null), `path` (string or null), `hint` (required string), `needed_bytes` (int or null), `free_bytes` (int or null -- these two are set only for `insufficient_disk_space`). The sandbox tool's own pre-run refusals; every one fires before a file is created. |
+
+---
+
+## `did_you_mean` and `help` on `runtime_error`
+
+When the execution handler diagnoses an `AttributeError` in the subprocess
+output, it may attach two additional optional top-level keys to the
+`runtime_error` response — **outside** the `RuntimeErrorDetail` Pydantic model
+(which covers only `stderr`, `traceback`, `exit_code`, `error_type`):
+
+| Key | Type | Description |
+|---|---|---|
+| `did_you_mean` | list[str] | Candidate corrected names, or `[]` when none cleared the suggestion floor. |
+| `help` | string | Human-readable recovery hint. When `did_you_mean` is `[]` (no close match found), `help` always carries an explicit pointer to `flextools_get_object_api` and/or `flextools_search_by_capability` — never an empty string or vague guidance (issue #69 guarantee). |
+
+Both keys are absent when the runner did not detect an `AttributeError`, or when
+the polymorphic-cast path produced a concrete rewrite (which takes precedence).
+
+**`did_you_mean=[]` guarantee (issue #69).** Before issue #69 was fixed, the
+fuzzy-match path could surface a nonsense suggestion (e.g. `PossibilityList →
+PLPL`) or emit an empty `help` string when no candidate cleared the internal
+ratio floor. After #69, the floor is a shared constant (`_MIN_SUGGESTION_RATIO =
+0.6`) and every no-match path explicitly sets `did_you_mean: []` plus a `help`
+string that names at least one discovery tool. Callers can therefore distinguish
+"we have a specific suggestion" (`len(did_you_mean) >= 1`) from "we don't know,
+use discovery" (`did_you_mean == []`) without parsing `help`.
+
+**Raw-handle aliases.** `project.LangProject`, `project.LangProj`, and
+`project.LanguageProject` are mapped to `project.lp`; `project.LexDb` and
+`project.LexDbOA` are mapped to `project.lexDB`. These aliases always win over
+the fuzzy matcher and produce `did_you_mean: ["lp"]` / `["lexDB"]` rather than
+an empty list.
 
 ---
 

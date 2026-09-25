@@ -1,0 +1,282 @@
+{
+  "scenario": "S10",
+  "project": "CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+  "source_project": "Malay Parsing-20230810withHC",
+  "versions": {
+    "fieldworks_hermitcrab": "3.8.2.0",
+    "generate_hc_config": "9.3.11.2703",
+    "fieldworks_hermitcrab_path": "C:\\Program Files\\SIL\\FieldWorks 9\\SIL.Machine.Morphology.HermitCrab.dll"
+  },
+  "hashes": [
+    {
+      "folder": "C:\\ProgramData\\SIL\\FieldWorks\\Projects\\CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+      "before": {
+        "sha256": "0bedbbc87ba09aad9af7264ae5cba06854a833f7ea57dab48cf2f1c552390426",
+        "files": 27,
+        "bytes": 15431165,
+        "locks": []
+      },
+      "after": {
+        "sha256": "0bedbbc87ba09aad9af7264ae5cba06854a833f7ea57dab48cf2f1c552390426",
+        "files": 27,
+        "bytes": 15431165,
+        "locks": []
+      }
+    }
+  ],
+  "responses": {
+    "warm": {
+      "status": "ok",
+      "run_id": "ec3b1dff38aadf26c3255ecde6be5ab4",
+      "project": "CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+      "stage": "completed",
+      "words_completed": 1,
+      "words_total": 1,
+      "interleaved_by": null,
+      "scope_fingerprint": {
+        "scope_kind": "words",
+        "scope_value": [
+          "pada"
+        ],
+        "text_ids": [],
+        "word_count": 1,
+        "limit": null,
+        "truncated": false,
+        "engine": "HC",
+        "vernacular_ws": ""
+      },
+      "engine_at_submission": "HC",
+      "engine_changed_midjob": false,
+      "counters": {
+        "NumWords": 1,
+        "NumParseErrors": 0,
+        "NumZeroParses": 0,
+        "TotalParseTime": 112,
+        "TotalAnalyses": 1,
+        "TotalUserApprovedAnalysesMissing": 0,
+        "TotalUserDisapprovedAnalyses": 0,
+        "TotalUserNoOpinionAnalyses": 1
+      },
+      "counter_divergences": [
+        "TotalUserApprovedAnalysesMissing: counts only FULLY LINKED human-approved analyses (every morph bundle present and complete) that the parser did not produce. The host application counts every human-approved analysis; an analysis that records a meaning but no decomposition, or one whose morphs are not all linked, has no morphology the parser could have produced, so counting it as 'missing' would report a gap in the human record as a parser failure.",
+        "TotalUserNoOpinionAnalyses: the number of parser analyses that match no stored human opinion. It is NOT a count of unreviewed analyses: a human may have seen an analysis and recorded nothing, and approval is recorded for anything left in use in a text, so absence of an opinion says nothing about whether a person looked. What human review established is reported as the affirmed/indeterminate split of human approvals, never by this counter."
+      ],
+      "result_summary": {
+        "words": 1,
+        "parsed": 1,
+        "hypotheses_held": 0,
+        "traces_written": 0,
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\ec3b1dff38aadf26c3255ecde6be5ab4",
+        "outcomes": {
+          "parsed": 1,
+          "not_parsed": 0,
+          "invalid_segment": 0,
+          "not_expressible": 0,
+          "error_no_output": 0,
+          "not_reached": 0
+        },
+        "counters": "ok"
+      },
+      "spine": "sandbox",
+      "next_step": [
+        {
+          "action": "Read this run's record back.",
+          "tool": "flextools_parse_log",
+          "args": {
+            "run_id": "ec3b1dff38aadf26c3255ecde6be5ab4",
+            "section": "summary"
+          },
+          "rationale": "The batch report -- signals, the oracle, clusters to trace -- is in this run's summary section.",
+          "est_cost": "instant"
+        }
+      ],
+      "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\ec3b1dff38aadf26c3255ecde6be5ab4",
+      "_submitted": {
+        "status": "ok",
+        "action": "parse",
+        "project": "CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+        "run_id": "ec3b1dff38aadf26c3255ecde6be5ab4",
+        "run_started": true,
+        "stage": "parsing",
+        "words_completed": 1,
+        "words_total": 1,
+        "truncated_by_limit": false,
+        "scope_fingerprint": {
+          "scope_kind": "words",
+          "scope_value": [
+            "pada"
+          ],
+          "text_ids": [],
+          "word_count": 1,
+          "limit": null,
+          "truncated": false,
+          "engine": "HC",
+          "vernacular_ws": ""
+        },
+        "engine_at_submission": "HC",
+        "record_dir": "C:\\Users\\thoua\\AppData\\Local\\Temp\\cp5-live-5r51orwf\\runs\\ec3b1dff38aadf26c3255ecde6be5ab4",
+        "project_state": {
+          "access": "free"
+        },
+        "spine": "sandbox",
+        "config_source": {
+          "kind": "project_cache",
+          "cache_key": "4c76e27033e58e6f"
+        },
+        "versions": {
+          "fieldworks_hermitcrab": "3.8.2.0",
+          "generate_hc_config": "9.3.11.2703",
+          "hcparse": "6.0.0"
+        },
+        "advisories": [],
+        "generation": {
+          "reused_cache": false,
+          "cache_key": "4c76e27033e58e6f",
+          "load_error_count": 0,
+          "load_errors": []
+        },
+        "results_label": "These are the sandbox's results from an exported copy of the grammar, not the project's own parser results.",
+        "note": "The run is going in the background and was not slowed or limited by this call returning. Poll the run for progress.",
+        "next_step": [
+          {
+            "action": "Poll again for this run.",
+            "tool": "flextools_parse_status",
+            "args": {
+              "run_id": "ec3b1dff38aadf26c3255ecde6be5ab4"
+            },
+            "rationale": "The run is in 'parsing' and is still going. It was not slowed or throttled by being polled.",
+            "est_cost": "instant"
+          }
+        ],
+        "_contract": "tool-responses/1.0",
+        "project_adopted_notice": {
+          "previous_project": "CP5-Scratch-IndonesianHC-Complete-20260925T061136",
+          "project": "CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159",
+          "message": "Session project is now 'CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159' (was 'CP5-Scratch-IndonesianHC-Complete-20260925T061136'). Unqualified calls target 'CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159' until you change it again."
+        }
+      }
+    },
+    "parse": {
+      "truncated": true,
+      "text": "{\"status\": \"ok\", \"run_id\": \"937985a7dd74e935d4bacb7ff17c1b33\", \"project\": \"CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159\", \"stage\": \"failed\", \"words_completed\": 174, \"words_total\": 20000, \"interleaved_by\": null, \"scope_fingerprint\": {\"scope_kind\": \"words\", \"scope_value\": [\"2014\", \"Adakah\", \"Adakah2014\", \"AdakahAdakah\", \"AdakahApabila\", \"AdakahBagaimana\", \"AdakahDonetsk\", \"AdakahDunia\", \"AdakahHari\", \"AdakahHaruskah\", \"AdakahJadi\", \"AdakahJauhkan\", \"AdakahJaya\", \"AdakahKain\", \"AdakahKetika\", \"AdakahKira-kira\", \"AdakahKomputer\", \"AdakahLampu\", \"AdakahLetih\", \"AdakahMarina\", \"AdakahMei\", \"AdakahNada\", \"AdakahPapan\", \"AdakahPetaling\", \"AdakahPokok-pokok\", \"AdakahPuasa\", \"AdakahRamai\", \"AdakahRamaikah\", \"AdakahRaya\", \"AdakahRosli\", \"AdakahSaya\", \"AdakahSyawal\", \"AdakahT\", \"Adakahakan\", \"Adakahanak\", \"Adakahanak-anak\", \"Adakahatas\", \"Adakahatau\", \"Adakahbeg\", \"Adakahbekerja\", \"Adakahbekerjasama\", \"Adakahberapa\", \"Adakahberdiri\", \"Adakahberhenti\", \"Adakahberjemur\", \"Adakahberjumbai\", \"Adakahberjumpa\", \"Adakahbertanya\", \"Adakahbertumbuk\", \"Adakahboleh\", \"Adakahbudak\", \"Adakahbulan\", \"Adakahbunyi\", \"Adakahdalam\", \"Adakahdan\", \"Adakahdapat\", \"Adakahdapur\", \"Adakahdari\", \"Adakahdengan\", \"Adakahdesa\", \"Adakahdi\", \"Adakahdia\", \"Adakahdilepaskan\", \"Adakahdipercayai\", \"Adakahdirayakan\", \"Adakahdiri\", \"Adakahditebang\", \"Adakahdua\", \"Adakahdulunya\", \"Adakahemosi\", \"Adakahempat\", \"Adakahgambar\", \"Adakahhari\", \"Adakahhendak\", \"Adakahhidup\", \"Adakahi\", \"Adakahikan\", \"Adakahini\", \"Adakahisterinya\", \"Adakahitu\", \"Adakahjahat\", \"Adakahjalan\", \"Adakahjuga\", \"Adakahkadang-kadang\", \"Adakahke\", \"Adakahkeheningan\", \"Adakahkehidupan\", \"Adakahkekunci\", \"Adakahkelapa\", \"Adakahkembali\", \"Adakahkemeja\", \"Adakahkena\", \"Adakahkentang\", \"Adakahkepada\", \"Adakahkeraguan\", \"Adakahkerajaan\", \"Adakahkerja\", \"Adakahkini\", \"Adakahkita\", \"Adakahkomputer\", \"Adakahkomuter\", \"Adakahkosong\", \"Adakahlalu\", \"Adakahlari\", \"Adakahlintas\", \"Adakahluar\", \"Adakahmana\", \"Adakahme-\", \"Adakahme-b\", \"Adakahme-bu\", \"Adakahme-bua\", \"Adakahme-buat\", \"Adakahme-m\", \"Adakahme-ma\", \"Adakahme-mas\", \"Adakahme-masa\", \"Adakahme-masak\", \"Adakahmeja\", \"Adakahmelarikan\", \"Adakahmelepaskan\", \"Adakahmem-buat\", \"Adakahmemanggil\", \"Adakahmemasak\", \"Adakahmemasukkan\", \"Adakahmembaca\", \"Adakahmembeli\", \"Adakahmembesarkan\", \"Adakahmembuat\", \"Adakahmemudahkan\", \"Adakahmemukul\", \"Adakahmenembak\", \"Adakahmengejutkan\", \"Adakahmenggoreng\", \"Adakahmenindas\", \"Adakahmenjahit\", \"Adakahmenulis\", \"Adakahmenyusun\", \"Adakahmereka\", \"Adakahmesti\", \"Adakahnaik\", \"Adakahnama\", \"Adakahnelayan\", \"Adakaholeh\", \"Adakahorang\", \"Adakahpada\", \"Adakahpantai\", \"Adakahpenduduk-penduduk\", \"Adakahperempuan\", \"Adakahpertama\", \"Adakahpukul\", \"Adakahramai\", \"Adakahrapuh\", \"Adakahsampai\", \"Adakahsana\", \"Adakahsaya\", \"Adakahsedang\", \"Adakahsejuta\", \"Adakahsekarang\", \"Adakahseumur\", \"Adakahsini\", \"Adakahsuami\", \"Adakahsuratkhabar\", \"Adakaht\", \"Adakahtanpa\", \"Adakahtasik\", \"Adakahtelah\", \"Adakahtembakan\", \"Adakahtempat\", \"Adakahtepi\", \"Adakahterletak\", \"Adakahtertanya-tanya\", \"Adakahtertulis\", \"Adakahtetapi\", \"Adakahti\", \"Adakahtidak\", \"Adakahtiket\", \"Adakahtim\", \"Adakahtimu\", \"Adakahtimuda\", \"Adakahtimum\", \"Adakahtimuma\", \"Adakahtimumad\", \"Adakahtimumada\", \"Adakahtimumu\", \"Adakahtimumud\", \"Adakahtimumuda\", \"Adakahtinggal\", \"Adakahtingkap\", \"Adakahtinuda\", \"Adakahtinumuda\", \"Adakahtujuh\", \"Apabila\", \"Apabila2014\", \"ApabilaAdakah\", \"ApabilaApabila\", \"ApabilaBagaimana\", \"ApabilaDonetsk\", \"ApabilaDunia\", \"ApabilaHari\", \"ApabilaHaruskah\", \"ApabilaJadi\", \"ApabilaJauhkan\", \"ApabilaJaya\", \"ApabilaKain\", \"ApabilaKetika\", \"ApabilaKira-kira\", \"ApabilaKomputer\", \"ApabilaLampu\", \"ApabilaLetih\", \"ApabilaMarina\", \"ApabilaMei\", \"ApabilaNada\", \"ApabilaPapan\", \"ApabilaPetaling\", \"ApabilaPokok-pokok\", \"ApabilaPuasa\", \"ApabilaRamai\", \"ApabilaRamaikah\", \"ApabilaRaya\", \"ApabilaRosli\", \"ApabilaSaya\", \"ApabilaSyawal\", \"ApabilaT\", \"Apabilaakan\", \"Apabilaanak\", \"Apabilaanak-anak\", \"Apabilaatas\", \"Apabilaatau\", \"Apabilabeg\", \"Apabilabekerja\", \"Apabilabekerjasama\", \"Apabilaberapa\", \"Apabilaberdiri\", \"Apabilaberhenti\", \"Apabilaberjemur\", \"Apabilaberjumbai\", \"Apabilaberjumpa\", \"Apabilabertanya\", \"Apabilabertumbuk\", \"Apabilaboleh\", \"Apabilabudak\", \"Apabilabulan\", \"Apabilabunyi\", \"Apabiladalam\", \"Apabiladan\", \"Apabiladapat\", \"Apabiladapur\", \"Apabiladari\", \"Apabiladengan\", \"Apabiladesa\", \"Apabiladi\", \"Apabiladia\", \"Apabiladilepaskan\", \"Apabiladipercayai\", \"Apabiladirayakan\", \"Apabiladiri\", \"Apabiladitebang\", \"Apabiladua\", \"Apabiladulunya\", \"Apabilaemosi\", \"Apabilaempat\", \"Apabilagambar\", \"Apabilahari\", \"Apabilahendak\", \"Apabilahidup\", \"Apabilai\", \"Apabilaikan\", \"Apabilaini\", \"Apabilaisterinya\", \"Apabilaitu\", \"Apabilajahat\", \"Apabilajalan\", \"Apabilajuga\", \"Apabilakadang-kadang\", \"Apabilake\", \"Apabilakeheningan\", \"Apabilakehidupan\", \"Apabilakekunci\", \"Apabilakelapa\", \"Apabilakembali\", \"Apabilakemeja\", \"Apabilakena\", \"Apabilakentang\", \"Apabilakepada\", \"Apabilakeraguan\", \"Apabilakerajaan\", \"Apabilakerja\", \"Apabilakini\", \"Apabilakita\", \"Apabilakomputer\", \"Apabilakomuter\", \"Apabilakosong\", \"Apabilalalu\", \"Apabilalari\", \"Apabilalintas\", \"Apabilaluar\", \"Apabilamana\", \"Apabilame-\", \"Apabilame-b\", \"Apabilame-bu\", \"Apabilame-bua\", \"Apabilame-buat\", \"Apabilame-m\", \"Apabilame-ma\", \"Apabilame-mas\", \"Apabilame-masa\", \"Apabilame-masak\", \"Apabilameja\", \"Apabilamelarikan\", \"Apabilamelepaskan\", \"Apabilamem-buat\", \"Apabilamemanggil\", \"Apabilamemasak\", \"Apabilamemasukkan\", \"Apabilamembaca\", \"Apabilamembeli\", \"Apabilamembesarkan\", \"Apabilamembuat\", \"Apabilamemudahkan\", \"Apabilamemukul\", \"Apabilamenembak\", \"Apabilamengejutkan\", \"Apabilamenggoreng\", \"Apabilamenindas\", \"Apabilamenjahit\", \"Apabilamenulis\", \"Apabilamenyusun\", \"Apabilamereka\", \"Apabilamesti\", \"Apabilanaik\", \"Apabilanama\", \"Apabilanelayan\", \"Apabilaoleh\", \"Apabilaorang\", \"Apabilapada\", \"Apabilapantai\", \"Apabilapenduduk-penduduk\", \"Apabilaperempuan\", \"Apabilapertama\", \"Apabilapukul\", \"Apabilaramai\", \"Apabilarapuh\", \"Apabilasampai\", \"Apabilasana\", \"Apabilasaya\", \"Apabilasedang\", \"Apabilasejuta\", \"Apabilasekarang\", \"Apabilaseumur\", \"Apabilasini\", \"Apabilasuami\", \"Apabilasuratkhabar\", \"Apabilat\", \"Apabilatanpa\", \"Apabilatasik\", \"Apabilatelah\", \"Apabilatembakan\", \"Apabilatempat\", \"Apabilatepi\", \"Apabilaterletak\", \"Apabilatertanya-tanya\", \"Apabilatertulis\", \"Apabilatetapi\", \"Apabilati\", \"Apabilatidak\", \"Apabilatiket\", \"Apabilatim\", \"Apabilatimu\", \"Apabilatimuda\", \"Apabilatimum\", \"Apabilatimuma\", \"Apabilatimumad\", \"Apabilatimumada\", \"Apabilatimumu\", \"Apabilatimumud\", \"Apabilatimumuda\", \"Apabilatinggal\", \"Apabilatingkap\", \"Apabilatinuda\", \"Apabilatinumuda\", \"Apabilatujuh\", \"Bagaimana\", \"Bagaimana2014\", \"BagaimanaAdakah\", \"BagaimanaApabila\", \"BagaimanaBagaimana\", \"BagaimanaDonetsk\", \"BagaimanaDunia\", \"BagaimanaHari\", \"BagaimanaHaruskah\", \"BagaimanaJadi\", \"BagaimanaJauhkan\", \"BagaimanaJaya\", \"BagaimanaKain\", \"BagaimanaKetika\", \"BagaimanaKira-kira\", \"BagaimanaKomputer\", \"BagaimanaLampu\", \"BagaimanaLetih\", \"BagaimanaMarina\", \"BagaimanaMei\", \"BagaimanaNada\", \"BagaimanaPapan\", \"BagaimanaPetaling\", \"BagaimanaPokok-pokok\", \"BagaimanaPuasa\", \"BagaimanaRamai\", \"BagaimanaRamaikah\", \"BagaimanaRaya\", \"BagaimanaRosli\", \"BagaimanaSaya\", \"BagaimanaSyawal\", \"BagaimanaT\", \"Bagaimanaakan\", \"Bagaimanaanak\", \"Bagaimanaanak-anak\", \"Bagaimanaatas\", \"Bagaimanaatau\", \"Bagaimanabeg\", \"Bagaimanabekerja\", \"Bagaimanabekerjasama\", \"Bagaimanaberapa\", \"Bagaimanaberdiri\", \"Bagaimanaberhenti\", \"Bagaimanaberjemur\", \"Bagaimanaberjumbai\", \"Bagaimanaberjumpa\", \"Bagaimanabertanya\", \"Bagaimanabertumbuk\", \"Bagaimanaboleh\", \"Bagaimanabudak\", \"Bagaimanabulan\", \"Bagaimanabunyi\", \"Bagaimanadalam\", \"Bagaimanadan\", \"Bagaimanadapat\", \"Bagaimanadapur\", \"Bagaimanadari\", \"Bagaimanadengan\", \"Bagaimanadesa\", \"Bagaimanadi\", \"Bagaimanadia\", \"Bagaimanadilepaskan\", \"Bagaimanadipercayai\", \"Bagaimanadirayakan\", \"Bagaimanadiri\", \"Bagaimanaditebang\", \"Bagaimanadua\", \"Bagaimanadulunya\", \"Bagaimanaemosi\", \"Bagaimanaempat\", \"Bagaimanagambar\", \"Bagaimanahari\", \"Bagaimanahendak\", \"Bagaimanahidup\", \"Bagaimanai\", \"Bagaimanaikan\", \"Bagaimanaini\", \"Bagaimanaisterinya\", \"Bagaimanaitu\", \"Bagaimanajahat\", \"Bagaimanajalan\", \"Bagaimanajuga\", \"Bagaimanakadang-kadang\", \"Bagaimanake\", \"Bagaimanakeheningan\", \"Bagaimanakehidupan\", \"Bagaimanakekunci\", \"Bagaimanakelapa\", \"Bagaimanakembali\", \"Bagaimanakemeja\", \"Bagaimanakena\", \"Bagaimanakentang\", \"Bagaimanakepada\", \"Bagaimanakeraguan\", \"Bagaimanakerajaan\", \"Bagaimanakerja\", \"Bagaimanakini\", \"Bagaimanakita\", \"Bagaimanakomputer\", \"Bagaimanakomuter\", \"Bagaimanakosong\", \"Bagaimanalalu\", \"Bagaimanalari\", \"Bagaimanalintas\", \"Bagaimanaluar\", \"Bagaimanamana\", \"Bagaimaname-\", \"Bagaimaname-b\", \"Bagaimaname-bu\", \"Bagaimaname-bua\", \"Bagaimaname-buat\", \"Bagaimaname-m\", \"Bagaimaname-ma\", \"Bagaimaname-mas\", \"Bagaimaname-masa\", \"Bagaimaname-masak\", \"Bagaimanameja\", \"Bagaimanamelarikan\", \"Bagaimanamelepaskan\", \"Bagaimanamem-buat\", \"Bagaimanamemanggil\", \"Bagaimanamemasak\", \"Bagaimanamemasukkan\", \"Bagaimanamembaca\", \"Bagaimanamembeli\", \"Bagaimanamembesarkan\", \"Bagaimanamembuat\", \"Bagaimanamemudahkan\", \"Bagaimanamemukul\", \"Bagaimanamenembak\", \"Bagaimanamengejutkan\", \"Bagaimanamenggoreng\", \"Bagaimanamenindas\", \"Bagaimanamenjahit\", \"Bagaimanamenulis\", \"Bagaimanamenyusun\", \"Bagaimanamereka\", \"Bagaimanamesti\", \"Bagaimananaik\", \"Bagaimananama\", \"Bagaimananelayan\", \"Bagaimanaoleh\", \"Bagaimanaorang\", \"Bagaimanapada\", \"Bagaimanapantai\", \"Bagaimanapenduduk-penduduk\", \"Bagaimanaperempuan\", \"Bagaimanapertama\", \"Bagaimanapukul\", \"Bagaimanaramai\", \"Bagaimanarapuh\", \"Bagaimanasampai\", \"Bagaimanasana\", \"Bagaimanasaya\", \"Bagaimanasedang\", \"Bagaimanasejuta\", \"Bagaimanasekarang\", \"Bagaimanaseumur\", \"Bagaimanasini\", \"Bagaimanasuami\", \"Bagaimanasuratkhabar\", \"Bagaimanat\", \"Bagaimanatanpa\", \"Bagaimanatasik\", \"Bagaimanatelah\", \"Bagaimanatembakan\", \"Bagaimanatempat\", \"Bagaimanatepi\", \"Bagaimanaterletak\", \"Bagaimanatertanya-tanya\", \"Bagaimanatertulis\", \"Bagaimanatetapi\", \"Bagaimanati\", \"Bagaimanatidak\", \"Bagaimanatiket\", \"Bagaimanatim\", \"Bagaimanatimu\", \"Bagaimanatimuda\", \"Bagaimanatimum\", \"Bagaimanatimuma\", \"Bagaimanatimumad\", \"Bagaimanatimumada\", \"Bagaimanatimumu\", \"Bagaimanatimumud\", \"Bagaimanatimumuda\", \"Bagaimanatinggal\", \"Bagaimanatingkap\", \"Bagaimanatinuda\", \"Bagaimanatinumuda\", \"Bagaimanatujuh\", \"Donetsk\", \"Dunia\", \"Dunia2014\", \"DuniaAdakah\", \"DuniaApabila\", \"DuniaBagaimana\", \"DuniaDonetsk\", \"DuniaDunia\", \"DuniaHari\", \"DuniaHaruskah\", \"DuniaJadi\", \"DuniaJauhkan\", \"DuniaJaya\", \"DuniaKain\", \"DuniaKetika\", \"DuniaKira-kira\", \"DuniaKomputer\", \"DuniaLampu\", \"DuniaLetih\", \"DuniaMarina\", \"DuniaMei\", \"DuniaNada\", \"DuniaPapan\", \"DuniaPetaling\", \"DuniaPokok-pokok\", \"DuniaPuasa\", \"DuniaRamai\", \"DuniaRamaikah\", \"DuniaRaya\", \"DuniaRosli\", \"DuniaSaya\", \"DuniaSyawal\", \"DuniaT\", \"Duniaakan\", \"Duniaanak\", \"Duniaanak-anak\", \"Duniaatas\", \"Duniaatau\", \"Duniabeg\", \"Duniabekerja\", \"Duniabekerjasama\", \"Duniaberapa\", \"Duniaberdiri\", \"Duniaberhenti\", \"Duniaberjemur\", \"Duniaberjumbai\", \"Duniaberjumpa\", \"Duniabertanya\", \"Duniabertumbuk\", \"Duniaboleh\", \"Duniabudak\", \"Duniabulan\", \"Duniabunyi\", \"Duniadalam\", \"Duniadan\", \"Duniadapat\", \"Duniadapur\", \"Duniadari\", \"Duniadengan\", \"Duniadesa\", \"Duniadi\", \"Duniadia\", \"Duniadilepaskan\", \"Duniadipercayai\", \"Duniadirayakan\", \"Duniadiri\", \"Duniaditebang\", \"Duniadua\", \"Duniadulunya\", \"Duniaemosi\", \"Duniaempat\", \"Duniagambar\", \"Duniahari\", \"Duniahendak\", \"Duniahidup\", \"Duniai\", \"Duniaikan\", \"Duniaini\", \"Duniaisterinya\", \"Duniaitu\", \"Duniajahat\", \"Duniajalan\", \"Duniajuga\", \"Duniakadang-kadang\", \"Duniake\", \"Duniakeheningan\", \"Duniakehidupan\", \"Duniakekunci\", \"Duniakelapa\", \"Duniakembali\", \"Duniakemeja\", \"Duniakena\", \"Duniakentang\", \"Duniakepada\", \"Duniakeraguan\", \"Duniakerajaan\", \"Duniakerja\", \"Duniakini\", \"Duniakita\", \"Duniakomputer\", \"Duniakomuter\", \"Duniakosong\", \"Dunialalu\", \"Dunialari\", \"Dunialintas\", \"Dunialuar\", \"Duniamana\", \"Duniame-\", \"Duniame-b\", \"Duniame-bu\", \"Duniame-bua\", \"Duniame-buat\", \"Duniame-m\", \"Duniame-ma\", \"Duniame-mas\", \"Duniame-masa\", \"Duniame-masak\", \"Duniameja\", \"Duniamelarikan\", \"Duniamelepaskan\", \"Duniamem-buat\", \"Duniamemanggil\", \"Duniamemasak\", \"Duniamemasukkan\", \"Duniamembaca\", \"Duniamembeli\", \"Duniamembesarkan\", \"Duniamembuat\", \"Duniamemudahkan\", \"Duniamemukul\", \"Duniamenembak\", \"Duniamengejutkan\", \"Duniamenggoreng\", \"Duniamenindas\", \"Duniamenjahit\", \"Duniamenulis\", \"Duniamenyusun\", \"Duniamereka\", \"Duniamesti\", \"Dunianaik\", \"Dunianama\", \"Dunianelayan\", \"Duniaoleh\", \"Duniaorang\", \"Duniapada\", \"Duniapantai\", \"Duniapenduduk-penduduk\", \"Duniaperempuan\", \"Duniapertama\", \"Duniapukul\", \"Duniaramai\", \"Duniarapuh\", \"Duniasampai\", \"Duniasana\", \"Duniasaya\", \"Duniasedang\", \"Duniasejuta\", \"Duniasekarang\", \"Duniaseumur\", \"Duniasini\", \"Duniasuami\", \"Duniasuratkhabar\", \"Duniat\", \"Duniatanpa\", \"Duniatasik\", \"Duniatelah\", \"Duniatembakan\", \"Duniatempat\", \"Duniatepi\", \"Duniaterletak\", \"Duniatertanya-tanya\", \"Duniatertulis\", \"Duniatetapi\", \"Duniati\", \"Duniatidak\", \"Duniatiket\", \"Duniatim\", \"Duniatimu\", \"Duniatimuda\", \"Duniatimum\", \"Duniatimuma\", \"Duniatimumad\", \"Duniatimumada\", \"Duniatimumu\", \"Duniatimumud\", \"Duniatimumuda\", \"Duniatinggal\", \"Duniatingkap\", \"Duniatinuda\", \"Duniatinumuda\", \"Duniatujuh\", \"Hari\", \"Haruskah\", \"Jadi\", \"Jauhkan\", \"Jauhkan2014\", \"JauhkanAdakah\", \"JauhkanApabila\", \"JauhkanBagaimana\", \"JauhkanDonetsk\", \"JauhkanDunia\", \"JauhkanHari\", \"JauhkanHaruskah\", \"JauhkanJadi\", \"JauhkanJauhkan\", \"JauhkanJaya\", \"JauhkanKain\", \"JauhkanKetika\", \"JauhkanKira-kira\", \"JauhkanKomputer\", \"JauhkanLampu\", \"JauhkanLetih\", \"JauhkanMarina\", \"JauhkanMei\", \"JauhkanNada\", \"JauhkanPapan\", \"JauhkanPetaling\", \"JauhkanPokok-pokok\", \"JauhkanPuasa\", \"JauhkanRamai\", \"JauhkanRamaikah\", \"JauhkanRaya\", \"JauhkanRosli\", \"JauhkanSaya\", \"JauhkanSyawal\", \"JauhkanT\", \"Jauhkanakan\", \"Jauhkananak\", \"Jauhkananak-anak\", \"Jauhkanatas\", \"Jauhkanatau\", \"Jauhkanbeg\", \"Jauhkanbekerja\", \"Jauhkanbekerjasama\", \"Jauhkanberapa\", \"Jauhkanberdiri\", \"Jauhkanberhenti\", \"Jauhkanberjemur\", \"Jauhkanberjumbai\", \"Jauhkanberjumpa\", \"Jauhkanbertanya\", \"Jauhkanbertumbuk\", \"Jauhkanboleh\", \"Jauhkanbudak\", \"Jauhkanbulan\", \"Jauhkanbunyi\", \"Jauhkandalam\", \"Jauhkandan\", \"Jauhkandapat\", \"Jauhkandapur\", \"Jauhkandari\", \"Jauhkandengan\", \"Jauhkandesa\", \"Jauhkandi\", \"Jauhkandia\", \"Jauhkandilepaskan\", \"Jauhkandipercayai\", \"Jauhkandirayakan\", \"Jauhkandiri\", \"Jauhkanditebang\", \"Jauhkandua\", \"Jauhkandulunya\", \"Jauhkanemosi\", \"Jauhkanempat\", \"Jauhkangambar\", \"Jauhkanhari\", \"Jauhkanhendak\", \"Jauhkanhidup\", \"Jauhkani\", \"Jauhkanikan\", \"Jauhkanini\", \"Jauhkanisterinya\", \"Jauhkanitu\", \"Jauhkanjahat\", \"Jauhkanjalan\", \"Jauhkanjuga\", \"Jauhkankadang-kadang\", \"Jauhkanke\", \"Jauhkankeheningan\", \"Jauhkankehidupan\", \"Jauhkankekunci\", \"Jauhkankelapa\", \"Jauhkankembali\", \"Jauhkankemeja\", \"Jauhkankena\", \"Jauhkankentang\", \"Jauhkankepada\", \"Jauhkankeraguan\", \"Jauhkankerajaan\", \"Jauhkankerja\", \"Jauhkankini\", \"Jauhkankita\", \"Jauhkankomputer\", \"Jauhkankomuter\", \"Jauhkankosong\", \"Jauhkanlalu\", \"Jauhkanlari\", \"Jauhkanlintas\", \"Jauhkanluar\", \"Jauhkanmana\", \"Jauhkanme-\", \"Jauhkanme-b\", \"Jauhkanme-bu\", \"Jauhkanme-bua\", \"Jauhkanme-buat\", \"Jauhkanme-m\", \"Jauhkanme-ma\", \"Jauhkanme-mas\", \"Jauhkanme-masa\", \"Jauhkanme-masak\", \"Jauhkanmeja\", \"Jauhkanmelarikan\", \"Jauhkanmelepaskan\", \"Jauhkanmem-buat\", \"Jauhkanmemanggil\", \"Jauhkanmemasak\", \"Jauhkanmemasukkan\", \"Jauhkanmembaca\", \"Jauhkanmembeli\", \"Jauhkanmembesarkan\", \"Jauhkanmembuat\", \"Jauhkanmemudahkan\", \"Jauhkanmemukul\", \"Jauhkanmenembak\", \"Jauhkanmengejutkan\", \"Jauhkanmenggoreng\", \"Jauhkanmenindas\", \"Jauhkanmenjahit\", \"Jauhkanmenulis\", \"Jauhkanmenyusun\", \"Jauhkanmereka\", \"Jauhkanmesti\", \"Jauhkannaik\", \"Jauhkannama\", \"Jauhkannelayan\", \"Jauhkanoleh\", \"Jauhkanorang\", \"Jauhkanpada\", \"Jauhkanpantai\", \"Jauhkanpenduduk-penduduk\", \"Jauhkanperempuan\", \"Jauhkanpertama\", \"Jauhkanpukul\", \"Jauhkanramai\", \"Jauhkanrapuh\", \"Jauhkansampai\", \"Jauhkansana\", \"Jauhkansaya\", \"Jauhkansedang\", \"Jauhkansejuta\", \"Jauhkansekarang\", \"Jauhkanseumur\", \"Jauhkansini\", \"Jauhkansuami\", \"Jauhkansuratkhabar\", \"Jauhkant\", \"Jauhkantanpa\", \"Jauhkantasik\", \"Jauhkantelah\", \"Jauhkantembakan\", \"Jauhkantempat\", \"Jauhkantepi\", \"Jauhkanterletak\", \"Jauhkantertanya-tanya\", \"Jauhkantertulis\", \"Jauhkantetapi\", \"Jauhkanti\", \"Jauhkantidak\", \"Jauhkantiket\", \"Jauhkantim\", \"Jauhkantimu\", \"Jauhkantimuda\", \"Jauhkantimum\", \"Jauhkantimuma\", \"Jauhkantimumad\", \"Jauhkantimumada\", \"Jauhkantimumu\", \"Jauhkantimumud\", \"Jauhkantimumuda\", \"Jauhkantinggal\", \"Jauhkantingkap\", \"Jauhkantinuda\", \"Jauhkantinumuda\", \"Jauhkantujuh\", \"Jaya\", \"Kain\", \"Ketika\", \"Kira-kira\", \"Kira-kira2014\", \"Kira-kiraAdakah\", \"Kira-kiraApabila\", \"Kira-kiraBagaimana\", \"Kira-kiraDonetsk\", \"Kira-kiraDunia\", \"Kira-kiraHari\", \"Kira-kiraHaruskah\", \"Kira-kiraJadi\", \"Kira-kiraJauhkan\", \"Kira-kiraJaya\", \"Kira-kiraKain\", \"Kira-kiraKetika\", \"Kira-kiraKira-kira\", \"Kira-kiraKomputer\", \"Kira-kiraLampu\", \"Kira-kiraLetih\", \"Kira-kiraMarina\", \"Kira-kiraMei\", \"Kira-kiraNada\", \"Kira-kiraPapan\", \"Kira-kiraPetaling\", \"Kira-kiraPokok-pokok\", \"Kira-kiraPuasa\", \"Kira-kiraRamai\", \"Kira-kiraRamaikah\", \"Kira-kiraRaya\", \"Kira-kiraRosli\", \"Kira-kiraSaya\", \"Kira-kiraSyawal\", \"Kira-kiraT\", \"Kira-kiraakan\", \"Kira-kiraanak\", \"Kira-kiraanak-anak\", \"Kira-kiraatas\", \"Kira-kiraatau\", \"Kira-kirabeg\", \"Kira-kirabekerja\", \"Kira-kirabekerjasama\", \"Kira-kiraberapa\", \"Kira-kiraberdiri\", \"Kira-kiraberhenti\", \"Kira-kiraberjemur\", \"Kira-kiraberjumbai\", \"Kira-kiraberjumpa\", \"Kira-kirabertanya\", \"Kira-kirabertumbuk\", \"Kira-kiraboleh\", \"Kira-kirabudak\", \"Kira-kirabulan\", \"Kira-kirabunyi\", \"Kira-kiradalam\", \"Kira-kiradan\", \"Kira-kiradapat\", \"Kira-kiradapur\", \"Kira-kiradari\", \"Kira-kiradengan\", \"Kira-kiradesa\", \"Kira-kiradi\", \"Kira-kiradia\", \"Kira-kiradilepaskan\", \"Kira-kiradipercayai\", \"Kira-kiradirayakan\", \"Kira-kiradiri\", \"Kira-kiraditebang\", \"Kira-kiradua\", \"Kira-kiradulunya\", \"Kira-kiraemosi\", \"Kira-kiraempat\", \"Kira-kiragambar\", \"Kira-kirahari\", \"Kira-kirahendak\", \"Kira-kirahidup\", \"Kira-kirai\", \"Kira-kiraikan\", \"Kira-kiraini\", \"Kira-kiraisterinya\", \"Kira-kiraitu\", \"Kira-kirajahat\", \"Kira-kirajalan\", \"Kira-kirajuga\", \"Kira-kirakadang-kadang\", \"Kira-kirake\", \"Kira-kirakeheningan\", \"Kira-kirakehidupan\", \"Kira-kirakekunci\", \"Kira-kirakelapa\", \"Kira-kirakembali\", \"Kira-kirakemeja\", \"Kira-kirakena\", \"Kira-kirakentang\", \"Kira-kirakepada\", \"Kira-kirakeraguan\", \"Kira-kirakerajaan\", \"Kira-kirakerja\", \"Kira-kirakini\", \"Kira-kirakita\", \"Kira-kirakomputer\", \"Kira-kirakomuter\", \"Kira-kirakosong\", \"Kira-kiralalu\", \"Kira-kiralari\", \"Kira-kiralintas\", \"Kira-kiraluar\", \"Kira-kiramana\", \"Kira-kirame-\", \"Kira-kirame-b\", \"Kira-kirame-bu\", \"Kira-kirame-bua\", \"Kira-kirame-buat\", \"Kira-kirame-m\", \"Kira-kirame-ma\", \"Kira-kirame-mas\", \"Kira-kirame-masa\", \"Kira-kirame-masak\", \"Kira-kirameja\", \"Kira-kiramelarikan\", \"Kira-kiramelepaskan\", \"Kira-kiramem-buat\", \"Kira-kiramemanggil\", \"Kira-kiramemasak\", \"Kira-kiramemasukkan\", \"Kira-kiramembaca\", \"Kira-kiramembeli\", \"Kira-kiramembesarkan\", \"Kira-kiramembuat\", \"Kira-kiramemudahkan\", \"Kira-kiramemukul\", \"Kira-kiramenembak\", \"Kira-kiramengejutkan\", \"Kira-kiramenggoreng\", \"Kira-kiramenindas\", \"Kira-kiramenjahit\", \"Kira-kiramenulis\", \"Kira-kiramenyusun\", \"Kira-kiramereka\", \"Kira-kiramesti\", \"Kira-kiranaik\", \"Kira-kiranama\", \"Kira-kiranelayan\", \"Kira-kiraoleh\", \"Kira-kiraorang\", \"Kira-kirapada\", \"Kira-kirapantai\", \"Kira-kirapenduduk-penduduk\", \"Kira-kiraperempuan\", \"Kira-kirapertama\", \"Kira-kirapukul\", \"Kira-kiraramai\", \"Kira-kirarapuh\", \"Kira-kirasampai\", \"Kira-kirasana\", \"Kira-kirasaya\", \"Kira-kirasedang\", \"Kira-kirasejuta\", \"Kira-kirasekarang\", \"Kira-kiraseumur\", \"Kira-kirasini\", \"Kira-kirasuami\", \"Kira-kirasuratkhabar\", \"Kira-kirat\", \"Kira-kiratanpa\", \"Kira-kiratasik\", \"Kira-kiratelah\", \"Kira-kiratembakan\", \"Kira-kiratempat\", \"Kira-kiratepi\", \"Kira-kiraterletak\", \"Kira-kiratertanya-tanya\", \"Kira-kiratertulis\", \"Kira-kiratetapi\", \"Kira-kirati\", \"Kira-kiratidak\", \"Kira-kiratiket\", \"Kira-kiratim\", \"Kira-kiratimu\", \"Kira-kiratimuda\", \"Kira-kiratimum\", \"Kira-kiratimuma\", \"Kira-kiratimumad\", \"Kira-kiratimumada\", \"Kira-kiratimumu\", \"Kira-kiratimumud\", \"Kira-kiratimumuda\", \"Kira-kiratinggal\", \"Kira-kiratingkap\", \"Kira-kiratinuda\", \"Kira-kira"
+    },
+    "status": {
+      "truncated": true,
+      "text": "{\"status\": \"ok\", \"run_id\": \"937985a7dd74e935d4bacb7ff17c1b33\", \"project\": \"CP5-Scratch-Malay Parsing-20230810withHC-20260925T061159\", \"stage\": \"failed\", \"words_completed\": 174, \"words_total\": 20000, \"interleaved_by\": null, \"scope_fingerprint\": {\"scope_kind\": \"words\", \"scope_value\": [\"2014\", \"Adakah\", \"Adakah2014\", \"AdakahAdakah\", \"AdakahApabila\", \"AdakahBagaimana\", \"AdakahDonetsk\", \"AdakahDunia\", \"AdakahHari\", \"AdakahHaruskah\", \"AdakahJadi\", \"AdakahJauhkan\", \"AdakahJaya\", \"AdakahKain\", \"AdakahKetika\", \"AdakahKira-kira\", \"AdakahKomputer\", \"AdakahLampu\", \"AdakahLetih\", \"AdakahMarina\", \"AdakahMei\", \"AdakahNada\", \"AdakahPapan\", \"AdakahPetaling\", \"AdakahPokok-pokok\", \"AdakahPuasa\", \"AdakahRamai\", \"AdakahRamaikah\", \"AdakahRaya\", \"AdakahRosli\", \"AdakahSaya\", \"AdakahSyawal\", \"AdakahT\", \"Adakahakan\", \"Adakahanak\", \"Adakahanak-anak\", \"Adakahatas\", \"Adakahatau\", \"Adakahbeg\", \"Adakahbekerja\", \"Adakahbekerjasama\", \"Adakahberapa\", \"Adakahberdiri\", \"Adakahberhenti\", \"Adakahberjemur\", \"Adakahberjumbai\", \"Adakahberjumpa\", \"Adakahbertanya\", \"Adakahbertumbuk\", \"Adakahboleh\", \"Adakahbudak\", \"Adakahbulan\", \"Adakahbunyi\", \"Adakahdalam\", \"Adakahdan\", \"Adakahdapat\", \"Adakahdapur\", \"Adakahdari\", \"Adakahdengan\", \"Adakahdesa\", \"Adakahdi\", \"Adakahdia\", \"Adakahdilepaskan\", \"Adakahdipercayai\", \"Adakahdirayakan\", \"Adakahdiri\", \"Adakahditebang\", \"Adakahdua\", \"Adakahdulunya\", \"Adakahemosi\", \"Adakahempat\", \"Adakahgambar\", \"Adakahhari\", \"Adakahhendak\", \"Adakahhidup\", \"Adakahi\", \"Adakahikan\", \"Adakahini\", \"Adakahisterinya\", \"Adakahitu\", \"Adakahjahat\", \"Adakahjalan\", \"Adakahjuga\", \"Adakahkadang-kadang\", \"Adakahke\", \"Adakahkeheningan\", \"Adakahkehidupan\", \"Adakahkekunci\", \"Adakahkelapa\", \"Adakahkembali\", \"Adakahkemeja\", \"Adakahkena\", \"Adakahkentang\", \"Adakahkepada\", \"Adakahkeraguan\", \"Adakahkerajaan\", \"Adakahkerja\", \"Adakahkini\", \"Adakahkita\", \"Adakahkomputer\", \"Adakahkomuter\", \"Adakahkosong\", \"Adakahlalu\", \"Adakahlari\", \"Adakahlintas\", \"Adakahluar\", \"Adakahmana\", \"Adakahme-\", \"Adakahme-b\", \"Adakahme-bu\", \"Adakahme-bua\", \"Adakahme-buat\", \"Adakahme-m\", \"Adakahme-ma\", \"Adakahme-mas\", \"Adakahme-masa\", \"Adakahme-masak\", \"Adakahmeja\", \"Adakahmelarikan\", \"Adakahmelepaskan\", \"Adakahmem-buat\", \"Adakahmemanggil\", \"Adakahmemasak\", \"Adakahmemasukkan\", \"Adakahmembaca\", \"Adakahmembeli\", \"Adakahmembesarkan\", \"Adakahmembuat\", \"Adakahmemudahkan\", \"Adakahmemukul\", \"Adakahmenembak\", \"Adakahmengejutkan\", \"Adakahmenggoreng\", \"Adakahmenindas\", \"Adakahmenjahit\", \"Adakahmenulis\", \"Adakahmenyusun\", \"Adakahmereka\", \"Adakahmesti\", \"Adakahnaik\", \"Adakahnama\", \"Adakahnelayan\", \"Adakaholeh\", \"Adakahorang\", \"Adakahpada\", \"Adakahpantai\", \"Adakahpenduduk-penduduk\", \"Adakahperempuan\", \"Adakahpertama\", \"Adakahpukul\", \"Adakahramai\", \"Adakahrapuh\", \"Adakahsampai\", \"Adakahsana\", \"Adakahsaya\", \"Adakahsedang\", \"Adakahsejuta\", \"Adakahsekarang\", \"Adakahseumur\", \"Adakahsini\", \"Adakahsuami\", \"Adakahsuratkhabar\", \"Adakaht\", \"Adakahtanpa\", \"Adakahtasik\", \"Adakahtelah\", \"Adakahtembakan\", \"Adakahtempat\", \"Adakahtepi\", \"Adakahterletak\", \"Adakahtertanya-tanya\", \"Adakahtertulis\", \"Adakahtetapi\", \"Adakahti\", \"Adakahtidak\", \"Adakahtiket\", \"Adakahtim\", \"Adakahtimu\", \"Adakahtimuda\", \"Adakahtimum\", \"Adakahtimuma\", \"Adakahtimumad\", \"Adakahtimumada\", \"Adakahtimumu\", \"Adakahtimumud\", \"Adakahtimumuda\", \"Adakahtinggal\", \"Adakahtingkap\", \"Adakahtinuda\", \"Adakahtinumuda\", \"Adakahtujuh\", \"Apabila\", \"Apabila2014\", \"ApabilaAdakah\", \"ApabilaApabila\", \"ApabilaBagaimana\", \"ApabilaDonetsk\", \"ApabilaDunia\", \"ApabilaHari\", \"ApabilaHaruskah\", \"ApabilaJadi\", \"ApabilaJauhkan\", \"ApabilaJaya\", \"ApabilaKain\", \"ApabilaKetika\", \"ApabilaKira-kira\", \"ApabilaKomputer\", \"ApabilaLampu\", \"ApabilaLetih\", \"ApabilaMarina\", \"ApabilaMei\", \"ApabilaNada\", \"ApabilaPapan\", \"ApabilaPetaling\", \"ApabilaPokok-pokok\", \"ApabilaPuasa\", \"ApabilaRamai\", \"ApabilaRamaikah\", \"ApabilaRaya\", \"ApabilaRosli\", \"ApabilaSaya\", \"ApabilaSyawal\", \"ApabilaT\", \"Apabilaakan\", \"Apabilaanak\", \"Apabilaanak-anak\", \"Apabilaatas\", \"Apabilaatau\", \"Apabilabeg\", \"Apabilabekerja\", \"Apabilabekerjasama\", \"Apabilaberapa\", \"Apabilaberdiri\", \"Apabilaberhenti\", \"Apabilaberjemur\", \"Apabilaberjumbai\", \"Apabilaberjumpa\", \"Apabilabertanya\", \"Apabilabertumbuk\", \"Apabilaboleh\", \"Apabilabudak\", \"Apabilabulan\", \"Apabilabunyi\", \"Apabiladalam\", \"Apabiladan\", \"Apabiladapat\", \"Apabiladapur\", \"Apabiladari\", \"Apabiladengan\", \"Apabiladesa\", \"Apabiladi\", \"Apabiladia\", \"Apabiladilepaskan\", \"Apabiladipercayai\", \"Apabiladirayakan\", \"Apabiladiri\", \"Apabiladitebang\", \"Apabiladua\", \"Apabiladulunya\", \"Apabilaemosi\", \"Apabilaempat\", \"Apabilagambar\", \"Apabilahari\", \"Apabilahendak\", \"Apabilahidup\", \"Apabilai\", \"Apabilaikan\", \"Apabilaini\", \"Apabilaisterinya\", \"Apabilaitu\", \"Apabilajahat\", \"Apabilajalan\", \"Apabilajuga\", \"Apabilakadang-kadang\", \"Apabilake\", \"Apabilakeheningan\", \"Apabilakehidupan\", \"Apabilakekunci\", \"Apabilakelapa\", \"Apabilakembali\", \"Apabilakemeja\", \"Apabilakena\", \"Apabilakentang\", \"Apabilakepada\", \"Apabilakeraguan\", \"Apabilakerajaan\", \"Apabilakerja\", \"Apabilakini\", \"Apabilakita\", \"Apabilakomputer\", \"Apabilakomuter\", \"Apabilakosong\", \"Apabilalalu\", \"Apabilalari\", \"Apabilalintas\", \"Apabilaluar\", \"Apabilamana\", \"Apabilame-\", \"Apabilame-b\", \"Apabilame-bu\", \"Apabilame-bua\", \"Apabilame-buat\", \"Apabilame-m\", \"Apabilame-ma\", \"Apabilame-mas\", \"Apabilame-masa\", \"Apabilame-masak\", \"Apabilameja\", \"Apabilamelarikan\", \"Apabilamelepaskan\", \"Apabilamem-buat\", \"Apabilamemanggil\", \"Apabilamemasak\", \"Apabilamemasukkan\", \"Apabilamembaca\", \"Apabilamembeli\", \"Apabilamembesarkan\", \"Apabilamembuat\", \"Apabilamemudahkan\", \"Apabilamemukul\", \"Apabilamenembak\", \"Apabilamengejutkan\", \"Apabilamenggoreng\", \"Apabilamenindas\", \"Apabilamenjahit\", \"Apabilamenulis\", \"Apabilamenyusun\", \"Apabilamereka\", \"Apabilamesti\", \"Apabilanaik\", \"Apabilanama\", \"Apabilanelayan\", \"Apabilaoleh\", \"Apabilaorang\", \"Apabilapada\", \"Apabilapantai\", \"Apabilapenduduk-penduduk\", \"Apabilaperempuan\", \"Apabilapertama\", \"Apabilapukul\", \"Apabilaramai\", \"Apabilarapuh\", \"Apabilasampai\", \"Apabilasana\", \"Apabilasaya\", \"Apabilasedang\", \"Apabilasejuta\", \"Apabilasekarang\", \"Apabilaseumur\", \"Apabilasini\", \"Apabilasuami\", \"Apabilasuratkhabar\", \"Apabilat\", \"Apabilatanpa\", \"Apabilatasik\", \"Apabilatelah\", \"Apabilatembakan\", \"Apabilatempat\", \"Apabilatepi\", \"Apabilaterletak\", \"Apabilatertanya-tanya\", \"Apabilatertulis\", \"Apabilatetapi\", \"Apabilati\", \"Apabilatidak\", \"Apabilatiket\", \"Apabilatim\", \"Apabilatimu\", \"Apabilatimuda\", \"Apabilatimum\", \"Apabilatimuma\", \"Apabilatimumad\", \"Apabilatimumada\", \"Apabilatimumu\", \"Apabilatimumud\", \"Apabilatimumuda\", \"Apabilatinggal\", \"Apabilatingkap\", \"Apabilatinuda\", \"Apabilatinumuda\", \"Apabilatujuh\", \"Bagaimana\", \"Bagaimana2014\", \"BagaimanaAdakah\", \"BagaimanaApabila\", \"BagaimanaBagaimana\", \"BagaimanaDonetsk\", \"BagaimanaDunia\", \"BagaimanaHari\", \"BagaimanaHaruskah\", \"BagaimanaJadi\", \"BagaimanaJauhkan\", \"BagaimanaJaya\", \"BagaimanaKain\", \"BagaimanaKetika\", \"BagaimanaKira-kira\", \"BagaimanaKomputer\", \"BagaimanaLampu\", \"BagaimanaLetih\", \"BagaimanaMarina\", \"BagaimanaMei\", \"BagaimanaNada\", \"BagaimanaPapan\", \"BagaimanaPetaling\", \"BagaimanaPokok-pokok\", \"BagaimanaPuasa\", \"BagaimanaRamai\", \"BagaimanaRamaikah\", \"BagaimanaRaya\", \"BagaimanaRosli\", \"BagaimanaSaya\", \"BagaimanaSyawal\", \"BagaimanaT\", \"Bagaimanaakan\", \"Bagaimanaanak\", \"Bagaimanaanak-anak\", \"Bagaimanaatas\", \"Bagaimanaatau\", \"Bagaimanabeg\", \"Bagaimanabekerja\", \"Bagaimanabekerjasama\", \"Bagaimanaberapa\", \"Bagaimanaberdiri\", \"Bagaimanaberhenti\", \"Bagaimanaberjemur\", \"Bagaimanaberjumbai\", \"Bagaimanaberjumpa\", \"Bagaimanabertanya\", \"Bagaimanabertumbuk\", \"Bagaimanaboleh\", \"Bagaimanabudak\", \"Bagaimanabulan\", \"Bagaimanabunyi\", \"Bagaimanadalam\", \"Bagaimanadan\", \"Bagaimanadapat\", \"Bagaimanadapur\", \"Bagaimanadari\", \"Bagaimanadengan\", \"Bagaimanadesa\", \"Bagaimanadi\", \"Bagaimanadia\", \"Bagaimanadilepaskan\", \"Bagaimanadipercayai\", \"Bagaimanadirayakan\", \"Bagaimanadiri\", \"Bagaimanaditebang\", \"Bagaimanadua\", \"Bagaimanadulunya\", \"Bagaimanaemosi\", \"Bagaimanaempat\", \"Bagaimanagambar\", \"Bagaimanahari\", \"Bagaimanahendak\", \"Bagaimanahidup\", \"Bagaimanai\", \"Bagaimanaikan\", \"Bagaimanaini\", \"Bagaimanaisterinya\", \"Bagaimanaitu\", \"Bagaimanajahat\", \"Bagaimanajalan\", \"Bagaimanajuga\", \"Bagaimanakadang-kadang\", \"Bagaimanake\", \"Bagaimanakeheningan\", \"Bagaimanakehidupan\", \"Bagaimanakekunci\", \"Bagaimanakelapa\", \"Bagaimanakembali\", \"Bagaimanakemeja\", \"Bagaimanakena\", \"Bagaimanakentang\", \"Bagaimanakepada\", \"Bagaimanakeraguan\", \"Bagaimanakerajaan\", \"Bagaimanakerja\", \"Bagaimanakini\", \"Bagaimanakita\", \"Bagaimanakomputer\", \"Bagaimanakomuter\", \"Bagaimanakosong\", \"Bagaimanalalu\", \"Bagaimanalari\", \"Bagaimanalintas\", \"Bagaimanaluar\", \"Bagaimanamana\", \"Bagaimaname-\", \"Bagaimaname-b\", \"Bagaimaname-bu\", \"Bagaimaname-bua\", \"Bagaimaname-buat\", \"Bagaimaname-m\", \"Bagaimaname-ma\", \"Bagaimaname-mas\", \"Bagaimaname-masa\", \"Bagaimaname-masak\", \"Bagaimanameja\", \"Bagaimanamelarikan\", \"Bagaimanamelepaskan\", \"Bagaimanamem-buat\", \"Bagaimanamemanggil\", \"Bagaimanamemasak\", \"Bagaimanamemasukkan\", \"Bagaimanamembaca\", \"Bagaimanamembeli\", \"Bagaimanamembesarkan\", \"Bagaimanamembuat\", \"Bagaimanamemudahkan\", \"Bagaimanamemukul\", \"Bagaimanamenembak\", \"Bagaimanamengejutkan\", \"Bagaimanamenggoreng\", \"Bagaimanamenindas\", \"Bagaimanamenjahit\", \"Bagaimanamenulis\", \"Bagaimanamenyusun\", \"Bagaimanamereka\", \"Bagaimanamesti\", \"Bagaimananaik\", \"Bagaimananama\", \"Bagaimananelayan\", \"Bagaimanaoleh\", \"Bagaimanaorang\", \"Bagaimanapada\", \"Bagaimanapantai\", \"Bagaimanapenduduk-penduduk\", \"Bagaimanaperempuan\", \"Bagaimanapertama\", \"Bagaimanapukul\", \"Bagaimanaramai\", \"Bagaimanarapuh\", \"Bagaimanasampai\", \"Bagaimanasana\", \"Bagaimanasaya\", \"Bagaimanasedang\", \"Bagaimanasejuta\", \"Bagaimanasekarang\", \"Bagaimanaseumur\", \"Bagaimanasini\", \"Bagaimanasuami\", \"Bagaimanasuratkhabar\", \"Bagaimanat\", \"Bagaimanatanpa\", \"Bagaimanatasik\", \"Bagaimanatelah\", \"Bagaimanatembakan\", \"Bagaimanatempat\", \"Bagaimanatepi\", \"Bagaimanaterletak\", \"Bagaimanatertanya-tanya\", \"Bagaimanatertulis\", \"Bagaimanatetapi\", \"Bagaimanati\", \"Bagaimanatidak\", \"Bagaimanatiket\", \"Bagaimanatim\", \"Bagaimanatimu\", \"Bagaimanatimuda\", \"Bagaimanatimum\", \"Bagaimanatimuma\", \"Bagaimanatimumad\", \"Bagaimanatimumada\", \"Bagaimanatimumu\", \"Bagaimanatimumud\", \"Bagaimanatimumuda\", \"Bagaimanatinggal\", \"Bagaimanatingkap\", \"Bagaimanatinuda\", \"Bagaimanatinumuda\", \"Bagaimanatujuh\", \"Donetsk\", \"Dunia\", \"Dunia2014\", \"DuniaAdakah\", \"DuniaApabila\", \"DuniaBagaimana\", \"DuniaDonetsk\", \"DuniaDunia\", \"DuniaHari\", \"DuniaHaruskah\", \"DuniaJadi\", \"DuniaJauhkan\", \"DuniaJaya\", \"DuniaKain\", \"DuniaKetika\", \"DuniaKira-kira\", \"DuniaKomputer\", \"DuniaLampu\", \"DuniaLetih\", \"DuniaMarina\", \"DuniaMei\", \"DuniaNada\", \"DuniaPapan\", \"DuniaPetaling\", \"DuniaPokok-pokok\", \"DuniaPuasa\", \"DuniaRamai\", \"DuniaRamaikah\", \"DuniaRaya\", \"DuniaRosli\", \"DuniaSaya\", \"DuniaSyawal\", \"DuniaT\", \"Duniaakan\", \"Duniaanak\", \"Duniaanak-anak\", \"Duniaatas\", \"Duniaatau\", \"Duniabeg\", \"Duniabekerja\", \"Duniabekerjasama\", \"Duniaberapa\", \"Duniaberdiri\", \"Duniaberhenti\", \"Duniaberjemur\", \"Duniaberjumbai\", \"Duniaberjumpa\", \"Duniabertanya\", \"Duniabertumbuk\", \"Duniaboleh\", \"Duniabudak\", \"Duniabulan\", \"Duniabunyi\", \"Duniadalam\", \"Duniadan\", \"Duniadapat\", \"Duniadapur\", \"Duniadari\", \"Duniadengan\", \"Duniadesa\", \"Duniadi\", \"Duniadia\", \"Duniadilepaskan\", \"Duniadipercayai\", \"Duniadirayakan\", \"Duniadiri\", \"Duniaditebang\", \"Duniadua\", \"Duniadulunya\", \"Duniaemosi\", \"Duniaempat\", \"Duniagambar\", \"Duniahari\", \"Duniahendak\", \"Duniahidup\", \"Duniai\", \"Duniaikan\", \"Duniaini\", \"Duniaisterinya\", \"Duniaitu\", \"Duniajahat\", \"Duniajalan\", \"Duniajuga\", \"Duniakadang-kadang\", \"Duniake\", \"Duniakeheningan\", \"Duniakehidupan\", \"Duniakekunci\", \"Duniakelapa\", \"Duniakembali\", \"Duniakemeja\", \"Duniakena\", \"Duniakentang\", \"Duniakepada\", \"Duniakeraguan\", \"Duniakerajaan\", \"Duniakerja\", \"Duniakini\", \"Duniakita\", \"Duniakomputer\", \"Duniakomuter\", \"Duniakosong\", \"Dunialalu\", \"Dunialari\", \"Dunialintas\", \"Dunialuar\", \"Duniamana\", \"Duniame-\", \"Duniame-b\", \"Duniame-bu\", \"Duniame-bua\", \"Duniame-buat\", \"Duniame-m\", \"Duniame-ma\", \"Duniame-mas\", \"Duniame-masa\", \"Duniame-masak\", \"Duniameja\", \"Duniamelarikan\", \"Duniamelepaskan\", \"Duniamem-buat\", \"Duniamemanggil\", \"Duniamemasak\", \"Duniamemasukkan\", \"Duniamembaca\", \"Duniamembeli\", \"Duniamembesarkan\", \"Duniamembuat\", \"Duniamemudahkan\", \"Duniamemukul\", \"Duniamenembak\", \"Duniamengejutkan\", \"Duniamenggoreng\", \"Duniamenindas\", \"Duniamenjahit\", \"Duniamenulis\", \"Duniamenyusun\", \"Duniamereka\", \"Duniamesti\", \"Dunianaik\", \"Dunianama\", \"Dunianelayan\", \"Duniaoleh\", \"Duniaorang\", \"Duniapada\", \"Duniapantai\", \"Duniapenduduk-penduduk\", \"Duniaperempuan\", \"Duniapertama\", \"Duniapukul\", \"Duniaramai\", \"Duniarapuh\", \"Duniasampai\", \"Duniasana\", \"Duniasaya\", \"Duniasedang\", \"Duniasejuta\", \"Duniasekarang\", \"Duniaseumur\", \"Duniasini\", \"Duniasuami\", \"Duniasuratkhabar\", \"Duniat\", \"Duniatanpa\", \"Duniatasik\", \"Duniatelah\", \"Duniatembakan\", \"Duniatempat\", \"Duniatepi\", \"Duniaterletak\", \"Duniatertanya-tanya\", \"Duniatertulis\", \"Duniatetapi\", \"Duniati\", \"Duniatidak\", \"Duniatiket\", \"Duniatim\", \"Duniatimu\", \"Duniatimuda\", \"Duniatimum\", \"Duniatimuma\", \"Duniatimumad\", \"Duniatimumada\", \"Duniatimumu\", \"Duniatimumud\", \"Duniatimumuda\", \"Duniatinggal\", \"Duniatingkap\", \"Duniatinuda\", \"Duniatinumuda\", \"Duniatujuh\", \"Hari\", \"Haruskah\", \"Jadi\", \"Jauhkan\", \"Jauhkan2014\", \"JauhkanAdakah\", \"JauhkanApabila\", \"JauhkanBagaimana\", \"JauhkanDonetsk\", \"JauhkanDunia\", \"JauhkanHari\", \"JauhkanHaruskah\", \"JauhkanJadi\", \"JauhkanJauhkan\", \"JauhkanJaya\", \"JauhkanKain\", \"JauhkanKetika\", \"JauhkanKira-kira\", \"JauhkanKomputer\", \"JauhkanLampu\", \"JauhkanLetih\", \"JauhkanMarina\", \"JauhkanMei\", \"JauhkanNada\", \"JauhkanPapan\", \"JauhkanPetaling\", \"JauhkanPokok-pokok\", \"JauhkanPuasa\", \"JauhkanRamai\", \"JauhkanRamaikah\", \"JauhkanRaya\", \"JauhkanRosli\", \"JauhkanSaya\", \"JauhkanSyawal\", \"JauhkanT\", \"Jauhkanakan\", \"Jauhkananak\", \"Jauhkananak-anak\", \"Jauhkanatas\", \"Jauhkanatau\", \"Jauhkanbeg\", \"Jauhkanbekerja\", \"Jauhkanbekerjasama\", \"Jauhkanberapa\", \"Jauhkanberdiri\", \"Jauhkanberhenti\", \"Jauhkanberjemur\", \"Jauhkanberjumbai\", \"Jauhkanberjumpa\", \"Jauhkanbertanya\", \"Jauhkanbertumbuk\", \"Jauhkanboleh\", \"Jauhkanbudak\", \"Jauhkanbulan\", \"Jauhkanbunyi\", \"Jauhkandalam\", \"Jauhkandan\", \"Jauhkandapat\", \"Jauhkandapur\", \"Jauhkandari\", \"Jauhkandengan\", \"Jauhkandesa\", \"Jauhkandi\", \"Jauhkandia\", \"Jauhkandilepaskan\", \"Jauhkandipercayai\", \"Jauhkandirayakan\", \"Jauhkandiri\", \"Jauhkanditebang\", \"Jauhkandua\", \"Jauhkandulunya\", \"Jauhkanemosi\", \"Jauhkanempat\", \"Jauhkangambar\", \"Jauhkanhari\", \"Jauhkanhendak\", \"Jauhkanhidup\", \"Jauhkani\", \"Jauhkanikan\", \"Jauhkanini\", \"Jauhkanisterinya\", \"Jauhkanitu\", \"Jauhkanjahat\", \"Jauhkanjalan\", \"Jauhkanjuga\", \"Jauhkankadang-kadang\", \"Jauhkanke\", \"Jauhkankeheningan\", \"Jauhkankehidupan\", \"Jauhkankekunci\", \"Jauhkankelapa\", \"Jauhkankembali\", \"Jauhkankemeja\", \"Jauhkankena\", \"Jauhkankentang\", \"Jauhkankepada\", \"Jauhkankeraguan\", \"Jauhkankerajaan\", \"Jauhkankerja\", \"Jauhkankini\", \"Jauhkankita\", \"Jauhkankomputer\", \"Jauhkankomuter\", \"Jauhkankosong\", \"Jauhkanlalu\", \"Jauhkanlari\", \"Jauhkanlintas\", \"Jauhkanluar\", \"Jauhkanmana\", \"Jauhkanme-\", \"Jauhkanme-b\", \"Jauhkanme-bu\", \"Jauhkanme-bua\", \"Jauhkanme-buat\", \"Jauhkanme-m\", \"Jauhkanme-ma\", \"Jauhkanme-mas\", \"Jauhkanme-masa\", \"Jauhkanme-masak\", \"Jauhkanmeja\", \"Jauhkanmelarikan\", \"Jauhkanmelepaskan\", \"Jauhkanmem-buat\", \"Jauhkanmemanggil\", \"Jauhkanmemasak\", \"Jauhkanmemasukkan\", \"Jauhkanmembaca\", \"Jauhkanmembeli\", \"Jauhkanmembesarkan\", \"Jauhkanmembuat\", \"Jauhkanmemudahkan\", \"Jauhkanmemukul\", \"Jauhkanmenembak\", \"Jauhkanmengejutkan\", \"Jauhkanmenggoreng\", \"Jauhkanmenindas\", \"Jauhkanmenjahit\", \"Jauhkanmenulis\", \"Jauhkanmenyusun\", \"Jauhkanmereka\", \"Jauhkanmesti\", \"Jauhkannaik\", \"Jauhkannama\", \"Jauhkannelayan\", \"Jauhkanoleh\", \"Jauhkanorang\", \"Jauhkanpada\", \"Jauhkanpantai\", \"Jauhkanpenduduk-penduduk\", \"Jauhkanperempuan\", \"Jauhkanpertama\", \"Jauhkanpukul\", \"Jauhkanramai\", \"Jauhkanrapuh\", \"Jauhkansampai\", \"Jauhkansana\", \"Jauhkansaya\", \"Jauhkansedang\", \"Jauhkansejuta\", \"Jauhkansekarang\", \"Jauhkanseumur\", \"Jauhkansini\", \"Jauhkansuami\", \"Jauhkansuratkhabar\", \"Jauhkant\", \"Jauhkantanpa\", \"Jauhkantasik\", \"Jauhkantelah\", \"Jauhkantembakan\", \"Jauhkantempat\", \"Jauhkantepi\", \"Jauhkanterletak\", \"Jauhkantertanya-tanya\", \"Jauhkantertulis\", \"Jauhkantetapi\", \"Jauhkanti\", \"Jauhkantidak\", \"Jauhkantiket\", \"Jauhkantim\", \"Jauhkantimu\", \"Jauhkantimuda\", \"Jauhkantimum\", \"Jauhkantimuma\", \"Jauhkantimumad\", \"Jauhkantimumada\", \"Jauhkantimumu\", \"Jauhkantimumud\", \"Jauhkantimumuda\", \"Jauhkantinggal\", \"Jauhkantingkap\", \"Jauhkantinuda\", \"Jauhkantinumuda\", \"Jauhkantujuh\", \"Jaya\", \"Kain\", \"Ketika\", \"Kira-kira\", \"Kira-kira2014\", \"Kira-kiraAdakah\", \"Kira-kiraApabila\", \"Kira-kiraBagaimana\", \"Kira-kiraDonetsk\", \"Kira-kiraDunia\", \"Kira-kiraHari\", \"Kira-kiraHaruskah\", \"Kira-kiraJadi\", \"Kira-kiraJauhkan\", \"Kira-kiraJaya\", \"Kira-kiraKain\", \"Kira-kiraKetika\", \"Kira-kiraKira-kira\", \"Kira-kiraKomputer\", \"Kira-kiraLampu\", \"Kira-kiraLetih\", \"Kira-kiraMarina\", \"Kira-kiraMei\", \"Kira-kiraNada\", \"Kira-kiraPapan\", \"Kira-kiraPetaling\", \"Kira-kiraPokok-pokok\", \"Kira-kiraPuasa\", \"Kira-kiraRamai\", \"Kira-kiraRamaikah\", \"Kira-kiraRaya\", \"Kira-kiraRosli\", \"Kira-kiraSaya\", \"Kira-kiraSyawal\", \"Kira-kiraT\", \"Kira-kiraakan\", \"Kira-kiraanak\", \"Kira-kiraanak-anak\", \"Kira-kiraatas\", \"Kira-kiraatau\", \"Kira-kirabeg\", \"Kira-kirabekerja\", \"Kira-kirabekerjasama\", \"Kira-kiraberapa\", \"Kira-kiraberdiri\", \"Kira-kiraberhenti\", \"Kira-kiraberjemur\", \"Kira-kiraberjumbai\", \"Kira-kiraberjumpa\", \"Kira-kirabertanya\", \"Kira-kirabertumbuk\", \"Kira-kiraboleh\", \"Kira-kirabudak\", \"Kira-kirabulan\", \"Kira-kirabunyi\", \"Kira-kiradalam\", \"Kira-kiradan\", \"Kira-kiradapat\", \"Kira-kiradapur\", \"Kira-kiradari\", \"Kira-kiradengan\", \"Kira-kiradesa\", \"Kira-kiradi\", \"Kira-kiradia\", \"Kira-kiradilepaskan\", \"Kira-kiradipercayai\", \"Kira-kiradirayakan\", \"Kira-kiradiri\", \"Kira-kiraditebang\", \"Kira-kiradua\", \"Kira-kiradulunya\", \"Kira-kiraemosi\", \"Kira-kiraempat\", \"Kira-kiragambar\", \"Kira-kirahari\", \"Kira-kirahendak\", \"Kira-kirahidup\", \"Kira-kirai\", \"Kira-kiraikan\", \"Kira-kiraini\", \"Kira-kiraisterinya\", \"Kira-kiraitu\", \"Kira-kirajahat\", \"Kira-kirajalan\", \"Kira-kirajuga\", \"Kira-kirakadang-kadang\", \"Kira-kirake\", \"Kira-kirakeheningan\", \"Kira-kirakehidupan\", \"Kira-kirakekunci\", \"Kira-kirakelapa\", \"Kira-kirakembali\", \"Kira-kirakemeja\", \"Kira-kirakena\", \"Kira-kirakentang\", \"Kira-kirakepada\", \"Kira-kirakeraguan\", \"Kira-kirakerajaan\", \"Kira-kirakerja\", \"Kira-kirakini\", \"Kira-kirakita\", \"Kira-kirakomputer\", \"Kira-kirakomuter\", \"Kira-kirakosong\", \"Kira-kiralalu\", \"Kira-kiralari\", \"Kira-kiralintas\", \"Kira-kiraluar\", \"Kira-kiramana\", \"Kira-kirame-\", \"Kira-kirame-b\", \"Kira-kirame-bu\", \"Kira-kirame-bua\", \"Kira-kirame-buat\", \"Kira-kirame-m\", \"Kira-kirame-ma\", \"Kira-kirame-mas\", \"Kira-kirame-masa\", \"Kira-kirame-masak\", \"Kira-kirameja\", \"Kira-kiramelarikan\", \"Kira-kiramelepaskan\", \"Kira-kiramem-buat\", \"Kira-kiramemanggil\", \"Kira-kiramemasak\", \"Kira-kiramemasukkan\", \"Kira-kiramembaca\", \"Kira-kiramembeli\", \"Kira-kiramembesarkan\", \"Kira-kiramembuat\", \"Kira-kiramemudahkan\", \"Kira-kiramemukul\", \"Kira-kiramenembak\", \"Kira-kiramengejutkan\", \"Kira-kiramenggoreng\", \"Kira-kiramenindas\", \"Kira-kiramenjahit\", \"Kira-kiramenulis\", \"Kira-kiramenyusun\", \"Kira-kiramereka\", \"Kira-kiramesti\", \"Kira-kiranaik\", \"Kira-kiranama\", \"Kira-kiranelayan\", \"Kira-kiraoleh\", \"Kira-kiraorang\", \"Kira-kirapada\", \"Kira-kirapantai\", \"Kira-kirapenduduk-penduduk\", \"Kira-kiraperempuan\", \"Kira-kirapertama\", \"Kira-kirapukul\", \"Kira-kiraramai\", \"Kira-kirarapuh\", \"Kira-kirasampai\", \"Kira-kirasana\", \"Kira-kirasaya\", \"Kira-kirasedang\", \"Kira-kirasejuta\", \"Kira-kirasekarang\", \"Kira-kiraseumur\", \"Kira-kirasini\", \"Kira-kirasuami\", \"Kira-kirasuratkhabar\", \"Kira-kirat\", \"Kira-kiratanpa\", \"Kira-kiratasik\", \"Kira-kiratelah\", \"Kira-kiratembakan\", \"Kira-kiratempat\", \"Kira-kiratepi\", \"Kira-kiraterletak\", \"Kira-kiratertanya-tanya\", \"Kira-kiratertulis\", \"Kira-kiratetapi\", \"Kira-kirati\", \"Kira-kiratidak\", \"Kira-kiratiket\", \"Kira-kiratim\", \"Kira-kiratimu\", \"Kira-kiratimuda\", \"Kira-kiratimum\", \"Kira-kiratimuma\", \"Kira-kiratimumad\", \"Kira-kiratimumada\", \"Kira-kiratimumu\", \"Kira-kiratimumud\", \"Kira-kiratimumuda\", \"Kira-kiratinggal\", \"Kira-kiratingkap\", \"Kira-kiratinuda\", \"Kira-kira"
+    },
+    "results": {
+      "status": "ok",
+      "run_id": "937985a7dd74e935d4bacb7ff17c1b33",
+      "section": "results",
+      "applicable": true,
+      "total": 174,
+      "offset": 0,
+      "returned": 5,
+      "items": [
+        {
+          "index": 0,
+          "wordform": "2014",
+          "parse": {
+            "parsed": false,
+            "analysis_count": 0,
+            "outcome": "invalid_segment",
+            "analyses": null,
+            "position": 1,
+            "flags": [],
+            "parse_time_ms": null
+          }
+        },
+        {
+          "index": 1,
+          "wordform": "Adakah",
+          "parse": {
+            "parsed": true,
+            "analysis_count": 1,
+            "outcome": "parsed",
+            "analyses": [
+              {
+                "signature": null,
+                "rendered_morphs": [
+                  "ada",
+                  "kah"
+                ],
+                "morphs": [
+                  {
+                    "form": "ada",
+                    "gloss": "have",
+                    "guessed": false,
+                    "is_circumfix": false,
+                    "user_added": false
+                  },
+                  {
+                    "form": "kah",
+                    "gloss": "INTERR.",
+                    "guessed": false,
+                    "is_circumfix": false,
+                    "user_added": false
+                  }
+                ],
+                "guessed": false,
+                "readable": true,
+                "raw": null
+              }
+            ],
+            "position": null,
+            "flags": [],
+            "parse_time_ms": 125
+          }
+        },
+        {
+          "index": 2,
+          "wordform": "Adakah2014",
+          "parse": {
+            "parsed": false,
+            "analysis_count": 0,
+            "outcome": "invalid_segment",
+            "analyses": null,
+            "position": 7,
+            "flags": [],
+            "parse_time_ms": null
+          }
+        },
+        {
+          "index": 3,
+          "wordform": "AdakahAdakah",
+          "parse": {
+            "parsed": false,
+            "analysis_count": 0,
+            "outcome": "not_parsed",
+            "analyses": [],
+            "position": null,
+            "flags": [],
+            "parse_time_ms": 4
+          }
+        },
+        {
+          "index": 4,
+          "wordform": "AdakahApabila",
+          "parse": {
+            "parsed": false,
+            "analysis_count": 0,
+            "outcome": "not_parsed",
+            "analyses": [],
+            "position": null,
+            "flags": [],
+            "parse_time_ms": 1
+          }
+        }
+      ],
+      "next_offset": 5
+    }
+  },
+  "observations": {
+    "timeout_seconds": 10,
+    "words_total": 20000,
+    "words_completed": 174,
+    "results_preserved": 174,
+    "in_flight": "Adakahtidak",
+    "in_flight_index": 174
+  },
+  "needs_human": false,
+  "recorded_at": "2026-09-25T06:12:17.091201+00:00"
+}

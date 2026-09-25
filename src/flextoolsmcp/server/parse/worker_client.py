@@ -54,6 +54,7 @@ import json
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from ..subprocess_helpers import _kill_process_tree, spawn_module_async
@@ -65,6 +66,7 @@ __all__ = [
     "WorkerError",
     "WorkerStartupError",
     "ParseWorkerClient",
+    "SandboxSpawn",
     "WorkerPool",
     "register_role",
 ]
@@ -137,6 +139,37 @@ def _child_env() -> dict:
     return env
 
 
+@dataclass(frozen=True)
+class SandboxSpawn:
+    """What a `--sandbox` worker is started with (contracts/sandbox-worker.md 1).
+
+    Every path is sourced by the CLIENT (D3, FR-050): the worker decides
+    nothing about where a config, its parameters or its id map came from.
+    `project` is a label for diagnostics, never a project to open.
+    """
+
+    config: str
+    hc_params: Optional[str] = None
+    id_map: Optional[str] = None
+    engine_dir: Optional[str] = None
+    project: Optional[str] = None
+    named_sandbox: bool = False
+
+    def argv(self) -> list[str]:
+        args = ["--sandbox", "--config", str(self.config)]
+        for flag, value in (
+            ("--hc-params", self.hc_params),
+            ("--id-map", self.id_map),
+            ("--engine-dir", self.engine_dir),
+            ("--project", self.project),
+        ):
+            if value:
+                args += [flag, str(value)]
+        if self.named_sandbox:
+            args.append("--named-sandbox")
+        return args
+
+
 class WorkerError(RuntimeError):
     """The worker failed in a way the server could not route to a caller."""
 
@@ -160,8 +193,17 @@ class ParseWorkerClient:
         stub: bool = False,
         parse_delay: float = 0.0,
         module_path: str = WORKER_MODULE_PATH,
+        sandbox: Optional[SandboxSpawn] = None,
+        stderr_sink: Optional[Callable[[str], None]] = None,
     ) -> None:
         self.project_name = project_name
+        #: CP5: start the worker in `--sandbox` mode instead of opening
+        #: `project_name`. A sandbox worker is never pooled (it is spawned
+        #: by `SandboxClient`, outside `WorkerPool`).
+        self._sandbox = sandbox
+        #: CP5: also hand each stderr line here (the sandbox run keeps its
+        #: worker's diagnostics as `sandbox/worker-stderr.txt`).
+        self._stderr_sink = stderr_sink
         #: The child module this client spawns. The read worker by default;
         #: another package's worker for a role it registered (CP4, R-09).
         self._module_path = module_path
@@ -185,6 +227,8 @@ class ParseWorkerClient:
         self._assembly_waiters: list[asyncio.Future] = []
         self._protocol: Optional[int] = None
         self._worker_pid: Optional[int] = None
+        #: The process's exit code once `aclose`/`terminate` has reaped it.
+        self._exit_code: Optional[int] = None
         self._closed = False
         self._write_lock = asyncio.Lock()
 
@@ -206,6 +250,13 @@ class ParseWorkerClient:
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.returncode is None
 
+    @property
+    def exit_code(self) -> Optional[int]:
+        """The worker's exit code after it was reaped; None before, or if unknown."""
+        if self._proc is not None:
+            return self._proc.returncode
+        return self._exit_code
+
     async def start(self) -> None:
         """Spawn the worker and wait for its `ready` line.
 
@@ -215,15 +266,26 @@ class ParseWorkerClient:
         there is a caller to tell. Discovered later, it would surface as a
         word that mysteriously never came back.
         """
-        args = ["--project", self.project_name]
+        args = self.spawn_args()
+        self._proc = await spawn_module_async(
+            self._module_path, args, env=_child_env()
+        )
+        await self._await_ready()
+
+    def spawn_args(self) -> list[str]:
+        """The worker's argv: `--project` mode, or `--sandbox` mode (CP5)."""
+        if self._sandbox is not None:
+            args = self._sandbox.argv()
+        else:
+            args = ["--project", self.project_name]
         if self._stub:
             args.append("--stub")
             if self._parse_delay:
                 args += ["--parse-delay", str(self._parse_delay)]
+        return args
 
-        self._proc = await spawn_module_async(
-            self._module_path, args, env=_child_env()
-        )
+    async def _await_ready(self) -> None:
+        """Wait for the spawned worker's `ready` line, then start reading."""
         self._stderr_task = asyncio.create_task(self._drain_stderr())
 
         try:
@@ -284,6 +346,7 @@ class ParseWorkerClient:
             _kill_process_tree(proc.pid)
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(proc.wait(), timeout=5)
+        self._exit_code = proc.returncode
 
         for task in (self._reader_task, self._stderr_task):
             if task is not None:
@@ -314,6 +377,8 @@ class ParseWorkerClient:
             _kill_process_tree(proc.pid)
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(proc.wait(), timeout=5)
+        if proc is not None:
+            self._exit_code = proc.returncode
         for task in (self._reader_task, self._stderr_task):
             if task is not None:
                 task.cancel()
@@ -796,11 +861,11 @@ class ParseWorkerClient:
                 raw = await proc.stderr.readline()
                 if not raw:
                     return
-                _log.debug(
-                    "[parse-worker %s] %s",
-                    self.project_name,
-                    raw.decode("utf-8", errors="replace").rstrip(),
-                )
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                _log.debug("[parse-worker %s] %s", self.project_name, line)
+                if self._stderr_sink is not None:
+                    with contextlib.suppress(Exception):
+                        self._stderr_sink(line)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

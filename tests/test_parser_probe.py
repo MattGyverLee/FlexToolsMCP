@@ -527,19 +527,14 @@ class TestCapabilityCheckDivergenceIsIntentional:
 
 
 # ---------------------------------------------------------------------------
-# T026 (parser-check CP5, FR-005): the same no-floor guard for the sandbox
-# spine's three versions -- the hc tool, FieldWorks' bundled HermitCrab and
-# GenerateHCConfig. An absurd value for ANY of them must still leave the
-# sandbox ready: versions are reported (and may raise the skew advisory),
-# never compared to a floor, never a refusal. API: tests/test_sandbox_versions.py.
+# T026 (parser-check CP5, FR-005; re-plan T104): the same no-floor guard for
+# the sandbox spine's two versions -- FieldWorks' bundled HermitCrab and
+# GenerateHCConfig. An absurd value for EITHER must still leave the sandbox
+# ready: versions are reported, never compared to a floor, never a refusal.
+# API: tests/test_sandbox_versions.py.
 # ---------------------------------------------------------------------------
 
-_SANDBOX_HC_PACKAGE = "sil.machine.morphology.hermitcrab.tool"
 _SANDBOX_HC_DLL = "SIL.Machine.Morphology.HermitCrab.dll"
-_SANDBOX_HELP = (
-    "Usage: hc [OPTIONS]\r\n"
-    "HermitCrab.NET is a phonological and morphological parser.\r\n"
-)
 
 
 def _sandbox_file(path: Path) -> Path:
@@ -549,21 +544,12 @@ def _sandbox_file(path: Path) -> Path:
 
 
 class TestSandboxVersionsNeverCompared:
-    """FR-005 / Q3: no floor on any of the sandbox spine's three versions."""
+    """FR-005 / Q3: no floor on either of the sandbox spine's versions."""
 
-    NORMAL = {"hc": "3.8.2", "fieldworks_hermitcrab": "3.8.2.0", "generate_hc_config": "9.3.11.1"}
+    NORMAL = {"fieldworks_hermitcrab": "3.8.2.0", "generate_hc_config": "9.3.11.1"}
 
     def _install(self, monkeypatch, tmp_path, versions):
         import os
-        import subprocess
-
-        monkeypatch.delenv(parser_probe.HC_PATH_ENV_VAR, raising=False)
-        home = tmp_path / "home"
-        monkeypatch.setenv("USERPROFILE", str(home))
-        monkeypatch.setenv("HOME", str(home))
-        tools = home / ".dotnet" / "tools"
-        _sandbox_file(tools / ".store" / _SANDBOX_HC_PACKAGE / versions["hc"] / "any" / "hc.dll")
-        _sandbox_file(tools / "hc.exe")
 
         fw = tmp_path / "FieldWorks 9"
         gen = _sandbox_file(fw / "GenerateHCConfig.exe")
@@ -572,15 +558,7 @@ class TestSandboxVersionsNeverCompared:
             os.path.normcase(str(fw_dll)): versions["fieldworks_hermitcrab"],
             os.path.normcase(str(gen)): versions["generate_hc_config"],
         }
-
-        def fake_run(argv, *args, **kwargs):
-            argv = [str(a) for a in argv]
-            assert argv[-1] == "-h", f"unexpected subprocess.run argv: {argv!r}"
-            return subprocess.CompletedProcess(argv, -1, _SANDBOX_HELP.encode("utf-16-le"), b"")
-
         core = ProbeResult(ok=True, expected_path=str(fw / "ParserCore.dll"), detected_version="9.3.11")
-        monkeypatch.setattr(parser_probe.subprocess, "run", fake_run)
-        monkeypatch.setattr(parser_probe.shutil, "which", lambda name, *a, **k: None)
         monkeypatch.setattr(parser_probe, "probe_parser_core", lambda *a, **k: core)
         monkeypatch.setattr(parser_probe, "get_resolved_fieldworks_dir", lambda search_paths=None: fw)
         monkeypatch.setattr(
@@ -594,11 +572,8 @@ class TestSandboxVersionsNeverCompared:
             lambda path: table.get(os.path.normcase(str(path))),
             raising=False,
         )
-        clear = getattr(parser_probe, "clear_hc_probe_cache", None)
-        if clear:
-            clear()
 
-    @pytest.mark.parametrize("component", ["hc", "fieldworks_hermitcrab", "generate_hc_config"])
+    @pytest.mark.parametrize("component", ["fieldworks_hermitcrab", "generate_hc_config"])
     @pytest.mark.parametrize(
         "absurd",
         ["0.0.1", "999.999.999", "not-a-real-version-string"],
@@ -609,11 +584,10 @@ class TestSandboxVersionsNeverCompared:
 
         detector = parser_probe.ParserDetector()
 
-        assert detector.sandbox_probe.hc.ok is True
-        assert detector.sandbox_probe.hc.signal is None
+        assert detector.sandbox_probe.engine.ok is True
+        assert detector.sandbox_probe.engine.signal is None
         assert detector.sandbox_probe.generate_config.ok is True
         # Reported verbatim, whatever it is.
-        assert detector.versions.hc_tool_version == versions["hc"]
         assert detector.versions.fieldworks_hermitcrab_version == versions["fieldworks_hermitcrab"]
         assert detector.versions.generate_hc_config_version == versions["generate_hc_config"]
 

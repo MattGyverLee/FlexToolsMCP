@@ -1,0 +1,22 @@
+{
+  "_contract": "tool-responses/1.0",
+  "status": "error",
+  "error_code": "parser_job_failed",
+  "message": "The sandbox worker could not load the HermitCrab configuration for project 'Demo': XmlException: Unexpected end of file.",
+  "state_at_failure": "parsing",
+  "failure": "engine_unavailable",
+  "words_completed": 0,
+  "words_total": 12,
+  "run_id": "0123456789abcdef0123456789abcdef",
+  "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\worker-stderr.txt",
+  "error": {
+    "code": "parser_job_failed",
+    "message": "The sandbox worker could not load the HermitCrab configuration for project 'Demo': XmlException: Unexpected end of file.",
+    "state_at_failure": "parsing",
+    "failure": "engine_unavailable",
+    "words_completed": 0,
+    "words_total": 12,
+    "run_id": "0123456789abcdef0123456789abcdef",
+    "log_path": "C:\\Users\\demo\\.flextoolsmcp\\parse-runs\\0123456789abcdef0123456789abcdef\\sandbox\\worker-stderr.txt"
+  }
+}

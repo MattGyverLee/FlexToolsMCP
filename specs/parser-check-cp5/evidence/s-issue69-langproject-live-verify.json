@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "issue": 69,
+    "title": "issue #69 live verification — project.LangProject / project.lp",
+    "date": "2026-09-25T15:10:00Z",
+    "projects_used": ["Sena 3", "Target"],
+    "server_versions": {
+      "flexicon": "4.9.0",
+      "liblcm": "11.0.0",
+      "flexlibs_stable": "1.2.8"
+    },
+    "op_ids": {
+      "scenario_a_first": "op-100034717-001",
+      "scenario_a_rerun": "op-100454674-007",
+      "scenario_b_sena3": "op-100051950-002",
+      "scenario_b_target": "op-100732039-008",
+      "scenario_c_sena3": "op-100102318-003",
+      "scenario_c_target": "op-100741190-009",
+      "diag_validator_None": "op-100312102-005",
+      "diag_validator_live": "op-100400931-006"
+    }
+  },
+  "scenario_a": {
+    "code": "report.Info(str(project.LangProject))",
+    "project": "Target",
+    "success": false,
+    "exit_code": 0,
+    "error": "Execution error: 'FLExProject' object has no attribute 'LangProject'\\nAttributeError: 'FLExProject' object has no attribute 'LangProject'. Did you mean: 'OpenProject'?",
+    "did_you_mean": ["ProjectSettings"],
+    "help": "'LangProject' is not a project accessor. Did you mean: project.ProjectSettings?",
+    "verdict": "FAIL",
+    "verdict_detail": "help names 'ProjectSettings' not 'project.lp'. Root cause: MCP server process has stale validators.py loaded from before the #69 fix was applied. The code fix is correct (diagnostic op-100312102-005 confirms detect_unknown_attribute_error returns ['lp'] for 'LangProject'). Server restart required to pick up the change.",
+    "preflight_blocked": false,
+    "preflight_advisory_text": null
+  },
+  "scenario_a_code_diagnostic": {
+    "description": "Called detect_unknown_attribute_error with live error string in subprocess — subprocess loads current validators.py",
+    "op_id": "op-100312102-005",
+    "input_error_msg": "'FLExProject' object has no attribute 'LangProject'. Did you mean: 'OpenProject'?",
+    "api_index_in_subprocess": "NoneType (kernel returns None inside subprocess)",
+    "result": {
+      "has_suggestion": true,
+      "object_type": "FLExProject",
+      "attribute_name": "LangProject",
+      "did_you_mean": ["lp"],
+      "suggestion": "use project.lp (an ILangProject; same as project.project.LangProject in LCM)"
+    },
+    "code_verdict": "PASS — fix is correctly implemented; returns 'lp'"
+  },
+  "scenario_b": {
+    "code": "report.Info(str(project.lp))",
+    "project": "Target",
+    "success": true,
+    "exit_code": 0,
+    "messages": [{"type": "INFO", "message": "Target"}],
+    "error": null,
+    "verdict": "PASS",
+    "verdict_detail": "project.lp is accessible and resolves to the ILangProject; str() returns the project name 'Target' cleanly."
+  },
+  "scenario_c": {
+    "code": "lp = project.lp if hasattr(project, 'lp') else project.LangProject\nreport.Info(str(lp))",
+    "project": "Target",
+    "success": true,
+    "exit_code": 0,
+    "messages": [{"type": "INFO", "message": "Target"}],
+    "error": null,
+    "verdict": "PASS",
+    "verdict_detail": "hasattr(project, 'lp') is True, takes project.lp branch, returns 'Target'. Preflight did not reject. No AttributeError raised."
+  },
+  "overall_verdict": {
+    "scenarios_b_c": "PASS",
+    "scenario_a_runtime": "FAIL — stale server module, not a code defect",
+    "scenario_a_code": "PASS — fix correctly implemented in validators.py",
+    "action_required": "Restart the MCP server to load updated validators.py so scenario (a) runtime behaviour also passes."
+  },
+  "stale_server_evidence": {
+    "explanation": "git diff shows detect_unknown_attribute_error in validators.py was updated to (1) import PROJECT_RAW_HANDLE_ALIASES and (2) check alias tables BEFORE fuzzy matching. The running MCP server process loaded the old version at startup. The subprocess (spawned fresh per run_module call) loads the current file and returns the correct 'lp' suggestion. The MCP server post-processes the AttributeError after the subprocess exits using its cached (old) module, producing 'ProjectSettings' instead.",
+    "git_status": "M src/flextoolsmcp/server/validators.py (modified, uncommitted)",
+    "key_new_lines": [
+      "from .constants import KNOWN_OPERATIONS, PROJECT_ACCESSOR_ALIASES, PROJECT_RAW_HANDLE_ALIASES",
+      "if attr_name in PROJECT_RAW_HANDLE_ALIASES:",
+      "    alias = PROJECT_RAW_HANDLE_ALIASES[attr_name]",
+      "    return {'did_you_mean': [alias], 'suggestion': 'use project.lp ...'}"
+    ]
+  }
+}

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-The sandbox spine's per-run client (parser-check CP5, research R-06, R-07,
-R-11, F-13; data-model 6.2-6.6; FR-011, FR-016..FR-020, FR-023, FR-035).
+The sandbox spine's per-run client (parser-check CP5; re-plan T102;
+contracts/sandbox-worker.md; data-model 6.2-6.6; FR-011, FR-016..FR-020,
+FR-023, FR-035, FR-046..FR-050).
 
 `SandboxClient` implements the worker-client interface `ParseRunner` already
 drives (`start`, `parse_word`, `cancel_run`, `is_running`, `listen_to_run`,
@@ -19,71 +20,66 @@ WHAT ONE RUN DOES
                 a miss a marked copy dir `work/<run_id>/` and generation
                 (`cache.ensure_entry`, logging into the run's `sandbox/`);
                 on a hit the entry's log is copied with one reuse line in
-                front. Then `-Mode Parse` is launched for the WHOLE list as
-                one subprocess: stdin, stdout and stderr all DEVNULL.
-  parse_word()  a word dispatch.json marked unsent is `not_expressible` at
-                once; any other word awaits its block, tailed from
-                `sandbox/hc-stdout.txt` every `POLL_INTERVAL_SECONDS` through
-                `hc_output.BlockReader`. After the script exits: a word with
-                a block gets it (an incomplete block is `error_no_output`), a
-                word with none is `not_reached`; unless the run timed out, was
-                cancelled, or hc failed to start -- those raise
-                `SandboxRunError` for the runner to map.
-  finalize()    before any terminal stage (the runner calls it): wait for the
-                script (bounded by the watchdog), write `hc-output.txt`
-                (hc-stdout minus the load banner), fold `run.json` into
-                `meta.sandbox`, reconcile `stats -p` with the per-word tally
-                into `counter_divergences`, delete the copy. Idempotent.
-  cancel_run()  kills the PowerShell tree (`_kill_process_tree`), which takes
-                hc with it; results already streamed stay recorded.
+                front. Then the id-map gate (an invalid sidecar is refused
+                BEFORE anything is spawned), the Morpher parameters (D3), and
+                one `--sandbox` parse worker for the run
+                (`ParseWorkerClient` with a `SandboxSpawn`; never pooled).
+  parse_word()  one word to the worker, one structured result back
+                (contracts/sandbox-worker.md section 4), turned into the
+                `results.jsonl` line (`classify`). A worker that dies
+                mid-list without a code gives the word in flight
+                `error_no_output` and every later word `not_reached`
+                (FR-018): the run completes, and no word is `not_parsed`.
+  finalize()    before any terminal stage (the runner calls it): stop the
+                worker, keep its stderr as `worker-stderr.txt` (the
+                `hc_stdout` log section) and the recorded lines rendered
+                for reading as `hc-output.txt` (`hc_output`, FR-038), write
+                `run.json`, fold the outcome into `meta.sandbox.worker`,
+                reconcile the running tally, delete the copy. Idempotent.
+  cancel_run()  kills the worker's tree; results already recorded stay.
 
-THE HAND-OFF IS A FILE (FR-023). Nothing here reads the script's console:
-its streams go to DEVNULL, and data comes only from `run.json`,
-`dispatch.json` and `hc-stdout.txt`. `tests/test_sandbox_client.py` checks
-this over this module's AST.
+THE WATCHDOG (FR-020). The worker has no timeout of its own: this client
+holds a wall-clock watchdog of `timeout_seconds` around the run and, on
+expiry, kills the worker's process tree. The word in flight is named
+(`in_flight_index`) and the run ends as `parser_timeout`; every word
+completed before the kill is already recorded.
 
-THREE-WAY DELETION (R-11). The script deletes its copy in `finally`, but a
-tree kill skips that; so this client deletes `work/<run_id>/` itself, right
-after generation and again (idempotently) in `finalize` / `aclose`, whether
-the script exited or was killed. The startup sweep is the third way.
-
-THE WATCHDOG. `TimeoutSeconds + WATCHDOG_GRACE_SECONDS` after launch the
-script's tree is killed if it is still running: a backstop for a script
-that fails to enforce its own timeout. It ends the run as `parser_timeout`.
-
-WORD FILE (decision). The runner writes `words.txt` for every batch run
-(`RunRecord.create`), and it is passed as `-WordFile`; for a non-batch run
-the client writes it through `RunRecord.write_words`. No other word file is
-created -- `sandbox/` holds exactly `record.SANDBOX_FILES`.
+THREE-WAY DELETION (R-11). Generation's script deletes its copy in
+`finally`, but a tree kill skips that; so this client deletes
+`work/<run_id>/` itself, right after generation and again (idempotently) in
+`finalize` / `aclose`. The startup sweep is the third way.
 """
 
 from __future__ import annotations
 
 import asyncio
-import codecs
 import contextlib
+import json
 import logging
-import sys
 import time
-import unicodedata
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
-from ..parse.worker_client import WorkerError
-from . import cache, classify, engine, hc_output, script, workdir
+from ..parse.worker_client import (
+    ParseWorkerClient,
+    SandboxSpawn,
+    WorkerError,
+    WorkerStartupError,
+)
+from . import cache, classify, engine, lcm_ids, script, workdir
 
 __all__ = [
     "SANDBOX_ROLE",
-    "POLL_INTERVAL_SECONDS",
-    "WATCHDOG_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
     "COUNTERS_OK",
     "COUNTERS_UNAVAILABLE",
     "COUNTERS_UNAVAILABLE_TIMEOUT",
+    "PARAMETERS_SOURCES",
     "SandboxLaunch",
     "SandboxRunError",
     "SandboxClient",
+    "render_results",
 ]
 
 _log = logging.getLogger(__name__)
@@ -91,17 +87,10 @@ _log = logging.getLogger(__name__)
 #: The runner's worker role for this spine (R-07). Never a pool key.
 SANDBOX_ROLE = "sandbox"
 
-#: How often `hc-stdout.txt` is tailed (R-06).
-POLL_INTERVAL_SECONDS = 0.1
-
-#: The Python watchdog fires at `TimeoutSeconds + this` (R-06).
-WATCHDOG_GRACE_SECONDS = 30
-
 DEFAULT_TIMEOUT_SECONDS = 600
 
-#: `meta.sandbox.hc.counters` (data-model 6.2). `unavailable` is for a run
-#: whose hc never printed its `stats -p` line for another reason (a crash, a
-#: cancel, a start failure).
+#: `meta.sandbox.worker.counters` (data-model 6.2). `unavailable` is for a
+#: run that ended before its tally could be reconciled (a crash, a cancel).
 COUNTERS_OK = "ok"
 COUNTERS_UNAVAILABLE_TIMEOUT = "unavailable_timeout"
 COUNTERS_UNAVAILABLE = "unavailable"
@@ -109,23 +98,23 @@ COUNTERS_UNAVAILABLE = "unavailable"
 MODE_PARSE = "parse"
 MODE_TEST = "test"
 
-#: A result flag (SC-004, FR-018): hc's block for this sent word named a
-#: different word, so no block is attributed to it or to any later sent word.
-FLAG_ATTRIBUTION_MISMATCH = "attribution_mismatch"
-
-_HC_SCRIPT = "hc-script.txt"
-_HC_COMMANDS = ("parse", "test")
-
 ADVISORY_GRAMMAR_LOAD_ERRORS = "grammar_load_errors"
-ADVISORY_LEADING_DASH = "leading_dash_unverified"
+#: contracts/tools.md section 5.1: a config source older than the sidecar.
+ADVISORY_SHAPING_NOT_APPLIED = "shaping_not_applied"
 
-#: Script exit codes (contracts/hcparse.md section 3).
-_EXIT_HC_START_FAILED = 5
-_EXIT_TIMEOUT = 6
+#: FR-047's three parameter sources, in priority order.
+PARAMETERS_CACHE = "cache"
+PARAMETERS_LIVE_PROJECT = "live_project"
+PARAMETERS_FLEX_DEFAULTS = "flex_defaults"
+PARAMETERS_SOURCES = (PARAMETERS_CACHE, PARAMETERS_LIVE_PROJECT, PARAMETERS_FLEX_DEFAULTS)
 
-_STDOUT = "hc-stdout.txt"
-_OUTPUT = "hc-output.txt"
 _GEN_LOG = cache.LOG_NAME
+_STDERR = "worker-stderr.txt"
+_OUTPUT = "hc-output.txt"
+#: How long a worker whose channel failed gets to exit before it is judged
+#: alive (one word refused) rather than dead (the rest not reached).
+_EXIT_GRACE_SECONDS = 2.0
+_PARAMS = "hc-params.json"
 
 PathLike = Union[str, Path]
 
@@ -145,29 +134,40 @@ class SandboxLaunch:
 
     `config_path` None means the project cache (engine check, generation on
     a miss); a path is a named sandbox's `hc-config.xml`, used as it is.
-    `hc_invoke_argv` is accepted for the record only: the script itself
-    runs a `.dll` through `dotnet` (contracts/hcparse.md section 2).
+    `engine_dir` is the FieldWorks folder holding the bundled HermitCrab DLL
+    (D6/D7); None lets the worker find the standard install itself.
+    `worker_stub` starts the worker as `--stub --sandbox` (tests only).
     """
 
     fwdata_path: str
-    hc_path: str
     generate_hc_config_path: Optional[str] = None
     config_path: Optional[str] = None
+    #: A named sandbox's name (the store's key for its sidecar and origin).
+    sandbox_name: Optional[str] = None
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
     generate_timeout_seconds: int = cache.DEFAULT_GENERATE_TIMEOUT_SECONDS
-    watchdog_grace_seconds: float = WATCHDOG_GRACE_SECONDS
     check_engine: bool = True
     active_parser: Optional[str] = "HC"
     versions: Optional[Dict[str, Any]] = None
-    hc_invoke_argv: Optional[List[str]] = None
+    engine_dir: Optional[str] = None
     #: Test mode (US4): the corpus JSON (data-model section 5), already
-    #: validated by the handler. Set -> `-Mode Test -AssertionFile`; None ->
-    #: `-Mode Parse -WordFile`. `corpus_path` is accepted as an alias.
+    #: validated by the handler. `corpus_path` is accepted as an alias.
     assertion_file: Optional[str] = None
+    #: FR-047 source 2 for a named sandbox (T115): the project `origin.json`
+    #: records, and its `.fwdata` when that project still resolves. Either
+    #: None -> FLEx's defaults, with a note saying which.
+    origin_project: Optional[str] = None
+    origin_fwdata_path: Optional[str] = None
+    worker_stub: bool = False
+    worker_parse_delay: float = 0.0
 
     @property
     def mode(self) -> str:
         return MODE_TEST if self.assertion_file else MODE_PARSE
+
+    @property
+    def named(self) -> bool:
+        return bool(self.config_path)
 
     @classmethod
     def from_value(cls, value: Union["SandboxLaunch", Mapping[str, Any]]) -> "SandboxLaunch":
@@ -188,9 +188,8 @@ class SandboxLaunch:
         kwargs = {k: v for k, v in value.items() if k in names and v is not None}
         if "assertion_file" not in kwargs and value.get("corpus_path"):
             kwargs["assertion_file"] = value["corpus_path"]
-        missing = [k for k in ("fwdata_path", "hc_path") if not kwargs.get(k)]
-        if missing:
-            raise ValueError("sandbox_launch lacks %s" % ", ".join(missing))
+        if not kwargs.get("fwdata_path"):
+            raise ValueError("sandbox_launch lacks fwdata_path")
         return cls(**kwargs)
 
 
@@ -220,52 +219,13 @@ class SandboxRunError(WorkerError):
             self.detail = detail
 
 
-def _parse_argv(launch: SandboxLaunch, *, config: PathLike, word_file: PathLike,
-                run_dir: PathLike) -> List[str]:
-    """The script's argv (FR-022: a list, never a command string):
-    `-Mode Test -AssertionFile` for a corpus run, else `-Mode Parse -WordFile`."""
-    if launch.mode == MODE_TEST:
-        return script.build_argv(
-            "Test",
-            HcPath=str(launch.hc_path),
-            Config=str(config),
-            AssertionFile=str(launch.assertion_file),
-            RunDir=str(run_dir),
-            TimeoutSeconds=int(launch.timeout_seconds),
-        )
-    return script.build_argv(
-        "Parse",
-        HcPath=str(launch.hc_path),
-        Config=str(config),
-        WordFile=str(word_file),
-        RunDir=str(run_dir),
-        TimeoutSeconds=int(launch.timeout_seconds),
-    )
-
-
-def _same_word(hc_word: Optional[str], sent_word: str) -> bool:
-    """hc echoes its argument verbatim, unquoted (ParseCommand.cs /
-    TestCommand.cs: `Parsing "{0}"` / `Testing "{0}"` after SplitCommandLine
-    strips the quotes), so the header word is the sent word; NFC-compared."""
-    if hc_word is None:
-        return False
-    return unicodedata.normalize("NFC", hc_word) == unicodedata.normalize("NFC", sent_word)
-
-
-def _kill_tree(pid: int) -> None:
-    # Looked up at call time so a test can observe it.
-    from .. import subprocess_helpers
-
-    subprocess_helpers._kill_process_tree(pid)
-
-
 # ---------------------------------------------------------------------------
 # The client
 # ---------------------------------------------------------------------------
 
 
 class SandboxClient:
-    """One sandbox run: one copy, one config, one script process."""
+    """One sandbox run: one config, one `--sandbox` worker process."""
 
     def __init__(
         self,
@@ -283,8 +243,10 @@ class SandboxClient:
         self._launch = SandboxLaunch.from_value(launch)
         self._sandbox_dir = Path(record.sandbox_path(script.RUN_JSON)).parent
         self._listeners: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+        self._mode = self._launch.mode
 
-        self._proc: Optional[asyncio.subprocess.Process] = None
+        self._worker: Optional[ParseWorkerClient] = None
+        self._stderr_lines: List[str] = []
         self._launched_at: Optional[float] = None
         self._watchdog_task: Optional[asyncio.Task] = None
         self._gen_task: Optional[asyncio.Future] = None
@@ -293,22 +255,16 @@ class SandboxClient:
         self._copy_result: Optional[workdir.CleanupResult] = None
         self._entry: Optional[cache.CacheEntry] = None
 
-        self._items: Optional[List[Dict[str, Any]]] = None
-        self._ordinal: Dict[int, int] = {}
-        self._reader = hc_output.BlockReader()
-        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-        self._offset = 0
-        self._stream_done = False
-        self._parse_blocks: List[hc_output.Block] = []
-        self._tail_ordinal: Optional[int] = None
-        self._counters: Any = None  # ParseCounters | TestCounters
-        self._results: List[Any] = []  # WordResults (parse) / lines (test)
-        self._mode = self._launch.mode
-        self._block_kind = (hc_output.BLOCK_TEST if self._mode == MODE_TEST
-                            else hc_output.BLOCK_PARSE)
-        #: Test mode: each assertion's `expected`, by assertion index (= the
-        #: dispatch index; the script never reorders or de-duplicates).
+        #: Each recorded line, in order (parse or assertion lines).
+        self._results: List[Dict[str, Any]] = []
+        #: The running tally, kept as words are classified and reconciled
+        #: against the recorded lines at the end (data-model 6.6).
+        self._running: Dict[str, int] = {}
+        #: Test mode: each assertion's `expected`, by assertion index.
         self._expected: List[Any] = []
+        #: The worker's `load_baseline` for this run (sandbox-worker.md 5).
+        self._baseline: Optional[Dict[str, Any]] = None
+        self._id_map_state = "absent"
 
         self._started = False
         self._cancelled = False
@@ -316,27 +272,27 @@ class SandboxClient:
         self._watchdog_fired = False
         self._finalized = False
         self._closed = False
+        #: The worker died mid-list with no code (FR-018): later words are
+        #: answered `not_reached` without a worker.
+        self._crashed = False
         self._in_flight_index: Optional[int] = None
-        #: The first sent ordinal whose block named another word; from it on
-        #: nothing is attributed (see `_record_mismatch`).
-        self._mismatch_at: Optional[int] = None
 
     # -- the worker-client interface ----------------------------------------
 
     @property
     def pid(self) -> Optional[int]:
-        return self._proc.pid if self._proc is not None else None
+        return self._worker.pid if self._worker is not None else None
 
     @property
     def worker_pid(self) -> Optional[int]:
-        return self.pid
+        return self._worker.worker_pid if self._worker is not None else None
 
     @property
     def launch(self) -> SandboxLaunch:
         return self._launch
 
     def is_running(self) -> bool:
-        return self._proc is not None and self._proc.returncode is None
+        return self._worker is not None and self._worker.is_running()
 
     def listen_to_run(self, run_id: str, listener: Callable[[Dict[str, Any]], None]) -> None:
         self._listeners[run_id] = listener
@@ -351,37 +307,60 @@ class SandboxClient:
                 listener(message)
 
     async def start(self) -> None:
-        """Resolve the config (generating it on a miss) and launch the script."""
+        """Resolve the config (generating it on a miss) and start the worker."""
         if self._started:
             return
         self._started = True
         self._emit({"type": "stage", "stage": "loading_grammar"})
         self._sandbox_dir.mkdir(parents=True, exist_ok=True)
-
-        word_file = Path(self._record.words_path)
-        if not word_file.is_file():
-            self._record.write_words(self._wordforms)
         if self._mode == MODE_TEST:
             self._expected = self._load_expected()
 
         config = await self._resolve_config()
         if self._cancelled:
-            raise SandboxRunError("The sandbox run was cancelled before hc started.")
+            raise SandboxRunError("The sandbox run was cancelled before the parser started.")
 
-        argv = _parse_argv(self._launch, config=config, word_file=word_file,
-                           run_dir=self._sandbox_dir)
-        extra: Dict[str, Any] = {}
-        if sys.platform != "win32":
-            extra["start_new_session"] = True
-        self._proc = await asyncio.create_subprocess_exec(
-            *argv,
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-            **extra,
+        # The check order's id-map gate (contracts/tools.md section 3): an
+        # invalid sidecar is refused here, before any worker exists.
+        id_map = self._resolve_id_map()
+        parameters, source, note = self._resolve_parameters()
+        params_path = self._record.write_sandbox_file(
+            _PARAMS, json.dumps(parameters, indent=2, sort_keys=True) + "\n")
+        self._update_sandbox(
+            parser_parameters=parameters,
+            parameters_source=source,
+            parameters_note=note,
+            shaping={"applied": id_map is not None, "id_map": self._id_map_state},
+            advisories=[] if id_map is not None else [ADVISORY_SHAPING_NOT_APPLIED],
         )
+
+        spawn = SandboxSpawn(
+            config=str(config),
+            hc_params=str(params_path),
+            id_map=str(id_map) if id_map is not None else None,
+            engine_dir=self._launch.engine_dir,
+            project=self.project_name,
+            named_sandbox=self._launch.named,
+        )
+        worker = ParseWorkerClient(
+            self.project_name,
+            stub=self._launch.worker_stub,
+            parse_delay=self._launch.worker_parse_delay,
+            sandbox=spawn,
+            stderr_sink=self._stderr_lines.append,
+        )
+        worker.listen_to_run(self.run_id, self._on_worker_message)
+        try:
+            await worker.start()
+        except WorkerStartupError as exc:
+            raise SandboxRunError(
+                f"The sandbox parse worker did not start: {exc}",
+                error_code="parser_job_failed",
+                facts={"failure": "crashed", "log_path": str(self._sandbox_dir / _STDERR)},
+            ) from exc
+        self._worker = worker
         self._launched_at = time.monotonic()
-        self._watchdog_task = asyncio.ensure_future(self._watchdog(self._proc))
+        self._watchdog_task = asyncio.ensure_future(self._watchdog())
 
     async def parse_word(
         self,
@@ -392,81 +371,154 @@ class SandboxClient:
         index_in_run: int = 0,
         **_ignored: Any,
     ) -> Dict[str, Any]:
-        """This word's `results.jsonl` parse section (data-model 6.4)."""
-        await self._ensure_dispatch()
+        """This word's `results.jsonl` parse section (data-model 6.4/6.5)."""
         index = int(index_in_run)
-        items = self._items or []
-        if index >= len(items):
-            raise SandboxRunError(
-                "The script's dispatch.json lists %d words; the run has more." % len(items),
-                error_code="parser_job_failed",
-                facts={"failure": "crashed", "log_path": str(self._sandbox_dir / script.DISPATCH_JSON)},
+        if self._crashed:
+            return self._placeholder(index, wordform, classify.OUTCOME_NOT_REACHED)
+        if self._worker is None:
+            raise SandboxRunError("The sandbox parse worker is not running.",
+                                  error_code="parser_job_failed",
+                                  facts={"failure": "crashed",
+                                         "log_path": str(self._sandbox_dir / _STDERR)})
+        if self._watchdog_fired:
+            raise self._timeout_error(index)
+        self._in_flight_index = index
+        try:
+            result = await self._worker.parse_word(
+                request_id=request_id or f"{self.run_id}:{index}",
+                run_id=self.run_id,
+                wordform=wordform,
+                level="batch",
+                index_in_run=index,
             )
-        item = items[index]
-        flags = list(item.get("flags") or [])
-        sent_word = item.get("word")
-        if not isinstance(sent_word, str):
-            sent_word = wordform
-        block = None
-        status = hc_output.OUTCOME_NOT_EXPRESSIBLE
-        if item.get("sent"):
-            ordinal = self._ordinal[index]
-            status = hc_output.OUTCOME_NOT_REACHED
-            if self._mismatch_at is None:
-                block = await self._await_block(ordinal, index)
-                if block is not None and not _same_word(block.word, sent_word):
-                    self._record_mismatch(index, sent_word, block.word)
-                    block = None
-            if self._mismatch_at is not None and ordinal >= self._mismatch_at:
-                # NEVER shift results onto the wrong word (SC-004, FR-018).
-                block = None
-                status = hc_output.OUTCOME_ERROR_NO_OUTPUT
-                if FLAG_ATTRIBUTION_MISMATCH not in flags:
-                    flags.append(FLAG_ATTRIBUTION_MISMATCH)
+        except (WorkerError, ConnectionError, EOFError) as exc:
+            # A worker that dies mid-word surfaces as a closed channel or a
+            # lost pipe, often before its process is reaped: give it a
+            # moment to exit, so "died" and "refused one word" differ.
+            await self._settle()
+            failure = self._word_failure(exc, index)
+            if failure is not None:
+                raise failure from exc
+            # No code: this word got no output, whether the worker died or
+            # threw on it; a dead worker also leaves the rest unreached.
+            self._crashed = self._worker_lost(exc)
+            return self._placeholder(index, wordform, classify.OUTCOME_ERROR_NO_OUTPUT)
+        self._in_flight_index = None
+
+        parse = result.get("parse")
         if self._mode == MODE_TEST:
-            result = (hc_output.parse_test_block(block) if block is not None
-                      else hc_output.placeholder_test_result(sent_word, status))
             expected = self._expected[index] if index < len(self._expected) else []
-            line = classify.assertion_to_line(index, sent_word, expected, result, flags=flags)
+            line = classify.assertion_to_line(index, wordform, expected, parse)
+            self._count(line["assertion"]["classification"],
+                        line["assertion"].get("error_reason"))
             self._results.append(line)
             return {"parse": line["parse"], "assertion": line["assertion"]}
-        result = (hc_output.parse_block(block) if block is not None
-                  else hc_output.placeholder_result(sent_word, status))
-        line = classify.word_result_to_line(index, sent_word, result, flags=flags)
-        self._results.append(result)
+        line = classify.worker_parse_to_line(index, wordform, parse)
+        self._count(line["parse"]["outcome"])
+        self._results.append(line)
         return {"parse": line["parse"]}
 
-    def _record_mismatch(self, index: int, sent_word: str, hc_word: Optional[str]) -> None:
-        """hc's block for a sent word names another word: stop attributing.
+    def _placeholder(self, index: int, wordform: str, outcome: str) -> Dict[str, Any]:
+        """A recorded line for a word the engine never answered (FR-018)."""
+        if self._mode == MODE_TEST:
+            expected = self._expected[index] if index < len(self._expected) else []
+            line = classify.assertion_to_line(index, wordform, expected, None, outcome=outcome)
+            self._count(line["assertion"]["classification"],
+                        line["assertion"].get("error_reason"))
+            self._results.append(line)
+            return {"parse": line["parse"], "assertion": line["assertion"]}
+        line = classify.placeholder_line(index, wordform, outcome)
+        self._count(line["parse"]["outcome"])
+        self._results.append(line)
+        return {"parse": line["parse"]}
 
-        The word and every later sent word become `error_no_output` with
-        `attribution_mismatch`; a note joins `counter_divergences`; the words
-        themselves go only into the data field `meta.sandbox.hc
-        .attribution_mismatch` (FR-044). hc's raw text stays in hc-output.txt.
+    def _count(self, key: str, reason: Optional[str] = None) -> None:
+        self._running[key] = self._running.get(key, 0) + 1
+        if reason == classify.OUTCOME_INVALID_SEGMENT:
+            self._running[reason] = self._running.get(reason, 0) + 1
+
+    def _word_failure(self, exc: Exception, index: int) -> Optional[Exception]:
+        """What a failed word means for the run: a terminal error, or None.
+
+        None is a word with no output (FR-018): the worker threw on it or
+        died under it with no code; `parse_word` records the placeholder.
         """
-        self._mismatch_at = self._ordinal[index]
-        _log.error(
-            "Sandbox run %s: hc's output block for sent word %d names a different "
-            "word than dispatch.json; results are not attributed from there on.",
-            self.run_id, index,
+        if self._watchdog_fired:
+            return self._timeout_error(index)
+        if self._cancelled:
+            return SandboxRunError("The sandbox run was cancelled; the parser was stopped.")
+        self._in_flight_index = None
+        detail = getattr(exc, "detail", None)
+        if getattr(exc, "error_code", None) == "parser_job_failed":
+            failure = (detail or {}).get("failure") or "crashed"
+            # The load exception's text belongs in the diagnostics the
+            # `hc_stdout` section serves (contracts/tools.md section 7).
+            self._stderr_lines.append("Sandbox job failed (%s): %s" % (failure, exc))
+            if failure == "id_map_invalid":
+                self._id_map_state = "invalid"
+                self._update_sandbox(shaping={"applied": False, "id_map": "invalid"})
+            return SandboxRunError(
+                str(exc), error_code="parser_job_failed",
+                facts={"failure": failure, "log_path": str(self._sandbox_dir / _STDERR)},
+            )
+        if self._worker_lost(exc):
+            self._stderr_lines.append(
+                "The sandbox parse worker stopped while parsing word %d: %s" % (index + 1, exc))
+        return None
+
+    async def _settle(self, seconds: float = _EXIT_GRACE_SECONDS) -> None:
+        """Wait (bounded) for a worker whose channel just failed to exit."""
+        deadline = time.monotonic() + seconds
+        while (self._worker is not None and self._worker.is_running()
+               and time.monotonic() < deadline):
+            await asyncio.sleep(0.05)
+
+    def _worker_lost(self, exc: Exception) -> bool:
+        """The worker is gone: a lost pipe (the process may not be reaped
+        yet, so `is_running` can still say True), or a process that exited."""
+        if isinstance(exc, (ConnectionError, EOFError)):
+            return True
+        return self._worker is None or not self._worker.is_running()
+
+    def _timeout_error(self, index: Optional[int]) -> SandboxRunError:
+        in_flight = self._in_flight_index if self._in_flight_index is not None else index
+        self._in_flight_index = in_flight
+        return SandboxRunError(
+            "The sandbox parse did not finish within its timeout and was stopped.",
+            error_code="parser_timeout",
+            facts={"timeout_seconds": int(self._launch.timeout_seconds),
+                   "in_flight_index": in_flight,
+                   "words_total": len(self._wordforms)},
         )
-        note = (
-            "Result attribution stopped at dispatch index %d: hc's output block there "
-            "names a different word than dispatch.json sent, so that word and every "
-            "later sent word are recorded as error_no_output with flag %s; hc's raw "
-            "output is kept in sandbox/hc-output.txt" % (index, FLAG_ATTRIBUTION_MISMATCH)
-        )
-        with contextlib.suppress(Exception):
-            self._update_sandbox(hc={"attribution_mismatch": {
-                "index": index, "sent_word": sent_word, "hc_word": hc_word}})
-            meta = self._record.read_meta()
-            existing = list((meta.counter_divergences if meta is not None else None) or [])
-            self._record.set_section(counter_divergences=existing + [note])
+
+    def _on_worker_message(self, message: Dict[str, Any]) -> None:
+        kind = message.get("type")
+        if kind == "load_baseline":
+            self._baseline = dict(message.get("baseline") or {})
+            self._fold_baseline()
+        elif kind == "stage":
+            self._emit({"type": "stage", "stage": message.get("stage")})
+
+    def _fold_baseline(self) -> None:
+        """The worker's engine facts into `meta.sandbox` (sandbox-worker.md 5)."""
+        baseline = self._baseline or {}
+        updates: Dict[str, Any] = {
+            "parameters_applied": list(baseline.get("parameters_applied") or []),
+            "engine_version": baseline.get("engine_version"),
+        }
+        errors = list(baseline.get("errors") or [])
+        if errors:
+            generation = self._section().get("generation") or {}
+            loaded = [{"kind": "engine_load", "line": _load_error_line(e)} for e in errors]
+            updates["generation"] = {
+                "engine_load_errors": loaded,
+                "load_error_count": int(generation.get("load_error_count") or 0) + len(loaded),
+            }
+            updates["advisories"] = [ADVISORY_GRAMMAR_LOAD_ERRORS]
+        self._update_sandbox(**updates)
 
     def _load_expected(self) -> List[Any]:
         """Each assertion's `expected`, in corpus order (data-model section 5)."""
-        import json
-
         try:
             data = json.loads(Path(self._launch.assertion_file).read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
@@ -480,7 +532,7 @@ class SandboxClient:
                 for a in (assertions or [])]
 
     async def cancel_run(self, run_id: str = "") -> None:
-        """Stop now: cancel generation, or kill the script's tree (R-06)."""
+        """Stop now: cancel generation, or kill the worker's tree."""
         self._cancelled = True
         if self._gen_task is not None and not self._gen_task.done():
             self._gen_task.cancel()
@@ -497,11 +549,15 @@ class SandboxClient:
         try:
             if self._gen_task is not None and not self._gen_task.done():
                 self._gen_task.cancel()
-            await self._wait_exit()
-            if self._proc is not None:
-                self._pump(final=True)
+            self._stop_watchdog()
+            if self._worker is not None:
+                await self._worker.aclose()
+            if self._worker is not None or self._stderr_lines:
+                self._write_stderr()
+            if self._results:
                 self._write_output()
-                self._fold_run_json()
+            if self._worker is not None:
+                self._fold_outcome()
         finally:
             self._delete_copy()
 
@@ -512,12 +568,10 @@ class SandboxClient:
         self._closed = True
         if self._gen_task is not None and not self._gen_task.done():
             self._gen_task.cancel()
-        if self.is_running():
-            await self._kill()
-        if self._watchdog_task is not None and not self._watchdog_task.done():
-            self._watchdog_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await self._watchdog_task
+        if self._worker is not None:
+            with contextlib.suppress(Exception):
+                await self._worker.aclose()
+        self._stop_watchdog()
         self._delete_copy()
         self._release_entry()
 
@@ -616,6 +670,71 @@ class SandboxClient:
         )
         return entry.config_path
 
+    def _resolve_id_map(self) -> Optional[Path]:
+        """The config source's validated sidecar, or None when it has none.
+
+        An entry or sandbox whose sidecar is recorded -- or found -- invalid
+        is refused with `parser_job_failed`/`id_map_invalid` BEFORE a worker
+        is spawned (spec FR-050, "Who refuses an invalid map"). An existing
+        but invalid sidecar is never treated as absent.
+        """
+        if self._launch.named:
+            from . import store
+
+            path = store.sandbox_lcm_ids_path(self.project_name, self._launch.sandbox_name) \
+                if self._launch.sandbox_name else None
+            if path is None:
+                sibling = Path(self._launch.config_path).parent / lcm_ids.LCM_IDS_NAME
+                path = sibling if sibling.exists() else None
+        else:
+            path = self._entry.lcm_ids_path if self._entry is not None else None
+        if path is None:
+            self._id_map_state = "absent"
+            return None
+        document = lcm_ids.read(path)
+        if document is None or document.get("valid") is not True:
+            self._id_map_state = "invalid"
+            self._update_sandbox(shaping={"applied": False, "id_map": "invalid"})
+            invalid = (document or {}).get("invalid_ids") or []
+            reason = ((document or {}).get("error")
+                      or ("unresolved ids: %s" % invalid if invalid else "unreadable"))
+            raise SandboxRunError(
+                "The configuration's id map (lcm-ids.json) failed validation (%s), so "
+                "Try A Word's shaping cannot be applied safely." % reason,
+                error_code="parser_job_failed",
+                facts={"failure": "id_map_invalid", "log_path": str(path)},
+            )
+        self._id_map_state = "valid"
+        return Path(path)
+
+    def _resolve_parameters(self) -> Tuple[Dict[str, Any], str, Optional[str]]:
+        """FR-047 / D3: the Morpher parameters, their source, and why.
+
+        1. a cache entry's `hc_parameters` (read at generation time);
+        2. a live stream read of the project's `.fwdata`: for a named sandbox,
+           its originating project (T115); for an old cache entry with no
+           recorded parameters, the project itself;
+        3. FLEx's defaults.
+        """
+        defaults = dict(engine.HC_PARAMETER_DEFAULTS)
+        if not self._launch.named and self._entry is not None:
+            recorded = self._entry.hc_parameters
+            if isinstance(recorded, dict):
+                return {**defaults, **recorded}, PARAMETERS_CACHE, None
+        fwdata = (self._launch.origin_fwdata_path if self._launch.named
+                  else self._launch.fwdata_path)
+        if not fwdata:
+            origin = self._launch.origin_project
+            why = ("This sandbox records no originating project" if not origin
+                   else "This sandbox's originating project, %s, no longer resolves" % origin)
+            return defaults, PARAMETERS_FLEX_DEFAULTS, why + ", so FLEx's own defaults apply."
+        reading = engine.read_parameters(fwdata)
+        if reading is not None:
+            return {**defaults, **reading}, PARAMETERS_LIVE_PROJECT, None
+        return defaults, PARAMETERS_FLEX_DEFAULTS, (
+            "The project's parser parameters could not be read, so FLEx's own "
+            "defaults apply.")
+
     def _acquire(self, entry: cache.CacheEntry) -> None:
         """Hold the entry for this run (prune spares it); released in aclose."""
         if self._entry is None:
@@ -678,214 +797,39 @@ class SandboxClient:
         with contextlib.suppress(Exception):
             self._update_sandbox(copy=copy)
 
-    # -- the script process -------------------------------------------------
+    # -- the worker process -------------------------------------------------
 
-    async def _watchdog(self, proc: asyncio.subprocess.Process) -> None:
-        limit = float(self._launch.timeout_seconds) + float(self._launch.watchdog_grace_seconds)
+    async def _watchdog(self) -> None:
+        """FR-020: the run's wall-clock bound; the worker has none of its own."""
         try:
-            await asyncio.wait_for(proc.wait(), timeout=limit)
-        except asyncio.TimeoutError:
-            if proc.returncode is None:
-                _log.warning("hcparse.ps1 outlived its timeout by %ss; killing its tree.",
-                             self._launch.watchdog_grace_seconds)
-                self._watchdog_fired = True
-                await self._kill()
+            await asyncio.sleep(float(self._launch.timeout_seconds))
+        except asyncio.CancelledError:
+            return
+        if self._worker is not None and self._worker.is_running() and not self._finalized:
+            _log.warning("Sandbox run %s outlived its %ss timeout; killing its worker.",
+                         self.run_id, self._launch.timeout_seconds)
+            self._watchdog_fired = True
+            await self._kill()
+
+    def _stop_watchdog(self) -> None:
+        task = self._watchdog_task
+        if task is not None and not task.done():
+            task.cancel()
 
     async def _kill(self) -> None:
-        proc = self._proc
-        if proc is None or proc.returncode is not None:
+        worker = self._worker
+        if worker is None or not worker.is_running():
             return
         self._killed = True
-        await asyncio.to_thread(_kill_tree, proc.pid)
-        with contextlib.suppress(Exception):
-            await asyncio.wait_for(proc.wait(), timeout=10)
-
-    def _exited(self) -> bool:
-        return self._proc is None or self._proc.returncode is not None
-
-    async def _wait_exit(self) -> None:
-        """Wait for the script; the watchdog bounds this."""
-        if self._proc is None:
-            return
-        while self._proc.returncode is None:
-            if self._watchdog_task is not None and self._watchdog_task.done():
-                await self._kill()
-                break
-            with contextlib.suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(asyncio.shield(self._proc.wait()), timeout=1.0)
-
-    # -- the streams --------------------------------------------------------
-
-    async def _ensure_dispatch(self) -> None:
-        if self._items is not None:
-            return
-        while True:
-            data = script.load_dispatch_json(self._sandbox_dir)
-            items = data.get("items") if isinstance(data, dict) else None
-            if (isinstance(items, list)
-                    and (len(items) >= len(self._wordforms) or self._exited())
-                    # hc-stdout.txt is opened only after hc-script.txt is
-                    # written whole, so from then on the count is final.
-                    and ((self._sandbox_dir / _STDOUT).exists() or self._exited())):
-                break
-            if self._exited():
-                items = None
-                break
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-        if items is None:
-            raise self._terminal_error(None) or SandboxRunError(
-                "The script ended before it wrote dispatch.json; hc never ran.",
-                error_code="parser_job_failed",
-                facts={"failure": "crashed", "log_path": str(self._sandbox_dir / script.RUN_JSON)},
-            )
-        self._items = [dict(item) if isinstance(item, dict) else {} for item in items]
-        ordinal = 0
-        for position, item in enumerate(self._items):
-            if item.get("sent"):
-                self._ordinal[position] = ordinal
-                ordinal += 1
-        commands = self._hc_script_commands()
-        if commands is not None and commands != ordinal:
-            # Blocks are attributed by order, so a script that does not hold
-            # exactly the sent words cannot be read at all (SC-004).
-            _log.error(
-                "Sandbox run %s: dispatch.json marks %d words sent but hc-script.txt "
-                "holds %d commands; the run is failed rather than mis-attributed.",
-                self.run_id, ordinal, commands,
-            )
-            with contextlib.suppress(Exception):
-                self._update_sandbox(hc={"dispatch_mismatch": {
-                    "sent": ordinal, "script_commands": commands}})
-            await self._kill()
-            raise SandboxRunError(
-                "dispatch.json marks %d words sent but hc-script.txt holds %d "
-                "commands; results could not be attributed." % (ordinal, commands),
-                error_code="parser_job_failed",
-                facts={"failure": "crashed", "log_path": str(self._sandbox_dir / _HC_SCRIPT)},
-            )
-        if any(ADVISORY_LEADING_DASH in (item.get("flags") or []) for item in self._items):
-            self._update_sandbox(advisories=[ADVISORY_LEADING_DASH])
-
-    def _hc_script_commands(self) -> Optional[int]:
-        """How many parse/test commands hc-script.txt holds; None if unreadable."""
-        try:
-            text = (self._sandbox_dir / _HC_SCRIPT).read_text(encoding="utf-8-sig")
-        except (OSError, UnicodeDecodeError):
-            return None
-        count = 0
-        for line in text.splitlines():
-            parts = line.strip().split(None, 1)
-            if parts and parts[0] in _HC_COMMANDS:
-                count += 1
-        return count
-
-    def _take(self, blocks: List[hc_output.Block]) -> None:
-        for block in blocks:
-            if block.kind == self._block_kind:
-                self._parse_blocks.append(block)
-            elif block.kind == hc_output.BLOCK_STATS:
-                read = (hc_output.parse_test_counters if self._mode == MODE_TEST
-                        else hc_output.parse_counters)
-                for text in (block.header,) + tuple(block.body):
-                    self._counters = read(text) or self._counters
-
-    def _pump(self, *, final: bool = False) -> None:
-        """Read whatever hc-stdout.txt has gained; at the end, close the stream."""
-        if self._stream_done:
-            return
-        path = self._sandbox_dir / _STDOUT
-        data = b""
-        try:
-            with open(path, "rb") as handle:
-                handle.seek(self._offset)
-                data = handle.read()
-        except OSError:
-            data = b""
-        if data:
-            self._offset += len(data)
-            self._take(self._reader.feed_text(self._decoder.decode(data)))
-        if final:
-            self._stream_done = True
-            rest = self._decoder.decode(b"", final=True)
-            if rest:
-                self._take(self._reader.feed_text(rest))
-            tail = self._reader.finish()
-            self._take(tail)
-            if tail and tail[-1].kind == self._block_kind and not tail[-1].complete:
-                self._tail_ordinal = len(self._parse_blocks) - 1
-
-    async def _await_block(self, ordinal: int, index: int) -> Optional[hc_output.Block]:
-        """The sent word's block, or None when hc never reached it."""
-        while True:
-            self._pump()
-            if ordinal < len(self._parse_blocks):
-                return self._parse_blocks[ordinal]
-            if self._exited():
-                break
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-
-        self._pump(final=True)
-        error = self._terminal_error(ordinal)
-        in_hand = ordinal < len(self._parse_blocks)
-        if error is not None and (not in_hand or ordinal == self._tail_ordinal):
-            raise error
-        if in_hand:
-            return self._parse_blocks[ordinal]
-        return None
-
-    def _index_of_ordinal(self, ordinal: Optional[int]) -> Optional[int]:
-        if ordinal is None:
-            return None
-        for index, value in self._ordinal.items():
-            if value == ordinal:
-                return index
-        return None
-
-    def _timed_out(self, run: Optional[Dict[str, Any]]) -> bool:
-        hc = (run or {}).get("hc") or {}
-        code = self._proc.returncode if self._proc is not None else None
-        return bool(self._watchdog_fired or hc.get("timed_out") or code == _EXIT_TIMEOUT)
-
-    def _terminal_error(self, ordinal: Optional[int]) -> Optional[SandboxRunError]:
-        """Why the run cannot give this word a result, or None (a crash)."""
-        if self._cancelled:
-            return SandboxRunError("The sandbox run was cancelled; hc was stopped.")
-        run = script.load_run_json(self._sandbox_dir)
-        hc = (run or {}).get("hc") or {}
-        if self._timed_out(run):
-            in_flight = hc.get("in_flight_index")
-            if not isinstance(in_flight, int) or isinstance(in_flight, bool):
-                in_flight = self._index_of_ordinal(
-                    self._tail_ordinal if self._tail_ordinal is not None else ordinal)
-            self._in_flight_index = in_flight
-            return SandboxRunError(
-                "hc did not finish within its timeout and was stopped.",
-                error_code="parser_timeout",
-                facts={"timeout_seconds": int(self._launch.timeout_seconds),
-                       "in_flight_index": in_flight,
-                       "words_total": len(self._wordforms)},
-            )
-        code = self._proc.returncode if self._proc is not None else None
-        text = self._read_stdout() or ""
-        load_error = hc_output.detect_load_error(text)
-        if load_error is not None or (not self._parse_blocks and code not in (0, None)):
-            return SandboxRunError(
-                "hc could not start on this configuration; its message is in "
-                "sandbox/hc-stdout.txt.",
-                error_code="parser_job_failed",
-                facts={"failure": "crashed",
-                       "log_path": str(self._sandbox_dir / _STDOUT),
-                       "load_error": load_error.line if load_error else None},
-            )
-        return None
-
-    def _read_stdout(self) -> Optional[str]:
-        try:
-            return (self._sandbox_dir / _STDOUT).read_bytes().decode("utf-8-sig", errors="replace")
-        except OSError:
-            return None
+        await worker.terminate()
 
     # -- the record ---------------------------------------------------------
+
+    def _section(self) -> Dict[str, Any]:
+        with contextlib.suppress(Exception):
+            meta = self._record.read_meta()
+            return dict((meta.sandbox if meta is not None else None) or {})
+        return {}
 
     def _update_sandbox(self, **updates: Any) -> None:
         """Merge into `meta.sandbox`: dicts merge, advisories union, rest replace.
@@ -916,85 +860,124 @@ class SandboxClient:
                 section[key] = combined
             else:
                 section[key] = value
-        versions = section.get("versions") or {}
-        if isinstance(versions, dict):
-            from .. import parser_probe
-
-            skew = parser_probe.hermitcrab_versions_differ(
-                versions.get("hc_tool"), versions.get("fieldworks_hermitcrab"))
-            section["version_skew"] = skew
-            if skew:
-                codes = list(section.get("advisories") or [])
-                if parser_probe.ADVISORY_HC_ENGINE_VERSION_SKEW not in codes:
-                    codes.append(parser_probe.ADVISORY_HC_ENGINE_VERSION_SKEW)
-                section["advisories"] = codes
         try:
             self._record.set_section(sandbox=section)
         except MetaUnreadable as exc:
             _log.warning("Run %s: meta.sandbox update %s skipped: %s",
                          self.run_id, sorted(updates), exc)
 
+    def _write_stderr(self) -> None:
+        with contextlib.suppress(Exception):
+            text = "\n".join(self._stderr_lines)
+            self._record.write_sandbox_file(_STDERR, text + ("\n" if text else ""))
+
     def _write_output(self) -> None:
-        text = self._read_stdout()
-        if text is not None:
-            with contextlib.suppress(Exception):
-                self._record.write_sandbox_file(_OUTPUT, hc_output.strip_banner(text))
+        """The recorded lines rendered for reading: the `hc_output` section."""
+        with contextlib.suppress(Exception):
+            self._record.write_sandbox_file(_OUTPUT, render_results(self._results))
 
-    def _fold_run_json(self) -> None:
-        """`run.json` into `meta.sandbox` (FR-023), counters into divergences."""
-        run = script.load_run_json(self._sandbox_dir) or {}
-        hc = run.get("hc") if isinstance(run.get("hc"), dict) else {}
-        timed_out = self._timed_out(run)
-
-        in_flight = self._in_flight_index
-        if in_flight is None:
-            candidate = hc.get("in_flight_index")
-            if isinstance(candidate, int) and not isinstance(candidate, bool):
-                in_flight = candidate
-            elif timed_out or self._cancelled:
-                in_flight = self._index_of_ordinal(self._tail_ordinal)
+    def _fold_outcome(self) -> None:
+        """The worker's outcome into `meta.sandbox.worker` and `run.json`."""
+        in_flight = self._in_flight_index if (self._watchdog_fired or self._cancelled) else None
         in_flight_word = None
-        if in_flight is not None and self._items and 0 <= in_flight < len(self._items):
-            in_flight_word = self._items[in_flight].get("word")
+        if in_flight is not None and 0 <= in_flight < len(self._wordforms):
+            in_flight_word = self._wordforms[in_flight]
 
         divergences: List[str] = []
         agreement: Optional[bool] = None
-        if timed_out:
+        engine_counters: Optional[Dict[str, int]] = None
+        if self._watchdog_fired:
             counters_state = COUNTERS_UNAVAILABLE_TIMEOUT
-        elif self._counters is not None and not self._cancelled:
-            counters_state = COUNTERS_OK
-            reconcile = (classify.reconcile_test_counters if self._mode == MODE_TEST
-                         else classify.reconcile_parse_counters)
-            divergences = [d.text for d in reconcile(self._results, self._counters)]
-            agreement = not divergences
-        else:
+        elif self._cancelled:
             counters_state = COUNTERS_UNAVAILABLE
+        else:
+            counters_state = COUNTERS_OK
+            if self._mode == MODE_TEST:
+                counters = classify.test_counters_from(self._running)
+                found = classify.reconcile_test_counters(self._results, counters)
+            else:
+                counters = classify.parse_counters_from(self._running)
+                found = classify.reconcile_parse_counters(self._results, counters)
+            engine_counters = counters.to_dict()
+            divergences = [d.text for d in found]
+            agreement = not divergences
 
-        load_error = hc_output.detect_load_error(self._read_stdout() or "")
-        duration = run.get("duration_ms")
-        if not isinstance(duration, int) and self._launched_at is not None:
+        duration = None
+        if self._launched_at is not None:
             duration = int((time.monotonic() - self._launched_at) * 1000)
-        hc_section = {
-            "exit_code": hc.get("exit_code"),
-            "timed_out": timed_out,
-            "killed": bool(hc.get("killed") or self._killed),
+        exit_code = self._worker.exit_code if self._worker is not None else None
+        worker_section = {
+            "exit_code": exit_code,
+            "timed_out": self._watchdog_fired,
+            "killed": self._killed,
             "in_flight_index": in_flight,
             "in_flight_word": in_flight_word,
             "duration_ms": duration,
             "counters": counters_state,
-            "hc_counters": self._counters.to_dict() if self._counters else None,
+            "engine_counters": engine_counters,
             "counter_agreement": agreement,
-            "stdout_bom": hc.get("stdout_bom"),
-            "script_exit_code": self._proc.returncode if self._proc is not None else None,
-            "watchdog_fired": self._watchdog_fired,
-            "load_error": load_error.line if load_error else None,
         }
-        version = run.get("hcparse_version")
-        if not isinstance(version, str):
-            with contextlib.suppress(Exception):
-                version = script.read_hcparse_version()
-        self._update_sandbox(hc=hc_section, versions={"hcparse": version})
+        baseline = self._baseline or {}
+        with contextlib.suppress(Exception):
+            self._record.write_sandbox_file(script.RUN_JSON, json.dumps({
+                "worker": worker_section,
+                "engine_version": baseline.get("engine_version"),
+                "parameters_applied": baseline.get("parameters_applied"),
+                "id_map": self._id_map_state,
+            }, indent=2) + "\n")
+        self._update_sandbox(worker=worker_section)
         if divergences:
             meta = self._record.read_meta()
             existing = list((meta.counter_divergences if meta is not None else None) or [])
             self._record.set_section(counter_divergences=existing + divergences)
+
+
+def _render_morphs(morphs: List[Mapping[str, Any]]) -> str:
+    parts = []
+    for morph in morphs:
+        marks = "".join(mark for flag, mark in (("guessed", "?"), ("is_circumfix", "~"),
+                                                  ("user_added", "+"))
+                        if morph.get(flag))
+        parts.append("%s %s%s" % (morph.get("form"), morph.get("gloss"), marks))
+    return "  ".join(parts)
+
+
+def render_results(lines: List[Mapping[str, Any]]) -> str:
+    """Recorded parse or assertion lines as text (FR-038's `hc_output`).
+
+    One block per word, in order: `[n] word: outcome`, then one indented
+    line per analysis (`form gloss` pairs; `?` guessed, `~` circumfix,
+    `+` user-added). An assertion line adds its classification and the
+    missing/unexpected parses. For reading only -- never parsed back.
+    """
+    out: List[str] = []
+    for line in lines:
+        parse = line.get("parse") or {}
+        head = "[%d] %s: %s" % (int(line.get("index", 0)) + 1, line.get("wordform"),
+                                parse.get("outcome"))
+        if parse.get("position") is not None:
+            head += " at position %s" % parse["position"]
+        if parse.get("error_message"):
+            head += " (%s)" % parse["error_message"]
+        assertion = line.get("assertion")
+        if assertion:
+            head += " -> %s" % assertion.get("classification")
+            if assertion.get("error_reason"):
+                head += " (%s)" % assertion["error_reason"]
+        out.append(head)
+        if assertion:
+            for label in ("missing", "unexpected"):
+                for pairs in assertion.get(label) or []:
+                    out.append("    %s: %s" % (label, _render_morphs(pairs)))
+        else:
+            for analysis in parse.get("analyses") or []:
+                out.append("    " + _render_morphs(analysis.get("morphs") or []))
+    return "\n".join(out) + ("\n" if out else "")
+
+
+def _load_error_line(error: Mapping[str, Any]) -> str:
+    """One loader callback as one line: `<type> (<id>): <message>`."""
+    kind = error.get("type") or "Error"
+    ident = error.get("id")
+    where = f" ({ident})" if ident else ""
+    return f"{kind}{where}: {error.get('message') or ''}".strip()

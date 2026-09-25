@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parser-check CP5 T034 + T063: the invariants of the packaged `hcparse.ps1`
-(contracts/hcparse.md, section 7), for `-Mode Generate`, `-Mode Parse` and
-`-Mode Test`.
+parser-check CP5 T034 (re-plan T107): the invariants of the packaged
+`hcparse.ps1` (contracts/hcparse.md, section 7) for `-Mode Generate`, its one
+remaining mode. Parse and Test moved into the parse worker's `--sandbox`
+mode (contracts/sandbox-worker.md); the script refuses them with exit 2.
 
 These tests drive the REAL script through
 `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File`
 (`sandbox.script.build_argv`), with stdin closed, against the fake
-GenerateHCConfig and the fake `hc` (tests/fakes/).
+GenerateHCConfig (tests/fakes/).
 
 The contract these tests pin (the seam Python's sandbox modules build on):
 
@@ -34,63 +35,8 @@ Generate mode (`-GenerateHCConfigPath -FwData -WorkDir -ConfigOut -RunDir
     timeout), timed_out, config_bytes, writing_completed}, `copy` {bytes =
     sum of the allowlisted file sizes, deleted}; no `hc` key.
 
-Parse mode (`-HcPath -Config (-WordFile | -Words) -TimeoutSeconds -RunDir`)
-  * `-WordFile` is read as UTF-8, one item per line (a blank line is an
-    item with reason `empty`); `-Words` is split on `[,\\s]+`. Order is kept,
-    nothing is de-duplicated.
-  * `<RunDir>/dispatch.json` = {"schema": "flextoolsmcp.hc-dispatch/1",
-    "mode": "parse", "items": [...]}, written before hc starts. Each item is
-    exactly {index, word, sent, line, reason, flags}: `index` is the 0-based
-    input position; a word without `"` is sent as `parse "<w>"`; a word with
-    `"` and no `'` as `parse '<w>'`; both quotes -> sent false,
-    `both_quote_characters`; empty -> `empty`; tab / CR / LF ->
-    `control_character`; unsent items have `line: null`; sent items have
-    `reason: null`; `flags` is always a list, and a word starting with `-`
-    is sent (plain `parse "-w"`) with `flags: ["leading_dash_unverified"]`.
-  * `<RunDir>/hc-script.txt` is UTF-8 with NO BOM: the `line` of every sent
-    item, in order, then `stats -p`; never `tracing on`.
-  * hc is invoked with exactly `-i <Config> -s <RunDir>/hc-script.txt`
-    (never `-o`, never `-c`).
-  * `<RunDir>/hc-stdout.txt` is hc's UTF-16LE stdout decoded, written as
-    UTF-8 without a BOM (and without U+FEFF), line by line; `hc-stderr.txt`
-    is UTF-8. On timeout every line hc emitted before the kill is kept.
-  * RunDir ends holding exactly dispatch.json, hc-script.txt, hc-stdout.txt,
-    hc-stderr.txt and run.json; nothing is written outside it.
-  * Exit 0 on completion, 5 when hc fails to start (exit -1, `Load Error:`),
-    6 on timeout (hc's process tree is killed).
-  * run.json: as above with `mode: "parse"`, `inputs` {config, word_count =
-    len(items), timeout_seconds}, `hc` {exit_code (null on timeout),
-    timed_out, killed, in_flight_index (the dispatch `index` of the word in
-    flight at the kill, else null), stdout_bom (bool)}, `items` (== the
-    dispatch items); no `generate` key.
-
-Test mode (`-HcPath -Config -AssertionFile -TimeoutSeconds -RunDir`; T063)
-  * `-AssertionFile` is the corpus JSON (data-model section 5):
-    {"schema": "flextoolsmcp.hc-corpus/1", "assertions": [{"word",
-    "expected": [[{"form", "gloss"}, ...], ...]}, ...]}. Unreadable JSON, an
-    unknown schema, or a structurally malformed assertion exits 2 before
-    anything is written.
-  * dispatch.json has `mode: "test"` and one item per assertion, with the
-    same keys as Parse mode ({index, word, sent, line, reason, flags}). The
-    word is checked and quoted exactly as in Parse mode.
-  * A sent line is `test -p <f:g|f:g> [-p ...] [--] <quoted word>`: one
-    `-p` per expected parse, in order; morphs joined by `|`; every morph is
-    `form:gloss` (an empty gloss is written `?`, F-7; an empty form is
-    allowed); `--` only before a word starting with `-` (also flagged
-    `leading_dash_unverified`). `expected: []` is `test <quoted word>` with
-    no `-p`: hc's TestCommand then passes only when the word has no parse,
-    and otherwise lists the parses under `Actual parses:`.
-  * Not expressible (sent false, never emitted): a form or gloss with `|`,
-    `:` or a backslash -> `delimiter_in_expectation`; with `'`, `"` or
-    whitespace -> `quote_or_space_in_expectation`; an expected parse with
-    zero morphs -> `empty_expected_parse`. The word's own faults (`empty`,
-    `control_character`, `both_quote_characters`) are checked first.
-  * hc-script.txt (UTF-8, no BOM) never contains a backslash (one before a
-    delimiter makes hc's Split loop forever) and never a morph without `:`
-    (F-5's leak); it ends with `stats -t`.
-  * run.json: `mode: "test"`, `inputs.word_count` = number of assertions,
-    `hc` as in Parse mode with `in_flight_index` taken from `Testing "..."`
-    headers, `items` == the dispatch items.
+Retired modes (T107): `-Mode Parse` and `-Mode Test` exit 2, run nothing and
+write nothing (no run.json).
 
 Every invocation's console output (stdout and stderr) is ASCII-only
 (FR-021). The script text never names `Program Files` / `LOCALAPPDATA`
@@ -128,27 +74,6 @@ PROGRESS_LINES = [
     "Writing completed.",
 ]
 
-GRAMMAR = {
-    "language": "Fake Lang",
-    "words": {
-        "membaca": [[["mem", "ACT"], ["baca", "read"]]],
-        "xyz": [],
-        "q#": {"invalid_segment": 2},
-        "don't": [[["don't", "NEG"]]],
-        "-an": [[["-an", "NMLZ"]]],
-    },
-    "default": [],
-}
-
-NON_LATIN = [
-    "\u014b\u0300omb\u00e9",  # Latin + combining grave
-    "\u0928\u092e\u0938\u094d\u0924\u0947",  # Devanagari
-    "\u0633\u0644\u0627\u0645",  # Arabic
-    "\u6f22\u5b57",  # CJK
-    "\U00010400a",  # astral plane (2 UTF-16 code units)
-]
-
-PARSE_FILES = {"dispatch.json", "hc-script.txt", "hc-stdout.txt", "hc-stderr.txt", "run.json"}
 GENERATE_FILES = {"hc-config.xml", "generate-config.log", "run.json"}
 
 
@@ -523,483 +448,32 @@ def test_generate_bad_parameter_exits_2(gen_env, override):
 
 
 # ---------------------------------------------------------------------------
-# Parse mode
+# Retired modes (T107)
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def parse_env(tmp_path, sandbox_root, fake_hc):
-    config = fake_hc.write_config(
-        sandbox_root / "config-cache" / "FakeProj" / "0123456789abcdef" / "hc-config.xml",
-        GRAMMAR,
-    )
-    run_dir = tmp_path / "records" / "run-0001" / "sandbox"
-    run_dir.mkdir(parents=True)
-    inputs = tmp_path / "inputs"
-    inputs.mkdir()
-    env = SimpleNamespace(tmp=tmp_path, root=sandbox_root, hc=fake_hc, config=config,
-                          run_dir=run_dir)
-
-    def word_file(words: List[str]) -> Path:
-        path = inputs / "words.txt"
-        path.write_bytes(("\n".join(words) + "\n").encode("utf-8"))
-        return path
-
-    def run(words: Optional[List[str]] = None, **overrides):
-        params = dict(HcPath=fake_hc.path, Config=config, TimeoutSeconds=30, RunDir=run_dir)
-        if words is not None:
-            params["WordFile"] = word_file(words)
-        params.update(overrides)
-        return run_script(tmp_path, "Parse", **params)
-
-    env.word_file = word_file
-    env.run = run
-    return env
-
-
-def _item(index, word, line=None, reason=None, flags=()):
-    return {
-        "index": index,
-        "word": word,
-        "sent": line is not None,
-        "line": line,
-        "reason": reason,
-        "flags": list(flags),
-    }
-
-
-QUOTING_WORDS = [
-    "membaca",
-    "don't",
-    'say"hi',
-    "a\"b'c",
-    "",
-    "tab\there",
-    "-an",
-    "membaca",
-    "two words",
-    NON_LATIN[0],
-]
-
-QUOTING_ITEMS = [
-    _item(0, "membaca", 'parse "membaca"'),
-    _item(1, "don't", 'parse "don\'t"'),
-    _item(2, 'say"hi', "parse 'say\"hi'"),
-    _item(3, "a\"b'c", reason="both_quote_characters"),
-    _item(4, "", reason="empty"),
-    _item(5, "tab\there", reason="control_character"),
-    _item(6, "-an", 'parse "-an"', flags=["leading_dash_unverified"]),
-    _item(7, "membaca", 'parse "membaca"'),  # never de-duplicated here
-    _item(8, "two words", 'parse "two words"'),
-    _item(9, NON_LATIN[0], 'parse "%s"' % NON_LATIN[0]),
-]
-
-
-def test_dispatch_items_quoting_and_order(parse_env):
-    res = parse_env.run(QUOTING_WORDS)
-
-    assert res.code == 0, (res.code, res.stderr)
-    dispatch = read_json(parse_env.run_dir / "dispatch.json")
-    assert dispatch["schema"] == "flextoolsmcp.hc-dispatch/1"
-    assert dispatch["mode"] == "parse"
-    assert dispatch["items"] == QUOTING_ITEMS
-
-
-def test_hc_script_is_utf8_without_bom_and_ends_with_stats(parse_env):
-    parse_env.run(QUOTING_WORDS)
-
-    raw = (parse_env.run_dir / "hc-script.txt").read_bytes()
-    assert not raw.startswith(UTF8_BOM)
-    lines = read_utf8_lines(parse_env.run_dir / "hc-script.txt")
-    sent = [item["line"] for item in QUOTING_ITEMS if item["sent"]]
-    assert lines == sent + ["stats -p"]
-    assert not any("tracing" in line for line in lines)
-    assert NON_LATIN[0].encode("utf-8") in raw
-
-
-def test_hc_is_invoked_with_only_i_and_s(parse_env):
-    parse_env.run(["membaca", "xyz"])
-
-    calls = parse_env.hc.invocations()
-    assert len(calls) == 1
-    argv = calls[0]["argv"]
-    assert len(argv) == 4 and argv[0] == "-i" and argv[2] == "-s", argv
-    assert same_path(argv[1], parse_env.config)
-    assert same_path(argv[3], parse_env.run_dir / "hc-script.txt")
-    for banned in ("-o", "-c", "--output-file", "--continue", "/o", "/c"):
-        assert not any(a == banned or a.startswith(banned + "=") for a in argv), banned
-    # hc read the script the tests see.
-    assert calls[0]["script"].splitlines() == read_utf8_lines(parse_env.run_dir / "hc-script.txt")
-
-
-@pytest.mark.parametrize("words_arg, expected", [
-    ("a,b c", ["a", "b", "c"]),
-    ("alpha, beta,,gamma  delta", ["alpha", "beta", "gamma", "delta"]),
-])
-def test_words_parameter_split_on_commas_and_whitespace(parse_env, words_arg, expected):
-    res = parse_env.run(Words=words_arg)
-
-    assert res.code == 0, (res.code, res.stderr)
-    items = read_json(parse_env.run_dir / "dispatch.json")["items"]
-    assert [i["word"] for i in items] == expected
-    assert [i["index"] for i in items] == list(range(len(expected)))
-    assert all(i["sent"] for i in items)
-
-
-def test_parse_success_run_json_and_files(parse_env):
-    before = snapshot(parse_env.root)
-
-    res = parse_env.run(["membaca", "xyz", "q#", "a\"b'c"])
-
-    assert res.code == 0, (res.code, res.stderr)
-    assert {p.name for p in parse_env.run_dir.iterdir()} == PARSE_FILES
-    assert snapshot(parse_env.root) == before  # nothing written outside RunDir
-    dispatch = read_json(parse_env.run_dir / "dispatch.json")
-    run = read_json(parse_env.run_dir / "run.json")
-    assert_run_json_common(run, "parse", 0)
-    assert "generate" not in run
-    assert same_path(run["inputs"]["config"], parse_env.config)
-    assert run["inputs"]["word_count"] == 4
-    assert run["inputs"]["timeout_seconds"] == 30
-    assert run["items"] == dispatch["items"]
-    hc = run["hc"]
-    assert hc["exit_code"] == 0
-    assert hc["timed_out"] is False
-    assert hc["killed"] is False
-    assert hc["in_flight_index"] is None
-    assert isinstance(hc["stdout_bom"], bool)
-
-    out = read_utf8_lines(parse_env.run_dir / "hc-stdout.txt")
-    assert out[0] == 'Reading configuration file "hc-config.xml"... done.'
-    assert "Fake Lang loaded." in out
-    assert 'Parsing "membaca"' in out
-    assert "Morphs: mem baca" in out
-    assert "Gloss:  ACT read" in out
-    assert "The word contains an invalid segment at position 2." in out
-    assert "# of parses: 3, successful: 1, failed: 1, error: 1" in out
-    read_utf8_lines(parse_env.run_dir / "hc-stderr.txt")  # UTF-8, no BOM
-
-
-@pytest.mark.parametrize("bom", [None, "1"])
-def test_non_latin_round_trip_through_utf16(parse_env, bom):
-    parse_env.hc.set(mode="echo", bom=bom)
-
-    res = parse_env.run(NON_LATIN)
-
-    assert res.code == 0, (res.code, res.stderr)
-    script_lines = read_utf8_lines(parse_env.run_dir / "hc-script.txt")
-    assert read_utf8_lines(parse_env.run_dir / "hc-stdout.txt") == script_lines
-    raw = (parse_env.run_dir / "hc-stdout.txt").read_bytes()
-    for word in NON_LATIN:
-        assert ('parse "%s"' % word).encode("utf-8") in raw
-    run = read_json(parse_env.run_dir / "run.json")
-    assert isinstance(run["hc"]["stdout_bom"], bool)
-    assert [i["word"] for i in run["items"]] == NON_LATIN
-
-
-def test_console_output_is_ascii_with_non_latin_data(parse_env):
-    # run_script asserts ASCII on every invocation; this one carries the
-    # most non-ASCII data, including in paths the script might echo.
-    res = parse_env.run(NON_LATIN + ["a\"b'c", "tab\there"])
-    assert res.code == 0, (res.code, res.stderr)
-    assert res.stdout  # it does say something (progress prose)
-
-
-def test_hc_start_failure_exits_5(parse_env):
-    parse_env.hc.set(mode="load_error", load_error="The feature 'bogus' is not defined.")
-    before = snapshot(parse_env.root)
-
-    res = parse_env.run(["membaca", "xyz"])
-
-    assert res.code == 5, (res.code, res.stderr)
-    assert snapshot(parse_env.root) == before
-    dispatch = read_json(parse_env.run_dir / "dispatch.json")  # written before hc started
-    assert [i["word"] for i in dispatch["items"]] == ["membaca", "xyz"]
-    run = read_json(parse_env.run_dir / "run.json")
-    assert_run_json_common(run, "parse", 5)
-    assert run["hc"]["exit_code"] == -1
-    assert run["hc"]["timed_out"] is False
-    assert run["hc"]["in_flight_index"] is None
-    out = read_utf8_lines(parse_env.run_dir / "hc-stdout.txt")
-    assert "Load Error: The feature 'bogus' is not defined." in out
-
-
-def test_hc_timeout_keeps_pre_kill_lines_and_names_in_flight_word(parse_env):
-    # Item 0 is never sent, so the in-flight dispatch index (3) differs from
-    # hc's own word counter (2).
-    words = ["a\"b'c", "w0", "w1", "w2", "w3"]
-    parse_env.hc.set(sleep_on_word=2, sleep_seconds=60)
-    before = snapshot(parse_env.root)
-
-    res = parse_env.run(words, TimeoutSeconds=3)
-
-    assert res.code == 6, (res.code, res.stderr)
-    assert res.elapsed < 45
-    assert_tree_killed(str(parse_env.config))
-    assert snapshot(parse_env.root) == before
-
-    run = read_json(parse_env.run_dir / "run.json")
-    assert_run_json_common(run, "parse", 6)
-    hc = run["hc"]
-    assert hc["timed_out"] is True
-    assert hc["killed"] is True
-    assert hc["exit_code"] is None
-    assert hc["in_flight_index"] == 3
-    assert run["inputs"]["timeout_seconds"] == 3
-    assert [i["word"] for i in run["items"]] == words
-
-    out = read_utf8_lines(parse_env.run_dir / "hc-stdout.txt")
-    normalised = [re.sub(r"^Parse time: \d+ms$", "Parse time: <n>ms", line) for line in out]
-
-    def block(word):
-        return ['Parsing "%s"' % word, "No valid parses.", "Parse time: <n>ms", ""]
-
-    assert normalised == [
-        'Reading configuration file "hc-config.xml"... done.',
-        "Compiling rules... done.",
-        "Fake Lang loaded.",
-        "",
-    ] + block("w0") + block("w1") + ['Parsing "w2"']
-
-
-@pytest.mark.parametrize("override", [
-    {"TimeoutSeconds": None},
-    {"TimeoutSeconds": "abc"},
-    {"HcPath": None},
-    {"Config": "missing"},
-    {"WordFile": "missing"},
-])
-def test_parse_bad_parameter_exits_2(parse_env, override):
-    if override.get("Config") == "missing":
-        override = {"Config": parse_env.tmp / "nope.xml"}
-    if override.get("WordFile") == "missing":
-        override = {"WordFile": parse_env.tmp / "nope.txt"}
-    params = {"WordFile": parse_env.word_file(["membaca"])}
-    params.update(override)
-
-    res = parse_env.run(**params)
-
-    assert res.code == 2, (res.code, res.stderr)
-    assert list(parse_env.run_dir.iterdir()) == []
-    assert parse_env.hc.invocations() == []
-
-
-# ---------------------------------------------------------------------------
-# Test mode (T063)
-# ---------------------------------------------------------------------------
-
-
-def _m(form, gloss):
-    return {"form": form, "gloss": gloss}
-
-
-ROOT_FORM = "ŋomb"
-
-TEST_GRAMMAR = {
-    "language": "Fake Lang",
-    "words": {
-        "membaca": [[["mem", "ACT"], ["baca", "read"]]],
-        "baca": [[["baca", "read"]]],
-        "xyz": [],
-        "kata": [[["kata", ""]]],  # hc prints the empty gloss as `?` (F-7)
-        "x": [[["", "ZERO"], ["x", "X"]]],
-        "-an": [[["-an", "NMLZ"]]],
-        ROOT_FORM + "é": [[[ROOT_FORM, "ROOT"], ["é", "FV"]]],
-    },
-    "default": [],
-}
-
-#: (assertion, expected dispatch item), in corpus order.
-TEST_CASES = [
-    ({"word": "membaca", "expected": [[_m("mem", "ACT"), _m("baca", "read")]]},
-     _item(0, "membaca", 'test -p mem:ACT|baca:read "membaca"')),
-    ({"word": "baca", "expected": [[_m("baca", "read")], [_m("baca", "book")]]},
-     _item(1, "baca", 'test -p baca:read -p baca:book "baca"')),
-    ({"word": "xyz", "expected": []},
-     _item(2, "xyz", 'test "xyz"')),
-    ({"word": "don't", "expected": []},
-     _item(3, "don't", 'test "don\'t"')),
-    ({"word": 'say"hi', "expected": []},
-     _item(4, 'say"hi', "test 'say\"hi'")),
-    ({"word": "kata", "expected": [[_m("kata", "")]]},
-     _item(5, "kata", 'test -p kata:? "kata"')),
-    ({"word": "x", "expected": [[_m("", "ZERO"), _m("x", "X")]]},
-     _item(6, "x", 'test -p :ZERO|x:X "x"')),
-    ({"word": "-an", "expected": [[_m("-an", "NMLZ")]]},
-     _item(7, "-an", 'test -p -an:NMLZ -- "-an"', flags=["leading_dash_unverified"])),
-    ({"word": ROOT_FORM + "é",
-      "expected": [[_m(ROOT_FORM, "ROOT"), _m("é", "FV")]]},
-     _item(8, ROOT_FORM + "é",
-           'test -p %s:ROOT|é:FV "%sé"' % (ROOT_FORM, ROOT_FORM))),
-    # Not expressible: never sent.
-    ({"word": "p1", "expected": [[_m("a|b", "G")]]},
-     _item(9, "p1", reason="delimiter_in_expectation")),
-    ({"word": "p2", "expected": [[_m("ab", "G:H")]]},
-     _item(10, "p2", reason="delimiter_in_expectation")),
-    ({"word": "p3", "expected": [[_m("a\\b", "G")]]},
-     _item(11, "p3", reason="delimiter_in_expectation")),
-    ({"word": "p4", "expected": [[_m("ab", "it's")]]},
-     _item(12, "p4", reason="quote_or_space_in_expectation")),
-    ({"word": "p5", "expected": [[_m('a"b', "G")]]},
-     _item(13, "p5", reason="quote_or_space_in_expectation")),
-    ({"word": "p6", "expected": [[_m("ab", "two words")]]},
-     _item(14, "p6", reason="quote_or_space_in_expectation")),
-    ({"word": "p7", "expected": [[_m("ab", "G\t")]]},
-     _item(15, "p7", reason="quote_or_space_in_expectation")),
-    ({"word": "p8", "expected": [[_m("ab", "G")], []]},
-     _item(16, "p8", reason="empty_expected_parse")),
-    ({"word": "a\"b'c", "expected": []},
-     _item(17, "a\"b'c", reason="both_quote_characters")),
-    ({"word": "", "expected": []},
-     _item(18, "", reason="empty")),
-    ({"word": "t\tab", "expected": []},
-     _item(19, "t\tab", reason="control_character")),
-]
-
-
-def corpus(assertions, schema="flextoolsmcp.hc-corpus/1"):
-    return {"schema": schema, "name": "baseline", "project": "FakeProj",
-            "created_at": "2026-09-24T00:00:00Z", "assertions": assertions}
-
-
-@pytest.fixture
-def test_env(tmp_path, sandbox_root, fake_hc):
-    config = fake_hc.write_config(
-        sandbox_root / "config-cache" / "FakeProj" / "0123456789abcdef" / "hc-config.xml",
-        TEST_GRAMMAR,
-    )
-    run_dir = tmp_path / "records" / "run-0002" / "sandbox"
-    run_dir.mkdir(parents=True)
-    inputs = tmp_path / "inputs"
-    inputs.mkdir()
-    env = SimpleNamespace(tmp=tmp_path, root=sandbox_root, hc=fake_hc, config=config,
-                          run_dir=run_dir)
-
-    def assertion_file(doc) -> Path:
-        path = inputs / "corpus.json"
-        if isinstance(doc, str):
-            path.write_bytes(doc.encode("utf-8"))
-        else:
-            path.write_bytes(json.dumps(doc, ensure_ascii=False, indent=2).encode("utf-8"))
-        return path
-
-    def run(doc=None, **overrides):
-        params = dict(HcPath=fake_hc.path, Config=config, TimeoutSeconds=30, RunDir=run_dir)
-        if doc is not None:
-            params["AssertionFile"] = assertion_file(doc)
-        params.update(overrides)
-        return run_script(tmp_path, "Test", **params)
-
-    env.run = run
-    return env
-
-
-def test_test_mode_dispatch_items(test_env):
-    res = test_env.run(corpus([a for a, _ in TEST_CASES]))
-
-    assert res.code == 0, (res.code, res.stderr)
-    dispatch = read_json(test_env.run_dir / "dispatch.json")
-    assert dispatch["schema"] == "flextoolsmcp.hc-dispatch/1"
-    assert dispatch["mode"] == "test"
-    assert dispatch["items"] == [item for _, item in TEST_CASES]
-
-
-def test_test_mode_script_is_safe_and_ends_with_stats_t(test_env):
-    test_env.run(corpus([a for a, _ in TEST_CASES]))
-
-    raw = (test_env.run_dir / "hc-script.txt").read_bytes()
-    assert not raw.startswith(UTF8_BOM)
-    assert b"\\" not in raw  # a backslash before a delimiter hangs hc's Split
-    lines = read_utf8_lines(test_env.run_dir / "hc-script.txt")
-    assert lines == [item["line"] for _, item in TEST_CASES if item["sent"]] + ["stats -t"]
-    assert not any("tracing" in line for line in lines)
-    for line in lines[:-1]:
-        tokens = line.split(" ")
-        for k, token in enumerate(tokens):
-            if token == "-p":
-                for morph in tokens[k + 1].split("|"):
-                    assert ":" in morph, (line, morph)  # F-5: never a morph without `:`
-
-
-def test_test_mode_runs_hc_and_writes_run_json(test_env):
-    before = snapshot(test_env.root)
-
-    res = test_env.run(corpus([a for a, _ in TEST_CASES]))
-
-    assert res.code == 0, (res.code, res.stderr)
-    assert {p.name for p in test_env.run_dir.iterdir()} == PARSE_FILES
-    assert snapshot(test_env.root) == before
-    calls = test_env.hc.invocations()
-    assert len(calls) == 1
-    argv = calls[0]["argv"]
-    assert len(argv) == 4 and argv[0] == "-i" and argv[2] == "-s", argv
-    assert same_path(argv[1], test_env.config)
-    assert same_path(argv[3], test_env.run_dir / "hc-script.txt")
-
-    run = read_json(test_env.run_dir / "run.json")
-    assert_run_json_common(run, "test", 0)
-    assert "generate" not in run
-    assert run["inputs"]["word_count"] == len(TEST_CASES)
-    assert run["inputs"]["timeout_seconds"] == 30
-    assert run["items"] == read_json(test_env.run_dir / "dispatch.json")["items"]
-    assert run["hc"]["exit_code"] == 0
-    assert run["hc"]["timed_out"] is False
-    assert run["hc"]["in_flight_index"] is None
-
-    out = read_utf8_lines(test_env.run_dir / "hc-stdout.txt")
-    assert 'Testing "membaca"' in out
-    assert 'Testing "-an"' in out
-    # 9 sent; only `baca` fails (the grammar has no `book` parse). An F-5
-    # leak of a bad -p into a later test would fail more of them.
-    assert "# of tests: 9, passed: 8, failed: 1, error: 0" in out
-
-
-def test_test_mode_timeout_names_the_in_flight_assertion(test_env):
-    # Item 0 is unsent, so hc's word 1 is dispatch index 2.
-    assertions = [
-        {"word": "p1", "expected": [[_m("a|b", "G")]]},
-        {"word": "membaca", "expected": [[_m("mem", "ACT"), _m("baca", "read")]]},
-        {"word": "xyz", "expected": []},
-        {"word": "kata", "expected": [[_m("kata", "")]]},
-    ]
-    test_env.hc.set(sleep_on_word=1, sleep_seconds=60)
-
-    res = test_env.run(corpus(assertions), TimeoutSeconds=3)
-
-    assert res.code == 6, (res.code, res.stderr)
-    assert_tree_killed(str(test_env.config))
-    run = read_json(test_env.run_dir / "run.json")
-    assert_run_json_common(run, "test", 6)
-    assert run["hc"]["timed_out"] is True
-    assert run["hc"]["killed"] is True
-    assert run["hc"]["in_flight_index"] == 2
-    out = read_utf8_lines(test_env.run_dir / "hc-stdout.txt")
-    assert out[-1] == 'Testing "xyz"'
-    assert "Test passed." in out
-
-
-def test_test_mode_hc_start_failure_exits_5(test_env):
-    test_env.hc.set(mode="load_error")
-
-    res = test_env.run(corpus([{"word": "xyz", "expected": []}]))
-
-    assert res.code == 5, (res.code, res.stderr)
-    run = read_json(test_env.run_dir / "run.json")
-    assert_run_json_common(run, "test", 5)
-    assert run["hc"]["exit_code"] == -1
-
-
-@pytest.mark.parametrize("doc", [
-    "{not json",
-    corpus([], schema="flextoolsmcp.hc-corpus/99"),
-    {"schema": "flextoolsmcp.hc-corpus/1"},  # no assertions
-    corpus([{"expected": []}]),  # no word
-    corpus([{"word": "a", "expected": "x"}]),  # expected not a list
-    corpus([{"word": "a", "expected": [[{"form": "a"}]]}]),  # morph without gloss
-])
-def test_test_mode_malformed_corpus_exits_2(test_env, doc):
-    res = test_env.run(doc)
-
-    assert res.code == 2, (res.code, res.stderr)
-    assert list(test_env.run_dir.iterdir()) == []
-    assert test_env.hc.invocations() == []
+def test_build_argv_refuses_a_retired_mode():
+    assert script.MODES == ("Generate",)
+    for mode in ("Parse", "Test"):
+        with pytest.raises(ValueError):
+            script.build_argv(mode, RunDir="x")
+
+
+@pytest.mark.parametrize("mode", ["Parse", "Test", "parse"])
+def test_the_script_refuses_a_retired_mode_with_exit_2(tmp_path, mode):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    argv = [*script.ARGV_PREFIX, str(script.script_path()), "-Mode", mode,
+            "-RunDir", str(run_dir)]
+    proc = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True,
+                          timeout=RUN_TIMEOUT)
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
+    assert_ascii("console stderr", proc.stderr)
+    assert b"retired" in proc.stderr
+    assert list(run_dir.iterdir()) == [], "a refused mode writes nothing"
+
+
+def test_the_script_keeps_no_parse_or_test_machinery(script_text):
+    for gone in ("$HcPath", "$WordFile", "$Words", "$AssertionFile", "$TimeoutSeconds",
+                 "hc-script.txt", "dispatch.json", "hc-stdout.txt", "Invoke-HcRun"):
+        assert gone not in script_text, gone

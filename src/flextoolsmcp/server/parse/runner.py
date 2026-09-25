@@ -1138,11 +1138,11 @@ class ParseRunner:
             if isinstance(in_flight, int) and not isinstance(in_flight, bool):
                 where = (
                     f" Word {in_flight + 1} of {handle.words_total} was in flight when "
-                    f"it was stopped (meta.sandbox.hc.in_flight_index and in_flight_word)."
+                    f"it was stopped (meta.sandbox.worker.in_flight_index and in_flight_word)."
                 )
             hint = (
-                f"hc did not finish within {timeout} seconds and its process tree was "
-                f"stopped.{where} {handle.words_completed} completed words are recorded "
+                f"The sandbox parse worker did not finish within {timeout} seconds and "
+                f"was stopped.{where} {handle.words_completed} completed words are recorded "
                 f"and readable with flextools_parse_log. Raise timeout_seconds or send "
                 f"fewer words; flextools_grammar_health shows what the grammar costs."
             )

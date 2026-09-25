@@ -1,64 +1,39 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parser-check CP5 T040 (FR-011, FR-016..FR-020, FR-023, FR-035, SC-004,
-SC-008): `server/sandbox/client.py` -- the per-run SANDBOX client -- driven
-through a REAL `ParseRunner._execute_run` against the fake `hc`, the fake
-GenerateHCConfig and the real packaged `hcparse.ps1` (Windows only where the
-script runs).
+parser-check CP5 re-plan T102 (FR-011, FR-016..FR-020, FR-035, FR-038,
+FR-047, FR-050, SC-004, SC-008): `server/sandbox/client.py` -- the per-run
+SANDBOX client -- driven through a REAL `ParseRunner._execute_run` against a
+real `--stub --sandbox` parse worker process (contracts/sandbox-worker.md).
 
-The API this file specifies
----------------------------
-``sandbox.client``::
+The stub worker is `_SandboxBackend` with only its two engine methods
+replaced: `--config` is read as a JSON script (see `_StubSandboxBackend`),
+so everything else -- the id map, parameters, shaping, outcome shapes, the
+wire protocol and `main()`'s routing -- is production code.
 
-    SANDBOX_ROLE = "sandbox"          # the runner's worker_role for this spine
-    POLL_INTERVAL_SECONDS = 0.1       # hc-stdout.txt is tailed this often
-    WATCHDOG_GRACE_SECONDS = 30       # watchdog = TimeoutSeconds + this
+What this file pins
+-------------------
+  * completed -- one results.jsonl line per word (SC-004); the summary
+    counts are the direct sum of the per-word lines (FR-017);
+  * a worker that dies mid-list -> `error_no_output` for the word in flight,
+    `not_reached` after it, never `not_parsed`; the run completes (FR-018);
+  * a config that will not load -> `parser_job_failed`/`engine_unavailable`,
+    zero results, the exception text in `worker-stderr.txt` (FR-016);
+  * an id map recorded invalid -> `parser_job_failed`/`id_map_invalid`
+    BEFORE any worker is spawned; no sidecar -> no `--id-map` and the
+    `shaping_not_applied` advisory (FR-050, contracts/tools.md 3 and 5.1);
+  * timeout -> the watchdog kills the worker, `parser_timeout` with the
+    completed words kept and the word in flight named (FR-020, SC-008);
+  * cancel -> the existing `cancelled` state, partial results kept;
+  * `meta.sandbox` carries `parser_parameters`, `parameters_applied`,
+    `parameters_source`, `engine_version` and `shaping` (FR-047, FR-050);
+  * `hc_stdout` / `hc_output` are served from `worker-stderr.txt` and a
+    rendered `hc-output.txt` (FR-038);
+  * the client never builds a message a sandbox worker refuses (D1).
 
-    SandboxLaunch(fwdata_path, hc_path, generate_hc_config_path=None,
-                  config_path=None, timeout_seconds=600,
-                  generate_timeout_seconds=600, watchdog_grace_seconds=30,
-                  check_engine=True, active_parser="HC", versions=None,
-                  hc_invoke_argv=None)
-        .from_value(SandboxLaunch | Mapping) -> SandboxLaunch  (unknown keys
-        ignored; None values take the defaults)
-        config_path None = the project cache (engine check + generation on a
-        miss); a path = a named sandbox's hc-config.xml, no generation.
-
-    SandboxClient(project_name, *, run_id, record, wordforms, launch)
-        the worker-client interface the runner already calls:
-        start(), parse_word(*, request_id, run_id, wordform, index_in_run, ...)
-        -> {"parse": <data-model 6.4 parse section>}, cancel_run(run_id),
-        is_running(), listen_to_run(run_id, cb), stop_listening(run_id),
-        terminate(), aclose(); plus finalize() (fold run.json into
-        meta.sandbox, write hc-output.txt, reconcile counters, delete the
-        copy -- idempotent, called by the runner before any terminal stage).
-
-    SandboxRunError(WorkerError) with .error_code and .facts.
-
-    _parse_argv(launch, *, config, word_file, run_dir) -> list[str]
-        the `-Mode Parse` argv (module-level; the watchdog test patches it).
-
-``ParseRunner.start_run(..., worker_role=SANDBOX_ROLE, spine="sandbox",
-sandbox={...}, sandbox_launch=SandboxLaunch | dict)`` builds a FRESH client
-per run (never `WorkerPool.get`, F-13), kept on ``handle.sandbox_client``.
-Terminal states:
-
-  * completed -- one results.jsonl line per word (SC-004); a mid-list hc
-    crash gives `error_no_output` for the word in flight and `not_reached`
-    after it, never `not_parsed` (FR-018);
-  * generation failed -> failure.error_code `parser_config_failed`, detail
-    ParserConfigFailedDetail with `run_id` = the run;
-  * hc could not load the config -> `parser_job_failed`, failure `crashed`,
-    zero results, `sandbox/hc-stdout.txt` holding hc's `Load Error:` line;
-  * timeout (the script's own or the Python watchdog) -> `parser_timeout`,
-    detail fields in order timeout_seconds, words_completed, run_id, hint;
-    only the completed words are in results.jsonl; the word in flight is
-    named in meta.sandbox.hc (in_flight_index, in_flight_word) (SC-008);
-  * cancel -> the existing `cancelled` state; the tree is killed, partial
-    results kept.
-
-After EVERY terminal path the `work/` root holds nothing (FR-011, R-11).
+The project-cache path (Generate mode through the fake GenerateHCConfig) is
+Windows-only, like the fake it drives. After EVERY terminal path the
+`work/` root holds nothing (FR-011, R-11).
 """
 
 from __future__ import annotations
@@ -66,80 +41,56 @@ from __future__ import annotations
 import ast
 import asyncio
 import json
-import os
-import random
-import subprocess
-import sys
 import time
 from pathlib import Path
-from typing import List
 
 import pytest
 
 from flextoolsmcp.server.parse.runner import ParseRunner
 from flextoolsmcp.server.parse.stages import RunStage
-from flextoolsmcp.server.sandbox import cache, engine, paths, workdir
+from flextoolsmcp.server.sandbox import cache, classify, engine, lcm_ids, paths, workdir
 
 PROJECT = "FakeProj"
+SANDBOX = "x"
 RUN_WAIT = 90
 
-GRAMMAR = {
-    "language": "Fake Lang",
+#: The stub engine's script (worker_main._StubSandboxBackend).
+SCRIPT = {
     "words": {
-        "membaca": [[["mem", "ACT"], ["baca", "read"]]],
-        "baca": [[["baca", "read"]], [["baca", "book"]]],
+        "membaca": [[{"form": "mem", "gloss": "ACT", "form_id": 11, "msa_id": 101},
+                     {"form": "baca", "gloss": "read", "form_id": 10, "msa_id": 100}]],
+        "baca": [[{"form": "baca", "gloss": "read", "form_id": 10, "msa_id": 100}],
+                 [{"form": "baca", "gloss": "book", "form_id": 12, "msa_id": 102}]],
+        "tebak": [[{"form": "tebak", "gloss": "tebak", "guessed": True,
+                    "form_id": 10, "msa_id": 100}]],
         "xyz": [],
-        "q#": {"invalid_segment": 2},
-        "-an": [[["-an", "NMLZ"]]],
+        "q#": {"invalid_segment": 1},
+        "boom": {"error": "the engine threw"},
     },
-    "default": [],
+}
+
+#: A valid sidecar covering every id the script uses.
+IDS = {
+    "10": {"guid": "g10", "class": "MoStemAllomorph", "role": "form",
+           "morph_type_guid": "d7f713e5-e8cf-11d3-9764-00c04f186933"},
+    "11": {"guid": "g11", "class": "MoAffixAllomorph", "role": "form",
+           "morph_type_guid": "d7f713db-e8cf-11d3-9764-00c04f186933"},
+    "12": {"guid": "g12", "class": "MoStemAllomorph", "role": "form",
+           "morph_type_guid": "d7f713e5-e8cf-11d3-9764-00c04f186933"},
+    "100": {"guid": "m100", "class": "MoStemMsa", "role": "msa"},
+    "101": {"guid": "m101", "class": "MoInflAffMsa", "role": "msa"},
+    "102": {"guid": "m102", "class": "MoStemMsa", "role": "msa"},
 }
 
 TIMEOUT_FIELDS = ["timeout_seconds", "words_completed", "run_id", "hint"]
+JOB_FAILED_FIELDS = ["state_at_failure", "failure", "words_completed", "words_total",
+                     "run_id", "log_path"]
 
 
 def client_mod():
     import importlib
 
     return importlib.import_module("flextoolsmcp.server.sandbox.client")
-
-
-# ---------------------------------------------------------------------------
-# Process helpers (Windows)
-# ---------------------------------------------------------------------------
-
-
-def _kill_tree(pid: int) -> None:
-    subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)],
-                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL)
-
-
-def processes_with(token: str) -> List[int]:
-    """PIDs of running processes whose command line contains ``token``."""
-    env = dict(os.environ, HCPARSE_TEST_TOKEN=token)
-    query = (
-        "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and "
-        "$_.CommandLine.Contains($env:HCPARSE_TEST_TOKEN) } | "
-        "ForEach-Object { $_.ProcessId }"
-    )
-    proc = subprocess.run(
-        ["powershell", "-NoProfile", "-NonInteractive", "-Command", query],
-        stdin=subprocess.DEVNULL, capture_output=True, env=env, timeout=60,
-    )
-    pids = [int(x) for x in proc.stdout.decode("ascii", "replace").split() if x.isdigit()]
-    return [pid for pid in pids if pid != os.getpid()]
-
-
-def assert_tree_killed(token: str) -> None:
-    deadline = time.monotonic() + 8
-    alive = processes_with(token)
-    while alive and time.monotonic() < deadline:
-        time.sleep(0.5)
-        alive = processes_with(token)
-    for pid in alive:  # do not leak sleepers into later tests
-        _kill_tree(pid)
-    assert not alive, "a process is still running after the kill: %r" % alive
 
 
 # ---------------------------------------------------------------------------
@@ -156,43 +107,54 @@ def _fresh_module_state():
     engine.clear_engine_cache()
 
 
+class Env:
+    pass
+
+
 @pytest.fixture
-def env(tmp_path, sandbox_root, fake_hc, fake_generator, fake_project, monkeypatch):
-    monkeypatch.setenv("FAKE_PYTHON", sys.executable)
-    fake_generator.set(grammar=json.dumps(GRAMMAR))
-    runner = ParseRunner(record_dir=tmp_path / "parse-runs", grace_window=0.0, stub=True)
-    named = paths.sandbox_dir(PROJECT, "x") / "hc-config.xml"
-    fake_hc.write_config(named, GRAMMAR)
-
-    class Env:
-        pass
-
+def env(tmp_path, sandbox_root, fake_project):
     e = Env()
-    e.tmp_path, e.root, e.hc, e.gen, e.project = tmp_path, sandbox_root, fake_hc, fake_generator, fake_project
-    e.runner, e.named_config = runner, named
+    e.tmp_path, e.root, e.project = tmp_path, sandbox_root, fake_project
+    e.runner = ParseRunner(record_dir=tmp_path / "parse-runs", grace_window=0.0, stub=True)
+    e.sandbox_dir = paths.sandbox_dir(PROJECT, SANDBOX)
+    e.named_config = e.sandbox_dir / "hc-config.xml"
+
+    def script(value=None, **extra):
+        body = dict(SCRIPT if value is None else value)
+        body.update(extra)
+        e.named_config.parent.mkdir(parents=True, exist_ok=True)
+        e.named_config.write_text(json.dumps(body), encoding="utf-8")
+
+    def sidecar(valid=True, ids=None, invalid_ids=()):
+        path = e.sandbox_dir / lcm_ids.LCM_IDS_NAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "schema": lcm_ids.SCHEMA, "valid": valid,
+            "ids": IDS if ids is None else ids, "invalid_ids": list(invalid_ids),
+        }), encoding="utf-8")
+        return path
 
     def launch(*, named=True, timeout=30, **extra):
         value = {
             "fwdata_path": str(fake_project.fwdata),
-            "generate_hc_config_path": str(fake_generator.path),
-            "hc_path": str(fake_hc.path),
-            "hc_invoke_argv": [str(fake_hc.path)],
             "config_path": str(e.named_config) if named else None,
+            "sandbox_name": SANDBOX if named else None,
             "timeout_seconds": timeout,
+            "worker_stub": True,
         }
         value.update(extra)
         return value
 
-    e.launch = launch
-    yield e
-    # Never leak a sleeping fake into later tests.
-    if sys.platform == "win32":
-        for pid in processes_with(str(tmp_path)):
-            _kill_tree(pid)
+    e.script, e.sidecar, e.launch = script, sidecar, launch
+    script()
+    return e
 
 
-async def start(e, words, launch, *, config_kind="named_sandbox"):
+async def start(e, words, launch, *, config_kind="named_sandbox", mode="parse", extra=None):
     mod = client_mod()
+    sandbox = {"mode": mode, "config_source": {"kind": config_kind},
+               "truncated_by_limit": False, "advisories": []}
+    sandbox.update(extra or {})
     return await e.runner.start_run(
         project_name=PROJECT,
         wordforms=list(words),
@@ -202,8 +164,7 @@ async def start(e, words, launch, *, config_kind="named_sandbox"):
         engine_at_submission="HC",
         worker_role=mod.SANDBOX_ROLE,
         spine="sandbox",
-        sandbox={"mode": "parse", "config_source": {"kind": config_kind},
-                 "truncated_by_limit": False, "advisories": []},
+        sandbox=sandbox,
         sandbox_launch=launch,
         grace_window=0.0,
     )
@@ -242,417 +203,51 @@ async def wait_for(predicate, timeout=30.0):
     return False
 
 
+class SpawnSpy:
+    """Wraps the client's `ParseWorkerClient` to record each spawn's argv."""
+
+    def __init__(self, monkeypatch, *, boom=False):
+        mod = client_mod()
+        real = mod.ParseWorkerClient
+        self.spawns = []
+
+        def factory(*args, **kwargs):
+            self.spawns.append(kwargs.get("sandbox"))
+            if boom:
+                raise AssertionError("no worker may be spawned on this path")
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(mod, "ParseWorkerClient", factory)
+
+    @property
+    def argv(self):
+        assert self.spawns, "no worker was spawned"
+        return self.spawns[-1].argv()
+
+
 # ---------------------------------------------------------------------------
-# Module surface (no script needed)
+# Module surface
 # ---------------------------------------------------------------------------
 
 
-def test_module_constants():
+def test_module_constants_and_launch_defaults():
     mod = client_mod()
     assert mod.SANDBOX_ROLE == "sandbox"
-    assert mod.POLL_INTERVAL_SECONDS == pytest.approx(0.1)
-    assert mod.WATCHDOG_GRACE_SECONDS == 30
-    launch = mod.SandboxLaunch.from_value(
-        {"fwdata_path": "a.fwdata", "hc_path": "hc.exe", "timeout_seconds": None,
-         "hc_invoke_argv": ["hc.exe"], "unknown": 1})
-    assert launch.timeout_seconds == 600
-    assert launch.watchdog_grace_seconds == 30
-    assert launch.config_path is None
-
-
-def test_client_never_reads_the_script_stdout_for_data():
-    """FR-023: run.json is the hand-off; the console is never parsed (AST)."""
-    source = Path(client_mod().__file__).read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute):
-            assert node.attr not in ("communicate", "PIPE"), (
-                "client.py must not pipe or communicate with the script (line %d)" % node.lineno)
-            if node.attr in ("stdout", "stderr"):
-                base = node.value
-                ok = (isinstance(base, ast.Attribute) and base.attr == "subprocess") or (
-                    isinstance(base, ast.Name) and base.id in ("subprocess", "sys"))
-                assert ok, "client.py reads a process stream (line %d)" % node.lineno
-        if isinstance(node, ast.keyword) and node.arg in ("stdout", "stderr"):
-            value = node.value
-            assert isinstance(value, ast.Attribute) and value.attr == "DEVNULL", (
-                "the script's %s must go to DEVNULL (line %d)" % (node.arg, value.lineno))
-        if isinstance(node, ast.Name):
-            assert node.id != "PIPE"
-
-
-async def test_watchdog_backstops_a_script_that_ignores_its_timeout(env, monkeypatch):
-    """The Python watchdog fires at TimeoutSeconds + grace and kills the tree."""
-    mod = client_mod()
-    token = "watchdog-sleeper-%s" % env.tmp_path.name
-
-    def sleeper_argv(launch, *, config, word_file, run_dir):
-        return [sys.executable, "-c", "import time  # %s\ntime.sleep(120)" % token]
-
-    monkeypatch.setattr(mod, "_parse_argv", sleeper_argv)
-    started = time.monotonic()
-    handle = await run(env, ["membaca", "xyz"], env.launch(timeout=1, watchdog_grace_seconds=1))
-    elapsed = time.monotonic() - started
-
-    assert handle.stage is RunStage.FAILED
-    assert handle.failure.error_code == "parser_timeout"
-    detail = handle.failure.detail
-    assert [k for k in detail if k != "error_code"] == TIMEOUT_FIELDS
-    assert detail["words_completed"] == 0 and detail["run_id"] == handle.run_id
-    assert detail["timeout_seconds"] == 1
-    assert elapsed < 30, "the watchdog must fire near TimeoutSeconds + grace"
-    assert meta_sandbox(handle)["hc"]["timed_out"] is True
-    if sys.platform == "win32":
-        assert_tree_killed(token)
-    assert_work_empty()
-
-
-async def test_client_exception_after_copy_still_deletes_it(env, monkeypatch):
-    """The client's own finally deletes the copy on an unexpected exception."""
-    made = []
-    real_create = workdir.create
-
-    def create(run_id, **kw):
-        made.append(real_create(run_id, **kw))
-        return made[-1]
-
-    async def boom(*a, **kw):
-        assert any(p.exists() for p in made), "the copy dir exists during generation"
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(workdir, "create", create)
-    monkeypatch.setattr(cache, "ensure_entry", boom)
-    handle = await run(env, ["membaca"], env.launch(named=False), config_kind="project_cache")
-    assert handle.stage is RunStage.FAILED
-    assert made and not any(p.exists() for p in made)
-    assert meta_sandbox(handle)["copy"]["cleanup"] == "deleted"
-    assert_work_empty()
-
-
-# ---------------------------------------------------------------------------
-# The real script (Windows)
-# ---------------------------------------------------------------------------
-
-win = pytest.mark.windows_only
-
-
-@win
-async def test_named_sandbox_run_completes_and_folds_run_json(env):
-    words = ["membaca", "baca", "xyz", "q#", 'a"b\'c', "-an"]
-    handle = await run(env, words, env.launch())
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    lines = results(handle)
-    assert [line["wordform"] for line in lines] == words
-    assert [line["index"] for line in lines] == list(range(len(words)))
-    assert outcomes(handle) == ["parsed", "parsed", "not_parsed", "invalid_segment",
-                                "not_expressible", "parsed"]
-    assert lines[0]["parse"]["analyses"][0]["rendered_morphs"] == ["mem", "baca"]
-    assert lines[1]["parse"]["analysis_count"] == 2
-    assert lines[3]["parse"]["position"] == 2
-    assert "leading_dash_unverified" in lines[5]["parse"]["flags"]
-
-    sb = meta_sandbox(handle)
-    assert sb["mode"] == "parse" and sb["truncated_by_limit"] is False
-    assert sb["versions"]["hcparse"]
-    assert sb["hc"]["exit_code"] == 0 and sb["hc"]["timed_out"] is False
-    assert sb["hc"]["counters"] == "ok"
-    assert sb["copy"]["cleanup"] == "not_made"
-    # hc-output.txt = hc-stdout.txt minus the load banner
-    stdout = handle.record.read_sandbox_file("hc-stdout.txt")
-    output = handle.record.read_sandbox_file("hc-output.txt")
-    assert "loaded." in stdout and "loaded." not in output
-    assert output.lstrip().startswith('Parsing "membaca"')
-    assert handle.record.read_sandbox_file("run.json")
-    assert handle.record.read_sandbox_file("generate-config.log")
-    # A fresh client per run, outside the pool (F-13).
-    assert handle.sandbox_client is not None
-    assert env.runner.pool.active_workers() == []
-    assert_work_empty()
-
-
-@win
-async def test_streaming_advances_words_completed_live(env):
-    env.hc.set(word_delay_ms=250)
-    words = ["membaca", "baca", "xyz"] * 4
-    handle = await start(env, words, env.launch())
-    seen = set()
-    deadline = time.monotonic() + RUN_WAIT
-    while not handle.is_terminal and time.monotonic() < deadline:
-        seen.add(handle.words_completed)
-        persisted = handle.record.read_meta().words_completed
-        assert persisted <= handle.words_completed
-        await asyncio.sleep(0.05)
-    await asyncio.wait_for(handle.done.wait(), timeout=RUN_WAIT)
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    live = {n for n in seen if 0 < n < len(words)}
-    assert len(live) >= 3, "words_completed must advance while hc runs: %r" % sorted(seen)
-    assert len(results(handle)) == len(words)
-
-
-@win
-async def test_timeout_mid_list_is_parser_timeout_with_partial_results(env):
-    env.hc.set(sleep_on_word=40, sleep_seconds=600)
-    words = ["w%03d" % i for i in range(100)]
-    handle = await run(env, words, env.launch(timeout=8))
-
-    assert handle.stage is RunStage.FAILED
-    assert handle.failure.error_code == "parser_timeout"
-    detail = handle.failure.detail
-    assert [k for k in detail if k != "error_code"] == TIMEOUT_FIELDS
-    assert detail["timeout_seconds"] == 8
-    assert detail["words_completed"] == 40
-    assert detail["run_id"] == handle.run_id
-    assert detail["hint"].isascii() and "w040" not in detail["hint"]
-    assert handle.words_completed == 40
-    lines = results(handle)
-    assert len(lines) == 40
-    assert [line["wordform"] for line in lines] == words[:40]
-    hc = meta_sandbox(handle)["hc"]
-    assert hc["timed_out"] is True
-    assert hc["in_flight_index"] == 40 and hc["in_flight_word"] == "w040"
-    assert hc["counters"] == "unavailable_timeout"
-    assert_tree_killed(str(env.named_config))
-    assert_work_empty()
-
-
-@win
-async def test_cancel_kills_the_tree_and_keeps_partial_results(env):
-    env.hc.set(sleep_on_word=3, sleep_seconds=600)
-    words = ["membaca", "baca", "xyz", "membaca", "baca"]
-    handle = await start(env, words, env.launch(timeout=120))
-    assert await wait_for(lambda: handle.words_completed == 3, timeout=60)
-    await env.runner.cancel_run(handle.run_id)
-    await asyncio.wait_for(handle.done.wait(), timeout=30)
-    assert handle.stage is RunStage.CANCELLED
-    assert len(results(handle)) == 3
-    assert_tree_killed(str(env.named_config))
-    assert_work_empty()
-
-
-@win
-async def test_crash_mid_list_is_error_no_output_then_not_reached(env):
-    env.hc.set(crash_on_word=2)
-    words = ["membaca", "xyz", "baca", "xyz", "membaca"]
-    handle = await run(env, words, env.launch())
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    got = outcomes(handle)
-    assert got == ["parsed", "not_parsed", "error_no_output", "not_reached", "not_reached"]
-    assert "not_parsed" not in got[2:], "a word with no output is never not_parsed (FR-018)"
-    assert results(handle)[2]["parse"]["analyses"] is None
-    assert meta_sandbox(handle)["hc"]["exit_code"] not in (0, None)
-
-
-@win
-async def test_randomised_words_sent_equals_results(env):
-    rng = random.Random(5)
-    pool = ["membaca", "baca", "xyz", "q#", "-an", 'a"b\'c', "zzz", "don't", 'say "hi"']
-    for trial in range(3):
-        words = [rng.choice(pool) + ("" if rng.random() < 0.5 else str(i))
-                 for i in range(rng.randint(5, 25))]
-        words = list(dict.fromkeys(words))
-        crash = rng.choice([None, rng.randrange(len(words))])
-        env.hc.set(crash_on_word=crash)
-        handle = await run(env, words, env.launch())
-        assert handle.stage is RunStage.COMPLETED, (trial, handle.failure)
-        lines = results(handle)
-        assert [line["wordform"] for line in lines] == words, trial
-        assert [line["index"] for line in lines] == list(range(len(words)))
-        assert handle.words_completed == len(words)
-        env.hc.set(crash_on_word=None)
-
-
-@win
-async def test_hc_load_error_is_a_crashed_job_with_zero_results(env):
-    env.hc.set(mode="load_error", load_error="The morpher could not be built.")
-    handle = await run(env, ["membaca", "baca"], env.launch())
-    assert handle.stage is RunStage.FAILED
-    assert handle.failure.error_code == "parser_job_failed"
-    detail = handle.failure.detail
-    assert detail["failure"] == "crashed"
-    assert detail["run_id"] == handle.run_id
-    assert detail["words_completed"] == 0 and detail["words_total"] == 2
-    keys = [k for k in detail if k != "error_code"]
-    assert keys == ["state_at_failure", "failure", "words_completed", "words_total",
-                    "run_id", "log_path", "load_error"]
-    assert detail["load_error"].startswith("Load Error:")
-    assert results(handle) == []
-    assert "Load Error:" in handle.record.read_sandbox_file("hc-stdout.txt")
-    assert_work_empty()
-
-
-@win
-async def test_counter_divergence_is_recorded_not_resolved(env):
-    env.hc.set(parse_stats="3,3,0,0")
-    handle = await run(env, ["membaca", "xyz", "baca"], env.launch())
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    divergences = handle.record.read_meta().counter_divergences
-    assert any("successful" in text for text in divergences)
-    assert outcomes(handle) == ["parsed", "not_parsed", "parsed"]
-
-
-# -- the project-cache path (Generate mode) ----------------------------------
-
-
-@win
-async def test_cold_then_warm_generation(env):
-    cold = await run(env, ["membaca"], env.launch(named=False), config_kind="project_cache")
-    assert cold.stage is RunStage.COMPLETED, cold.failure
-    sb = meta_sandbox(cold)
-    assert sb["generation"]["reused_cache"] is False
-    assert sb["config_source"]["kind"] == "project_cache" and sb["config_source"]["cache_key"]
-    assert sb["copy"]["cleanup"] == "deleted" and sb["copy"]["bytes"] > 0
-    assert_work_empty()
-
-    warm = await run(env, ["membaca"], env.launch(named=False), config_kind="project_cache")
-    assert warm.stage is RunStage.COMPLETED, warm.failure
-    wsb = meta_sandbox(warm)
-    assert wsb["generation"]["reused_cache"] is True
-    assert wsb["generation"]["cache_key"] == sb["config_source"]["cache_key"]
-    assert wsb["copy"]["cleanup"] == "not_made"
-    log = warm.record.read_sandbox_file("generate-config.log")
-    first, _, rest = log.partition("\n")
-    assert sb["config_source"]["cache_key"] in first and "reuse" in first.lower()
-    entry = cache.lookup(PROJECT, sb["config_source"]["cache_key"], touch=False)
-    assert rest == entry.log_path.read_text(encoding="utf-8")
-    assert_work_empty()
-
-
-@win
-async def test_generation_failure_is_parser_config_failed_with_run_id(env):
-    env.gen.set(mode="crash")
-    handle = await run(env, ["membaca"], env.launch(named=False), config_kind="project_cache")
-    assert handle.stage is RunStage.FAILED
-    assert handle.failure.error_code == "parser_config_failed"
-    detail = handle.failure.detail
-    assert detail["run_id"] == handle.run_id
-    assert Path(detail["log_path"]) == handle.record.sandbox_path("generate-config.log")
-    assert results(handle) == []
-    assert_work_empty()
-
-
-@win
-async def test_two_concurrent_jobs_get_distinct_clients_and_copies(env, monkeypatch):
-    env.gen.set(sleep_seconds=1)
-    made = []
-    real_create = workdir.create
-
-    def create(run_id, **kw):
-        made.append(real_create(run_id, **kw))
-        return made[-1]
-
-    monkeypatch.setattr(workdir, "create", create)
-    a, b = await asyncio.gather(
-        start(env, ["membaca"], env.launch(named=False), config_kind="project_cache"),
-        start(env, ["baca"], env.launch(named=False), config_kind="project_cache"),
-    )
-    await asyncio.wait_for(asyncio.gather(a.done.wait(), b.done.wait()), timeout=RUN_WAIT)
-    assert a.stage is RunStage.COMPLETED and b.stage is RunStage.COMPLETED
-    assert a.sandbox_client is not b.sandbox_client
-    assert len(made) == 2 and made[0] != made[1]
-    assert env.runner.pool.active_workers() == []
-    assert_work_empty()
-
-
-# -- the terminal-path matrix: work/ is empty after every one (FR-011) --------
-
-
-@win
-@pytest.mark.parametrize("path", ["success", "generator_fail", "hc_load_fail",
-                                  "timeout", "cancel_during_generation", "client_exception"])
-async def test_work_is_empty_after_every_terminal_path(env, monkeypatch, path):
-    launch = env.launch(named=False, timeout=6)
-    words = ["membaca", "baca", "xyz"]
-    expected = RunStage.COMPLETED
-    if path == "generator_fail":
-        env.gen.set(mode="crash")
-        expected = RunStage.FAILED
-    elif path == "hc_load_fail":
-        env.hc.set(mode="load_error")
-        expected = RunStage.FAILED
-    elif path == "timeout":
-        env.hc.set(sleep_on_word=1, sleep_seconds=600)
-        expected = RunStage.FAILED
-    elif path == "cancel_during_generation":
-        env.gen.set(sleep_seconds=600)
-        expected = RunStage.CANCELLED
-    elif path == "client_exception":
-        from flextoolsmcp.server.sandbox import classify
-
-        def broken(*a, **kw):
-            raise RuntimeError("client bug")
-
-        monkeypatch.setattr(classify, "word_result_to_line", broken)
-        expected = RunStage.FAILED
-
-    handle = await start(env, words, launch, config_kind="project_cache")
-    if path == "cancel_during_generation":
-        root = paths.work_root()
-        assert await wait_for(lambda: root.exists() and any(root.iterdir())), "copy dir made"
-        assert await wait_for(lambda: bool(env.gen.invocations())), "generator started"
-        await env.runner.cancel_run(handle.run_id)
-    await asyncio.wait_for(handle.done.wait(), timeout=RUN_WAIT)
-    assert handle.stage is expected, (path, handle.failure)
-    assert_work_empty()
-    if path == "cancel_during_generation":
-        # The generator ran on the copy under work/, so its command line
-        # names the work root: nothing may survive the cancel.
-        assert_tree_killed(str(paths.work_root()))
-
-
-# ---------------------------------------------------------------------------
-# Test mode (T072, US4): `-Mode Test -AssertionFile`, assertion lines
-# ---------------------------------------------------------------------------
-
-CORPUS_ASSERTIONS = [
-    {"word": "membaca", "expected": [[{"form": "mem", "gloss": "ACT"},
-                                      {"form": "baca", "gloss": "read"}]]},   # pass
-    {"word": "baca", "expected": [[{"form": "baca", "gloss": "read"}]]},      # new_ambiguity
-    {"word": "xyz", "expected": []},                                          # pass (no parse)
-    {"word": "zzz", "expected": [[{"form": "zzz", "gloss": "Z"}]]},           # regression
-    {"word": "q#", "expected": []},                                           # error: invalid_segment
-    {"word": 'a"b\'c', "expected": []},                                       # error: not_expressible
-]
-
-
-def write_corpus(e, assertions=CORPUS_ASSERTIONS):
-    path = paths.corpus_path(PROJECT, "baseline")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "schema": "flextoolsmcp.hc-corpus/1", "name": "baseline", "project": PROJECT,
-        "created_at": "2026-09-24T00:00:00Z", "assertions": assertions,
-    }, ensure_ascii=False), encoding="utf-8")
-    return path
-
-
-async def run_corpus(e, corpus, launch, assertions=CORPUS_ASSERTIONS):
-    words = [a["word"] for a in assertions]
-    mod = client_mod()
-    handle = await e.runner.start_run(
-        project_name=PROJECT, wordforms=words, level="batch",
-        scope_fingerprint={"scope_kind": "corpus", "engine": "HC", "word_count": len(words),
-                           "limit": None, "truncated": False},
-        engine_at_submission="HC", worker_role=mod.SANDBOX_ROLE, spine="sandbox",
-        sandbox={"mode": "test", "config_source": {"kind": "named_sandbox"},
-                 "corpus": {"name": "baseline", "assertion_count": len(words)},
-                 "truncated_by_limit": False, "advisories": []},
-        sandbox_launch=launch, grace_window=0.0,
-    )
-    await asyncio.wait_for(handle.done.wait(), timeout=RUN_WAIT)
-    return handle
+    assert mod.PARAMETERS_SOURCES == ("cache", "live_project", "flex_defaults")
+    launch = mod.SandboxLaunch.from_value({"fwdata_path": "a.fwdata", "timeout_seconds": None})
+    assert launch.timeout_seconds == mod.DEFAULT_TIMEOUT_SECONDS == 600
+    assert launch.config_path is None and launch.named is False
+    assert launch.mode == "parse"
+    with pytest.raises(ValueError):
+        mod.SandboxLaunch.from_value({"config_path": "c.xml"})
 
 
 def test_launch_accepts_assertion_file_or_its_alias():
     mod = client_mod()
-    a = mod.SandboxLaunch.from_value({"fwdata_path": "f", "hc_path": "h", "assertion_file": "c.json"})
-    b = mod.SandboxLaunch.from_value({"fwdata_path": "f", "hc_path": "h", "corpus_path": "c.json"})
+    a = mod.SandboxLaunch.from_value({"fwdata_path": "f", "assertion_file": "c.json"})
+    b = mod.SandboxLaunch.from_value({"fwdata_path": "f", "corpus_path": "c.json"})
     assert a.assertion_file == b.assertion_file == "c.json"
-    assert a.mode == "test"
-    argv = mod._parse_argv(a, config="cfg.xml", word_file="w.txt", run_dir="rd")
-    assert argv[argv.index("-Mode") + 1] == "Test"
-    assert argv[argv.index("-AssertionFile") + 1] == "c.json"
-    assert "-WordFile" not in argv
-    plain = mod.SandboxLaunch.from_value({"fwdata_path": "f", "hc_path": "h"})
-    assert plain.mode == "parse"
+    assert a.mode == b.mode == "test"
 
 
 def test_launch_names_undeclared_keys_in_a_warning(caplog):
@@ -660,11 +255,74 @@ def test_launch_names_undeclared_keys_in_a_warning(caplog):
     mod = client_mod()
     with caplog.at_level("WARNING", logger=mod.__name__):
         launch = mod.SandboxLaunch.from_value(
-            {"fwdata_path": "f", "hc_path": "h", "surprise_key": 1, "corpus_path": "c.json"})
+            {"fwdata_path": "f", "hc_path": "h", "corpus_path": "c.json"})
     assert launch.fwdata_path == "f"
     warned = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
-    assert any("surprise_key" in m for m in warned), warned
+    assert any("hc_path" in m for m in warned), warned
     assert not any("corpus_path" in m for m in warned), warned
+
+
+def test_every_key_the_handler_passes_is_declared(monkeypatch):
+    """Pattern audit sweep 5: `_sandbox_launch`'s keys all reach `SandboxLaunch`."""
+    import types
+    from dataclasses import fields
+
+    from flextoolsmcp.server.handlers import parse as parse_handler
+
+    mod = client_mod()
+    monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path", lambda project: Path("p.fwdata"))
+    monkeypatch.setattr(parse_handler, "_sandbox_config_path",
+                        lambda project, name: Path("sb") / name / "hc-config.xml")
+    plan = types.SimpleNamespace(
+        request=types.SimpleNamespace(sandbox="x", timeout_seconds=60),
+        project_name="P",
+        generator=types.SimpleNamespace(expected_path="ghc.exe"),
+        corpus=types.SimpleNamespace(path=Path("c.json")),
+    )
+    launch = parse_handler._sandbox_launch(plan)
+    declared = {f.name for f in fields(mod.SandboxLaunch)}
+    assert set(launch) <= declared, sorted(set(launch) - declared)
+    assert "hc_path" not in launch and "hc_invoke_argv" not in launch
+    assert launch["sandbox_name"] == "x"
+
+
+def test_client_never_builds_a_message_a_sandbox_worker_refuses():
+    """D1: refusal is the worker's second line of defense; this is the first.
+
+    The client calls only `start`, `parse_word` (batch, never
+    `restricted_to`), `terminate`, `aclose` and the listener hooks.
+    """
+    source = Path(client_mod().__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    refused = {"resolve", "engine_check", "resolve_scope", "parser_parameters",
+               "agent_probe", "filing_gate", "filing_preview", "filing_setup",
+               "filing_commit"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            assert node.func.attr not in refused, (
+                "client.py calls %s (line %d)" % (node.func.attr, node.lineno))
+            if node.func.attr == "parse_word":
+                keywords = {k.arg for k in node.keywords}
+                assert "restricted_to" not in keywords, node.lineno
+
+
+def test_render_results_reads_each_line():
+    mod = client_mod()
+    lines = [
+        classify.worker_parse_to_line(0, "membaca", {"outcome": "parsed", "analyses": [
+            {"morphs": [{"form": "mem", "gloss": "ACT"},
+                        {"form": "baca", "gloss": "read", "guessed": True}]}]}),
+        classify.worker_parse_to_line(1, "q#", {"outcome": "invalid_segment", "position": 1}),
+        classify.placeholder_line(2, "zz", classify.OUTCOME_NOT_REACHED),
+    ]
+    text = mod.render_results(lines)
+    assert text.splitlines() == [
+        "[1] membaca: parsed",
+        "    mem ACT  baca read?",
+        "[2] q#: invalid_segment at position 2",
+        "[3] zz: not_reached",
+    ]
+    assert mod.render_results([]) == ""
 
 
 def test_update_sandbox_never_writes_back_after_an_unreadable_read(tmp_path, monkeypatch, caplog):
@@ -686,8 +344,6 @@ def test_update_sandbox_never_writes_back_after_an_unreadable_read(tmp_path, mon
     real_read = record_mod.RunRecord.read_meta_strict
 
     def flaky_read(self):
-        # Unreadable for the client's read; readable again for set_section's,
-        # which is exactly the window where a {} merge would be written back.
         calls.append(1)
         if len(calls) == 1:
             raise record_mod.MetaUnreadable("meta.json held by a scanner")
@@ -696,264 +352,482 @@ def test_update_sandbox_never_writes_back_after_an_unreadable_read(tmp_path, mon
     monkeypatch.setattr(record_mod.RunRecord, "read_meta_strict", flaky_read)
     fake_self = types.SimpleNamespace(_record=rec, run_id=rec.run_id)
     with caplog.at_level("WARNING", logger=mod.__name__):
-        mod.SandboxClient._update_sandbox(fake_self, hc={"exit_code": 0})
+        mod.SandboxClient._update_sandbox(fake_self, worker={"exit_code": 0})
     assert rec.meta_path.read_text(encoding="utf-8") == good
     assert any("skipped" in r.getMessage() for r in caplog.records)
-    # Readable again: the next update merges into the recorded section.
-    mod.SandboxClient._update_sandbox(fake_self, hc={"exit_code": 0})
+    mod.SandboxClient._update_sandbox(fake_self, worker={"exit_code": 0})
     section = rec.read_meta().sandbox
     assert section["config_source"] == {"kind": "project_cache"}
-    assert section["hc"] == {"exit_code": 0}
-
-
-def test_every_key_the_handler_passes_is_declared(monkeypatch):
-    """Pattern audit sweep 5: `_sandbox_launch`'s keys all reach `SandboxLaunch`."""
-    import types
-    from dataclasses import fields
-
-    from flextoolsmcp.server.handlers import parse as parse_handler
-
-    mod = client_mod()
-    monkeypatch.setattr(parse_handler, "_sandbox_fwdata_path", lambda project: Path("p.fwdata"))
-    monkeypatch.setattr(parse_handler, "_sandbox_config_path",
-                        lambda project, name: Path("sb") / name / "hc-config.xml")
-    plan = types.SimpleNamespace(
-        request=types.SimpleNamespace(sandbox="x", timeout_seconds=60),
-        project_name="P",
-        generator=types.SimpleNamespace(expected_path="ghc.exe"),
-        hc=types.SimpleNamespace(path="hc.exe", invoke_argv=["hc.exe"]),
-        corpus=types.SimpleNamespace(path=Path("c.json")),
-    )
-    keys = set(parse_handler._sandbox_launch(plan))
-    declared = {f.name for f in fields(mod.SandboxLaunch)}
-    assert keys <= declared, sorted(keys - declared)
-
-
-@win
-async def test_corpus_run_classifies_each_assertion_and_reconciles_stats_t(env):
-    corpus = write_corpus(env)
-    handle = await run_corpus(env, corpus, env.launch(assertion_file=str(corpus)))
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    lines = results(handle)
-    assert [line["wordform"] for line in lines] == [a["word"] for a in CORPUS_ASSERTIONS]
-    got = [(line["assertion"]["classification"], line["assertion"]["error_reason"])
-           for line in lines]
-    assert got == [("pass", None), ("new_ambiguity", None), ("pass", None),
-                   ("regression", None), ("error", "invalid_segment"),
-                   ("error", "not_expressible")]
-    assert lines[1]["assertion"]["unexpected"] == [[{"form": "baca", "gloss": "book"}]]
-    assert lines[3]["assertion"]["missing"] == [[{"form": "zzz", "gloss": "Z"}]]
-    hc = meta_sandbox(handle)["hc"]
-    assert hc["counters"] == "ok"
-    assert hc["hc_counters"] == {"tests": 5, "passed": 2, "failed": 2, "error": 1}
-    assert hc["counter_agreement"] is True
-    assert meta_sandbox(handle)["corpus"] == {"name": "baseline", "assertion_count": 6}
-    assert "Testing" in handle.record.read_sandbox_file("hc-output.txt")
-    assert_work_empty()
-
-
-@win
-async def test_corpus_counter_divergence_is_recorded(env):
-    corpus = write_corpus(env)
-    env.hc.set(test_stats="5,5,0,0")
-    handle = await run_corpus(env, corpus, env.launch(assertion_file=str(corpus)))
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    assert meta_sandbox(handle)["hc"]["counter_agreement"] is False
-    assert any("passed" in t for t in handle.record.read_meta().counter_divergences)
-
-
-@win
-async def test_corpus_timeout_is_parser_timeout_with_counters_unavailable(env):
-    corpus = write_corpus(env)
-    env.hc.set(sleep_on_word=2, sleep_seconds=600)
-    handle = await run_corpus(env, corpus, env.launch(assertion_file=str(corpus), timeout=6))
-    assert handle.stage is RunStage.FAILED
-    assert handle.failure.error_code == "parser_timeout"
-    assert handle.failure.detail["words_completed"] == 2
-    assert len(results(handle)) == 2
-    hc = meta_sandbox(handle)["hc"]
-    assert hc["counters"] == "unavailable_timeout"
-    assert hc["in_flight_word"] == "xyz"
-    assert_tree_killed(str(env.named_config))
-    assert_work_empty()
-
-
-@win
-async def test_corpus_crash_gives_error_lines_never_a_classification(env):
-    corpus = write_corpus(env)
-    env.hc.set(crash_on_word=1)
-    handle = await run_corpus(env, corpus, env.launch(assertion_file=str(corpus)))
-    assert handle.stage is RunStage.COMPLETED, handle.failure
-    reasons = [line["assertion"]["error_reason"] for line in results(handle)]
-    assert reasons == [None, "error_no_output", "not_reached", "not_reached",
-                       "not_reached", "not_expressible"]
+    assert section["worker"] == {"exit_code": 0}
 
 
 # ---------------------------------------------------------------------------
-# The soak (T083, US6): 30 runs, including killed ones
-# ---------------------------------------------------------------------------
-
-SOAK_KINDS = ("cold", "warm", "crash", "timeout", "cancel", "cancel_generation")
-
-
-@win
-async def test_soak_thirty_runs_leaves_no_copies_three_entries_and_retention(env):
-    """After 30 runs of every terminal kind: work/ is empty, the project keeps
-    at most `cache.DEFAULT_KEEP` (3) entries, and run retention keeps exactly
-    the newest `retention.DEFAULT_RUNS_PER_PROJECT` (20) run directories."""
-    from flextoolsmcp.server.parse import retention
-
-    words = ["membaca", "baca", "xyz", "q#"]
-    stamp = [time.time() - 10_000]
-
-    def new_grammar_state():
-        # A new fwdata mtime is a new cache key: a cold run.
-        stamp[0] += 10
-        os.utime(env.project.fwdata, (stamp[0], stamp[0]))
-
-    handles = []
-    for i in range(30):
-        kind = SOAK_KINDS[i % len(SOAK_KINDS)]
-        env.hc.set(sleep_on_word=None, sleep_seconds=None, crash_on_word=None)
-        env.gen.set(sleep_seconds=None)
-        timeout = 30
-        if kind in ("cold", "cancel_generation"):
-            new_grammar_state()
-        if kind == "crash":
-            env.hc.set(crash_on_word=1)
-        elif kind == "timeout":
-            env.hc.set(sleep_on_word=1, sleep_seconds=600)
-            timeout = 4
-        elif kind == "cancel":
-            env.hc.set(sleep_on_word=2, sleep_seconds=600)
-        elif kind == "cancel_generation":
-            env.gen.set(sleep_seconds=600)
-        before = len(env.gen.invocations())
-        handle = await start(env, words, env.launch(named=False, timeout=timeout),
-                             config_kind="project_cache")
-        if kind == "cancel":
-            assert await wait_for(lambda h=handle: h.words_completed == 2, timeout=60), i
-            await env.runner.cancel_run(handle.run_id)
-        elif kind == "cancel_generation":
-            assert await wait_for(lambda b=before: len(env.gen.invocations()) > b, timeout=60), i
-            await env.runner.cancel_run(handle.run_id)
-        await asyncio.wait_for(handle.done.wait(), timeout=RUN_WAIT)
-        expected = {"cold": RunStage.COMPLETED, "warm": RunStage.COMPLETED,
-                    "crash": RunStage.COMPLETED, "timeout": RunStage.FAILED,
-                    "cancel": RunStage.CANCELLED,
-                    "cancel_generation": RunStage.CANCELLED}[kind]
-        assert handle.stage is expected, (i, kind, handle.failure)
-        if kind in ("cold", "warm", "crash"):
-            assert len(results(handle)) == len(words), (i, kind)
-        assert_work_empty()
-        handles.append(handle)
-
-    assert_work_empty()
-    cache_dir = paths.config_cache_dir(PROJECT)
-    entries = [p for p in cache_dir.iterdir() if p.is_dir()] if cache_dir.exists() else []
-    assert all(len(p.name) == 16 for p in entries), "no .partial survives: %r" % entries
-    assert 1 <= len(entries) <= cache.DEFAULT_KEEP, entries
-
-    record_dir = env.tmp_path / "parse-runs"
-    kept = sorted(p.name for p in record_dir.iterdir() if p.is_dir())
-    newest = sorted(h.run_id for h in handles[-retention.DEFAULT_RUNS_PER_PROJECT:])
-    assert kept == newest, "retention keeps exactly the newest 20 runs"
-    assert_tree_killed(str(paths.work_root()))
-    assert_tree_killed(str(env.tmp_path / "parse-runs"))
-
-
-# ---------------------------------------------------------------------------
-# Attribution hardening (SC-004, FR-018): a block is attributed to a sent
-# word only when hc's header names that word. Driven through the real
-# runner with a stand-in script (patched `_parse_argv`) that writes the
-# script's hand-off files verbatim, so these run on every platform.
+# A named-sandbox run through the real stub worker
 # ---------------------------------------------------------------------------
 
 
-def _stand_in_script(monkeypatch, files, exit_code=0):
-    """Patch `_parse_argv` to a Python one-liner writing `files` into RunDir."""
-    mod = client_mod()
-    payload = json.dumps(files, ensure_ascii=True)
-
-    def argv(launch, *, config, word_file, run_dir):
-        code = (
-            "import json, os, sys\n"
-            "files = json.loads(sys.argv[1]); run_dir = sys.argv[2]\n"
-            "order = ['dispatch.json', 'hc-script.txt', 'hc-stdout.txt', 'run.json']\n"
-            "for name in order:\n"
-            "    if name in files:\n"
-            "        open(os.path.join(run_dir, name), 'w', encoding='utf-8', newline='')"
-            ".write(files[name])\n"
-            "sys.exit(%d)\n" % exit_code
-        )
-        return [sys.executable, "-c", code, payload, str(run_dir)]
-
-    monkeypatch.setattr(mod, "_parse_argv", argv)
-
-
-def _hand_off(words, blocks, *, script_words=None):
-    items = [{"index": i, "word": w, "sent": True, "line": 'parse "%s"' % w,
-              "reason": None, "flags": []} for i, w in enumerate(words)]
-    script_lines = ['parse "%s"' % w for w in (words if script_words is None else script_words)]
-    stdout = ['Reading configuration file "hc-config.xml"... done.',
-              "Compiling rules... done.", "Fake Lang loaded.", ""]
-    for w in blocks:
-        stdout += ['Parsing "%s"' % w, "No valid parses.", "Parse time: 0ms", ""]
-    stdout += ["# of parses: %d, successful: 0, failed: %d, error: 0" % (len(blocks), len(blocks)), ""]
-    return {
-        "dispatch.json": json.dumps({"schema": "flextoolsmcp.hc-dispatch/1", "mode": "parse",
-                                     "items": items}, ensure_ascii=False),
-        "hc-script.txt": "\n".join(script_lines + ["stats -p"]) + "\n",
-        "hc-stdout.txt": "\r\n".join(stdout) + "\r\n",
-        "run.json": json.dumps({"schema": "flextoolsmcp.hcparse-run/1", "hcparse_version": "5.0.0",
-                                "mode": "parse", "exit_code": 0,
-                                "hc": {"exit_code": 0, "timed_out": False, "killed": False,
-                                       "in_flight_index": None, "stdout_bom": False},
-                                "items": items}),
-    }
-
-
-async def test_a_block_naming_another_word_is_never_shifted_onto_it(env, monkeypatch):
-    """hc skipped `b`: its block, and every later one, is not attributed."""
-    words = ["a", "b", "c", "d"]
-    _stand_in_script(monkeypatch, _hand_off(words, ["a", "c", "d"]))
+async def test_named_run_completes_with_one_line_per_word(env, monkeypatch):
+    spy = SpawnSpy(monkeypatch)
+    words = ["membaca", "baca", "xyz", "q#", "boom", "tebak"]
     handle = await run(env, words, env.launch())
     assert handle.stage is RunStage.COMPLETED, handle.failure
     lines = results(handle)
     assert [line["wordform"] for line in lines] == words
-    assert [line["parse"]["outcome"] for line in lines] == [
-        "not_parsed", "error_no_output", "error_no_output", "error_no_output"]
-    assert "attribution_mismatch" not in lines[0]["parse"]["flags"]
-    assert all("attribution_mismatch" in line["parse"]["flags"] for line in lines[1:])
-    notes = handle.record.read_meta().counter_divergences
-    assert any("attribution" in n.lower() and "dispatch index 1" in n for n in notes)
-    assert not any('"c"' in n or "'c'" in n for n in notes), "words stay in data fields"
-    mismatch = meta_sandbox(handle)["hc"]["attribution_mismatch"]
-    assert mismatch == {"index": 1, "sent_word": "b", "hc_word": "c"}
-    assert 'Parsing "c"' in handle.record.read_sandbox_file("hc-output.txt")
+    assert [line["index"] for line in lines] == list(range(len(words)))
+    assert outcomes(handle) == ["parsed", "parsed", "not_parsed", "invalid_segment",
+                                "error_no_output", "parsed"]
+    assert lines[0]["parse"]["analyses"][0]["rendered_morphs"] == ["mem", "baca"]
+    assert lines[1]["parse"]["analysis_count"] == 2
+    assert lines[3]["parse"]["position"] == 2        # 0-based 1 -> 1-based 2
+    assert "the engine threw" in lines[4]["parse"]["error_message"]
+    assert lines[5]["parse"]["analyses"][0]["guessed"] is True
+
+    # The spawn: a --sandbox worker on the named config, never pooled (F-13).
+    argv = spy.argv
+    assert argv[:3] == ["--sandbox", "--config", str(env.named_config)]
+    assert "--named-sandbox" in argv and "--hc-params" in argv
+    assert "--id-map" not in argv, "no sidecar -> no --id-map (FR-050)"
+    assert handle.sandbox_client is not None
+    assert env.runner.pool.active_workers() == []
+
+    sb = meta_sandbox(handle)
+    assert sb["worker"]["counters"] == "ok" and sb["worker"]["timed_out"] is False
+    assert sb["worker"]["exit_code"] == 0
+    # FR-017: the counts are the direct sum of the recorded lines.
+    tally = classify.tally_outcomes(lines)
+    assert sb["worker"]["engine_counters"] == classify.parse_counters_from(tally).to_dict()
+    assert sb["worker"]["counter_agreement"] is True
+    assert sb["copy"]["cleanup"] == "not_made"
+    assert sb["engine_version"] == "stub"
+    assert sb["shaping"] == {"applied": False, "id_map": "absent"}
+    assert "shaping_not_applied" in sb["advisories"]
+    assert sb["parameters_source"] == "flex_defaults"
+    assert sb["parser_parameters"] == engine.HC_PARAMETER_DEFAULTS
+    assert "max_alternatives" not in sb["parameters_applied"]
+
+    output = handle.record.read_sandbox_file("hc-output.txt")
+    assert output.startswith("[1] membaca: parsed\n    mem ACT  baca read\n")
+    assert "[4] q#: invalid_segment at position 2" in output
+    assert handle.record.read_sandbox_file("run.json")
+    assert handle.record.read_sandbox_file("generate-config.log").startswith(
+        "No generation ran for this run")
+    params = json.loads(handle.record.read_sandbox_file("hc-params.json"))
+    assert params == engine.HC_PARAMETER_DEFAULTS
     assert_work_empty()
 
 
-async def test_an_nfc_equivalent_header_is_the_same_word(env, monkeypatch):
-    composed, decomposed = "été", "été"
-    words = [composed, "x"]
-    _stand_in_script(monkeypatch, _hand_off(words, [decomposed, "x"]))
-    handle = await run(env, words, env.launch())
+async def test_a_valid_sidecar_is_passed_and_shaping_applies(env, monkeypatch):
+    spy = SpawnSpy(monkeypatch)
+    sidecar = env.sidecar()
+    handle = await run(env, ["membaca", "baca"], env.launch())
     assert handle.stage is RunStage.COMPLETED, handle.failure
-    assert outcomes(handle) == ["not_parsed", "not_parsed"]
-    assert "attribution_mismatch" not in (meta_sandbox(handle).get("hc") or {})
+    argv = spy.argv
+    assert argv[argv.index("--id-map") + 1] == str(sidecar)
+    sb = meta_sandbox(handle)
+    assert sb["shaping"] == {"applied": True, "id_map": "valid"}
+    assert "shaping_not_applied" not in sb["advisories"]
+    assert outcomes(handle) == ["parsed", "parsed"]
 
 
-async def test_script_commands_must_equal_sent_items(env, monkeypatch):
-    """dispatch.json says 4 sent, hc-script.txt holds 3: failed, nothing attributed."""
-    words = ["a", "b", "c", "d"]
-    _stand_in_script(monkeypatch, _hand_off(words, ["a", "c", "d"],
-                                            script_words=["a", "c", "d"]))
-    handle = await run(env, words, env.launch())
+async def test_an_id_absent_from_the_map_drops_the_analysis(env):
+    """Rule (d), end to end: `baca`'s second analysis uses form 12."""
+    ids = {k: v for k, v in IDS.items() if k != "12"}
+    env.sidecar(ids=ids)
+    handle = await run(env, ["baca"], env.launch())
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    line = results(handle)[0]
+    assert line["parse"]["analysis_count"] == 1
+    assert line["parse"]["analyses"][0]["morphs"][0]["gloss"] == "read"
+
+
+async def test_an_invalid_sidecar_is_refused_before_any_spawn(env, monkeypatch):
+    """contracts/tools.md section 3: the check order refuses first."""
+    spy = SpawnSpy(monkeypatch, boom=True)
+    env.sidecar(valid=False, invalid_ids=["77"])
+    handle = await run(env, ["membaca"], env.launch())
+    assert spy.spawns == [], "a worker was spawned against an invalid sidecar"
     assert handle.stage is RunStage.FAILED
     assert handle.failure.error_code == "parser_job_failed"
-    assert handle.failure.detail["failure"] == "crashed"
-    assert handle.failure.detail["log_path"].endswith("hc-script.txt")
+    detail = handle.failure.detail
+    assert [k for k in detail if k != "error_code"] == JOB_FAILED_FIELDS
+    assert detail["failure"] == "id_map_invalid"
+    assert detail["words_completed"] == 0 and detail["run_id"] == handle.run_id
+    assert "77" in handle.failure.message
+    assert meta_sandbox(handle)["shaping"] == {"applied": False, "id_map": "invalid"}
     assert results(handle) == []
-    assert meta_sandbox(handle)["hc"]["dispatch_mismatch"] == {"sent": 4, "script_commands": 3}
     assert_work_empty()
+
+
+async def test_an_unreadable_sidecar_is_invalid_not_absent(env, monkeypatch):
+    spy = SpawnSpy(monkeypatch, boom=True)
+    (env.sandbox_dir / lcm_ids.LCM_IDS_NAME).write_text("{not json", encoding="utf-8")
+    handle = await run(env, ["membaca"], env.launch())
+    assert spy.spawns == []
+    assert handle.failure.detail["failure"] == "id_map_invalid"
+
+
+async def test_an_unloadable_config_is_engine_unavailable_with_zero_results(env):
+    env.script({"load_fail": "The morpher could not be built."})
+    handle = await run(env, ["membaca", "baca"], env.launch())
+    assert handle.stage is RunStage.FAILED
+    assert handle.failure.error_code == "parser_job_failed"
+    detail = handle.failure.detail
+    assert [k for k in detail if k != "error_code"] == JOB_FAILED_FIELDS
+    assert detail["failure"] == "engine_unavailable"
+    assert detail["words_completed"] == 0 and detail["words_total"] == 2
+    assert detail["log_path"].endswith("worker-stderr.txt")
+    assert "The morpher could not be built." in handle.failure.message
+    assert results(handle) == []
+    # hc_stdout's file carries the load exception's text (FR-038).
+    assert "The morpher could not be built." in handle.record.read_sandbox_file(
+        "worker-stderr.txt")
+    assert_work_empty()
+
+
+async def test_load_errors_become_the_grammar_load_errors_advisory(env):
+    env.script(SCRIPT, load_errors=[{"type": "InvalidAffixProcess", "id": "g11",
+                                     "message": "bad rule"}])
+    handle = await run(env, ["membaca"], env.launch())
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    sb = meta_sandbox(handle)
+    assert "grammar_load_errors" in sb["advisories"]
+    assert sb["generation"]["engine_load_errors"] == [
+        {"kind": "engine_load", "line": "InvalidAffixProcess (g11): bad rule"}]
+
+
+async def test_a_worker_crash_mid_list_is_error_no_output_then_not_reached(env):
+    env.script(SCRIPT, words={**SCRIPT["words"], "die": {"crash": 3}})
+    words = ["membaca", "xyz", "die", "baca", "membaca"]
+    handle = await run(env, words, env.launch())
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    got = outcomes(handle)
+    assert got == ["parsed", "not_parsed", "error_no_output", "not_reached", "not_reached"]
+    assert results(handle)[2]["parse"]["analyses"] is None
+    assert handle.words_completed == len(words)
+    sb = meta_sandbox(handle)
+    assert sb["worker"]["exit_code"] not in (0, None)
+    tally = classify.tally_outcomes(results(handle))
+    assert sb["worker"]["engine_counters"] == classify.parse_counters_from(tally).to_dict()
+    assert "word 3" in handle.record.read_sandbox_file("worker-stderr.txt")
+
+
+async def test_timeout_kills_the_worker_and_keeps_completed_words(env):
+    env.script(SCRIPT, words={**SCRIPT["words"], "slow": {"sleep": 60}})
+    words = ["membaca", "baca", "slow", "xyz"]
+    started = time.monotonic()
+    handle = await run(env, words, env.launch(timeout=3))
+    assert time.monotonic() - started < 30, "the watchdog fires near timeout_seconds"
+    assert handle.stage is RunStage.FAILED
+    assert handle.failure.error_code == "parser_timeout"
+    detail = handle.failure.detail
+    assert [k for k in detail if k != "error_code"] == TIMEOUT_FIELDS
+    assert detail["timeout_seconds"] == 3
+    assert detail["words_completed"] == 2 and detail["run_id"] == handle.run_id
+    assert detail["hint"].isascii() and "slow" not in detail["hint"]
+    assert [line["wordform"] for line in results(handle)] == words[:2]
+    worker = meta_sandbox(handle)["worker"]
+    assert worker["timed_out"] is True and worker["killed"] is True
+    assert worker["in_flight_index"] == 2 and worker["in_flight_word"] == "slow"
+    assert worker["counters"] == "unavailable_timeout"
+    assert handle.sandbox_client.is_running() is False
+    assert_work_empty()
+
+
+async def test_cancel_kills_the_worker_and_keeps_partial_results(env):
+    env.script(SCRIPT, words={**SCRIPT["words"], "slow": {"sleep": 60}})
+    words = ["membaca", "baca", "slow", "xyz"]
+    handle = await start(env, words, env.launch(timeout=120))
+    assert await wait_for(lambda: handle.words_completed == 2, timeout=60)
+    await env.runner.cancel_run(handle.run_id)
+    await asyncio.wait_for(handle.done.wait(), timeout=30)
+    assert handle.stage is RunStage.CANCELLED
+    assert len(results(handle)) == 2
+    assert handle.sandbox_client.is_running() is False
+    assert meta_sandbox(handle)["worker"]["counters"] == "unavailable"
+    assert_work_empty()
+
+
+async def test_parameters_come_from_the_originating_project(env, monkeypatch):
+    """FR-047 source 2 for a named sandbox: a stream read of its origin."""
+    monkeypatch.setattr(engine, "read_parameters",
+                        lambda fwdata: {**engine.HC_PARAMETER_DEFAULTS, "max_roots": 4})
+    handle = await run(env, ["membaca"], env.launch(
+        origin_fwdata_path=str(env.project.fwdata)))
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    sb = meta_sandbox(handle)
+    assert sb["parameters_source"] == "live_project"
+    assert sb["parser_parameters"]["max_roots"] == 4
+    assert "max_roots" in sb["parameters_applied"]
+
+
+async def test_an_unreadable_origin_falls_back_to_flex_defaults(env, monkeypatch):
+    monkeypatch.setattr(engine, "read_parameters", lambda fwdata: None)
+    handle = await run(env, ["membaca"], env.launch(origin_fwdata_path="gone.fwdata"))
+    sb = meta_sandbox(handle)
+    assert sb["parameters_source"] == "flex_defaults"
+    assert "could not be read" in sb["parameters_note"]
+
+
+# ---------------------------------------------------------------------------
+# Test mode (US4): assertion lines classified from structured analyses
+# ---------------------------------------------------------------------------
+
+CORPUS_ASSERTIONS = [
+    {"word": "membaca", "expected": [[{"form": "mem", "gloss": "ACT"},
+                                      {"form": "baca", "gloss": "read"}]]},   # pass
+    {"word": "baca", "expected": [[{"form": "baca", "gloss": "read"}]]},      # new_ambiguity
+    {"word": "xyz", "expected": []},                                          # pass (no parse)
+    {"word": "zzz", "expected": [[{"form": "zzz", "gloss": "Z"}]]},           # regression
+    {"word": "q#", "expected": []},                                           # error
+]
+
+
+def write_corpus(assertions=CORPUS_ASSERTIONS):
+    path = paths.corpus_path(PROJECT, "baseline")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "schema": "flextoolsmcp.hc-corpus/1", "name": "baseline", "project": PROJECT,
+        "created_at": "2026-09-24T00:00:00Z", "assertions": assertions,
+    }, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+async def test_corpus_run_classifies_each_assertion(env):
+    env.script(SCRIPT, words={**SCRIPT["words"], "zzz": []})
+    corpus = write_corpus()
+    words = [a["word"] for a in CORPUS_ASSERTIONS]
+    handle = await run(env, words, env.launch(assertion_file=str(corpus)), mode="test",
+                       extra={"corpus": {"name": "baseline", "assertion_count": len(words)}})
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    lines = results(handle)
+    got = [(line["assertion"]["classification"], line["assertion"]["error_reason"])
+           for line in lines]
+    assert got == [("pass", None), ("new_ambiguity", None), ("pass", None),
+                   ("regression", None), ("error", "invalid_segment")]
+    assert lines[1]["assertion"]["unexpected"] == [[{"form": "baca", "gloss": "book"}]]
+    assert lines[3]["assertion"]["missing"] == [[{"form": "zzz", "gloss": "Z"}]]
+    worker = meta_sandbox(handle)["worker"]
+    assert worker["counters"] == "ok"
+    assert worker["engine_counters"] == {"tests": 5, "passed": 2, "failed": 2, "error": 1}
+    assert worker["counter_agreement"] is True
+    output = handle.record.read_sandbox_file("hc-output.txt")
+    assert "[2] baca: parsed -> new_ambiguity" in output
+    assert "    unexpected: baca book" in output
+
+
+async def test_corpus_crash_gives_error_lines_never_a_classification(env):
+    env.script(SCRIPT, words={**SCRIPT["words"], "baca": {"crash": 3}})
+    corpus = write_corpus()
+    words = [a["word"] for a in CORPUS_ASSERTIONS]
+    handle = await run(env, words, env.launch(assertion_file=str(corpus)), mode="test")
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    reasons = [line["assertion"]["error_reason"] for line in results(handle)]
+    assert reasons == [None, "error_no_output", "not_reached", "not_reached", "not_reached"]
+
+
+# ---------------------------------------------------------------------------
+# The project-cache path (Generate mode, the fake GenerateHCConfig; Windows)
+# ---------------------------------------------------------------------------
+
+win = pytest.mark.windows_only
+
+
+@pytest.fixture
+def cache_env(env, fake_generator):
+    env.gen = fake_generator
+    base = env.launch
+
+    def launch(**extra):
+        value = base(named=False, generate_hc_config_path=str(fake_generator.path))
+        value.update(extra)
+        return value
+
+    env.cache_launch = launch
+    return env
+
+
+@win
+async def test_cold_then_warm_generation(cache_env, monkeypatch):
+    env = cache_env
+    spy = SpawnSpy(monkeypatch)
+    cold = await run(env, ["membaca"], env.cache_launch(), config_kind="project_cache")
+    assert cold.stage is RunStage.COMPLETED, cold.failure
+    sb = meta_sandbox(cold)
+    assert sb["generation"]["reused_cache"] is False
+    assert sb["config_source"]["kind"] == "project_cache" and sb["config_source"]["cache_key"]
+    assert sb["copy"]["cleanup"] == "deleted" and sb["copy"]["bytes"] > 0
+    assert sb["parameters_source"] == "cache"
+    assert "--named-sandbox" not in spy.argv
+    assert len(results(cold)) == 1
+    assert_work_empty()
+
+    warm = await run(env, ["membaca"], env.cache_launch(), config_kind="project_cache")
+    assert warm.stage is RunStage.COMPLETED, warm.failure
+    wsb = meta_sandbox(warm)
+    assert wsb["generation"]["reused_cache"] is True
+    assert wsb["generation"]["cache_key"] == sb["config_source"]["cache_key"]
+    assert wsb["copy"]["cleanup"] == "not_made"
+    log = warm.record.read_sandbox_file("generate-config.log")
+    first, _, rest = log.partition("\n")
+    assert sb["config_source"]["cache_key"] in first and "reuse" in first.lower()
+    entry = cache.lookup(PROJECT, sb["config_source"]["cache_key"], touch=False)
+    assert rest == entry.log_path.read_text(encoding="utf-8")
+    assert_work_empty()
+
+
+@win
+async def test_generation_failure_is_parser_config_failed_with_run_id(cache_env):
+    env = cache_env
+    env.gen.set(mode="crash")
+    handle = await run(env, ["membaca"], env.cache_launch(), config_kind="project_cache")
+    assert handle.stage is RunStage.FAILED
+    assert handle.failure.error_code == "parser_config_failed"
+    detail = handle.failure.detail
+    assert detail["run_id"] == handle.run_id
+    assert Path(detail["log_path"]) == handle.record.sandbox_path("generate-config.log")
+    assert results(handle) == []
+    assert_work_empty()
+
+
+@win
+async def test_client_exception_after_copy_still_deletes_it(cache_env, monkeypatch):
+    """The client's own finally deletes the copy on an unexpected exception."""
+    env = cache_env
+    made = []
+    real_create = workdir.create
+
+    def create(run_id, **kw):
+        made.append(real_create(run_id, **kw))
+        return made[-1]
+
+    async def boom(*a, **kw):
+        assert any(p.exists() for p in made), "the copy dir exists during generation"
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(workdir, "create", create)
+    monkeypatch.setattr(cache, "ensure_entry", boom)
+    handle = await run(env, ["membaca"], env.cache_launch(), config_kind="project_cache")
+    assert handle.stage is RunStage.FAILED
+    assert made and not any(p.exists() for p in made)
+    assert meta_sandbox(handle)["copy"]["cleanup"] == "deleted"
+    assert_work_empty()
+
+
+@win
+async def test_two_concurrent_jobs_get_distinct_clients_and_copies(cache_env, monkeypatch):
+    env = cache_env
+    env.gen.set(sleep_seconds=1)
+    made = []
+    real_create = workdir.create
+
+    def create(run_id, **kw):
+        made.append(real_create(run_id, **kw))
+        return made[-1]
+
+    monkeypatch.setattr(workdir, "create", create)
+    a, b = await asyncio.gather(
+        start(env, ["membaca"], env.cache_launch(), config_kind="project_cache"),
+        start(env, ["baca"], env.cache_launch(), config_kind="project_cache"),
+    )
+    await asyncio.wait_for(asyncio.gather(a.done.wait(), b.done.wait()), timeout=RUN_WAIT)
+    assert a.stage is RunStage.COMPLETED and b.stage is RunStage.COMPLETED
+    assert a.sandbox_client is not b.sandbox_client
+    assert len(made) == 2 and made[0] != made[1]
+    assert env.runner.pool.active_workers() == []
+    assert_work_empty()
+
+
+@win
+@pytest.mark.parametrize("path", ["success", "generator_fail", "load_fail",
+                                  "cancel_during_generation", "client_exception"])
+async def test_work_is_empty_after_every_terminal_path(cache_env, monkeypatch, path):
+    env = cache_env
+    words = ["membaca", "baca", "xyz"]
+    expected = RunStage.COMPLETED
+    if path == "generator_fail":
+        env.gen.set(mode="crash")
+        expected = RunStage.FAILED
+    elif path == "load_fail":
+        env.gen.set(mode="empty_config")
+        expected = RunStage.FAILED
+    elif path == "cancel_during_generation":
+        env.gen.set(sleep_seconds=600)
+        expected = RunStage.CANCELLED
+    elif path == "client_exception":
+        def broken(*a, **kw):
+            raise RuntimeError("client bug")
+
+        monkeypatch.setattr(classify, "worker_parse_to_line", broken)
+        expected = RunStage.FAILED
+
+    handle = await start(env, words, env.cache_launch(timeout=30), config_kind="project_cache")
+    if path == "cancel_during_generation":
+        root = paths.work_root()
+        assert await wait_for(lambda: root.exists() and any(root.iterdir())), "copy dir made"
+        assert await wait_for(lambda: bool(env.gen.invocations())), "generator started"
+        await env.runner.cancel_run(handle.run_id)
+    await asyncio.wait_for(handle.done.wait(), timeout=RUN_WAIT)
+    assert handle.stage is expected, (path, handle.failure)
+    assert_work_empty()
+
+
+# ---------------------------------------------------------------------------
+# T115: FR-047's `live_project` source for a named sandbox
+# ---------------------------------------------------------------------------
+
+
+def _tree_bytes(root: Path) -> dict:
+    return {str(p.relative_to(root)): p.read_bytes()
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+class _NoLcmImports:
+    """A meta-path finder that fails any flexicon / LCM import (boom-stub)."""
+
+    BANNED = ("flexicon", "flexlibs", "SIL", "clr")
+
+    def find_spec(self, name, path=None, target=None):
+        if name.split(".")[0] in self.BANNED:
+            raise AssertionError("the named-sandbox path imported %s" % name)
+        return None
+
+
+async def test_a_named_sandbox_reads_its_live_project_parameters(
+        env, fake_project_factory, monkeypatch):
+    """The real stream read: the fake project stores `GuessRoots` false,
+    under an XAmple active parser -- a parameters read is never a refusal."""
+    import sys
+
+    origin = fake_project_factory(name="Origin", active_parser="XAmple")
+    for name in list(sys.modules):
+        if name.split(".")[0] in _NoLcmImports.BANNED:
+            monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setattr(sys, "meta_path", [_NoLcmImports()] + sys.meta_path)
+    sandbox_before = _tree_bytes(env.sandbox_dir)
+    project_before = _tree_bytes(origin.dir)
+
+    handle = await run(env, ["membaca"], env.launch(
+        origin_project="Origin", origin_fwdata_path=str(origin.fwdata)))
+    assert handle.stage is RunStage.COMPLETED, handle.failure
+    sb = meta_sandbox(handle)
+    assert sb["parameters_source"] == "live_project"
+    assert sb["parser_parameters"]["guess_roots"] is False
+    assert sb.get("parameters_note") is None
+    assert json.loads(handle.record.read_sandbox_file("hc-params.json"))["guess_roots"] is False
+    # Nothing under the sandbox or the origin project changed (FR-043).
+    assert _tree_bytes(env.sandbox_dir) == sandbox_before
+    assert _tree_bytes(origin.dir) == project_before
+
+
+async def test_no_recorded_origin_project_gives_flex_defaults_with_a_note(env):
+    handle = await run(env, ["membaca"], env.launch())
+    sb = meta_sandbox(handle)
+    assert sb["parameters_source"] == "flex_defaults"
+    assert "records no originating project" in sb["parameters_note"]
+
+
+async def test_an_origin_that_no_longer_resolves_gives_flex_defaults_with_a_note(env):
+    handle = await run(env, ["membaca"], env.launch(origin_project="Gone"))
+    sb = meta_sandbox(handle)
+    assert sb["parameters_source"] == "flex_defaults"
+    assert "Gone" in sb["parameters_note"] and "no longer resolves" in sb["parameters_note"]

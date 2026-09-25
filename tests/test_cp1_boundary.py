@@ -91,20 +91,20 @@ automatically). The rest of the server legitimately discusses and, in
 ``handlers/execution.py``, legitimately opens LCM caches and names the
 analysis classes; CP1 is the boundary under guard, not the whole product.
 
-NARROWED AGAIN AT CP5 (research.md R-04, FR-003/FR-004). CP1 forbade the
-detection surface from ever running ``hc``. CP5 needs exactly one bounded
-*identity* probe -- ``hc -h`` prints the usage text and exits without
-loading a grammar -- so the invariant is narrowed, not dropped:
+CP5 RE-PLAN (2026-09-24, research.md R-17, D2). The ``hc -h`` identity
+probe CP5 first added to the detection surface is retired: there is no
+``hc`` CLI in the design of record. Sandbox Parse/Test run in-process in the
+parse worker's ``--sandbox`` mode, against FieldWorks' own bundled HermitCrab
+engine. That is a second, deliberate crossing -- constructing ``Morpher`` and
+calling ``XmlLanguageLoader.Load`` -- and it is allowlisted by name, in one
+class of one module (``CP5_SANDBOX_ENGINE_ALLOWLIST``, pinned by
+``TestTheSandboxEngineAllowlistIsPinned``). Nothing else in the tree may name
+either engine entry point, and the ordinary project-bound backend
+(``_RealBackend``) still constructs no parser itself.
 
-* the only permitted ``hc`` argv shapes are ``[<hc>, "-h"]`` and
-  ``[<dotnet>, <hc.dll>, "-h"]`` (``HC_IDENTITY_PROBE_ARGS`` below, pinned by
-  its own test so it cannot widen silently);
-* statically, that shape is permitted in ``parser_probe.py`` only
-  (``HC_PROBE_MODULE``); anywhere else in the CP1 set ``hc`` is still never run;
-* discovery never passes ``-i`` / ``-s`` / ``-o`` (the flags that load a
-  grammar, run a script or write output) and never runs ``GenerateHCConfig``;
-* every other ``hc`` argv -- including ``parse``, ``--help``, extra flags or a
-  repeated ``-h`` -- still fails the check (``TestHcIdentityProbeNarrowing``).
+T104 retargeted discovery at the bundled DLL: a presence-plus-``FileVersion``
+read (``discover_fieldworks_hermitcrab``). Detection now spawns no process at
+all, so no ``hc`` argv shape is permitted anywhere.
 """
 
 from __future__ import annotations
@@ -248,36 +248,16 @@ ANALYSIS_STATE_PATTERN = re.compile(
 # Argv tokens that would mean the sandbox spine actually ran a parse.
 FORBIDDEN_SUBPROCESS_ARGV = frozenset({"hc", "parse", "parse-words", "GenerateHCConfig.exe"})
 
-# --- CP5 narrowing (research.md R-04) -------------------------------------
-# The ONE hc invocation the detection surface may make: the identity probe.
-# Exactly these trailing args, nothing else. Widening this tuple is a
-# boundary change and must come with a spec change -- it is pinned verbatim
-# by TestHcIdentityProbeNarrowing.test_the_allowlist_is_exactly_dash_h.
-HC_IDENTITY_PROBE_ARGS: Tuple[str, ...] = ("-h",)
-
-# The only module whose *source* may contain the probe (static half).
-HC_PROBE_MODULE = "src/flextoolsmcp/server/parser_probe.py"
-
 # hc flags that load a grammar (-i), run commands (-s) or write results (-o).
 # Detection must never pass any of them, in any spelling.
 HC_WORK_FLAGS = frozenset({
     "-i", "--input-file", "-s", "--script-file", "-o", "--output-file",
 })
 
-# How the static extractor renders ``hc_invoke_argv(path)`` -- the call that
-# expands to ``[path]`` or ``[dotnet, path.dll]``. Its expansion contract is
-# pinned dynamically (test_hc_invoke_argv_expands_to_exactly_the_two_shapes),
-# so treating it as "the hc program" statically is sound.
+# How the static extractor renders a call to ``hc_invoke_argv(path)`` -- the
+# retired helper (T104) that expanded to ``[path]`` or ``[dotnet, path.dll]``.
+# Kept so a reintroduction reads as "runs hc" and fails the scan.
 HC_INVOKE_PLACEHOLDER = "<hc_invoke_argv(...)>"
-
-# The real hc usage header (tests/fakes/hc_fake.py USAGE_LINES; kept in sync
-# by test_spy_usage_text_matches_the_fake_hc). Returned by the dynamic spy's
-# fake subprocess.run for the permitted -h shape, UTF-16LE like real hc.
-HC_USAGE_LINES = (
-    "Usage: hc [OPTIONS]",
-    "HermitCrab.NET is a phonological and morphological parser.",
-)
-
 
 def _token_stem(token: str) -> str:
     """Lower-cased basename without extension, for either path separator."""
@@ -297,42 +277,22 @@ def _is_dotnet_dll_run(argv: List[str]) -> bool:
     )
 
 
-def is_permitted_hc_identity_probe(argv: List[str]) -> bool:
-    """True only for ``[<hc>, "-h"]`` or ``[<dotnet>, <hc.dll>, "-h"]``."""
-    argv = list(argv)
-    if len(argv) == 1 + len(HC_IDENTITY_PROBE_ARGS):
-        return _is_hc_program(argv[0]) and tuple(argv[1:]) == HC_IDENTITY_PROBE_ARGS
-    if len(argv) == 2 + len(HC_IDENTITY_PROBE_ARGS):
-        return (
-            _is_dotnet_dll_run(argv)
-            and _token_stem(argv[1]) != "generatehcconfig"
-            and tuple(argv[2:]) == HC_IDENTITY_PROBE_ARGS
-        )
-    return False
-
-
 def _invokes_hc(argv: List[str]) -> bool:
     return bool(argv) and (_is_hc_program(argv[0]) or _is_dotnet_dll_run(argv))
 
 
-def subprocess_argv_violation(argv: List[str], *, probe_permitted: bool) -> Optional[str]:
-    """Why this argv breaches the CP1 boundary, or None if it does not.
-
-    ``probe_permitted`` is True only where the identity probe may live
-    (``HC_PROBE_MODULE`` statically; the CP1 exercise dynamically).
-    """
+def subprocess_argv_violation(argv: List[str]) -> Optional[str]:
+    """Why this argv breaches the CP1 boundary, or None if it does not."""
     argv = [str(a) for a in argv]
     if any(_token_stem(t) == "generatehcconfig" for t in argv):
         return "runs GenerateHCConfig (never allowed in detection)"
-    if probe_permitted and is_permitted_hc_identity_probe(argv):
-        return None
     if _invokes_hc(argv) and any(t in HC_WORK_FLAGS for t in argv):
         return "passes a grammar/script/output flag to hc"
     forbidden = [t for t in argv if t in FORBIDDEN_SUBPROCESS_ARGV]
     if forbidden:
         return f"forbidden argv token(s) {forbidden}"
     if _invokes_hc(argv):
-        return "runs hc outside the identity-probe allowlist"
+        return "runs hc (there is no hc CLI in the CP5 design)"
     return None
 
 
@@ -830,6 +790,10 @@ class TestStaticNoParserConstructionAnywhereInTheTree:
         constructs `HCParser` inside flexicon -- outside this tree. If the
         worker ever constructs one directly, that is a boundary crossing
         the allowlist deliberately does not cover.
+
+        CP5: this premise holds for ``_RealBackend``. ``_SandboxBackend``'s
+        ``Morpher`` construction is allowlisted on purpose and pinned by
+        ``TestTheSandboxEngineAllowlistIsPinned``, not passed by accident.
         """
         worker = REPO_ROOT / "src/flextoolsmcp/server/parse/worker_main.py"
         assert worker.exists(), "the allowlisted worker module is missing"
@@ -992,6 +956,192 @@ class TestTheFilingAllowlistIsPinned:
         assert scan_source_for_construction(path.read_text(encoding="utf-8"), rel) == []
 
 
+#: Parser-check CP5 re-plan (D2, contracts/sandbox-worker.md section 3) --
+#: the third amendment this file has taken. Sandbox Parse/Test call
+#: FieldWorks' bundled HermitCrab engine directly, the way Try A Word does:
+#: ``XmlLanguageLoader.Load(config)`` then ``Morpher(TraceManager(),
+#: language)``. That is a parser construction, so it is allowlisted by name
+#: in exactly one class of exactly one module: ``_SandboxBackend`` in the
+#: already-allowlisted worker. ``_RealBackend`` (the project-bound backend)
+#: still constructs nothing and reaches the parser through flexicon's facade;
+#: ``hc_engine.py`` holds pure helpers only. ``Morpher`` and
+#: ``XmlLanguageLoader`` are not in ``FORBIDDEN_CONSTRUCTED_TYPES``, so
+#: without this allowlist and its pinning tests their use would pass the
+#: tree-wide scan by accident rather than on purpose.
+CP5_SANDBOX_ENGINE_NAMES = frozenset({"Morpher", "XmlLanguageLoader"})
+CP5_SANDBOX_ENGINE_ALLOWLIST = {
+    "src/flextoolsmcp/server/parse/worker_main.py": "_SandboxBackend",
+}
+PACKAGE_ROOT = REPO_ROOT / "src" / "flextoolsmcp"
+
+
+def engine_name_uses(source: str, filename: str) -> List[Tuple[int, str, Optional[str]]]:
+    """Every code reference to a sandbox engine name, with its enclosing class.
+
+    ``(lineno, name, class_name_or_None)`` for each ``Name``, ``Attribute``
+    and import alias naming ``Morpher`` or ``XmlLanguageLoader``. Strings and
+    comments are not code and are ignored. Innermost enclosing class wins.
+    """
+    tree = ast.parse(source, filename=filename)
+    uses: List[Tuple[int, str, Optional[str]]] = []
+
+    def visit(node: ast.AST, cls: Optional[str]) -> None:
+        if isinstance(node, ast.ClassDef):
+            cls = node.name
+        if isinstance(node, ast.Name) and node.id in CP5_SANDBOX_ENGINE_NAMES:
+            uses.append((node.lineno, node.id, cls))
+        elif isinstance(node, ast.Attribute) and node.attr in CP5_SANDBOX_ENGINE_NAMES:
+            uses.append((node.lineno, node.attr, cls))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                last = alias.name.split(".")[-1]
+                if last in CP5_SANDBOX_ENGINE_NAMES:
+                    uses.append((node.lineno, last, cls))
+        for child in ast.iter_child_nodes(node):
+            visit(child, cls)
+
+    visit(tree, None)
+    return uses
+
+
+def engine_use_violations(source: str, rel_path: str) -> List[Tuple[int, str, Optional[str]]]:
+    """The engine-name uses that fall outside the one allowlisted class."""
+    allowed_class = CP5_SANDBOX_ENGINE_ALLOWLIST.get(rel_path.replace("\\", "/"))
+    return [
+        use for use in engine_name_uses(source, rel_path)
+        if allowed_class is None or use[2] != allowed_class
+    ]
+
+
+class TestTheSandboxEngineAllowlistIsPinned:
+    """CP5's in-process engine crossing stays exactly as narrow as written.
+
+    Widening it means editing this class and saying why -- the same control
+    ``TestTheParseAllowlistIsPinned`` and ``TestTheFilingAllowlistIsPinned``
+    impose on the earlier amendments.
+    """
+
+    WORKER = "src/flextoolsmcp/server/parse/worker_main.py"
+
+    def _worker_source(self) -> str:
+        return (REPO_ROOT / self.WORKER).read_text(encoding="utf-8")
+
+    def test_the_allowlist_is_exactly_the_sandbox_backend(self):
+        assert CP5_SANDBOX_ENGINE_NAMES == frozenset({"Morpher", "XmlLanguageLoader"})
+        assert CP5_SANDBOX_ENGINE_ALLOWLIST == {self.WORKER: "_SandboxBackend"}, (
+            "The sandbox-engine allowlist changed. It holds one class -- the "
+            "worker's --sandbox backend -- because that is the one place the "
+            "bundled HermitCrab engine may be loaded and a Morpher built "
+            "(D2). A second entry is a second parse path (FR-026); justify "
+            "it here or revert it."
+        )
+
+    def test_the_allowlisted_module_is_also_the_parse_allowlist(self):
+        """The engine crossing adds no new parsing module (sandbox-worker.md 3)."""
+        assert set(CP5_SANDBOX_ENGINE_ALLOWLIST) <= CP2B_PARSE_OPERATION_ALLOWLIST
+
+    def test_engine_names_appear_only_in_the_sandbox_backend(self):
+        """Tree-wide over the whole package, not just ``server/``."""
+        offenders: List[str] = []
+        for path in _python_files(PACKAGE_ROOT):
+            rel = _rel(path).replace("\\", "/")
+            for lineno, name, cls in engine_use_violations(
+                path.read_text(encoding="utf-8"), rel
+            ):
+                offenders.append(f"{rel}:{lineno} {name} (class {cls})")
+        assert offenders == [], (
+            "Morpher / XmlLanguageLoader named outside _SandboxBackend "
+            "(CP5_SANDBOX_ENGINE_ALLOWLIST):\n" + "\n".join(offenders)
+        )
+
+    def test_the_sandbox_backend_really_loads_and_builds_the_engine(self):
+        """Non-vacuity: the allowlist must be exempting something real."""
+        tree = ast.parse(self._worker_source(), filename=self.WORKER)
+        backend = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef) and node.name == "_SandboxBackend"
+        ]
+        assert backend, "worker_main.py has no _SandboxBackend class"
+        calls = [
+            node for node in ast.walk(backend[0]) if isinstance(node, ast.Call)
+        ]
+        constructs = [c for c in calls if _callee_name(c.func) == "Morpher"]
+        loads = [
+            c for c in calls
+            if _callee_name(c.func) == "Load"
+            and isinstance(c.func, ast.Attribute)
+            and (_dotted_name(c.func.value) or "").split(".")[-1] == "XmlLanguageLoader"
+        ]
+        assert constructs, "_SandboxBackend never constructs a Morpher"
+        assert loads, "_SandboxBackend never calls XmlLanguageLoader.Load"
+
+    def test_the_real_backend_still_constructs_no_parser(self):
+        """The premise of ``test_the_worker_still_constructs_no_parser_itself``,
+        now scoped: nothing in the worker outside ``_SandboxBackend`` builds a
+        Morpher or any other parser, even counting Morpher as forbidden."""
+        source = self._worker_source()
+        tree = ast.parse(source, filename=self.WORKER)
+        spans = [
+            (node.lineno, node.end_lineno)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef) and node.name == "_SandboxBackend"
+        ]
+        violations = scan_source_for_construction(
+            source, self.WORKER,
+            forbidden_types=FORBIDDEN_CONSTRUCTED_TYPES | frozenset({"Morpher"}),
+        )
+        outside = [
+            v for v in violations
+            if v[0] != "parse_operation"
+            and not any(start <= v[2] <= end for start, end in spans)
+        ]
+        assert outside == [], "\n".join(repr(v) for v in outside)
+
+    def test_the_helper_module_holds_no_engine_entry_point(self):
+        """``hc_engine.py`` is pure helpers (engine-dir, id map, shaping)."""
+        rel = "src/flextoolsmcp/server/parse/hc_engine.py"
+        path = REPO_ROOT / rel
+        if not path.exists():
+            pytest.skip("hc_engine.py not present (optional module)")
+        assert engine_name_uses(path.read_text(encoding="utf-8"), rel) == []
+
+    def test_a_planted_morpher_in_the_real_backend_is_caught(self):
+        planted = (
+            "class _RealBackend:\n"
+            "    def open(self, language):\n"
+            "        return Morpher(TraceManager(), language)\n"
+        )
+        assert engine_use_violations(planted, self.WORKER), planted
+
+    def test_a_planted_loader_in_a_handler_is_caught(self):
+        planted = (
+            "from SIL.Machine.Morphology.HermitCrab import XmlLanguageLoader\n"
+            "def f(p):\n    return XmlLanguageLoader.Load(p)\n"
+        )
+        rel = "src/flextoolsmcp/server/handlers/parse.py"
+        assert len(engine_use_violations(planted, rel)) == 2
+
+    def test_a_planted_attribute_route_outside_the_class_is_caught(self):
+        planted = "def f(engine, lang):\n    return engine.Morpher(None, lang)\n"
+        assert engine_use_violations(planted, self.WORKER)
+
+    def test_the_sandbox_backend_itself_passes(self):
+        planted = (
+            "class _SandboxBackend:\n"
+            "    def _build(self, path):\n"
+            "        from SIL.Machine.Morphology.HermitCrab import Morpher, XmlLanguageLoader\n"
+            "        return Morpher(None, XmlLanguageLoader.Load(path))\n"
+        )
+        assert engine_use_violations(planted, self.WORKER) == []
+
+    def test_prose_and_strings_are_not_uses(self):
+        planted = (
+            "# Morpher(x) in a comment\n"
+            "MSG = 'the Morpher could not be built; XmlLanguageLoader failed'\n"
+        )
+        assert engine_name_uses(planted, "<planted>") == []
+
+
 class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:
     @pytest.mark.parametrize(
         "path", cp1_module_files(), ids=lambda p: _rel(p).replace("\\", "/")
@@ -1008,26 +1158,21 @@ class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:
         "path", cp1_module_files(), ids=lambda p: _rel(p).replace("\\", "/")
     )
     def test_cp1_module_never_shells_out_to_the_parser(self, path: Path):
-        """The sandbox spine is *discovered* at CP1 (``dotnet tool list -g``),
-        never *run* -- running ``hc`` is loading a grammar and parsing.
-
-        CP5 narrowing (R-04): the identity probe ``[<hc>, "-h"]`` /
-        ``[<dotnet>, <hc.dll>, "-h"]`` is permitted in ``HC_PROBE_MODULE``
-        only; every other hc argv, anywhere in the CP1 set, still fails."""
-        rel = _rel(path).replace("\\", "/")
+        """The sandbox spine is *discovered* at CP1, never *run* -- running
+        ``hc`` or ``GenerateHCConfig`` is loading a grammar and parsing."""
         offenders = []
         for lineno, argv in subprocess_argv_literals(
             path.read_text(encoding="utf-8"), _rel(path)
         ):
-            reason = subprocess_argv_violation(argv, probe_permitted=(rel == HC_PROBE_MODULE))
+            reason = subprocess_argv_violation(argv)
             if reason:
                 offenders.append((lineno, argv, reason))
         assert offenders == [], f"{_rel(path)}: {offenders}"
 
-    def test_the_only_cp1_subprocess_is_the_dotnet_discovery_call(self):
-        """Non-vacuity for the test above: there IS a subprocess call in the
-        CP1 set, and it is the tool-list discovery one. (CP5 adds exactly one
-        more, the identity probe -- see TestHcIdentityProbeNarrowing.)"""
+    def test_the_cp1_set_makes_no_subprocess_call(self):
+        """T104 made sandbox discovery a file-presence check on the bundled
+        DLL, so the CP1 set makes no subprocess call at all. The scanner's
+        own non-vacuity is ``TestScannersAreFalsifiable``'s job."""
         argvs = []
         for path in cp1_module_files():
             argvs.extend(
@@ -1035,15 +1180,7 @@ class TestStaticCP1ModulesOpenNoCacheAndRunNoParse:
                     path.read_text(encoding="utf-8"), _rel(path)
                 )
             )
-        assert argvs, "expected discover_hc_tool's subprocess call to be visible"
-        assert any({"tool", "list", "-g"}.issubset(set(argv)) for argv in argvs), argvs
-        # And nothing else: each call is the tool listing or the identity probe.
-        others = [
-            argv for argv in argvs
-            if not {"tool", "list", "-g"}.issubset(set(argv))
-            and not is_permitted_hc_identity_probe(argv)
-        ]
-        assert others == [], others
+        assert argvs == [], argvs
 
 
 class TestParserProbeInspectionReflectionIsExcludedNotIgnored:
@@ -1509,9 +1646,8 @@ def _install_fake_clr(monkeypatch: pytest.MonkeyPatch, spy: BoundarySpy) -> None
 def _install_subprocess_spy(monkeypatch: pytest.MonkeyPatch, spy: BoundarySpy) -> None:
     """Record (and neutralise) every subprocess the exercise would launch.
 
-    Keeps the run hermetic and fast -- ``discover_hc_tool`` otherwise shells
-    out to ``dotnet`` with a 5s timeout -- and makes "CP1 never runs ``hc``"
-    a dynamic assertion rather than only a static one.
+    Keeps the run hermetic, and makes "CP1 never runs ``hc``" a dynamic
+    assertion rather than only a static one.
     """
 
     class _Completed:
@@ -1527,12 +1663,6 @@ def _install_subprocess_spy(monkeypatch: pytest.MonkeyPatch, spy: BoundarySpy) -
         text_mode = bool(
             kwargs.get("text") or kwargs.get("universal_newlines") or kwargs.get("encoding")
         )
-        if is_permitted_hc_identity_probe(recorded):
-            # CP5 identity probe (R-04): answer like real hc -h -- the usage
-            # text on stdout, UTF-16LE no BOM, \r\n; real hc exits -1 here.
-            usage = "\r\n".join(HC_USAGE_LINES) + "\r\n"
-            stdout: Any = usage if text_mode else usage.encode("utf-16-le")
-            return _Completed(recorded, stdout, "" if text_mode else b"", returncode=-1)
         empty: Any = "" if text_mode else b""
         return _Completed(recorded, empty, empty)
 
@@ -1587,7 +1717,8 @@ def _exercise_cp1_entry_points(spy: BoundarySpy) -> Dict[str, Any]:
         parser_probe.HCPARSER_MEMBERS))
     _try("probe_parser_core_write", lambda: parser_probe.probe_parser_core(
         parser_probe.WRITE_REQUIRED_MEMBERS))
-    _try("discover_hc_tool", lambda: parser_probe.discover_hc_tool())
+    _try("discover_fieldworks_hermitcrab",
+         lambda: parser_probe.discover_fieldworks_hermitcrab())
     _try("discover_generate_hc_config", lambda: parser_probe.discover_generate_hc_config())
 
     # 4. The tool entry point.
@@ -1623,13 +1754,11 @@ class TestDynamicNoConstructionDuringTheCP1Exercise:
         assert boundary_spy.parses == [], boundary_spy.summary()
 
     def test_no_parser_binary_is_executed(self, boundary_spy: BoundarySpy):
-        """CP5 narrowing (R-04): the identity probe is the only hc argv the
-        exercise may produce (every entry point here is detection, and the
-        probe is only reachable through parser_probe.probe_hc)."""
+        """Detection runs neither hc nor GenerateHCConfig."""
         _exercise_cp1_entry_points(boundary_spy)
         offenders = [
             (argv, reason) for argv in boundary_spy.subprocess_argv
-            for reason in [subprocess_argv_violation(argv, probe_permitted=True)]
+            for reason in [subprocess_argv_violation(argv)]
             if reason
         ]
         assert offenders == [], offenders
@@ -1655,7 +1784,7 @@ class TestDynamicNoConstructionDuringTheCP1Exercise:
         for required in (
             "ParserDetector",
             "_load_parser_core_members",
-            "discover_hc_tool",
+            "discover_fieldworks_hermitcrab",
             "handle_flextools_health",
         ):
             assert required in info["completed"], (
@@ -1735,212 +1864,6 @@ class TestSpyIsFalsifiable:
         IPhPhoneme(object())
         assert boundary_spy.constructions == []
 
-    def test_spy_answers_the_identity_probe_with_utf16_usage_text(self, boundary_spy: BoundarySpy):
-        result = subprocess.run(["hc", "-h"], capture_output=True, stdin=subprocess.DEVNULL)
-        assert isinstance(result.stdout, bytes)
-        text = result.stdout.decode("utf-16-le")
-        assert text.startswith("Usage: hc [OPTIONS]\r\n")
-        assert "HermitCrab.NET is a phonological and morphological parser." in text
-
-    def test_spy_does_not_answer_any_other_hc_argv_with_usage_text(self, boundary_spy: BoundarySpy):
-        result = subprocess.run(["hc", "-i", "cfg.xml", "-h"], capture_output=True)
-        assert result.stdout == b""
-
-    def test_spy_usage_text_matches_the_fake_hc(self):
-        """HC_USAGE_LINES is a copy (hc_fake.py writes to sys.stdout.buffer at
-        import, so it is read by AST, not imported); keep the copy honest."""
-        source = (REPO_ROOT / "tests" / "fakes" / "hc_fake.py").read_text(encoding="utf-8")
-        usage = None
-        for node in ast.parse(source).body:
-            if isinstance(node, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == "USAGE_LINES" for t in node.targets
-            ):
-                usage = ast.literal_eval(node.value)
-        assert usage is not None, "USAGE_LINES gone from tests/fakes/hc_fake.py"
-        assert tuple(usage[: len(HC_USAGE_LINES)]) == HC_USAGE_LINES
-
-
-# ---------------------------------------------------------------------------
-# CP5: the hc identity-probe narrowing (research.md R-04, FR-003/FR-004)
-# ---------------------------------------------------------------------------
-
-class TestHcIdentityProbeNarrowing:
-    """The CP1 "never run hc" invariant, narrowed to exactly one argv shape.
-
-    Everything here exists so the narrowing cannot widen silently: the
-    allowlist is pinned verbatim, every near-miss shape is rejected, the
-    static half permits the probe in ``parser_probe.py`` only, and the
-    dynamic half checks the argv the real ``probe_hc`` builds.
-    """
-
-    def test_the_allowlist_is_exactly_dash_h(self):
-        # Changing this is a boundary change: update research.md R-04 first.
-        assert HC_IDENTITY_PROBE_ARGS == ("-h",)
-        assert HC_PROBE_MODULE == "src/flextoolsmcp/server/parser_probe.py"
-        assert not (set(HC_IDENTITY_PROBE_ARGS) & HC_WORK_FLAGS)
-
-    @pytest.mark.parametrize("argv", [
-        ["hc", "-h"],
-        ["hc.exe", "-h"],
-        [r"C:\Users\u\.dotnet\tools\hc.exe", "-h"],
-        ["/home/u/.dotnet/tools/hc", "-h"],
-        ["dotnet", r"C:\tools\hc.dll", "-h"],
-        [r"C:\Program Files\dotnet\dotnet.exe", "tools/hc.dll", "-h"],
-        [HC_INVOKE_PLACEHOLDER, "-h"],
-    ])
-    def test_the_identity_probe_shapes_are_permitted(self, argv):
-        assert is_permitted_hc_identity_probe(argv)
-        assert subprocess_argv_violation(argv, probe_permitted=True) is None
-
-    @pytest.mark.parametrize("argv", [
-        ["hc"],
-        ["hc", "--help"],
-        ["hc", "-h", "-h"],
-        ["hc", "-c", "-h"],
-        ["-h", "hc"],
-        ["hc", "-i", "cfg.xml"],
-        ["hc", "-s", "script.txt"],
-        ["hc", "-o", "out.txt"],
-        ["hc", "-h", "-i", "cfg.xml"],
-        ["hc", "--input-file=cfg.xml"],
-        ["hc", "-i", "cfg.xml", "-s", "script.txt", "-o", "out.txt"],
-        [r"C:\Users\u\.dotnet\tools\hc.exe", "-i", "cfg.xml", "-s", "s.txt"],
-        [r"C:\Users\u\.dotnet\tools\hc.exe"],
-        ["dotnet", "hc.dll"],
-        ["dotnet", "hc.dll", "-i", "cfg.xml"],
-        ["dotnet", "hc.dll", "-h", "-o", "out.txt"],
-        [HC_INVOKE_PLACEHOLDER, "-i", "cfg.xml"],
-        [HC_INVOKE_PLACEHOLDER],
-        ["hc", "parse", "words.txt"],
-        ["GenerateHCConfig.exe", "p.fwdata", "out.xml"],
-        [r"C:\Program Files\SIL\FieldWorks 9\GenerateHCConfig.exe", "-h"],
-        ["dotnet", "GenerateHCConfig.dll", "-h"],
-    ])
-    def test_every_other_hc_argv_fails_the_check(self, argv):
-        assert not is_permitted_hc_identity_probe(argv)
-        assert subprocess_argv_violation(argv, probe_permitted=True), argv
-
-    @pytest.mark.parametrize("argv", [
-        ["hc", "-h"],
-        [r"C:\Users\u\.dotnet\tools\hc.exe", "-h"],
-        ["dotnet", "hc.dll", "-h"],
-        [HC_INVOKE_PLACEHOLDER, "-h"],
-    ])
-    def test_the_probe_is_forbidden_outside_the_probe_module(self, argv):
-        assert subprocess_argv_violation(argv, probe_permitted=False), argv
-
-    def test_unrelated_argv_is_not_flagged(self):
-        assert subprocess_argv_violation(["dotnet", "tool", "list", "-g"], probe_permitted=False) is None
-        assert subprocess_argv_violation(["dotnet", "--version"], probe_permitted=False) is None
-
-    # -- static half --------------------------------------------------------
-
-    def _probe_source(self) -> str:
-        return (REPO_ROOT / HC_PROBE_MODULE).read_text(encoding="utf-8")
-
-    def test_every_subprocess_call_in_the_probe_module_is_resolvable(self):
-        """An argv the extractor cannot render could hide anything; the probe
-        module must build every argv in a shape the scan can read."""
-        calls = explicit_subprocess_calls(self._probe_source(), HC_PROBE_MODULE)
-        assert calls, "no subprocess call in parser_probe.py at all"
-        opaque = [ln for ln, argv in calls if argv is None]
-        assert opaque == [], f"unresolvable subprocess argv at parser_probe.py lines {opaque}"
-
-    def test_the_identity_probe_is_visible_to_the_static_scan(self):
-        """Non-vacuity for the narrowing: the probe_hc call really is there
-        and really is the permitted shape (fails until T030's probe_hc lands)."""
-        argvs = [argv for _, argv in subprocess_argv_literals(self._probe_source(), HC_PROBE_MODULE)]
-        assert any(is_permitted_hc_identity_probe(a) for a in argvs), argvs
-
-    def test_discovery_never_passes_i_s_or_o_and_never_runs_generate_hc_config(self):
-        """Pinned (R-04): no subprocess argv in parser_probe.py carries an hc
-        work flag or names GenerateHCConfig -- and no such flag appears as a
-        string constant anywhere in the module's code, so it cannot be spliced
-        into an argv by a route the argv extractor does not follow."""
-        source = self._probe_source()
-        for lineno, argv in subprocess_argv_literals(source, HC_PROBE_MODULE):
-            assert not (set(argv) & HC_WORK_FLAGS), (lineno, argv)
-            assert not any(_token_stem(t) == "generatehcconfig" for t in argv), (lineno, argv)
-        flag_constants = [
-            (node.lineno, node.value)
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.Constant) and isinstance(node.value, str)
-            and (node.value in HC_WORK_FLAGS
-                 or any(node.value.startswith(f + "=") for f in HC_WORK_FLAGS if f.startswith("--")))
-        ]
-        assert flag_constants == [], flag_constants
-
-    def test_the_extractor_sees_a_built_argv(self):
-        """Falsification: the build-then-run pattern the probe uses is
-        rendered, and a work flag spliced into it is caught even in the
-        probe module."""
-        planted = (
-            "def probe(path):\n"
-            "    argv = hc_invoke_argv(path) + ['-i', 'cfg.xml']\n"
-            "    return subprocess.run(argv, capture_output=True)\n"
-        )
-        argvs = subprocess_argv_literals(planted, "<planted>")
-        assert argvs and argvs[0][1] == [HC_INVOKE_PLACEHOLDER, "-i", "cfg.xml"]
-        assert subprocess_argv_violation(argvs[0][1], probe_permitted=True)
-        planted_ok = planted.replace("['-i', 'cfg.xml']", "['-h']")
-        ok = subprocess_argv_literals(planted_ok, "<planted>")
-        assert ok and subprocess_argv_violation(ok[0][1], probe_permitted=True) is None
-        splat = "def p(x):\n    subprocess.run([*hc_invoke_argv(x), '-s', 's.txt'])\n"
-        assert subprocess_argv_violation(
-            subprocess_argv_literals(splat, "<planted>")[0][1], probe_permitted=True)
-
-    def test_opaque_argv_is_reported_not_skipped(self):
-        planted = "def p(build):\n    subprocess.run(build(), capture_output=True)\n"
-        assert explicit_subprocess_calls(planted, "<planted>") == [(2, None)]
-
-    # -- dynamic half (needs T030's hc_invoke_argv / probe_hc) --------------
-
-    @staticmethod
-    def _parser_probe():
-        from server import parser_probe
-        clear = getattr(parser_probe, "clear_hc_probe_cache", None)
-        if clear is not None:
-            clear()
-        return parser_probe
-
-    def test_hc_invoke_argv_expands_to_exactly_the_two_shapes(self, tmp_path: Path):
-        """Why HC_INVOKE_PLACEHOLDER may stand for "the hc program"."""
-        parser_probe = self._parser_probe()
-        exe = tmp_path / "hc.exe"
-        assert parser_probe.hc_invoke_argv(exe) == [str(exe)] or \
-            [str(a) for a in parser_probe.hc_invoke_argv(exe)] == [str(exe)]
-        dll = tmp_path / "hc.dll"
-        argv = [str(a) for a in parser_probe.hc_invoke_argv(dll)]
-        assert len(argv) == 2 and _token_stem(argv[0]) == "dotnet" and argv[1] == str(dll)
-
-    def test_probe_of_an_exe_runs_exactly_hc_dash_h(
-        self, boundary_spy: BoundarySpy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ):
-        monkeypatch.delenv("HC_TOOL_PATH", raising=False)
-        parser_probe = self._parser_probe()
-        exe = tmp_path / "hc.exe"
-        exe.write_bytes(b"MZ")
-        result = parser_probe.discover_hc_tool(override_path=exe)
-        assert boundary_spy.subprocess_argv == [[str(exe), "-h"]], boundary_spy.subprocess_argv
-        assert all(is_permitted_hc_identity_probe(a) for a in boundary_spy.subprocess_argv)
-        # The spy's usage text is recognised as HermitCrab.
-        assert getattr(result, "starts", None) is True, result
-
-    def test_probe_of_a_dll_runs_exactly_dotnet_dll_dash_h(
-        self, boundary_spy: BoundarySpy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ):
-        monkeypatch.delenv("HC_TOOL_PATH", raising=False)
-        parser_probe = self._parser_probe()
-        dotnet = str(tmp_path / "dotnet.exe")
-        monkeypatch.setattr(
-            parser_probe.shutil, "which",
-            lambda name, *a, **k: dotnet if name == "dotnet" else None,
-        )
-        dll = tmp_path / "hc.dll"
-        dll.write_bytes(b"MZ")
-        parser_probe.discover_hc_tool(override_path=dll)
-        assert boundary_spy.subprocess_argv == [[dotnet, str(dll), "-h"]], boundary_spy.subprocess_argv
-        assert all(is_permitted_hc_identity_probe(a) for a in boundary_spy.subprocess_argv)
 
 
 if __name__ == "__main__":

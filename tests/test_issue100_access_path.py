@@ -499,9 +499,9 @@ class TestKnownOperationsImportInvariant(unittest.TestCase):
             "access_path-aware fix deferred in "
             "cycle7-programmer-p2.md." % overlap,
         )
-        # Documents the previously-pinned single fact as a sanity check that
-        # the live computation still agrees with the measured baseline.
-        self.assertIn("MSAOperations", hazardous)
+        # The previously-pinned single fact (`MSAOperations` in `hazardous`)
+        # no longer holds: flexicon 4.10.0 exports MSAOperations top-level,
+        # so the live set shrank. The overlap check above is the invariant.
 
 
 if __name__ == "__main__":

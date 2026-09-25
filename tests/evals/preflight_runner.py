@@ -44,6 +44,7 @@ from typing import Any, Dict, Optional, Set
 from server.validators import (
     validate_server_state,
     detect_partial_module_structure,
+    detect_deprecated_members,
     certify_script_readonly,
     detect_undiscovered_entities,
     detect_undefined_variables,
@@ -231,6 +232,7 @@ _ORDERED_GATES = (
     "syntax_error",
     "server_state_error",
     "partial_module_structure",
+    "deprecated_member",
     "unprotected_writes",
     "casting_issues_detected",
     "api_discovery_required",
@@ -308,6 +310,17 @@ def run_preflight_chain(entry: Dict[str, Any]) -> PreflightResult:
                 "partial_module_structure",
                 str(partial["missing_elements"]),
             )
+
+    # Gate 3b: deprecated_member (curated_deprecations.py). Unconditional:
+    # read-only and write-enabled runs alike.
+    deprecated = detect_deprecated_members(code, tree)
+    if deprecated["has_deprecated"]:
+        return PreflightResult(
+            "preflight_reject",
+            "deprecated_member",
+            "deprecated_member",
+            str([f["expr"] for f in deprecated["findings"]]),
+        )
 
     # Gate 4: unprotected_writes.
     cert = certify_script_readonly(code, FAKE_API_INDEX, tree)

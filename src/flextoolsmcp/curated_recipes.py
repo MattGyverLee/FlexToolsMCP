@@ -29,6 +29,11 @@ reviewed by a human and only added to this file once flipped to "curated"
 
 from typing import Any, Dict
 
+if __package__:
+    from .curated_deprecations import CURATED_DEPRECATIONS
+else:
+    from curated_deprecations import CURATED_DEPRECATIONS
+
 FLEXICON_VERIFIED_VERSION = "4.2.1"
 
 CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
@@ -175,6 +180,61 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "notes": "GetName is the vernacular title; use GetTitle for the analysis-language title if set.",
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
+    },
+    "create-interlinear-text": {
+        "intent": "Create a text whose paragraphs combine multiple writing-system runs in one ITsString",
+        "match_terms": [
+            "create interlinear text",
+            "create text with tagged runs",
+            "multi-run paragraph text",
+            "create text with multiple writing systems",
+            "TsIncStrBldr paragraph",
+            "create paradigm text",
+        ],
+        "entities": ["Text", "IStTxtPara", "ITsString"],
+        "operations": ["create", "write"],
+        "requires_write": True,
+        "code": (
+            "from SIL.LCModel.Core.KernelInterfaces import TsStrFactory\n\n"
+            "def _build_paragraph_contents(run_specs):\n"
+            "    \"\"\"Build one ITsString from (text, ws_tag) pairs.\"\"\"\n"
+            "    tsf = TsStrFactory()\n"
+            "    bldr = tsf.GetIncBldr()\n"
+            "    for text, ws_tag in run_specs:\n"
+            "        ws = project.WSHandle(ws_tag)\n"
+            "        bldr.AppendTsString(tsf.MakeString(text, ws))\n"
+            "    return bldr.GetString()\n\n"
+            "# Vernacular + gloss-style runs in one paragraph (reference / paradigm text).\n"
+            "# For interlinear glossing in analyzed texts, prefer ISegment.FreeTranslation.\n"
+            "TEXT_NAME = \"Paradigm sample\"\n"
+            "PARAGRAPHS = [\n"
+            "    [(\"mtu / watu   \", \"sw\"), (\"Class 1/2 (person)\", \"en\")],\n"
+            "]\n\n"
+            "if modifyAllowed:\n"
+            "    text = project.Texts.Create(TEXT_NAME)\n"
+            "    contents = project.Texts.GetContents(text)\n"
+            "    for run_specs in PARAGRAPHS:\n"
+            "        para = contents.ParagraphsOS.Create()\n"
+            "        para.Contents = _build_paragraph_contents(run_specs)\n"
+            "    report.Info(\n"
+            "        f\"Created text '{TEXT_NAME}' with {len(PARAGRAPHS)} paragraph(s) \"\n"
+            "        f\"({project.Texts.GetParagraphCount(text)} total)\"\n"
+            "    )\n"
+            "else:\n"
+            "    report.Info(\n"
+            "        f\"(Would create text '{TEXT_NAME}' with {len(PARAGRAPHS)} \"\n"
+            "        \"multi-run paragraph(s))\"\n"
+            "    )\n"
+        ),
+        "notes": (
+            "WARNING: writes to the database. Adjust TEXT_NAME, PARAGRAPHS, and ws tags "
+            "('sw' / 'en' are examples) before running with write enabled. Multiple "
+            "vernacular+gloss runs in one paragraph are valid ITsString but not "
+            "FLEx-idiomatic for analyzed interlinear data -- use segment free translations "
+            "when the text will be parsed in the Interlinearizer."
+        ),
+        "source": "curated",
+        "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
     },
     "list-wordforms": {
         "intent": "List all wordforms in the project",
@@ -444,5 +504,29 @@ CURATED_RECIPES: Dict[str, Dict[str, Any]] = {
         "notes": "GetAll returns a behavioral collection that supports len(), subscripting, and re-iteration directly; only wrap in list(...) if you specifically need a plain list.",
         "source": "curated",
         "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "eval-corpus"},
+    },
+    # Replacement for the deprecated ILexEntry.DoNotUseForParsing /
+    # LexEntryOperations.SetDoNotUseForParsing (see curated_deprecations.py):
+    # the code is the deprecation's own example, so the two can't drift.
+    "hide-entry-from-parser": {
+        "intent": "Hide an entry from the parser (mark its forms abstract)",
+        "match_terms": [
+            "hide from parser", "hide entry from parser", "exclude from parser",
+            "exclude from parsing", "do not use for parsing", "not used for parsing",
+            "skip parsing", "abstract form", "mark form abstract",
+        ],
+        "entities": ["LexEntry", "MoForm"],
+        "operations": ["update", "write", "iterate"],
+        "requires_write": True,
+        "code": CURATED_DEPRECATIONS["lexentry-donotuseforparsing"]["example"],
+        "notes": (
+            "WARNING: this recipe writes to the database. IsAbstract is on IMoForm "
+            "(entry.LexemeFormOA and each entry.AlternateFormsOS item), NOT on "
+            "ILexEntry. The entry is hidden from the parser only when every form is "
+            "abstract. Do not use DoNotUseForParsing: no FLEx parser reads it "
+            "(HCLoader.cs:543/585 check only IsAbstract)."
+        ),
+        "source": "curated",
+        "verified_against": {"flexicon": FLEXICON_VERIFIED_VERSION, "verified_by": "preflight"},
     },
 }

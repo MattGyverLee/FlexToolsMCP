@@ -1,0 +1,58 @@
+name: Upstream flag watch
+
+# Answers "can we unblock this deprecated field yet?" -- weekly.
+#
+# Some curated deprecations (src/flextoolsmcp/curated_deprecations.py) are
+# temporary: DoNotUseForParsing is refused by the MCP only because FLEx's
+# parsers ignore it today (LT-22810). This job searches sillsdev/FieldWorks,
+# sillsdev/liblcm and sillsdev/machine for the term and keeps ONE sticky issue
+# per deprecation, commenting (i.e. notifying) only when upstream mentions it
+# somewhere new -- a new code path, PR, issue or commit. A quiet week posts
+# nothing.
+#
+# Code search needs an authenticated token. github.token is tried first; if
+# the job fails with a search/auth error, add a read-only fine-grained PAT
+# (public repositories, no extra permissions) as the UPSTREAM_WATCH_TOKEN
+# secret and it will be used for the searches instead.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # 07:00 UTC every Monday
+  workflow_dispatch:       # and on demand
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: search upstream for blocked fields
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Search upstream and sync the sticky issue
+        env:
+          # Searches and issue writes share one gh session, so a PAT must also
+          # be able to write issues here -- or leave the secret unset.
+          GH_TOKEN: ${{ secrets.UPSTREAM_WATCH_TOKEN || github.token }}
+        # Exit 1 means "found something new" -- a finding, not a failure.
+        # Exit 2 is a real error (auth/network/rate limit) and fails the job.
+        run: |
+          set +e
+          python scripts/upstream_flag_watch.py --sync-issue \
+            --run-link "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          rc=$?
+          set -e
+          if [ "$rc" = "1" ]; then
+            echo "::warning title=Upstream flag watch::Upstream mentions a blocked field somewhere new -- see the upstream-flag-watch issue."
+          fi
+          if [ "$rc" = "2" ]; then
+            echo "upstream_flag_watch.py failed to run" >&2
+            exit 1
+          fi

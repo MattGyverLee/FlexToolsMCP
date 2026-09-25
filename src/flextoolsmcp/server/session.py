@@ -47,6 +47,11 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Call flextools_get_object_api on the entity (e.g. LexEntry, "
         "POS) before referencing it again."
     ),
+    "raw_addcustomfield_write_risk": (
+        "do not bypass flexicon with raw AddCustomField. Create the field "
+        "in FLEx UI or use project.CustomFields.CreateField; see next_steps "
+        "in the rejection (issue #70 hang + ghost-field corruption)."
+    ),
     "api_discovery_required": (
         "read-only auto-discovery does not satisfy the write gate. "
         "Call flextools_get_object_api for each Operations entity before "
@@ -97,6 +102,14 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "call flextools_get_module_template to get the full "
         "Main/docs/FlexToolsModule scaffold, OR drop the def Main "
         "wrapper entirely and submit the body as a bare snippet."
+    ),
+    "deprecated_member": (
+        "the code uses a curated-deprecated member (e.g. "
+        "DoNotUseForParsing, which no FLEx parser reads). Remove it -- do "
+        "not rename it: to hide an entry from the parser set IsAbstract on "
+        "its FORMS (entry.LexemeFormOA, if not None, and each item of "
+        "entry.AlternateFormsOS), not on the entry. Copy the "
+        "replacement_example from the rejection."
     ),
     "nested_unit_of_work": (
         # Re-scoped for issue #144: what's already open around the mutation

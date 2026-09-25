@@ -285,6 +285,13 @@ argument is rejected at preflight (error_code='hvo_literal_write_risk'); a
 read-only run gets a warning instead. See the `hvo_stability` block in
 flextools_start's runtime_primer for the full liblcm citation.
 
+DEPRECATED MEMBERS: code that reads, writes or calls a curated-deprecated member
+is rejected on every run (error_code='deprecated_member'). Today that is
+ILexEntry.DoNotUseForParsing / LexEntryOperations.Get/SetDoNotUseForParsing,
+which no FLEx parser reads. To hide an entry from the parser, set IsAbstract on
+its FORMS -- entry.LexemeFormOA (check it is not None) and each item of
+entry.AlternateFormsOS -- not on the entry (entry.IsAbstract does not exist).
+
 All code has access to:
 - project: FLExProject instance
 - report: Output mechanism (report.Info/Warning/Error)

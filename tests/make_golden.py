@@ -178,6 +178,20 @@ GOLDEN_FIXTURES: dict[str, dict] = {
     "runtime_error": {
         "message": "Code raised an exception at runtime",
     },
+    "deprecated_member": {
+        "message": "Refused: this code uses a deprecated API member -- `entry.DoNotUseForParsing` (line 2).",
+        "findings": [{
+            "member": "DoNotUseForParsing",
+            "deprecation_id": "lexentry-donotuseforparsing",
+            "access": "write",
+            "expr": "entry.DoNotUseForParsing",
+            "line": 2,
+            "col_offset": 4,
+        }],
+        "deprecations": [{"id": "lexentry-donotuseforparsing"}],
+        "replacement_example": "entry.LexemeFormOA.IsAbstract = True",
+        "next_steps": ["Set IsAbstract on the entry's forms (LexemeFormOA, AlternateFormsOS)"],
+    },
     # Parser-check CP4 (FR-035): detail fields in contracts/tools.md s.2 order.
     "parser_filing_in_progress": {
         "message": "A filing job is already running on project 'Demo'.",

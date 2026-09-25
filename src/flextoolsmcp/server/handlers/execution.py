@@ -90,6 +90,8 @@ try:
         build_writeability_payload, build_write_certification_payload,
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
+        detect_deprecated_members, build_deprecated_member_rejection,
+        detect_raw_addcustomfield_risk,
     )
 except ImportError:
     from server.validators import (
@@ -107,6 +109,8 @@ except ImportError:
         build_writeability_payload, build_write_certification_payload,
         compute_is_mutating_script, detect_nested_unit_of_work,
         detect_hvo_literal_args,
+        detect_deprecated_members, build_deprecated_member_rejection,
+        detect_raw_addcustomfield_risk,
     )
 
 # The write ladder's shared rungs (parser-check CP4, R-07): the access gate,
@@ -2015,6 +2019,22 @@ def _build_validate_only_checks(
     else:
         checks.append({"gate": "partial_module_structure", "passed": True, "note": "skipped (skip_module_check=True)"})
 
+    # --- Gate 3b: deprecated_member (curated_deprecations.py) ---
+    # Same detector + message builder handle_run_module uses; hard-rejects
+    # there on read-only and write-enabled runs alike.
+    deprecated_check = detect_deprecated_members(code, code_tree)
+    if deprecated_check["has_deprecated"]:
+        rejection = build_deprecated_member_rejection(deprecated_check)
+        checks.append({
+            "gate": "deprecated_member",
+            "passed": False,
+            "issues": deprecated_check["findings"],
+            "message": rejection["message"],
+            "next_steps": rejection["next_steps"],
+        })
+    else:
+        checks.append({"gate": "deprecated_member", "passed": True})
+
     # --- Gate 4: unprotected_writes (also feeds the writeability builder) ---
     cud_info = detect_cud_operations(code)
     cert = certify_script_readonly(code, api_idx, code_tree)
@@ -3213,6 +3233,37 @@ async def handle_run_module(args: dict) -> list[TextContent]:
                 code_size_bytes=_code_size_bytes,
             )
 
+    # Deprecated-member check (curated_deprecations.py): HARD BLOCK on both
+    # read-only and write-enabled runs. A curated-deprecated member exists in
+    # the API but does not do what its name says -- e.g.
+    # ILexEntry.DoNotUseForParsing has no effect on either FLEx parser, so a
+    # read answers the wrong question and a write silently changes nothing
+    # the parser sees. Runs before the write-safety gates so an unguarded
+    # SetDoNotUseForParsing is told "wrong field", not "add a guard".
+    # Not bypassable by skip_module_check / source='existing'.
+    deprecated_check = detect_deprecated_members(code, code_tree)
+    if deprecated_check["has_deprecated"]:
+        rejection = build_deprecated_member_rejection(deprecated_check)
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "deprecated_member",
+            f"findings={[f.get('expr') for f in deprecated_check['findings'][:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "deprecated_member",
+                rejection["message"],
+                findings=deprecated_check["findings"],
+                deprecations=list(deprecated_check["deprecations"].values()),
+                replacement_example=rejection["replacement_example"],
+                next_steps=rejection["next_steps"],
+                op_id=op_id,
+            ),
+            error_code="deprecated_member",
+            code_size_bytes=_code_size_bytes,
+        )
+
     # Nested-UnitOfWork check (issue #92 follow-up, re-derived for issue
     # #144): a script that opens its OWN raw UnitOfWork --
     # UndoableUnitOfWorkHelper/NonUndoableUnitOfWorkHelper or a bare
@@ -3351,6 +3402,39 @@ async def handle_run_module(args: dict) -> list[TextContent]:
     # missing modifyAllowed guard would. Blocking here is consistent with
     # that existing posture rather than a new architecture.
     hvo_literal_check = detect_hvo_literal_args(code, code_tree, get_api_index())
+    addcustomfield_check = detect_raw_addcustomfield_risk(code, code_tree)
+    if addcustomfield_check["has_raw_addcustomfield_risk"] and write_enabled:
+        findings = addcustomfield_check["findings"]
+        _log_preflight_reject(
+            op_id, seq, time.monotonic() - t_start,
+            "raw_addcustomfield_write_risk",
+            f"findings={[f.get('detail') for f in findings[:5]]}",
+        log_dir_fn=get_log_dir,
+        )
+        return _attach_assistance_if_loop(
+            error_response(
+                "raw_addcustomfield_write_risk",
+                "Raw IFwMetaDataCacheManaged.AddCustomField bypasses flexicon's "
+                "schema guards. Fields created this way may never persist correctly "
+                "and can corrupt the project on the next FLEx UI open; the "
+                "fieldWs=0 + IUndoStackManager.Save() pattern can hang until the "
+                "run_module timeout (issue #70).",
+                findings=findings,
+                next_steps=[
+                    "1. Create the custom field in FLEx (Tools > Configure > "
+                    "Custom Fields) before running population scripts.",
+                    "2. Or use project.CustomFields.CreateField(...) when your "
+                    "runner transaction mode allows schema mutations.",
+                    "3. Do not call raw AddCustomField on IFwMetaDataCacheManaged "
+                    "or usm.Save() to flush schema experiments.",
+                    "4. Re-run flextools_run_module() with the supported path.",
+                ],
+                op_id=op_id,
+            ),
+            error_code="raw_addcustomfield_write_risk",
+            code_size_bytes=_code_size_bytes,
+        )
+
     if hvo_literal_check["has_hvo_literal_risk"] and write_enabled:
         findings = hvo_literal_check["findings"]
         _log_preflight_reject(
@@ -4032,6 +4116,16 @@ async def handle_run_module(args: dict) -> list[TextContent]:
             "project.Object(guid_str)."
         )
         for finding in hvo_literal_check["findings"]:
+            warnings.append(f"  line {finding['line']}: {finding['detail']}")
+        warnings.append("")
+
+    if addcustomfield_check["has_raw_addcustomfield_risk"]:
+        warnings.append(
+            "[raw AddCustomField] Raw IFwMetaDataCacheManaged.AddCustomField "
+            "bypasses flexicon schema guards (issue #70). WRITE-enabled runs "
+            "with this pattern are rejected at preflight."
+        )
+        for finding in addcustomfield_check["findings"]:
             warnings.append(f"  line {finding['line']}: {finding['detail']}")
         warnings.append("")
 

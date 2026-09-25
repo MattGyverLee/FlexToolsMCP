@@ -25,14 +25,18 @@ try:
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
+        KEY_DEPRECATED, KEY_DEPRECATION,
     )
+    from ... import curated_deprecations
 except ImportError:
     from server.kernel import get_api_index, session_state
     from server.response_keys import (
         KEY_FOUND, KEY_MESSAGE, KEY_HINT, KEY_SUMMARY,
         KEY_LIBRARY, KEY_METHOD, KEY_LCM_INTERNALS, KEY_ADVISORY,
         KEY_LCM_NAME, KEY_COVERAGE, KEY_GAPS, KEY_KIND,
+        KEY_DEPRECATED, KEY_DEPRECATION,
     )
+    import curated_deprecations
 
 
 # Library label keys used by the reverse_mapping by_liblcm_entity entries.
@@ -46,6 +50,21 @@ _REVERSE_LIB_KEYS = {
 # Heuristic prefixes/suffixes used by kind="auto"
 _FACTORY_SUFFIX = "Factory"
 _REPOSITORY_SUFFIX = "Repository"
+
+
+def _with_deprecation(payload: dict, symbol: str) -> dict:
+    """Attach the curated deprecation (curated_deprecations.py) for `symbol`
+    -- an LCM name like ``ILexEntry.DoNotUseForParsing`` or a wrapper method
+    like ``LexEntryOperations.SetDoNotUseForParsing`` -- when there is one.
+    """
+    dep = curated_deprecations.lookup_member(symbol)
+    if dep is None:
+        return payload
+    payload = dict(payload)
+    payload[KEY_DEPRECATED] = True
+    payload[KEY_DEPRECATION] = dep
+    payload[KEY_ADVISORY] = dep["note"]
+    return payload
 
 
 def _text(payload: dict) -> list[TextContent]:
@@ -128,14 +147,14 @@ async def handle_get_wrapper_dependencies(args: dict) -> list[TextContent]:
         f"{library} mode. To call LCM directly, switch to api_mode='liblcm'."
     )
 
-    return _text({
+    return _text(_with_deprecation({
         KEY_FOUND: True,
         KEY_LIBRARY: library,
         KEY_METHOD: method,
         KEY_LCM_INTERNALS: entry,
         "session_mode": api_mode,
         KEY_ADVISORY: advisory,
-    })
+    }, method))
 
 
 # ============================================================
@@ -422,7 +441,7 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
         })
 
     if hit is None:
-        return _text({
+        hit = {
             KEY_FOUND: False,
             KEY_LCM_NAME: lcm_name,
             KEY_KIND: kind,
@@ -431,6 +450,6 @@ async def handle_find_wrappers_for_lcm(args: dict) -> list[TextContent]:
                 "Check the spelling, or try kind='auto' to search across "
                 "entity/factory/repository/method/property buckets."
             ),
-        })
+        }
 
-    return _text(hit)
+    return _text(_with_deprecation(hit, lcm_name))

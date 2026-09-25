@@ -3069,6 +3069,34 @@
         "verified_by": "eval-corpus"
       }
     },
+    "create-interlinear-text": {
+      "code": "from SIL.LCModel.Core.KernelInterfaces import TsStrFactory\n\ndef _build_paragraph_contents(run_specs):\n    \"\"\"Build one ITsString from (text, ws_tag) pairs.\"\"\"\n    tsf = TsStrFactory()\n    bldr = tsf.GetIncBldr()\n    for text, ws_tag in run_specs:\n        ws = project.WSHandle(ws_tag)\n        bldr.AppendTsString(tsf.MakeString(text, ws))\n    return bldr.GetString()\n\n# Vernacular + gloss-style runs in one paragraph (reference / paradigm text).\n# For interlinear glossing in analyzed texts, prefer ISegment.FreeTranslation.\nTEXT_NAME = \"Paradigm sample\"\nPARAGRAPHS = [\n    [(\"mtu / watu   \", \"sw\"), (\"Class 1/2 (person)\", \"en\")],\n]\n\nif modifyAllowed:\n    text = project.Texts.Create(TEXT_NAME)\n    contents = project.Texts.GetContents(text)\n    for run_specs in PARAGRAPHS:\n        para = contents.ParagraphsOS.Create()\n        para.Contents = _build_paragraph_contents(run_specs)\n    report.Info(\n        f\"Created text '{TEXT_NAME}' with {len(PARAGRAPHS)} paragraph(s) \"\n        f\"({project.Texts.GetParagraphCount(text)} total)\"\n    )\nelse:\n    report.Info(\n        f\"(Would create text '{TEXT_NAME}' with {len(PARAGRAPHS)} \"\n        \"multi-run paragraph(s))\"\n    )\n",
+      "entities": [
+        "IStTxtPara",
+        "ITsString",
+        "Text"
+      ],
+      "intent": "Create a text whose paragraphs combine multiple writing-system runs in one ITsString",
+      "match_terms": [
+        "create interlinear text",
+        "create text with tagged runs",
+        "multi-run paragraph text",
+        "create text with multiple writing systems",
+        "TsIncStrBldr paragraph",
+        "create paradigm text"
+      ],
+      "notes": "WARNING: writes to the database. Adjust TEXT_NAME, PARAGRAPHS, and ws tags ('sw' / 'en' are examples) before running with write enabled. Multiple vernacular+gloss runs in one paragraph are valid ITsString but not FLEx-idiomatic for analyzed interlinear data -- use segment free translations when the text will be parsed in the Interlinearizer.",
+      "operations": [
+        "create",
+        "write"
+      ],
+      "requires_write": true,
+      "source": "curated",
+      "verified_against": {
+        "flexicon": "4.2.1",
+        "verified_by": "preflight"
+      }
+    },
     "find-duplicate-headwords": {
       "code": "from collections import defaultdict\n\nby_headword = defaultdict(list)\nfor entry in project.LexEntry.GetAll():\n    headword = project.LexEntry.GetHeadword(entry)\n    by_headword[headword].append(entry)\n\nfor headword, entries in by_headword.items():\n    if len(entries) > 1:\n        report.Info(f\"{headword}: {len(entries)} entries (likely homographs, or true duplicates)\")\n",
       "entities": [
@@ -3190,6 +3218,37 @@
       "verified_against": {
         "flexicon": "4.2.1",
         "verified_by": "eval-corpus"
+      }
+    },
+    "hide-entry-from-parser": {
+      "code": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+      "entities": [
+        "LexEntry",
+        "MoForm"
+      ],
+      "intent": "Hide an entry from the parser (mark its forms abstract)",
+      "match_terms": [
+        "hide from parser",
+        "hide entry from parser",
+        "exclude from parser",
+        "exclude from parsing",
+        "do not use for parsing",
+        "not used for parsing",
+        "skip parsing",
+        "abstract form",
+        "mark form abstract"
+      ],
+      "notes": "WARNING: this recipe writes to the database. IsAbstract is on IMoForm (entry.LexemeFormOA and each entry.AlternateFormsOS item), NOT on ILexEntry. The entry is hidden from the parser only when every form is abstract. Do not use DoNotUseForParsing: no FLEx parser reads it (HCLoader.cs:543/585 check only IsAbstract).",
+      "operations": [
+        "update",
+        "write",
+        "iterate"
+      ],
+      "requires_write": true,
+      "source": "curated",
+      "verified_against": {
+        "flexicon": "4.2.1",
+        "verified_by": "preflight"
       }
     },
     "list-entries-with-glosses": {

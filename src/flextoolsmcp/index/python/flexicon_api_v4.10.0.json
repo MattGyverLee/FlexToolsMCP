@@ -8891,6 +8891,16 @@
       "description": "Base class for all FLEx operation classes.\n\nProvides common reordering functionality that works with any FLEx\nOwning Sequence (OS) collection. Subclasses must override _GetSequence()\nto specify which OS property to reorder.\n\nAll 43 operation classes inherit from this base class, gaining access\nto 7 reordering methods without code duplication.\n\nReordering Safety:\n- Reordering is SAFE - preserves all data connections\n- GUIDs, references, properties, and children remain intact\n- Only changes the sequence position (index)\n- Uses safe Clear/Add pattern for all operations\n\nLinguistic Significance:\n- Reordering changes linguistic meaning and behavior\n- Senses: First sense is primary\n- Allomorphs: First matching allomorph selected by parser\n- Examples: Order may reflect preference or pedagogy\n- Reorder only when linguistically justified\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"MyProject\", writeEnabled=True)\n\nentry = list(project.LexiconAllEntries())[0]\n\n# All operation classes have these methods:\n\n# Sort senses alphabetically\nproject.Senses.Sort(entry,\nkey_func=lambda s: project.Senses.GetGloss(s))\n\n# Move sense up one position\nsense = entry.SensesOS[2]\nproject.Senses.MoveUp(entry, sense)\n\n# Move allomorph to specific index\nallo = entry.AlternateFormsOS[3]\nproject.Allomorphs.MoveToIndex(entry, allo, 0)\n\n# Swap two examples\nex1 = sense.ExamplesOS[0]\nex2 = sense.ExamplesOS[1]\nproject.Examples.Swap(ex1, ex2)\n\nproject.CloseProject()",
       "example": "",
       "id": "BaseOperations",
+      "instance_attributes": [
+        {
+          "access_path": "project.project",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "project",
+          "type": "project"
+        }
+      ],
       "lcm_dependencies": [
         "IFsClosedFeature",
         "IFsClosedValue",
@@ -23888,6 +23898,24 @@
       "description": "This class provides convenience methods for accessing a FieldWorks\nproject by hiding some of the complexity of LCM.\nFor functionality that isn't provided here, LCM data and methods\ncan be used directly via `FLExProject.project`, `FLExProject.lp` and\n`FLExProject.lexDB`.\nHowever, for long term use, new methods should be added to this class.\n\nUsage::\n\nfrom SIL.LCModel.Core.KernelInterfaces import ITsString, ITsStrBldr\nfrom SIL.LCModel.Core.Text import TsStringUtils\n\nproject = FLExProject()\ntry:\nproject.OpenProject(\"my project\",\nwriteEnabled = True/False)\nexcept (FP_ProjectError, FP_FileNotFoundError, FP_FileLockedError,\nSystem.IO.FileNotFoundException, System.IO.IOException,\nLcmFileLockedException, LcmDataMigrationForbiddenException) as e:\n#\"Failed to open project\"\nprint(f\"Error opening project: {e}\")\ndel project\nexit(1)\n\nWSHandle = project.WSHandle('en')\n\n# Traverse the whole lexicon\nfor lexEntry in project.LexiconAllEntries():\nheadword = project.LexiconGetHeadword(lexEntry)\n\n# Use get_String() and set_String() with text fields:\nlexForm = lexEntry.LexemeFormOA\nlexEntryValue = ITsString(lexForm.Form.get_String(WSHandle)).Text\nnewValue = convert_headword(lexEntryValue)\nmkstr = TsStringUtils.MakeString(newValue, WSHandle)\nlexForm.Form.set_String(WSHandle, mkstr)",
       "example": "",
       "id": "FLExProject",
+      "instance_attributes": [
+        {
+          "access_path": "project.lexDB",
+          "defined_in": "OpenProject",
+          "description": "Lexical database (ILexDb). Most lexicon structure and entries are reachable from here.",
+          "kind": "instance_attr",
+          "name": "lexDB",
+          "type": "ILexDb"
+        },
+        {
+          "access_path": "project.lp",
+          "defined_in": "OpenProject",
+          "description": "Language project root (LCM LangProject). Primary low-level LCM access when Operations wrappers do not cover a property.",
+          "kind": "instance_attr",
+          "name": "lp",
+          "type": "LangProject"
+        }
+      ],
       "lcm_dependencies": [
         "CellarPropertyType",
         "CellarPropertyTypeFilter",
@@ -30931,6 +30959,16 @@
       "description": "Exception raised for any problems opening the project.\n\nAttributes:\n- message -- explanation of the error",
       "example": "",
       "id": "FP_ProjectError",
+      "instance_attributes": [
+        {
+          "access_path": "project.message",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "message",
+          "type": "message"
+        }
+      ],
       "lcm_dependencies": [],
       "methods": [
         {
@@ -31027,6 +31065,16 @@
       "description": "Exception raised for any problems running the module.\n\nAttributes:\n- message -- explanation of the error",
       "example": "",
       "id": "FP_RuntimeError",
+      "instance_attributes": [
+        {
+          "access_path": "project.message",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "message",
+          "type": "message"
+        }
+      ],
       "lcm_dependencies": [],
       "methods": [
         {
@@ -31179,6 +31227,16 @@
       "description": "This class provides operations for managing saved filters and queries\nin a FieldWorks project.\n\nFilters allow you to define reusable criteria for selecting and filtering\ndifferent types of objects (entries, wordforms, texts, etc.). Each filter\nhas a name, type, and criteria definition that can be applied to collections\nof objects.\n\nThis class should be accessed via FLExProject.Filter property.\n\nUsage::\n\nfrom flexicon import FLExProject\n\nproject = FLExProject()\nproject.OpenProject(\"my project\", writeEnabled=True)\n\n# Create a new filter\nfilter_obj = project.Filter.Create(\n\"Verbs\",\nFilterTypes.LEXENTRY,\n{\"pos\": \"verb\"}\n)\n\n# Get all filters\nfor f in project.Filter.GetAll():\nname = project.Filter.GetName(f)\nprint(name)\n\n# Find a filter by name\nfilter_obj = project.Filter.Find(\"Verbs\")\n\n# Apply filter to entries\nentries = list(project.LexEntry.GetAll())\nmatching = project.Filter.ApplyFilter(filter_obj, entries)\n\n# Export filter definition\nproject.Filter.ExportFilter(filter_obj, \"/path/to/filter.json\")\n\nproject.CloseProject()\n",
       "example": "",
       "id": "FilterOperations",
+      "instance_attributes": [
+        {
+          "access_path": "project.project",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "project",
+          "type": "project"
+        }
+      ],
       "lcm_dependencies": [
         "ICmFilter",
         "ICmFilterFactory",
@@ -35652,6 +35710,23 @@
           "usage_hint": "retrieval"
         },
         {
+          "deprecated": true,
+          "deprecation": {
+            "evidence": [
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:543 (affix forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:585 (stem forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:538-540 (IMoAffixProcess forms bypass the IsAbstract check)",
+              "FieldWorks Src/Transforms/Application/FxtM3ParserToXAmpleLex.xsl (XAmple filters only on @IsAbstract)"
+            ],
+            "example": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+            "id": "lexentry-donotuseforparsing",
+            "note": "Deprecated: no parser effect. ILexEntry.DoNotUseForParsing is not read by either FLEx parser -- HermitCrab (HCLoader.cs) loads every entry and skips only forms whose IsAbstract is set (HCLoader.cs:543 for affixes, :585 for stems), and XAmple (FxtM3ParserToXAmpleLex.xsl) filters only on @IsAbstract. The field is used only by LIFT import/export and is not shown in the FLEx UI. To hide an entry from the parser, set IsAbstract on its forms (IMoForm), not on the entry: entry.LexemeFormOA.IsAbstract = True, and on each allomorph in entry.AlternateFormsOS. The entry is fully hidden only when every form is abstract. There is no ILexEntry.IsAbstract. Caveat: HermitCrab does not check IsAbstract on IMoAffixProcess forms (HCLoader.cs:538-540).",
+            "replacement_owner": "IMoForm",
+            "replacement_paths": [
+              "ILexEntry.LexemeFormOA.IsAbstract",
+              "ILexEntry.AlternateFormsOS[*].IsAbstract"
+            ]
+          },
           "description": "Check if an entry is excluded from parsing.\n",
           "example": "",
           "is_classmethod": false,
@@ -36799,6 +36874,23 @@
           "usage_hint": "modification"
         },
         {
+          "deprecated": true,
+          "deprecation": {
+            "evidence": [
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:543 (affix forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:585 (stem forms: skipped only when IsAbstract)",
+              "FieldWorks Src/LexText/ParserCore/HCLoader.cs:538-540 (IMoAffixProcess forms bypass the IsAbstract check)",
+              "FieldWorks Src/Transforms/Application/FxtM3ParserToXAmpleLex.xsl (XAmple filters only on @IsAbstract)"
+            ],
+            "example": "# Hide an entry from the parser: mark every one of its FORMS abstract.\n# IsAbstract is on IMoForm (entry.LexemeFormOA and each item of\n# entry.AlternateFormsOS), not on the entry -- entry.IsAbstract does not exist.\nTARGET = \"example-headword\"  # the entry to hide\nfor entry in project.LexEntry.GetAll():\n    if project.LexEntry.GetHeadword(entry) != TARGET:\n        continue\n    forms = []\n    if entry.LexemeFormOA is not None:  # an entry can lack a lexeme form\n        forms.append(entry.LexemeFormOA)\n    forms.extend(entry.AlternateFormsOS)  # allomorphs, already IMoForm\n    if modifyAllowed:\n        for form in forms:\n            form.IsAbstract = True\n    report.Info(f\"{TARGET}: {len(forms)} form(s) marked abstract\")\n",
+            "id": "lexentry-donotuseforparsing",
+            "note": "Deprecated: no parser effect. ILexEntry.DoNotUseForParsing is not read by either FLEx parser -- HermitCrab (HCLoader.cs) loads every entry and skips only forms whose IsAbstract is set (HCLoader.cs:543 for affixes, :585 for stems), and XAmple (FxtM3ParserToXAmpleLex.xsl) filters only on @IsAbstract. The field is used only by LIFT import/export and is not shown in the FLEx UI. To hide an entry from the parser, set IsAbstract on its forms (IMoForm), not on the entry: entry.LexemeFormOA.IsAbstract = True, and on each allomorph in entry.AlternateFormsOS. The entry is fully hidden only when every form is abstract. There is no ILexEntry.IsAbstract. Caveat: HermitCrab does not check IsAbstract on IMoAffixProcess forms (HCLoader.cs:538-540).",
+            "replacement_owner": "IMoForm",
+            "replacement_paths": [
+              "ILexEntry.LexemeFormOA.IsAbstract",
+              "ILexEntry.AlternateFormsOS[*].IsAbstract"
+            ]
+          },
           "description": "Set whether an entry is excluded from parsing.\n",
           "example": "",
           "is_classmethod": false,
@@ -50089,6 +50181,16 @@
       "description": "Descriptor enabling methods to work as both class and instance methods.\n\nAllows calling operation methods in two ways:\n- Class level (no instantiation): POSOperations.GetAll(project)\n- Instance level (traditional): POSOperations(project).GetAll()\n\nBoth patterns work identically and are equally valid. The descriptor\nautomatically handles instantiation when called at class level.\n\nUsage::\n\nclass POSOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\n# Implementation\nreturn self.project.GetAllPOS()\n\n# Both work:\npos_list = POSOperations.GetAll(project)  # Class-level\npos_list = POSOperations(project).GetAll()  # Instance-level",
       "example": "",
       "id": "OperationsMethod",
+      "instance_attributes": [
+        {
+          "access_path": "project.func",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "func",
+          "type": "func"
+        }
+      ],
       "lcm_dependencies": [
         "IFsClosedFeature",
         "IFsClosedValue",
@@ -81591,6 +81693,16 @@
       "description": "Descriptor to automatically wrap IEnumerable/iterator return values.\n\nWraps methods that return C# IEnumerable collections -- or plain\nPython iterators/generators built on top of them (e.g. via\n`self.project.ObjectsIn(...)` or a `yield`-based method body) -- to\nmake them Pythonic with `.Count`, `len()`, and indexing support.\n\nMust be a descriptor to properly delegate to OperationsMethod's __get__,\nensuring the descriptor protocol works correctly when stacked decorators\nare used.\n\nUsage::\n\nclass MyOperations(BaseOperations):\n@wrap_enumerable\n@OperationsMethod\ndef GetAll(self):\nreturn self.project.GetAllItems()\n\n# Now users can do:\nitems = GetAll(project)\ncount = items.Count      # Works!\nfirst = items[0]         # Works!\nlength = len(items)      # Works!\n\nBehavioral collection contract:\nEvery ``GetAll`` in flexicon returns a **behavioral collection**: you\ncan always loop it, ``len()`` it, index into it, and re-iterate it.\nThe concrete return type -- ``EnumerableWrapper`` (this decorator, for\nlarge/lazily-materialized results), a plain ``list`` (already a\nsequence, so wrapping is a no-op), or a ``SmartCollection`` subtype\n(adds ``.filter()``/type-breakdown display on top of the same\nsequence guarantees) -- is an implementation detail callers never\nhave to branch on. See ``docs/getall-contract.md`` for the full\nguarantee and rationale.",
       "example": "",
       "id": "wrap_enumerable",
+      "instance_attributes": [
+        {
+          "access_path": "project.func",
+          "defined_in": "__init__",
+          "description": "Instance attribute set during __init__().",
+          "kind": "instance_attr",
+          "name": "func",
+          "type": "func"
+        }
+      ],
       "lcm_dependencies": [
         "IFsClosedFeature",
         "IFsClosedValue",

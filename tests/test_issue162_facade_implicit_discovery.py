@@ -41,6 +41,19 @@ class TestIssue162FacadeImplicitDiscovery(unittest.TestCase):
             msg=f"expected facade use to satisfy discovery; got {result}",
         )
 
+    def test_project_allomorphs_satisfies_allomorph_operations(self):
+        """Log triage (issue #162 / directive C-M6-01) hit the same gate for
+        AllomorphOperations via ``project.Allomorphs``."""
+        code = (
+            "def Main(project, report, modifyAllowed):\n"
+            "    project.Allomorphs.Create(entry, 'form', morph_type)\n"
+        )
+        result = self._detect(code)
+        self.assertFalse(
+            result["has_undiscovered"],
+            msg=f"expected Allomorphs facade to satisfy discovery; got {result}",
+        )
+
     def test_project_msa_satisfies_msa_operations(self):
         """MSAOperations is another non-{Name}Operations facade mapping."""
         code = (

@@ -75,6 +75,12 @@ flexlibs stays at `v1.2.8`.
   work. When no candidate clears the 0.6 floor, `did_you_mean` is now `[]` and
   `help` carries an explicit pointer to `flextools_get_object_api` /
   `flextools_search_by_capability` rather than an empty or misleading hint.
+- **Raw `AddCustomField` on the LCM metadata cache refused at preflight on write runs**
+  ([#70](https://github.com/MattGyverLee/FlexToolsMCP/issues/70)). Bypassing
+  ``project.CustomFields.CreateField`` with ``IFwMetaDataCacheManaged.AddCustomField``
+  can corrupt projects and, with ``fieldWs=0`` followed by ``IUndoStackManager.Save()``,
+  hung ``run_module`` until timeout. Write-enabled runs now return
+  ``raw_addcustomfield_write_risk``; read-only runs surface an advisory.
 - **`flextools_find_wrappers_for_lcm` downgraded `Entity.Property` to misleading entity hits**
   ([#87](https://github.com/MattGyverLee/FlexToolsMCP/issues/87)). Dotted
   LCM names now resolve as property lookups; when a property has no wrapper
@@ -97,11 +103,15 @@ flexlibs stays at `v1.2.8`.
   fix/issue-95-regression-shapes to pin both call shapes (bare snippet and
   `Main`-wrapped module) and confirm `status=error`, `error_code=unprotected_writes`,
   non-empty `next_steps`, and `modifyAllowed` in the `why` field.
-- **Mutations factored into helpers invoked only from `if modifyAllowed:` were
-  flagged as unprotected** ([#97](https://github.com/MattGyverLee/FlexToolsMCP/issues/97)).
-  ``certify_script_readonly`` now extends guard protection into callee function
-  bodies when every call site is already inside a protected range (including
-  helper chains). Mixed guarded/unguarded call sites stay conservative.
+- **Casting validator false positives and misleading fix text**
+  ([#97](https://github.com/MattGyverLee/FlexToolsMCP/issues/97)). Branch-aware
+  cast tracking stops mutually exclusive ``if``/``elif`` arms from conflating the
+  same variable name onto the last arm's interface (Bug 2). Ambiguous-property
+  advisories no longer pick ``defined_on[0]`` as a confident target; they emit
+  ranked uncertainty instead (Bug 1). Mutations inside helpers called only from
+  ``if modifyAllowed:`` inherit guard protection instead of reporting as
+  unprotected (minor, #254). Tier-1 eval corpus entry
+  ``issue97_msa_if_elif_branches_ok.yaml`` pins Bug 2 on the preflight chain.
 - **Stale worked example `analysis-subtype-disambiguation`** ([#98](https://github.com/MattGyverLee/FlexToolsMCP/issues/98)).
   Replaced removed liblcm 11 `LangProject.WordformInventoryOA` access with
   `project.Wordforms.GetAll()` / `GetForm()` so the example runs on current
@@ -118,6 +128,13 @@ flexlibs stays at `v1.2.8`.
   ``access_path`` such as ``project.LexEntry`` over
   ``from flexicon import LexEntryOperations`` when the index carries a facade
   route. Closes the cycle-7 deferred gap in the ``is_operations_class`` branch.
+- **Non-`ICmPossibility` morphology list types warned in `resolve_property`**
+  ([#101](https://github.com/MattGyverLee/FlexToolsMCP/issues/101)). The
+  curated `not_cmpossibility_warning` (already on `get_object_api` for
+  `IMoInflAffixSlot` / `IMoInflAffixTemplate` / `IMoInflClass`) now also
+  appears when callers resolve properties with those types as
+  `context_entity`, so exploring `.Name` is answerable before a runtime
+  `ICmPossibility` cast fails.
 - **Redundant ``project.project.Cache`` hop on LcmCache** ([#108](https://github.com/MattGyverLee/FlexToolsMCP/issues/108)).
   Preflight and runtime polymorphic hints now detect the common mistake of
   chaining ``.Cache`` after ``project.project`` (which is already the
@@ -206,6 +223,12 @@ flexlibs stays at `v1.2.8`.
   so export scripts extract primitives (``.Handle`` / ``.Id`` / morph-type
   ``.Name``) instead of calling ``json.dumps`` on live ``Core*`` / ``IMo*``
   handles.
+- **`undiscovered_entity` rejected facade-only Operations (e.g. `project.Variants`)**
+  ([#162](https://github.com/MattGyverLee/FlexToolsMCP/issues/162)). Using
+  ``project.Variants`` / ``project.Allomorphs`` (and other index-mapped facade
+  accessors whose class name is not ``{Accessor}Operations``) now satisfies the
+  discovery gate the same way an explicit ``flextools_get_object_api`` call would,
+  parallel to import-based implicit discovery (issue #31).
 - **Three-tier casting-helper injection formally retired** ([#163](https://github.com/MattGyverLee/FlexToolsMCP/issues/163)).
   Runner-side `_get_api_mode_imports` / `_get_casting_helpers_code` were dead code
   (injection stopped at d3e55d4). Removed them after the explicit restore-vs-retire
@@ -358,6 +381,12 @@ flexlibs stays at `v1.2.8`.
 
 ### Added
 
+- **Curated recipe `create-interlinear-text`**
+  ([#138](https://github.com/MattGyverLee/FlexToolsMCP/issues/138)). Search and
+  capability discovery now ship a write-guarded pattern for creating a text
+  whose paragraphs combine multiple writing-system runs in one `ITsString`,
+  so callers are not forced to hand-roll `TsStrFactory` / `TsIncStrBldr` interop
+  for paradigm or reference texts.
 - **`flextools_parse_release`** ([#223](https://github.com/MattGyverLee/FlexToolsMCP/issues/223)).
   Releases this server's own idle parse worker(s) for a project, dropping the
   fwdata lock without killing anything. Takes an optional `project_name`
@@ -526,6 +555,35 @@ reporting whether the sandbox spine is ready.
   a 20-wordform sample and counts, and writes the full plan to
   `<record dir>/plans/<plan_id>.json` (`plan.detail.full_plan_path`). The stored
   plan, `plan_id` and the confirmation binding are unchanged.
+- **`DoNotUseForParsing` is deprecated and refused at preflight.**
+  `ILexEntry.DoNotUseForParsing` (and flexicon's
+  `LexEntryOperations.Get/SetDoNotUseForParsing`) has no effect on either FLEx
+  parser: HermitCrab skips only forms whose `IsAbstract` is set (HCLoader.cs:543
+  affixes, :585 stems) and XAmple filters only on `@IsAbstract`. It is used only
+  by LIFT import/export. A new curated overlay, `curated_deprecations.py`, marks
+  such members `deprecated` with a note and a runnable replacement. The index
+  builders apply it before writing, the server re-applies it on load, and it is
+  applied to the checked-in indexes (`python -m flextoolsmcp.curated_deprecations
+  --apply`). The discovery tools flag it (`get_object_api` adds
+  `deprecated_members`), push deprecated rows below live ones in
+  `search_by_capability`, and attach `deprecation_redirects`. A new
+  `hide-entry-from-parser` recipe covers the replacement. `run_module` refuses any
+  read, write or call of it with the new error code `deprecated_member`. This
+  applies to read-only and write runs, and to `validate_only` as a new
+  `deprecated_member` gate. The message and `next_steps` carry the replacement,
+  which is to set `IsAbstract` on the entry's forms (`LexemeFormOA`, if not None,
+  and each `AlternateFormsOS` item), not on the entry. `entry.IsAbstract` on an
+  `ILexEntry` receiver now gets a `misplaced_member` hint that points to those
+  forms, instead of a spelling or cast suggestion.
+- **Weekly watch for when the `DoNotUseForParsing` block can be lifted.**
+  The block is temporary. FLEx may implement the field in its parsers
+  ([LT-22810](https://jira.sil.org/browse/LT-22810)), so the deprecation entry
+  now carries `tracking` and `upstream_watch` data. The new workflow
+  `upstream-flag-watch.yml` runs `scripts/upstream_flag_watch.py` every Monday.
+  It searches sillsdev/FieldWorks, liblcm and machine for the term and ignores
+  the 2026-09-25 baseline paths and PRs. When something new appears (a code
+  path, PR, issue or commit), it opens one sticky `upstream-flag-watch` issue
+  with the lift steps and comments only on later new findings.
 
 ## [2.12.0] - 2026-09-10
 

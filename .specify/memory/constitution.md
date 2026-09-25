@@ -263,7 +263,11 @@ run that was never prompted.
   uses a scratch project with prefixed test objects; read paths may use a
   reference project.
 
-**Merge requirements.** Before a change lands: a CHANGELOG entry exists;
+**Merge requirements.** Before a change lands: a CHANGELOG entry exists
+(under `[Unreleased]`, issue-linked Fixed bullets sorted ascending by issue
+number — insert at the sorted position, not the top; changes with no issue
+link go under Other and append at the bottom; Governance / Tool contract
+prose appends at the end of that section);
 extractor changes carry a regenerated index diff and the regenerated index is
 committed with them; payload-shape changes carry regenerated golden files; the
 test suite passes; the integrity validator exits clean; pre-commit passes; and

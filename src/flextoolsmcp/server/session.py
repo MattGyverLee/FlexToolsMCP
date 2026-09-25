@@ -47,6 +47,12 @@ _ASSISTANCE_HINTS_BY_ERROR_CODE = {
         "Call flextools_get_object_api on the entity (e.g. LexEntry, "
         "POS) before referencing it again."
     ),
+    "api_discovery_required": (
+        "read-only auto-discovery does not satisfy the write gate. "
+        "Call flextools_get_object_api for each Operations entity before "
+        "submitting WRITE code — see auto_discovered_pending_validation "
+        "when present."
+    ),
     "project_not_open": (
         # Issue #53: the rejection payload now inlines available_projects
         # (from the same safe enumeration flextools_list_projects uses) --

@@ -11,7 +11,9 @@ Tests for the validator-cluster bug fixes (issues #38, #39, #40, #41, #44, #69).
 #69 -- invalid_api_chain suppresses low-confidence "did you mean" matches
 """
 
+import json
 import unittest
+from pathlib import Path
 
 from server.validators import (
     detect_casting_needs,
@@ -417,6 +419,57 @@ class TestIssue40DomainRuling(unittest.TestCase):
         )
         flagged = self._flagged(detect_casting_needs(code, self.INDEX))
         self.assertNotIn("CategoryRA", flagged)
+
+
+class TestIssue40LexDbOaCastInference(unittest.TestCase):
+    """Issue #40 / #76: `lexdb = lp.LexDbOA` after `lp = ILangProject(...)`
+    must satisfy ILexDb-only *OA reads without an explicit ILexDb(...) cast."""
+
+    @classmethod
+    def setUpClass(cls):
+        idx_path = (
+            Path(__file__).parent.parent
+            / "src" / "flextoolsmcp" / "index" / "casting_index_liblcm-v11.0.0.json"
+        )
+        if not idx_path.exists():
+            cls.casting_index = None
+            return
+        with open(idx_path, encoding="utf-8") as f:
+            cls.casting_index = json.load(f)
+
+    def test_extended_note_types_oa_not_flagged_via_lexdboa(self):
+        if self.casting_index is None:
+            self.skipTest("shipped liblcm casting index not found")
+        code = (
+            "from SIL.LCModel import ILangProject\n"
+            "lp = ILangProject(project.Cache.LangProject)\n"
+            "lexdb = lp.LexDbOA\n"
+            "ent = lexdb.ExtendedNoteTypesOA\n"
+        )
+        result = detect_casting_needs(code, self.casting_index)
+        flagged = {issue["property"] for issue in result["casting_issues"]}
+        self.assertNotIn(
+            "ExtendedNoteTypesOA", flagged,
+            f"ILexDb inferred from LexDbOA should suppress; got {result['casting_issues']}",
+        )
+
+    def test_extended_note_types_oa_not_flagged_inside_try(self):
+        """Ejagham Mini op#12 shape: same access inside try/except must not
+        differ from top-level once lp is ILangProject-typed."""
+        if self.casting_index is None:
+            self.skipTest("shipped liblcm casting index not found")
+        code = (
+            "from SIL.LCModel import ILangProject\n"
+            "lp = ILangProject(project.Cache.LangProject)\n"
+            "lexdb = lp.LexDbOA\n"
+            "try:\n"
+            "    ent = lexdb.ExtendedNoteTypesOA\n"
+            "except Exception:\n"
+            "    ent = None\n"
+        )
+        result = detect_casting_needs(code, self.casting_index)
+        flagged = {issue["property"] for issue in result["casting_issues"]}
+        self.assertNotIn("ExtendedNoteTypesOA", flagged)
 
 
 class TestIssue69LowConfidenceSuppression(unittest.TestCase):

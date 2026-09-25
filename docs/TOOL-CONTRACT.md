@@ -115,7 +115,7 @@ authoritative. All detail fields are optional unless noted.
 | `partial_module_structure` | `missing_elements` (list), `has_main`, `has_docs_dict`, `has_flextools_binding` |
 | `unprotected_writes` | `mutating_calls` (list), `write_certification_required` |
 | `casting_issues_detected` | `casting_issues` (list), `polymorphic_collections`, `general_guidance` -- issue #40 B-1: on a READ-ONLY run (`write_enabled=false`), this code is emitted (and the run rejected) only if at least one `casting_issues[*].severity` is `"error"` (a known-pattern hit, or a genuine attribute typo). If every issue is `"warning"` (an index-derived lookup with no corroborating known pattern), the run **proceeds instead of rejecting** -- see "Read-only casting severity downgrade" below. WRITE-enabled runs are unaffected: this code still rejects at every severity. |
-| `api_discovery_required` | `detected_candidates` (list), `session`, `missing_entity`, `suggested_tool_call` |
+| `api_discovery_required` | `detected_candidates` (list), `auto_discovered_pending_validation` (list; entities auto-granted on read-only runs but not yet validated via `get_object_api`, issue #244), `session`, `missing_entity`, `suggested_tool_call` |
 | `undiscovered_entity` | `undiscovered`, `imported_undiscovered` (list), `session`, `closest_matches` (list) |
 | `undefined_variables` | `undefined_vars` (list), `guidance` |
 | `missing_imports` | `missing_imports` (list), `api_mode`, `guidance` |

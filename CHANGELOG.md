@@ -418,6 +418,14 @@ reporting whether the sandbox spine is ready.
 
 *(Unreleased changes with no issue link go here; append at the bottom.)*
 
+- **The `flextools_parse_text` filing preview was megabytes on a large scope.**
+  An `all_texts` preview listed every projected analysis GUID inline: 24k GUIDs,
+  3.4 MB for a 26k-word project. Clients could not keep that in context, and no
+  one reviews it. Past 200 GUIDs (or 50 unreadable words), the preview now shows
+  a 20-wordform sample and counts, and writes the full plan to
+  `<record dir>/plans/<plan_id>.json` (`plan.detail.full_plan_path`). The stored
+  plan, `plan_id` and the confirmation binding are unchanged.
+
 ## [2.12.0] - 2026-09-10
 
 ### flexicon 4.8.0 is the new minimum

@@ -1517,10 +1517,104 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# The preview's per-wordform GUID lists grow with the project: an all_texts
+# preview of 26k words named 24k GUIDs, 3.4 MB, which no reader reviews and no
+# client keeps in context. Past these sizes the RESPONSE carries a sample and a
+# summary, and the full plan is written to a file beside the run records. The
+# plan itself -- what the session stores and plan_id binds -- is unchanged.
+_PREVIEW_INLINE_GUIDS = 200
+_PREVIEW_SAMPLE_WORDFORMS = 20
+_PREVIEW_INLINE_WORDS = 50
+_PREVIEW_PLANS_KEPT = 20
+
+
+def _write_plan_detail(plan: Dict[str, Any], plan_id: str) -> Dict[str, Any]:
+    """Write the full plan to `<record dir>/plans/<plan_id>.json`.
+
+    The plans dir is a sibling of the run dirs; run ids are 32 hex, so
+    run-listing never mistakes it for a run.
+
+    `plan_id` is server-computed hex, never caller input, so it is safe as a
+    file name. The file is outside any project (FR-042) and only the newest
+    `_PREVIEW_PLANS_KEPT` are kept. A failed write is reported, not raised:
+    the preview still stands, it just cannot point at the full lists.
+    """
+    import os
+    from ..parse.record import get_record_dir
+
+    try:
+        record_root = get_runner().record_dir or get_record_dir()
+        plans_dir = filing_paths.assert_outside_project(record_root / "plans")
+        plans_dir.mkdir(parents=True, exist_ok=True)
+        path = plans_dir / f"{plan_id}.json"
+        tmp = plans_dir / f"{plan_id}.json.tmp"
+        tmp.write_text(
+            json.dumps({"plan_id": plan_id, "plan": plan}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.replace(tmp, path)
+        stale = sorted(plans_dir.glob("*.json"), key=lambda p: p.stat().st_mtime,
+                       reverse=True)[_PREVIEW_PLANS_KEPT:]
+        for old in stale:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        return {"full_plan_path": str(path)}
+    except Exception as exc:  # noqa: BLE001 -- the preview must not fail on this
+        return {"full_plan_unavailable": f"{type(exc).__name__}: {exc}"}
+
+
+def _compact_by_wordform(block: Dict[str, Any]) -> Dict[str, Any]:
+    """`block` with `by_wordform` replaced by a sample and a summary."""
+    by_wordform = block.get("by_wordform") or {}
+    sample = dict(list(by_wordform.items())[:_PREVIEW_SAMPLE_WORDFORMS])
+    out = {k: v for k, v in block.items() if k != "by_wordform"}
+    out["by_wordform_sample"] = sample
+    out["by_wordform_summary"] = {
+        "wordforms": len(by_wordform),
+        "analyses": sum(len(g) for g in by_wordform.values()),
+        "sample_wordforms": len(sample),
+    }
+    return out
+
+
+def _preview_plan(plan: Dict[str, Any], plan_id: str) -> Dict[str, Any]:
+    """The plan as the preview response shows it: whole when small, else compact."""
+    deletion = plan["deletion_projection"]
+    overwrites = plan.get("disapproval_overwrites") or {}
+    unreadable = list(deletion.get("words_unreadable") or [])
+
+    def guids(block: Dict[str, Any]) -> int:
+        return sum(len(g) for g in (block.get("by_wordform") or {}).values())
+
+    big_deletion = guids(deletion) > _PREVIEW_INLINE_GUIDS
+    big_overwrites = guids(overwrites) > _PREVIEW_INLINE_GUIDS
+    big_unreadable = len(unreadable) > _PREVIEW_INLINE_WORDS
+    if not (big_deletion or big_overwrites or big_unreadable):
+        return plan
+
+    view = dict(plan)
+    view_deletion = _compact_by_wordform(deletion) if big_deletion else dict(deletion)
+    if big_unreadable:
+        view_deletion["words_unreadable"] = unreadable[:_PREVIEW_INLINE_WORDS]
+        view_deletion["words_unreadable_count"] = len(unreadable)
+    view["deletion_projection"] = view_deletion
+    if big_overwrites:
+        view["disapproval_overwrites"] = _compact_by_wordform(overwrites)
+    view["detail"] = {
+        **_write_plan_detail(plan, plan_id),
+        "note": ("This response shows a sample of each long list; the full lists "
+                 "are in the plan file. plan_id binds the full plan, not the sample."),
+    }
+    return view
+
+
 def _confirmation_required(
     plan: Dict[str, Any], plan_id: str, request: ParseTextInput, *, reason: str
 ) -> List[TextContent]:
-    """Row 10: the preview. Carries the plan and its id; writes nothing."""
+    """Row 10: the preview. Carries the plan and its id; writes nothing to the
+    project. A large plan is shown compact, its full form in a file (above)."""
     deletion = plan["deletion_projection"]
     upper_bound = int(deletion.get("upper_bound") or 0)
     words = int(plan.get("words_in_scope") or 0)
@@ -1559,7 +1653,7 @@ def _confirmation_required(
     return error_response(
         "confirmation_required",
         message,
-        plan=plan,
+        plan=_preview_plan(plan, plan_id),
         plan_id=plan_id,
         backup={"intent": backup.get("outcome"), "note": note},
         plan_id_limit=filing_wording.PLAN_ID_LIMIT,

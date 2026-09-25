@@ -49,6 +49,17 @@ This is what `confirmation_required` carries under `plan`. It is canonical JSON,
 | `confirmation_setting` | `{require_write_confirmation: bool, effective_for_filing: true}` | no | R-08 |
 | `estimate_note` | `str` | no | the projection is an **upper bound**, "may delete up to N", not a prediction |
 
+**Large plans in the response.** When `deletion_projection.by_wordform` or
+`disapproval_overwrites.by_wordform` names more than 200 GUIDs, or `words_unreadable`
+more than 50 words, the *response* shows that list compact. `by_wordform` becomes
+`by_wordform_sample` (the first 20 wordforms) plus `by_wordform_summary`
+(`{wordforms, analyses, sample_wordforms}`), and `words_unreadable` is cut to 50 with
+`words_unreadable_count`. `plan.detail` then gives `full_plan_path`, the full plan
+written to `<record dir>/plans/<plan_id>.json` (the newest 20 are kept), or
+`full_plan_unavailable` if that write failed. This affects only how the plan is shown.
+The session stores the full plan, `plan_id` hashes the full plan, and filing checks
+against the full plan.
+
 **Identity.** `plan_id` is stored in session state as
 `filing_plans[(project, scope_fingerprint_key)] = {plan_id, issued_at}`. Only the newest
 plan per key is kept.

@@ -4370,6 +4370,59 @@ def find_protected_ranges(code: str, tree: ast.AST | None = None) -> List[tuple]
     return protected
 
 
+def extend_protected_ranges_for_guarded_helper_calls(
+    tree: ast.AST | None,
+    protected_ranges: List[tuple],
+) -> List[tuple]:
+    """Extend guard protection into helpers only called from guarded sites (#97).
+
+    FLExTools scripts often factor mutations into a module-level helper invoked
+    from ``if modifyAllowed:`` inside ``Main``. ``find_protected_ranges`` only
+    marks the guard block itself, so mutations on lines inside the helper were
+    misclassified as unprotected even though every call site was guarded.
+
+    Conservative rules:
+    - The helper must have at least one call site (uncalled helpers stay unprotected).
+    - Every call site must fall inside the current protected ranges.
+    - Fixed-point iteration covers helper chains (``a`` -> ``b`` -> mutation).
+    """
+    if tree is None:
+        return protected_ranges
+
+    func_defs: Dict[str, ast.FunctionDef] = {}
+    call_sites: Dict[str, List[int]] = {}
+
+    class _HelperCallVisitor(ast.NodeVisitor):
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            func_defs[node.name] = node
+            self.generic_visit(node)
+
+        def visit_Call(self, node: ast.Call) -> None:
+            if isinstance(node.func, ast.Name):
+                call_sites.setdefault(node.func.id, []).append(node.lineno)
+            self.generic_visit(node)
+
+    _HelperCallVisitor().visit(tree)
+
+    ranges = list(protected_ranges)
+    changed = True
+    while changed:
+        changed = False
+        for name, fdef in func_defs.items():
+            sites = call_sites.get(name)
+            if not sites:
+                continue
+            if not all(_is_line_protected(ln, ranges) for ln in sites):
+                continue
+            start_line = fdef.lineno
+            end_line = fdef.end_lineno or start_line
+            if _is_line_protected(start_line, ranges) and _is_line_protected(end_line, ranges):
+                continue
+            ranges.append((start_line, end_line))
+            changed = True
+    return ranges
+
+
 def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -> dict:
     """Certify whether a script makes any Flexicon mutating calls using API index.
 
@@ -4416,10 +4469,6 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
     protected_liblcm_calls = []
     confidence_sources = {"index": 0, "regex": 0, "unknown": 0}
 
-    # Get protected ranges once for both Flexicon and LibLCM checks
-    # Pass pre-parsed tree if available to avoid re-parsing
-    protected_ranges = find_protected_ranges(code, tree)
-
     # Ensure tree is available for AST-based detection (#8 alias/cast tracking).
     # If parsing fails we silently skip AST-based detection -- the regex pass
     # below still runs.
@@ -4428,6 +4477,12 @@ def certify_script_readonly(code: str, api_index, tree: ast.AST | None = None) -
             tree = ast.parse(code)
         except SyntaxError:
             tree = None
+
+    # Get protected ranges once for both Flexicon and LibLCM checks
+    protected_ranges = find_protected_ranges(code, tree)
+    protected_ranges = extend_protected_ranges_for_guarded_helper_calls(
+        tree, protected_ranges
+    )
 
     # Step 1: Extract Flexicon Operations method calls with line numbers
     # Use pre-compiled pattern: ClassName(project).MethodName( or ClassName.MethodName( (static)
